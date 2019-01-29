@@ -13,15 +13,15 @@ print('found these packages:', pkgs)
 schema_dir = 'data'
 
 setup_args = {
-    'name': 'pynwb',
+    'name': 'hdmf',
     'version': versioneer.get_version(),
     'cmdclass': versioneer.get_cmdclass(),
-    'description': 'Package for working with Neurodata stored in the NWB format',
+    'description': 'A package for working standardizing hierarchical object data',
     'long_description': readme,
     'long_description_content_type': 'text/x-rst; charset=UTF-8',
     'author': 'Andrew Tritt',
     'author_email': 'ajtritt@lbl.gov',
-    'url': 'https://github.com/NeurodataWithoutBorders/pynwb',
+    'url': 'https://github.com/hdmf-dev/hdmf',
     'license': "BSD",
     'install_requires':
     [
@@ -35,7 +35,6 @@ setup_args = {
     ],
     'packages': pkgs,
     'package_dir': {'': 'src'},
-    'package_data': {'pynwb': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
     'classifiers': [
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
@@ -50,8 +49,7 @@ setup_args = {
         "Operating System :: Unix",
         "Topic :: Scientific/Engineering :: Medical Science Apps."
     ],
-    'keywords': 'Neuroscience '
-                'python '
+    'keywords': 'python '
                 'HDF '
                 'HDF5 '
                 'cross-platform '
@@ -59,11 +57,7 @@ setup_args = {
                 'data-format '
                 'open-source '
                 'open-science '
-                'reproducible-research '
-                'PyNWB '
-                'NWB '
-                'NWB:N '
-                'NeurodataWithoutBorders',
+                'reproducible-research ',
     'zip_safe': False
 }
 
