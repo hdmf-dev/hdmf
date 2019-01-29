@@ -7,7 +7,7 @@ references:
     command: |
       . ../venv/bin/activate
       pip install flake8
-      flake8 src/pynwb
+      flake8 src/hdmf
       flake8 tests
       flake8 --ignore E402,E501,W504 docs/gallery
 
@@ -239,7 +239,7 @@ jobs:
             . ../venv/bin/activate
             pip install -U scikit-ci-addons
             echo "CIRCLE_SHA1 [$CIRCLE_SHA1]"
-            ci_addons publish_github_release NeurodataWithoutBorders/pynwb  \
+            ci_addons publish_github_release hdmf-dev/hdmf  \
                 --prerelease-packages "dist/*" \
                 --prerelease-sha $CIRCLE_SHA1 \
                 --prerelease-packages-clear-pattern "*" \
