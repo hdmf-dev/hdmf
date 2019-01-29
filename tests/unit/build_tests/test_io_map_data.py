@@ -1,9 +1,9 @@
 import unittest2 as unittest
 
-from pynwb.form.spec import AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
-from pynwb.form.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
-from pynwb.form import Data
-from pynwb.form.utils import docval, getargs
+from hdmf.spec import AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
+from hdmf import Data
+from hdmf.utils import docval, getargs
 
 CORE_NAMESPACE = 'test_core'
 

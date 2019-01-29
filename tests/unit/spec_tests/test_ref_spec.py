@@ -1,7 +1,7 @@
 import unittest2 as unittest
 import json
 
-from pynwb.form.spec import RefSpec
+from hdmf.spec import RefSpec
 
 
 class RefSpecTests(unittest.TestCase):

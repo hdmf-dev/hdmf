@@ -1,7 +1,7 @@
 import unittest2 as unittest
 import json
 
-from pynwb.form.spec import GroupSpec, DatasetSpec, AttributeSpec
+from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec
 
 
 class GroupSpecTests(unittest.TestCase):
@@ -67,9 +67,9 @@ class GroupSpecTests(unittest.TestCase):
         self.assertIs(spec, self.datasets[1].parent)
         json.dumps(spec)
 
-    def test_constructor_nwbtype(self):
+    def test_constructor_datatype(self):
         spec = GroupSpec('A test group',
-                         name='root_constructor_nwbtype',
+                         name='root_constructor_datatype',
                          datasets=self.datasets,
                          attributes=self.attributes,
                          linkable=False,

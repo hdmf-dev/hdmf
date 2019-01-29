@@ -1311,7 +1311,6 @@ class TypeMap(object):
             docval_args.append(docval_arg)
             if f not in existing_args:
                 new_args.append(f)
-        # TODO: set __nwbfields__
         if base is None:
             @docval(*docval_args)
             def __init__(self, **kwargs):

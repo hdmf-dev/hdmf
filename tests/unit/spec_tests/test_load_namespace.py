@@ -3,7 +3,7 @@ import ruamel.yaml as yaml
 import json
 import os
 
-from pynwb.form.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog
+from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog
 
 
 class TestSpecLoad(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestSpecLoad(unittest.TestCase):
                         data_type_def='VoltageArray')
         ]
         self.spec = GroupSpec('A test group',  # noqa: F405
-                              name='root_constructor_nwbtype',
+                              name='root_constructor_datatype',
                               datasets=self.datasets,
                               attributes=self.attributes,
                               linkable=False,
@@ -56,7 +56,7 @@ class TestSpecLoad(unittest.TestCase):
             AttributeSpec('ext_extra_attribute', 'an extra attribute for the group', 'text'),
         ]
         self.ext_spec = GroupSpec('A test group extension',  # noqa: F405
-                                   name='root_constructor_nwbtype',
+                                   name='root_constructor_datatype',
                                    datasets=self.ext_datasets,
                                    attributes=self.ext_attributes,
                                    linkable=False,

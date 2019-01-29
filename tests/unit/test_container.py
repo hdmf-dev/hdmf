@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from pynwb.form.container import Container
+from hdmf.container import Container
 
 
 class MyTestClass(Container):

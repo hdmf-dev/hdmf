@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from pynwb.form.spec import GroupSpec, DatasetSpec, AttributeSpec, SpecCatalog
+from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, SpecCatalog
 
 
 class SpecCatalogTest(unittest.TestCase):

@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from pynwb.form.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
+from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 import numpy as np
 
 

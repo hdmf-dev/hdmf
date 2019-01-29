@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from pynwb.form.build import GroupBuilder, DatasetBuilder, LinkBuilder
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 
 
 class GroupBuilderSetterTests(unittest.TestCase):
@@ -82,11 +82,11 @@ class GroupBuilderGetterTests(unittest.TestCase):
         pass
 
     def test_path(self):
-        self.assertEquals(self.subgroup1.path, 'gb/group1/subgroup1')
-        self.assertEquals(self.dataset1.path, 'gb/dataset1')
-        self.assertEquals(self.soft_link1.path, 'gb/soft_link1')
-        self.assertEquals(self.group1.path, 'gb/group1')
-        self.assertEquals(self.gb.path, 'gb')
+        self.assertEqual(self.subgroup1.path, 'gb/group1/subgroup1')
+        self.assertEqual(self.dataset1.path, 'gb/dataset1')
+        self.assertEqual(self.soft_link1.path, 'gb/soft_link1')
+        self.assertEqual(self.group1.path, 'gb/group1')
+        self.assertEqual(self.gb.path, 'gb')
 
     def test_get_item_group(self):
         """Test __get_item__ for groups"""

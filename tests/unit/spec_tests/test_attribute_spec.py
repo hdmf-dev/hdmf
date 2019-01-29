@@ -1,7 +1,7 @@
 import unittest2 as unittest
 import json
 
-from pynwb.form.spec import AttributeSpec
+from hdmf.spec import AttributeSpec
 
 
 class AttributeSpecTests(unittest.TestCase):

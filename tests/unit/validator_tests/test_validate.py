@@ -3,10 +3,10 @@ from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from six import text_type as text
 
-from pynwb.form.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
-from pynwb.form.build import GroupBuilder, DatasetBuilder
-from pynwb.form.validate import ValidatorMap
-from pynwb.form.validate.errors import *  # noqa: F403
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
+from hdmf.build import GroupBuilder, DatasetBuilder
+from hdmf.validate import ValidatorMap
+from hdmf.validate.errors import *  # noqa: F403
 
 CORE_NAMESPACE = 'test_core'
 

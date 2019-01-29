@@ -3,8 +3,8 @@ import os
 from h5py import File
 import numpy as np
 
-from pynwb.form.query import FORMDataset, Query
-from pynwb.form.array import SortedArray, LinSpace
+from hdmf.query import FORMDataset, Query
+from hdmf.array import SortedArray, LinSpace
 
 from six import with_metaclass
 from abc import ABCMeta

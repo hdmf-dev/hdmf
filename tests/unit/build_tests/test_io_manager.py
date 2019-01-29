@@ -1,11 +1,11 @@
 import unittest2 as unittest
 
-from pynwb.form import Container
-from pynwb.form.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
-from pynwb.form.spec.spec import ZERO_OR_MANY
-from pynwb.form.build import GroupBuilder, DatasetBuilder
-from pynwb.form.utils import docval, getargs
-from pynwb.form.build import ObjectMapper, BuildManager, TypeMap
+from hdmf import Container
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.spec.spec import ZERO_OR_MANY
+from hdmf.build import GroupBuilder, DatasetBuilder
+from hdmf.utils import docval, getargs
+from hdmf.build import ObjectMapper, BuildManager, TypeMap
 
 from abc import ABCMeta
 from six import with_metaclass

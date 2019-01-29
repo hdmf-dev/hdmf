@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from pynwb.form.spec import DtypeSpec, DtypeHelper, RefSpec
+from hdmf.spec import DtypeSpec, DtypeHelper, RefSpec
 
 
 class DtypeSpecHelper(unittest.TestCase):

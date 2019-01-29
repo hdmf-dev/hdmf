@@ -1,7 +1,7 @@
 import unittest2 as unittest
 from six import text_type
 
-from pynwb.form.utils import docval, fmt_docval_args
+from hdmf.utils import docval, fmt_docval_args
 
 
 class MyTestClass(object):

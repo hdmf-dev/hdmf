@@ -5,10 +5,8 @@ import os
 from h5py import File, Dataset, Reference
 from six import text_type
 
-from pynwb.form.backends.hdf5 import HDF5IO
-from pynwb.form.build import GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager
-
-from pynwb import TimeSeries, get_type_map
+from hdmf.backends.hdf5 import HDF5IO
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager
 
 from numbers import Number
 
@@ -149,6 +147,7 @@ class GroupBuilderTestCase(unittest.TestCase):
         return True
 
 
+@unittest.skip("calls PyNWB objects")
 class TestHDF5Writer(GroupBuilderTestCase):
 
     def setUp(self):

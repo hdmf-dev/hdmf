@@ -1,18 +1,12 @@
 import os
 import unittest2 as unittest
 
-from pynwb.form.data_utils import DataChunkIterator
-from pynwb.form.backends.hdf5.h5tools import HDF5IO
-from pynwb.form.backends.hdf5 import H5DataIO
-from pynwb.form.build import DatasetBuilder
-from pynwb.form.spec.namespace import NamespaceCatalog
+from hdmf.data_utils import DataChunkIterator
+from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.backends.hdf5 import H5DataIO
+from hdmf.build import DatasetBuilder
+from hdmf.spec.namespace import NamespaceCatalog
 from h5py import SoftLink, HardLink, ExternalLink, File
-from pynwb.file import NWBFile
-from pynwb.base import TimeSeries
-from pynwb import NWBHDF5IO
-from pynwb.spec import NWBNamespace, NWBGroupSpec, NWBDatasetSpec
-
-from pynwb.ecephys import ElectricalSeries
 
 
 import tempfile
@@ -363,6 +357,7 @@ class H5IOTest(unittest.TestCase):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
 
 
+@unittest.skip("calls PyNWB objects")
 class TestCacheSpec(unittest.TestCase):
 
     def test_cache_spec(self):
@@ -409,6 +404,7 @@ class TestCacheSpec(unittest.TestCase):
         return types
 
 
+@unittest.skip("calls PyNWB objects")
 class TestLinkResolution(unittest.TestCase):
 
     def test_link_resolve(self):
@@ -445,6 +441,7 @@ class TestLinkResolution(unittest.TestCase):
             os.remove(self.path)
 
 
+@unittest.skip("calls PyNWB objects")
 class NWBHDF5IOMultiFileTest(unittest.TestCase):
     """Tests for h5tools IO tools"""
 
