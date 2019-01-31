@@ -311,6 +311,25 @@ class H5IOTest(unittest.TestCase):
                      fillvalue=100)
             self.assertEqual(len(w), 7)
 
+    def test_h5dataio_array_conversion_numpy(self):
+        # Test that H5DataIO.__array__ is working when wrapping an ndarray
+        test_speed = np.array([10., 20.])
+        data = H5DataIO((test_speed))
+        self.assertTrue(np.all(np.isfinite(data)))  # Force call of H5DataIO.__array__
+
+    def test_h5dataio_array_conversion_list(self):
+        # Test that H5DataIO.__array__ is working when wrapping a python list
+        test_speed = [10., 20.]
+        data = H5DataIO(test_speed)
+        self.assertTrue(np.all(np.isfinite(data)))  # Force call of H5DataIO.__array__
+
+    def test_h5dataio_array_conversion_datachunkiterator(self):
+        # Test that H5DataIO.__array__ is working when wrapping a python list
+        test_speed = DataChunkIterator(data=[10., 20.])
+        data = H5DataIO(test_speed)
+        with self.assertRaises(NotImplementedError):
+            np.isfinite(data)  # Force call of H5DataIO.__array__
+
     #############################################
     #  Copy/Link h5py.Dataset object
     #############################################
