@@ -474,7 +474,23 @@ class DataIO(with_metaclass(ABCMeta, object)):
         return len(self.__data)
 
     def __getattr__(self, attr):
+        """Delegate attribute lookup to data object"""
         return getattr(self.data, attr)
+
+    def __array__(self):
+        """
+        Support conversion of DataIO.data to a numpy array. This function is
+        provided to improve transparent interoperability of DataIO with numpy.
+
+        :return: An array instance of self.data
+        """
+        if hasattr(self.data, '__array__'):
+            return self.data.__array__()
+        elif isinstance(self.data, DataChunkIterator):
+            raise NotImplementedError("Conversion of DataChunkIterator to array not supported")
+        else:
+            # NOTE this may result in a copy of the array
+            return np.asarray(self.data)
 
     # Delegate iteration interface to data object:
     def __next__(self):
