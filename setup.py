@@ -16,7 +16,7 @@ setup_args = {
     'name': 'hdmf',
     'version': versioneer.get_version(),
     'cmdclass': versioneer.get_cmdclass(),
-    'description': 'A package for working standardizing hierarchical object data',
+    'description': 'A package for standardizing hierarchical object data',
     'long_description': readme,
     'long_description_content_type': 'text/x-rst; charset=UTF-8',
     'author': 'Andrew Tritt',
