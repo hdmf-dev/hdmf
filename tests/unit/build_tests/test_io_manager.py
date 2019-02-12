@@ -16,7 +16,7 @@ CORE_NAMESPACE = 'test_core'
 class Foo(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
-            {'name': 'my_data', 'type': list, 'doc': 'some data'},
+            {'name': 'my_data', 'type': 'array_data', 'doc': 'some data'},
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14})
