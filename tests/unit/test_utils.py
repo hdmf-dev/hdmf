@@ -4,6 +4,7 @@ from hdmf.container import Container
 
 CORE_NAMESPACE = 'test_core'
 
+
 class Foo(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
@@ -68,4 +69,3 @@ class FooBucket(Container):
     @property
     def foos(self):
         return self.__foos
-

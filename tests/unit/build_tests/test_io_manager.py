@@ -1,10 +1,8 @@
 import unittest2 as unittest
 
-from hdmf import Container
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder
-from hdmf.utils import docval, getargs
 from hdmf.build import ObjectMapper, BuildManager, TypeMap
 
 from abc import ABCMeta
