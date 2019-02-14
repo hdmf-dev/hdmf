@@ -26,8 +26,8 @@ Build Status
   +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
   | Linux                                                               | macOS                                                          | Windows                                                                               |
   +=====================================================================+================================================================+=======================================================================================+
-  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://travis-ci.org/hdmf-dev/hdmf.svg?branch=dev  | .. image:: https://ci.appveyor.com/api/projects/status/9y808ua44yldy5n3?svg=true      |
-  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://travis-ci.org/hdmf-dev/hdmf               |     :target: https://ci.appveyor.com/project/hdmf-dev/hdmf                            |
+  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://travis-ci.com/hdmf-dev/hdmf.svg?branch=dev  | .. image:: https://ci.appveyor.com/api/projects/status/9y808ua44yldy5n3?svg=true      |
+  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://travis-ci.com/hdmf-dev/hdmf               |     :target: https://ci.appveyor.com/project/hdmf-dev/hdmf                            |
   +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
 
 
