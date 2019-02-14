@@ -368,6 +368,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         "uint8": np.uint8,
     }
 
+    __no_convert = set()
+
     @classmethod
     def __resolve_dtype(cls, given, specified):
         """
@@ -388,6 +390,13 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 raise ValueError(msg)
             else:
                 return g.type
+
+    @classmethod
+    def no_convert(cls, obj_type):
+        """
+        Specify an object type that ObjectMappers should not convert.
+        """
+        cls.__no_convert.add(obj_type)
 
     @classmethod
     def convert_dtype(cls, spec, value):
@@ -411,6 +420,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             return value, None
         if spec.dtype == 'numeric':
             return value, None
+        if type(value) in cls.__no_convert:
+            return value, None
         if spec.dtype is not None and spec.dtype not in cls.__dtypes:
             msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
             raise ValueError(msg)
@@ -426,7 +437,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 ret_dtype = "ascii"
             else:
                 dtype_func = cls.__resolve_dtype(value.dtype, spec_dtype)
-                ret = value.astype(dtype_func)
+                ret = np.asarray(value).astype(dtype_func)
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
             ret = list()

@@ -1,17 +1,21 @@
-=====
-PyNWB
-=====
+========================================
+The Hierarchical Data Modeling Framework
+========================================
 
-Documentation of PyNWB can be found at https://pynwb.readthedocs.io
+The Hierarchical Data Modeling Framework, or *HDMF* is a Python package for working with hierarchical data.
+It provides APIs for specifying data models, reading and writing data to different storage backends, and
+representing data with Python object.
+
+Documentation of HDMF can be found at https://hdmf.readthedocs.io
 
 Latest Release
 --------------
 
-.. image:: https://badge.fury.io/py/pynwb.svg
-     :target: https://badge.fury.io/py/pynwb
+.. image:: https://badge.fury.io/py/hdmf.svg
+     :target: https://badge.fury.io/py/hdmf
 
-.. image:: https://anaconda.org/conda-forge/pynwb/badges/version.svg
-     :target: https://anaconda.org/conda-forge/pynwb
+.. image:: https://anaconda.org/conda-forge/hdmf/badges/version.svg
+     :target: https://anaconda.org/conda-forge/hdmf
 
 
 Build Status
@@ -22,47 +26,32 @@ Build Status
   +-----------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------+
   | Linux                                                                                   | macOS                                                                                   | Windows                                                                               |
   +=========================================================================================+=========================================================================================+=======================================================================================+
-  | .. image:: https://circleci.com/gh/NeurodataWithoutBorders/pynwb.svg?style=shield       | .. image:: https://travis-ci.org/NeurodataWithoutBorders/pynwb.svg?branch=dev           | .. image:: https://ci.appveyor.com/api/projects/status/9y808ua44yldy5n3?svg=true      |
-  |     :target: https://circleci.com/gh/NeurodataWithoutBorders/pynwb                      |     :target: https://travis-ci.org/NeurodataWithoutBorders/pynwb                        |     :target: https://ci.appveyor.com/project/NeurodataWithoutBorders/pynwb            |
+  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield       | .. image:: https://travis-ci.org/hdmf-dev/hdmf.svg?branch=dev           | .. image:: https://ci.appveyor.com/api/projects/status/9y808ua44yldy5n3?svg=true      |
+  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                      |     :target: https://travis-ci.org/hdmf-dev/hdmf                        |     :target: https://ci.appveyor.com/project/hdmf-dev/hdmf            |
   +-----------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------+
 
 
 **Conda**
 
 
-.. image:: https://circleci.com/gh/conda-forge/pynwb-feedstock.svg?style=shield
-     :target: https://circleci.com/gh/conda-forge/pynwb-feedstocks
+.. image:: https://circleci.com/gh/conda-forge/hdmf-feedstock.svg?style=shield
+     :target: https://circleci.com/gh/conda-forge/hdmf-feedstocks
 
 
 Overall Health
 --------------
 
-.. image:: https://codecov.io/gh/NeurodataWithoutBorders/pynwb/branch/dev/graph/badge.svg
-    :target: https://codecov.io/gh/NeurodataWithoutBorders/pynwb
+.. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
+    :target: https://codecov.io/gh/hdmf-dev/hdmf
 
-.. image:: https://requires.io/github/NeurodataWithoutBorders/pynwb/requirements.svg?branch=dev
-     :target: https://requires.io/github/NeurodataWithoutBorders/pynwb/requirements/?branch=dev
+.. image:: https://requires.io/github/hdmf-dev/hdmf/requirements.svg?branch=dev
+     :target: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
      :alt: Requirements Status
-
-NWB Format API
-==============
-
-PyNWB is a Python package for working with NWB files. It provides a high-level API for
-efficiently working with Neurodata stored in the `NWB format <https://nwb-schema.readthedocs.io>`_.
-
-`Neurodata Without Borders: Neurophysiology (NWB:N) <http://www.nwb.org/>`_ is a project to develop a
-unified data format for cellular-based neurophysiology data, focused on the
-dynamics of groups of neurons measured under a large range of experimental
-conditions.
-
-The NWB:N team consists of neuroscientists and software developers
-who recognize that adoption of a unified data format is an important step toward
-breaking down the barriers to data sharing in neuroscience.
 
 Installation
 ============
 
-See the PyNWB documentation for details http://pynwb.readthedocs.io/en/latest/getting_started.html#installation
+See the HDMF documentation for details http://hdmf.readthedocs.io/en/latest/getting_started.html#installation
 
 Code of Conduct
 ===============
@@ -72,12 +61,12 @@ This project and everyone participating in it is governed by our `code of conduc
 Contributing
 ============
 
-For details on how to contribute to PyNWB see our `contribution guidelines <docs/CONTRIBUTING.rst>`_ .
+For details on how to contribute to HDMF see our `contribution guidelines <docs/CONTRIBUTING.rst>`_ .
 
 LICENSE
 =======
 
-"pynwb" Copyright (c) 2017, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 (1) Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -93,7 +82,7 @@ You are under no obligation whatsoever to provide any bug fixes, patches, or upg
 COPYRIGHT
 =========
 
-"pynwb" Copyright (c) 2017, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships ce at  IPO@lbl.gov.
 
 NOTICE.  This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so.

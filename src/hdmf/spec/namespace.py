@@ -252,6 +252,9 @@ class NamespaceCatalog(object):
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
         self.__namespaces[name] = namespace
+        for dt in namespace.catalog.get_registered_types():
+            source = namespace.catalog.get_spec_source_file(dt)
+            self.__loaded_specs.setdefault(source, list()).append(dt)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             returns="the SpecNamespace with the given name", rtype=SpecNamespace)

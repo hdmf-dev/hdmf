@@ -1,19 +1,47 @@
 import os
 import unittest2 as unittest
 
+from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.build import DatasetBuilder
+from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
+from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, ZERO_OR_MANY, ONE_OR_MANY
+from hdmf.spec.namespace import SpecNamespace
+from hdmf.spec.catalog import SpecCatalog
+from hdmf.container import Container
 from h5py import SoftLink, HardLink, ExternalLink, File
 
 
 import tempfile
 import warnings
 import numpy as np
-from datetime import datetime
-from dateutil.tz import tzlocal
+
+from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
+
+
+class FooFile(Container):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this file'},
+            {'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
+    def __init__(self, **kwargs):
+        name, buckets = getargs('name', 'buckets', kwargs)
+        super(FooFile, self).__init__(name=name)
+        self.__buckets = buckets
+        for f in self.__buckets:
+            self.add_child(f)
+
+    def __eq__(self, other):
+        return self.name == other.name and set(self.buckets) == set(other.buckets)
+
+    def __str__(self):
+        foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
+        return 'name=%s, buckets=%s' % (self.name, foo_str)
+
+    @property
+    def buckets(self):
+        return self.__buckets
 
 
 class H5IOTest(unittest.TestCase):
@@ -376,40 +404,96 @@ class H5IOTest(unittest.TestCase):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
 
 
-@unittest.skip("calls PyNWB objects")
+def _get_manager():
+
+    foo_spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Foo',
+                         datasets=[DatasetSpec('an example dataset',
+                                               'int',
+                                               name='my_data',
+                                               attributes=[AttributeSpec('attr2',
+                                                                         'an example integer attribute',
+                                                                         'int')])],
+                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+
+    tmp_spec = GroupSpec('A subgroup for Foos',
+                         name='foo_holder',
+                         groups=[GroupSpec('the Foos in this bucket', data_type_inc='Foo', quantity=ZERO_OR_MANY)])
+
+    bucket_spec = GroupSpec('A test group specification for a data type containing data type',
+                            data_type_def='FooBucket',
+                            groups=[tmp_spec])
+
+    class BucketMapper(ObjectMapper):
+        def __init__(self, spec):
+            super(BucketMapper, self).__init__(spec)
+            foo_spec = spec.get_group('foo_holder').get_data_type('Foo')
+            self.map_spec('foos', foo_spec)
+
+    file_spec = GroupSpec("A file of Foos contained in FooBuckets",
+                          name='root',
+                          data_type_def='FooFile',
+                          groups=[GroupSpec('Holds the FooBuckets',
+                                            name='buckets',
+                                            groups=[GroupSpec("One ore more FooBuckets",
+                                                              data_type_inc='FooBucket',
+                                                              quantity=ONE_OR_MANY)])])
+
+    class FileMapper(ObjectMapper):
+        def __init__(self, spec):
+            super(FileMapper, self).__init__(spec)
+            bucket_spec = spec.get_group('buckets').get_data_type('FooBucket')
+            self.map_spec('buckets', bucket_spec)
+
+    spec_catalog = SpecCatalog()
+    spec_catalog.register_spec(foo_spec, 'test.yaml')
+    spec_catalog.register_spec(bucket_spec, 'test.yaml')
+    spec_catalog.register_spec(file_spec, 'test.yaml')
+    namespace = SpecNamespace(
+        'a test namespace',
+        CORE_NAMESPACE,
+        [{'source': 'test.yaml'}],
+        catalog=spec_catalog)
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    type_map = TypeMap(namespace_catalog)
+
+    type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+    type_map.register_container_type(CORE_NAMESPACE, 'FooBucket', FooBucket)
+    type_map.register_container_type(CORE_NAMESPACE, 'FooFile', FooFile)
+
+    type_map.register_map(FooBucket, BucketMapper)
+    type_map.register_map(FooFile, FileMapper)
+
+    manager = BuildManager(type_map)
+    return manager
+
+
 class TestCacheSpec(unittest.TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
 
     def test_cache_spec(self):
         self.test_temp_file = tempfile.NamedTemporaryFile()
+        self.test_temp_file.close()
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.test_temp_file.close()
-        self.io = NWBHDF5IO(self.test_temp_file.name, mode='a')
-        # Setup all the data we need
-        start_time = datetime(2017, 4, 3, 11, tzinfo=tzlocal())
-        create_date = datetime(2017, 4, 15, 12, tzinfo=tzlocal())
-        data = np.arange(1000).reshape((100, 10))
-        timestamps = np.arange(100)
-        # Create the first file
-        nwbfile1 = NWBFile(session_description='demonstrate external files',
-                           identifier='NWBE1',
-                           session_start_time=start_time,
-                           file_create_date=create_date)
+        self.io = HDF5IO(self.test_temp_file.name, manager=self.manager, mode='w')
 
-        test_ts1 = TimeSeries(name='test_timeseries',
-                              data=data,
-                              unit='SIunit',
-                              timestamps=timestamps)
-        nwbfile1.add_acquisition(test_ts1)
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foofile = FooFile('test_foofile', [foobucket])
+
         # Write the first file
-        self.io.write(nwbfile1, cache_spec=True)
+        self.io.write(foofile, cache_spec=True)
         self.io.close()
-        ns_catalog = NamespaceCatalog(group_spec_cls=NWBGroupSpec,
-                                      dataset_spec_cls=NWBDatasetSpec,
-                                      spec_namespace_cls=NWBNamespace)
-        NWBHDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
-        self.assertEqual(ns_catalog.namespaces, ('core',))
+        ns_catalog = NamespaceCatalog()
+        HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
+        self.assertEqual(ns_catalog.namespaces, ('test_core',))
         source_types = self.__get_types(self.io.manager.namespace_catalog)
         read_types = self.__get_types(ns_catalog)
         self.assertSetEqual(source_types, read_types)
@@ -423,57 +507,46 @@ class TestCacheSpec(unittest.TestCase):
         return types
 
 
-@unittest.skip("calls PyNWB objects")
 class TestLinkResolution(unittest.TestCase):
 
     def test_link_resolve(self):
-        nwbfile = NWBFile("a file with header data", "NB123A", datetime(2018, 6, 1, tzinfo=tzlocal()))
-        device = nwbfile.create_device('device_name')
-        electrode_group = nwbfile.create_electrode_group(
-            name='electrode_group_name',
-            description='desc',
-            device=device,
-            location='unknown')
-        nwbfile.add_electrode(id=0,
-                              x=1.0, y=2.0, z=3.0,  # position?
-                              imp=2.718,
-                              location='unknown',
-                              filtering='unknown',
-                              group=electrode_group)
-        etr = nwbfile.create_electrode_table_region([0], 'etr_name')
-        for passband in ('theta', 'gamma'):
-            electrical_series = ElectricalSeries(name=passband + '_phase',
-                                                 data=[1., 2., 3.],
-                                                 rate=0.0,
-                                                 electrodes=etr)
-            nwbfile.add_acquisition(electrical_series)
-        with NWBHDF5IO(self.path, 'w') as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(self.path, 'r') as io:
-            io.read()
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        bucket2 = FooBucket('test_bucket2', [foo1, foo2])
+        foofile = FooFile('test_foofile', [bucket1, bucket2])
+
+        with HDF5IO(self.path, 'w', manager=_get_manager()) as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, 'r', manager=_get_manager()) as io:
+            foofile_read = io.read()
+        b = foofile_read.buckets
+        b1, b2 = (b[0], b[1]) if b[0].name == 'test_bucket1' else (b[1], b[0])
+        f = b2.foos
+        f1, f2 = (f[0], f[1]) if f[0].name == 'foo1' else (f[1], f[0])
+        self.assertIs(b1.foos[0], f1)
 
     def setUp(self):
-        self.path = "test_link_resolve.nwb"
+        self.path = "test_link_resolve.h5"
 
     def tearDown(self):
         if os.path.exists(self.path):
             os.remove(self.path)
 
 
-@unittest.skip("calls PyNWB objects")
-class NWBHDF5IOMultiFileTest(unittest.TestCase):
+class HDF5IOMultiFileTest(unittest.TestCase):
     """Tests for h5tools IO tools"""
 
     def setUp(self):
         numfiles = 3
-        self.test_temp_files = [tempfile.NamedTemporaryFile() for i in range(numfiles)]
+        base_name = "test_multifile_hdf5_%d.h5"
+        self.test_temp_files = [base_name % i for i in range(numfiles)]
 
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        for i in self.test_temp_files:
-            i.close()
-        self.io = [NWBHDF5IO(i.name, mode='a') for i in self.test_temp_files]
+        self.io = [HDF5IO(i, mode='w', manager=_get_manager()) for i in self.test_temp_files]
         self.f = [i._file for i in self.io]
 
     def tearDown(self):
@@ -486,66 +559,52 @@ class NWBHDF5IOMultiFileTest(unittest.TestCase):
         # Make sure the files have been deleted
         for tf in self.test_temp_files:
             try:
-                os.remove(tf.name)
+                os.remove(tf)
             except OSError:
                 pass
         self.test_temp_files = None
 
     def test_copy_file_with_external_links(self):
-        # Setup all the data we need
-        start_time = datetime(2017, 4, 3, 11, tzinfo=tzlocal())
-        create_date = datetime(2017, 4, 15, 12, tzinfo=tzlocal())
-        data = np.arange(1000).reshape((100, 10))
-        timestamps = np.arange(100)
-        # Create the first file
-        nwbfile1 = NWBFile(session_description='demonstrate external files',
-                           identifier='NWBE1',
-                           session_start_time=start_time,
-                           file_create_date=create_date)
 
-        test_ts1 = TimeSeries(name='test_timeseries',
-                              data=data,
-                              unit='SIunit',
-                              timestamps=timestamps)
-        nwbfile1.add_acquisition(test_ts1)
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+
+        foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+
         # Write the first file
-        self.io[0].write(nwbfile1)
-        nwbfile1_read = self.io[0].read()
+        self.io[0].write(foofile1)
+        bucket1_read = self.io[0].read()
 
         # Create the second file
-        nwbfile2 = NWBFile(session_description='demonstrate external files',
-                           identifier='NWBE1',
-                           session_start_time=start_time,
-                           file_create_date=create_date)
 
-        test_ts2 = TimeSeries(name='test_timeseries',
-                              data=nwbfile1_read.get_acquisition('test_timeseries').data,
-                              unit='SIunit',
-                              timestamps=timestamps)
-        nwbfile2.add_acquisition(test_ts2)
+        foo2 = Foo('foo2', bucket1_read.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
+
+        bucket2 = FooBucket('test_bucket2', [foo2])
+        foofile2 = FooFile('test_foofile2', buckets=[bucket2])
         # Write the second file
-        self.io[1].write(nwbfile2)
+        self.io[1].write(foofile2)
         self.io[1].close()
         self.io[0].close()  # Don't forget to close the first file too
 
         # Copy the file
         self.io[2].close()
-        HDF5IO.copy_file(source_filename=self.test_temp_files[1].name,
-                         dest_filename=self.test_temp_files[2].name,
+        HDF5IO.copy_file(source_filename=self.test_temp_files[1],
+                         dest_filename=self.test_temp_files[2],
                          expand_external=True,
                          expand_soft=False,
                          expand_refs=False)
 
         # Test that everything is working as expected
         # Confirm that our original data file is correct
-        f1 = File(self.test_temp_files[0].name)
-        self.assertTrue(isinstance(f1.get('/acquisition/test_timeseries/data', getlink=True), HardLink))
+        f1 = File(self.test_temp_files[0])
+        self.assertIsInstance(f1.get('/buckets/test_bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
         # Confirm that we successfully created and External Link in our second file
-        f2 = File(self.test_temp_files[1].name)
-        self.assertTrue(isinstance(f2.get('/acquisition/test_timeseries/data', getlink=True), ExternalLink))
+        f2 = File(self.test_temp_files[1])
+        self.assertIsInstance(f2.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
         # Confirm that we successfully resolved the External Link when we copied our second file
-        f3 = File(self.test_temp_files[2].name)
-        self.assertTrue(isinstance(f3.get('/acquisition/test_timeseries/data', getlink=True), HardLink))
+        f3 = File(self.test_temp_files[2])
+        self.assertIsInstance(f3.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
 
 
 if __name__ == '__main__':

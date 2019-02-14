@@ -10,7 +10,7 @@ from ...container import Container
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...data_utils import AbstractDataChunkIterator, get_shape
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
-                     RegionBuilder, ReferenceBuilder, TypeMap
+                     RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec
 from ...spec import NamespaceBuilder
 
@@ -56,6 +56,7 @@ class HDF5IO(FORMIO):
         self.__built = dict()       # keep track of which files have been read
         self.__read = dict()        # keep track of each builder for each dataset/group/link
         self.__ref_queue = deque()  # a queue of the references that need to be added
+        ObjectMapper.no_convert(Dataset)
 
     @property
     def comm(self):

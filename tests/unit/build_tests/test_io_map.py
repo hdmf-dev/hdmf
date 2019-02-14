@@ -8,7 +8,7 @@ from hdmf.utils import docval, getargs, get_docval
 from abc import ABCMeta
 from six import with_metaclass
 
-CORE_NAMESPACE = 'test_core'
+from tests.unit.test_utils import CORE_NAMESPACE
 
 
 class Bar(Container):
