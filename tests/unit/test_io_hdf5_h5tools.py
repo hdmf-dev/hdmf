@@ -457,6 +457,7 @@ class TestCacheSpec(unittest.TestCase):
 
     def test_cache_spec(self):
         self.test_temp_file = tempfile.NamedTemporaryFile()
+        self.test_temp_file.close()
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
