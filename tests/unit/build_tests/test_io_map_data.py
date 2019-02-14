@@ -5,7 +5,7 @@ from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Data
 from hdmf.utils import docval, getargs
 
-CORE_NAMESPACE = 'test_core'
+from tests.unit.test_utils import CORE_NAMESPACE
 
 
 class Baz(Data):

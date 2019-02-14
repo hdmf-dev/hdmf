@@ -18,7 +18,7 @@ import tempfile
 import warnings
 import numpy as np
 
-from .build_tests.test_io_manager import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
 
 class FooFile(Container):

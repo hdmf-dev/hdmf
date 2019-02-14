@@ -11,8 +11,8 @@ from numbers import Number
 import json
 import numpy as np
 
-from .test_io_hdf5_h5tools import _get_manager
-from .build_tests.test_io_manager import Foo
+from tests.unit.test_utils import Foo
+from tests.unit.test_io_hdf5_h5tools import _get_manager
 
 
 class HDF5Encoder(json.JSONEncoder):
