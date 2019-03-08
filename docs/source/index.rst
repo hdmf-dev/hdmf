@@ -29,7 +29,6 @@ with the intention of providing it as an open-source tool for other scientific c
 
    overview_intro
    overview_software_architecture
-   overview_nwbfile
 
 .. toctree::
    :maxdepth: 2

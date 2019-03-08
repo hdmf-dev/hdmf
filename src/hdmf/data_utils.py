@@ -46,7 +46,7 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
         """
         Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
-        HINT: numpy.s_ provides a convenient way to generate index tuples using standard array slicing. This
+        HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
         is often useful to define the DataChunk.selection of the current chunk
 
         :returns: DataChunk object with the data and selection of the current chunk
@@ -208,7 +208,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
     def __next__(self):
         """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
-        HINT: numpy.s_ provides a convenient way to generate index tuples using standard array slicing. This
+        HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
         is often useful to define the DataChunkk.selection of the current chunk
 
         :returns: DataChunk object with the data and selection of the current chunk
