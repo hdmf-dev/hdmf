@@ -16,14 +16,14 @@ Types of Contributions
 Did you find a bug? or Do you intend to add a new feature or change an existing one?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* **Submit issues and requests using out `issue tracker <https://github.com/hdmf-dev/hdmf/issues>`_** 
+* **Submit issues and requests using out `issue tracker <https://github.com/hdmf-dev/hdmf/issues>`_**
 
-* **Ensure the feature or change was not already reported** by searching on GitHub under `HDMF Issues <https://github.com/hdmf-dev/hdmf/issues>`_ 
+* **Ensure the feature or change was not already reported** by searching on GitHub under `HDMF Issues <https://github.com/hdmf-dev/hdmf/issues>`_
 
 * If you are unable to find an open issue addressing the problem then open a new issue on the respective repository. Be sure to use our issue templates and include:
 
     * **brief and descriptive title**
-    * **clear description of the problem you are trying to solve***. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team and ultimately the NWB:N community a better understanding for the reasons of changes and enables others to suggest solutions.
+    * **clear description of the problem you are trying to solve***. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team community a better understanding for the reasons of changes and enables others to suggest solutions.
     * **context** providing as much relevant information as possible and if available a **code sample** or an **executable test case** demonstrating the expected behavior and/or problem.
 
 * Be sure to select the appropriate labels (see :ref:`sec-issue-labels`) for your tickets so that they can be processed accordingly.
@@ -40,7 +40,7 @@ Did you fix whitespace, format code, or make a purely cosmetic patch in source c
 
 Source code changes that are purely cosmetic in nature and do not add anything substantial to the stability, functionality, or testability will generally not be accepted unless they have been approved beforehand. One of the main reasons is that there are a lot of hidden costs in addition to writing the code itself, and with the limited resources of the project, we need to optimize developer time. E.g,. someone needs to test and review PRs, backporting of bug fixes gets harder, it creates noise and pollutes the git repo and many other cost factors.
 
-Do you have questions about NWB:N?
+Do you have questions about HDMF?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 See our `hdmf-dev.github.io <https://hdmf-dev.github.io/>`_ website for details.
@@ -91,17 +91,17 @@ Issue Labels, Projects, and Milestones
 Labels
 ^^^^^^
 
-Labels are used to describe the general scope of an issue, e.g., whether it describes a bug or feature request etc. Please review and select the appropriate labels for the respective Git repository: 
+Labels are used to describe the general scope of an issue, e.g., whether it describes a bug or feature request etc. Please review and select the appropriate labels for the respective Git repository:
 
     * `HDMF issue labels  <https://github.com/hdmf-dev/hdmf/labels>`_
-    
+
 Milestones
 ^^^^^^^^^^
 
 Milestones are used to define the scope and general timeline for issues. Please review and select the appropriate milestones for the respective Git repository:
 
     * `HDMF milestones <https://github.com/hdmf-dev/hdmf/milestones>`_
-    
+
 Projects
 ^^^^^^^^
 
@@ -134,7 +134,7 @@ Python coding style is checked via ``flake8`` for automatic checking of PEP8 sty
 Endorsement
 -----------
 
-Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say  e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on NWB”.”
+Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say  e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
 
 Licence and Copyright
 =======================
@@ -143,6 +143,6 @@ See the `Readme <https://github.com/NeurodataWithoutBorders/pynwb#contributing>`
 
 As indicated in the HDMF license: *“You are under no obligation whatsoever to provide any bug fixes, patches, or upgrades to the features, functionality or performance of the source code ("Enhancements") to anyone; however, if you choose to make your Enhancements available either publicly, or directly to Lawrence Berkeley National Laboratory, without imposing a separate written license agreement for such Enhancements, then you hereby grant the following license: a non-exclusive, royalty-free perpetual license to install, use, modify, prepare derivative works, incorporate into other computer software, distribute, and sublicense such enhancements or derivative works thereof, in binary and source code form.”*
 
-Contributors to the NWB code base are expected to use a permissive, non-copyleft open source license. Typically 3-clause BSD i used, but any compatible license is allowed, the MIT and Apache 2.0 licenses being good alternative choices. The GPL and other copyleft licenses are not allowed due to the consternation it generates across many organizations.
+Contributors to the HMDF code base are expected to use a permissive, non-copyleft open source license. Typically 3-clause BSD i used, but any compatible license is allowed, the MIT and Apache 2.0 licenses being good alternative choices. The GPL and other copyleft licenses are not allowed due to the consternation it generates across many organizations.
 
 Also, make sure that you are permitted to contribute code. Some organizations, even academic organizations, have agreements in place that discuss IP ownership in detail (i.e., address IP rights and ownership that you create while under the employ of the organization). These are typically signed documents that you looked at on your first day of work and then promptly forgot. We don’t want contributed code to be yanked later due to IP issues.
