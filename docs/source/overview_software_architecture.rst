@@ -3,27 +3,27 @@
 Software Architecture
 =====================
 
-The main goal of PyNWB is to enable users and developers to efficiently interact with the NWB data format,
-format files, and specifications. The following figures provide an overview of the high-level architecture of
-PyNWB and functionality of the various components.
+The main goal of HDMF is to enable users and developers to efficiently interact with the
+hierarchical object data. The following figures provide an overview of the high-level architecture of
+HDMF and functionality of the various components.
 
 .. _fig-software-architecture:
 
 .. figure:: figures/software_architecture.*
    :width: 100%
-   :alt: PyNWB Software Architecture
+   :alt: HDMF Software Architecture
 
-   Overview of the high-level software architecture of PyNWB (click to enlarge).
+   Overview of the high-level software architecture of HDMF (click to enlarge).
 
 
 .. _fig-software-architecture-purpose:
 
 .. figure:: figures/software_architecture_design_choices.*
    :width: 100%
-   :alt: PyNWB Software Architecture Functions
+   :alt: HDMF Software Architecture Functions
 
-   We choose a modular design for PyNWB to enable flexibility and separate the
-   various aspects of the NWB:N ecosystem (click to enlarge).
+   We choose a modular design for HDMF to enable flexibility and separate the
+   various levels of standardizing hierarchical data (click to enlarge).
 
 .. raw:: latex
 
@@ -38,25 +38,24 @@ Main Concepts
 
 .. figure:: figures/software_architecture_concepts.*
    :width: 100%
-   :alt: PyNWB Software Architecture Concepts
+   :alt: HDMF Software Architecture Concepts
 
-   Overview of the main concepts/classes in PyNWB and their location in the overall software architecture (click to enlarge).
+   Overview of the main concepts/classes in HDMF and their location in the overall software architecture (click to enlarge).
 
 Container
 ^^^^^^^^^
 
 * In memory objects
 * Interface for (most) applications
-* Like a table row
-* PyNWB has many of these -- one for each neurodata_type in the NWB schema. PyNWB organizes the containers
-  into a set of modules based on their primary application (e.g., ophys for optophysiology):
+* Similar to a table row
+* HDMF does not provide these. They are left for standards developers to define
+  how users interact with data.
+* There are two Container base classes:
 
-   * :py:class:`pynwb.base`, :py:class:`pynwb.file`
-   * :py:class:`pynwb.ecephys`
-   * :py:class:`pynwb.ophys`
-   * :py:class:`pynwb.icephys`
-   * :py:class:`pynwb.ogen`
-   * :py:class:`pynwb.behavior`
+   * :py:class:`~hdmf.container.Container` - represents a collection of objects
+   * :py:class:`~hdmf.container.Data` - represents data
+
+* **Main Module:** :py:class:`hdmf.container`
 
 Builder
 ^^^^^^^
@@ -66,12 +65,12 @@ Builder
 * Backend readers and writers must return and accept these
 * There are different kinds of builders for different base types:
 
-   * :py:class:`~pynwb.form.build.builders.GroupBuilder` - represents a collection of objects
-   * :py:class:`~pynwb.form.build.builders.DatasetBuilder` - represents data
-   * :py:class:`~pynwb.form.build.builders.LinkBuilder` - represents soft-links
-   * :py:class:`~pynwb.form.build.builders.RegionBuilder` - represents a slice into data (Subclass of :py:class:`~pynwb.form.build.builders.DatasetBuilder`)
+   * :py:class:`~hdmf.build.builders.GroupBuilder` - represents a collection of objects
+   * :py:class:`~hdmf.build.builders.DatasetBuilder` - represents data
+   * :py:class:`~hdmf.build.builders.LinkBuilder` - represents soft-links
+   * :py:class:`~hdmf.build.builders.RegionBuilder` - represents a slice into data (Subclass of :py:class:`~hdmf.build.builders.DatasetBuilder`)
 
-* **Main Module:** :py:class:`pynwb.form.build.builders`
+* **Main Module:** :py:class:`hdmf.build.builders`
 
 Spec
 ^^^^
@@ -82,48 +81,41 @@ Spec
 * Interface for writing extensions or custom specification
 * There are several main specification classes:
 
-   * :py:class:`~pynwb.spec.NWBAttributeSpec` - specification for metadata
-   * :py:class:`~pynwb.spec.NWBGroupSpec` - specification for a collection of
+   * :py:class:`~hdmf.spec.AttributeSpec` - specification for metadata
+   * :py:class:`~hdmf.spec.GroupSpec` - specification for a collection of
      objects (i.e. subgroups, datasets, link)
-   * :py:class:`~pynwb.spec.NWBDatasetSpec` - specification for dataset (like
+   * :py:class:`~hdmf.spec.DatasetSpec` - specification for dataset (like
      and n-dimensional array). Specifies data type, dimensions, etc.
-   * :py:class:`~pynwb.spec.NWBLinkSpec` - specification for link (like a POSIX
+   * :py:class:`~hdmf.spec.LinkSpec` - specification for link (like a POSIX
      soft link)
-   * :py:class:`~pynwb.form.spec.spec.RefSpec` - specification for references
+   * :py:class:`~hdmf.spec.spec.RefSpec` - specification for references
      (References are like links, but stored as data)
-   * :py:class:`~pynwb.spec.NWBDtypeSpec` - specification for compound data
+   * :py:class:`~hdmf.spec.DtypeSpec` - specification for compound data
      types. Used to build complex data type specification, e.g., to define
-     tables (used only in :py:class:`~pynwb.form.spec.spec.DatasetSpec` and
-     correspondingly :py:class:`~pynwb.spec.NWBDatasetSpec`)
+     tables (used only in :py:class:`~hdmf.spec.spec.DatasetSpec` and
+     correspondingly :py:class:`~hdmf.spec.DatasetSpec`)
 
-* **Main Modules:**
-
-   * :py:class:`pynwb.form.spec` -- General specification classes.
-   * :py:class:`pynwb.spec` -- NWB specification classes. (Most of these are
-     specializations of the classes from :py:class:`pynwb.form.spec`)
+* **Main Modules:** :py:class:`hdmf.spec`
 
 .. note::
 
-   A ``data_type`` (or more specifically a ``neurodata_type`` in the context of
-   NWB) defines a reusable type in a format specification that can be
+   A ``data_type`` defines a reusable type in a format specification that can be
    referenced and used elsewhere in other specifications.  The specification of
-   the NWB format is basically a collection of ``neurodata_types``, e.g.:
-   ``NWBFile`` defines  a GroupSpec for the top-level group of an NWB format
-   file  which includes ``TimeSeries``, ``ElectrodeGroup``, ``ImagingPlane``
-   and many other ``neurodata_types`` .  When creating a specification, two
-   main keys are used to include and define new ``neurodata_types``
+   the standard is basically a collection of ``data_types``,
 
-   * ``neurodata_type_inc`` is used to include an existing type and
-   * ``neurodata_type_def`` is used to define a new type
+   * ``data_type_inc`` is used to include an existing type and
+   * ``data_type_def`` is used to define a new type
 
-   I.e, if both keys are defined then we create a new type that uses/inherits
+   i.e, if both keys are defined then we create a new type that uses/inherits
    an existing type as a base.
 
 ObjectMapper
 ^^^^^^^^^^^^
 
 * Maintains the mapping between `Container`_ attributes and `Spec`_ components
-* Provides a way of converting between `Container`_ and `Builder`_
+* Provides a way of converting between `Container`_ and `Builder`_, while
+  leaving standards developers with the flexibility of presenting data
+  to users in a user-friendly manner, while storing data in an efficient manner
 * ObjectMappers are constructed using a `Spec`_
 * Ideally, one ObjectMapper for each data type
 * Things an ObjectMapper should do:
@@ -131,16 +123,13 @@ ObjectMapper
    * Given a `Builder`_, return a Container representation
    * Given a `Container`_, return a Builder representation
 
-* PyNWB has many of these -- one for each type in NWB schema
-* **Main Module:** :py:class:`pynwb.form.build.map`
-
-   * NWB-specific ObjectMappers are locate in submodules of :py:class:`pynwb.io`
+* **Main Module:** :py:class:`hdmf.build.map`
 
 .. _fig-software-architecture-mainconcepts:
 
 .. figure:: figures/software_architecture_mainconcepts.*
    :width: 100%
-   :alt: PyNWB Software Architecture Main Concepts
+   :alt: HDMF Software Architecture Main Concepts
 
    Relationship between `Container`_, `Builder`_, `ObjectMapper`_, and `Spec`_
 
@@ -154,15 +143,11 @@ Namespace, NamespaceCatalog, NamespaceBuilder
 * **Namespace**
 
    * A namespace for specifications
-   * Necessary for making extensions
+   * Necessary for making standards extensions and standard core specification
    * Contains basic info about who created extensions
-   * Core NWB:N schema has namespace “core”
-   * Get from :py:class:`pynwb.spec.NWBNamespace`
 
-      * extension of generic Namespace class that will include core
-
-* :py:class:`~pynwb.form.spec.namespace.NamespaceCatalog` -- A class for managing namespaces
-* :py:class:`~pynwb.form.spec.write.NamespaceBuilder` -- A utility for building extensions
+* :py:class:`~hdmf.spec.namespace.NamespaceCatalog` -- A class for managing namespaces
+* :py:class:`~hdmf.spec.write.NamespaceBuilder` -- A utility for building extensions
 
 
 TypeMap
@@ -172,15 +157,13 @@ TypeMap
 * Constructed from a NamespaceCatalog
 * Things a TypeMap does:
 
-   * Given an NWB data type, return the associated Container class
+   * Given a data_type, return the associated Container class
    * Given a Container class, return the associated ObjectMapper
 
-* PyNWB has two of these classes:
+* HDMF has one of these classes:
 
-   * the base class (i.e. :py:class:`~form.build.map.TypeMap`) - handles NWB 2.x
-   * :py:class:`pynwb.legacy.TypeMapLegacy` - handles NWB 1.x
+   * the base class (i.e. :py:class:`~form.build.map.TypeMap`)
 
-* PyNWB provides a “global” instance of TypeMap created at runtime
 * TypeMaps can be merged, which is useful when combining extensions
 
 
@@ -189,39 +172,38 @@ BuildManager
 
 * Responsible for `memoizing <https://en.wikipedia.org/wiki/Memoization>`_ `Builder`_ and `Container`_
 * Constructed from a `TypeMap`_
-* PyNWB only has one of these: :py:class:`pynwb.form.build.map.BuildManager`
+* HDMF only has one of these: :py:class:`hdmf.build.map.BuildManager`
 
 .. _fig-software-architecture-buildmanager:
 
 .. figure:: figures/software_architecture_buildmanager.*
    :width: 100%
-   :alt: PyNWB Software Architecture BuildManager and TypeMap
+   :alt: HDMF Software Architecture BuildManager and TypeMap
 
    Overview of `BuildManager`_ (and `TypeMap`_) (click to enlarge).
 
 
-FORMIO
+HDMFIO
 ^^^^^^
 
 * Abstract base class for I/O
-* :py:class:`FORMIO <pynwb.form.backends.io.FORMIO>` has two key abstract methods:
+* :py:class:`HDMFIO <hdmf.backends.io.HDMFIO>` has two key abstract methods:
 
-   * :py:meth:`~pynwb.form.backends.io.FORMIO.write_builder` – given a builder, write data to storage format
-   * :py:meth:`~pynwb.form.backends.io.FORMIO.read_builder` – given a handle to storage format, return builder representation
-   * Others: :py:meth:`~pynwb.form.backends.io.FORMIO.open` and :py:meth:`~pynwb.form.backends.io.FORMIO.close`
+   * :py:meth:`~hdmf.backends.io.HDMFIO.write_builder` – given a builder, write data to storage format
+   * :py:meth:`~hdmf.backends.io.HDMFIO.read_builder` – given a handle to storage format, return builder representation
+   * Others: :py:meth:`~hdmf.backends.io.HDMFIO.open` and :py:meth:`~hdmf.backends.io.HDMFIO.close`
 
 * Constructed with a `BuildManager`_
 * Extend this for creating a new I/O backend
-* PyNWB has one extension of this:
+* HDMF has one concrete form of this:
 
-   * :py:class:`~pynwb.form.backends.hdf5.h5tools.HDF5IO` - reading and writing HDF5
-   * :py:class:`~pynwb.NWBHDF5IO` - wrapper that pulls in core NWB specification
+   * :py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` - reading and writing HDF5
 
 
 .. _fig-software-architecture-formio:
 
 .. figure:: figures/software_architecture_formio.*
    :width: 100%
-   :alt: PyNWB Software Architecture FormIO
+   :alt: HDMF Software Architecture FormIO
 
-   Overview of `FORMIO`_ (click to enlarge).
+   Overview of `HDMFIO`_ (click to enlarge).

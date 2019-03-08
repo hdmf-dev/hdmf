@@ -3,7 +3,7 @@
 Extending NWB
 =============
 
-The following page will discuss how to extend NWB using PyNWB.
+The following page will discuss how to extend NWB using HDMF.
 
 .. note::
 
@@ -15,29 +15,29 @@ The following page will discuss how to extend NWB using PyNWB.
 Creating new Extensions
 -----------------------
 
-The NWB specification is designed to be extended. Extension for the NWB format can be done so using classes provided in the :py:mod:`pynwb.spec` module.
-The classes :py:class:`~pynwb.spec.NWBGroupSpec`, :py:class:`~pynwb.spec.NWBDatasetSpec`, :py:class:`~pynwb.spec.NWBAttributeSpec`, and :py:class:`~pynwb.spec.NWBLinkSpec`
+The NWB specification is designed to be extended. Extension for the NWB format can be done so using classes provided in the :py:mod:`hdmf.spec` module.
+The classes :py:class:`~hdmf.spec.NWBGroupSpec`, :py:class:`~hdmf.spec.NWBDatasetSpec`, :py:class:`~hdmf.spec.NWBAttributeSpec`, and :py:class:`~hdmf.spec.NWBLinkSpec`
 can be used to define custom types.
 
 Attribute Specifications
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Specifying attributes is done with :py:class:`~pynwb.spec.NWBAttributeSpec`.
+Specifying attributes is done with :py:class:`~hdmf.spec.NWBAttributeSpec`.
 
 .. code-block:: python
 
-    from pynwb.spec import NWBAttributeSpec
+    from hdmf.spec import NWBAttributeSpec
 
     spec = NWBAttributeSpec('bar', 'a value for bar', 'float')
 
 Dataset Specifications
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Specifying datasets is done with :py:class:`~pynwb.spec.NWBDatasetSpec`.
+Specifying datasets is done with :py:class:`~hdmf.spec.NWBDatasetSpec`.
 
 .. code-block:: python
 
-    from pynwb.spec import NWBDatasetSpec
+    from hdmf.spec import NWBDatasetSpec
 
     spec = NWBDatasetSpec('A custom NWB type',
                         name='qux',
@@ -50,12 +50,12 @@ Specifying datasets is done with :py:class:`~pynwb.spec.NWBDatasetSpec`.
 Using datasets to specify tables
 ++++++++++++++++++++++++++++++++
 
-Tables can be specified using :py:class:`~pynwb.spec.NWBDtypeSpec`. To specify a table, provide a
-list of :py:class:`~pynwb.spec.NWBDtypeSpec` objects to the *dtype* argument.
+Tables can be specified using :py:class:`~hdmf.spec.NWBDtypeSpec`. To specify a table, provide a
+list of :py:class:`~hdmf.spec.NWBDtypeSpec` objects to the *dtype* argument.
 
 .. code-block:: python
 
-    from pynwb.spec import NWBDatasetSpec, NWBDtypeSpec
+    from hdmf.spec import NWBDatasetSpec, NWBDtypeSpec
 
     spec = NWBDatasetSpec('A custom NWB type',
                         name='qux',
@@ -70,11 +70,11 @@ list of :py:class:`~pynwb.spec.NWBDtypeSpec` objects to the *dtype* argument.
 Group Specifications
 ^^^^^^^^^^^^^^^^^^^^
 
-Specifying groups is done with the :py:class:`~pynwb.spec.NWBGroupSpec` class.
+Specifying groups is done with the :py:class:`~hdmf.spec.NWBGroupSpec` class.
 
 .. code-block:: python
 
-    from pynwb.spec import NWBGroupSpec
+    from hdmf.spec import NWBGroupSpec
 
     spec = NWBGroupSpec('A custom NWB type',
                         name='quux',
@@ -85,7 +85,7 @@ Specifying groups is done with the :py:class:`~pynwb.spec.NWBGroupSpec` class.
 Neurodata Type Specifications
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:py:class:`~pynwb.spec.NWBGroupSpec` and :py:class:`~pynwb.spec.NWBDatasetSpec` use the arguments `neurodata_type_inc` and `neurodata_type_def` for
+:py:class:`~hdmf.spec.NWBGroupSpec` and :py:class:`~hdmf.spec.NWBDatasetSpec` use the arguments `neurodata_type_inc` and `neurodata_type_def` for
 declaring new types and extending existing types. New types are specified by setting the argument `neurodata_type_def`. New types can extend an existing type
 by specifying the argument `neurodata_type_inc`.
 
@@ -93,7 +93,7 @@ Create a new type
 
 .. code-block:: python
 
-    from pynwb.spec import NWBGroupSpec
+    from hdmf.spec import NWBGroupSpec
 
     # A list of NWBAttributeSpec objects to specify new attributes
     addl_attributes = [...]
@@ -111,7 +111,7 @@ Extend an existing type
 
 .. code-block:: python
 
-    from pynwb.spec import NWBGroupSpec
+    from hdmf.spec import NWBGroupSpec
 
     # A list of NWBAttributeSpec objects to specify additional attributes or attributes to be overridden
     addl_attributes = [...]
@@ -130,7 +130,7 @@ Existing types can be instantiated by specifying `neurodata_type_inc` alone.
 
 .. code-block:: python
 
-    from pynwb.spec import NWBGroupSpec
+    from hdmf.spec import NWBGroupSpec
 
     # use another NWBGroupSpec object to specify that a group of type
     # ElectricalSeries should be present in the new type defined below
@@ -144,7 +144,7 @@ Existing types can be instantiated by specifying `neurodata_type_inc` alone.
 
 
 Datasets can be extended in the same manner (with regard to `neurodata_type_inc` and `neurodata_type_def`,
-by using the class :py:class:`~pynwb.spec.NWBDatasetSpec`.
+by using the class :py:class:`~hdmf.spec.NWBDatasetSpec`.
 
 .. _saving-extensions:
 
@@ -152,18 +152,18 @@ Saving Extensions
 -----------------
 
 Extensions are used by including them in a loaded namespace. Namespaces and extensions need to be saved to file
-for downstream use. The class :py:class:`~pynwb.spec.NWBNamespaceBuilder` can be used to create new namespace and
+for downstream use. The class :py:class:`~hdmf.spec.NWBNamespaceBuilder` can be used to create new namespace and
 specification files.
 
 .. note::
 
-    When using :py:class:`~pynwb.spec.NWBNamespaceBuilder`, the core NWB namespace is automatically included
+    When using :py:class:`~hdmf.spec.NWBNamespaceBuilder`, the core NWB namespace is automatically included
 
 Create a new namespace with extensions
 
 .. code-block:: python
 
-    from pynwb.spec import NWBGroupSpec, NWBNamespaceBuilder
+    from hdmf.spec import NWBGroupSpec, NWBNamespaceBuilder
 
     # create a builder for the namespace
     ns_builder = NWBNamespaceBuilder("Extension for use in my laboratory", "mylab", ...)
@@ -211,13 +211,13 @@ Incorporating extensions
 ------------------------
 
 The NWB file format supports extending existing data types (See :ref:`extending-nwb` for more details on creating extensions).
-Extensions must be registered with PyNWB to be used for reading and writing of custom neurodata types.
+Extensions must be registered with HDMF to be used for reading and writing of custom neurodata types.
 
 The following code demonstrates how to load custom namespaces.
 
 .. code-block:: python
 
-    from pynwb import load_namespaces
+    from hdmf import load_namespaces
     namespace_path = 'my_namespace.yaml'
     load_namespaces(namespace_path)
 
@@ -228,36 +228,36 @@ The following code demonstrates how to load custom namespaces.
 NWBContainer : Representing custom data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To read and write custom data, corresponding :py:class:`~pynwb.core.NWBContainer` classes must be associated with their respective specifications.
-:py:class:`~pynwb.core.NWBContainer` classes are associated with their respective specification using the decorator :py:func:`~pynwb.register_class`.
+To read and write custom data, corresponding :py:class:`~hdmf.core.NWBContainer` classes must be associated with their respective specifications.
+:py:class:`~hdmf.core.NWBContainer` classes are associated with their respective specification using the decorator :py:func:`~hdmf.register_class`.
 
-The following code demonstrates how to associate a specification with the :py:class:`~pynwb.core.NWBContainer` class that represents it.
+The following code demonstrates how to associate a specification with the :py:class:`~hdmf.core.NWBContainer` class that represents it.
 
 .. code-block:: python
 
-    from pynwb import register_class
+    from hdmf import register_class
     @register_class('MyExtension', 'my_namespace')
     class MyExtensionContainer(NWBContainer):
         ...
 
-:py:func:`~pynwb.register_class` can also be used as a function.
+:py:func:`~hdmf.register_class` can also be used as a function.
 
 .. code-block:: python
 
-    from pynwb import register_class
+    from hdmf import register_class
     class MyExtensionContainer(NWBContainer):
         ...
     register_class('my_namespace', 'MyExtension', MyExtensionContainer)
 
-If you do not have an :py:class:`~pynwb.core.NWBContainer` subclass to associate with your extension specification,
+If you do not have an :py:class:`~hdmf.core.NWBContainer` subclass to associate with your extension specification,
 a dynamically created class is created by default.
 
-To use the dynamic class, you will need to retrieve the class object using the function :py:func:`~pynwb.get_class`.
+To use the dynamic class, you will need to retrieve the class object using the function :py:func:`~hdmf.get_class`.
 Once you have retrieved the class object, you can use it just like you would a statically defined class.
 
 .. code-block:: python
 
-    from pynwb import get_class
+    from hdmf import get_class
     MyExtensionContainer = get_class('my_namespace', 'MyExtension')
     my_ext_inst = MyExtensionContainer(...)
 
@@ -267,24 +267,24 @@ If using iPython, you can access documentation for the class's constructor using
 ObjectMapper : Customizing the mapping between NWBContainer and the Spec
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If your :py:class:`~pynwb.core.NWBContainer` extension requires custom mapping of the :py:class:`~pynwb.core.NWBContainer`
-class for reading and writing, you will need to implement and register a custom :py:class:`~pynwb.form.build.map.ObjectMapper`.
+If your :py:class:`~hdmf.core.NWBContainer` extension requires custom mapping of the :py:class:`~hdmf.core.NWBContainer`
+class for reading and writing, you will need to implement and register a custom :py:class:`~hdmf.form.build.map.ObjectMapper`.
 
-:py:class:`~pynwb.form.build.map.ObjectMapper` extensions are registered with the decorator :py:func:`~pynwb.register_map`.
+:py:class:`~hdmf.form.build.map.ObjectMapper` extensions are registered with the decorator :py:func:`~hdmf.register_map`.
 
 .. code-block:: python
 
-    from pynwb import register_map
+    from hdmf import register_map
     from form import ObjectMapper
     @register_map(MyExtensionContainer)
     class MyExtensionMapper(ObjectMapper)
         ...
 
-:py:func:`~pynwb.register_map` can also be used as a function.
+:py:func:`~hdmf.register_map` can also be used as a function.
 
 .. code-block:: python
 
-    from pynwb import register_map
+    from hdmf import register_map
     from form import ObjectMapper
     class MyExtensionMapper(ObjectMapper)
         ...
@@ -295,13 +295,13 @@ class for reading and writing, you will need to implement and register a custom 
     ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your NWBContainer in
     Python. This is useful, e.g., in cases where you want ot customize the default mapping. For example in
     TimeSeries the attribute ``unit`` which is defined on the dataset ``data`` (i.e., ``data.unit``) would
-    by default be mapped to the attribute ``data_unit`` on :py:class:`~pynwb.base.TimeSeries`. The ObjectMapper
-    :py:class:`~pynwb.io.base.TimeSeriesMap` then changes this mapping to map ``data.unit`` to the attribute ``unit``
-    on :py:class:`~pynwb.base.TimeSeries` . ObjectMappers also allow you to customize how constructor arguments
+    by default be mapped to the attribute ``data_unit`` on :py:class:`~hdmf.base.TimeSeries`. The ObjectMapper
+    :py:class:`~hdmf.io.base.TimeSeriesMap` then changes this mapping to map ``data.unit`` to the attribute ``unit``
+    on :py:class:`~hdmf.base.TimeSeries` . ObjectMappers also allow you to customize how constructor arguments
     for your ``NWBContainer`` are constructed. E.g., in TimeSeries instead of explicit ``timestamps`` we
     may only have a ``starting_time`` and ``rate``. In the ObjectMapper we could then construct ``timestamps``
     from this data on data load to always have ``timestamps`` available for the user.
-    For an overview of the concepts of containers, spec, builders, object mappers in PyNWB see also
+    For an overview of the concepts of containers, spec, builders, object mappers in HDMF see also
     :ref:`software-architecture`
 
 
@@ -313,7 +313,7 @@ Documenting Extensions
 Using the same tools used to generate the documentation for the `NWB-N core format <https://nwb-schema.readthedocs.io/en/latest/>`_
 one can easily generate documentation in HTML, PDF, ePub and many other format for extensions as well.
 
-Code to generate this documentation is maintained in a separate repo: https://github.com/NeurodataWithoutBorders/nwb-docutils. To use these utilities, install the package with pip:
+Code to generate this documentation is maintained in a separate repo: https://github.com/hdmf-dev/nwb-docutils. To use these utilities, install the package with pip:
 
 .. code-block:: text
 

@@ -11,9 +11,9 @@ The different requirements files introduced in :ref:`software_process` section a
 * requirements-dev.txt_
 * requirements-doc.txt_
 
-.. _requirements.txt: https://github.com/NeurodataWithoutBorders/pynwb/blob/dev/requirements.txt
-.. _requirements-dev.txt: https://github.com/NeurodataWithoutBorders/pynwb/blob/dev/requirements-dev.txt
-.. _requirements-doc.txt: https://github.com/NeurodataWithoutBorders/pynwb/blob/dev/requirements-doc.txt
+.. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
+.. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
+.. _requirements-doc.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-doc.txt
 
 requirements.txt
 ================
@@ -23,14 +23,14 @@ the following script:
 
 .. code::
 
-   mkvirtualenv pynwb-requirements
+   mkvirtualenv hdmf-requirements
 
-   cd pynwb
+   cd hdmf
    pip install .
    pip freeze > requirements.txt
 
    deactivate
-   rmvirtualenv pynwb-requirements
+   rmvirtualenv hdmf-requirements
 
 
 requirements-(dev|doc).txt
@@ -41,12 +41,12 @@ the following scripts:
 
 .. code::
 
-   cd pynwb
+   cd hdmf
 
    # Set the requirements file to update
    target_requirements=requirements-dev.txt
 
-   mkvirtualenv pynwb-requirements
+   mkvirtualenv hdmf-requirements
 
    # Install updated requirements
    pip install -U -r $target_requirements
@@ -58,6 +58,6 @@ the following scripts:
    pip freeze > $target_requirements
 
    deactivate
-   rmvirtualenv pynwb-requirements
+   rmvirtualenv hdmf-requirements
 
-Note: If you create requirements files using Python 2.x, you should manually remove any entries for the `enum34` package before committing. This package is only required for versions of Python < 3.4, and should not be installed in later versions. Since our requirements files are shared across Python 2 and 3 we instead rely on `pip` to install this package only when it is required. (See `issue #677 <https://github.com/NeurodataWithoutBorders/pynwb/issues/677>`_ for discussion.) 
+Note: If you create requirements files using Python 2.x, you should manually remove any entries for the `enum34` package before committing. This package is only required for versions of Python < 3.4, and should not be installed in later versions. Since our requirements files are shared across Python 2 and 3 we instead rely on `pip` to install this package only when it is required. (See `issue #677 <https://github.com/hdmf-dev/hdmf/issues/677>`_ for discussion.) 
