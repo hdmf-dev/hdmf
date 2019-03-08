@@ -92,8 +92,8 @@ master_doc = 'source/index'
 master_doc = 'index'
 
 # General information about the project.
-project = u'PyNWB'
-copyright = u'2017, Neurodata Without Borders'
+project = u'HDMF'
+copyright = u'2017, Hierarchical Data Modeling Framework'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -298,7 +298,7 @@ latex_elements = {
 # texinfo_show_urls = 'footnote'
 
 
-# -- PyNWB sphinx extension ----------------------------------------------------
+# -- sphinx extension ----------------------------------------------------
 
 #
 # see http://www.sphinx-doc.org/en/master/extdev/appapi.html

@@ -10,7 +10,7 @@ HDMF is a Python package for working with standardizing, reading, and writing hi
 
 HDMF is a by product of the `Neurodata Without Borders: Neurophysiology (NWB:N) <http://www.nwb.org/>`_ project.
 The goal of NWB:N was to enable collaborative science within the neurophysiology and systems neuroscience communities
-data standardization. The team of neuroscientists and software developers involved with NWB:N
+through data standardization. The team of neuroscientists and software developers involved with NWB:N
 recognize that adoption of a unified data format is an important step toward breaking down the barriers to
 data sharing in neuroscience. HDMF was central the NWB:N development efforts, and has since been split off
 with the intention of providing it as an open-source tool for other scientific communities.
