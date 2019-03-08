@@ -162,7 +162,7 @@ TypeMap
 
 * HDMF has one of these classes:
 
-   * the base class (i.e. :py:class:`~form.build.map.TypeMap`)
+   * the base class (i.e. :py:class:`~hdmf.build.map.TypeMap`)
 
 * TypeMaps can be merged, which is useful when combining extensions
 
@@ -200,9 +200,9 @@ HDMFIO
    * :py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` - reading and writing HDF5
 
 
-.. _fig-software-architecture-formio:
+.. _fig-software-architecture-hdmfio:
 
-.. figure:: figures/software_architecture_formio.*
+.. figure:: figures/software_architecture_hdmfio.*
    :width: 100%
    :alt: HDMF Software Architecture FormIO
 

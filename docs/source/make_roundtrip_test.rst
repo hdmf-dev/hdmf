@@ -13,13 +13,13 @@ with the following command::
 
     $ python test.py -i
 
-The roundtrip test will generate a new NWB file with the name ``test_<CLASS_NAME>.nwb`` where ``CLASS_NAME`` is
-the class name of the :py:class:`~hdmf.form.container.Container` class you are roundtripping. The test
-will write an NWB file with an instance of the container to disk, read this instance back in, and compare it
-to the instance that was used for writing to disk. Once the test is complete, the NWB file will be deleted.
-You can keep the NWB file around after the test completes by setting the environment variable ``CLEAN_NWB``
-to ``0``, ``false``, ``False``, or ``FALSE``. Setting ``CLEAN_NWB`` to any value not listed here will
-cause the roundtrip NWB file to be deleted once the test has completed
+The roundtrip test will generate a new HDMF file with the name ``test_<CLASS_NAME>.h5`` where ``CLASS_NAME`` is
+the class name of the :py:class:`~hdmf..container.Container` class you are roundtripping. The test
+will write an HDMF file with an instance of the container to disk, read this instance back in, and compare it
+to the instance that was used for writing to disk. Once the test is complete, the HDMF file will be deleted.
+You can keep the HDMF file around after the test completes by setting the environment variable ``CLEAN_HDMF``
+to ``0``, ``false``, ``False``, or ``FALSE``. Setting ``CLEAN_HDMF`` to any value not listed here will
+cause the roundtrip HDMF file to be deleted once the test has completed
 
 Before writing tests, we also suggest you familiarize yourself with the
 :ref:`software architecture <software-architecture>` of HDMF.
@@ -34,8 +34,8 @@ its instance methods.
 ``TestMapRoundTrip`` provides four methods for testing the process of going from in-memory Python object to data
 stored on disk and back. Three of these methods--``setUpContainer``, ``addContainer``, and ``getContainer``--are
 required for carrying out the roundtrip test. The fourth method is required for testing the conversion
-from the container to the :py:mod:`builder <hdmf.form.build.builders>`--the intermediate data structure
-that gets used by :py:class:`~hdmf.form.backends.io.FORMIO` implementations for writing to disk.
+from the container to the :py:mod:`builder <hdmf..build.builders>`--the intermediate data structure
+that gets used by :py:class:`~hdmf..backends.io.FORMIO` implementations for writing to disk.
 
 If you do not want to test step of the process, you can just implement ``setUpContainer``, ``addContainer``, and
 ``getContainer``.
@@ -64,10 +64,10 @@ Here is an example using a generic :py:class:`~hdmf.base.TimeSeries`:
 ``addContainer``
 ################
 
-The next thing is to tell the ``TestMapRoundTrip`` how to add the container to an NWBFile. This method takes a single
-argument--the :py:class:`~hdmf.file.NWBFile` instance that will be used to write your container.
+The next thing is to tell the ``TestMapRoundTrip`` how to add the container to an HDMFFile. This method takes a single
+argument--the :py:class:`~hdmf.container.HDMFFile` instance that will be used to write your container.
 
-This method is required because different container types are allowed in different parts of an NWBFile. This method is
+This method is required because different container types are allowed in different parts of an HDMFFile. This method is
 also where you can add additonial containers that your container of interest depends on. For example, for the
 :py:class:`~hdmf.ecephys.ElectricalSeries` roundtrip test, ``addContainer`` handles adding the
 :py:class:`~hdmf.ecephys.ElectrodeGroup`, :py:class:`~hdmf.ecephys.ElectrodeTable`, and
@@ -81,8 +81,8 @@ Continuing from our example above, we will add the method for adding a generic :
 
     class TimeSeriesRoundTrip(TestMapRoundTrip):
 
-        def addContainer(self, nwbfile):
-            nwbfile.add_acquisition(self.container)
+        def addContainer(self, hdmf_file):
+            hdmf_file.add_acquisition(self.container)
 
 
 ################
@@ -90,8 +90,8 @@ Continuing from our example above, we will add the method for adding a generic :
 ################
 
 Finally, you need to tell ``TestMapRoundTrip`` how to get back the container we added. As with ``addContainer``, this
-method takes an :py:class:`~hdmf.file.NWBFile` as its single argument. The only difference is that this
-:py:class:`~hdmf.file.NWBFile` instance is what was read back in.
+method takes an :py:class:`~hdmf.container.HDMFFile` as its single argument. The only difference is that this
+:py:class:`~hdmf.container.HDMFFile` instance is what was read back in.
 
 Again, since not all containers go in the same place, we need to tell the test harness how to get back our container
 of interest.
@@ -102,8 +102,8 @@ To finish off example from above, we will add the method for getting back our ge
 
     class TimeSeriesRoundTrip(TestMapRoundTrip):
 
-        def getContainer(self, nwbfile):
-            return nwbfile.get_acquisition(self.container.name)
+        def getContainer(self, hdmf_file):
+            return hdmf_file.get_acquisition(self.container.name)
 
 
 ################
@@ -124,7 +124,7 @@ Continuing from the :py:class:`~hdmf.base.TimeSeries` example, lets add ``setUpB
 
 .. code-block:: python
 
-    from hdmf.form.build import GroupBuilder
+    from hdmf..build import GroupBuilder
 
     class TimeSeriesRoundTrip(TestMapRoundTrip):
 
@@ -154,4 +154,4 @@ by extending ``TestDataInterfaceIO``.  This class has already overridden these m
 acquisition.
 
 Even if your container can go in acquisition, you may still need to override ``addContainer`` if your container depends
-other containers that you need to add to the :py:class:`~hdmf.file.NWBFile` that will be written.
+other containers that you need to add to the :py:class:`~hdmf.container.HDMFFile` that will be written.
