@@ -215,7 +215,7 @@ class HDF5IO(FORMIO):
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
 
-    @docval(returns='a GroupBuilder representing the NWB Dataset', rtype='GroupBuilder')
+    @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
         f_builder = self.__read.get(self.__file)
         # ignore cached specs when reading builder
@@ -399,7 +399,7 @@ class HDF5IO(FORMIO):
         if self.__file is not None:
             self.__file.close()
 
-    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the NWBFile'},
+    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
     def write_builder(self, **kwargs):
