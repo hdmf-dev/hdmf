@@ -26,7 +26,7 @@ Build Status
   +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
   | Linux                                                               | macOS                                                          | Windows                                                                               |
   +=====================================================================+================================================================+=======================================================================================+
-  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://travis-ci.com/hdmf-dev/hdmf.svg?branch=dev  | .. image:: https://ci.appveyor.com/api/projects/status/9y808ua44yldy5n3?svg=true      |
+  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://travis-ci.com/hdmf-dev/hdmf.svg?branch=dev  | .. image:: https://ci.appveyor.com/api/projects/status/oi06lb719n2mkdby?svg=true      |
   |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://travis-ci.com/hdmf-dev/hdmf               |     :target: https://ci.appveyor.com/project/hdmf-dev/hdmf                            |
   +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
 
@@ -47,6 +47,10 @@ Overall Health
 .. image:: https://requires.io/github/hdmf-dev/hdmf/requirements.svg?branch=dev
      :target: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
      :alt: Requirements Status
+
+.. image:: https://readthedocs.org/projects/hdmf/badge/?version=latest
+     :target: https://hdmf.readthedocs.io/en/latest/?badge=latest
+     :alt: Documentation Status
 
 Installation
 ============

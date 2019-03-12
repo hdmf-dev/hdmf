@@ -285,9 +285,9 @@ _attrbl_args = [
         {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the NWB type this specification represents', 'default': None},
+        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
         {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
-         'doc': 'the NWB type this specification extends', 'default': None},
+         'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -599,9 +599,9 @@ _dataset_args = [
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
         {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the NWB type this specification represents', 'default': None},
+        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
         {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
-         'doc': 'the NWB type this specification extends', 'default': None},
+         'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -794,9 +794,9 @@ _group_args = [
         {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the NWB type this specification represents', 'default': None},
+        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
         {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
-         'doc': 'the NWB type this specification data_type_inc', 'default': None},
+         'doc': 'the data type this specification data_type_inc', 'default': None},
 ]
 
 

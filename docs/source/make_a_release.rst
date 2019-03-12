@@ -2,11 +2,11 @@
 How to Make a Release
 =====================
 
-A core developer should use the following steps to create a release `X.Y.Z` of **pynwb**.
+A core developer should use the following steps to create a release `X.Y.Z` of **hdmf**.
 
 .. note::
 
-  Since the pynwb wheels do not include compiled code, they are considered
+  Since the hdmf wheels do not include compiled code, they are considered
   *pure* and could be generated on any supported platform.
 
   That said, considering the instructions below have been tested on a Linux system,
@@ -92,14 +92,14 @@ PyPI: Step-by-step
 
   .. code::
 
-    $ cd /tmp && git clone git@github.com:NeurodataWithoutBorders/pynwb && cd pynwb
+    $ cd /tmp && git clone git@github.com:hdmf-dev/hdmf && cd hdmf
 
 
 5. Tag the release
 
   .. code::
 
-    $ git tag --sign -m "pynwb ${release}" ${release} origin/dev
+    $ git tag --sign -m "hdmf ${release}" ${release} origin/dev
 
   .. warning::
 
@@ -122,16 +122,16 @@ PyPI: Step-by-step
 
 
 8. Once the builds are completed, check that the distributions are available on `PyPI`_ and that
-   a new `GitHub release <https://github.com/NeurodataWithoutBorders/pynwb/releases>`_ was created.
+   a new `GitHub release <https://github.com/hdmf-dev/hdmf/releases>`_ was created.
 
 
 9. Create a clean testing environment to test the installation
 
   .. code::
 
-    $ mkvirtualenv pynwb-${release}-install-test && \
-      pip install pynwb && \
-      python -c "import pynwb; print(pynwb.__version__)"
+    $ mkvirtualenv hdmf-${release}-install-test && \
+      pip install hdmf && \
+      python -c "import hdmf; print(hdmf.__version__)"
 
   .. note::
 
@@ -144,18 +144,18 @@ PyPI: Step-by-step
 
     $ deactivate  && \
       rm -rf dist/* && \
-      rmvirtualenv pynwb-${release}-install-test
+      rmvirtualenv hdmf-${release}-install-test
 
 
 .. _virtualenvwrapper: https://virtualenvwrapper.readthedocs.io/
 .. _virtualenv: http://virtualenv.readthedocs.io
 .. _venv: https://docs.python.org/3/library/venv.html
 
-.. _AppVeyor: https://ci.appveyor.com/project/NeurodataWithoutBorders/pynwb/history
-.. _CircleCI: https://circleci.com/gh/NeurodataWithoutBorders/pynwb
-.. _Travis CI: https://travis-ci.org/NeurodataWithoutBorders/pynwb/builds
+.. _AppVeyor: https://ci.appveyor.com/project/hdmf-dev/hdmf/history
+.. _CircleCI: https://circleci.com/gh/hdmf-dev/hdmf
+.. _Travis CI: https://travis-ci.org/hdmf-dev/hdmf/builds
 
-.. _PyPI: https://pypi.org/project/pynwb
+.. _PyPI: https://pypi.org/project/hdmf
 
 -------------------
 Conda: Step-by-step
@@ -174,9 +174,9 @@ In order to release a new version on conda-forge, follow the steps below:
 
     $ release=X.Y.Z
 
-2. Fork pynwb-feedstock
+2. Fork hdmf-feedstock
 
- First step is to fork `pynwb-feedstock <https://github.com/conda-forge/pynwb-feedstock>`_ repository.
+ First step is to fork `hdmf-feedstock <https://github.com/conda-forge/hdmf-feedstock>`_ repository.
  This is the recommended `best practice <https://conda-forge.org/docs/conda-forge_gotchas.html#using-a-fork-vs-a-branch-when-updating-a-recipe>`_  by conda.
 
 
@@ -186,7 +186,7 @@ In order to release a new version on conda-forge, follow the steps below:
 
    .. code::
 
-      $ cd /tmp && git clone https://github.com/YOURGITHUBUSER/pynwb-feedstock.git
+      $ cd /tmp && git clone https://github.com/YOURGITHUBUSER/hdmf-feedstock.git
 
 
 4. Download corresponding source for the release version
@@ -194,20 +194,20 @@ In order to release a new version on conda-forge, follow the steps below:
   .. code::
 
     $ cd /tmp && \
-      wget https://github.com/NeurodataWithoutBorders/pynwb/releases/download/$release/pynwb-$release.tar.gz
+      wget https://github.com/hdmf-dev/hdmf/releases/download/$release/hdmf-$release.tar.gz
 
 5. Create a new branch
 
    .. code::
 
-      $ cd pynwb-feedstock && \
+      $ cd hdmf-feedstock && \
         git checkout -b $release
 
 
 6. Modify ``meta.yaml``
 
-   Update the `version string <https://github.com/conda-forge/pynwb-feedstock/blob/master/recipe/meta.yaml#L2>`_ and
-   `sha256 <https://github.com/conda-forge/pynwb-feedstock/blob/master/recipe/meta.yaml#L3>`_.
+   Update the `version string <https://github.com/conda-forge/hdmf-feedstock/blob/master/recipe/meta.yaml#L2>`_ and
+   `sha256 <https://github.com/conda-forge/hdmf-feedstock/blob/master/recipe/meta.yaml#L3>`_.
 
    We have to modify the sha and the version string in the ``meta.yaml`` file.
 
@@ -216,7 +216,7 @@ In order to release a new version on conda-forge, follow the steps below:
    .. code::
 
       $ sed -i "2s/.*/{% set version = \"$release\" %}/" recipe/meta.yaml
-      $ sha=$(openssl sha256 /tmp/pynwb-$release.tar.gz | awk '{print $2}')
+      $ sha=$(openssl sha256 /tmp/hdmf-$release.tar.gz | awk '{print $2}')
       $ sed -i "3s/.*/{$ set sha256 = \"$sha\" %}/" recipe/meta.yaml
 
    For macOS:
@@ -224,7 +224,7 @@ In order to release a new version on conda-forge, follow the steps below:
    .. code::
 
       $ sed -i -- "2s/.*/{% set version = \"$release\" %}/" recipe/meta.yaml
-      $ sha=$(openssl sha256 /tmp/pynwb-$release.tar.gz | awk '{print $2}')
+      $ sha=$(openssl sha256 /tmp/hdmf-$release.tar.gz | awk '{print $2}')
       $ sed -i -- "3s/.*/{$ set sha256 = \"$sha\" %}/" recipe/meta.yaml
 
 
@@ -237,5 +237,5 @@ In order to release a new version on conda-forge, follow the steps below:
 
 8. Create a Pull Request
 
-   Create a pull request against the `main repository <https://github.com/conda-forge/pynwb-feedstock/pulls>`_. If the tests are passed
+   Create a pull request against the `main repository <https://github.com/conda-forge/hdmf-feedstock/pulls>`_. If the tests are passed
    a new release will be published on Anaconda cloud.

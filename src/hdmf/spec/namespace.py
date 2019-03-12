@@ -321,6 +321,8 @@ class NamespaceCatalog(object):
 
     def __load_spec_file(self, reader, spec_source, catalog, dtypes=None, resolve=True):
         ret = self.__loaded_specs.get(spec_source)
+        if ret is not None:
+            raise ValueError("spec source '%s' already loaded" % spec_source)
 
         def __reg_spec(spec_cls, spec_dict):
             dt_def = spec_dict.get(spec_cls.def_key())
@@ -344,7 +346,6 @@ class NamespaceCatalog(object):
             specs = d.get('groups', list())
             for spec_dict in specs:
                 ret.extend(__reg_spec(self.__group_spec_cls, spec_dict))
-            self.__loaded_specs[spec_source] = ret
         return ret
 
     def __resolve_includes(self, spec_dict, catalog):
@@ -393,8 +394,7 @@ class NamespaceCatalog(object):
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
-        self.add_namespace(ns_name,
-                           self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace))
+        self.add_namespace(ns_name, self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace))
         return included_types
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},

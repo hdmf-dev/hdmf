@@ -526,7 +526,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     @docval({'name': 'spec', 'type': (DatasetSpec, GroupSpec),
              'doc': 'The specification for mapping objects to builders'})
     def __init__(self, **kwargs):
-        """ Create a map from Container attributes to NWB specifications """
+        """ Create a map from Container attributes to specifications """
         spec = getargs('spec', kwargs)
         self.__spec = spec
         self.__data_type_key = spec.type_key()

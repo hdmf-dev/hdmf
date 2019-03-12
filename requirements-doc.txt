@@ -1,4 +1,4 @@
-sphinx==1.6.5
+sphinx==1.8.4
 sphinx_rtd_theme
 sphinx-gallery
 -r requirements.txt
