@@ -51,7 +51,7 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
 
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
-        """
+        """  # noqa: W605
         raise NotImplementedError("__next__ not implemented for derived class")
 
     @abstractmethod
@@ -214,7 +214,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
 
-        """
+        """  # noqa: W605
         # If we have not already read the next chunk, then read it now
         if self.__next_chunk.data is None:
             self._read_next_chunk()
