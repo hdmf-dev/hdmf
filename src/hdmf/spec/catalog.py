@@ -24,7 +24,6 @@ class SpecCatalog(object):
         self.__parent_types = dict()
         self.__hierarchy = dict()
         self.__spec_source_files = dict()
-        self.__source_files = set()
 
     @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'a Spec object'},
             {'name': 'source_file', 'type': str,
@@ -34,9 +33,6 @@ class SpecCatalog(object):
         Associate a specified object type with an HDF5 specification
         '''
         spec, source_file = getargs('spec', 'source_file', kwargs)
-        if source_file in self.__source_files:
-            raise ValueError("source file '%s' already registered" % source_file)
-        self.__source_files.add(source_file)
         ndt = spec.data_type_inc
         ndt_def = spec.data_type_def
         if ndt_def is None:
