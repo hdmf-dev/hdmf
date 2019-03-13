@@ -6,7 +6,7 @@ from ..container import Container
 from six import with_metaclass
 
 
-class FORMIO(with_metaclass(ABCMeta, object)):
+class HDMFIO(with_metaclass(ABCMeta, object)):
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": str,
@@ -19,7 +19,7 @@ class FORMIO(with_metaclass(ABCMeta, object)):
 
     @property
     def manager(self):
-        '''The BuildManager this FORMIO is using'''
+        '''The BuildManager this HDMFIO is using'''
         return self.__manager
 
     @property
@@ -53,12 +53,12 @@ class FORMIO(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def open(self):
-        ''' Open this FORMIO object for writing of the builder '''
+        ''' Open this HDMFIO object for writing of the builder '''
         pass
 
     @abstractmethod
     def close(self):
-        ''' Close this FORMIO object to further reading/writing'''
+        ''' Close this HDMFIO object to further reading/writing'''
         pass
 
     def __enter__(self):

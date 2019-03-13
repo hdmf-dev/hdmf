@@ -3,7 +3,7 @@ import os
 from h5py import File
 import numpy as np
 
-from hdmf.query import FORMDataset, Query
+from hdmf.query import HDMFDataset, Query
 from hdmf.array import SortedArray, LinSpace
 
 from six import with_metaclass
@@ -17,7 +17,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
 
     def setUp(self):
         self.dset = self.getDataset()
-        self.wrapper = FORMDataset(self.dset)  # noqa: F405
+        self.wrapper = HDMFDataset(self.dset)  # noqa: F405
 
     def test_get_dataset(self):
         array = self.wrapper.dataset
@@ -146,8 +146,8 @@ class CompoundQueryTest(unittest.TestCase):
         return SortedArray(np.arange(10.0, 20.0, 0.5))
 
     def setUp(self):
-        self.m = FORMDataset(self.getM())
-        self.n = FORMDataset(self.getN())
+        self.m = HDMFDataset(self.getM())
+        self.n = HDMFDataset(self.getN())
 
     @unittest.skip('not implemented')
     def test_map(self):
