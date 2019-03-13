@@ -59,7 +59,7 @@ class Query(with_metaclass(ExtenderMeta, object)):
         arg = self.arg
         if isinstance(obj, Query):
             obj = obj.evaluate()
-        elif isinstance(obj, FORMDataset):
+        elif isinstance(obj, HDMFDataset):
             obj = obj.dataset
         if isinstance(arg, Query):
             arg = self.arg.evaluate()
@@ -93,7 +93,7 @@ class Query(with_metaclass(ExtenderMeta, object)):
 
 
 @docval_macro('array_data')
-class FORMDataset(with_metaclass(ExtenderMeta, object)):
+class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     __operations__ = (
         '__lt__',
@@ -138,7 +138,7 @@ class FORMDataset(with_metaclass(ExtenderMeta, object)):
 
     @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'})
     def __init__(self, **kwargs):
-        super(FORMDataset, self).__init__()
+        super(HDMFDataset, self).__init__()
         self.__dataset = getargs('dataset', kwargs)
 
     @property

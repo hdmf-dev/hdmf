@@ -17,7 +17,7 @@ from ...spec import NamespaceBuilder
 from .h5_utils import H5ReferenceDataset, H5RegionDataset, H5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
 
-from ..io import FORMIO
+from ..io import HDMFIO
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -27,7 +27,7 @@ H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
 
-class HDF5IO(FORMIO):
+class HDF5IO(HDMFIO):
 
     @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},

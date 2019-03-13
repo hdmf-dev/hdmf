@@ -8,7 +8,7 @@ import numpy as np
 import warnings
 import os
 
-from ...query import FORMDataset
+from ...query import HDMFDataset
 from ...array import Array
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...data_utils import RegionSlicer, DataIO, AbstractDataChunkIterator
@@ -16,7 +16,7 @@ from ...data_utils import RegionSlicer, DataIO, AbstractDataChunkIterator
 from ...spec import SpecWriter, SpecReader
 
 
-class H5Dataset(FORMDataset):
+class H5Dataset(HDMFDataset):
     @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
