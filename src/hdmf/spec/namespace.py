@@ -213,6 +213,8 @@ class NamespaceCatalog(object):
         self.__included_specs = dict()
         self.__included_sources = dict()
 
+        self._loaded_specs = self.__loaded_specs
+
     def __copy__(self):
         ret = NamespaceCatalog(self.__group_spec_cls,
                                self.__dataset_spec_cls,
@@ -248,6 +250,9 @@ class NamespaceCatalog(object):
             {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
     def add_namespace(self, **kwargs):
         """Add a namespace to this catalog"""
+        msg = ("NamespaceCatalog.add_namespace has been deprecated. "
+               "SpecNamespaces should be added with load_namespaces.")
+        warn(msg, DeprecationWarning)
         name, namespace = getargs('name', 'namespace', kwargs)
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
@@ -346,6 +351,7 @@ class NamespaceCatalog(object):
             specs = d.get('groups', list())
             for spec_dict in specs:
                 ret.extend(__reg_spec(self.__group_spec_cls, spec_dict))
+            self.__loaded_specs[spec_source] = ret
         return ret
 
     def __resolve_includes(self, spec_dict, catalog):
@@ -394,7 +400,7 @@ class NamespaceCatalog(object):
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
-        self.add_namespace(ns_name, self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace))
+        self.__namespaces[ns_name] = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
         return included_types
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
