@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
+import copy
 
 
 class SpecCatalog(object):
@@ -123,10 +124,10 @@ class SpecCatalog(object):
 
     def __copy__(self):
         ret = SpecCatalog()
-        ret.__specs = copy.copy(spec)  # noqa: F821
+        ret.__specs = copy.copy(self.__specs)
         return ret
 
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo):
         ret = SpecCatalog()
-        ret.__specs = copy.deepcopy(spec)  # noqa: F821
+        ret.__specs = copy.deepcopy(self.__specs, memo)
         return ret
