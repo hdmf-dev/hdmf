@@ -6,6 +6,7 @@ from hdmf.spec.write import NamespaceBuilder
 from hdmf.spec.namespace import SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import GroupSpec
 
+
 class TestNamespaceBuilder(unittest.TestCase):
     NS_NAME = 'test_ns'
 
@@ -15,28 +16,28 @@ class TestNamespaceBuilder(unittest.TestCase):
         self.date = datetime.datetime.now()
 
         self.ns_builder = NamespaceBuilder(doc="mydoc",
-                                      name=self.ns_name,
-                                      full_name="My Laboratory",
-                                      version="0.0.1",
-                                      author="foo",
-                                      contact="foo@bar.com",
-                                      namespace_cls=SpecNamespace,
-                                      date=self.date)
+                                           name=self.ns_name,
+                                           full_name="My Laboratory",
+                                           version="0.0.1",
+                                           author="foo",
+                                           contact="foo@bar.com",
+                                           namespace_cls=SpecNamespace,
+                                           date=self.date)
 
         # create extensions
         ext1 = GroupSpec('A custom DataSeries interface',
-                          attributes=[],
-                          datasets=[],
-                          groups=[],
-                          data_type_inc=None,
-                          data_type_def='MyDataSeries')
+                         attributes=[],
+                         datasets=[],
+                         groups=[],
+                         data_type_inc=None,
+                         data_type_def='MyDataSeries')
 
         ext2 = GroupSpec('An extension of a DataSeries interface',
-                          attributes=[],
-                          datasets=[],
-                          groups=[],
-                          data_type_inc='MyDataSeries',
-                          data_type_def='MyExtendedMyDataSeries')
+                         attributes=[],
+                         datasets=[],
+                         groups=[],
+                         data_type_inc='MyDataSeries',
+                         data_type_def='MyExtendedMyDataSeries')
 
         # add the extension
         self.ext_source_path = 'mylab.specs.yaml'
