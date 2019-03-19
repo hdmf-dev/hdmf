@@ -93,7 +93,7 @@ class SpecNamespace(dict):
         """Date last modified or released.
 
         :return: datetime object, string, or None"""
-        return self.get('full_name', None)
+        return self.get('date', None)
 
     @property
     def name(self):
@@ -107,6 +107,9 @@ class SpecNamespace(dict):
     @property
     def schema(self):
         return self['schema']
+
+    def get_source_files(self):
+        return [item['source'] for item in self.schema if 'source' in item]
 
     @property
     def catalog(self):
