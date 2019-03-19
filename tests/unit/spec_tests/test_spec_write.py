@@ -54,7 +54,6 @@ class TestNamespaceBuilder(unittest.TestCase):
         self.namespace_path = 'mylab.namespace.yaml'
         self.ns_builder.export(self.namespace_path)
 
-
     def tearDown(self):
         if os.path.exists(self.ext_source_path):
             os.remove(self.ext_source_path)
@@ -144,8 +143,6 @@ class TestYAMLSpecWrite(unittest.TestCase):
                                    title='My lab extensions')
 
         self.namespace_path = 'mylab.namespace.yaml'
-        #self.ns_builder.export(self.namespace_path)
-
 
     def tearDown(self):
         if os.path.exists(self.ext_source_path):
@@ -175,4 +172,3 @@ class TestYAMLSpecWrite(unittest.TestCase):
             self.assertTrue("source: mylab.specs.yaml\n" in nsstr)
             self.assertTrue("title: Extensions for my lab\n" in nsstr)
             self.assertTrue("version: 0.0.1\n" in nsstr)
-
