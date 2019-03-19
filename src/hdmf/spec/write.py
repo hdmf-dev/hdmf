@@ -5,6 +5,7 @@ import os.path
 from collections import OrderedDict
 from six import with_metaclass
 from abc import ABCMeta, abstractmethod
+from datetime import datetime
 
 from .namespace import SpecNamespace
 from .spec import GroupSpec, DatasetSpec
@@ -45,7 +46,12 @@ class YAMLSpecWriter(SpecWriter):
 
     def write_namespace(self, namespace, path):
         with open(os.path.join(self.__outdir, path), 'w') as stream:
-            self.__dump_spec({'namespaces': [namespace]}, stream)
+            ns = namespace
+            # Convert the date to a string if necessary
+            if 'date' in namespace and isinstance(namespace['date'], datetime):
+                ns = copy.copy(ns)  # copy the namespace to avoid side-effects
+                ns['date'] = ns['date'].isoformat()
+            self.__dump_spec({'namespaces': [ns]}, stream)
 
     def reorder_yaml(self, path):
         """
@@ -92,6 +98,9 @@ class NamespaceBuilder(object):
             {'name': 'author', 'type': (str, list), 'doc': 'Author or list of authors.', 'default': None},
             {'name': 'contact', 'type': (str, list),
              'doc': 'List of emails. Ordering should be the same as for author', 'default': None},
+            {'name': 'date', 'type': (datetime, str),
+             'doc': "Date last modified or released. Formatting is %Y-%m-%d %H:%M:%S, e.g, 2017-04-25 17:14:13",
+             'default': None},
             {'name': 'namespace_cls', 'type': type, 'doc': 'the SpecNamespace type', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         ns_cls = popargs('namespace_cls', kwargs)
@@ -110,13 +119,21 @@ class NamespaceBuilder(object):
         self.add_source(source)
         self.__sources[source].setdefault(self.__dt_key, list()).append(spec)
 
-    @docval({'name': 'source', 'type': str, 'doc': 'the path to write the spec to'})
+    @docval({'name': 'source', 'type': str, 'doc': 'the path to write the spec to'},
+            {'name': 'doc', 'type': str, 'doc': 'additional documentation for the source file', 'default': None},
+            {'name': 'title', 'type': str, 'doc': 'optional heading to be used for the source', 'default': None})
     def add_source(self, **kwargs):
         ''' Add a source file to the namespace '''
-        source = getargs('source', kwargs)
+        source, doc, title = getargs('source', 'doc', 'title', kwargs)
         if '/' in source or source[0] == '.':
             raise ValueError('source must be a base file')
-        self.__sources.setdefault(source, {'source': source})
+        source_dict = {'source': source}
+        self.__sources.setdefault(source, source_dict)
+        # Update the doc and title if given
+        if doc is not None:
+            self.__sources[source]['doc'] = doc
+        if title is not None:
+            self.__sources[source]['title'] = doc
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data type to include'},
             {'name': 'source', 'type': str, 'doc': 'the source file to include the type from', 'default': None},
@@ -169,6 +186,10 @@ class NamespaceBuilder(object):
                 else:
                     out.add_spec(spec)
             item = {'source': path}
+            if 'doc' in info:
+                item['doc'] = info['doc']
+            if 'title' in info:
+                item['title'] = info['title']
             if out and dts:
                 raise ValueError('cannot include from source if writing to source')
             elif dts:
