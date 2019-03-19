@@ -1560,8 +1560,8 @@ class TypeMap(object):
             build_manager = BuildManager(self)
         attr_map = self.get_map(builder)
         if attr_map is None:
-            raise ValueError('No ObjectMapper found for builder of type %s'
-                             % str(container.__class__.__name__))  # noqa: F821
+            dt = builder.attributes[self.namespace_catalog.group_spec_cls.type_key()]
+            raise ValueError('No ObjectMapper found for builder of type %s' % dt)
         else:
             return attr_map.construct(builder, build_manager)
 

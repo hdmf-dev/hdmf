@@ -657,7 +657,7 @@ class HDF5IO(HDMFIO):
                 try:
                     _dtype = self.__resolve_dtype__(options['dtype'], data)
                 except Exception as exc:
-                    msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
+                    msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise_from(Exception(msg), exc)
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 builder.written = True
@@ -778,7 +778,7 @@ class HDF5IO(HDMFIO):
             try:
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
-                msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
+                msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise_from(Exception(msg), exc)
         try:
             dset = parent.create_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
@@ -850,7 +850,7 @@ class HDF5IO(HDMFIO):
             try:
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
-                msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
+                msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise_from(Exception(msg), exc)
         # define the data shape
         if 'shape' in io_settings:
