@@ -143,8 +143,8 @@ class NamespaceBuilder(object):
         ''' Include a data type from an existing namespace or source '''
         dt, src, ns = getargs('data_type', 'source', 'namespace', kwargs)
         if src is not None:
-            self.add_source(source)  # noqa: F821
-            self.__sources[path].setdefault(self.__dt_key, list()).append(dt)  # noqa: F821
+            self.add_source(src)
+            self.__sources[src].setdefault(self.__dt_key, list()).append(dt)
         elif ns is not None:
             self.include_namespace(ns)
             self.__namespaces[ns].setdefault(self.__dt_key, list()).append(dt)
