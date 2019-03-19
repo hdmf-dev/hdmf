@@ -73,7 +73,7 @@ class ConstructableDict(with_metaclass(abc.ABCMeta, dict)):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''
-        return deepcopy(spec_dict)  # noqa: F821
+        return deepcopy(spec_dict)
 
     @classmethod
     def build_spec(cls, spec_dict):
@@ -298,7 +298,7 @@ class BaseStorageSpec(Spec):
     __def_key = 'data_type_def'
     __type_key = 'data_type'
 
-    @docval(*deepcopy(_attrbl_args))  # noqa: F821
+    @docval(*deepcopy(_attrbl_args))
     def __init__(self, **kwargs):
         name, doc, parent, quantity, attributes, linkable, data_type_def, data_type_inc =\
              getargs('name', 'doc', 'parent', 'quantity', 'attributes',
@@ -310,7 +310,7 @@ class BaseStorageSpec(Spec):
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
-                warn("found 'default_name' with 'name' - ignoring 'default_name'")  # noqa: F821
+                warn("found 'default_name' with 'name' - ignoring 'default_name'")
             else:
                 self['default_name'] = default_name
         self.__attributes = dict()
@@ -470,7 +470,7 @@ class BaseStorageSpec(Spec):
         ''' The number of times the object being specified should be present '''
         return self.get('quantity', DEF_QUANTITY)
 
-    @docval(*deepcopy(_attr_args))  # noqa: F821
+    @docval(*deepcopy(_attr_args))
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
         pargs, pkwargs = fmt_docval_args(AttributeSpec.__init__, kwargs)
@@ -611,7 +611,7 @@ class DatasetSpec(BaseStorageSpec):
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*deepcopy(_dataset_args))  # noqa: F821
+    @docval(*deepcopy(_dataset_args))
     def __init__(self, **kwargs):
         doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
         if shape is not None:
@@ -804,7 +804,7 @@ class GroupSpec(BaseStorageSpec):
     ''' Specification for groups
     '''
 
-    @docval(*deepcopy(_group_args))  # noqa: F821
+    @docval(*deepcopy(_group_args))
     def __init__(self, **kwargs):
         doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
         self.__data_types = dict()
@@ -1088,7 +1088,7 @@ class GroupSpec(BaseStorageSpec):
         ''' The links specificed in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
-    @docval(*deepcopy(_group_args))  # noqa: F821
+    @docval(*deepcopy(_group_args))
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
         doc = kwargs.pop('doc')
@@ -1120,7 +1120,7 @@ class GroupSpec(BaseStorageSpec):
         name = getargs('name', kwargs)
         return self.__groups.get(name, self.__links.get(name))
 
-    @docval(*deepcopy(_dataset_args))  # noqa: F821
+    @docval(*deepcopy(_dataset_args))
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
         doc = kwargs.pop('doc')
