@@ -1,6 +1,7 @@
 import unittest2 as unittest
 
 from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, SpecCatalog
+import copy
 
 
 class SpecCatalogTest(unittest.TestCase):
@@ -51,6 +52,26 @@ class SpecCatalogTest(unittest.TestCase):
         self.catalog.auto_register(spikes_spec, source_file_path)
         recorded_source_file_path = self.catalog.get_spec_source_file('SpikeData')
         self.assertEqual(recorded_source_file_path, source_file_path)
+
+    def test_copy_spec_catalog(self):
+        # Register the spec first
+        self.catalog.register_spec(self.spec, 'test.yaml')
+        result = self.catalog.get_spec('EphysData')
+        self.assertIs(result, self.spec)
+        # Now test the copy
+        re = copy.copy(self.catalog)
+        self.assertTupleEqual(self.catalog.get_registered_types(),
+                              re.get_registered_types())
+
+    def test_deepcopy_spec_catalog(self):
+        # Register the spec first
+        self.catalog.register_spec(self.spec, 'test.yaml')
+        result = self.catalog.get_spec('EphysData')
+        self.assertIs(result, self.spec)
+        # Now test the copy
+        re = copy.deepcopy(self.catalog)
+        self.assertTupleEqual(self.catalog.get_registered_types(),
+                              re.get_registered_types())
 
 
 if __name__ == '__main__':
