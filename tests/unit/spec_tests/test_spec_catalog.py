@@ -119,6 +119,48 @@ class SpecCatalogTest(unittest.TestCase):
         recorded_source_file_path = self.catalog.get_spec_source_file('SpikeData')
         self.assertEqual(recorded_source_file_path, source_file_path)
 
+    def test_get_full_hierarchy(self):
+        """
+        BaseContainer--+-->AContainer--->ADContainer
+                        |
+                        +-->BContainer
+
+        Expected output:
+        >> print(json.dumps(full_hierarchy, indent=4))
+        >> {
+        >>     "BaseContainer": {
+        >>         "AContainer": {
+        >>             "ADContainer": {}
+        >>         },
+        >>          "BContainer": {}
+        >> }
+        """
+        base_spec = GroupSpec(doc='Base container',
+                              data_type_def='BaseContainer')
+        acontainer = GroupSpec(doc='AContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='AContainer')
+        adcontainer = GroupSpec(doc='ADContainer',
+                                data_type_inc='AContainer',
+                                data_type_def='ADContainer')
+        bcontainer = GroupSpec(doc='BContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='BContainer')
+        self.catalog.register_spec(base_spec, 'test.yaml')
+        self.catalog.register_spec(acontainer, 'test.yaml')
+        self.catalog.register_spec(adcontainer, 'test.yaml')
+        self.catalog.register_spec(bcontainer, 'test.yaml')
+        full_hierarchy = self.catalog.get_full_hierarchy()
+        expected_hierarchy = {
+                                "BaseContainer": {
+                                    "AContainer": {
+                                        "ADContainer": {}
+                                    },
+                                    "BContainer": {}
+                                }
+                             }
+        self.assertDictEqual(full_hierarchy, expected_hierarchy)
+
     def test_copy_spec_catalog(self):
         # Register the spec first
         self.catalog.register_spec(self.spec, 'test.yaml')

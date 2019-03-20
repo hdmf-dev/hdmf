@@ -129,6 +129,32 @@ class SpecCatalog(object):
                 tmp_hier = tmp_hier[1:]
         return tuple(ret)
 
+    @docval(returns="Hierarchically nested OrderedDict with the hierarchy of all the types", rtype=OrderedDict)
+    def get_full_hierarchy(self):
+        """
+        Get the complete hierarchy of all types. The function attempts to sort types by name using
+        standard Python sorted.
+        """
+        # Get the list of all types
+        registered_types = self.get_registered_types()
+        type_hierarchy = OrderedDict()
+
+        # Internal helper function to recurisvely construct the hierarchy of types
+        def get_type_hierarchy(data_type, spec_catalog):
+            dtype_hier = OrderedDict()
+            for dtype in sorted(self.get_subtypes(data_type=data_type, recursive=False)):
+                dtype_hier[dtype] = get_type_hierarchy(dtype, spec_catalog)
+            return dtype_hier
+
+        # Compute the type hierarchy
+        for rt in sorted(registered_types):
+            rt_spec = self.get_spec(rt)
+            if isinstance(rt_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+                if rt_spec.get(rt_spec.inc_key(), None) is None:
+                    type_hierarchy[rt] = get_type_hierarchy(rt, self)
+
+        return type_hierarchy
+
     @docval({'name': 'data_type', 'type': (str, type),
              'doc': 'the data_type to get the subtypes for'},
             {'name': 'recursive', 'type': bool,
