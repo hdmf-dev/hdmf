@@ -131,6 +131,9 @@ class SpecCatalog(object):
 
     @docval({'name': 'data_type', 'type': (str, type),
              'doc': 'the data_type to get the subtypes for'},
+            {'name': 'recursive', 'type': bool,
+             'doc': 'recursively get all subtypes. Set to False to only get the direct subtypes',
+             'default': True},
             returns="Tuple of strings with the names of all types of the given data_type.",
             rtype=tuple)
     def get_subtypes(self, **kwargs):
@@ -148,7 +151,7 @@ class SpecCatalog(object):
         for AContainer the subtypes would be (ADContainer) and for BContainer the list of subtypes
         would be empty ().
         """
-        data_type = getargs('data_type', kwargs)
+        data_type, recursive = getargs('data_type', 'recursive', kwargs)
         curr_spec = self.get_spec(data_type)
         if isinstance(curr_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
             subtypes = []
@@ -158,7 +161,8 @@ class SpecCatalog(object):
                 rt_spec = self.get_spec(rt)
                 if rt_spec.get(spec_inc_key, None) == data_type and rt_spec.get(spec_def_key, None) != data_type:
                     subtypes.append(rt)
-                    subtypes += self.get_subtypes(rt)
+                    if recursive:
+                        subtypes += self.get_subtypes(rt)
             return tuple(set(subtypes))   # Convert to a set to make sure we don't have any duplicates
         else:
             return ()
