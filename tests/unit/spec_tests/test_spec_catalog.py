@@ -45,6 +45,41 @@ class SpecCatalogTest(unittest.TestCase):
         self.assertTupleEqual(lfp_hierarchy, ('LFPData', 'EphysData'))
         self.assertTupleEqual(ephys_hierarchy, ('EphysData',))
 
+    def test_subtypes(self):
+        """
+         -BaseContainer--+-->AContainer--->ADContainer
+                        |
+                        +-->BContainer
+        """
+        base_spec = GroupSpec(doc='Base container',
+                              data_type_def='BaseContainer')
+        acontainer = GroupSpec(doc='AContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='AContainer')
+        adcontainer = GroupSpec(doc='ADContainer',
+                                data_type_inc='AContainer',
+                                data_type_def='ADContainer')
+        bcontainer = GroupSpec(doc='BContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='BContainer')
+        self.catalog.register_spec(base_spec, 'test.yaml')
+        self.catalog.register_spec(acontainer, 'test.yaml')
+        self.catalog.register_spec(adcontainer, 'test.yaml')
+        self.catalog.register_spec(bcontainer, 'test.yaml')
+        base_spec_subtypes = self.catalog.get_subtypes('BaseContainer')
+        base_spec_subtypes = tuple(sorted(base_spec_subtypes))  # Sort so we have a guaranteed order for comparison
+        acontainer_subtypes = self.catalog.get_subtypes('AContainer')
+        bcontainer_substypes = self.catalog.get_subtypes('BContainer')
+        adcontainer_subtypes = self.catalog.get_subtypes('ADContainer')
+        self.assertTupleEqual(adcontainer_subtypes, ())
+        self.assertTupleEqual(bcontainer_substypes, ())
+        self.assertTupleEqual(acontainer_subtypes, ('ADContainer',))
+        self.assertTupleEqual(base_spec_subtypes,  ('AContainer', 'ADContainer', 'BContainer'))
+
+    def test_subtypes_unknown_type(self):
+        subtypes_of_bad_type = self.catalog.get_subtypes('UnknownType')
+        self.assertTupleEqual(subtypes_of_bad_type, ())
+
     def test_get_spec_source_file(self):
         spikes_spec = GroupSpec('test group',
                                 data_type_def='SpikeData')
