@@ -109,7 +109,22 @@ class SpecNamespace(dict):
         return self['schema']
 
     def get_source_files(self):
+        """
+        Get the list of names of the source files included the schema of the namespace
+        """
         return [item['source'] for item in self.schema if 'source' in item]
+
+    @docval({'name': 'sourcefile', 'type': str, 'doc': 'Name of the source file'},
+            returns='Dict with the source file documentation', rtype=dict)
+    def get_source_description(self, sourcefile):
+        """
+        Get the description of a source file as described in the namespace. The result is a
+        dict which contains the 'source' and optionally 'title', 'doc' and 'data_types'
+        imported from the source file
+        """
+        for item in self.schema:
+            if item.get('source', None) == sourcefile:
+                return item
 
     @property
     def catalog(self):

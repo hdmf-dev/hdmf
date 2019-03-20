@@ -98,6 +98,14 @@ class TestNamespaceBuilder(unittest.TestCase):
         loaded_ns = ns_catalog.get_namespace(self.ns_name)
         self.assertListEqual(loaded_ns.get_source_files(), ['mylab.specs.yaml'])
 
+    def test_get_source_description(self):
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(self.namespace_path, resolve=True)
+        loaded_ns = ns_catalog.get_namespace(self.ns_name)
+        descr = loaded_ns.get_source_description('mylab.specs.yaml')
+        self.assertDictEqual(descr, {'doc': 'Extensions for my lab',
+                                     'source': 'mylab.specs.yaml',
+                                     'title': 'Extensions for my lab'})
 
 class TestYAMLSpecWrite(unittest.TestCase):
 
