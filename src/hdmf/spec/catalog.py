@@ -156,9 +156,9 @@ class SpecCatalog(object):
             spec_def_key = curr_spec.def_key()
             for rt in self.get_registered_types():
                 rt_spec = self.get_spec(rt)
-                if rt_spec.get(spec_inc_key, None) == data_type  and rt_spec.get(spec_def_key, None) != data_type:
-                        subtypes.append(rt)
-                        subtypes += self.get_subtypes(rt)
+                if rt_spec.get(spec_inc_key, None) == data_type and rt_spec.get(spec_def_key, None) != data_type:
+                    subtypes.append(rt)
+                    subtypes += self.get_subtypes(rt)
             return tuple(set(subtypes))   # Convert to a set to make sure we don't have any duplicates
         else:
             return ()

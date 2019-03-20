@@ -107,6 +107,7 @@ class TestNamespaceBuilder(unittest.TestCase):
                                      'source': 'mylab.specs.yaml',
                                      'title': 'Extensions for my lab'})
 
+
 class TestYAMLSpecWrite(unittest.TestCase):
 
     def setUp(self):
