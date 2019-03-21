@@ -45,6 +45,72 @@ class SpecCatalogTest(unittest.TestCase):
         self.assertTupleEqual(lfp_hierarchy, ('LFPData', 'EphysData'))
         self.assertTupleEqual(ephys_hierarchy, ('EphysData',))
 
+    def test_subtypes(self):
+        """
+         -BaseContainer--+-->AContainer--->ADContainer
+                        |
+                        +-->BContainer
+        """
+        base_spec = GroupSpec(doc='Base container',
+                              data_type_def='BaseContainer')
+        acontainer = GroupSpec(doc='AContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='AContainer')
+        adcontainer = GroupSpec(doc='ADContainer',
+                                data_type_inc='AContainer',
+                                data_type_def='ADContainer')
+        bcontainer = GroupSpec(doc='BContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='BContainer')
+        self.catalog.register_spec(base_spec, 'test.yaml')
+        self.catalog.register_spec(acontainer, 'test.yaml')
+        self.catalog.register_spec(adcontainer, 'test.yaml')
+        self.catalog.register_spec(bcontainer, 'test.yaml')
+        base_spec_subtypes = self.catalog.get_subtypes('BaseContainer')
+        base_spec_subtypes = tuple(sorted(base_spec_subtypes))  # Sort so we have a guaranteed order for comparison
+        acontainer_subtypes = self.catalog.get_subtypes('AContainer')
+        bcontainer_substypes = self.catalog.get_subtypes('BContainer')
+        adcontainer_subtypes = self.catalog.get_subtypes('ADContainer')
+        self.assertTupleEqual(adcontainer_subtypes, ())
+        self.assertTupleEqual(bcontainer_substypes, ())
+        self.assertTupleEqual(acontainer_subtypes, ('ADContainer',))
+        self.assertTupleEqual(base_spec_subtypes,  ('AContainer', 'ADContainer', 'BContainer'))
+
+    def test_subtypes_norecursion(self):
+        """
+         -BaseContainer--+-->AContainer--->ADContainer
+                        |
+                        +-->BContainer
+        """
+        base_spec = GroupSpec(doc='Base container',
+                              data_type_def='BaseContainer')
+        acontainer = GroupSpec(doc='AContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='AContainer')
+        adcontainer = GroupSpec(doc='ADContainer',
+                                data_type_inc='AContainer',
+                                data_type_def='ADContainer')
+        bcontainer = GroupSpec(doc='BContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='BContainer')
+        self.catalog.register_spec(base_spec, 'test.yaml')
+        self.catalog.register_spec(acontainer, 'test.yaml')
+        self.catalog.register_spec(adcontainer, 'test.yaml')
+        self.catalog.register_spec(bcontainer, 'test.yaml')
+        base_spec_subtypes = self.catalog.get_subtypes('BaseContainer', recursive=False)
+        base_spec_subtypes = tuple(sorted(base_spec_subtypes))  # Sort so we have a guaranteed order for comparison
+        acontainer_subtypes = self.catalog.get_subtypes('AContainer', recursive=False)
+        bcontainer_substypes = self.catalog.get_subtypes('BContainer', recursive=False)
+        adcontainer_subtypes = self.catalog.get_subtypes('ADContainer', recursive=False)
+        self.assertTupleEqual(adcontainer_subtypes, ())
+        self.assertTupleEqual(bcontainer_substypes, ())
+        self.assertTupleEqual(acontainer_subtypes, ('ADContainer',))
+        self.assertTupleEqual(base_spec_subtypes,  ('AContainer', 'BContainer'))
+
+    def test_subtypes_unknown_type(self):
+        subtypes_of_bad_type = self.catalog.get_subtypes('UnknownType')
+        self.assertTupleEqual(subtypes_of_bad_type, ())
+
     def test_get_spec_source_file(self):
         spikes_spec = GroupSpec('test group',
                                 data_type_def='SpikeData')
@@ -52,6 +118,48 @@ class SpecCatalogTest(unittest.TestCase):
         self.catalog.auto_register(spikes_spec, source_file_path)
         recorded_source_file_path = self.catalog.get_spec_source_file('SpikeData')
         self.assertEqual(recorded_source_file_path, source_file_path)
+
+    def test_get_full_hierarchy(self):
+        """
+        BaseContainer--+-->AContainer--->ADContainer
+                        |
+                        +-->BContainer
+
+        Expected output:
+        >> print(json.dumps(full_hierarchy, indent=4))
+        >> {
+        >>     "BaseContainer": {
+        >>         "AContainer": {
+        >>             "ADContainer": {}
+        >>         },
+        >>          "BContainer": {}
+        >> }
+        """
+        base_spec = GroupSpec(doc='Base container',
+                              data_type_def='BaseContainer')
+        acontainer = GroupSpec(doc='AContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='AContainer')
+        adcontainer = GroupSpec(doc='ADContainer',
+                                data_type_inc='AContainer',
+                                data_type_def='ADContainer')
+        bcontainer = GroupSpec(doc='BContainer',
+                               data_type_inc='BaseContainer',
+                               data_type_def='BContainer')
+        self.catalog.register_spec(base_spec, 'test.yaml')
+        self.catalog.register_spec(acontainer, 'test.yaml')
+        self.catalog.register_spec(adcontainer, 'test.yaml')
+        self.catalog.register_spec(bcontainer, 'test.yaml')
+        full_hierarchy = self.catalog.get_full_hierarchy()
+        expected_hierarchy = {
+                                "BaseContainer": {
+                                    "AContainer": {
+                                        "ADContainer": {}
+                                    },
+                                    "BContainer": {}
+                                }
+                             }
+        self.assertDictEqual(full_hierarchy, expected_hierarchy)
 
     def test_copy_spec_catalog(self):
         # Register the spec first
