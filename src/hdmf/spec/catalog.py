@@ -129,7 +129,8 @@ class SpecCatalog(object):
                 tmp_hier = tmp_hier[1:]
         return tuple(ret)
 
-    @docval(returns="Hierarchically nested OrderedDict with the hierarchy of all the types", rtype=OrderedDict)
+    @docval(returns="Hierarchically nested OrderedDict with the hierarchy of all the types",
+            rtype=OrderedDict)
     def get_full_hierarchy(self):
         """
         Get the complete hierarchy of all types. The function attempts to sort types by name using
