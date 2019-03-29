@@ -414,6 +414,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
             return None, dt
+        if isinstance(spec.dtype, list):
+            # compound dtype - Since the I/O layer needs to determine how to handle these,
+            # return the list of DtypeSpecs
+            return None, spec.dtype
         if isinstance(value, DataIO):
             return value, cls.convert_dtype(spec, value.data)[1]
         if spec.dtype is None:
@@ -753,6 +757,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     def build(self, **kwargs):
         ''' Convert a Container to a Builder representation '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
+        if container.name == 'timeseries':
+            breakpoint()
         builder = getargs('builder', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
@@ -874,6 +880,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     else:
                         msg = "invalid type for reference '%s' (%s) - must be Container" % (spec.name, type(attr_value))
                     raise ValueError(msg)
+                #TODO: this is where the TimeSeriesIndex build starts
+                if attr_value.name == 'timeseries':
+                    breakpoint()
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
             else:
@@ -1464,7 +1473,12 @@ class TypeMap(object):
         return namespace, data_type
 
     def get_container_cls_dt(self, cls):
-        return self.__data_types.get(cls, (None, None))
+        def_ret = (None, None)
+        for _cls in cls.__mro__:
+            ret = self.__data_types.get(_cls, def_ret)
+            if ret is not def_ret:
+                return ret
+        return ret
 
     @docval({'name': 'namespace', 'type': str,
              'doc': 'the namespace to get the container classes for', 'default': None})
@@ -1483,7 +1497,7 @@ class TypeMap(object):
         # get the container class, and namespace/data_type
         if isinstance(obj, Container):
             container_cls = obj.__class__
-            namespace, data_type = self.get_container_ns_dt(obj)
+            namespace, data_type = self.get_container_cls_dt(container_cls)
             if namespace is None:
                 raise ValueError("class %s is not mapped to a data_type" % container_cls)
         else:
@@ -1491,7 +1505,6 @@ class TypeMap(object):
             namespace = self.get_builder_ns(obj)
             container_cls = self.get_cls(obj)
         # now build the ObjectMapper class
-        spec = self.__ns_catalog.get_spec(namespace, data_type)
         mapper = self.__mappers.get(container_cls)
         if mapper is None:
             mapper_cls = self.__default_mapper_cls
@@ -1500,7 +1513,7 @@ class TypeMap(object):
                 if tmp_mapper_cls is not None:
                     mapper_cls = tmp_mapper_cls
                     break
-
+            spec = self.__ns_catalog.get_spec(namespace, data_type)
             mapper = mapper_cls(spec)
             self.__mappers[container_cls] = mapper
         return mapper
