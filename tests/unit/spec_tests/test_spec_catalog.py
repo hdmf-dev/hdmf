@@ -126,7 +126,6 @@ class SpecCatalogTest(unittest.TestCase):
                         +-->BContainer
 
         Expected output:
-        >> print(json.dumps(full_hierarchy, indent=4))
         >> {
         >>     "BaseContainer": {
         >>         "AContainer": {
