@@ -729,7 +729,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     elif 'isodatetime' in spec.dtype:
                         string_type = datetime.isoformat
                     if string_type is not None:
-                        if spec.dims is not None:
+                        if spec.shape is not None:
                             ret = list(map(string_type, value))
                         else:
                             ret = string_type(value)
