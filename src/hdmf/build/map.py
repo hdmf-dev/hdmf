@@ -1315,13 +1315,14 @@ class TypeMap(object):
                     continue
                 docval_args.append(arg)
         for f, field_spec in addl_fields.items():
-            dtype = self.__get_type(field_spec)
-            docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
-            docval_args.append(docval_arg)
-            if f not in existing_args:
-                new_args.append(f)
+            if not f == 'help':
+                dtype = self.__get_type(field_spec)
+                docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+                if not field_spec.required:
+                    docval_arg['default'] = getattr(field_spec, 'default_value', None)
+                docval_args.append(docval_arg)
+                if f not in existing_args:
+                    new_args.append(f)
         if base is None:
             @docval(*docval_args)
             def __init__(self, **kwargs):
