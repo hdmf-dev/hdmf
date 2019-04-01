@@ -1289,7 +1289,7 @@ class TypeMap(object):
                     if container_type is not None:
                         return container_type
                 return (Data, Container)
-            elif spec.shape is None:
+            elif spec.shape is None and spec.dims is None:
                 return self._type_map.get(spec.dtype)
             else:
                 return ('array_data',)
@@ -1301,6 +1301,8 @@ class TypeMap(object):
                     return (list, tuple, dict, set)
                 else:
                     return Container
+            elif spec.shape is None and spec.dims is None:
+                return self._type_map.get(spec.dtype)
             else:
                 return ('array_data', 'data',)
 
