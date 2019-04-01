@@ -712,7 +712,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
-                if spec.shape is not None:
+                if spec.shape is not None or spec.dims is not None:
                     ret = list(map(text_type, value))
                 else:
                     ret = text_type(value)
@@ -730,7 +730,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     elif 'isodatetime' in spec.dtype:
                         string_type = datetime.isoformat
                     if string_type is not None:
-                        if spec.dims is not None:
+                        if spec.shape is not None or spec.dims is not None:
                             ret = list(map(string_type, value))
                         else:
                             ret = string_type(value)
