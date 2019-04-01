@@ -1318,6 +1318,8 @@ class TypeMap(object):
         for f, field_spec in addl_fields.items():
             dtype = self.__get_type(field_spec)
             docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+            if hasattr(field_spec, 'shape') and field_spec.shape is not None:
+                docval_arg.update(shape=field_spec.shape)
             if not field_spec.required:
                 docval_arg['default'] = getattr(field_spec, 'default_value', None)
             docval_args.append(docval_arg)
