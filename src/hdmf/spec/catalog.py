@@ -101,9 +101,16 @@ class SpecCatalog(object):
         return tuple(ret)
 
     @docval({'name': 'data_type', 'type': (str, type),
-             'doc': 'the data_type to get the hierarchy of'})
+             'doc': 'the data_type to get the hierarchy of'},
+            returns="Tuple of strings with the names of the types the given data_type inherits from.",
+            rtype=tuple)
     def get_hierarchy(self, **kwargs):
-        ''' Get the extension hierarchy for the given data_type '''
+        """
+        For a given type get the type inheritance hierarchy for that type.
+
+        E.g., if we have a type MyContainer that inherits from BaseContainer then
+        the result will be a tuple with the strings ('MyContainer', 'BaseContainer')
+        """
         data_type = getargs('data_type', kwargs)
         if isinstance(data_type, type):
             data_type = data_type.__name__
@@ -121,6 +128,71 @@ class SpecCatalog(object):
                 self.__hierarchy[tmp_hier[0]] = tmp_hier
                 tmp_hier = tmp_hier[1:]
         return tuple(ret)
+
+    @docval(returns="Hierarchically nested OrderedDict with the hierarchy of all the types",
+            rtype=OrderedDict)
+    def get_full_hierarchy(self):
+        """
+        Get the complete hierarchy of all types. The function attempts to sort types by name using
+        standard Python sorted.
+        """
+        # Get the list of all types
+        registered_types = self.get_registered_types()
+        type_hierarchy = OrderedDict()
+
+        # Internal helper function to recurisvely construct the hierarchy of types
+        def get_type_hierarchy(data_type, spec_catalog):
+            dtype_hier = OrderedDict()
+            for dtype in sorted(self.get_subtypes(data_type=data_type, recursive=False)):
+                dtype_hier[dtype] = get_type_hierarchy(dtype, spec_catalog)
+            return dtype_hier
+
+        # Compute the type hierarchy
+        for rt in sorted(registered_types):
+            rt_spec = self.get_spec(rt)
+            if isinstance(rt_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+                if rt_spec.get(rt_spec.inc_key(), None) is None:
+                    type_hierarchy[rt] = get_type_hierarchy(rt, self)
+
+        return type_hierarchy
+
+    @docval({'name': 'data_type', 'type': (str, type),
+             'doc': 'the data_type to get the subtypes for'},
+            {'name': 'recursive', 'type': bool,
+             'doc': 'recursively get all subtypes. Set to False to only get the direct subtypes',
+             'default': True},
+            returns="Tuple of strings with the names of all types of the given data_type.",
+            rtype=tuple)
+    def get_subtypes(self, **kwargs):
+        """
+        For a given data type recursively find all the subtypes that inherit from it.
+
+        E.g., assume we have the following inheritance hierarchy:
+
+        -BaseContainer--+-->AContainer--->ADContainer
+                        |
+                        +-->BContainer
+
+
+        In this case the the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
+        for AContainer the subtypes would be (ADContainer) and for BContainer the list of subtypes
+        would be empty ().
+        """
+        data_type, recursive = getargs('data_type', 'recursive', kwargs)
+        curr_spec = self.get_spec(data_type)
+        if isinstance(curr_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+            subtypes = []
+            spec_inc_key = curr_spec.inc_key()
+            spec_def_key = curr_spec.def_key()
+            for rt in self.get_registered_types():
+                rt_spec = self.get_spec(rt)
+                if rt_spec.get(spec_inc_key, None) == data_type and rt_spec.get(spec_def_key, None) != data_type:
+                    subtypes.append(rt)
+                    if recursive:
+                        subtypes += self.get_subtypes(rt)
+            return tuple(set(subtypes))   # Convert to a set to make sure we don't have any duplicates
+        else:
+            return ()
 
     def __copy__(self):
         ret = SpecCatalog()

@@ -592,7 +592,10 @@ class HDF5IO(HDMFIO):
         if parent.file.filename == target_builder.source:
             link_obj = SoftLink(path)
         elif target_builder.source is not None:
-            link_obj = ExternalLink(target_builder.source, path)
+            target_filename = os.path.abspath(target_builder.source)
+            parent_filename = os.path.abspath(parent.file.filename)
+            relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
+            link_obj = ExternalLink(relative_path, path)
         else:
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
