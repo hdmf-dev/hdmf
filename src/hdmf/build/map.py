@@ -712,7 +712,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
-                if spec.shape is not None:
+                if spec.shape is not None or spec.dims is not None:
                     ret = list(map(text_type, value))
                 else:
                     ret = text_type(value)
@@ -730,7 +730,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     elif 'isodatetime' in spec.dtype:
                         string_type = datetime.isoformat
                     if string_type is not None:
-                        if spec.dims is not None:
+                        if spec.shape is not None or spec.dims is not None:
                             ret = list(map(string_type, value))
                         else:
                             ret = string_type(value)
@@ -1316,13 +1316,14 @@ class TypeMap(object):
                     continue
                 docval_args.append(arg)
         for f, field_spec in addl_fields.items():
-            dtype = self.__get_type(field_spec)
-            docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
-            docval_args.append(docval_arg)
-            if f not in existing_args:
-                new_args.append(f)
+            if not f == 'help':
+                dtype = self.__get_type(field_spec)
+                docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+                if not field_spec.required:
+                    docval_arg['default'] = getattr(field_spec, 'default_value', None)
+                docval_args.append(docval_arg)
+                if f not in existing_args:
+                    new_args.append(f)
         if base is None:
             @docval(*docval_args)
             def __init__(self, **kwargs):
