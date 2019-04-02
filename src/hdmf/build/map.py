@@ -1288,27 +1288,34 @@ class TypeMap(object):
                     container_type = val.get(tgttype)
                     if container_type is not None:
                         return container_type
-                return (Data, Container)
+                return Data, Container
             elif spec.shape is None:
                 return self._type_map.get(spec.dtype)
             else:
-                return ('array_data',)
+                return 'array_data',
         elif isinstance(spec, LinkSpec):
             return Container
         else:
-            if not (spec.data_type_inc is None and spec.data_type_inc is None):
-                if spec.name is not None:
-                    return (list, tuple, dict, set)
-                else:
-                    return Container
-            else:
-                return ('array_data', 'data',)
+            if spec.data_type_def is not None:
+                for namespace in self.namespace_catalog.namespaces:
+                    try:
+                        return self.get_container_cls(namespace, spec.data_type_def)
+                    except:
+                        pass
+            if spec.data_type_inc is not None:
+                for namespace in self.namespace_catalog.namespaces:
+                    try:
+                        return self.get_container_cls(namespace, spec.data_type_def)
+                    except:
+                        pass
+            return 'array_data', 'data'
 
-    def __get_constructor(self, base, addl_fields):
+    def __get_cls_dict(self, base, addl_fields):
         # TODO: fix this to be more maintainable and smarter
         existing_args = set()
         docval_args = list()
         new_args = list()
+        nwbfields = list()
         if base is not None:
             for arg in get_docval(base.__init__):
                 existing_args.add(arg['name'])
@@ -1323,12 +1330,16 @@ class TypeMap(object):
             docval_args.append(docval_arg)
             if f not in existing_args:
                 new_args.append(f)
+            if issubclass(dtype, (Container, Data, DataRegion)):
+                nwbfields.append({'name': f, 'child': True})
+            else:
+                nwbfields.append(f)
         if base is None:
             @docval(*docval_args)
             def __init__(self, **kwargs):
                 for f in new_args:
                     setattr(self, f, kwargs.get(f, None))
-            return __init__
+            return {'__init__': __init__, '__nwbfields__': tuple(nwbfields)}
         else:
             @docval(*docval_args)
             def __init__(self, **kwargs):
@@ -1336,7 +1347,7 @@ class TypeMap(object):
                 super(type(self), self).__init__(*pargs, **pkwargs)
                 for f in new_args:
                     setattr(self, f, kwargs.get(f, None))
-            return __init__
+            return {'__init__': __init__, '__nwbfields__': tuple(nwbfields)}
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a Container class for"},
@@ -1357,7 +1368,6 @@ class TypeMap(object):
                 parent_cls = self.__get_container_cls(namespace, t)
                 if parent_cls is not None:
                     break
-            bases = tuple()
             if parent_cls is not None:
                 bases = (parent_cls,)
             else:
@@ -1374,7 +1384,7 @@ class TypeMap(object):
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = {'__init__': self.__get_constructor(parent_cls, fields)}
+            d = self.__get_cls_dict(parent_cls, fields)
             cls = type(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
