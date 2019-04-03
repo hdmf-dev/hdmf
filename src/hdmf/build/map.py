@@ -1280,7 +1280,7 @@ class TypeMap(object):
         'isodatetime': datetime
     }
 
-    def __get_type(self, spec):
+    def __get_type(self, spec, namespace=None):
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
                 tgttype = spec.dtype.target_type
@@ -1297,20 +1297,12 @@ class TypeMap(object):
             return Container
         else:
             if spec.data_type_def is not None:
-                for namespace in self.namespace_catalog.namespaces:
-                    try:
-                        return self.get_container_cls(namespace, spec.data_type_def)
-                    except:
-                        pass
+                return self.get_container_cls(namespace, spec.data_type_def)
             if spec.data_type_inc is not None:
-                for namespace in self.namespace_catalog.namespaces:
-                    try:
-                        return self.get_container_cls(namespace, spec.data_type_def)
-                    except:
-                        pass
+                return self.get_container_cls(namespace, spec.data_type_def)
             return 'array_data', 'data'
 
-    def __get_cls_dict(self, base, addl_fields):
+    def __get_cls_dict(self, base, addl_fields, namespace=None):
         # TODO: fix this to be more maintainable and smarter
         existing_args = set()
         docval_args = list()
@@ -1323,7 +1315,7 @@ class TypeMap(object):
                     continue
                 docval_args.append(arg)
         for f, field_spec in addl_fields.items():
-            dtype = self.__get_type(field_spec)
+            dtype = self.__get_type(field_spec, namespace)
             docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
             if not field_spec.required:
                 docval_arg['default'] = getattr(field_spec, 'default_value', None)
@@ -1384,7 +1376,7 @@ class TypeMap(object):
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = self.__get_cls_dict(parent_cls, fields)
+            d = self.__get_cls_dict(parent_cls, fields, namespace)
             cls = type(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
