@@ -11,6 +11,7 @@ from six import raise_from, text_type, binary_type
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float],
+    'float': [float, np.float32, np.float64]
 }
 
 
