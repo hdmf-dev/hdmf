@@ -246,13 +246,13 @@ class TestDocValidator(unittest.TestCase):
         self.assertEqual(cm.exception.args[0], msg)
 
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
-        """Test that docval catches NoneType  when called with a four positional
+        """Test that docval catches NoneType when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
         with self.assertRaises(TypeError) as cm:
             kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)  # noqa: F841
-        msg = "incorrect type for 'arg5' (got 'NoneType', expected 'float')"
+        msg = "incorrect type for 'arg5' (got 'NoneType', expected 'float, float32 or float64')"
         self.assertEqual(cm.exception.args[0], msg)
 
     def test_only_kw_no_args(self):
