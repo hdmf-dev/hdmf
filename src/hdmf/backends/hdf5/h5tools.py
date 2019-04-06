@@ -458,7 +458,6 @@ class HDF5IO(HDMFIO):
         "int8": np.int8,
         "bool": np.bool_,
         "text": H5_TEXT,
-        "text": H5_TEXT,
         "utf": H5_TEXT,
         "utf8": H5_TEXT,
         "utf-8": H5_TEXT,
@@ -474,6 +473,27 @@ class HDF5IO(HDMFIO):
         "region": H5_REGREF,
     }
 
+    __type_promotion_map = \
+        (
+            (np.float32, np.float64),
+            (np.int8, np.int16, np.int32, np.int64),
+            (np.uint8, np.uint16, np.uint32, np.uint64)
+        )
+
+    @classmethod
+    def __type_promotion(cls, dtype1, dtype2):
+        """
+        Can dtype1 be promoted to dtype2?
+        """
+        if dtype2 is float:
+            dtype2 = np.float64
+
+        for dtype_map in cls.__type_promotion_map:
+            if (dtype1 in dtype_map) and (dtype2 in dtype_map) and \
+                    dtype_map.index(dtype2) > dtype_map.index(dtype1):
+                return True
+        return False
+
     @classmethod
     def __resolve_dtype__(cls, dtype, data):
         # TODO: These values exist, but I haven't solved them yet
@@ -481,7 +501,10 @@ class HDF5IO(HDMFIO):
         # number
         dtype = cls.__resolve_dtype_helper__(dtype)
         if dtype is None:
-            dtype = cls.get_type(data)
+            return cls.get_type(data)
+        data_dtype = cls.get_type(data)
+        if cls.__type_promotion(dtype, data_dtype):
+            return data_dtype
         return dtype
 
     @classmethod
