@@ -1300,13 +1300,13 @@ class TypeMap(object):
                 for namespace in self.namespace_catalog.namespaces:
                     try:
                         return self.get_container_cls(namespace, spec.data_type_def)
-                    except:
+                    except Exception:
                         pass
             if spec.data_type_inc is not None:
                 for namespace in self.namespace_catalog.namespaces:
                     try:
                         return self.get_container_cls(namespace, spec.data_type_def)
-                    except:
+                    except Exception:
                         pass
             return 'array_data', 'data'
 
@@ -1375,7 +1375,7 @@ class TypeMap(object):
                     raise ValueError("Cannot generate class from %s" % type(spec))
                 parent_cls = bases[0]
             if type(parent_cls) is not ExtenderMeta:
-                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls))
+                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
             name = data_type
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             fields = dict()
