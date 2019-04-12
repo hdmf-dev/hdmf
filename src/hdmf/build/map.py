@@ -1312,16 +1312,17 @@ class TypeMap(object):
 
     def __get_cls_dict(self, base, addl_fields):
         # TODO: fix this to be more maintainable and smarter
+        if base is None:
+            raise ValueError('cannot generate class without base class')
         existing_args = set()
         docval_args = list()
         new_args = list()
-        nwbfields = list()
-        if base is not None:
-            for arg in get_docval(base.__init__):
-                existing_args.add(arg['name'])
-                if arg['name'] in addl_fields:
-                    continue
-                docval_args.append(arg)
+        fields = list()
+        for arg in get_docval(base.__init__):
+            existing_args.add(arg['name'])
+            if arg['name'] in addl_fields:
+                continue
+            docval_args.append(arg)
         for f, field_spec in addl_fields.items():
             dtype = self.__get_type(field_spec)
             docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
@@ -1331,23 +1332,18 @@ class TypeMap(object):
             if f not in existing_args:
                 new_args.append(f)
             if issubclass(dtype, (Container, Data, DataRegion)):
-                nwbfields.append({'name': f, 'child': True})
+                fields.append({'name': f, 'child': True})
             else:
-                nwbfields.append(f)
-        if base is None:
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                for f in new_args:
-                    setattr(self, f, kwargs.get(f, None))
-            return {'__init__': __init__, '__nwbfields__': tuple(nwbfields)}
-        else:
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-                super(type(self), self).__init__(*pargs, **pkwargs)
-                for f in new_args:
-                    setattr(self, f, kwargs.get(f, None))
-            return {'__init__': __init__, '__nwbfields__': tuple(nwbfields)}
+                fields.append(f)
+
+        @docval(*docval_args)
+        def __init__(self, **kwargs):
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+            super(type(self), self).__init__(*pargs, **pkwargs)
+            for f in new_args:
+                setattr(self, f, kwargs.get(f, None))
+
+        return {'__init__': __init__, base._fieldsname: tuple(fields)}
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a Container class for"},
@@ -1378,6 +1374,8 @@ class TypeMap(object):
                 else:
                     raise ValueError("Cannot generate class from %s" % type(spec))
                 parent_cls = bases[0]
+            if type(parent_cls) is not ExtenderMeta:
+                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls))
             name = data_type
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             fields = dict()
@@ -1385,7 +1383,7 @@ class TypeMap(object):
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
             d = self.__get_cls_dict(parent_cls, fields)
-            cls = type(str(name), bases, d)
+            cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
 

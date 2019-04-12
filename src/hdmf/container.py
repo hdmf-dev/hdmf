@@ -5,6 +5,8 @@ from .utils import docval, getargs
 
 class Container(with_metaclass(abc.ABCMeta, object)):
 
+    _fieldsname = '__fields__'
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'parent', 'type': 'Container', 'doc': 'the Container that holds this Container', 'default': None},
             {'name': 'container_source', 'type': str, 'doc': 'the source of this container', 'default': None})
