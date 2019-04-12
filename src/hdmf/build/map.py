@@ -143,26 +143,27 @@ class BuildManager(object):
 
     @docval({"name": "container", "type": Container, "doc": "the container to convert to a Builder"},
             {"name": "source", "type": str,
-             "doc": "the source of container being built i.e. file path", 'default': None})
+             "doc": "the source of container being built i.e. file path", 'default': None},
+            {"name": "spec_ext", "type": Spec, "doc": "the extending spec", 'default': None}) #pdb - add better documentation
     def build(self, **kwargs):
         """ Build the GroupBuilder for the given Container"""
         container = getargs('container', kwargs)
         container_id = self.__conthash__(container)
         result = self.__builders.get(container_id)
-        source = getargs('source', kwargs)
+        source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
             if container.container_source is None:
                 container.container_source = source
             else:
                 if container.container_source != source:
                     raise ValueError("Can't change container_source once set")
-            result = self.__type_map.build(container, self, source=source)
+            result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
         elif container.modified:
             if isinstance(result, GroupBuilder):
                 # TODO: if Datasets attributes are allowed to be modified, we need to
                 # figure out how to handle that starting here.
-                result = self.__type_map.build(container, self, builder=result, source=source)
+                result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
         return result
 
     @docval({"name": "container", "type": Container, "doc": "the Container to save as prebuilt"},
@@ -757,6 +758,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     def build(self, **kwargs):
         ''' Convert a Container to a Builder representation '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
+        spec_ext = getargs('spec_ext', kwargs)
         if container.name == 'timeseries':
             breakpoint()
         builder = getargs('builder', kwargs)
@@ -764,9 +766,25 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         if isinstance(self.__spec, GroupSpec):
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
-            self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
-            self.__add_groups(builder, self.__spec.groups, container, manager, source)
-            self.__add_links(builder, self.__spec.links, container, manager, source)
+            dkwargs = dict(builder=builder, container=container, build_manager=manager, source=source)
+            gkwargs = copy(dkwargs)
+            lkwargs = copy(dkwargs)
+            dkwargs['datasets'] = self.__spec.datasets
+            gkwargs['groups'] = self.__spec.groups
+            lkwargs['links'] = self.__spec.links
+            if spec_ext is not None:
+                dkwargs['extras'] = spec_ext.datasets
+                gkwargs['extras'] = spec_ext.groups
+                lkwargs['extras'] = spec_ext.links
+            if container.name == 'epochs':
+                breakpoint()
+            self.__add_datasets(**dkwargs)
+            self.__add_groups(**gkwargs)
+            self.__add_links(**lkwargs)
+
+            #self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
+            #self.__add_groups(builder, self.__spec.groups, container, manager, source)
+            #self.__add_links(builder, self.__spec.links, container, manager, source)
         else:
             if not isinstance(container, Data):
                 msg = "'container' must be of type Data with DatasetSpec"
@@ -923,7 +941,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             else:
                 return False
 
-    def __add_datasets(self, builder, datasets, container, build_manager, source):
+    def __add_datasets(self, builder, datasets, container, build_manager, source, extras=None):
         for spec in datasets:
             attr_value = self.get_attr_value(spec, container, build_manager)
             # TODO: add check for required datasets
@@ -1546,17 +1564,19 @@ class TypeMap(object):
              "doc": "the BuildManager to use for managing this build", 'default': None},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "builder", "type": GroupBuilder, "doc": "the Builder to build on", 'default': None})
+            {"name": "builder", "type": GroupBuilder, "doc": "the Builder to build on", 'default': None},
+            {"name": "spec_ext", "type": Spec, "doc": "a spec extension", 'default': None})
     def build(self, **kwargs):
         """ Build the GroupBuilder for the given Container"""
         container, manager, builder = getargs('container', 'manager', 'builder', kwargs)
+        spec_ext = getargs('spec_ext', kwargs)
         if manager is None:
             manager = BuildManager(self)
         attr_map = self.get_map(container)
         if attr_map is None:
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
         else:
-            builder = attr_map.build(container, manager, builder=builder, source=getargs('source', kwargs))
+            builder = attr_map.build(container, manager, builder=builder, source=getargs('source', kwargs), spec_ext=spec_ext)
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
         builder.set_attribute(attr_map.spec.type_key(), data_type)
