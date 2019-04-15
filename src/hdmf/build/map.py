@@ -415,6 +415,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
             return None, dt
+        if isinstance(spec.dtype, list):
+            return value, spec.dtype
         if isinstance(value, DataIO):
             return value, cls.convert_dtype(spec, value.data)[1]
         if spec.dtype is None:
