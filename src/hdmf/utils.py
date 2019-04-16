@@ -1,6 +1,7 @@
 import copy as _copy
 import itertools as _itertools
 from abc import ABCMeta
+import collections
 
 import h5py
 import numpy as np
@@ -131,6 +132,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     value_errors = list()
     argsi = 0
     extras = dict(kwargs)
+
+    # check for duplicates in docval
+    names = [x['name'] for x in validator]
+    duplicated = [item for item, count in collections.Counter(names).items() if count > 1]
+    if duplicated:
+        raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
         it = iter(validator)
         arg = next(it)

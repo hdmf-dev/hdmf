@@ -415,6 +415,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
             return None, dt
+        if isinstance(spec.dtype, list):
+            return value, spec.dtype
         if isinstance(value, DataIO):
             return value, cls.convert_dtype(spec, value.data)[1]
         if spec.dtype is None:
@@ -999,7 +1001,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     builder.set_link(LinkBuilder(rendered_obj, name, builder))
                 elif isinstance(spec, DatasetSpec):
                     if rendered_obj.dtype is None and spec.dtype is not None:
-                        val, dtype = self.convert_dtype(spec, None)
+                        val, dtype = self.convert_dtype(spec, rendered_obj.data)
                         rendered_obj.dtype = dtype
                     builder.set_dataset(rendered_obj)
                 else:
@@ -1289,26 +1291,22 @@ class TypeMap(object):
                     if container_type is not None:
                         return container_type
                 return Data, Container
-            elif spec.shape is None:
+            elif spec.shape is None and spec.dims is None:
                 return self._type_map.get(spec.dtype)
             else:
                 return 'array_data',
         elif isinstance(spec, LinkSpec):
             return Container
         else:
-            if spec.data_type_def is not None:
-                for namespace in self.namespace_catalog.namespaces:
-                    try:
-                        return self.get_container_cls(namespace, spec.data_type_def)
-                    except Exception:
-                        pass
-            if spec.data_type_inc is not None:
-                for namespace in self.namespace_catalog.namespaces:
-                    try:
-                        return self.get_container_cls(namespace, spec.data_type_def)
-                    except Exception:
-                        pass
-            return 'array_data', 'data'
+            if not (spec.data_type_inc is None and spec.data_type_inc is None):
+                if spec.name is not None:
+                    return (list, tuple, dict, set)
+                else:
+                    return Container
+            elif spec.shape is None and spec.dims is None:
+                return self._type_map.get(spec.dtype)
+            else:
+                return 'array_data', 'data'
 
     def __get_cls_dict(self, base, addl_fields):
         # TODO: fix this to be more maintainable and smarter
@@ -1324,17 +1322,20 @@ class TypeMap(object):
                 continue
             docval_args.append(arg)
         for f, field_spec in addl_fields.items():
-            dtype = self.__get_type(field_spec)
-            docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
-            docval_args.append(docval_arg)
-            if f not in existing_args:
-                new_args.append(f)
-            if issubclass(dtype, (Container, Data, DataRegion)):
-                fields.append({'name': f, 'child': True})
-            else:
-                fields.append(f)
+            if not f == 'help':
+                dtype = self.__get_type(field_spec)
+                docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+                if hasattr(field_spec, 'shape') and field_spec.shape is not None:
+                    docval_arg.update(shape=field_spec.shape)
+                if not field_spec.required:
+                    docval_arg['default'] = getattr(field_spec, 'default_value', None)
+                docval_args.append(docval_arg)
+                if f not in existing_args:
+                    new_args.append(f)
+                if issubclass(dtype, (Container, Data, DataRegion)):
+                    fields.append({'name': f, 'child': True})
+                else:
+                    fields.append(f)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
