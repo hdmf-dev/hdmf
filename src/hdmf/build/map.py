@@ -415,6 +415,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
             return None, dt
+        if isinstance(spec.dtype, list):
+            return value, spec.dtype
         if isinstance(value, DataIO):
             return value, cls.convert_dtype(spec, value.data)[1]
         if spec.dtype is None:
@@ -999,7 +1001,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     builder.set_link(LinkBuilder(rendered_obj, name, builder))
                 elif isinstance(spec, DatasetSpec):
                     if rendered_obj.dtype is None and spec.dtype is not None:
-                        val, dtype = self.convert_dtype(spec, None)
+                        val, dtype = self.convert_dtype(spec, rendered_obj.data)
                         rendered_obj.dtype = dtype
                     builder.set_dataset(rendered_obj)
                 else:
@@ -1289,7 +1291,7 @@ class TypeMap(object):
                     if container_type is not None:
                         return container_type
                 return (Data, Container)
-            elif spec.shape is None:
+            elif spec.shape is None and spec.dims is None:
                 return self._type_map.get(spec.dtype)
             else:
                 return ('array_data',)
@@ -1301,6 +1303,8 @@ class TypeMap(object):
                     return (list, tuple, dict, set)
                 else:
                     return Container
+            elif spec.shape is None and spec.dims is None:
+                return self._type_map.get(spec.dtype)
             else:
                 return ('array_data', 'data',)
 
@@ -1319,6 +1323,8 @@ class TypeMap(object):
             if not f == 'help':
                 dtype = self.__get_type(field_spec)
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+                if hasattr(field_spec, 'shape') and field_spec.shape is not None:
+                    docval_arg.update(shape=field_spec.shape)
                 if not field_spec.required:
                     docval_arg['default'] = getattr(field_spec, 'default_value', None)
                 docval_args.append(docval_arg)
