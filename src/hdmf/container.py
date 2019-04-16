@@ -1,9 +1,11 @@
 import abc
 from six import with_metaclass
-from .utils import docval, getargs
+from .utils import docval, getargs, ExtenderMeta
 
 
-class Container(with_metaclass(abc.ABCMeta, object)):
+class Container(with_metaclass(ExtenderMeta, object)):
+
+    _fieldsname = '__fields__'
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'parent', 'type': 'Container', 'doc': 'the Container that holds this Container', 'default': None},

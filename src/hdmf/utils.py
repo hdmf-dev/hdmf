@@ -549,7 +549,7 @@ def get_data_shape(data, strict_no_data_load=False):
 
     :param data: Array for which we should determine the shape.
     :type data: List, numpy.ndarray, DataChunkIterator, any object that support __len__ or .shape.
-    :param strict_no_data_load: In order to determin the shape of nested tuples and lists, this function
+    :param strict_no_data_load: In order to determine the shape of nested tuples and lists, this function
                 recursively inspects elements along the dimensions, assuming that the data has a regular,
                 rectangular shape. In the case of out-of-core iterators this means that the first item
                 along each dimensions would potentially be loaded into memory. By setting this option
@@ -580,7 +580,7 @@ def get_data_shape(data, strict_no_data_load=False):
 
 def pystr(s):
     """
-    Cross-version support for convertin a string of characters to Python str object
+    Cross-version support for converting a string of characters to Python str object
     """
     if six.PY2 and isinstance(s, six.text_type):
         return s.encode('ascii', 'ignore')
