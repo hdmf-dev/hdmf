@@ -795,7 +795,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 if self.__spec.dtype is None and self.__is_reftype(container.data):
                     bldr_data = list()
                     for d in container.data:
-                        bldr_data.append(ReferenceBuilder(manager.build(d)))
+                        if d is None:
+                            bldr_data.append(None)
+                        else:
+                            bldr_data.append(ReferenceBuilder(manager.build(d)))
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
                                              dtype='object')
                 else:

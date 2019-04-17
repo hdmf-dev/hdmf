@@ -884,12 +884,15 @@ class HDF5IO(HDMFIO):
             raise e
         return dset
 
-    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference'},
+    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
+             'default': None},
             {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
              'default': None},
             returns='the reference', rtype=Reference)
     def __get_ref(self, **kwargs):
         container, region = getargs('container', 'region', kwargs)
+        if container is None:
+            return None
         if isinstance(container, Builder):
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder
