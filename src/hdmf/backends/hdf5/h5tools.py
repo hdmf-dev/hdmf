@@ -659,6 +659,8 @@ class HDF5IO(HDMFIO):
                 except Exception as exc:
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise_from(Exception(msg), exc)
+                if data is None:
+                    pass #breakpoint()
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 builder.written = True
 
