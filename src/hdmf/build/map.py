@@ -144,7 +144,7 @@ class BuildManager(object):
     @docval({"name": "container", "type": Container, "doc": "the container to convert to a Builder"},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "spec_ext", "type": Spec, "doc": "the extending spec", 'default': None}) #pdb - add better documentation
+            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "the extending spec", 'default': None}) #pdb - add better documentation
     def build(self, **kwargs):
         """ Build the GroupBuilder for the given Container"""
         container = getargs('container', kwargs)
@@ -155,8 +155,11 @@ class BuildManager(object):
             if container.container_source is None:
                 container.container_source = source
             else:
-                if container.container_source != source:
-                    raise ValueError("Can't change container_source once set")
+                if source is None:
+                    source = container.container_source
+                else:
+                    if container.container_source != source:
+                        raise ValueError("Can't change container_source once set")
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
         elif container.modified:
@@ -418,7 +421,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         if isinstance(spec.dtype, list):
             # compound dtype - Since the I/O layer needs to determine how to handle these,
             # return the list of DtypeSpecs
-            return None, spec.dtype
+            return value, spec.dtype
         if isinstance(value, DataIO):
             return value, cls.convert_dtype(spec, value.data)[1]
         if spec.dtype is None:
@@ -427,6 +430,11 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             return value, None
         if type(value) in cls.__no_convert:
             return value, None
+        if isinstance(spec.dtype, RefSpec):
+            if not isinstance(value, ReferenceBuilder):
+                msg = "got RefSpec for value of type %s" % type(value)
+                raise ValueError(msg)
+            return value, spec.dtype
         if spec.dtype is not None and spec.dtype not in cls.__dtypes:
             msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
             raise ValueError(msg)
@@ -753,14 +761,14 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": GroupBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": Spec, "doc": "a spec extension", 'default': None},
+            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
             returns="the Builder representing the given Container", rtype=Builder)
     def build(self, **kwargs):
         ''' Convert a Container to a Builder representation '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
         spec_ext = getargs('spec_ext', kwargs)
         if container.name == 'timeseries':
-            breakpoint()
+            pass #breakpoint()
         builder = getargs('builder', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
@@ -776,8 +784,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 dkwargs['extras'] = spec_ext.datasets
                 gkwargs['extras'] = spec_ext.groups
                 lkwargs['extras'] = spec_ext.links
-            if container.name == 'epochs':
-                breakpoint()
             self.__add_datasets(**dkwargs)
             self.__add_groups(**gkwargs)
             self.__add_links(**lkwargs)
@@ -789,16 +795,29 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if not isinstance(container, Data):
                 msg = "'container' must be of type Data with DatasetSpec"
                 raise ValueError(msg)
-            if isinstance(self.spec.dtype, RefSpec):
-                bldr_data = self.__get_ref_builder(self.spec.dtype, self.spec.shape, container, manager)
-                try:
-                    bldr_data, dtype = self.convert_dtype(self.spec, bldr_data)
-                except Exception as ex:
-                    msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                    raise_from(Exception(msg), ex)
-                builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
-            elif isinstance(self.spec.dtype, list):
-                refs = [(i, subt) for i, subt in enumerate(self.spec.dtype) if isinstance(subt.dtype, RefSpec)]
+            spec_dtype = self.spec.dtype
+            spec_shape = self.spec.shape
+            spec = self.spec
+            if spec_ext is not None:
+                if spec_ext.dtype is not None:
+                    spec_dtype = spec_ext.dtype
+                if spec_ext.shape is not None:
+                    spec_shape = spec_ext.shape
+                spec = spec_ext
+            if isinstance(spec_dtype, RefSpec):
+                bldr_data = self.__get_ref_builder(spec_dtype, spec_shape, container, manager)
+                if container.name == 'electrode_group':
+                    #pass
+                    pass #breakpoint()
+                #try:
+                #    bldr_data, dtype = self.convert_dtype(spec, bldr_data)
+                #except Exception as ex:
+                #    msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
+                #    raise_from(Exception(msg), ex)
+                #builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
+                builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=spec_dtype.reftype)
+            elif isinstance(spec_dtype, list):
+                refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
                 bldr_data = copy(container.data)
                 bldr_data = list()
                 for i, row in enumerate(container.data):
@@ -807,10 +826,12 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         tmp[j] = self.__get_ref_builder(subt.dtype, None, row[j], manager)
                     bldr_data.append(tuple(tmp))
                 try:
-                    bldr_data, dtype = self.convert_dtype(self.spec, bldr_data)
+                    bldr_data, dtype = self.convert_dtype(spec, bldr_data)
                 except Exception as ex:
                     msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                     raise_from(Exception(msg), ex)
+                if container.name == 'timeseries':
+                    pass #breakpoint()
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
             else:
                 if self.__spec.dtype is None and self.__is_reftype(container.data):
@@ -821,7 +842,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                                              dtype='object')
                 else:
                     try:
-                        bldr_data, dtype = self.convert_dtype(self.spec, container.data)
+                        bldr_data, dtype = self.convert_dtype(spec, container.data)
                     except Exception as ex:
                         msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                         raise_from(Exception(msg), ex)
@@ -843,7 +864,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if tmptmp is not None:
                 break
             else:
-                tmp = tmp[0]
+                if len(tmp) == 0:
+                    tmp = None
+                else:
+                    tmp = tmp[0]
         if isinstance(tmp, Container):
             return True
         else:
@@ -862,15 +886,24 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 for d in container.data:
                     bldr_data.append(RegionBuilder(d.slice, manager.build(d.target)))
         else:
-            if shape is None:
-                if isinstance(container, Container):
-                    bldr_data = ReferenceBuilder(manager.build(container))
-                else:
-                    bldr_data = ReferenceBuilder(manager.build(container.data))
-            else:
+            if isinstance(container, Data):
                 bldr_data = list()
-                for d in container.data:
-                    bldr_data.append(ReferenceBuilder(manager.build(d.target)))
+                if self.__is_reftype(container.data):
+                    for d in container.data:
+                        bldr_data.append(ReferenceBuilder(manager.build(d)))
+            else:
+                bldr_data = ReferenceBuilder(manager.build(container))
+
+
+            #if shape is None:
+            #    if isinstance(container, Data):
+            #        bldr_data = ReferenceBuilder(manager.build(container))
+            #    else:
+            #        bldr_data = ReferenceBuilder(manager.build(container.data))
+            #else:
+            #    bldr_data = list()
+            #    for d in container.data:
+            #        bldr_data.append(ReferenceBuilder(manager.build(d.target)))
         return bldr_data
 
     def __is_null(self, item):
@@ -898,9 +931,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     else:
                         msg = "invalid type for reference '%s' (%s) - must be Container" % (spec.name, type(attr_value))
                     raise ValueError(msg)
-                #TODO: this is where the TimeSeriesIndex build starts
-                if attr_value.name == 'timeseries':
-                    breakpoint()
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
             else:
@@ -921,7 +951,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
 
             builder.set_attribute(spec.name, attr_value)
 
-    def __add_links(self, builder, links, container, build_manager, source):
+    def __add_links(self, builder, links, container, build_manager, source, extras=None):
         for spec in links:
             attr_value = self.get_attr_value(spec, container, build_manager)
             if not attr_value:
@@ -943,14 +973,17 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
 
     def __add_datasets(self, builder, datasets, container, build_manager, source, extras=None):
         for spec in datasets:
+            if spec.name == 'timeseries':
+                pass #breakpoint()
             attr_value = self.get_attr_value(spec, container, build_manager)
-            # TODO: add check for required datasets
             if self.__is_empty(attr_value):
                 if spec.required:
                     msg = "dataset '%s' for '%s' of type (%s)"\
                                   % (spec.name, builder.name, self.spec.data_type_def)
                     warnings.warn(msg, MissingRequiredWarning)
-                continue
+                if attr_value is None:
+                    continue
+                #continue
             if isinstance(attr_value, Builder):
                 builder.set_builder(attr_value)
             elif spec.data_type_def is None and spec.data_type_inc is None:
@@ -968,7 +1001,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             else:
                 self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
-    def __add_groups(self, builder, groups, container, build_manager, source):
+    def __add_groups(self, builder, groups, container, build_manager, source, extras=None):
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:
                 # we don't need to get attr_name since any named
@@ -1017,7 +1050,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                                  builder.name, self.spec.data_type_def)
                 warnings.warn(msg, OrphanContainerWarning)
             if value.modified:                   # writing a new container
-                rendered_obj = build_manager.build(value, source=source)
+                if isinstance(spec, BaseStorageSpec):
+                    rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
+                else:
+                    rendered_obj = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5
                 # object this Container corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
@@ -1033,7 +1069,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             elif value.container_source:        # make a link to an existing container
                 if value.container_source != parent_container.container_source or\
                    value.parent is not parent_container:
-                    rendered_obj = build_manager.build(value, source=source)
+                    if isinstance(spec, BaseStorageSpec):
+                        rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
+                    else:
+                        rendered_obj = build_manager.build(value, source=source)
                     builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
             else:
                 raise ValueError("Found unmodified Container with no source - '%s' with parent '%s'" %
@@ -1565,7 +1604,7 @@ class TypeMap(object):
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": GroupBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": Spec, "doc": "a spec extension", 'default': None})
+            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None})
     def build(self, **kwargs):
         """ Build the GroupBuilder for the given Container"""
         container, manager, builder = getargs('container', 'manager', 'builder', kwargs)
