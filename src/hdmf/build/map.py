@@ -550,6 +550,12 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         return builder.name
 
     @classmethod
+    def camel2underscore(cls, name):
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+        name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        return name
+
+    @classmethod
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to get the name for'})
     def convert_dt_name(cls, **kwargs):
         '''Get the attribute name corresponding to a specification'''
@@ -560,8 +566,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             name = spec.data_type_inc
         else:
             raise ValueError('found spec without name or data_type')
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        name = cls.camel2underscore(name)
         if name[-1] != 's' and spec.is_many():
             name += 's'
         return name
@@ -1324,6 +1329,7 @@ class TypeMap(object):
             if arg['name'] in addl_fields:
                 continue
             docval_args.append(arg)
+        clsconf = []
         for f, field_spec in addl_fields.items():
             if not f == 'help':
                 dtype = self.__get_type(field_spec)
@@ -1337,6 +1343,20 @@ class TypeMap(object):
                     new_args.append(f)
                 if issubclass(dtype, (Container, Data, DataRegion)):
                     fields.append({'name': f, 'child': True})
+                    if hasattr(field_spec, 'quantity') and field_spec.quantity == '*':
+                        if field_spec.data_type_def is not None:
+                            name = field_spec.data_type_def
+                        elif field_spec.data_type_inc is not None:
+                            name = field_spec.data_type_inc
+                        else:
+                            raise ValueError('no neurodata type defined for {}'.format(f))
+                        attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
+                        attr_name = ObjectMapper.camel2underscore(name)
+                        clsconf.append({'attr': attr_name_pl,
+                                        'type': name,
+                                        'add': 'add_' + attr_name,
+                                        'get': 'get_' + attr_name,
+                                        'create': 'create_' + attr_name})
                 else:
                     fields.append(f)
 
@@ -1347,7 +1367,10 @@ class TypeMap(object):
             for f in new_args:
                 setattr(self, f, kwargs.get(f, None))
 
-        return {'__init__': __init__, base._fieldsname: tuple(fields)}
+        cls_dict = {'__init__': __init__, base._fieldsname: tuple(fields)}
+        if clsconf:
+            cls_dict.update(__clsconf__=clsconf)
+        return cls_dict
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a Container class for"},
@@ -1387,6 +1410,8 @@ class TypeMap(object):
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
             d = self.__get_cls_dict(parent_cls, fields)
+            if '__clsconf__' in d:
+                bases = tuple(list(bases) + ['MultiContainerInterface'])
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
