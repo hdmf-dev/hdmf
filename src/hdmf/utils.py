@@ -1,6 +1,7 @@
 import copy as _copy
 import itertools as _itertools
 from abc import ABCMeta
+import collections
 
 import h5py
 import numpy as np
@@ -131,6 +132,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     value_errors = list()
     argsi = 0
     extras = dict(kwargs)
+
+    # check for duplicates in docval
+    names = [x['name'] for x in validator]
+    duplicated = [item for item, count in collections.Counter(names).items() if count > 1]
+    if duplicated:
+        raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
         it = iter(validator)
         arg = next(it)
@@ -542,7 +549,7 @@ def get_data_shape(data, strict_no_data_load=False):
 
     :param data: Array for which we should determine the shape.
     :type data: List, numpy.ndarray, DataChunkIterator, any object that support __len__ or .shape.
-    :param strict_no_data_load: In order to determin the shape of nested tuples and lists, this function
+    :param strict_no_data_load: In order to determine the shape of nested tuples and lists, this function
                 recursively inspects elements along the dimensions, assuming that the data has a regular,
                 rectangular shape. In the case of out-of-core iterators this means that the first item
                 along each dimensions would potentially be loaded into memory. By setting this option
@@ -573,7 +580,7 @@ def get_data_shape(data, strict_no_data_load=False):
 
 def pystr(s):
     """
-    Cross-version support for convertin a string of characters to Python str object
+    Cross-version support for converting a string of characters to Python str object
     """
     if six.PY2 and isinstance(s, six.text_type):
         return s.encode('ascii', 'ignore')

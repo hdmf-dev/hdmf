@@ -33,7 +33,7 @@ class HDF5IO(HDMFIO):
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-")'},
-            {'name': 'comm', 'type': 'Intracom',
+            {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
     def __init__(self, **kwargs):
@@ -393,7 +393,11 @@ class HDF5IO(HDMFIO):
     def open(self):
         if self.__file is None:
             open_flag = self.__mode
-            self.__file = File(self.__path, open_flag)
+            if self.comm:
+                kwargs = {'driver': 'mpio', 'comm': self.comm}
+            else:
+                kwargs = {}
+            self.__file = File(self.__path, open_flag, **kwargs)
 
     def close(self):
         if self.__file is not None:
@@ -588,7 +592,10 @@ class HDF5IO(HDMFIO):
         if parent.file.filename == target_builder.source:
             link_obj = SoftLink(path)
         elif target_builder.source is not None:
-            link_obj = ExternalLink(target_builder.source, path)
+            target_filename = os.path.abspath(target_builder.source)
+            parent_filename = os.path.abspath(parent.file.filename)
+            relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
+            link_obj = ExternalLink(relative_path, path)
         else:
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
@@ -879,12 +886,15 @@ class HDF5IO(HDMFIO):
             raise e
         return dset
 
-    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference'},
+    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
+             'default': None},
             {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
              'default': None},
             returns='the reference', rtype=Reference)
     def __get_ref(self, **kwargs):
         container, region = getargs('container', 'region', kwargs)
+        if container is None:
+            return None
         if isinstance(container, Builder):
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder

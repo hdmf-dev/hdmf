@@ -370,6 +370,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         "uint32": np.uint32,
         "uint16": np.uint16,
         "uint8": np.uint8,
+        "uint": np.uint32
     }
 
     __no_convert = set()
@@ -725,7 +726,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
-                if spec.shape is not None:
+                if spec.shape is not None or spec.dims is not None:
                     ret = list(map(text_type, value))
                 else:
                     ret = text_type(value)
@@ -743,7 +744,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     elif 'isodatetime' in spec.dtype:
                         string_type = datetime.isoformat
                     if string_type is not None:
-                        if spec.dims is not None:
+                        if spec.shape is not None or spec.dims is not None:
                             ret = list(map(string_type, value))
                         else:
                             ret = string_type(value)
@@ -838,7 +839,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 if self.__spec.dtype is None and self.__is_reftype(container.data):
                     bldr_data = list()
                     for d in container.data:
-                        bldr_data.append(ReferenceBuilder(manager.build(d)))
+                        if d is None:
+                            bldr_data.append(None)
+                        else:
+                            bldr_data.append(ReferenceBuilder(manager.build(d)))
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
                                              dtype='object')
                 else:
@@ -1060,7 +1064,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     builder.set_link(LinkBuilder(rendered_obj, name, builder))
                 elif isinstance(spec, DatasetSpec):
                     if rendered_obj.dtype is None and spec.dtype is not None:
-                        val, dtype = self.convert_dtype(spec, None)
+                        val, dtype = self.convert_dtype(spec, rendered_obj.data)
                         rendered_obj.dtype = dtype
                     builder.set_dataset(rendered_obj)
                 else:
@@ -1352,11 +1356,11 @@ class TypeMap(object):
                     container_type = val.get(tgttype)
                     if container_type is not None:
                         return container_type
-                return (Data, Container)
-            elif spec.shape is None:
+                return Data, Container
+            elif spec.shape is None and spec.dims is None:
                 return self._type_map.get(spec.dtype)
             else:
-                return ('array_data',)
+                return 'array_data',
         elif isinstance(spec, LinkSpec):
             return Container
         else:
@@ -1365,42 +1369,48 @@ class TypeMap(object):
                     return (list, tuple, dict, set)
                 else:
                     return Container
+            elif spec.shape is None and spec.dims is None:
+                return self._type_map.get(spec.dtype)
             else:
-                return ('array_data', 'data',)
+                return 'array_data', 'data'
 
-    def __get_constructor(self, base, addl_fields):
+    def __get_cls_dict(self, base, addl_fields):
         # TODO: fix this to be more maintainable and smarter
+        if base is None:
+            raise ValueError('cannot generate class without base class')
         existing_args = set()
         docval_args = list()
         new_args = list()
-        if base is not None:
-            for arg in get_docval(base.__init__):
-                existing_args.add(arg['name'])
-                if arg['name'] in addl_fields:
-                    continue
-                docval_args.append(arg)
+        fields = list()
+        for arg in get_docval(base.__init__):
+            existing_args.add(arg['name'])
+            if arg['name'] in addl_fields:
+                continue
+            docval_args.append(arg)
         for f, field_spec in addl_fields.items():
-            dtype = self.__get_type(field_spec)
-            docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
-            docval_args.append(docval_arg)
-            if f not in existing_args:
-                new_args.append(f)
-        if base is None:
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                for f in new_args:
-                    setattr(self, f, kwargs.get(f, None))
-            return __init__
-        else:
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-                super(type(self), self).__init__(*pargs, **pkwargs)
-                for f in new_args:
-                    setattr(self, f, kwargs.get(f, None))
-            return __init__
+            if not f == 'help':
+                dtype = self.__get_type(field_spec)
+                docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+                if hasattr(field_spec, 'shape') and field_spec.shape is not None:
+                    docval_arg.update(shape=field_spec.shape)
+                if not field_spec.required:
+                    docval_arg['default'] = getattr(field_spec, 'default_value', None)
+                docval_args.append(docval_arg)
+                if f not in existing_args:
+                    new_args.append(f)
+                if issubclass(dtype, (Container, Data, DataRegion)):
+                    fields.append({'name': f, 'child': True})
+                else:
+                    fields.append(f)
+
+        @docval(*docval_args)
+        def __init__(self, **kwargs):
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+            super(type(self), self).__init__(*pargs, **pkwargs)
+            for f in new_args:
+                setattr(self, f, kwargs.get(f, None))
+
+        return {'__init__': __init__, base._fieldsname: tuple(fields)}
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a Container class for"},
@@ -1421,7 +1431,6 @@ class TypeMap(object):
                 parent_cls = self.__get_container_cls(namespace, t)
                 if parent_cls is not None:
                     break
-            bases = tuple()
             if parent_cls is not None:
                 bases = (parent_cls,)
             else:
@@ -1432,14 +1441,16 @@ class TypeMap(object):
                 else:
                     raise ValueError("Cannot generate class from %s" % type(spec))
                 parent_cls = bases[0]
+            if type(parent_cls) is not ExtenderMeta:
+                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
             name = data_type
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             fields = dict()
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = {'__init__': self.__get_constructor(parent_cls, fields)}
-            cls = type(str(name), bases, d)
+            d = self.__get_cls_dict(parent_cls, fields)
+            cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
 

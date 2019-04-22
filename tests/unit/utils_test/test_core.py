@@ -317,6 +317,16 @@ class TestDocValidator(unittest.TestCase):
         with self.assertRaises(ValueError):
             method(self, arg1=[[1, 1]])
 
+    def test_catch_duplicate_names(self):
+        @docval({'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape'},
+                {'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape'})
+        def method(self, **kwargs):
+            pass
+        with self.assertRaises(ValueError) as cm:
+            method(self, arg1=[1])
+        msg = "The following names are duplicated: ['arg1']"
+        self.assertEqual(cm.exception.args[0], msg)
+
 
 if __name__ == '__main__':
     unittest.main()
