@@ -434,6 +434,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if not isinstance(value, ReferenceBuilder):
                 msg = "got RefSpec for value of type %s" % type(value)
                 raise ValueError(msg)
+            breakpoint()
             return value, spec.dtype
         if spec.dtype is not None and spec.dtype not in cls.__dtypes:
             msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
@@ -973,8 +974,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
 
     def __add_datasets(self, builder, datasets, container, build_manager, source, extras=None):
         for spec in datasets:
-            if spec.name == 'timeseries':
-                pass #breakpoint()
             attr_value = self.get_attr_value(spec, container, build_manager)
             if self.__is_empty(attr_value):
                 if spec.required:
