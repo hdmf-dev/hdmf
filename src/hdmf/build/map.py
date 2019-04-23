@@ -1410,7 +1410,7 @@ class TypeMap(object):
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
             d = self.__get_cls_dict(parent_cls, fields)
-            if '__clsconf__' in d:
+            if any(hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+') for field in addl_fields):
                 bases = tuple(list(bases) + ['MultiContainerInterface'])
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
