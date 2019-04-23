@@ -1343,7 +1343,7 @@ class TypeMap(object):
                     new_args.append(f)
                 if issubclass(dtype, (Container, Data, DataRegion)):
                     fields.append({'name': f, 'child': True})
-                    if hasattr(field_spec, 'quantity') and field_spec.quantity == '*':
+                    if hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+'):
                         if field_spec.data_type_def is not None:
                             name = field_spec.data_type_def
                         elif field_spec.data_type_inc is not None:
