@@ -1359,6 +1359,19 @@ class TypeMap(object):
             else:
                 return 'array_data', 'data'
 
+    def __ischild(self, dtype):
+        """
+        Check if dtype represents a type that is a child
+        """
+        ret = False
+        if isinstance(dtype, tuple):
+            for sub in dtype:
+                ret = ret or self.__ischild(sub)
+        else:
+            if isinstance(dtype, type) and issubclass(dtype, (Container, Data, DataRegion)):
+                ret = True
+        return ret
+
     def __get_cls_dict(self, base, addl_fields):
         # TODO: fix this to be more maintainable and smarter
         if base is None:
@@ -1383,7 +1396,7 @@ class TypeMap(object):
                 docval_args.append(docval_arg)
                 if f not in existing_args:
                     new_args.append(f)
-                if issubclass(dtype, (Container, Data, DataRegion)):
+                if self.__ischild(dtype):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
