@@ -1349,7 +1349,7 @@ class TypeMap(object):
                         elif field_spec.data_type_inc is not None:
                             name = field_spec.data_type_inc
                         else:
-                            raise ValueError('no neurodata type defined for {}'.format(f))
+                            raise ValueError('no hdmf data type defined for {}'.format(f))
                         attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
                         attr_name = ObjectMapper.camel2underscore(name)
                         clsconf.append({'attr': attr_name_pl,
