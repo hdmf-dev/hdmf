@@ -343,11 +343,11 @@ class HDF5IO(HDMFIO):
                 kwargs["data"] = scalar
         elif ndims == 1:
             d = None
-            if h5obj.dtype.kind == 'O':    # read list of strings or list of references
+            if h5obj.dtype.kind == 'O':
                 elem1 = h5obj[0]
                 if isinstance(elem1, (text_type, binary_type)):
-                    d = h5obj[()]
-                elif isinstance(elem1, RegionReference):
+                    d = h5obj
+                elif isinstance(elem1, RegionReference):  # read list of references
                     d = H5RegionDataset(h5obj, self)
                 elif isinstance(elem1, Reference):
                     d = H5ReferenceDataset(h5obj, self)
