@@ -267,9 +267,9 @@ class HDF5IO(HDMFIO):
             name = str(os.path.basename(h5obj.name))
         for k in h5obj:
             sub_h5obj = h5obj.get(k)
-            if sub_h5obj.name in ignore:
-                continue
             if not (sub_h5obj is None):
+                if sub_h5obj.name in ignore:
+                    continue
                 link_type = h5obj.get(k, getlink=True)
                 if isinstance(link_type, SoftLink) or isinstance(link_type, ExternalLink):
                     # Reading links might be better suited in its own function
