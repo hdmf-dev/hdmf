@@ -6,6 +6,7 @@ from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 from six import with_metaclass, raise_from, text_type, binary_type, integer_types
+from inspect import isclass
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, call_docval_func
 from ..container import Container, Data, DataRegion
@@ -1335,7 +1336,9 @@ class TypeMap(object):
                 docval_args.append(docval_arg)
                 if f not in existing_args:
                     new_args.append(f)
-                if issubclass(dtype, (Container, Data, DataRegion)):
+                if not isinstance(dtype, tuple):
+                    dtype = (dtype,)
+                if any(isclass(x) and issubclass(x, (Container, Data, DataRegion)) for x in dtype):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
