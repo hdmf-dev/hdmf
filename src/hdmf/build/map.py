@@ -1400,11 +1400,15 @@ class TypeMap(object):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
+        if 'name' in field_spec:
+            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
             pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            super(type(self), self).__init__(*pargs, **pkwargs)
+            if 'name' in field_spec:
+                pargs.insert(0, field_spec['name'])
+            base.__init__(self, *pargs, **pkwargs)
             for f in new_args:
                 setattr(self, f, kwargs.get(f, None))
 
