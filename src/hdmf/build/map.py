@@ -1404,7 +1404,7 @@ class TypeMap(object):
         @docval(*docval_args)
         def __init__(self, **kwargs):
             pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            super(base, self).__init__(*pargs, **pkwargs)
+            base.__init__(self, *pargs, **pkwargs) # call function like a method
             for f in new_args:
                 setattr(self, f, kwargs.get(f, None))
 
