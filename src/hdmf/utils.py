@@ -264,10 +264,9 @@ def fmt_docval_args(func, kwargs):
     if func_docval:
         for arg in func_docval[__docval_args_loc]:
             val = kwargs_copy.pop(arg['name'], None)
-            if 'default' in arg:
-                if val is not None:
-                    ret_kwargs[arg['name']] = val
-            else:
+            if val is not None:
+                ret_kwargs[arg['name']] = val
+            elif 'default' not in arg:
                 ret_args.append(val)
         if func_docval['allow_extra']:
             ret_kwargs.update(kwargs_copy)
