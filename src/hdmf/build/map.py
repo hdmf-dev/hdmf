@@ -1372,7 +1372,7 @@ class TypeMap(object):
                 ret = True
         return ret
 
-    def __get_cls_dict(self, base, addl_fields, name=None):
+    def __get_cls_dict(self, base, addl_fields):
         # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
@@ -1400,15 +1400,11 @@ class TypeMap(object):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
-        if name is not None:
-            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
             pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            if name is not None:
-                pargs.insert(0, name)
-            base.__init__(self, *pargs, **pkwargs)
+            super(type(self), self).__init__(*pargs, **pkwargs)
             for f in new_args:
                 setattr(self, f, kwargs.get(f, None))
 
@@ -1451,7 +1447,7 @@ class TypeMap(object):
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = self.__get_cls_dict(parent_cls, fields, spec.name)
+            d = self.__get_cls_dict(parent_cls, fields)
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
