@@ -431,6 +431,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 ret = np.asarray(value).astype(dtype_func)
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
+            if len(value) == 0:
+                return value, spec['dtype']
             ret = list()
             for elem in value:
                 tmp, tmp_dtype = cls.convert_dtype(spec, elem)
