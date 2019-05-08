@@ -200,6 +200,42 @@ class TestDynamicContainer(unittest.TestCase):
         self.assertEqual(inst.attr3, 98.6)
         self.assertEqual(inst.attr4, 1.0)
 
+    def test_dynamic_container_constructor_name(self):
+        # name is specified in spec and cannot be changed
+        baz_spec = GroupSpec('A test extension with no Container class',
+                             data_type_def='Baz', data_type_inc=self.bar_spec,
+                             name='A fixed name',
+                             attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+
+        with self.assertRaises(TypeError):
+            inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+
+        inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        self.assertEqual(inst.name, 'A fixed name')
+        self.assertEqual(inst.data, [1, 2, 3, 4])
+        self.assertEqual(inst.attr1, 'string attribute')
+        self.assertEqual(inst.attr2, 1000)
+        self.assertEqual(inst.attr3, 98.6)
+        self.assertEqual(inst.attr4, 1.0)
+
+    def test_dynamic_container_constructor_name_default_name(self):
+        # if both name and default_name are specified, name should be used
+        with self.assertWarns(Warning):
+            baz_spec = GroupSpec('A test extension with no Container class',
+                                 data_type_def='Baz', data_type_inc=self.bar_spec,
+                                 name='A fixed name',
+                                 default_name='A default name',
+                                 attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                             AttributeSpec('attr4', 'another example float attribute', 'float')])
+            self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+            cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+
+            inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            self.assertEqual(inst.name, 'A fixed name')
+
     def test_dynamic_container_composition(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
                               data_type_inc=self.bar_spec,
