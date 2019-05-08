@@ -1407,7 +1407,7 @@ class TypeMap(object):
         def __init__(self, **kwargs):
             pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
             if name is not None:
-                pargs.insert(0, name)
+                pkwargs.update(name=name)
             base.__init__(self, *pargs, **pkwargs)
             for f in new_args:
                 setattr(self, f, kwargs.get(f, None))
