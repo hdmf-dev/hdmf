@@ -319,6 +319,14 @@ class TestObjectMapperNoNesting(TestObjectMapper):
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
 
+    def test_build_empty(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        container = Bar('my_bar', [], 'value1', 10)
+        builder = self.mapper.build(container, self.manager)
+        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
+                                attributes={'attr1': 'value1', 'attr2': 10})
+        self.assertDictEqual(builder, expected)
+
     def test_construct(self):
         builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
                                attributes={'attr1': 'value1', 'attr2': 10, 'data_type': 'Bar',
