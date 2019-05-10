@@ -285,7 +285,7 @@ class HDF5IO(HDMFIO):
                         else:
                             builder = self.__read_group(sub_h5obj, builder_name, ignore=ignore)
                         self.__set_built(sub_h5obj.file.filename, target_path, builder)
-                    link_builder = LinkBuilder(builder, k, source=self.__path)
+                    link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
                     link_builder.written = True
                     kwargs['links'][builder_name] = link_builder
                 else:
@@ -306,7 +306,7 @@ class HDF5IO(HDMFIO):
                 warnings.warn('Broken Link: %s' % os.path.join(h5obj.name, k))
                 kwargs['datasets'][k] = None
                 continue
-        kwargs['source'] = self.__path
+        kwargs['source'] = h5obj.file.filename
         ret = GroupBuilder(name, **kwargs)
         ret.written = True
         return ret
@@ -323,7 +323,7 @@ class HDF5IO(HDMFIO):
 
         if name is None:
             name = str(os.path.basename(h5obj.name))
-        kwargs['source'] = self.__path
+        kwargs['source'] = h5obj.file.filename
         ndims = len(h5obj.shape)
         if ndims == 0:                                       # read scalar
             scalar = h5obj[()]
