@@ -1,7 +1,7 @@
 import abc
 from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta
-
+from warnings import warn
 
 class Container(with_metaclass(ExtenderMeta, object)):
 
@@ -15,7 +15,11 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
+
         self.__parent = getargs('parent', kwargs)
+        if self.parent is not None:
+            self.parent.add_child(self)
+
         self.__container_source = getargs('container_source', kwargs)
         self.__children = list()
         self.__modified = True
@@ -43,10 +47,13 @@ class Container(with_metaclass(ExtenderMeta, object)):
              'doc': 'the child Container for this Container', 'default': None})
     def add_child(self, **kwargs):
         child = getargs('child', kwargs)
-        self.__children.append(child)
-        self.set_modified()
-        if not isinstance(child.parent, Container):
-            child.parent = self
+        if child is not None:
+            self.__children.append(child)
+            self.set_modified()
+            if not isinstance(child.parent, Container):
+                child.parent = self
+        else:
+            warn('cannot add None as child to a container %s' % self.name)
 
     @classmethod
     def type_hierarchy(cls):
@@ -87,6 +94,9 @@ class Container(with_metaclass(ExtenderMeta, object)):
             else:
                 if parent_container is None:
                     raise ValueError("got None for parent of '%s' - cannot overwrite Proxy with NoneType" % self.name)
+                # TODO this assumes isinstance(parent_container, Proxy) but
+                # circular import if we try to do that. Proxy would need to move
+                # or Container extended with this functionality in build/map.py
                 if self.__parent.matches(parent_container):
                     self.__parent = parent_container
                 else:
