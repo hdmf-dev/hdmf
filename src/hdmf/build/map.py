@@ -8,7 +8,7 @@ from datetime import datetime
 from six import with_metaclass, raise_from, text_type, binary_type, integer_types
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, call_docval_func
-from ..container import Container, Data, DataRegion
+from ..container import Container, Data, DataRegion, MultiContainerInterface
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec,\
                    SpecReader
 from ..data_utils import DataIO, AbstractDataChunkIterator
@@ -1411,7 +1411,7 @@ class TypeMap(object):
                     fields[k] = field_spec
             d = self.__get_cls_dict(parent_cls, fields)
             if '__clsconf__' in d:
-                bases = tuple(list(bases) + ['MultiContainerInterface'])
+                bases = tuple(list(bases) + [MultiContainerInterface])
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
