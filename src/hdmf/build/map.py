@@ -1343,13 +1343,13 @@ class TypeMap(object):
                     new_args.append(f)
                 if issubclass(dtype, (Container, Data, DataRegion)):
                     fields.append({'name': f, 'child': True})
-                    if hasattr(field_spec, 'quantity') and field_spec.quantity == '*':
+                    if hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+'):
                         if field_spec.data_type_def is not None:
                             name = field_spec.data_type_def
                         elif field_spec.data_type_inc is not None:
                             name = field_spec.data_type_inc
                         else:
-                            raise ValueError('no neurodata type defined for {}'.format(f))
+                            raise ValueError('no hdmf data type defined for {}'.format(f))
                         attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
                         attr_name = ObjectMapper.camel2underscore(name)
                         clsconf.append({'attr': attr_name_pl,
@@ -1410,7 +1410,7 @@ class TypeMap(object):
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
             d = self.__get_cls_dict(parent_cls, fields)
-            if '__clsconf__' in d:
+            if any(hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+') for field in addl_fields):
                 bases = tuple(list(bases) + [MultiContainerInterface])
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
