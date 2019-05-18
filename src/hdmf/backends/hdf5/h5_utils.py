@@ -140,7 +140,10 @@ class H5SpecWriter(SpecWriter):
 
     def __write(self, d, name):
         data = self.stringify(d)
-        dset = self.__group.create_dataset(name, data=data, dtype=self.__str_type)
+        if name in self.__group:  # handle append mode
+            dset = self.__group[name]
+        else:
+            dset = self.__group.create_dataset(name, data=data, dtype=self.__str_type)
         return dset
 
     def write_spec(self, spec, path):
