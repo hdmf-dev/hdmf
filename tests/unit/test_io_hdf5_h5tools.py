@@ -616,14 +616,14 @@ class HDF5IOInitNoFileTest(unittest.TestCase):
     def test_init_no_file_r(self):
         self.path = "test_init_nofile_r.h5"
         with self.assertRaisesRegex(UnsupportedOperation,
-                                    "Unable to open file %s in 'r' mode\. File does not exist\."
+                                    r"Unable to open file %s in 'r' mode\. File does not exist\."
                                     % re.escape(self.path)):
             HDF5IO(self.path, mode='r')
 
     def test_init_no_file_rplus(self):
         self.path = "test_init_nofile_rplus.h5"
         with self.assertRaisesRegex(UnsupportedOperation,
-                                    "Unable to open file %s in 'r\+' mode\. File does not exist\."
+                                    r"Unable to open file %s in 'r\+' mode\. File does not exist\."
                                     % re.escape(self.path)):
             HDF5IO(self.path, mode='r+')
 
@@ -661,7 +661,7 @@ class HDF5IOInitFileExistsTest(unittest.TestCase):
 
     def test_init_wminus_file_exists(self):
         with self.assertRaisesRegex(UnsupportedOperation,
-                                    "Unable to open file %s in 'w-' mode\. File already exists\."
+                                    r"Unable to open file %s in 'w-' mode\. File already exists\."
                                     % re.escape(self.path)):
             self.io = HDF5IO(self.path, mode='w-')
 
@@ -698,21 +698,21 @@ class HDF5IOReadNoDataTest(unittest.TestCase):
     def test_read_no_data_r(self):
         self.io = HDF5IO(self.path, mode='r')
         with self.assertRaisesRegex(UnsupportedOperation,
-                                    "Cannot read data from file %s in mode 'r'\. There are no values\."
+                                    r"Cannot read data from file %s in mode 'r'\. There are no values\."
                                     % re.escape(self.path)):
             self.io.read()
 
     def test_read_no_data_rplus(self):
         self.io = HDF5IO(self.path, mode='r+')
         with self.assertRaisesRegex(UnsupportedOperation,
-                                    "Cannot read data from file %s in mode 'r\+'\. There are no values\."
+                                    r"Cannot read data from file %s in mode 'r\+'\. There are no values\."
                                     % re.escape(self.path)):
             self.io.read()
 
     def test_read_no_data_a(self):
         self.io = HDF5IO(self.path, mode='a')
         with self.assertRaisesRegex(UnsupportedOperation,
-                                    "Cannot read data from file %s in mode 'a'\. There are no values\."
+                                    r"Cannot read data from file %s in mode 'a'\. There are no values\."
                                     % re.escape(self.path)):
             self.io.read()
 
@@ -754,7 +754,7 @@ class HDF5IOReadData(unittest.TestCase):
     def test_read_file_w(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
             with self.assertRaisesRegex(UnsupportedOperation,
-                                        "Cannot read from file %s in mode 'w'. Please use mode 'r', 'r\+', or 'a'\."
+                                        r"Cannot read from file %s in mode 'w'. Please use mode 'r', 'r\+', or 'a'\."
                                         % re.escape(self.path)):
                 read_foofile1 = io.read()
                 self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
@@ -819,7 +819,7 @@ class HDF5IOWriteFileExists(unittest.TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaisesRegex(ValueError, "Unable to create group \(name already exists\)"):
+            with self.assertRaisesRegex(ValueError, r"Unable to create group \(name already exists\)"):
                 io.write(self.foofile2)
 
     def test_write_a(self):
@@ -827,7 +827,7 @@ class HDF5IOWriteFileExists(unittest.TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaisesRegex(ValueError, "Unable to create group \(name already exists\)"):
+            with self.assertRaisesRegex(ValueError, r"Unable to create group \(name already exists\)"):
                 io.write(self.foofile2)
 
     # TODO the file contains broken links and no data
@@ -846,8 +846,8 @@ class HDF5IOWriteFileExists(unittest.TestCase):
     def test_write_r(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             with self.assertRaisesRegex(UnsupportedOperation,
-                                        ("Cannot write to file %s in mode 'r'\. " +
-                                            "Please use mode 'r\+', 'w', 'w-', or 'a'")
+                                        (r"Cannot write to file %s in mode 'r'\. " +
+                                            r"Please use mode 'r\+', 'w', 'w-', or 'a'")
                                         % re.escape(self.path)):
                 io.write(self.foofile2)
 
