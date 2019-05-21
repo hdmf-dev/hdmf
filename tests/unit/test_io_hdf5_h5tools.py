@@ -571,7 +571,7 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         self.test_temp_files = None
 
     def test_copy_file_with_external_links(self):
-        # Creaate the first file
+        # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
         foofile1 = FooFile('test_foofile1', buckets=[bucket1])
@@ -611,7 +611,7 @@ class HDF5IOMultiFileTest(unittest.TestCase):
 
 
 class HDF5IOInitNoFileTest(unittest.TestCase):
-    ''' Test if file does not exist, init with mode (r, r+) throws error, all others succeed '''
+    """ Test if file does not exist, init with mode (r, r+) throws error, all others succeed """
 
     def test_init_no_file_r(self):
         self.path = "test_init_nofile_r.h5"
@@ -639,7 +639,7 @@ class HDF5IOInitNoFileTest(unittest.TestCase):
 
 
 class HDF5IOInitFileExistsTest(unittest.TestCase):
-    ''' Test if file exists, init with mode w- throws error, all others succeed '''
+    """ Test if file exists, init with mode w- throws error, all others succeed """
 
     def setUp(self):
         # On Windows h5py cannot truncate an open file in write mode.
@@ -674,7 +674,7 @@ class HDF5IOInitFileExistsTest(unittest.TestCase):
 
 
 class HDF5IOReadNoDataTest(unittest.TestCase):
-    ''' Test if file exists and there is no data, read with mode (r, r+, a) throws error '''
+    """ Test if file exists and there is no data, read with mode (r, r+, a) throws error """
 
     def setUp(self):
         # On Windows h5py cannot truncate an open file in write mode.
@@ -718,9 +718,9 @@ class HDF5IOReadNoDataTest(unittest.TestCase):
 
 
 class HDF5IOReadData(unittest.TestCase):
-    ''' Test if file exists and there is no data, read in mode (r, r+, a) is ok
+    """ Test if file exists and there is no data, read in mode (r, r+, a) is ok
     and read in mode w throws error
-    '''
+    """
 
     def setUp(self):
         temp_file = tempfile.NamedTemporaryFile()
@@ -762,7 +762,7 @@ class HDF5IOReadData(unittest.TestCase):
 
 
 class HDF5IOWriteNoFile(unittest.TestCase):
-    ''' Test if file does not exist, write in mode (w, w-, a) is ok '''
+    """ Test if file does not exist, write in mode (w, w-, a) is ok """
 
     def setUp(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
@@ -791,7 +791,7 @@ class HDF5IOWriteNoFile(unittest.TestCase):
 
 
 class HDF5IOWriteFileExists(unittest.TestCase):
-    ''' Test if file exists, write in mode (r+, w, a) is ok and write in mode r throws error '''
+    """ Test if file exists, write in mode (r+, w, a) is ok and write in mode r throws error """
 
     def setUp(self):
         temp_file = tempfile.NamedTemporaryFile()
