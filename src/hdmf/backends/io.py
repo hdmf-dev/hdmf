@@ -30,6 +30,9 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
     @docval(returns='the Container object that was read in', rtype=Container)
     def read(self, **kwargs):
         f_builder = self.read_builder()
+        if all(len(v) == 0 for v in f_builder.values()):
+            # TODO also check that the keys are appropriate. print a better error message
+            raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
         return container
 
@@ -66,3 +69,7 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+
+class UnsupportedOperation(ValueError):
+    pass

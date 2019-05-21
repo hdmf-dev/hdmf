@@ -5,6 +5,7 @@ from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from hdmf.backends.hdf5 import H5DataIO
+from hdmf.backends.io import UnsupportedOperation
 from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, ZERO_OR_MANY, ONE_OR_MANY
@@ -17,6 +18,7 @@ from h5py import SoftLink, HardLink, ExternalLink, File
 import tempfile
 import warnings
 import numpy as np
+import re
 
 from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
@@ -521,6 +523,7 @@ class TestLinkResolution(unittest.TestCase):
 
         with HDF5IO(self.path, 'r', manager=_get_manager()) as io:
             foofile_read = io.read()
+
         b = foofile_read.buckets
         b1, b2 = (b[0], b[1]) if b[0].name == 'test_bucket1' else (b[1], b[0])
         f = b2.foos
@@ -546,7 +549,7 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.io = [HDF5IO(i, mode='w', manager=_get_manager()) for i in self.test_temp_files]
+        self.io = [HDF5IO(i, mode='a', manager=_get_manager()) for i in self.test_temp_files]
         self.f = [i._file for i in self.io]
 
     def tearDown(self):
@@ -565,23 +568,20 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         self.test_temp_files = None
 
     def test_copy_file_with_external_links(self):
-
-        # Setup all the data we need
+        # Creaate the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
-
         foofile1 = FooFile('test_foofile1', buckets=[bucket1])
 
         # Write the first file
         self.io[0].write(foofile1)
-        bucket1_read = self.io[0].read()
 
         # Create the second file
-
+        bucket1_read = self.io[0].read()
         foo2 = Foo('foo2', bucket1_read.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
-
         bucket2 = FooBucket('test_bucket2', [foo2])
         foofile2 = FooFile('test_foofile2', buckets=[bucket2])
+
         # Write the second file
         self.io[1].write(foofile2)
         self.io[1].close()
@@ -605,6 +605,144 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         # Confirm that we successfully resolved the External Link when we copied our second file
         f3 = File(self.test_temp_files[2])
         self.assertIsInstance(f3.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
+
+
+class HDF5IOReadNoFileTest(unittest.TestCase):
+
+    def test_init_no_file_r(self):
+        self.path = "test_nofile_r.h5"
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Unable to open file %s in 'r' mode\. File does not exist\."
+                                    % re.escape(self.path)):
+            HDF5IO(self.path, mode='r')
+
+    def test_init_no_file_rplus(self):
+        self.path = "test_nofile_rplus.h5"
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Unable to open file %s in 'r\+' mode\. File does not exist\."
+                                    % re.escape(self.path)):
+            HDF5IO(self.path, mode='r+')
+
+    def test_init_no_file_wminus(self):
+        self.path = "test_nofile_wminus.h5"
+        with HDF5IO(self.path, mode='w-') as io:
+            pass
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+
+class HDF5IOReadNoDataTest(unittest.TestCase):
+
+    def setUp(self):
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.path = temp_file.name
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        temp_io = HDF5IO(self.path, mode='w')
+        temp_io.close()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_read_no_data_r(self):
+        self.io = HDF5IO(self.path, mode='r')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Cannot read data from file %s in mode 'r'\. There are no values\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+    def test_read_no_data_rplus(self):
+        self.io = HDF5IO(self.path, mode='r+')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Cannot read data from file %s in mode 'r\+'\. There are no values\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+    def test_read_no_data_a(self):
+        self.io = HDF5IO(self.path, mode='a')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Cannot read data from file %s in mode 'a'\. There are no values\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+
+class HDF5IOReadFileExists(unittest.TestCase):
+
+    def setUp(self):
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.path = temp_file.name
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+
+        temp_io = HDF5IO(self.path, manager=_get_manager(), mode='w')
+        temp_io.write(foofile1)
+        temp_io.close()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_read_file_r(self):
+        self.io = HDF5IO(self.path, manager=_get_manager(), mode='r')
+        self.io.read()
+
+    def test_read_file_rplus(self):
+        self.io = HDF5IO(self.path, manager=_get_manager(), mode='r+')
+        self.io.read()
+
+    def test_read_file_a(self):
+        self.io = HDF5IO(self.path, manager=_get_manager(), mode='a')
+        self.io.read()
+
+    def test_read_file_w(self):
+        self.io = HDF5IO(self.path, manager=_get_manager(), mode='w')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Cannot read from file %s in mode 'w'. Please use mode 'r', 'r\+', or 'a'\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+
+class HDF5IOModeWMinusTest(unittest.TestCase):
+
+    def setUp(self):
+        self.path = 'test_file_exists_wminus.h5'
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_init_wminus_file_not_exists(self):
+        self.io = HDF5IO(self.path, mode='w-')
+        self.io.close()
+
+    def test_init_wminus_file_exists(self):
+        self.io = HDF5IO(self.path, mode='w-')
+        self.io.close()
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    "Unable to open file %s in 'w-' mode\. File already exists\."
+                                    % re.escape(self.path)):
+            self.io = HDF5IO(self.path, mode='w-')
 
 
 if __name__ == '__main__':
