@@ -632,7 +632,7 @@ class HDF5IOInitNoFileTest(unittest.TestCase):
         modes = ('w', 'w-', 'a')
         for m in modes:
             self.path = "test_init_nofile.h5"
-            with HDF5IO(self.path, mode=m) as io:
+            with HDF5IO(self.path, mode=m):
                 pass
             if os.path.exists(self.path):
                 os.remove(self.path)
@@ -669,7 +669,7 @@ class HDF5IOInitFileExistsTest(unittest.TestCase):
         # test that no errors are thrown
         modes = ('r', 'r+', 'w', 'a')
         for m in modes:
-            with HDF5IO(self.path, mode=m) as io:
+            with HDF5IO(self.path, mode=m):
                 pass
 
 
@@ -758,7 +758,7 @@ class HDF5IOReadData(unittest.TestCase):
                                         % re.escape(self.path)):
                 read_foofile1 = io.read()
                 self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
-                                     read_foofile.buckets[0].foos[0].my_data[:].tolist())
+                                     read_foofile1.buckets[0].foos[0].my_data[:].tolist())
 
 
 class HDF5IOWriteNoFile(unittest.TestCase):
@@ -847,7 +847,7 @@ class HDF5IOWriteFileExists(unittest.TestCase):
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             with self.assertRaisesRegex(UnsupportedOperation,
                                         ("Cannot write to file %s in mode 'r'\. " +
-                                        "Please use mode 'r\+', 'w', 'w-', or 'a'")
+                                            "Please use mode 'r\+', 'w', 'w-', or 'a'")
                                         % re.escape(self.path)):
                 io.write(self.foofile2)
 

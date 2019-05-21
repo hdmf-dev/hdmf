@@ -240,7 +240,6 @@ class HDF5IO(HDMFIO):
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
                                            % (self.__path, self.__mode))
 
-
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
         f_builder = self.__read.get(self.__file)
