@@ -3,6 +3,7 @@ from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta
 from warnings import warn
 
+
 class Container(with_metaclass(ExtenderMeta, object)):
 
     _fieldsname = '__fields__'
