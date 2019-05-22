@@ -2,8 +2,10 @@ import unittest2 as unittest
 
 from hdmf.container import Container
 
+
 class Subcontainer(Container):
     pass
+
 
 class TestContainer(unittest.TestCase):
 
@@ -38,12 +40,11 @@ class TestContainer(unittest.TestCase):
     def test_set_parent_overwrite_proxy(self):
         """Test that parent setter properly blocks overwriting with proxy/object
         """
-        parent_obj = Container('obj1')
         child_obj = Container('obj2')
         child_obj.parent = object()
 
-        with self.assertRaisesRegex(Exception, \
-                r"got None for parent of '[^/]+' - cannot overwrite Proxy with NoneType"):
+        with self.assertRaisesRegex(Exception,
+                                    r"got None for parent of '[^/]+' - cannot overwrite Proxy with NoneType"):
             child_obj.parent = None
 
     def test_slash_restriction(self):
