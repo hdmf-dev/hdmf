@@ -1345,19 +1345,16 @@ class TypeMap(object):
             elif spec.shape is None and spec.dims is None:
                 return self._type_map.get(spec.dtype)
             else:
-                return 'array_data',
-        elif isinstance(spec, LinkSpec):
-            return Container
-        else:
-            if not (spec.data_type_inc is None and spec.data_type_inc is None):
-                if spec.name is not None:
-                    return (list, tuple, dict, set)
-                else:
-                    return Container
-            elif spec.shape is None and spec.dims is None:
-                return self._type_map.get(spec.dtype)
-            else:
                 return 'array_data', 'data'
+        if isinstance(spec, LinkSpec):
+            return Container
+        if spec.data_type_def is not None:
+            return spec.data_type_def
+        if spec.data_type_inc is not None:
+            return spec.data_type_inc
+        if spec.shape is None and spec.dims is None:
+            return self._type_map.get(spec.dtype)
+        return 'array_data', 'data'
 
     def __ischild(self, dtype):
         """
