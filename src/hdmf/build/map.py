@@ -1332,6 +1332,7 @@ class TypeMap(object):
         'float64': float,
         'int': int,
         'int32': int,
+        'uint64': np.uint64,
         'isodatetime': datetime
     }
 
