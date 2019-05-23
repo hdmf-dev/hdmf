@@ -20,6 +20,27 @@ class Container(with_metaclass(ExtenderMeta, object)):
         self.__children = list()
         self.__modified = True
 
+    def _build_const_kwargs(self, **kwargs):
+        '''
+        Override this method to control *copy* behaves
+        '''
+        nkwargs = copy(getattr(self, self._fieldsname))
+        for k, v in kwargs:
+            nkwargs[k] = v
+        return nkwargs
+
+    def copy(self, **kwargs):
+        '''
+        Return a copy of this object.
+
+        The behavior of *copy* is controlled by *_build_const_kwargs*.
+
+        Args:
+            kwargs (dict): constructor arguments to substitute in for this inferred
+        '''
+        nkwargs = self._build_const_kwargs(**kwargs)
+        return call_docval_func(self.__init__, nkwargs)
+
     def __repr__(self):
         return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
 

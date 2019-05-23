@@ -136,7 +136,8 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
         idx = self.__evaluate_key(key)
         return self.dataset[idx]
 
-    @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'})
+    @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'},
+            {'name': 'axes', 'type': dict, 'doc': 'the datasets that label the axes'})
     def __init__(self, **kwargs):
         super(HDMFDataset, self).__init__()
         self.__dataset = getargs('dataset', kwargs)
@@ -149,14 +150,5 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
     def dtype(self):
         return self.__dataset.dtype
 
-    def __len__(self):
-        return len(self.__dataset)
-
-    def __iter__(self):
-        return iter(self.dataset)
-
-    def __next__(self):
-        return next(self.dataset)
-
-    def next(self):
-        return self.dataset.next()
+    def __getattr__(self, name):
+        return getattr(self.dataset, name)

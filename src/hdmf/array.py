@@ -19,6 +19,9 @@ class Array(object):
     def data(self):
         return self.__data
 
+    def __getattr__(self, name):
+        return getattr(self.__data, name)
+
     def __len__(self):
         return len(self.__data)
 
