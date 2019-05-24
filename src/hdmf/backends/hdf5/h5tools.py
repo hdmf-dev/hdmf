@@ -76,21 +76,20 @@ class HDF5IO(HDMFIO):
         '''
         Load cached namespaces from a file.
         '''
-        f = File(path, 'r')
-        if SPEC_LOC_ATTR not in f.attrs:
-            msg = "No cached namespaces found in %s" % path
-            warnings.warn(msg)
-        else:
-            spec_group = f[f.attrs[SPEC_LOC_ATTR]]
-            if namespaces is None:
-                namespaces = list(spec_group.keys())
-            for ns in namespaces:
-                ns_group = spec_group[ns]
-                latest_version = list(ns_group.keys())[-1]
-                ns_group = ns_group[latest_version]
-                reader = H5SpecReader(ns_group)
-                namespace_catalog.load_namespaces('namespace', reader=reader)
-        f.close()
+        with File(path, 'r') as f:
+            if SPEC_LOC_ATTR not in f.attrs:
+                msg = "No cached namespaces found in %s" % path
+                warnings.warn(msg)
+            else:
+                spec_group = f[f.attrs[SPEC_LOC_ATTR]]
+                if namespaces is None:
+                    namespaces = list(spec_group.keys())
+                for ns in namespaces:
+                    ns_group = spec_group[ns]
+                    latest_version = list(ns_group.keys())[-1]
+                    ns_group = ns_group[latest_version]
+                    reader = H5SpecReader(ns_group)
+                    namespace_catalog.load_namespaces('namespace', reader=reader)
 
     @classmethod
     def __convert_namespace(cls, ns_catalog, namespace):
