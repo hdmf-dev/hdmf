@@ -1,9 +1,11 @@
 import unittest2 as unittest
+import re
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
+from hdmf.build.warnings import MissingRequiredWarning
 
 from abc import ABCMeta
 from six import with_metaclass
@@ -346,7 +348,8 @@ class TestObjectMapperNoNesting(TestObjectMapper):
     def test_build_empty(self):
         ''' Test default mapping functionality when no attributes are nested '''
         container = Bar('my_bar', [], 'value1', 10)
-        builder = self.mapper.build(container, self.manager)
+        with self.assertWarnsRegex(MissingRequiredWarning, re.escape("dataset 'data' for 'my_bar' of type (Bar)")):
+            builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
