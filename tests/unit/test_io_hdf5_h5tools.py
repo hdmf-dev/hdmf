@@ -535,9 +535,8 @@ class TestCacheSpec(unittest.TestCase):
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.io = HDF5IO(self.test_temp_file.name, manager=self.manager, mode='w')
-        self.io.write(foofile, cache_spec=True)
-        self.io.close()
+        with HDF5IO(self.test_temp_file.name, manager=self.manager, mode='w') as self.io:
+            self.io.write(foofile, cache_spec=True)
 
         # load namespace from written file
         ns_catalog = NamespaceCatalog()
