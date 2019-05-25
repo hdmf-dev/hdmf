@@ -1353,7 +1353,14 @@ class TypeMap(object):
         if spec.data_type_def is not None:
             return spec.data_type_def
         if spec.data_type_inc is not None:
-            return spec.data_type_inc
+            container_type = None
+            for val in self.__container_types.values():
+                container_type = val.get(spec.data_type_inc)
+                if container_type is not None:
+                    return container_type
+            if container_type is None:
+                # it is not clear when this would ever happen
+                return spec.data_type_inc
         if spec.shape is None and spec.dims is None:
             return self._type_map.get(spec.dtype)
         return 'array_data', 'data'
@@ -1409,7 +1416,12 @@ class TypeMap(object):
                 pkwargs.update(name=name)
             base.__init__(self, *pargs, **pkwargs)
             for f in new_args:
-                setattr(self, f, kwargs.get(f, None))
+                arg_val = kwargs.get(f, None)
+                if arg_val is not None:
+                    setattr(self, f, arg_val)
+                    if issubclass(type(arg_val), Container):
+                        arg_val.parent = self
+                        # there is some interaction here with fields['child'] = True
 
         return {'__init__': __init__, base._fieldsname: tuple(fields)}
 
