@@ -3,7 +3,6 @@ import unittest2 as unittest
 import tempfile
 import warnings
 import numpy as np
-import re
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
