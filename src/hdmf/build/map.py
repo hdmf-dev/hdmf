@@ -1335,6 +1335,16 @@ class TypeMap(object):
         'isodatetime': datetime
     }
 
+    def get_container_type(self, container_name):
+        container_type = None
+        for val in self.__container_types.values():
+            container_type = val.get(container_name)
+            if container_type is not None:
+                return container_type
+        if container_type is None:
+            # it is not clear when this would ever happen
+            return container_name
+
     def __get_type(self, spec):
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
@@ -1351,16 +1361,9 @@ class TypeMap(object):
         if isinstance(spec, LinkSpec):
             return Container
         if spec.data_type_def is not None:
-            return spec.data_type_def
+            return self.get_container_type(spec.data_type_def)
         if spec.data_type_inc is not None:
-            container_type = None
-            for val in self.__container_types.values():
-                container_type = val.get(spec.data_type_inc)
-                if container_type is not None:
-                    return container_type
-            if container_type is None:
-                # it is not clear when this would ever happen
-                return spec.data_type_inc
+            return self.get_container_type(spec.data_type_inc)
         if spec.shape is None and spec.dims is None:
             return self._type_map.get(spec.dtype)
         return 'array_data', 'data'
