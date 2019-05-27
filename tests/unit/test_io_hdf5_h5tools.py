@@ -3,6 +3,7 @@ import unittest2 as unittest
 import tempfile
 import warnings
 import numpy as np
+import re
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
@@ -560,6 +561,35 @@ class TestCacheSpec(unittest.TestCase):
                 if type(foo_obj) is Baz1:
                     read_baz = foo_obj
             self.assertEqual(read_baz.baz2.attr1, baz2.attr1)
+
+    def test_cache_spec_get_class_in_class_wrong_order(self):
+        spec_catalog = self.manager.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
+        foo_spec = spec_catalog.get_spec('Foo')
+        # Baz1 class contains an object of Baz2 class
+        baz_spec2 = GroupSpec('A composition inside',
+                              data_type_def='Baz2',
+                              data_type_inc=foo_spec,
+                              attributes=[
+                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+
+        baz_spec1 = GroupSpec('A composition test outside',
+                              data_type_def='Baz1',
+                              data_type_inc=foo_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+
+        # add directly into the existing spec_catalog. would not do this normally.
+        spec_catalog.register_spec(baz_spec1, 'test.yaml')
+        spec_catalog.register_spec(baz_spec2, 'test.yaml')
+
+
+        # Setup all the data we need
+        msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
+               "Please define that type before defining 'Baz1'.")
+        with self.assertRaisesRegex(ValueError, re.escape(msg)):
+            Baz1 = self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
     def __get_types(self, catalog):
         types = set()
