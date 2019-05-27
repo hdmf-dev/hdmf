@@ -1335,15 +1335,14 @@ class TypeMap(object):
         'isodatetime': datetime
     }
 
-    def get_container_type(self, container_name):
+    def __get_container_type(self, container_name):
         container_type = None
         for val in self.__container_types.values():
             container_type = val.get(container_name)
             if container_type is not None:
                 return container_type
         if container_type is None:
-            # it is not clear when this would ever happen
-            return container_name
+            raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
 
     def __get_type(self, spec):
         if isinstance(spec, AttributeSpec):
@@ -1361,9 +1360,9 @@ class TypeMap(object):
         if isinstance(spec, LinkSpec):
             return Container
         if spec.data_type_def is not None:
-            return self.get_container_type(spec.data_type_def)
+            return self.__get_container_type(spec.data_type_def)
         if spec.data_type_inc is not None:
-            return self.get_container_type(spec.data_type_inc)
+            return self.__get_container_type(spec.data_type_inc)
         if spec.shape is None and spec.dims is None:
             return self._type_map.get(spec.dtype)
         return 'array_data', 'data'
@@ -1465,7 +1464,13 @@ class TypeMap(object):
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = self.__get_cls_dict(parent_cls, fields, spec.name)
+            try:
+                d = self.__get_cls_dict(parent_cls, fields, spec.name)
+            except TypeDoesNotExistError as e:
+                name = spec.get('data_type_def', 'Unknown')
+                raise ValueError("Cannot dynamically generate class for type '%s'. " % name
+                                 + str(e)
+                                 + " Please define that type before defining '%s'." % name)
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
@@ -1673,3 +1678,6 @@ class TypeMap(object):
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
         else:
             return attr_map.get_builder_name(container)
+
+class TypeDoesNotExistError(Exception):
+    pass
