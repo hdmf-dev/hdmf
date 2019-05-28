@@ -1421,9 +1421,6 @@ class TypeMap(object):
                 arg_val = kwargs.get(f, None)
                 if arg_val is not None:
                     setattr(self, f, arg_val)
-                    if issubclass(type(arg_val), Container):
-                        arg_val.parent = self
-                        # there is some interaction here with fields['child'] = True
 
         return {'__init__': __init__, base._fieldsname: tuple(fields)}
 
