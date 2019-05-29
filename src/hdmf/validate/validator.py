@@ -110,6 +110,8 @@ def get_type(data):
         return type(data).__name__
     else:
         if hasattr(data, 'dtype'):
+            if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
+                return get_type(data[0])
             return data.dtype
         if len(data) == 0:
             raise ValueError('cannot determine type for empty data')
