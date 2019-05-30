@@ -431,6 +431,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 ret = np.asarray(value).astype(dtype_func)
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
+            if len(value) == 0:
+                return value, spec_dtype
             ret = list()
             for elem in value:
                 tmp, tmp_dtype = cls.convert_dtype(spec, elem)
@@ -1345,19 +1347,16 @@ class TypeMap(object):
             elif spec.shape is None and spec.dims is None:
                 return self._type_map.get(spec.dtype)
             else:
-                return 'array_data',
-        elif isinstance(spec, LinkSpec):
-            return Container
-        else:
-            if not (spec.data_type_inc is None and spec.data_type_inc is None):
-                if spec.name is not None:
-                    return (list, tuple, dict, set)
-                else:
-                    return Container
-            elif spec.shape is None and spec.dims is None:
-                return self._type_map.get(spec.dtype)
-            else:
                 return 'array_data', 'data'
+        if isinstance(spec, LinkSpec):
+            return Container
+        if spec.data_type_def is not None:
+            return spec.data_type_def
+        if spec.data_type_inc is not None:
+            return spec.data_type_inc
+        if spec.shape is None and spec.dims is None:
+            return self._type_map.get(spec.dtype)
+        return 'array_data', 'data'
 
     def __ischild(self, dtype):
         """

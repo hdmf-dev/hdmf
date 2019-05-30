@@ -236,6 +236,30 @@ class TestDynamicContainer(unittest.TestCase):
             inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
             self.assertEqual(inst.name, 'A fixed name')
 
+    def test_dynamic_container_composition(self):
+        baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
+                              data_type_inc=self.bar_spec,
+                              attributes=[
+                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+        self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+
+        with self.assertRaises(TypeError):
+            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+
 
 class TestObjectMapper(with_metaclass(ABCMeta, unittest.TestCase)):
 
@@ -316,6 +340,14 @@ class TestObjectMapperNoNesting(TestObjectMapper):
         container = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                attributes={'attr1': 'value1', 'attr2': 10})
+        self.assertDictEqual(builder, expected)
+
+    def test_build_empty(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        container = Bar('my_bar', [], 'value1', 10)
+        builder = self.mapper.build(container, self.manager)
+        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
 

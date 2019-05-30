@@ -429,7 +429,13 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
     '''Generate a Spinxy docstring'''
     def to_str(argtype):
         if isinstance(argtype, type):
-            return argtype.__name__
+            module = argtype.__module__
+            name = argtype.__name__
+
+            if module.startswith("h5py") or module.startswith("pandas") or module.startswith("builtins"):
+                return ":py:class:`~{name}`".format(name=name)
+            else:
+                return ":py:class:`~{module}.{name}`".format(name=name, module=module)
         return argtype
 
     def __sphinx_arg(arg):
