@@ -3,7 +3,6 @@ import unittest2 as unittest
 import tempfile
 import warnings
 import numpy as np
-import re
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
@@ -413,7 +412,8 @@ def _get_manager():
                                                attributes=[AttributeSpec('attr2',
                                                                          'an example integer attribute',
                                                                          'int')])],
-                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                     AttributeSpec('attr3', 'an example float attribute', 'float')])
 
     tmp_spec = GroupSpec('A subgroup for Foos',
                          name='foo_holder',
@@ -496,99 +496,6 @@ class TestCacheSpec(unittest.TestCase):
         source_types = self.__get_types(self.io.manager.namespace_catalog)
         read_types = self.__get_types(ns_catalog)
         self.assertSetEqual(source_types, read_types)
-
-    def test_cache_spec_get_class_in_class(self):
-        spec_catalog = self.manager.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
-        foo_spec = spec_catalog.get_spec('Foo')
-        # Baz1 class contains an object of Baz2 class
-        baz_spec2 = GroupSpec('A composition inside',
-                              data_type_def='Baz2',
-                              data_type_inc=foo_spec,
-                              attributes=[
-                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
-
-        baz_spec1 = GroupSpec('A composition test outside',
-                              data_type_def='Baz1',
-                              data_type_inc=foo_spec,
-                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
-                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
-
-        # add directly into the existing spec_catalog. would not do this normally.
-        spec_catalog.register_spec(baz_spec1, 'test.yaml')
-        spec_catalog.register_spec(baz_spec2, 'test.yaml')
-
-        Baz2 = self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
-        Baz1 = self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
-
-        # Setup all the data we need
-        baz2 = Baz2('baz2', [0, 1, 2, 3, 4], "I am baz2", 1, 2.2, attr3=1.0, attr4=2.0)
-        baz1 = Baz1('baz1', [0, 1, 2, 3, 4], "I am baz1", 1, 2.2, attr3=1.0, attr4=2.0, baz2=baz2)
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2, baz1])
-        foofile = FooFile('test_foofile', [foobucket])
-
-        # Write the first file
-        self.test_temp_file = tempfile.NamedTemporaryFile()
-        self.test_temp_file.close()
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        with HDF5IO(self.test_temp_file.name, manager=self.manager, mode='w') as self.io:
-            self.io.write(foofile, cache_spec=True)
-
-        # load namespace from written file
-        ns_catalog = NamespaceCatalog()
-        HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
-        self.assertEqual(ns_catalog.namespaces, (CORE_NAMESPACE,))
-        source_types = self.__get_types(self.io.manager.namespace_catalog)
-        read_types = self.__get_types(ns_catalog)
-        self.assertSetEqual(source_types, read_types)
-
-        # note that because of the hacky way we are doing the above namespace
-        # creation without a spec file and then adding to the namespace, the
-        # registered types in the namespace will not be updated properly
-        # so ns_catalog is missing the Baz1 and Baz2 types from its list
-        # of registered types:
-        # catalog.get_namespace(CORE_NAMESPACE).catalog.get_registered_types()
-
-        with HDF5IO(self.test_temp_file.name, manager=self.manager, mode='r') as io:
-            read_foofile = io.read()
-            read_baz = None
-            for foo_obj in read_foofile.buckets[0].foos:
-                if type(foo_obj) is Baz1:
-                    read_baz = foo_obj
-            self.assertEqual(read_baz.baz2.attr1, baz2.attr1)
-
-    def test_cache_spec_get_class_in_class_wrong_order(self):
-        spec_catalog = self.manager.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
-        foo_spec = spec_catalog.get_spec('Foo')
-        # Baz1 class contains an object of Baz2 class
-        baz_spec2 = GroupSpec('A composition inside',
-                              data_type_def='Baz2',
-                              data_type_inc=foo_spec,
-                              attributes=[
-                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
-
-        baz_spec1 = GroupSpec('A composition test outside',
-                              data_type_def='Baz1',
-                              data_type_inc=foo_spec,
-                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
-                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
-
-        # add directly into the existing spec_catalog. would not do this normally.
-        spec_catalog.register_spec(baz_spec1, 'test.yaml')
-        spec_catalog.register_spec(baz_spec2, 'test.yaml')
-
-        # Setup all the data we need
-        msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
-               "Please define that type before defining 'Baz1'.")
-        with self.assertRaisesRegex(ValueError, re.escape(msg)):
-            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
     def __get_types(self, catalog):
         types = set()
