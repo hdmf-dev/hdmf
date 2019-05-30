@@ -584,12 +584,11 @@ class TestCacheSpec(unittest.TestCase):
         spec_catalog.register_spec(baz_spec1, 'test.yaml')
         spec_catalog.register_spec(baz_spec2, 'test.yaml')
 
-
         # Setup all the data we need
         msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
                "Please define that type before defining 'Baz1'.")
         with self.assertRaisesRegex(ValueError, re.escape(msg)):
-            Baz1 = self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
     def __get_types(self, catalog):
         types = set()

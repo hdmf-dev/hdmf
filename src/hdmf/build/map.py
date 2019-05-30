@@ -1676,5 +1676,6 @@ class TypeMap(object):
         else:
             return attr_map.get_builder_name(container)
 
+
 class TypeDoesNotExistError(Exception):
     pass
