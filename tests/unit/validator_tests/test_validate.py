@@ -94,6 +94,7 @@ class TestBasicSpec(ValidatorTestBase):
         result = validator.validate(builder)
         self.assertEqual(len(result), 0)
 
+
 class TestDateTimeInSpec(ValidatorTestBase):
 
     def getSpecs(self):

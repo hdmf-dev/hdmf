@@ -14,7 +14,8 @@ from ..spec import SpecNamespace
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
 from ..build.builders import BaseBuilder
 
-from .errors import *
+from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
+from .errors import ExpectedArrayError
 
 from six import with_metaclass, raise_from, text_type, binary_type
 
