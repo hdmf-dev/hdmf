@@ -14,7 +14,8 @@ from ..spec import SpecNamespace
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
 from ..build.builders import BaseBuilder
 
-from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
+from .errors import *
+
 from six import with_metaclass, raise_from, text_type, binary_type
 
 
@@ -130,7 +131,9 @@ def check_shape(expected, received):
                         ret = True
                         break
             else:
-                if len(expected) == len(received):
+                if len(expected) > 0 and received is None:
+                    ret = False
+                elif len(expected) == len(received):
                     ret = True
                     for e, r in zip(expected, received):
                         if not check_shape(e, r):
@@ -372,8 +375,12 @@ class DatasetValidator(BaseStorageValidator):
                                       location=self.get_builder_loc(builder)))
         shape = get_shape(data)
         if not check_shape(self.spec.shape, shape):
-            ret.append(ShapeError(self.get_spec_loc(self.spec), self.spec.shape, shape,
-                                  location=self.get_builder_loc(builder)))
+            if shape is None:
+                ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(data),
+                                              location=self.get_builder_loc(builder)))
+            else:
+                ret.append(ShapeError(self.get_spec_loc(self.spec), self.spec.shape, shape,
+                                      location=self.get_builder_loc(builder)))
         return ret
 
 
