@@ -56,10 +56,11 @@ class SpecCatalog(object):
         return self.__specs.get(data_type, None)
 
     @docval(rtype=tuple)
-    def get_registered_types(self):
+    def get_registered_types(self, **kwargs):
         '''
         Return all registered specifications
         '''
+        # kwargs is not used here but is used by docval
         return tuple(self.__specs.keys())
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type of the spec to get the source file for'},
