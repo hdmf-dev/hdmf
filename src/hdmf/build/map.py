@@ -1225,7 +1225,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                               object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
         except Exception as ex:
-            msg = 'Could not construct %s object' % (cls.__name__,)
+            msg = 'Could not construct %s object due to %s' % (cls.__name__, ex)
             raise_from(Exception(msg), ex)
         return obj
 
