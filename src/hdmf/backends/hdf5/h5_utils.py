@@ -160,6 +160,11 @@ class H5SpecReader(SpecReader):
 
     def __read(self, path):
         s = self.__group[path][()]
+
+        if isinstance(s, np.ndarray) \
+           and s.shape == (1,):
+            s = s[0]
+
         if isinstance(s, bytes):
             s = s.decode('UTF-8')
         d = json.loads(s)
