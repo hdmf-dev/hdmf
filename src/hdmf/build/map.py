@@ -1329,6 +1329,7 @@ class TypeMap(object):
     _type_map = {
         'text': str,
         'float': float,
+        'float32': float,
         'float64': float,
         'int': int,
         'int32': int,
