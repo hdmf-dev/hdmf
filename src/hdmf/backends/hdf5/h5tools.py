@@ -508,7 +508,7 @@ class HDF5IO(HDMFIO):
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
                 if len(tmp) > 0:
-                    # store list of strings in unicode, not ascii 
+                    # store list of strings in unicode, not ascii
                     if isinstance(tmp[0], (text_type, binary_type)):
                         value = [np.unicode_(s) for s in tmp]
                     elif isinstance(tmp[0], Container):  # a list of references
