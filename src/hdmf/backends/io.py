@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from ..build import BuildManager
-from ..build import GroupBuilder
+from ..build import BuildManager, GroupBuilder
 from ..utils import docval, getargs, popargs
 from ..container import Container
 from six import with_metaclass

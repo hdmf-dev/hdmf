@@ -8,6 +8,7 @@ __all__ = [
     "Error",
     "DtypeError",
     "MissingError",
+    "ExpectedArrayError",
     "ShapeError",
     "MissingDataType",
     "IllegalLinkError",
@@ -96,6 +97,21 @@ class MissingDataType(Error):
         return self.__data_type
 
 
+class ExpectedArrayError(Error):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
+            {'name': 'expected', 'type': (tuple, list), 'doc': 'the expected shape'},
+            {'name': 'received', 'type': str, 'doc': 'the received data'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    def __init__(self, **kwargs):
+        name = getargs('name', kwargs)
+        expected = getargs('expected', kwargs)
+        received = getargs('received', kwargs)
+        reason = "incorrect shape - expected an array of shape '%s', got non-array data '%s'" % (expected, received)
+        loc = getargs('location', kwargs)
+        super(ExpectedArrayError, self).__init__(name, reason, location=loc)
+
+
 class ShapeError(Error):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
@@ -106,7 +122,7 @@ class ShapeError(Error):
         name = getargs('name', kwargs)
         expected = getargs('expected', kwargs)
         received = getargs('received', kwargs)
-        reason = "incorrect shape - expected '%s', got'%s'" % (expected, received)
+        reason = "incorrect shape - expected '%s', got '%s'" % (expected, received)
         loc = getargs('location', kwargs)
         super(ShapeError, self).__init__(name, reason, location=loc)
 
