@@ -181,3 +181,6 @@ class TestYAMLSpecWrite(unittest.TestCase):
             self.assertTrue("source: mylab.specs.yaml\n" in nsstr)
             self.assertTrue("title: Extensions for my lab\n" in nsstr)
             self.assertTrue("version: 0.0.1\n" in nsstr)
+
+    def test_get_name(self):
+        self.assertEquals(self.ns_name, self.ns_builder.name)
