@@ -125,7 +125,7 @@ class H5RegionDataset(H5ReferenceDataset):
 
 class H5SpecWriter(SpecWriter):
 
-    __str_type = special_dtype(vlen=binary_type)
+    __str_type = special_dtype(vlen=text_type)
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to write specs to'})
     def __init__(self, **kwargs):
