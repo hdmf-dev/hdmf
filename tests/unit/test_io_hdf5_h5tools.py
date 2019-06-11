@@ -629,7 +629,7 @@ class HDF5IOInitNoFileTest(unittest.TestCase):
 
     def test_init_no_file_ok(self):
         # test that no errors are thrown
-        modes = ('w', 'w-', 'a')
+        modes = ('w', 'w-', 'x', 'a')
         for m in modes:
             self.path = "test_init_nofile.h5"
             with HDF5IO(self.path, mode=m):
@@ -639,7 +639,7 @@ class HDF5IOInitNoFileTest(unittest.TestCase):
 
 
 class HDF5IOInitFileExistsTest(unittest.TestCase):
-    """ Test if file exists, init with mode w- throws error, all others succeed """
+    """ Test if file exists, init with mode w-/x throws error, all others succeed """
 
     def setUp(self):
         # On Windows h5py cannot truncate an open file in write mode.
@@ -664,6 +664,12 @@ class HDF5IOInitFileExistsTest(unittest.TestCase):
                                     r"Unable to open file %s in 'w-' mode\. File already exists\."
                                     % re.escape(self.path)):
             self.io = HDF5IO(self.path, mode='w-')
+
+    def test_init_x_file_exists(self):
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Unable to open file %s in 'x' mode\. File already exists\."
+                                    % re.escape(self.path)):
+            self.io = HDF5IO(self.path, mode='x')
 
     def test_init_file_exists_ok(self):
         # test that no errors are thrown
@@ -762,7 +768,7 @@ class HDF5IOReadData(unittest.TestCase):
 
 
 class HDF5IOWriteNoFile(unittest.TestCase):
-    """ Test if file does not exist, write in mode (w, w-, a) is ok """
+    """ Test if file does not exist, write in mode (w, w-, x, a) is ok """
 
     def setUp(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
@@ -776,7 +782,7 @@ class HDF5IOWriteNoFile(unittest.TestCase):
 
     def test_write_no_file_ok(self):
         # test that no errors are thrown
-        modes = ('w', 'w-', 'a')
+        modes = ('w', 'w-', 'x', 'a')
         for m in modes:
             with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
                 io.write(self.foofile1)
@@ -847,7 +853,7 @@ class HDF5IOWriteFileExists(unittest.TestCase):
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             with self.assertRaisesRegex(UnsupportedOperation,
                                         (r"Cannot write to file %s in mode 'r'\. " +
-                                            r"Please use mode 'r\+', 'w', 'w-', or 'a'")
+                                            r"Please use mode 'r\+', 'w', 'w-', 'x', or 'a'")
                                         % re.escape(self.path)):
                 io.write(self.foofile2)
 

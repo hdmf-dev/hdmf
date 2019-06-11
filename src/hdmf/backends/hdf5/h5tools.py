@@ -32,7 +32,7 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
-             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-")'},
+             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
@@ -52,7 +52,7 @@ class HDF5IO(HDMFIO):
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
             raise UnsupportedOperation(msg)
 
-        if file_obj is None and os.path.exists(path) and mode == 'w-':
+        if file_obj is None and os.path.exists(path) and (mode == 'w-' or mode == 'x'):
             msg = "Unable to open file %s in '%s' mode. File already exists." % (path, mode)
             raise UnsupportedOperation(msg)
 
@@ -203,7 +203,7 @@ class HDF5IO(HDMFIO):
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
     def write(self, **kwargs):
         if self.__mode == 'r':
-            raise UnsupportedOperation("Cannot write to file %s in mode '%s'. Please use mode 'r+', 'w', 'w-', or 'a'"
+            raise UnsupportedOperation("Cannot write to file %s in mode '%s'. Please use mode 'r+', 'w', 'w-', 'x', or 'a'"
                                        % (self.__path, self.__mode))
 
         cache_spec = popargs('cache_spec', kwargs)
