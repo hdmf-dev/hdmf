@@ -203,7 +203,8 @@ class HDF5IO(HDMFIO):
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
     def write(self, **kwargs):
         if self.__mode == 'r':
-            raise UnsupportedOperation("Cannot write to file %s in mode '%s'. Please use mode 'r+', 'w', 'w-', 'x', or 'a'"
+            raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
+                                        "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
                                        % (self.__path, self.__mode))
 
         cache_spec = popargs('cache_spec', kwargs)
