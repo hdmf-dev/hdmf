@@ -200,6 +200,10 @@ class NamespaceBuilder(object):
         namespace = SpecNamespace.build_namespace(**ns_args)
         writer.write_namespace(namespace, ns_path)
 
+    @property
+    def name(self):
+        return self.__ns_args['name']
+
 
 class SpecFileBuilder(dict):
 

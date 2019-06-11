@@ -870,7 +870,7 @@ class HDF5IO(HDMFIO):
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
         except Exception as exc:
             msg = "Could not create dataset %s in %s with shape %s, dtype %s, and iosettings %s. %s" % \
-                  (name, parent.name, str(data_shape), str(dtype), str(**io_settings), str(exc))
+                  (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))
             raise_from(Exception(msg), exc)
         # Write the data
         if len(data) > dset.shape[0]:

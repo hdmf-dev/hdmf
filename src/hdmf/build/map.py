@@ -969,7 +969,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             attr_value = self.get_attr_value(spec, container, build_manager)
             if self.__is_empty(attr_value):
                 if spec.required:
-                    msg = "dataset '%s' for '%s' of type (%s)"\
+                    msg = "empty dataset '%s' for '%s' of type (%s)"\
                                   % (spec.name, builder.name, self.spec.data_type_def)
                     warnings.warn(msg, MissingRequiredWarning)
                 if attr_value is None:
