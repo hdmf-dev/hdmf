@@ -152,3 +152,38 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     def __getattr__(self, name):
         return getattr(self.dataset, name)
+
+
+
+class Slice(object):
+
+    def __init__(self, target):
+        self.__target = target
+
+    @property
+    def target(self):
+        return self.__target
+
+
+    def __getitem__(self, *args):
+        new_args = list()
+        for i, arg in enumerate(args):
+            bmask = arg
+            attr = self.target.get_scale(i)
+            scale = getattr(self.target, attr)
+            if isinstance(arg, Mask):
+                bmask = arg.resolve(scale)
+            elif isinstance(bmask, (list, tuple, np.ndarray)):
+                if isinstance(bmask[0], int):
+                    tmp = [False] * len(scale)
+                    for j in bmask:
+                        tmp[j] = True
+                    bmask = tmp
+            new_args.append(bmask)
+
+
+
+
+
+
+
