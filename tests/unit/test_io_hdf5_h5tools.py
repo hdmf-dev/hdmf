@@ -6,7 +6,7 @@ import numpy as np
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
-from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
@@ -21,21 +21,20 @@ from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
 class FooFile(Container):
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this file'},
-            {'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
+    @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
     def __init__(self, **kwargs):
-        name, buckets = getargs('name', 'buckets', kwargs)
-        super(FooFile, self).__init__(name=name)
+        buckets = getargs('buckets', kwargs)
+        super(FooFile, self).__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             self.add_child(f)
 
     def __eq__(self, other):
-        return self.name == other.name and set(self.buckets) == set(other.buckets)
+        return set(self.buckets) == set(other.buckets)
 
     def __str__(self):
         foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
-        return 'name=%s, buckets=%s' % (self.name, foo_str)
+        return 'buckets=%s' % foo_str
 
     @property
     def buckets(self):
@@ -430,11 +429,10 @@ def _get_manager():
             self.map_spec('foos', foo_spec)
 
     file_spec = GroupSpec("A file of Foos contained in FooBuckets",
-                          name='root',
                           data_type_def='FooFile',
                           groups=[GroupSpec('Holds the FooBuckets',
                                             name='buckets',
-                                            groups=[GroupSpec("One ore more FooBuckets",
+                                            groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
                                                               quantity=ONE_OR_MANY)])])
 
@@ -485,7 +483,7 @@ class TestCacheSpec(unittest.TestCase):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
-        foofile = FooFile('test_foofile', [foobucket])
+        foofile = FooFile([foobucket])
 
         # Write the first file
         self.io.write(foofile, cache_spec=True)
@@ -513,7 +511,7 @@ class TestLinkResolution(unittest.TestCase):
         bucket1 = FooBucket('test_bucket1', [foo1])
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         bucket2 = FooBucket('test_bucket2', [foo1, foo2])
-        foofile = FooFile('test_foofile', [bucket1, bucket2])
+        foofile = FooFile([bucket1, bucket2])
 
         with HDF5IO(self.path, 'w', manager=_get_manager()) as io:
             io.write(foofile)
@@ -569,7 +567,7 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
 
-        foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+        foofile1 = FooFile(buckets=[bucket1])
 
         # Write the first file
         self.io[0].write(foofile1)
@@ -580,7 +578,7 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         foo2 = Foo('foo2', bucket1_read.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
 
         bucket2 = FooBucket('test_bucket2', [foo2])
-        foofile2 = FooFile('test_foofile2', buckets=[bucket2])
+        foofile2 = FooFile(buckets=[bucket2])
         # Write the second file
         self.io[1].write(foofile2)
         self.io[1].close()

@@ -89,8 +89,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     @parent.setter
     def parent(self, parent_container):
-        if self.__parent is not None:
-            if isinstance(self.__parent, Container):
+        if self.parent is not None:
+            if isinstance(self.parent, Container):
                 raise Exception('cannot reassign parent')
             else:
                 if parent_container is None:
@@ -98,7 +98,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 # TODO this assumes isinstance(parent_container, Proxy) but
                 # circular import if we try to do that. Proxy would need to move
                 # or Container extended with this functionality in build/map.py
-                if self.__parent.matches(parent_container):
+                if self.parent.matches(parent_container):
                     self.__parent = parent_container
                 else:
                     self.__parent.add_candidate(parent_container)

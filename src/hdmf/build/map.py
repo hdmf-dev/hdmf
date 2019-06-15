@@ -69,11 +69,11 @@ class Proxy(object):
         container = getargs('container', kwargs)
         self.__candidates.append(container)
 
-    def resolve(self, **kwargs):
+    def resolve(self):
         for candidate in self.__candidates:
             if self.matches(candidate):
                 return candidate
-        return None
+        raise ValueError("No matching candidate Container found for " + self)
 
     def __eq__(self, other):
         return self.data_type == other.data_type and \
