@@ -3,6 +3,7 @@ import unittest2 as unittest
 import tempfile
 import warnings
 import numpy as np
+import re
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
@@ -505,35 +506,6 @@ class TestCacheSpec(unittest.TestCase):
         return types
 
 
-class TestLinkResolution(unittest.TestCase):
-
-    def test_link_resolve(self):
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        bucket2 = FooBucket('test_bucket2', [foo1, foo2])
-        foofile = FooFile([bucket1, bucket2])
-
-        with HDF5IO(self.path, 'w', manager=_get_manager()) as io:
-            io.write(foofile)
-
-        with HDF5IO(self.path, 'r', manager=_get_manager()) as io:
-            foofile_read = io.read()
-
-        b = foofile_read.buckets
-        b1, b2 = (b[0], b[1]) if b[0].name == 'test_bucket1' else (b[1], b[0])
-        f = b2.foos
-        f1, f2 = (f[0], f[1]) if f[0].name == 'foo1' else (f[1], f[0])
-        self.assertIs(b1.foos[0], f1)
-
-    def setUp(self):
-        self.path = "test_link_resolve.h5"
-
-    def tearDown(self):
-        if os.path.exists(self.path):
-            os.remove(self.path)
-
-
 class HDF5IOMultiFileTest(unittest.TestCase):
     """Tests for h5tools IO tools"""
 
@@ -799,8 +771,11 @@ class HDF5IOWriteFileExists(unittest.TestCase):
 
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
-        self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
-        self.foofile2 = FooFile('test_foofile2', buckets=[bucket1])
+        self.foofile1 = FooFile(buckets=[bucket1])
+
+        foo2 = Foo('foo2', [0, 1, 2, 3, 4], "I am foo2", 17, 3.14)
+        bucket2 = FooBucket('test_bucket2', [foo2])
+        self.foofile2 = FooFile(buckets=[bucket2])
 
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
             io.write(self.foofile1)
@@ -829,18 +804,15 @@ class HDF5IOWriteFileExists(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, r"Unable to create group \(name already exists\)"):
                 io.write(self.foofile2)
 
-    # TODO the file contains broken links and no data
-    # when issue https://github.com/hdmf-dev/hdmf/issues/65 is resolved, uncomment me
-    # def test_write_w(self):
-    #     # mode 'w' should overwrite contents of file
-    #     with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
-    #         io.write(self.foofile2)
-    #
-    #     with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
-    #         read_foofile = io.read()
-    #         print(read_foofile)
-    #         self.assertListEqual(self.foofile2.buckets[0].foos[0].my_data,
-    #                              read_foofile.buckets[0].foos[0].my_data[:].tolist())
+    def test_write_w(self):
+        # mode 'w' should overwrite contents of file
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile2)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(self.foofile2.buckets[0].foos[0].my_data,
+                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
 
     def test_write_r(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
