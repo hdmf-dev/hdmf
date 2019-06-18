@@ -1329,9 +1329,11 @@ class TypeMap(object):
     _type_map = {
         'text': str,
         'float': float,
+        'float32': float,
         'float64': float,
         'int': int,
         'int32': int,
+        'uint64': np.uint64,
         'isodatetime': datetime
     }
 
@@ -1387,6 +1389,9 @@ class TypeMap(object):
         for f, field_spec in addl_fields.items():
             if not f == 'help':
                 dtype = self.__get_type(field_spec)
+                if dtype is None:
+                    raise(ValueError("Got \"None\" for field specification: {}".format(field_spec)))
+
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
                 if hasattr(field_spec, 'shape') and field_spec.shape is not None:
                     docval_arg.update(shape=field_spec.shape)
