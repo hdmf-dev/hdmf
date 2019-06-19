@@ -1,9 +1,11 @@
 import unittest2 as unittest
+import re
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
+from hdmf.build.warnings import MissingRequiredWarning
 
 from abc import ABCMeta
 from six import with_metaclass
@@ -249,8 +251,8 @@ class TestDynamicContainer(unittest.TestCase):
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
-        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
         Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
         Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
              baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
 
@@ -259,6 +261,26 @@ class TestDynamicContainer(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+
+    def test_dynamic_container_composition_wrong_order(self):
+        baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
+                              data_type_inc=self.bar_spec,
+                              attributes=[
+                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+        self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+
+        # Setup all the data we need
+        msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
+               "Please define that type before defining 'Baz1'.")
+        with self.assertRaisesRegex(ValueError, re.escape(msg)):
+            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
 
 class TestObjectMapper(with_metaclass(ABCMeta, unittest.TestCase)):
@@ -346,7 +368,8 @@ class TestObjectMapperNoNesting(TestObjectMapper):
     def test_build_empty(self):
         ''' Test default mapping functionality when no attributes are nested '''
         container = Bar('my_bar', [], 'value1', 10)
-        builder = self.mapper.build(container, self.manager)
+        with self.assertWarnsRegex(MissingRequiredWarning, re.escape("dataset 'data' for 'my_bar' of type (Bar)")):
+            builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
