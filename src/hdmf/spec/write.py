@@ -95,9 +95,9 @@ class YAMLSpecWriter(SpecWriter):
 class NamespaceBuilder(object):
     ''' A class for building namespace and spec files '''
 
-    @docval({'name': 'doc', 'type': str, 'doc': 'a description about what name namespace represents'},
-            {'name': 'name', 'type': str, 'doc': 'the name of namespace'},
-            {'name': 'full_name', 'type': str, 'doc': 'extended full name of name namespace', 'default': None},
+    @docval({'name': 'doc', 'type': str, 'doc': 'Description about what the namespace represents'},
+            {'name': 'name', 'type': str, 'doc': 'Name of the namespace'},
+            {'name': 'full_name', 'type': str, 'doc': 'Extended full name of the namespace', 'default': None},
             {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace', 'default': None},
             {'name': 'author', 'type': (str, list), 'doc': 'Author or list of authors.', 'default': None},
             {'name': 'contact', 'type': (str, list),

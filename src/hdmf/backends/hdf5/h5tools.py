@@ -17,7 +17,7 @@ from ...spec import NamespaceBuilder
 from .h5_utils import H5ReferenceDataset, H5RegionDataset, H5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
 
-from ..io import HDMFIO
+from ..io import HDMFIO, UnsupportedOperation
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -32,7 +32,7 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
-             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-")'},
+             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
@@ -44,7 +44,17 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            raise ValueError('You argued {} as this object\'s path, but supplied a file with filename: {}'.format())
+            msg = 'You argued %s as this object\'s path, ' % path
+            msg += 'but supplied a file with filename: %s' % file_obj.filename
+            raise ValueError(msg)
+
+        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+'):
+            msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
+            raise UnsupportedOperation(msg)
+
+        if file_obj is None and os.path.exists(path) and (mode == 'w-' or mode == 'x'):
+            msg = "Unable to open file %s in '%s' mode. File already exists." % (path, mode)
+            raise UnsupportedOperation(msg)
 
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
@@ -200,6 +210,11 @@ class HDF5IO(HDMFIO):
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
     def write(self, **kwargs):
+        if self.__mode == 'r':
+            raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
+                                        "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
+                                       % (self.__path, self.__mode))
+
         cache_spec = popargs('cache_spec', kwargs)
         call_docval_func(super(HDF5IO, self).write, kwargs)
         if cache_spec:
@@ -222,6 +237,17 @@ class HDF5IO(HDMFIO):
                 ns_group = spec_group.require_group(group_name)
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
+
+    def read(self, **kwargs):
+        if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
+            raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
+                                       % (self.__path, self.__mode))
+        try:
+            return call_docval_func(super(HDF5IO, self).read, kwargs)
+        except UnsupportedOperation as e:
+            if str(e) == 'Cannot build data. There are no values.':
+                raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
+                                           % (self.__path, self.__mode))
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
