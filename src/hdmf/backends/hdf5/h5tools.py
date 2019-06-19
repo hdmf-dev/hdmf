@@ -81,26 +81,34 @@ class HDF5IO(HDMFIO):
              'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
             {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None})
+            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+            returns="dict with the loaded namespaces", rtype=dict)
     def load_namespaces(cls, namespace_catalog, path, namespaces=None):
         '''
         Load cached namespaces from a file.
         '''
-        f = File(path, 'r')
-        if SPEC_LOC_ATTR not in f.attrs:
-            msg = "No cached namespaces found in %s" % path
-            warnings.warn(msg)
-        else:
+
+        d = {}
+
+        with File(path, 'r') as f:
+            if SPEC_LOC_ATTR not in f.attrs:
+                msg = "No cached namespaces found in %s" % path
+                warnings.warn(msg)
+                return d
+
             spec_group = f[f.attrs[SPEC_LOC_ATTR]]
+
             if namespaces is None:
                 namespaces = list(spec_group.keys())
+
             for ns in namespaces:
                 ns_group = spec_group[ns]
                 latest_version = list(ns_group.keys())[-1]
                 ns_group = ns_group[latest_version]
                 reader = H5SpecReader(ns_group)
-                namespace_catalog.load_namespaces('namespace', reader=reader)
-        f.close()
+                d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
+
+            return d
 
     @classmethod
     def __convert_namespace(cls, ns_catalog, namespace):
