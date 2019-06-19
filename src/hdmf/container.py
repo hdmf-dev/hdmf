@@ -51,10 +51,9 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if child is not None:
             self.__children.append(child)
             self.set_modified()
-            if not isinstance(child.parent, Container):
-                child.parent = self
+            child.parent = self
         else:
-            warn('cannot add None as child to a container %s' % self.name)
+            warn('Cannot add None as child to a container %s' % self.name)
 
     @classmethod
     def type_hierarchy(cls):
@@ -89,12 +88,16 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     @parent.setter
     def parent(self, parent_container):
+        if self.parent is parent_container:
+            return
+
         if self.parent is not None:
             if isinstance(self.parent, Container):
-                raise Exception('cannot reassign parent')
+                raise ValueError(('Cannot reassign parent to Container: %s. '
+                                  'Parent is already: %s.' % (repr(self), repr(self.parent))))
             else:
                 if parent_container is None:
-                    raise ValueError("got None for parent of '%s' - cannot overwrite Proxy with NoneType" % self.name)
+                    raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))
                 # TODO this assumes isinstance(parent_container, Proxy) but
                 # circular import if we try to do that. Proxy would need to move
                 # or Container extended with this functionality in build/map.py

@@ -5,8 +5,6 @@ from __future__ import print_function
 import warnings
 import re
 import argparse
-import glob
-import inspect
 import logging
 import os.path
 import os
