@@ -59,7 +59,7 @@ class YAMLSpecWriter(SpecWriter):
         same path.
         """
         with open(path, 'rb') as fd_read:
-            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader)
+            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader, preserve_quotes=True)
         self.write_spec(data, path)
 
     def sort_keys(self, obj):
