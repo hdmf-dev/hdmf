@@ -59,7 +59,7 @@ class YAMLSpecWriter(SpecWriter):
         same path.
         """
         with open(path, 'rb') as fd_read:
-            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader)
+            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader, preserve_quotes=True)
         self.write_spec(data, path)
 
     def sort_keys(self, obj):
@@ -69,14 +69,18 @@ class YAMLSpecWriter(SpecWriter):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
-        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'dtype', 'doc',
-                 'attributes', 'datasets', 'groups']
+        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'default_name',
+                 'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
+                 'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
         if isinstance(obj, dict):
             keys = list(obj.keys())
             for k in order[::-1]:
                 if k in keys:
                     keys.remove(k)
                     keys.insert(0, k)
+            if 'neurodata_type_def' not in keys and 'name' in keys:
+                keys.remove('name')
+                keys.insert(0, 'name')
             return yaml.comments.CommentedMap(
                 yaml.compat.ordereddict([(k, self.sort_keys(obj[k])) for k in keys])
             )
