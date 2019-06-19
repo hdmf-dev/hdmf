@@ -70,8 +70,8 @@ class YAMLSpecWriter(SpecWriter):
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
         order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'default_name',
-             'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
-             'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
+                 'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
+                 'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
         if isinstance(obj, dict):
             keys = list(obj.keys())
             for k in order[::-1]:
@@ -82,7 +82,7 @@ class YAMLSpecWriter(SpecWriter):
                 keys.remove('name')
                 keys.insert(0, 'name')
             return yaml.comments.CommentedMap(
-                yaml.compat.ordereddict([(k,self.sort_keys(obj[k])) for k in keys])
+                yaml.compat.ordereddict([(k, self.sort_keys(obj[k])) for k in keys])
             )
         elif isinstance(obj, list):
             return [self.sort_keys(v) for v in obj]
