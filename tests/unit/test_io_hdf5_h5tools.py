@@ -472,30 +472,46 @@ class TestCacheSpec(unittest.TestCase):
 
     def setUp(self):
         self.manager = _get_manager()
-
-    def test_cache_spec(self):
         self.test_temp_file = tempfile.NamedTemporaryFile()
         self.test_temp_file.close()
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.io = HDF5IO(self.test_temp_file.name, manager=self.manager, mode='w')
+        self.path = self.test_temp_file.name
 
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_no_cache_spec(self):
         # Setup all the data we need
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
         foofile = FooFile([foobucket])
 
-        # Write the first file
-        self.io.write(foofile, cache_spec=True)
-        self.io.close()
-        ns_catalog = NamespaceCatalog()
-        HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
-        self.assertEqual(ns_catalog.namespaces, (CORE_NAMESPACE,))
-        source_types = self.__get_types(self.io.manager.namespace_catalog)
-        read_types = self.__get_types(ns_catalog)
-        self.assertSetEqual(source_types, read_types)
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+            ns_catalog = NamespaceCatalog()
+            HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
+            self.assertEqual(ns_catalog.namespaces, (CORE_NAMESPACE,))
+            source_types = self.__get_types(io.manager.namespace_catalog)
+            read_types = self.__get_types(ns_catalog)
+            self.assertSetEqual(source_types, read_types)
+
+    def test_double_cache_spec(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            io.write(foofile)
 
     def __get_types(self, catalog):
         types = set()
@@ -504,6 +520,35 @@ class TestCacheSpec(unittest.TestCase):
             for source in ns['schema']:
                 types.update(catalog.get_types(source['source']))
         return types
+
+
+class TestNoCacheSpec(unittest.TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.test_temp_file = tempfile.NamedTemporaryFile()
+        self.test_temp_file.close()
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        self.path = self.test_temp_file.name
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_no_cache_spec(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile, cache_spec=False)
+
+        with File(self.test_temp_file.name) as f:
+            self.assertNotIn('specifications', f)
 
 
 class HDF5IOMultiFileTest(unittest.TestCase):
