@@ -139,6 +139,9 @@ class H5SpecWriter(SpecWriter):
         return json.dumps(spec, separators=(',', ':'))
 
     def __write(self, d, name):
+        # do not overwrite existing spec
+        if self.__group.get(name, None) is not None:
+            return
         data = self.stringify(d)
         dset = self.__group.create_dataset(name, data=data, dtype=self.__str_type)
         return dset
