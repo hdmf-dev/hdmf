@@ -33,8 +33,24 @@ class TestContainer(unittest.TestCase):
         child_obj.parent = parent_obj
 
         another_obj = Container('obj3')
-        with self.assertRaisesRegexp(Exception, 'cannot reassign parent'):
+        with self.assertRaisesRegexp(ValueError,
+                                     'Cannot reassign parent to Container: %s. Parent is already: %s.'
+                                     % (repr(child_obj), repr(child_obj.parent))):
             child_obj.parent = another_obj
+        self.assertIs(child_obj.parent, parent_obj)
+
+    def test_add_child_overwrite_parent(self):
+        """Test that parent setter properly blocks overwriting
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        parent_obj.add_child(child_obj)
+
+        another_obj = Container('obj3')
+        with self.assertRaisesRegexp(ValueError,
+                                     'Cannot reassign parent to Container: %s. Parent is already: %s.'
+                                     % (repr(child_obj), repr(child_obj.parent))):
+            another_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
 
     def test_set_parent_overwrite_proxy(self):
@@ -43,8 +59,8 @@ class TestContainer(unittest.TestCase):
         child_obj = Container('obj2')
         child_obj.parent = object()
 
-        with self.assertRaisesRegex(Exception,
-                                    r"got None for parent of '[^/]+' - cannot overwrite Proxy with NoneType"):
+        with self.assertRaisesRegex(ValueError,
+                                    r"Got None for parent of '[^/]+' - cannot overwrite Proxy with NoneType"):
             child_obj.parent = None
 
     def test_slash_restriction(self):
@@ -77,7 +93,7 @@ class TestContainer(unittest.TestCase):
         """
         parent_obj = Container('obj1')
         parent_obj.set_modified(False)
-        with self.assertWarnsRegex(UserWarning, r'cannot add None as child to a container .+'):
+        with self.assertWarnsRegex(UserWarning, r'Cannot add None as child to a container .+'):
             parent_obj.add_child(None)
         self.assertEqual(len(parent_obj.children), 0)
         self.assertFalse(parent_obj.modified)

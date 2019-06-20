@@ -59,7 +59,7 @@ class YAMLSpecWriter(SpecWriter):
         same path.
         """
         with open(path, 'rb') as fd_read:
-            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader)
+            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader, preserve_quotes=True)
         self.write_spec(data, path)
 
     def sort_keys(self, obj):
@@ -69,14 +69,18 @@ class YAMLSpecWriter(SpecWriter):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
-        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'dtype', 'doc',
-                 'attributes', 'datasets', 'groups']
+        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'default_name',
+                 'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
+                 'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
         if isinstance(obj, dict):
             keys = list(obj.keys())
             for k in order[::-1]:
                 if k in keys:
                     keys.remove(k)
                     keys.insert(0, k)
+            if 'neurodata_type_def' not in keys and 'name' in keys:
+                keys.remove('name')
+                keys.insert(0, 'name')
             return yaml.comments.CommentedMap(
                 yaml.compat.ordereddict([(k, self.sort_keys(obj[k])) for k in keys])
             )
@@ -91,9 +95,9 @@ class YAMLSpecWriter(SpecWriter):
 class NamespaceBuilder(object):
     ''' A class for building namespace and spec files '''
 
-    @docval({'name': 'doc', 'type': str, 'doc': 'a description about what name namespace represents'},
-            {'name': 'name', 'type': str, 'doc': 'the name of namespace'},
-            {'name': 'full_name', 'type': str, 'doc': 'extended full name of name namespace', 'default': None},
+    @docval({'name': 'doc', 'type': str, 'doc': 'Description about what the namespace represents'},
+            {'name': 'name', 'type': str, 'doc': 'Name of the namespace'},
+            {'name': 'full_name', 'type': str, 'doc': 'Extended full name of the namespace', 'default': None},
             {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace', 'default': None},
             {'name': 'author', 'type': (str, list), 'doc': 'Author or list of authors.', 'default': None},
             {'name': 'contact', 'type': (str, list),
