@@ -1400,7 +1400,6 @@ class TypeMap(object):
             if not f == 'help':
                 dtype = self.__get_type(field_spec)
                 if dtype is None:
-                    import pdb; pdb.set_trace()
                     raise(ValueError("Got \"None\" for field specification: {}".format(field_spec)))
 
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
