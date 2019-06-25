@@ -51,7 +51,11 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if child is not None:
             self.__children.append(child)
             self.set_modified()
-            child.parent = self
+
+            # if child.parent is a Container, then the mismatch between child.parent and parent
+            # is used to make a soft/external link from the parent to a child elsewhere
+            if not isinstance(child.parent, Container):
+                child.parent = self
         else:
             warn('Cannot add None as child to a container %s' % self.name)
 
