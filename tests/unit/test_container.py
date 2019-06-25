@@ -40,17 +40,14 @@ class TestContainer(unittest.TestCase):
         self.assertIs(child_obj.parent, parent_obj)
 
     def test_add_child_overwrite_parent(self):
-        """Test that parent setter properly blocks overwriting
+        """Test that a parent adding a child with an existing parent is allowed
         """
         parent_obj = Container('obj1')
         child_obj = Container('obj2')
         parent_obj.add_child(child_obj)
 
         another_obj = Container('obj3')
-        with self.assertRaisesRegexp(ValueError,
-                                     'Cannot reassign parent to Container: %s. Parent is already: %s.'
-                                     % (repr(child_obj), repr(child_obj.parent))):
-            another_obj.add_child(child_obj)
+        another_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
 
     def test_set_parent_overwrite_proxy(self):
