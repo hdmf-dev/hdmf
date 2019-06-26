@@ -72,7 +72,7 @@ class TestContainer(unittest.TestCase):
         parent_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
-        
+
     def test_add_child_none(self):
         """Test that add child does nothing if child is none
         """
