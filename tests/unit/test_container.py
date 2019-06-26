@@ -15,7 +15,6 @@ class TestContainer(unittest.TestCase):
         parent_obj = Container('obj1')
         child_obj = Container('obj2', parent_obj)
         self.assertIs(child_obj.parent, parent_obj)
-        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent

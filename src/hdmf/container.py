@@ -16,11 +16,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-
         self.__parent = getargs('parent', kwargs)
-        if self.parent is not None:
-            self.parent.add_child(self)
-
         self.__container_source = getargs('container_source', kwargs)
         self.__children = list()
         self.__modified = True
