@@ -94,6 +94,17 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(len(parent_obj.children), 0)
         self.assertFalse(parent_obj.modified)
 
+    def test_add_child_exists(self):
+        """Test that add child on the same child does nothing
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj3 = Container('obj3')
+        parent_obj.add_child(child_obj)
+        parent_obj.add_child(child_obj)
+        parent_obj.add_child(child_obj3)
+        self.assertEqual(len(parent_obj.children), 2)
+
     def test_reassign_container_source(self):
         """Test that reassign container source throws error
         """

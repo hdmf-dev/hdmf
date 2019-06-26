@@ -45,12 +45,12 @@ class Container(with_metaclass(ExtenderMeta, object)):
     def add_child(self, **kwargs):
         child = getargs('child', kwargs)
         if child is not None:
-            self.__children.append(child)
-            self.set_modified()
-
             # if child.parent is a Container, then the mismatch between child.parent and parent
             # is used to make a soft/external link from the parent to a child elsewhere
+            # if child.parent is not a Container, it is either None or a Proxy and should be set to self
             if not isinstance(child.parent, Container):
+                self.__children.append(child)
+                self.set_modified()
                 child.parent = self
         else:
             warn('Cannot add None as child to a container %s' % self.name)
