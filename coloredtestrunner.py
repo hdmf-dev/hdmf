@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 A ColoredTestRunner for use with the Python unit testing framework. It
 generates a tabular report to show the result at a glance, with COLORS.
