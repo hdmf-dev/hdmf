@@ -153,6 +153,9 @@ class BuildManager(object):
         result = self.__builders.get(container_id)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
+            if container.data_id is not None:
+                raise ValueError("Unexpectedly found data_id on Container %s" % str(container))
+            container.data_id = id(container)
             if container.container_source is None:
                 container.container_source = source
             else:
@@ -1206,6 +1209,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         try:
             obj = cls(**kwargs)
             obj.container_source = builder.source
+            obj.data_id = builder.attributes[attr_map.spec.id_key()]
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
             raise_from(Exception(msg), ex)
@@ -1653,6 +1657,7 @@ class TypeMap(object):
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
         builder.set_attribute(attr_map.spec.type_key(), data_type)
+        builder.set_attribute(attr_map.spec.id_key(), container.data_id)
         return builder
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
