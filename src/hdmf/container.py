@@ -1,4 +1,5 @@
 import abc
+from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta
 from warnings import warn
@@ -24,7 +25,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         self.__container_source = getargs('container_source', kwargs)
         self.__children = list()
         self.__modified = True
-        self.__data_id = None
+        self.__data_id = uuid4()
 
     def __repr__(self):
         return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
@@ -32,12 +33,6 @@ class Container(with_metaclass(ExtenderMeta, object)):
     @property
     def data_id(self):
         return self.__data_id
-
-    @data_id.setter
-    def data_id(self, value):
-        if self.__data_id is not None:
-            raise Exception('cannot reassign data_id')
-        self.__data_id = value
 
     @property
     def modified(self):
