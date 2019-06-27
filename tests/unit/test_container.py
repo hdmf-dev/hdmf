@@ -10,15 +10,14 @@ class Subcontainer(Container):
 class TestContainer(unittest.TestCase):
 
     def test_constructor(self):
-        """Test that constructor properly sets parent and parent knows its child
+        """Test that constructor properly sets parent. Note that parent does not know its child.
         """
         parent_obj = Container('obj1')
         child_obj = Container('obj2', parent_obj)
         self.assertIs(child_obj.parent, parent_obj)
-        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_set_parent(self):
-        """Test that parent setter properly sets parent
+        """Test that parent setter properly sets parent. Note that parent does not know its child.
         """
         parent_obj = Container('obj1')
         child_obj = Container('obj2')
@@ -37,20 +36,6 @@ class TestContainer(unittest.TestCase):
                                      'Cannot reassign parent to Container: %s. Parent is already: %s.'
                                      % (repr(child_obj), repr(child_obj.parent))):
             child_obj.parent = another_obj
-        self.assertIs(child_obj.parent, parent_obj)
-
-    def test_add_child_overwrite_parent(self):
-        """Test that parent setter properly blocks overwriting
-        """
-        parent_obj = Container('obj1')
-        child_obj = Container('obj2')
-        parent_obj.add_child(child_obj)
-
-        another_obj = Container('obj3')
-        with self.assertRaisesRegexp(ValueError,
-                                     'Cannot reassign parent to Container: %s. Parent is already: %s.'
-                                     % (repr(child_obj), repr(child_obj.parent))):
-            another_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
 
     def test_set_parent_overwrite_proxy(self):
@@ -97,6 +82,30 @@ class TestContainer(unittest.TestCase):
             parent_obj.add_child(None)
         self.assertEqual(len(parent_obj.children), 0)
         self.assertFalse(parent_obj.modified)
+
+    def test_add_child_exists(self):
+        """Test that adding an existing child does nothing
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj3 = Container('obj3')
+        parent_obj.add_child(child_obj)
+        parent_obj.add_child(child_obj)
+        parent_obj.add_child(child_obj3)
+        self.assertEqual(len(parent_obj.children), 2)
+
+    def test_add_child_overwrite_parent(self):
+        """Test that a parent adding a child with an existing parent is allowed but does nothing
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        parent_obj.add_child(child_obj)
+
+        another_obj = Container('obj3')
+        another_obj.add_child(child_obj)
+        self.assertIs(child_obj.parent, parent_obj)
+        self.assertIs(len(parent_obj.children), 1)
+        self.assertIs(len(another_obj.children), 0)
 
     def test_reassign_container_source(self):
         """Test that reassign container source throws error
