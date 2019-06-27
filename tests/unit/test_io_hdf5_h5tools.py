@@ -790,20 +790,26 @@ class HDF5IOWriteNoFile(unittest.TestCase):
         if os.path.exists(self.path):
             os.remove(self.path)
 
-    def test_write_no_file_ok(self):
-        # test that no errors are thrown
-        modes = ('w', 'w-', 'x', 'a')
-        for m in modes:
-            with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
-                io.write(self.foofile1)
+    def test_write_no_file_w_ok(self):
+        self.__write_file('w')
 
-            with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
-                read_foofile = io.read()
-                self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
-                                     read_foofile.buckets[0].foos[0].my_data[:].tolist())
+    def test_write_no_file_wminus_ok(self):
+        self.__write_file('w-')
 
-            if os.path.exists(self.path):
-                os.remove(self.path)
+    def test_write_no_file_x_ok(self):
+        self.__write_file('x')
+
+    def test_write_no_file_a_ok(self):
+        self.__write_file('a')
+
+    def __write_file(self, mode):
+        with HDF5IO(self.path, manager=_get_manager(), mode=mode) as io:
+            io.write(self.foofile1)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
+                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
 
 
 class HDF5IOWriteFileExists(unittest.TestCase):
