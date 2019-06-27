@@ -298,6 +298,7 @@ class BaseStorageSpec(Spec):
     __inc_key = 'data_type_inc'
     __def_key = 'data_type_def'
     __type_key = 'data_type'
+    __id_key = 'data_id'
 
     @docval(*deepcopy(_attrbl_args))
     def __init__(self, **kwargs):
@@ -431,6 +432,14 @@ class BaseStorageSpec(Spec):
     def linkable(self):
         ''' True if object can be a link, False otherwise '''
         return self.get('linkable', True)
+
+    @classmethod
+    def id_key(cls):
+        ''' Get the key used to store data ID on an instance
+
+        Override this method to use a different name for 'data_id'
+        '''
+        return cls.__id_key
 
     @classmethod
     def type_key(cls):
