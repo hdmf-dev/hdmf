@@ -1383,6 +1383,15 @@ class TypeMap(object):
                 ret = True
         return ret
 
+    @staticmethod
+    def __set_default_name(docval_args, default_name):
+        new_docval_args = []
+        for x in docval_args:
+            if x['name'] == 'name':
+                x['default'] = default_name
+            new_docval_args.append(x)
+        return new_docval_args
+
     def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
         # TODO: fix this to be more maintainable and smarter
         if base is None:
@@ -1397,14 +1406,8 @@ class TypeMap(object):
                 continue
             docval_args.append(arg)
 
-        # set default name
         if default_name is not None:
-            new_docval_args = []
-            for x in docval_args:
-                if x['name'] == 'name':
-                    x['default'] = default_name
-                new_docval_args.append(x)
-            docval_args = new_docval_args
+            docval_args = self.__set_default_name(docval_args, default_name)
 
         for f, field_spec in addl_fields.items():
             if not f == 'help':
