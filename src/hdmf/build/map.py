@@ -1209,7 +1209,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         try:
             obj = cls(**kwargs)
             obj.container_source = builder.source
-            obj.data_id = builder.attributes[attr_map.spec.id_key()]
+            obj.data_id = builder.attributes[self.__spec.id_key()]
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
             raise_from(Exception(msg), ex)
