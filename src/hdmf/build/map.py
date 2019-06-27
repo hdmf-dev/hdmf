@@ -1383,7 +1383,7 @@ class TypeMap(object):
                 ret = True
         return ret
 
-    def __get_cls_dict(self, base, addl_fields, name=None):
+    def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
         # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
@@ -1396,6 +1396,16 @@ class TypeMap(object):
             if arg['name'] in addl_fields:
                 continue
             docval_args.append(arg)
+
+        # set default name
+        if default_name is not None:
+            new_docval_args = []
+            for x in docval_args:
+                if x['name'] == 'name':
+                    x['default'] = default_name
+                new_docval_args.append(x)
+            docval_args = new_docval_args
+
         for f, field_spec in addl_fields.items():
             if not f == 'help':
                 dtype = self.__get_type(field_spec)
@@ -1468,7 +1478,7 @@ class TypeMap(object):
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
             try:
-                d = self.__get_cls_dict(parent_cls, fields, spec.name)
+                d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
             except TypeDoesNotExistError as e:
                 name = spec.get('data_type_def', 'Unknown')
                 raise ValueError("Cannot dynamically generate class for type '%s'. " % name
