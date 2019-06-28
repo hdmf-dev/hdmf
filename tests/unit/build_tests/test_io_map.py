@@ -175,6 +175,13 @@ class TestDynamicContainer(unittest.TestCase):
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
 
+    def test_dynamic_container_default_name(self):
+        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz')
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        inst = cls()
+        self.assertEqual(inst.name, 'bingo')
+
     def test_dynamic_container_creation_defaults(self):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,

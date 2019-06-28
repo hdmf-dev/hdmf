@@ -17,11 +17,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-
         self.__parent = getargs('parent', kwargs)
-        if self.parent is not None:
-            self.parent.add_child(self)
-
         self.__container_source = getargs('container_source', kwargs)
         self.__children = list()
         self.__modified = True
@@ -55,9 +51,13 @@ class Container(with_metaclass(ExtenderMeta, object)):
     def add_child(self, **kwargs):
         child = getargs('child', kwargs)
         if child is not None:
-            self.__children.append(child)
-            self.set_modified()
-            child.parent = self
+            # if child.parent is a Container, then the mismatch between child.parent and parent
+            # is used to make a soft/external link from the parent to a child elsewhere
+            # if child.parent is not a Container, it is either None or a Proxy and should be set to self
+            if not isinstance(child.parent, Container):
+                self.__children.append(child)
+                self.set_modified()
+                child.parent = self
         else:
             warn('Cannot add None as child to a container %s' % self.name)
 
