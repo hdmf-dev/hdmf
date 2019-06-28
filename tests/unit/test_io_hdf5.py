@@ -158,11 +158,10 @@ class TestHDF5Writer(GroupBuilderTestCase):
                                         attributes={'data_type': 'Foo',
                                                     'namespace': 'test_core',
                                                     'attr1': "bar",
-                                                    'data_id': -1},
+                                                    'object_id': -1},
                                         datasets={'my_data': DatasetBuilder('my_data', list(range(100, 200, 10)),
                                                                             attributes={'attr2': 17})})
         self.foo = Foo('foo1', list(range(100, 200, 10)), attr1="bar", attr2=17, attr3=3.14)
-        self.foo.data_id = -1
         self.manager.prebuilt(self.foo, self.foo_builder)
         self.builder = GroupBuilder(
             'root',

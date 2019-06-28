@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-from uuid import UUID
 import re
 import numpy as np
 import warnings
@@ -1206,7 +1205,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             kwargs[argname] = val
         try:
             obj = cls(**kwargs)
-            obj._Container__data_id = UUID(bytes=builder.attributes[self.__spec.id_key()])
+            obj._Container__object_id = builder.attributes[self.__spec.id_key()]
             obj.container_source = builder.source
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
@@ -1668,7 +1667,7 @@ class TypeMap(object):
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
         builder.set_attribute(attr_map.spec.type_key(), data_type)
-        builder.set_attribute(attr_map.spec.id_key(), container.data_id)
+        builder.set_attribute(attr_map.spec.id_key(), container.object_id)
         return builder
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),

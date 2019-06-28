@@ -21,14 +21,14 @@ class Container(with_metaclass(ExtenderMeta, object)):
         self.__container_source = getargs('container_source', kwargs)
         self.__children = list()
         self.__modified = True
-        self.__data_id = uuid4()
+        self.__object_id = uuid4().hex
 
     def __repr__(self):
         return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
 
     @property
-    def data_id(self):
-        return self.__data_id
+    def object_id(self):
+        return self.__object_id
 
     @property
     def modified(self):

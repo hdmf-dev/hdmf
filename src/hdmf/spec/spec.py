@@ -298,7 +298,7 @@ class BaseStorageSpec(Spec):
     __inc_key = 'data_type_inc'
     __def_key = 'data_type_def'
     __type_key = 'data_type'
-    __id_key = 'data_id'
+    __id_key = 'object_id'
 
     @docval(*deepcopy(_attrbl_args))
     def __init__(self, **kwargs):
@@ -437,7 +437,7 @@ class BaseStorageSpec(Spec):
     def id_key(cls):
         ''' Get the key used to store data ID on an instance
 
-        Override this method to use a different name for 'data_id'
+        Override this method to use a different name for 'object_id'
         '''
         return cls.__id_key
 

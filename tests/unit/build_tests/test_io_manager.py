@@ -54,7 +54,7 @@ class TestBuildManager(TestBase):
                     list(range(10)),
                     attributes={'attr2': 10})},
             attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                        'data_id': id(container_inst)})
+                        'object_id': container_inst.object_id})
         builder1 = self.manager.build(container_inst)
         self.assertDictEqual(builder1, expected)
 
@@ -68,7 +68,7 @@ class TestBuildManager(TestBase):
                     list(range(10)),
                     attributes={'attr2': 10})},
             attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                        'data_id': id(container_inst)})
+                        'object_id': container_inst.object_id})
         builder1 = self.manager.build(container_inst)
         builder2 = self.manager.build(container_inst)
         self.assertDictEqual(builder1, expected)
@@ -83,7 +83,7 @@ class TestBuildManager(TestBase):
                     list(range(10)),
                     attributes={'attr2': 10})},
             attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                        'data_id': -1})
+                        'object_id': -1})
         container = self.manager.construct(builder)
         self.assertListEqual(container.my_data, list(range(10)))
         self.assertEqual(container.attr1, 'value1')
@@ -96,7 +96,7 @@ class TestBuildManager(TestBase):
                 list(range(10)),
                 attributes={'attr2': 10})},
             attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                        'data_id': -1})
+                        'object_id': -1})
         container1 = self.manager.construct(builder)
         container2 = self.manager.construct(builder)
         self.assertIs(container1, container2)
@@ -116,14 +116,14 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
                                         list(range(10)),
                                         attributes={'attr2': 10})},
                                     attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                                                'data_id': id(self.foo_bucket.foos[0])}),
+                                                'object_id': self.foo_bucket.foos[0].object_id}),
             'my_foo2': GroupBuilder('my_foo2', datasets={'my_data':
                                                          DatasetBuilder(
                                                              'my_data',
                                                              list(range(10, 20)),
                                                              attributes={'attr2': 20})},
                                     attributes={'attr1': 'value2', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                                                'data_id': id(self.foo_bucket.foos[1])})
+                                                'object_id': self.foo_bucket.foos[1].object_id})
         }
         self.setUpBucketBuilder()
         self.setUpBucketSpec()
@@ -160,7 +160,7 @@ class TestNestedContainersNoSubgroups(TestNestedBase):
         self.bucket_builder = GroupBuilder(
             'test_foo_bucket',
             groups=self.foo_builders,
-            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'data_id': id(self.foo_bucket)})
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
 
     def setUpBucketSpec(self):
         self.bucket_spec = GroupSpec('A test group specification for a data type containing data type',
@@ -183,7 +183,7 @@ class TestNestedContainersSubgroup(TestNestedBase):
         self.bucket_builder = GroupBuilder(
             'test_foo_bucket',
             groups={'foos': tmp_builder},
-            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'data_id': id(self.foo_bucket)})
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
 
     def setUpBucketSpec(self):
         tmp_spec = GroupSpec(
@@ -211,7 +211,7 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
         self.bucket_builder = GroupBuilder(
             'test_foo_bucket',
             groups={'foo_holder': tmp_builder},
-            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'data_id': id(self.foo_bucket)})
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
 
     def setUpBucketSpec(self):
         tmp_spec = GroupSpec('A subgroup for Foos',
@@ -237,7 +237,7 @@ class TestTypeMap(TestBase):
 
     def test_get_ns_dt(self):
         bldr = GroupBuilder('my_foo', attributes={'attr1': 'value1', 'namespace': 'CORE', 'data_type': 'Foo',
-                                                  'data_id': -1})
+                                                  'object_id': -1})
         dt = self.type_map.get_builder_dt(bldr)
         ns = self.type_map.get_builder_ns(bldr)
         self.assertEqual(dt, 'Foo')
