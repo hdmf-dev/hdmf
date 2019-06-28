@@ -17,7 +17,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-        self.__parent = getargs('parent', kwargs)
+        self.parent = getargs('parent', kwargs)
         self.__container_source = getargs('container_source', kwargs)
         self.__children = list()
         self.__modified = True
@@ -55,8 +55,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
             # is used to make a soft/external link from the parent to a child elsewhere
             # if child.parent is not a Container, it is either None or a Proxy and should be set to self
             if not isinstance(child.parent, Container):
-                self.__children.append(child)
-                self.set_modified()
+                # actually add the child to the parent in parent setter
                 child.parent = self
         else:
             warn('Cannot add None as child to a container %s' % self.name)
@@ -90,7 +89,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
         '''
         The parent Container of this Container
         '''
-        return self.__parent
+        # do it this way because __parent may not exist yet (not set in constructor)
+        return getattr(self, '_Container__parent', None)
 
     @parent.setter
     def parent(self, parent_container):
@@ -109,10 +109,14 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 # or Container extended with this functionality in build/map.py
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
+                    parent_container.add_child(self)
                 else:
                     self.__parent.add_candidate(parent_container)
         else:
             self.__parent = parent_container
+            if isinstance(parent_container, Container):
+                parent_container.__children.append(self)
+                parent_container.set_modified()
 
 
 class Data(Container):

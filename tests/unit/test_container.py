@@ -15,6 +15,7 @@ class TestContainer(unittest.TestCase):
         parent_obj = Container('obj1')
         child_obj = Container('obj2', parent_obj)
         self.assertIs(child_obj.parent, parent_obj)
+        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent. Note that parent does not know its child.
@@ -23,6 +24,7 @@ class TestContainer(unittest.TestCase):
         child_obj = Container('obj2')
         child_obj.parent = parent_obj
         self.assertIs(child_obj.parent, parent_obj)
+        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_set_parent_overwrite(self):
         """Test that parent setter properly blocks overwriting
@@ -30,6 +32,7 @@ class TestContainer(unittest.TestCase):
         parent_obj = Container('obj1')
         child_obj = Container('obj2')
         child_obj.parent = parent_obj
+        self.assertIs(parent_obj.children[0], child_obj)
 
         another_obj = Container('obj3')
         with self.assertRaisesRegexp(ValueError,
@@ -37,6 +40,7 @@ class TestContainer(unittest.TestCase):
                                      % (repr(child_obj), repr(child_obj.parent))):
             child_obj.parent = another_obj
         self.assertIs(child_obj.parent, parent_obj)
+        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_set_parent_overwrite_proxy(self):
         """Test that parent setter properly blocks overwriting with proxy/object
@@ -72,6 +76,7 @@ class TestContainer(unittest.TestCase):
         parent_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
+        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_add_child_none(self):
         """Test that add child does nothing if child is none
@@ -93,6 +98,8 @@ class TestContainer(unittest.TestCase):
         parent_obj.add_child(child_obj)
         parent_obj.add_child(child_obj3)
         self.assertEqual(len(parent_obj.children), 2)
+        self.assertIs(parent_obj.children[0], child_obj)
+        self.assertIs(parent_obj.children[1], child_obj3)
 
     def test_add_child_overwrite_parent(self):
         """Test that a parent adding a child with an existing parent is allowed but does nothing
