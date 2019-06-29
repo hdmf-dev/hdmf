@@ -1,7 +1,7 @@
 import abc
 from uuid import uuid4
 from six import with_metaclass
-from .utils import docval, getargs, ExtenderMeta
+from .utils import docval, getargs, ExtenderMeta, popargs
 from warnings import warn
 
 
@@ -9,19 +9,23 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     _fieldsname = '__fields__'
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'parent', 'type': 'Container', 'doc': 'the Container that holds this Container', 'default': None},
-            {'name': 'container_source', 'type': str, 'doc': 'the source of this container', 'default': None})
+    # xxx: takes params
+    def __new__(cls, *args, **kwargs):
+        inst = super(Container, cls).__new__(cls)
+        inst.__container_source = kwargs.pop('container_source', None)
+        inst.__parent = None
+        inst.__children = list()
+        inst.__modified = True
+        inst.__object_id = kwargs.pop('object_id', uuid4().hex)
+        inst.parent = kwargs.pop('parent', None)
+        return inst
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-        self.parent = getargs('parent', kwargs)
-        self.__container_source = getargs('container_source', kwargs)
-        self.__children = list()
-        self.__modified = True
-        self.__object_id = uuid4().hex
 
     def __repr__(self):
         return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
@@ -39,7 +43,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
     def set_modified(self, **kwargs):
         modified = getargs('modified', kwargs)
         self.__modified = modified
-        if modified and self.parent is not None:
+        if modified and isinstance(self.parent, Container):
             self.parent.set_modified()
 
     @property
@@ -109,9 +113,10 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 # or Container extended with this functionality in build/map.py
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
-                    parent_container.add_child(self)
+                    parent_container.__children.append(self)
+                    parent_container.set_modified()
                 else:
-                    self.__parent.add_candidate(parent_container)
+                    self.__parent.add_candidate(parent_container, self)
         else:
             self.__parent = parent_container
             if isinstance(parent_container, Container):
