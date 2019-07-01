@@ -53,6 +53,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
     @docval({'name': 'child', 'type': 'Container',
              'doc': 'the child Container for this Container', 'default': None})
     def add_child(self, **kwargs):
+        warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
         child = getargs('child', kwargs)
         if child is not None:
             # if child.parent is a Container, then the mismatch between child.parent and parent

@@ -57,7 +57,7 @@ class FooBucket(Container):
         super(FooBucket, self).__init__(name=name)
         self.__foos = foos
         for f in self.__foos:
-            self.add_child(f)
+            f.parent = self
 
     def __eq__(self, other):
         return self.name == other.name and set(self.foos) == set(other.foos)

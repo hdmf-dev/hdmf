@@ -29,7 +29,7 @@ class FooFile(Container):
         super(FooFile, self).__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
-            self.add_child(f)
+            f.parent = self
 
     def __eq__(self, other):
         return set(self.buckets) == set(other.buckets)

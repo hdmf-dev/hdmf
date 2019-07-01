@@ -72,46 +72,25 @@ class TestContainer(unittest.TestCase):
         parent_obj = Container('obj1')
         child_obj = Container('obj2')
         parent_obj.set_modified(False)
-        parent_obj.add_child(child_obj)
+        with self.assertWarnsRegex(DeprecationWarning,
+                                   r'add_child is deprecated\. Set the parent attribute instead\.'):
+            parent_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
         self.assertIs(parent_obj.children[0], child_obj)
 
-    def test_add_child_none(self):
-        """Test that add child does nothing if child is none
-        """
-        parent_obj = Container('obj1')
-        parent_obj.set_modified(False)
-        with self.assertWarnsRegex(UserWarning, r'Cannot add None as child to a container .+'):
-            parent_obj.add_child(None)
-        self.assertEqual(len(parent_obj.children), 0)
-        self.assertFalse(parent_obj.modified)
-
-    def test_add_child_exists(self):
+    def test_set_parent_exists(self):
         """Test that adding an existing child does nothing
         """
         parent_obj = Container('obj1')
         child_obj = Container('obj2')
         child_obj3 = Container('obj3')
-        parent_obj.add_child(child_obj)
-        parent_obj.add_child(child_obj)
-        parent_obj.add_child(child_obj3)
+        child_obj.parent = parent_obj
+        child_obj.parent = parent_obj
+        child_obj3.parent = parent_obj
         self.assertEqual(len(parent_obj.children), 2)
         self.assertIs(parent_obj.children[0], child_obj)
         self.assertIs(parent_obj.children[1], child_obj3)
-
-    def test_add_child_overwrite_parent(self):
-        """Test that a parent adding a child with an existing parent is allowed but does nothing
-        """
-        parent_obj = Container('obj1')
-        child_obj = Container('obj2')
-        parent_obj.add_child(child_obj)
-
-        another_obj = Container('obj3')
-        another_obj.add_child(child_obj)
-        self.assertIs(child_obj.parent, parent_obj)
-        self.assertIs(len(parent_obj.children), 1)
-        self.assertIs(len(another_obj.children), 0)
 
     def test_reassign_container_source(self):
         """Test that reassign container source throws error
