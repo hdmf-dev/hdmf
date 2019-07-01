@@ -1,7 +1,7 @@
 import abc
 from uuid import uuid4
 from six import with_metaclass
-from .utils import docval, getargs, ExtenderMeta, popargs
+from .utils import docval, getargs, ExtenderMeta
 from warnings import warn
 
 
