@@ -16,7 +16,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         inst.__parent = None
         inst.__children = list()
         inst.__modified = True
-        inst.__object_id = kwargs.pop('object_id', uuid4().hex)
+        inst.__object_id = kwargs.pop('object_id', str(uuid4()))
         inst.parent = kwargs.pop('parent', None)
         return inst
 
