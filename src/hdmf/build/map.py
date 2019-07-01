@@ -1207,7 +1207,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             kwargs[argname] = val
         try:
             obj = cls.__new__(cls, container_source=builder.source, parent=parent,
-                              object_id=builder.attributes[self.__spec.id_key()])
+                              object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
