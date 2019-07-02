@@ -11,7 +11,7 @@ import os
 import sys
 import traceback
 import unittest2 as unittest
-from coloredtestrunner import ColoredTestRunner, ColoredTestResult
+from tests.coloredtestrunner import ColoredTestRunner, ColoredTestResult
 
 flags = {'hdmf': 1, 'integration': 3, 'example': 4}
 
