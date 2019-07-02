@@ -92,7 +92,7 @@ class Table(object):
 
     def addRow(self, row):
         rows = [[''] for l in range(len(row))]
-        maxrows = 1
+        maxrows = 0
         for i, x in enumerate(row):
             for j, y in enumerate(x.split("\n")):
                 if len(y) == 0 and not self.allow_newlines:
@@ -104,8 +104,8 @@ class Table(object):
                 rows[i].append(y)
                 maxrows = max(j, maxrows)
         for i in range(len(rows)):
-            rows[i] += (maxrows-(len(rows[i])-1))*['']
-        for i in range(maxrows):
+            rows[i] += (maxrows-len(rows[i])+2)*['']
+        for i in range(maxrows + 1):
             self.__rows__.append([rows[j][i+1] for j in range(len(row))])
 
     def addTitles(self, titles):
@@ -355,7 +355,7 @@ class ColoredTestRunner(Template_mixin):
         startTime = str(self.startTime)[:19]
         duration = str(self.stopTime - self.startTime)
         status = []
-        padding = 4*' '
+        padding = 4 * ' '
         if result.success_count:
             status.append(padding + self.bc.GREEN + 'Pass:' + self.bc.END + ' %s\n' % result.success_count)
         if result.failure_count:
@@ -393,7 +393,7 @@ class ColoredTestRunner(Template_mixin):
     def _generate_report(self, result):
         sortedResult = self.sortResult(result.result)
         padding = 4 * ' '
-        table = Table(padding=padding)
+        table = Table(padding=padding, allow_newlines=True)
         table.addTitles(["Test group/Test case", "Count", "Pass", "Fail", "Error"])
         tests = ''
         for cid, (testClass, classResults) in enumerate(sortedResult):  # Iterate over the test cases
@@ -416,8 +416,10 @@ class ColoredTestRunner(Template_mixin):
                 name = "%s.%s" % (testClass.__module__, testClass.__name__)
             tests += padding + name + "\n"
             doc = testClass.__doc__ and testClass.__doc__.split("\n")[0] or ""
-            desc = doc and ('%s:\n    %s' % (name, doc)) or name
-            # style = ne > 0 and 'errorClass' or nf > 0 and 'failClass' or 'passClass',
+            doc_indent = 4 * ' '
+            if doc:
+                doc = textwrap.indent(self._wrap_text(doc, width=self.output_width - 4), doc_indent)
+            desc = doc and ('%s:\n%s' % (name, doc)) or name
 
             table.addRow([self._wrap_text(desc, width=self.desc_width), str(np + nf + ne), str(np), str(nf), str(ne)])
             for tid, (n, test, output, error) in enumerate(classResults):  # Iterate over the unit tests
@@ -438,7 +440,10 @@ class ColoredTestRunner(Template_mixin):
     def _generate_report_test(self, cid, tid, n, test, output, error):
         name = test.id().split('.')[-1]
         doc = test.shortDescription() or ""
-        desc = doc and ('%s:\n    %s' % (name, doc)) or name
+        doc_indent = 4 * ' '
+        if doc:
+            doc = textwrap.indent(self._wrap_text(doc, width=self.output_width - 4), doc_indent)
+        desc = doc and ('%s:\n%s' % (name, doc)) or name
 
         # o and e should be byte string because they are collected from stdout and stderr?
         if isinstance(output, str):
@@ -467,7 +472,7 @@ class ColoredTestRunner(Template_mixin):
         script = self.REPORT_TEST_OUTPUT_TMPL % dict(
             output=self._wrap_text(uo, width=self.output_width) + self._wrap_text(ue, width=self.output_width),
         )
-        row = [self._wrap_text(desc, width=self.desc_width), script, self.STATUS[n]]
+        row = [desc, script, self.STATUS[n]]
         return row
 
     @staticmethod
