@@ -37,7 +37,6 @@ def run_test_suite(directory, description="", verbose=True):
     return pynwb_test_result
 
 
-
 def _import_from_file(script):
     import imp
     return imp.load_source(os.path.basename(script), script)
