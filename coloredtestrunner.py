@@ -416,9 +416,8 @@ class ColoredTestRunner(Template_mixin):
                 name = "%s.%s" % (testClass.__module__, testClass.__name__)
             tests += padding + name + "\n"
             doc = testClass.__doc__ and testClass.__doc__.split("\n")[0] or ""
-            doc_indent = 4 * ' '
             if doc:
-                doc = textwrap.indent(self._wrap_text(doc, width=self.output_width - 4), doc_indent)
+                doc = self._indent(self._wrap_text(doc, width=self.output_width - 4), 4)
             desc = doc and ('%s:\n%s' % (name, doc)) or name
 
             table.addRow([self._wrap_text(desc, width=self.desc_width), str(np + nf + ne), str(np), str(nf), str(ne)])
@@ -428,8 +427,8 @@ class ColoredTestRunner(Template_mixin):
 
             for tid, (n, test, output, error) in enumerate(classResults):  # Iterate over the unit tests
                 if error:
-                    tests += textwrap.indent(self.bc.RED + "ERROR in test %s:" % test + self.bc.END, 2*padding)
-                    tests += "\n" + textwrap.indent(error, 2*padding) + "\n"
+                    tests += self._indent(self.bc.RED + "ERROR in test %s:" % test + self.bc.END, 2)
+                    tests += "\n" + self._indent(error, 2) + "\n"
 
         table.addRow([self.desc_width * '-', '----', '----', '----', '----'])
         table.addRow(["Total", str(result.success_count + result.failure_count + result.error_count),
@@ -440,9 +439,8 @@ class ColoredTestRunner(Template_mixin):
     def _generate_report_test(self, cid, tid, n, test, output, error):
         name = test.id().split('.')[-1]
         doc = test.shortDescription() or ""
-        doc_indent = 4 * ' '
         if doc:
-            doc = textwrap.indent(self._wrap_text(doc, width=self.output_width - 4), doc_indent)
+            doc = self._indent(self._wrap_text(doc, width=self.output_width - 4), 4)
         desc = doc and ('%s:\n%s' % (name, doc)) or name
 
         # o and e should be byte string because they are collected from stdout and stderr?
@@ -482,3 +480,12 @@ class ColoredTestRunner(Template_mixin):
         # https://stackoverflow.com/a/26538082
         return '\n'.join(['\n'.join(textwrap.wrap(line, width, break_long_words=False, replace_whitespace=False))
                           for line in text.splitlines() if line.strip() != ''])
+
+    @staticmethod
+    def _indent(text, amount):
+        """Indent text by a particular number of spaces on each line
+        """
+        try:
+            return textwrap.indent(text, amount * ' ')
+        except AttributeError:  # undefined function (indent wasn't added until Python 3.3)
+            return ''.join((amount * ' ') + line for line in text.splitlines(True))
