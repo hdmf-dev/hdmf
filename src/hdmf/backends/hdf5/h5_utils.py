@@ -1,5 +1,8 @@
 from copy import copy
-from collections import Iterable
+try:
+    from collections.abc import Iterable  # Python 3
+except ImportError:
+    from collections import Iterable  # Python 2.7
 from six import binary_type, text_type
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 import json
