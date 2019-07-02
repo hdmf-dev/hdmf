@@ -97,6 +97,8 @@ def main():
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
+    warnings.simplefilter('always')
+
     # Run unit tests for hdmf package
     if flags['hdmf'] in args.suites:
         run_test_suite("tests/unit", "hdmf unit tests", verbose=args.verbosity)
