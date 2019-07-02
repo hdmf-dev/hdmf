@@ -28,13 +28,13 @@ def run_test_suite(directory, description="", verbose=True):
         runner = ColoredTestRunner(verbosity=verbose)
     else:
         runner = unittest.TextTestRunner(verbosity=verbose, resultclass=ColoredTestResult)
-    pynwb_test_result = runner.run(unittest.TestLoader().discover(directory))
+    test_result = runner.run(unittest.TestLoader().discover(directory))
 
-    TOTAL += pynwb_test_result.testsRun
-    FAILURES += len(pynwb_test_result.failures)
-    ERRORS += len(pynwb_test_result.errors)
+    TOTAL += test_result.testsRun
+    FAILURES += len(test_result.failures)
+    ERRORS += len(test_result.errors)
 
-    return pynwb_test_result
+    return test_result
 
 
 def _import_from_file(script):
