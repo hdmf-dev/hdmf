@@ -3,7 +3,7 @@ try:
     from collections.abc import Iterable  # Python 3
 except ImportError:
     from collections import Iterable  # Python 2.7
-    
+
 from operator import itemgetter
 
 import numpy as np

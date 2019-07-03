@@ -33,8 +33,8 @@ class TestContainer(unittest.TestCase):
 
         another_obj = Container('obj3')
         with self.assertRaisesRegex(ValueError,
-                                     'Cannot reassign parent to Container: %s. Parent is already: %s.'
-                                     % (repr(child_obj), repr(child_obj.parent))):
+                                    'Cannot reassign parent to Container: %s. Parent is already: %s.'
+                                    % (repr(child_obj), repr(child_obj.parent))):
             child_obj.parent = another_obj
         self.assertIs(child_obj.parent, parent_obj)
 
