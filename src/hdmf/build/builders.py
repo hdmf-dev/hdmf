@@ -5,7 +5,10 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 import warnings
-from collections import Iterable
+try:
+    from collections.abc import Iterable  # Python 3
+except ImportError:
+    from collections import Iterable  # Python 2.7
 from datetime import datetime
 
 from ..utils import docval, getargs, popargs, call_docval_func, fmt_docval_args

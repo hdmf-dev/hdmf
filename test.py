@@ -97,6 +97,14 @@ def main():
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
+    warnings.simplefilter('always')
+
+    # many tests use NamespaceCatalog.add_namespace, which is deprecated, to set up tests.
+    # ignore these warnings for now.
+    warnings.filterwarnings("ignore", category=DeprecationWarning, module="hdmf.spec.namespace",
+                            message=("NamespaceCatalog.add_namespace has been deprecated. "
+                                     "SpecNamespaces should be added with load_namespaces."))
+
     # Run unit tests for hdmf package
     if flags['hdmf'] in args.suites:
         run_test_suite("tests/unit", "hdmf unit tests", verbose=args.verbosity)
