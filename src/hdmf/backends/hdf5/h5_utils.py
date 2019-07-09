@@ -1,5 +1,8 @@
 from copy import copy
-from collections import Iterable
+try:
+    from collections.abc import Iterable  # Python 3
+except ImportError:
+    from collections import Iterable  # Python 2.7
 from six import binary_type, text_type
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 import json
@@ -125,7 +128,7 @@ class H5RegionDataset(H5ReferenceDataset):
 
 class H5SpecWriter(SpecWriter):
 
-    __str_type = special_dtype(vlen=binary_type)
+    __str_type = special_dtype(vlen=text_type)
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to write specs to'})
     def __init__(self, **kwargs):
@@ -140,7 +143,8 @@ class H5SpecWriter(SpecWriter):
 
     def __write(self, d, name):
         data = self.stringify(d)
-        dset = self.__group.create_dataset(name, data=data, dtype=self.__str_type)
+        # create spec group if it does not exist. otherwise, do not overwrite existing spec
+        dset = self.__group.require_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
         return dset
 
     def write_spec(self, spec, path):

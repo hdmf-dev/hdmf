@@ -81,16 +81,16 @@ class TestNamespaceBuilder(unittest.TestCase):
         ns_catalog = NamespaceCatalog()
         ns_catalog.load_namespaces(self.namespace_path, resolve=True)
         loaded_ns = ns_catalog.get_namespace(self.ns_name)
-        self.assertEquals(loaded_ns.doc, "mydoc")
-        self.assertEquals(loaded_ns.author, "foo")
-        self.assertEquals(loaded_ns.contact, "foo@bar.com")
-        self.assertEquals(loaded_ns.full_name, "My Laboratory")
-        self.assertEquals(loaded_ns.name, "mylab")
-        self.assertEquals(loaded_ns.date, self.date.isoformat())
+        self.assertEqual(loaded_ns.doc, "mydoc")
+        self.assertEqual(loaded_ns.author, "foo")
+        self.assertEqual(loaded_ns.contact, "foo@bar.com")
+        self.assertEqual(loaded_ns.full_name, "My Laboratory")
+        self.assertEqual(loaded_ns.name, "mylab")
+        self.assertEqual(loaded_ns.date, self.date.isoformat())
         self.assertDictEqual(loaded_ns.schema[0], {'doc': 'Extensions for my lab',
                                                    'source': 'mylab.specs.yaml',
                                                    'title': 'Extensions for my lab'})
-        self.assertEquals(loaded_ns.version, "0.0.1")
+        self.assertEqual(loaded_ns.version, "0.0.1")
 
     def test_get_source_files(self):
         ns_catalog = NamespaceCatalog()
@@ -162,7 +162,7 @@ class TestYAMLSpecWrite(unittest.TestCase):
 
     def test_init(self):
         temp = YAMLSpecWriter('.')
-        self.assertEquals(temp._YAMLSpecWriter__outdir, '.')
+        self.assertEqual(temp._YAMLSpecWriter__outdir, '.')
 
     def test_write_namespace(self):
         temp = YAMLSpecWriter()
@@ -181,3 +181,6 @@ class TestYAMLSpecWrite(unittest.TestCase):
             self.assertTrue("source: mylab.specs.yaml\n" in nsstr)
             self.assertTrue("title: Extensions for my lab\n" in nsstr)
             self.assertTrue("version: 0.0.1\n" in nsstr)
+
+    def test_get_name(self):
+        self.assertEqual(self.ns_name, self.ns_builder.name)

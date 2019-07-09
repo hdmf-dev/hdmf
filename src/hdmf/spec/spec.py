@@ -279,9 +279,10 @@ class AttributeSpec(Spec):
 
 _attrbl_args = [
         {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'name', 'type': str, 'doc': 'the name of this base storage container', 'default': None},
+        {'name': 'name', 'type': str, 'doc': 'the name of this base storage container, '
+         + 'allowed only if quantity is not \'%s\' or \'%s\'' % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
         {'name': 'default_name', 'type': str,
-         'doc': 'The default name of this base storage container', 'default': None},
+         'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
         {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},

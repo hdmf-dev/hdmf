@@ -5,7 +5,11 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 import warnings
-from collections import Iterable
+try:
+    from collections.abc import Iterable  # Python 3
+except ImportError:
+    from collections import Iterable  # Python 2.7
+from datetime import datetime
 
 from ..utils import docval, getargs, popargs, call_docval_func, fmt_docval_args
 from six import with_metaclass
@@ -418,7 +422,8 @@ class DatasetBuilder(BaseBuilder):
     REGION_REF_TYPE = 'region'
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
-            {'name': 'data', 'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable),
+            {'name': 'data',
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime),
              'doc': 'the data in this dataset', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'the datatype of this dataset', 'default': None},

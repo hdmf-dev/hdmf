@@ -1,9 +1,11 @@
 import unittest2 as unittest
+import re
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
+from hdmf.build.warnings import MissingRequiredWarning
 
 from abc import ABCMeta
 from six import with_metaclass
@@ -171,6 +173,13 @@ class TestDynamicContainer(unittest.TestCase):
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
 
+    def test_dynamic_container_default_name(self):
+        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz')
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        inst = cls()
+        self.assertEqual(inst.name, 'bingo')
+
     def test_dynamic_container_creation_defaults(self):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
@@ -199,6 +208,86 @@ class TestDynamicContainer(unittest.TestCase):
         self.assertEqual(inst.attr2, 1000)
         self.assertEqual(inst.attr3, 98.6)
         self.assertEqual(inst.attr4, 1.0)
+
+    def test_dynamic_container_constructor_name(self):
+        # name is specified in spec and cannot be changed
+        baz_spec = GroupSpec('A test extension with no Container class',
+                             data_type_def='Baz', data_type_inc=self.bar_spec,
+                             name='A fixed name',
+                             attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+
+        with self.assertRaises(TypeError):
+            inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+
+        inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        self.assertEqual(inst.name, 'A fixed name')
+        self.assertEqual(inst.data, [1, 2, 3, 4])
+        self.assertEqual(inst.attr1, 'string attribute')
+        self.assertEqual(inst.attr2, 1000)
+        self.assertEqual(inst.attr3, 98.6)
+        self.assertEqual(inst.attr4, 1.0)
+
+    def test_dynamic_container_constructor_name_default_name(self):
+        # if both name and default_name are specified, name should be used
+        with self.assertWarns(Warning):
+            baz_spec = GroupSpec('A test extension with no Container class',
+                                 data_type_def='Baz', data_type_inc=self.bar_spec,
+                                 name='A fixed name',
+                                 default_name='A default name',
+                                 attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                             AttributeSpec('attr4', 'another example float attribute', 'float')])
+            self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+            cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+
+            inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            self.assertEqual(inst.name, 'A fixed name')
+
+    def test_dynamic_container_composition(self):
+        baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
+                              data_type_inc=self.bar_spec,
+                              attributes=[
+                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+        self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+
+        with self.assertRaises(TypeError):
+            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+
+    def test_dynamic_container_composition_wrong_order(self):
+        baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
+                              data_type_inc=self.bar_spec,
+                              attributes=[
+                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+        self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+
+        # Setup all the data we need
+        msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
+               "Please define that type before defining 'Baz1'.")
+        with self.assertRaisesRegex(ValueError, re.escape(msg)):
+            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
 
 class TestObjectMapper(with_metaclass(ABCMeta, unittest.TestCase)):
@@ -280,6 +369,15 @@ class TestObjectMapperNoNesting(TestObjectMapper):
         container = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                attributes={'attr1': 'value1', 'attr2': 10})
+        self.assertDictEqual(builder, expected)
+
+    def test_build_empty(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        container = Bar('my_bar', [], 'value1', 10)
+        with self.assertWarnsRegex(MissingRequiredWarning, re.escape("dataset 'data' for 'my_bar' of type (Bar)")):
+            builder = self.mapper.build(container, self.manager)
+        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
 
