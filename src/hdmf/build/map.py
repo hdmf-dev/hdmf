@@ -1502,8 +1502,8 @@ class TypeMap(object):
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = self.__get_cls_dict(parent_cls, fields)
-            if any(hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+') for field in addl_fields):
+            if any(hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+')
+                   for field_spec in fields.values()):
                 bases = tuple(list(bases) + [MultiContainerInterface])
             try:
                 d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
