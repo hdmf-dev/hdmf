@@ -1324,7 +1324,7 @@ class TypeMap(object):
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
-        return tuple(deps.keys())
+        return deps
 
     _type_map = {
         'text': str,
