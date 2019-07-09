@@ -17,7 +17,7 @@ from ...spec import NamespaceBuilder
 from .h5_utils import H5ReferenceDataset, H5RegionDataset, H5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
 
-from ..io import HDMFIO
+from ..io import HDMFIO, UnsupportedOperation
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -32,7 +32,7 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
-             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-")'},
+             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
@@ -44,7 +44,17 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            raise ValueError('You argued {} as this object\'s path, but supplied a file with filename: {}'.format())
+            msg = 'You argued %s as this object\'s path, ' % path
+            msg += 'but supplied a file with filename: %s' % file_obj.filename
+            raise ValueError(msg)
+
+        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+'):
+            msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
+            raise UnsupportedOperation(msg)
+
+        if file_obj is None and os.path.exists(path) and (mode == 'w-' or mode == 'x'):
+            msg = "Unable to open file %s in '%s' mode. File already exists." % (path, mode)
+            raise UnsupportedOperation(msg)
 
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
@@ -71,26 +81,34 @@ class HDF5IO(HDMFIO):
              'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
             {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None})
+            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+            returns="dict with the loaded namespaces", rtype=dict)
     def load_namespaces(cls, namespace_catalog, path, namespaces=None):
         '''
         Load cached namespaces from a file.
         '''
-        f = File(path, 'r')
-        if SPEC_LOC_ATTR not in f.attrs:
-            msg = "No cached namespaces found in %s" % path
-            warnings.warn(msg)
-        else:
+
+        d = {}
+
+        with File(path, 'r') as f:
+            if SPEC_LOC_ATTR not in f.attrs:
+                msg = "No cached namespaces found in %s" % path
+                warnings.warn(msg)
+                return d
+
             spec_group = f[f.attrs[SPEC_LOC_ATTR]]
+
             if namespaces is None:
                 namespaces = list(spec_group.keys())
+
             for ns in namespaces:
                 ns_group = spec_group[ns]
                 latest_version = list(ns_group.keys())[-1]
                 ns_group = ns_group[latest_version]
                 reader = H5SpecReader(ns_group)
-                namespace_catalog.load_namespaces('namespace', reader=reader)
-        f.close()
+                d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
+
+            return d
 
     @classmethod
     def __convert_namespace(cls, ns_catalog, namespace):
@@ -188,10 +206,15 @@ class HDF5IO(HDMFIO):
         dest_file.close()
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': False},
+            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': True},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
     def write(self, **kwargs):
+        if self.__mode == 'r':
+            raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
+                                        "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
+                                       % (self.__path, self.__mode))
+
         cache_spec = popargs('cache_spec', kwargs)
         call_docval_func(super(HDF5IO, self).write, kwargs)
         if cache_spec:
@@ -214,6 +237,17 @@ class HDF5IO(HDMFIO):
                 ns_group = spec_group.require_group(group_name)
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
+
+    def read(self, **kwargs):
+        if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
+            raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
+                                       % (self.__path, self.__mode))
+        try:
+            return call_docval_func(super(HDF5IO, self).read, kwargs)
+        except UnsupportedOperation as e:
+            if str(e) == 'Cannot build data. There are no values.':
+                raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
+                                           % (self.__path, self.__mode))
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
@@ -462,7 +496,6 @@ class HDF5IO(HDMFIO):
         "int8": np.int8,
         "bool": np.bool_,
         "text": H5_TEXT,
-        "text": H5_TEXT,
         "utf": H5_TEXT,
         "utf8": H5_TEXT,
         "utf-8": H5_TEXT,
@@ -509,8 +542,9 @@ class HDF5IO(HDMFIO):
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
                 if len(tmp) > 0:
-                    # a list of strings will need a special type
-                    if isinstance(tmp[0], (text_type, binary_type)):
+                    if isinstance(tmp[0], text_type):
+                        value = [np.unicode_(s) for s in tmp]
+                    elif isinstance(tmp[0], binary_type):
                         value = [np.string_(s) for s in tmp]
                     elif isinstance(tmp[0], Container):  # a list of references
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
@@ -871,7 +905,7 @@ class HDF5IO(HDMFIO):
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
         except Exception as exc:
             msg = "Could not create dataset %s in %s with shape %s, dtype %s, and iosettings %s. %s" % \
-                  (name, parent.name, str(data_shape), str(dtype), str(**io_settings), str(exc))
+                  (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))
             raise_from(Exception(msg), exc)
         # Write the data
         if len(data) > dset.shape[0]:

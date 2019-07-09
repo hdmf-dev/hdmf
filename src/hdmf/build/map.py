@@ -69,11 +69,11 @@ class Proxy(object):
         container = getargs('container', kwargs)
         self.__candidates.append(container)
 
-    def resolve(self, **kwargs):
+    def resolve(self):
         for candidate in self.__candidates:
             if self.matches(candidate):
                 return candidate
-        return None
+        raise ValueError("No matching candidate Container found for " + self)
 
     def __eq__(self, other):
         return self.data_type == other.data_type and \
@@ -969,7 +969,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             attr_value = self.get_attr_value(spec, container, build_manager)
             if self.__is_empty(attr_value):
                 if spec.required:
-                    msg = "dataset '%s' for '%s' of type (%s)"\
+                    msg = "empty dataset '%s' for '%s' of type (%s)"\
                                   % (spec.name, builder.name, self.spec.data_type_def)
                     warnings.warn(msg, MissingRequiredWarning)
                 if attr_value is None:
@@ -1329,11 +1329,23 @@ class TypeMap(object):
     _type_map = {
         'text': str,
         'float': float,
+        'float32': float,
         'float64': float,
         'int': int,
         'int32': int,
+        'bool': bool,
+        'uint64': np.uint64,
         'isodatetime': datetime
     }
+
+    def __get_container_type(self, container_name):
+        container_type = None
+        for val in self.__container_types.values():
+            container_type = val.get(container_name)
+            if container_type is not None:
+                return container_type
+        if container_type is None:
+            raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
 
     def __get_type(self, spec):
         if isinstance(spec, AttributeSpec):
@@ -1351,9 +1363,9 @@ class TypeMap(object):
         if isinstance(spec, LinkSpec):
             return Container
         if spec.data_type_def is not None:
-            return spec.data_type_def
+            return self.__get_container_type(spec.data_type_def)
         if spec.data_type_inc is not None:
-            return spec.data_type_inc
+            return self.__get_container_type(spec.data_type_inc)
         if spec.shape is None and spec.dims is None:
             return self._type_map.get(spec.dtype)
         return 'array_data', 'data'
@@ -1371,7 +1383,16 @@ class TypeMap(object):
                 ret = True
         return ret
 
-    def __get_cls_dict(self, base, addl_fields, name=None):
+    @staticmethod
+    def __set_default_name(docval_args, default_name):
+        new_docval_args = []
+        for x in docval_args:
+            if x['name'] == 'name':
+                x['default'] = default_name
+            new_docval_args.append(x)
+        return new_docval_args
+
+    def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
         # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
@@ -1384,9 +1405,16 @@ class TypeMap(object):
             if arg['name'] in addl_fields:
                 continue
             docval_args.append(arg)
+
+        if default_name is not None:
+            docval_args = self.__set_default_name(docval_args, default_name)
+
         for f, field_spec in addl_fields.items():
             if not f == 'help':
                 dtype = self.__get_type(field_spec)
+                if dtype is None:
+                    raise(ValueError("Got \"None\" for field specification: {}".format(field_spec)))
+
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
                 if hasattr(field_spec, 'shape') and field_spec.shape is not None:
                     docval_arg.update(shape=field_spec.shape)
@@ -1409,7 +1437,9 @@ class TypeMap(object):
                 pkwargs.update(name=name)
             base.__init__(self, *pargs, **pkwargs)
             for f in new_args:
-                setattr(self, f, kwargs.get(f, None))
+                arg_val = kwargs.get(f, None)
+                if arg_val is not None:
+                    setattr(self, f, arg_val)
 
         return {'__init__': __init__, base._fieldsname: tuple(fields)}
 
@@ -1450,7 +1480,13 @@ class TypeMap(object):
             for k, field_spec in attr_names.items():
                 if not spec.is_inherited_spec(field_spec):
                     fields[k] = field_spec
-            d = self.__get_cls_dict(parent_cls, fields, spec.name)
+            try:
+                d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
+            except TypeDoesNotExistError as e:
+                name = spec.get('data_type_def', 'Unknown')
+                raise ValueError("Cannot dynamically generate class for type '%s'. " % name
+                                 + str(e)
+                                 + " Please define that type before defining '%s'." % name)
             cls = ExtenderMeta(str(name), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
@@ -1658,3 +1694,7 @@ class TypeMap(object):
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
         else:
             return attr_map.get_builder_name(container)
+
+
+class TypeDoesNotExistError(Exception):
+    pass

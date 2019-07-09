@@ -1,10 +1,15 @@
 import os
 import unittest2 as unittest
+import tempfile
+import warnings
+import numpy as np
+import re
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator
-from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
+from hdmf.backends.io import UnsupportedOperation
 from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, ZERO_OR_MANY, ONE_OR_MANY
@@ -13,31 +18,25 @@ from hdmf.spec.catalog import SpecCatalog
 from hdmf.container import Container
 from h5py import SoftLink, HardLink, ExternalLink, File
 
-
-import tempfile
-import warnings
-import numpy as np
-
 from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
 
 class FooFile(Container):
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this file'},
-            {'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
+    @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
     def __init__(self, **kwargs):
-        name, buckets = getargs('name', 'buckets', kwargs)
-        super(FooFile, self).__init__(name=name)
+        buckets = getargs('buckets', kwargs)
+        super(FooFile, self).__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             self.add_child(f)
 
     def __eq__(self, other):
-        return self.name == other.name and set(self.buckets) == set(other.buckets)
+        return set(self.buckets) == set(other.buckets)
 
     def __str__(self):
         foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
-        return 'name=%s, buckets=%s' % (self.name, foo_str)
+        return 'buckets=%s' % foo_str
 
     @property
     def buckets(self):
@@ -414,7 +413,8 @@ def _get_manager():
                                                attributes=[AttributeSpec('attr2',
                                                                          'an example integer attribute',
                                                                          'int')])],
-                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                     AttributeSpec('attr3', 'an example float attribute', 'float')])
 
     tmp_spec = GroupSpec('A subgroup for Foos',
                          name='foo_holder',
@@ -431,11 +431,10 @@ def _get_manager():
             self.map_spec('foos', foo_spec)
 
     file_spec = GroupSpec("A file of Foos contained in FooBuckets",
-                          name='root',
                           data_type_def='FooFile',
                           groups=[GroupSpec('Holds the FooBuckets',
                                             name='buckets',
-                                            groups=[GroupSpec("One ore more FooBuckets",
+                                            groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
                                                               quantity=ONE_OR_MANY)])])
 
@@ -473,30 +472,46 @@ class TestCacheSpec(unittest.TestCase):
 
     def setUp(self):
         self.manager = _get_manager()
-
-    def test_cache_spec(self):
         self.test_temp_file = tempfile.NamedTemporaryFile()
         self.test_temp_file.close()
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.io = HDF5IO(self.test_temp_file.name, manager=self.manager, mode='w')
+        self.path = self.test_temp_file.name
 
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_no_cache_spec(self):
         # Setup all the data we need
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
-        foofile = FooFile('test_foofile', [foobucket])
+        foofile = FooFile([foobucket])
 
-        # Write the first file
-        self.io.write(foofile, cache_spec=True)
-        self.io.close()
-        ns_catalog = NamespaceCatalog()
-        HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
-        self.assertEqual(ns_catalog.namespaces, ('test_core',))
-        source_types = self.__get_types(self.io.manager.namespace_catalog)
-        read_types = self.__get_types(ns_catalog)
-        self.assertSetEqual(source_types, read_types)
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+            ns_catalog = NamespaceCatalog()
+            HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
+            self.assertEqual(ns_catalog.namespaces, (CORE_NAMESPACE,))
+            source_types = self.__get_types(io.manager.namespace_catalog)
+            read_types = self.__get_types(ns_catalog)
+            self.assertSetEqual(source_types, read_types)
+
+    def test_double_cache_spec(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            io.write(foofile)
 
     def __get_types(self, catalog):
         types = set()
@@ -507,32 +522,33 @@ class TestCacheSpec(unittest.TestCase):
         return types
 
 
-class TestLinkResolution(unittest.TestCase):
-
-    def test_link_resolve(self):
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        bucket2 = FooBucket('test_bucket2', [foo1, foo2])
-        foofile = FooFile('test_foofile', [bucket1, bucket2])
-
-        with HDF5IO(self.path, 'w', manager=_get_manager()) as io:
-            io.write(foofile)
-
-        with HDF5IO(self.path, 'r', manager=_get_manager()) as io:
-            foofile_read = io.read()
-        b = foofile_read.buckets
-        b1, b2 = (b[0], b[1]) if b[0].name == 'test_bucket1' else (b[1], b[0])
-        f = b2.foos
-        f1, f2 = (f[0], f[1]) if f[0].name == 'foo1' else (f[1], f[0])
-        self.assertIs(b1.foos[0], f1)
+class TestNoCacheSpec(unittest.TestCase):
 
     def setUp(self):
-        self.path = "test_link_resolve.h5"
+        self.manager = _get_manager()
+        self.test_temp_file = tempfile.NamedTemporaryFile()
+        self.test_temp_file.close()
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        self.path = self.test_temp_file.name
 
     def tearDown(self):
         if os.path.exists(self.path):
             os.remove(self.path)
+
+    def test_no_cache_spec(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile, cache_spec=False)
+
+        with File(self.test_temp_file.name) as f:
+            self.assertNotIn('specifications', f)
 
 
 class HDF5IOMultiFileTest(unittest.TestCase):
@@ -546,7 +562,7 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.io = [HDF5IO(i, mode='w', manager=_get_manager()) for i in self.test_temp_files]
+        self.io = [HDF5IO(i, mode='a', manager=_get_manager()) for i in self.test_temp_files]
         self.f = [i._file for i in self.io]
 
     def tearDown(self):
@@ -565,23 +581,20 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         self.test_temp_files = None
 
     def test_copy_file_with_external_links(self):
-
-        # Setup all the data we need
+        # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
 
-        foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+        foofile1 = FooFile(buckets=[bucket1])
 
         # Write the first file
         self.io[0].write(foofile1)
-        bucket1_read = self.io[0].read()
 
         # Create the second file
-
+        bucket1_read = self.io[0].read()
         foo2 = Foo('foo2', bucket1_read.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
-
         bucket2 = FooBucket('test_bucket2', [foo2])
-        foofile2 = FooFile('test_foofile2', buckets=[bucket2])
+        foofile2 = FooFile(buckets=[bucket2])
         # Write the second file
         self.io[1].write(foofile2)
         self.io[1].close()
@@ -605,6 +618,254 @@ class HDF5IOMultiFileTest(unittest.TestCase):
         # Confirm that we successfully resolved the External Link when we copied our second file
         f3 = File(self.test_temp_files[2])
         self.assertIsInstance(f3.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
+
+
+class HDF5IOInitNoFileTest(unittest.TestCase):
+    """ Test if file does not exist, init with mode (r, r+) throws error, all others succeed """
+
+    def test_init_no_file_r(self):
+        self.path = "test_init_nofile_r.h5"
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Unable to open file %s in 'r' mode\. File does not exist\."
+                                    % re.escape(self.path)):
+            HDF5IO(self.path, mode='r')
+
+    def test_init_no_file_rplus(self):
+        self.path = "test_init_nofile_rplus.h5"
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Unable to open file %s in 'r\+' mode\. File does not exist\."
+                                    % re.escape(self.path)):
+            HDF5IO(self.path, mode='r+')
+
+    def test_init_no_file_ok(self):
+        # test that no errors are thrown
+        modes = ('w', 'w-', 'x', 'a')
+        for m in modes:
+            self.path = "test_init_nofile.h5"
+            with HDF5IO(self.path, mode=m):
+                pass
+            if os.path.exists(self.path):
+                os.remove(self.path)
+
+
+class HDF5IOInitFileExistsTest(unittest.TestCase):
+    """ Test if file exists, init with mode w-/x throws error, all others succeed """
+
+    def setUp(self):
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.path = temp_file.name
+        temp_io = HDF5IO(self.path, mode='w')
+        temp_io.close()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_init_wminus_file_exists(self):
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Unable to open file %s in 'w-' mode\. File already exists\."
+                                    % re.escape(self.path)):
+            self.io = HDF5IO(self.path, mode='w-')
+
+    def test_init_x_file_exists(self):
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Unable to open file %s in 'x' mode\. File already exists\."
+                                    % re.escape(self.path)):
+            self.io = HDF5IO(self.path, mode='x')
+
+    def test_init_file_exists_ok(self):
+        # test that no errors are thrown
+        modes = ('r', 'r+', 'w', 'a')
+        for m in modes:
+            with HDF5IO(self.path, mode=m):
+                pass
+
+
+class HDF5IOReadNoDataTest(unittest.TestCase):
+    """ Test if file exists and there is no data, read with mode (r, r+, a) throws error """
+
+    def setUp(self):
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.path = temp_file.name
+        temp_io = HDF5IO(self.path, mode='w')
+        temp_io.close()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_read_no_data_r(self):
+        self.io = HDF5IO(self.path, mode='r')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Cannot read data from file %s in mode 'r'\. There are no values\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+    def test_read_no_data_rplus(self):
+        self.io = HDF5IO(self.path, mode='r+')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Cannot read data from file %s in mode 'r\+'\. There are no values\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+    def test_read_no_data_a(self):
+        self.io = HDF5IO(self.path, mode='a')
+        with self.assertRaisesRegex(UnsupportedOperation,
+                                    r"Cannot read data from file %s in mode 'a'\. There are no values\."
+                                    % re.escape(self.path)):
+            self.io.read()
+
+
+class HDF5IOReadData(unittest.TestCase):
+    """ Test if file exists and there is no data, read in mode (r, r+, a) is ok
+    and read in mode w throws error
+    """
+
+    def setUp(self):
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.path = temp_file.name
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+
+        temp_io = HDF5IO(self.path, manager=_get_manager(), mode='w')
+        temp_io.write(self.foofile1)
+        temp_io.close()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_read_file_ok(self):
+        modes = ('r', 'r+', 'a')
+        for m in modes:
+            with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
+                io.read()
+
+    def test_read_file_w(self):
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            with self.assertRaisesRegex(UnsupportedOperation,
+                                        r"Cannot read from file %s in mode 'w'. Please use mode 'r', 'r\+', or 'a'\."
+                                        % re.escape(self.path)):
+                read_foofile1 = io.read()
+                self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
+                                     read_foofile1.buckets[0].foos[0].my_data[:].tolist())
+
+
+class HDF5IOWriteNoFile(unittest.TestCase):
+    """ Test if file does not exist, write in mode (w, w-, x, a) is ok """
+
+    def setUp(self):
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+        self.path = 'test_write_nofile.h5'
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_write_no_file_ok(self):
+        # test that no errors are thrown
+        modes = ('w', 'w-', 'x', 'a')
+        for m in modes:
+            with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
+                io.write(self.foofile1)
+
+            with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+                read_foofile = io.read()
+                self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
+                                     read_foofile.buckets[0].foos[0].my_data[:].tolist())
+
+            if os.path.exists(self.path):
+                os.remove(self.path)
+
+
+class HDF5IOWriteFileExists(unittest.TestCase):
+    """ Test if file exists, write in mode (r+, w, a) is ok and write in mode r throws error """
+
+    def setUp(self):
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.path = temp_file.name
+
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        self.foofile1 = FooFile(buckets=[bucket1])
+
+        foo2 = Foo('foo2', [0, 1, 2, 3, 4], "I am foo2", 17, 3.14)
+        bucket2 = FooBucket('test_bucket2', [foo2])
+        self.foofile2 = FooFile(buckets=[bucket2])
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile1)
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_write_rplus(self):
+        with HDF5IO(self.path, manager=_get_manager(), mode='r+') as io:
+            # even though foofile1 and foofile2 have different names, writing a
+            # root object into a file that already has a root object, in r+ mode
+            # should throw an error
+            with self.assertRaisesRegex(ValueError, r"Unable to create group \(name already exists\)"):
+                io.write(self.foofile2)
+
+    def test_write_a(self):
+        with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
+            # even though foofile1 and foofile2 have different names, writing a
+            # root object into a file that already has a root object, in r+ mode
+            # should throw an error
+            with self.assertRaisesRegex(ValueError, r"Unable to create group \(name already exists\)"):
+                io.write(self.foofile2)
+
+    def test_write_w(self):
+        # mode 'w' should overwrite contents of file
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile2)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(self.foofile2.buckets[0].foos[0].my_data,
+                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
+
+    def test_write_r(self):
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            with self.assertRaisesRegex(UnsupportedOperation,
+                                        (r"Cannot write to file %s in mode 'r'\. " +
+                                            r"Please use mode 'r\+', 'w', 'w-', 'x', or 'a'")
+                                        % re.escape(self.path)):
+                io.write(self.foofile2)
 
 
 if __name__ == '__main__':
