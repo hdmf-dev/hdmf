@@ -1396,20 +1396,36 @@ class TypeMap(object):
             new_docval_args.append(x)
         return new_docval_args
 
-    def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
-        # TODO: fix this to be more maintainable and smarter
-        if base is None:
-            raise ValueError('cannot generate class without base class')
+    @staticmethod
+    def _make_clsconf_entry(field_spec, f):
+        if field_spec.data_type_def is not None:
+            type_name = field_spec.data_type_def
+        elif field_spec.data_type_inc is not None:
+            type_name = field_spec.data_type_inc
+        else:
+            raise ValueError('no hdmf data type defined for {}'.format(f))
+        attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
+        attr_name = ObjectMapper.camel2underscore(type_name)
+
+        ret = {'attr': attr_name_pl,
+               'type': type_name,
+               'add': 'add_' + attr_name,
+               'get': 'get_' + attr_name,
+               'create': 'create_' + attr_name}
+
+        return ret
+
+    def _get_cls_docval_args(self, base, addl_fields, default_name, name):
         existing_args = set()
         docval_args = list()
         new_args = list()
         fields = list()
+        clsconf = list()
         for arg in get_docval(base.__init__):
             existing_args.add(arg['name'])
             if arg['name'] in addl_fields:
                 continue
             docval_args.append(arg)
-        clsconf = []
 
         if default_name is not None:
             docval_args = self.__set_default_name(docval_args, default_name)
@@ -1431,23 +1447,21 @@ class TypeMap(object):
                 if self.__ischild(dtype):
                     fields.append({'name': f, 'child': True})
                     if hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+'):
-                        if field_spec.data_type_def is not None:
-                            name = field_spec.data_type_def
-                        elif field_spec.data_type_inc is not None:
-                            name = field_spec.data_type_inc
-                        else:
-                            raise ValueError('no hdmf data type defined for {}'.format(f))
-                        attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
-                        attr_name = ObjectMapper.camel2underscore(name)
-                        clsconf.append({'attr': attr_name_pl,
-                                        'type': name,
-                                        'add': 'add_' + attr_name,
-                                        'get': 'get_' + attr_name,
-                                        'create': 'create_' + attr_name})
+                        clsconf.append(self._make_clsconf_entry(field_spec, f))
                 else:
                     fields.append(f)
         if name is not None:
             docval_args = filter(lambda x: x['name'] != 'name', docval_args)
+
+        return docval_args, new_args, fields, clsconf
+
+    def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
+        # TODO: fix this to be more maintainable and smarter
+        if base is None:
+            raise ValueError('cannot generate class without base class')
+
+        docval_args, new_args, fields, clsconf = self._get_cls_docval_args(
+            base, addl_fields, default_name, name)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
