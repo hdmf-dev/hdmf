@@ -1308,7 +1308,7 @@ class TypeMap(object):
             {'name': 'reader',
              'type': SpecReader,
              'doc': 'the class to user for reading specifications', 'default': None},
-            returns="the namespaces loaded from the given file", rtype=tuple)
+            returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
 
