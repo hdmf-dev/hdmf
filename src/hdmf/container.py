@@ -9,9 +9,9 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     _fieldsname = '__fields__'
 
-    #@docval({'name': 'container_source', 'type': str, 'doc': 'source of this Container', 'default': None},
-    #        {'name': 'object_id', 'type': str, 'doc': 'UUID4 unique identifier for this Container', 'default': None},
-    #        {'name': 'parent', 'type': str, 'doc': 'parent Container for this Container', 'default': None})
+    # @docval({'name': 'container_source', 'type': str, 'doc': 'source of this Container', 'default': None},
+    #         {'name': 'object_id', 'type': str, 'doc': 'UUID4 unique identifier for this Container', 'default': None},
+    #         {'name': 'parent', 'type': str, 'doc': 'parent Container for this Container', 'default': None})
     def __new__(cls, *args, **kwargs):
         inst = super(Container, cls).__new__(cls)
         inst.__container_source = kwargs.pop('container_source', None)
