@@ -1176,7 +1176,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the builder to construct the Container from'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'},
-            {'name': 'parent', 'type': (Proxy, Container), 'doc': ' xxx', 'default': None})
+            {'name': 'parent', 'type': (Proxy, Container),
+             'doc': 'the parent Container/Proxy for the Container being built', 'default': None})
     def construct(self, **kwargs):
         ''' Construct an Container from the given Builder '''
         builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
@@ -1676,7 +1677,8 @@ class TypeMap(object):
              'doc': 'the builder to construct the Container from'},
             {'name': 'build_manager', 'type': BuildManager,
              'doc': 'the BuildManager for constructing', 'default': None},
-            {'name': 'parent', 'type': (Proxy, Container), 'doc': ' xxx', 'default': None})
+            {'name': 'parent', 'type': (Proxy, Container),
+             'doc': 'the parent Container/Proxy for the Container being built', 'default': None})
     def construct(self, **kwargs):
         """ Construct the Container represented by the given builder """
         builder, build_manager, parent = getargs('builder', 'build_manager', 'parent', kwargs)
