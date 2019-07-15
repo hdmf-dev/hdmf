@@ -3,6 +3,7 @@ import itertools as _itertools
 from abc import ABCMeta
 import collections
 
+import zarr
 import h5py
 import numpy as np
 import six
@@ -10,7 +11,7 @@ from six import raise_from, text_type, binary_type
 
 
 __macros = {
-    'array_data': [np.ndarray, list, tuple, h5py.Dataset],
+    'array_data': [np.ndarray, list, tuple, h5py.Dataset, zarr.Array],
     'scalar_data': [str, int, float],
 }
 
