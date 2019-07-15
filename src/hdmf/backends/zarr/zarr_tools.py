@@ -20,10 +20,6 @@ from ...container import Container
 from ...data_utils import AbstractDataChunkIterator, get_shape
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
-########questions & differences########
-## 1. We don't include the self.__built cache. Why does the self.__built cache use the file name as a key?
-
-#######################################
 
 ROOT_NAME = 'root'
 
