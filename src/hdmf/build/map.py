@@ -1396,31 +1396,29 @@ class TypeMap(object):
             new_docval_args.append(x)
         return new_docval_args
 
-    @staticmethod
-    def _make_clsconf_entry(field_spec, f):
-        if field_spec.data_type_def is not None:
-            type_name = field_spec.data_type_def
-        elif field_spec.data_type_inc is not None:
-            type_name = field_spec.data_type_inc
-        else:
-            raise ValueError('no hdmf data type defined for {}'.format(f))
-        attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
-        attr_name = ObjectMapper.camel2underscore(type_name)
+    def _make_clsconf(self, addl_fields):
 
-        ret = {'attr': attr_name_pl,
-               'type': type_name,
-               'add': 'add_' + attr_name,
-               'get': 'get_' + attr_name,
-               'create': 'create_' + attr_name}
+        clsconf = list()
 
-        return ret
+        for f, field_spec in addl_fields.items():
+            if hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+'):
+                dtype = self.__get_type(field_spec)
+                attr_name_pl = ObjectMapper.convert_dt_name(field_spec)
+                attr_name = ObjectMapper.camel2underscore(dtype.__name__)
+
+                clsconf.append({'attr': attr_name_pl,
+                                'type': dtype,
+                                'add': 'add_' + attr_name,
+                                'get': 'get_' + attr_name,
+                                'create': 'create_' + attr_name})
+
+        return clsconf
 
     def _get_cls_docval_args(self, base, addl_fields, default_name, name):
         existing_args = set()
         docval_args = list()
         new_args = list()
         fields = list()
-        clsconf = list()
         for arg in get_docval(base.__init__):
             existing_args.add(arg['name'])
             if arg['name'] in addl_fields:
@@ -1446,22 +1444,21 @@ class TypeMap(object):
                     new_args.append(f)
                 if self.__ischild(dtype):
                     fields.append({'name': f, 'child': True})
-                    if hasattr(field_spec, 'quantity') and field_spec.quantity in ('*', '+'):
-                        clsconf.append(self._make_clsconf_entry(field_spec, f))
                 else:
                     fields.append(f)
         if name is not None:
             docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
-        return docval_args, new_args, fields, clsconf
+        return docval_args, new_args, fields
 
-    def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
+    def __get_cls_dict(self, base, addl_fields, namespace, name=None, default_name=None):
         # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
 
-        docval_args, new_args, fields, clsconf = self._get_cls_docval_args(
+        docval_args, new_args, fields = self._get_cls_docval_args(
             base, addl_fields, default_name, name)
+        clsconf = self._make_clsconf(addl_fields)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
@@ -1520,7 +1517,7 @@ class TypeMap(object):
                    for field_spec in fields.values()):
                 bases = tuple(list(bases) + [MultiContainerInterface])
             try:
-                d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
+                d = self.__get_cls_dict(parent_cls, fields, namespace, spec.name, spec.default_name)
             except TypeDoesNotExistError as e:
                 name = spec.get('data_type_def', 'Unknown')
                 raise ValueError("Cannot dynamically generate class for type '%s'. " % name

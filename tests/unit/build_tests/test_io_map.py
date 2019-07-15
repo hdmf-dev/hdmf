@@ -289,6 +289,26 @@ class TestDynamicContainer(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, re.escape(msg)):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
+    def test_dynamic_container_multi(self):
+        baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
+                              data_type_inc=self.bar_spec,
+                              attributes=[
+                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2', quantity='*')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+        self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        print(Baz1.__init__.__doc__)
+        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+
+
+
 
 class TestObjectMapper(with_metaclass(ABCMeta, unittest.TestCase)):
 

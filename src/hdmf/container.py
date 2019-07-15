@@ -173,7 +173,7 @@ class LabelledDict(dict):
 class MultiContainerInterface(Container):
     '''
     A class for dynamically defining a API classes that
-    represent NWBDataInterfaces that contain multiple Containers
+    represent Containers that contain multiple Containers
     of the same type
 
     To use, extend this class, and create a dictionary as a class
@@ -332,83 +332,3 @@ class MultiContainerInterface(Container):
 
         return _func
 
-    @classmethod
-    def __make_setter(cls, nwbfield, add_name):
-
-        @docval({'name': 'val', 'type': (list, tuple, dict), 'doc': 'the sub items to add', 'default': None})
-        def nwbbt_setter(self, **kwargs):
-            val = getargs('val', kwargs)
-            if val is None:
-                return
-            getattr(self, add_name)(val)
-
-        return nwbbt_setter
-
-    @ExtenderMeta.pre_init
-    def __build_class(cls, name, bases, classdict):
-        '''
-        This classmethod will be called during class declaration in the metaclass to automatically
-        create setters and getters for NWB fields that need to be exported
-        '''
-        if not hasattr(cls, '__clsconf__'):
-            return
-        multi = False
-        if isinstance(cls.__clsconf__, dict):
-            clsconf = [cls.__clsconf__]
-        elif isinstance(cls.__clsconf__, list):
-            multi = True
-            clsconf = cls.__clsconf__
-        else:
-            raise TypeError("'__clsconf__' must be a dict or a list of dicts")
-
-        for i, d in enumerate(clsconf):
-            # get add method name
-            add = d.get('add')
-            if add is None:
-                msg = "MultiContainerInterface subclass '%s' is missing 'add' key in __clsconf__" % cls.__name__
-                if multi:
-                    msg += " at element %d" % i
-                raise ValueError(msg)
-
-            # get container attribute name
-            attr = d.get('attr')
-            if attr is None:
-                msg = "MultiContainerInterface subclass '%s' is missing 'attr' key in __clsconf__" % cls.__name__
-                if multi:
-                    msg += " at element %d" % i
-                raise ValueError(msg)
-
-            # get container type
-            container_type = d.get('type')
-            if container_type is None:
-                msg = "MultiContainerInterface subclass '%s' is missing 'type' key in __clsconf__" % cls.__name__
-                if multi:
-                    msg += " at element %d" % i
-                raise ValueError(msg)
-
-            # create property with the name given in 'attr'
-            if not hasattr(cls, attr):
-                aconf = cls._transform_arg(attr)
-                getter = cls._getter(aconf)
-                doc = "a dictionary containing the %s in this %s container" % (container_type.__name__, cls.__name__)
-                setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
-
-            # create the add method
-            setattr(cls, add, cls.__make_add(add, attr, container_type))
-
-            # get create method name
-            create = d.get('create')
-            if create is not None:
-                setattr(cls, create, cls.__make_create(create, add, container_type))
-
-            get = d.get('get')
-            if get is not None:
-                setattr(cls, get, cls.__make_get(get, attr, container_type))
-
-        if len(clsconf) == 1:
-            setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
-
-        # create the constructor, only if it has not been overridden
-        # i.e. it is the same method as the parent class constructor
-        if cls.__init__ == MultiContainerInterface.__init__:
-            setattr(cls, '__init__', cls.__make_constructor(clsconf))
