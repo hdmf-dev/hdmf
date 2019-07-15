@@ -345,7 +345,7 @@ class TestDocValidator(unittest.TestCase):
         args = get_docval(self.test_obj.__init__)
         self.assertTupleEqual(args, tuple())
 
-    def test_get_docval_arg(self):
+    def test_get_docval_none_arg(self):
         """Test that get_docval throws error if there is no docval and an argument name is passed
         """
         with self.assertRaisesRegex(ValueError, r'Function __init__ has no docval arguments'):
