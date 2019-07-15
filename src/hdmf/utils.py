@@ -227,15 +227,22 @@ docval_attr_name = '__docval__'
 __docval_args_loc = 'args'
 
 
-# TODO: write unit tests for get_docval* functions
-def get_docval(func):
-    '''get_docval(func)
-    Get a copy of docval arguments for a function
+def get_docval(func, arg_name=None):
+    '''Get a copy of docval arguments for a function.
+    If arg_name is supplied, return docval argument for a function with value for 'name' key equal to arg_name
     '''
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
-        return tuple(func_docval[__docval_args_loc])
+        args = tuple(func_docval[__docval_args_loc])
+        if arg_name:
+            for a in args:
+                if a['name'] == arg_name:
+                    return a
+            raise ValueError('Function %s does not have docval argument %s' % (func.__name__, arg_name))
+        return args
     else:
+        if arg_name:
+            raise ValueError('Function %s has no docval arguments' % func.__name__)
         return tuple()
 
 # def docval_wrap(func, is_method=True):
