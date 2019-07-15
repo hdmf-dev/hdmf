@@ -1308,7 +1308,7 @@ class TypeMap(object):
             {'name': 'reader',
              'type': SpecReader,
              'doc': 'the class to user for reading specifications', 'default': None},
-            returns="the namespaces loaded from the given file", rtype=tuple)
+            returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
 
@@ -1324,7 +1324,7 @@ class TypeMap(object):
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
-        return tuple(deps.keys())
+        return deps
 
     _type_map = {
         'text': str,
