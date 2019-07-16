@@ -124,6 +124,16 @@ class DataChunkTests(unittest.TestCase):
         temp = DataChunk(np.arange(10).reshape(5, 2))
         self.assertEqual(len(temp), 5)
 
+    def test_dtype(self):
+        temp = DataChunk(np.arange(10).astype('int'))
+        temp_dtype = temp.dtype
+        self.assertEqual(temp_dtype, np.dtype('int'))
+
+    def test_astype(self):
+        temp1 = DataChunk(np.arange(10).reshape(5, 2))
+        temp2 = temp1.astype('float32')
+        self.assertEqual(temp2.dtype, np.dtype('float32'))
+
 
 if __name__ == '__main__':
     unittest.main()
