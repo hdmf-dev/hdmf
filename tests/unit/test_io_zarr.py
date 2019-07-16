@@ -198,8 +198,9 @@ class TestZarrWriter(unittest.TestCase):
         reader = ZarrIO(self.path, manager = self.manager, mode = 'r')
         self.root = reader.read_builder()
         dataset = self.root['test_bucket/foo_holder/foo1/my_data']
-        print dataset
-        print dataset.data[()]
+        print(dataset)
+        print(dataset.data[()])
+        print(dataset.dtype)
 
     def read(self):
         reader = ZarrIO(self.path, manager = self.manager, mode = 'r')
@@ -224,7 +225,7 @@ class TestZarrWriter(unittest.TestCase):
     def test_read_link(self):
         self.test_write_links()
         self.read()
-        print self.root['test_bucket'].links['my_dataset'].builder.data[()]
+        print(self.root['test_bucket'].links['my_dataset'].builder.data[()])
 
     def test_read_link_buf(self):
         data = np.arange(100, 200, 10).reshape(2, 5)
@@ -240,17 +241,17 @@ class TestZarrWriter(unittest.TestCase):
 
         self.read()
         self.assertTrue(self.root['test_bucket'].links['my_dataset_1'].builder == self.root['test_bucket/foo_holder'].links['my_dataset_2'].builder)
-        print self.root['test_bucket'].links['my_dataset_1'].builder == self.root['test_bucket/foo_holder'].links['my_dataset_2'].builder
+        print(self.root['test_bucket'].links['my_dataset_1'].builder == self.root['test_bucket/foo_holder'].links['my_dataset_2'].builder)
 
     def test_read_reference(self):
         self.test_write_reference()
         self.read()
-        print self.root['ref_dataset']
+        print(self.root['ref_dataset'])
 
     def test_read_reference_compound(self):
         self.test_write_reference_compound()
         self.read()
-        print self.root['ref_dataset']
+        print(self.root['ref_dataset'])
 
     def test_read_reference_compound_buf(self):
         if os.path.exists(self.path):
@@ -279,4 +280,4 @@ class TestZarrWriter(unittest.TestCase):
         self.read()
         self.assertFalse(self.root["ref_dataset"].data[0][2] == self.root['ref_dataset'].data[1][2])
         self.assertTrue(self.root["ref_dataset"].data[0][2] == self.root['ref_dataset'].data[2][2])
-        print self.root['ref_dataset']
+        print(self.root['ref_dataset'])
