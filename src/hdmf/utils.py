@@ -223,25 +223,26 @@ def __sort_args(validator):
     return list(_itertools.chain(pos, kw))
 
 
+docval_idx_name = '__dv_idx__'
 docval_attr_name = '__docval__'
 __docval_args_loc = 'args'
 
 
-def get_docval(func, arg_name=None):
+def get_docval(func, *args):
     '''Get a copy of docval arguments for a function.
-    If arg_name is supplied, return docval argument for a function with value for 'name' key equal to arg_name
+    If args are supplied, return only docval arguments with value for 'name' key equal to *args
     '''
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
-        args = tuple(func_docval[__docval_args_loc])
-        if arg_name:
-            for a in args:
-                if a['name'] == arg_name:
-                    return a
-            raise ValueError('Function %s does not have docval argument %s' % (func.__name__, arg_name))
-        return args
+        if args:
+            docval_idx = getattr(func, docval_idx_name, None)
+            try:
+                return tuple(docval_idx[name] for name in args)
+            except KeyError as ke:
+                raise ValueError('Function %s does not have docval argument(s) %s' % (func.__name__, str(ke)))
+        return tuple(func_docval[__docval_args_loc])
     else:
-        if arg_name:
+        if args:
             raise ValueError('Function %s has no docval arguments' % func.__name__)
         return tuple()
 
@@ -412,9 +413,11 @@ def docval(*validator, **options):
         if isinstance(rtype, type):
             _rtype = rtype.__name__
         docstring = __googledoc(func, _docval[__docval_args_loc], returns=returns, rtype=_rtype)
+        docval_idx = {a['name']: a for a in _docval[__docval_args_loc]}  # cache a name-indexed dictionary of args
         setattr(func_call, '__doc__', docstring)
         setattr(func_call, '__name__', func.__name__)
         setattr(func_call, docval_attr_name, _docval)
+        setattr(func_call, docval_idx_name, docval_idx)
         setattr(func_call, '__module__', func.__module__)
         return func_call
     return dec
