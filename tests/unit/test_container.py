@@ -121,7 +121,10 @@ class TestContainer(unittest.TestCase):
 
     def test_repr(self):
         parent_obj = Container('obj1')
-        self.assertRegex(str(parent_obj), r"<Container 'obj1' at 0x\d+>")
+        self.assertRegex(str(parent_obj), """
+obj1 <class \\'hdmf.container.Container\\'>
+Fields:
+""")
 
     def test_type_hierarchy(self):
         self.assertEqual(Container.type_hierarchy(), (Container, object))
