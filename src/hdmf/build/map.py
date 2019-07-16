@@ -439,6 +439,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
+        elif isinstance(value, AbstractDataChunkIterator):
+            ret = value
+            ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
         else:
             if spec_dtype in (_unicode, _ascii):
                 ret_dtype = 'ascii'

@@ -858,7 +858,10 @@ class HDF5IO(HDMFIO):
         if 'maxshape' not in io_settings:
             io_settings['maxshape'] = data.maxshape
         if 'dtype' not in io_settings:
-            io_settings['dtype'] = data.dtype
+            if (options is not None) and ('dtype' in options):
+                io_settings['dtype'] = options['dtype']
+            else:
+                io_settings['dtype'] = data.dtype
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
