@@ -16,6 +16,8 @@ __macros = {
 
 
 def docval_macro(macro):
+    """Class decorator to add the class to a list of types associated with the key macro in the __macros dict
+    """
     def _dec(cls):
         if macro not in __macros:
             __macros[macro] = list()
@@ -172,7 +174,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                         if not __type_okay(argval, arg['type']):
                             fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
                             type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
-                    if enforce_shape and 'shape' in arg:
+                    if enforce_shape and 'shape' in arg and hasattr(argval, '__len__'):
+                        # note: shape only enforced on args that have len(), because type can be a class without len()
                         if not __shape_okay_multi(argval, arg['shape']):
                             fmt_val = (argname, get_data_shape(argval), arg['shape'])
                             value_errors.append("incorrect shape for '%s' (got '%s, expected '%s')" % fmt_val)
@@ -194,7 +197,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
                     fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
                     type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
-            if enforce_shape and 'shape' in arg and argval is not None:
+            if enforce_shape and 'shape' in arg and hasattr(argval, '__len__') and argval is not None:
+                # note: shape only enforced on args that have len(), because type can be a class without len()
                 if not __shape_okay_multi(argval, arg['shape']):
                     fmt_val = (argname, get_data_shape(argval), arg['shape'])
                     value_errors.append("incorrect shape for '%s' (got '%s, expected '%s')" % fmt_val)
