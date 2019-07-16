@@ -11,7 +11,7 @@ from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, 
 from ..container import Container, Data, DataRegion
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec,\
                    SpecReader
-from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..data_utils import DataIO, AbstractDataChunkIterator, DataChunkIterator
 from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
@@ -415,6 +415,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                  The value is returned as the function may convert the input value to comply
                  with the dtype specified in the schema.
         """
+        if isinstance(value, DataChunkIterator):
+            return value, None
         ret, ret_dtype = cls.__check_edgecases(spec, value)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
