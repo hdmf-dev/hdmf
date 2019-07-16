@@ -296,9 +296,11 @@ class DataChunk(object):
     def astype(self, dtype):
         return DataChunk(data=self.data.astype(dtype),
                          selection=self.selection)
+
     @property
     def dtype(self):
         return self.data.dtype
+
 
 def assertEqualShape(data1,
                      data2,
