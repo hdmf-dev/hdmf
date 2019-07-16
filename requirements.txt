@@ -10,3 +10,4 @@ six==1.11.0
 urllib3==1.24.2
 pandas==0.23.4
 zarr==2.3.2
+numcodecs==0.6.3
