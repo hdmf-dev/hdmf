@@ -1,7 +1,7 @@
 import unittest2 as unittest
 from six import text_type
 
-from hdmf.utils import docval, fmt_docval_args
+from hdmf.utils import docval, fmt_docval_args, get_docval
 
 
 class MyTestClass(object):
@@ -116,10 +116,8 @@ class TestDocValidator(unittest.TestCase):
         """Test that docval catches missing argument
            with a single positional argument
         """
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaisesRegex(TypeError, "missing argument 'arg1'"):
             kwargs = self.test_obj.basic_add()  # noqa: F841
-        msg = "missing argument 'arg1'"
-        self.assertEqual(cm.exception.args[0], msg)
 
     def test_docval_add2(self):
         """Test that docval works with two positional
@@ -188,10 +186,8 @@ class TestDocValidator(unittest.TestCase):
            arguments and a keyword argument when specifying
            keyword argument value with positional syntax
         """
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaisesRegex(TypeError, r"incorrect type for 'arg2' \(got 'str', expected 'int'\)"):
             kwargs = self.test_obj.basic_add2_kw('a string', 'bad string')  # noqa: F841
-
-        self.assertEqual(cm.exception.args[0], u"incorrect type for 'arg2' (got 'str', expected 'int')")
 
     def test_docval_add_sub(self):
         """Test that docval works with a two positional arguments,
@@ -218,10 +214,8 @@ class TestDocValidator(unittest.TestCase):
            argument is specified in both the parent and sublcass implementations,
            when using default values for keyword arguments
         """
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaisesRegex(TypeError, "missing argument 'arg5'"):
             kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string')  # noqa: F841
-        msg = "missing argument 'arg5'"
-        self.assertEqual(cm.exception.args[0], msg)
 
     def test_docval_add2_kw_kwsyntax_sub(self):
         """Test that docval works when called with a four positional
@@ -240,20 +234,16 @@ class TestDocValidator(unittest.TestCase):
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaisesRegex(TypeError, "missing argument 'arg5'"):
             kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)  # noqa: F841
-        msg = "missing argument 'arg5'"
-        self.assertEqual(cm.exception.args[0], msg)
 
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
         """Test that docval catches NoneType  when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaisesRegex(TypeError, r"incorrect type for 'arg5' \(got 'NoneType', expected 'float'\)"):
             kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)  # noqa: F841
-        msg = "incorrect type for 'arg5' (got 'NoneType', expected 'float')"
-        self.assertEqual(cm.exception.args[0], msg)
 
     def test_only_kw_no_args(self):
         """Test that docval parses arguments when only keyword
@@ -311,6 +301,9 @@ class TestDocValidator(unittest.TestCase):
             self.test_obj.basic_add2_kw('a string', 100, bar=1000)
 
     def test_unsupported_docval_term(self):
+        """Test that docval does not allow setting of arguments
+           marked as unsupported
+        """
         @docval({'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape', 'unsupported': 'hi!'})
         def method(self, **kwargs):
             pass
@@ -318,14 +311,64 @@ class TestDocValidator(unittest.TestCase):
             method(self, arg1=[[1, 1]])
 
     def test_catch_duplicate_names(self):
+        """Test that docval does not allow duplicate argument names
+        """
         @docval({'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape'},
-                {'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape'})
+                {'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape2'})
         def method(self, **kwargs):
             pass
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(ValueError, r"The following names are duplicated: \['arg1'\]"):
             method(self, arg1=[1])
-        msg = "The following names are duplicated: ['arg1']"
-        self.assertEqual(cm.exception.args[0], msg)
+
+    def test_get_docval_all(self):
+        """Test that get_docval returns a tuple of the docval arguments
+        """
+        args = get_docval(self.test_obj.basic_add2)
+        self.assertTupleEqual(args, ({'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'},
+                                     {'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'}))
+
+    def test_get_docval_one_arg(self):
+        """Test that get_docval returns the matching docval argument
+        """
+        arg = get_docval(self.test_obj.basic_add2, 'arg2')
+        self.assertTupleEqual(arg, ({'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'},))
+
+    def test_get_docval_two_args(self):
+        """Test that get_docval returns the matching docval arguments in order
+        """
+        args = get_docval(self.test_obj.basic_add2, 'arg2', 'arg1')
+        self.assertTupleEqual(args, ({'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'},
+                                     {'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'}))
+
+    def test_get_docval_missing_arg(self):
+        """Test that get_docval throws error if the matching docval argument is not found
+        """
+        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
+            get_docval(self.test_obj.basic_add2, 'arg3')
+
+    def test_get_docval_missing_args(self):
+        """Test that get_docval throws error if the matching docval arguments is not found
+        """
+        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
+            get_docval(self.test_obj.basic_add2, 'arg3', 'arg4')
+
+    def test_get_docval_missing_arg_of_many_ok(self):
+        """Test that get_docval throws error if the matching docval arguments is not found
+        """
+        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
+            get_docval(self.test_obj.basic_add2, 'arg2', 'arg3')
+
+    def test_get_docval_none(self):
+        """Test that get_docval returns an empty tuple if there is no docval
+        """
+        args = get_docval(self.test_obj.__init__)
+        self.assertTupleEqual(args, tuple())
+
+    def test_get_docval_none_arg(self):
+        """Test that get_docval throws error if there is no docval and an argument name is passed
+        """
+        with self.assertRaisesRegex(ValueError, r'Function __init__ has no docval arguments'):
+            get_docval(self.test_obj.__init__, 'arg3')
 
 
 if __name__ == '__main__':
