@@ -239,7 +239,7 @@ def get_docval(func, *args):
             try:
                 return tuple(docval_idx[name] for name in args)
             except KeyError as ke:
-                raise ValueError('Function %s does not have docval argument(s) %s' % (func.__name__, str(ke)))
+                raise ValueError('Function %s does not have docval argument %s' % (func.__name__, str(ke)))
         return tuple(func_docval[__docval_args_loc])
     else:
         if args:

@@ -343,19 +343,19 @@ class TestDocValidator(unittest.TestCase):
     def test_get_docval_missing_arg(self):
         """Test that get_docval throws error if the matching docval argument is not found
         """
-        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument\(s\) 'arg3'"):
+        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
             get_docval(self.test_obj.basic_add2, 'arg3')
 
     def test_get_docval_missing_args(self):
         """Test that get_docval throws error if the matching docval arguments is not found
         """
-        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument\(s\) 'arg3'"):
+        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
             get_docval(self.test_obj.basic_add2, 'arg3', 'arg4')
 
     def test_get_docval_missing_arg_of_many_ok(self):
         """Test that get_docval throws error if the matching docval arguments is not found
         """
-        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument\(s\) 'arg3'"):
+        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
             get_docval(self.test_obj.basic_add2, 'arg2', 'arg3')
 
     def test_get_docval_none(self):
