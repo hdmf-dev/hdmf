@@ -440,6 +440,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
+        elif isinstance(value, AbstractDataChunkIterator):
+            ret = value
+            ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
         else:
             if spec_dtype in (_unicode, _ascii):
                 ret_dtype = 'ascii'
@@ -1312,7 +1315,7 @@ class TypeMap(object):
             {'name': 'reader',
              'type': SpecReader,
              'doc': 'the class to user for reading specifications', 'default': None},
-            returns="the namespaces loaded from the given file", rtype=tuple)
+            returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
 
@@ -1328,7 +1331,7 @@ class TypeMap(object):
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
-        return tuple(deps.keys())
+        return deps
 
     _type_map = {
         'text': str,
