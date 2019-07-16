@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import zarr
 import tempfile
-from six import raise_from, text_type, string_types, binary_type
+from six import raise_from, text_type, string_types, binary_type, text_type
 from .zarr_utils import ZarrDataIO
 from .zarr_utils import ZarrReference
 from ..io import HDMFIO
@@ -29,7 +29,7 @@ class ZarrIO(HDMFIO):
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': 'the mode to open the Zarr file with, one of ("w", "r", "r+", "a", "w-")'},
-            {'name': 'comm', 'type': 'Intracomm', 
+            {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None})
     def __init__(self, **kwargs):
         path, manager, mode, comm = popargs('path', 'manager', 'mode', 'comm', kwargs)
@@ -51,10 +51,10 @@ class ZarrIO(HDMFIO):
             open_flag = self.__mode
             if self.__comm:
                 sync_path = tempfile.mkdtemp()
-                synchronizer = zarr.ProcessSynchronizer(sync_path) 
+                synchronizer = zarr.ProcessSynchronizer(sync_path)
                 kwargs = {'synchronizer': synchronizer}
             else:
-                kwargs = {} 
+                kwargs = {}
             self.__file = zarr.open(self.__path, self.__mode, **kwargs)
 
     def close(self):
@@ -303,15 +303,14 @@ class ZarrIO(HDMFIO):
         "int8": np.int8,
         "bool": np.bool_,
         "bool_": np.bool_,
-        "text": str,
-        "text": str,
-        "utf": unicode,
-        "utf8": unicode,
-        "utf-8": unicode,
-        "ascii": str,
-        "str": str,
-        "isodatetime": str,
-        "string_": str,
+        "text": binary_type,
+        "utf": text_type,
+        "utf8": text_type,
+        "utf-8": text_type,
+        "ascii": binary_type,
+        "str": binary_type,
+        "isodatetime": binary_type,
+        "string_": binary_type,
         "uint32": np.uint32,
         "uint16": np.uint16,
         "uint8": np.uint8,
@@ -390,8 +389,8 @@ class ZarrIO(HDMFIO):
                 raise_from(Exception(msg), exc)
 
         type_str = cls.__serial_dtype__(dtype)
-        
-            
+
+
         if 'shape' in io_settings:
             data_shape = io_settings.pop('shape')
         elif isinstance(dtype, np.dtype):
@@ -450,7 +449,7 @@ class ZarrIO(HDMFIO):
         path = zarr_obj.path
         path = os.path.join(fpath, path)
         self.__built.setdefault(path, builder)
-        
+
     def __get_built(self, zarr_obj):
         fpath = zarr_obj.store.path
         path = zarr_obj.path
@@ -461,7 +460,7 @@ class ZarrIO(HDMFIO):
         ret = self.__get_built(zarr_obj)
         if ret != None:
             return ret
-        
+
         kwargs = {
             "attributes": self.__read_attrs(zarr_obj),
             "groups": dict(),
@@ -513,7 +512,7 @@ class ZarrIO(HDMFIO):
         ret = self.__get_built(zarr_obj)
         if ret != None:
             return ret
-        
+
         kwargs = {
             "attributes": self.__read_attrs(zarr_obj),
             "dtype": zarr_obj.attrs['zarr_dtype'],
