@@ -53,10 +53,15 @@ class NamespaceIOHelper(object):
                     spec = ns_catalog.get_spec(namespace, dt)
                     if spec.parent is not None:
                         continue
-                    h5_source = os.path.splitext(source)[0]  # get the name
+                    h5_source = cls.get_source_name(source)
                     spec = cls.__copy_spec(spec)
                     builder.add_spec(h5_source, spec)
         return builder
+
+    @classmethod
+    @docval({'name': 'source', 'type': str, 'doc': "source path"})
+    def get_source_name(self, source):
+        return os.path.splitext(source)[0]
 
     @classmethod
     def __copy_spec(cls, spec):
@@ -85,7 +90,6 @@ class NamespaceIOHelper(object):
             if not spec.is_inherited_spec(subspec) or spec.is_overridden_spec(subspec):
                 ret.append(subspec)
         return ret
-
 
 
 class HDF5IO(HDMFIO):
