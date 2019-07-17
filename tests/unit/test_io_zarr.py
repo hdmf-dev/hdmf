@@ -5,10 +5,13 @@ import shutil
 from six import text_type
 import zarr
 
+from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ReferenceBuilder  # , LinkBuilder
 from hdmf.backends.zarr import ZarrIO
 from hdmf.backends.zarr import ZarrDataIO
-from tests.unit.test_io_hdf5_h5tools import _get_manager
+from tests.unit.test_io_hdf5_h5tools import _get_manager, FooFile
+
+from tests.unit.test_utils import Foo, FooBucket
 
 
 class GroupBuilderTestCase(unittest.TestCase):
@@ -132,6 +135,27 @@ class TestZarrWriter(unittest.TestCase):
     def read(self):
         reader = ZarrIO(self.path, manager=self.manager, mode='r')
         self.root = reader.read_builder()
+
+    def test_cache_spec(self):
+
+        self.io = ZarrIO(self.path, manager=self.manager, mode='w')
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foofile = FooFile('test_foofile', [foobucket])
+
+        # Write the first file
+        self.io.write(foofile, cache_spec=True)
+        self.io.close()
+        # TODO Implement loading the spec
+        #ns_catalog = NamespaceCatalog()
+        #HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
+        #self.assertEqual(ns_catalog.namespaces, ('test_core',))
+        #source_types = self.__get_types(self.io.manager.namespace_catalog)
+        #read_types = self.__get_types(ns_catalog)
+        #self.assertSetEqual(source_types, read_types)
 
     def test_write_int(self, test_data=None):
         data = np.arange(100, 200, 10).reshape(2, 5) if test_data is None else test_data
