@@ -516,14 +516,12 @@ class ZarrIO(HDMFIO):
         if ret is not None:
             return ret
 
-        kwargs = {
-            "attributes": self.__read_attrs(zarr_obj),
-            "dtype": zarr_obj.attrs['zarr_dtype'],
-            "maxshape": zarr_obj.shape,
-            "chunks": not (zarr_obj.shape == zarr_obj.chunks)
-        }
+        kwargs = {"attributes": self.__read_attrs(zarr_obj),
+                  "dtype": zarr_obj.attrs['zarr_dtype'],
+                  "maxshape": zarr_obj.shape,
+                  "chunks": not (zarr_obj.shape == zarr_obj.chunks),
+                  "source": self.__path}
 
-        kwargs['source'] = self.__path
         # data = deepcopy(zarr_obj[:])
         data = zarr_obj
         # kwargs['data'] = zarr_obj[:]
