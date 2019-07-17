@@ -1,16 +1,16 @@
 import numpy as np
-import os.path
 from zarr.hierarchy import Group
 from zarr.core import Array
 import numcodecs
 import os
 import itertools
 from copy import deepcopy
+import warnings
 
 import zarr
 import tempfile
 from six import raise_from, string_types, binary_type, text_type
-from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter
+from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter, ZarrSpecReader
 from ..io import HDMFIO
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
@@ -62,6 +62,31 @@ class ZarrIO(HDMFIO):
     def close(self):
         self.__file = None
         return
+
+    @classmethod
+    @docval({'name': 'namespace_catalog',
+             'type': (NamespaceCatalog, TypeMap),
+             'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None})
+    def load_namespaces(cls, namespace_catalog, path, namespaces=None):
+        '''
+        Load cached namespaces from a file.
+        '''
+        f = zarr.open(path, 'r')
+        if SPEC_LOC_ATTR not in f.attrs:
+            msg = "No cached namespaces found in %s" % path
+            warnings.warn(msg)
+        else:
+            spec_group = f[f.attrs[SPEC_LOC_ATTR]]
+            if namespaces is None:
+                namespaces = list(spec_group.keys())
+            for ns in namespaces:
+                ns_group = spec_group[ns]
+                latest_version = list(ns_group.keys())[-1]
+                ns_group = ns_group[latest_version]
+                reader = ZarrSpecReader(ns_group)
+                namespace_catalog.load_namespaces('namespace', reader=reader)
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': False},

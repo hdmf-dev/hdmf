@@ -11,7 +11,7 @@ from hdmf.backends.zarr import ZarrIO
 from hdmf.backends.zarr import ZarrDataIO
 from tests.unit.test_io_hdf5_h5tools import _get_manager, FooFile
 
-from tests.unit.test_utils import Foo, FooBucket
+from tests.unit.test_utils import Foo, FooBucket, CacheSpecTestHelper
 
 
 class GroupBuilderTestCase(unittest.TestCase):
@@ -149,13 +149,14 @@ class TestZarrWriter(unittest.TestCase):
         # Write the first file
         self.io.write(foofile, cache_spec=True)
         self.io.close()
-        # TODO Implement loading the spec
-        #ns_catalog = NamespaceCatalog()
-        #HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
-        #self.assertEqual(ns_catalog.namespaces, ('test_core',))
-        #source_types = self.__get_types(self.io.manager.namespace_catalog)
-        #read_types = self.__get_types(ns_catalog)
-        #self.assertSetEqual(source_types, read_types)
+
+        # Load the spec and assert that it is valid
+        ns_catalog = NamespaceCatalog()
+        ZarrIO.load_namespaces(ns_catalog, self.path)
+        self.assertEqual(ns_catalog.namespaces, ('test_core',))
+        source_types = CacheSpecTestHelper.get_types(self.io.manager.namespace_catalog)
+        read_types = CacheSpecTestHelper.get_types(ns_catalog)
+        self.assertSetEqual(source_types, read_types)
 
     def test_write_int(self, test_data=None):
         data = np.arange(100, 200, 10).reshape(2, 5) if test_data is None else test_data
