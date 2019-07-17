@@ -3,11 +3,13 @@ import zarr
 import numcodecs
 import numpy as np
 from collections import Iterable
+import json
 
 from ...data_utils import DataIO
-from ...utils import docval, getargs, popargs, call_docval_func
+from ...utils import docval, getargs, call_docval_func  # , popargs
 
 from ...spec import SpecWriter, SpecReader
+
 
 class ZarrSpecWriter(SpecWriter):
 
@@ -24,9 +26,11 @@ class ZarrSpecWriter(SpecWriter):
 
     def __write(self, d, name):
         data = self.stringify(d)
-        dset = self.__group.require_dataset(name, shape = (1, ), dtype = object
-                                            , object_codec = numcodecs.JSON()
-                                            , compressor = None)
+        dset = self.__group.require_dataset(name,
+                                            shape=(1, ),
+                                            dtype=object,
+                                            object_codec=numcodecs.JSON(),
+                                            compressor=None)
         dset[0] = data
         return dset
 
@@ -35,6 +39,7 @@ class ZarrSpecWriter(SpecWriter):
 
     def write_namespace(self, namespace, path):
         return self.__write({'namespaces': [namespace]}, path)
+
 
 class ZarrSpecReader(SpecReader):
 
@@ -58,6 +63,7 @@ class ZarrSpecReader(SpecReader):
         ret = ret['namespaces']
         return ret
 
+
 class ZarrDataIO(DataIO):
     """
     Wrap data arrays for write via ZarrIO to customize I/O behavior, such as compression and chunking
@@ -76,7 +82,7 @@ class ZarrDataIO(DataIO):
              'type': None,
              'doc': 'Value to be returned when reading uninitialized parts of the dataset',
              'default': None},
-             {'name': 'link_data',
+            {'name': 'link_data',
              'type': bool,
              'doc': 'If data is an zarr.Array should it be linked to or copied. NOTE: This parameter is only ' +
                     'allowed if data is an zarr.Array',
@@ -93,7 +99,6 @@ class ZarrDataIO(DataIO):
         if fill_value is not None:
             self.__iosettings['fill_value'] = fill_value
 
-
     @property
     def link_data(self):
         return self.__link_data
@@ -101,6 +106,7 @@ class ZarrDataIO(DataIO):
     @property
     def io_settings(self):
         return self.__iosettings
+
 
 class ZarrReference(dict):
 
@@ -122,6 +128,7 @@ class ZarrReference(dict):
     @property
     def source(self):
         return super(ZarrReference, self).__getitem__('source')
+
     @property
     def path(self):
         return super(ZarrReference, self).__getitem__('path')

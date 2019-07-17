@@ -1,19 +1,22 @@
-============= 
-Zarr backend 
+=============
+Zarr backend
 =============
 
-The Zarr backend is an alternative format to store data in HDMF except for h5py.
+The Zarr backend is an alternative storage backend to store data using HDMF via the Zarr library.
 
-Currently, Zarr backend supports functions:
+Currently, the Zarr backend supports:
 
-- Write/Read basic datatypes, strings and compound data types 
+- Write/Read of basic datatypes, strings and compound data types
 - Chunking
-- Link
-- Object reference
+- Links
+- Object references
 
-Functions which are in h5py backend but not supported by the Zarr backend are:
+The following features available in the h5py backend are not yet supported by the Zarr backend:
 
 - Compression
-- Region reference
+- Region reference (see ``ZarrIO.__get_ref``)
+- Iterative data write using AbstractDataChunkIterator
+- loading/writing namespaces/specifications
+
 
 **Note:** The link and reference in Zarr backend are OS independent. The backend reserves attributes to store the paths of the target objects in the two functions.
