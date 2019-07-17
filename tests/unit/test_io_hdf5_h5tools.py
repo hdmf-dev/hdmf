@@ -18,7 +18,7 @@ import tempfile
 import warnings
 import numpy as np
 
-from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.test_utils import Foo, FooBucket, CacheSpecTestHelper, CORE_NAMESPACE
 
 
 class FooFile(Container):
@@ -494,17 +494,9 @@ class TestCacheSpec(unittest.TestCase):
         ns_catalog = NamespaceCatalog()
         HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
         self.assertEqual(ns_catalog.namespaces, ('test_core',))
-        source_types = self.__get_types(self.io.manager.namespace_catalog)
-        read_types = self.__get_types(ns_catalog)
+        source_types = CacheSpecTestHelper.get_types(self.io.manager.namespace_catalog)
+        read_types = CacheSpecTestHelper.get_types(ns_catalog)
         self.assertSetEqual(source_types, read_types)
-
-    def __get_types(self, catalog):
-        types = set()
-        for ns_name in catalog.namespaces:
-            ns = catalog.get_namespace(ns_name)
-            for source in ns['schema']:
-                types.update(catalog.get_types(source['source']))
-        return types
 
 
 class TestLinkResolution(unittest.TestCase):

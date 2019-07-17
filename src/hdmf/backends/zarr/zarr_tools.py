@@ -1,27 +1,29 @@
 import numpy as np
-import os.path
 from zarr.hierarchy import Group
 from zarr.core import Array
 import numcodecs
 import os
 import itertools
 from copy import deepcopy
+import warnings
 
 import zarr
 import tempfile
 from six import raise_from, string_types, binary_type, text_type
-from .zarr_utils import ZarrDataIO
-from .zarr_utils import ZarrReference
+from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter, ZarrSpecReader
 from ..io import HDMFIO
-from ...utils import docval, getargs, popargs  # , call_docval_func
+from ...utils import docval, getargs, popargs, call_docval_func
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper
 from ...container import Container
 from ...data_utils import get_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
+from ..hdf5.h5tools import NamespaceIOHelper
+
 
 ROOT_NAME = 'root'
+SPEC_LOC_ATTR = '.specloc'
 
 
 class ZarrIO(HDMFIO):
@@ -60,6 +62,60 @@ class ZarrIO(HDMFIO):
     def close(self):
         self.__file = None
         return
+
+    @classmethod
+    @docval({'name': 'namespace_catalog',
+             'type': (NamespaceCatalog, TypeMap),
+             'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None})
+    def load_namespaces(cls, namespace_catalog, path, namespaces=None):
+        '''
+        Load cached namespaces from a file.
+        '''
+        f = zarr.open(path, 'r')
+        if SPEC_LOC_ATTR not in f.attrs:
+            msg = "No cached namespaces found in %s" % path
+            warnings.warn(msg)
+        else:
+            spec_group = f[f.attrs[SPEC_LOC_ATTR]]
+            if namespaces is None:
+                namespaces = list(spec_group.keys())
+            for ns in namespaces:
+                ns_group = spec_group[ns]
+                latest_version = list(ns_group.keys())[-1]
+                ns_group = ns_group[latest_version]
+                reader = ZarrSpecReader(ns_group)
+                namespace_catalog.load_namespaces('namespace', reader=reader)
+
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
+            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': False},
+            {'name': 'link_data', 'type': bool,
+             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
+    def write(self, **kwargs):
+        """Overwrite the write method to add support for caching the specification"""
+        cache_spec = popargs('cache_spec', kwargs)
+        call_docval_func(super(ZarrIO, self).write, kwargs)
+        if cache_spec:
+            ref = self.__file.attrs.get(SPEC_LOC_ATTR)
+            spec_group = None
+            if ref is not None:
+                spec_group = self.__file[ref]
+            else:
+                path = 'specifications'  # do something to figure out where the specifications should go
+                spec_group = self.__file.require_group(path)
+                self.__file.attrs[SPEC_LOC_ATTR] = path
+            ns_catalog = self.manager.namespace_catalog
+            for ns_name in ns_catalog.namespaces:
+                ns_builder = NamespaceIOHelper.convert_namespace(ns_catalog, ns_name)
+                namespace = ns_catalog.get_namespace(ns_name)
+                if namespace.version is None:
+                    group_name = '%s/unversioned' % ns_name
+                else:
+                    group_name = '%s/%s' % (ns_name, namespace.version)
+                ns_group = spec_group.require_group(group_name)
+                writer = ZarrSpecWriter(ns_group)
+                ns_builder.export('namespace', writer=writer)
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the NWBFile'},
             {'name': 'link_data', 'type': bool,
@@ -114,7 +170,14 @@ class ZarrIO(HDMFIO):
                 tmp = tuple(value)
                 obj.attrs[key] = tmp
             else:
-                obj.attrs[key] = value
+                try:
+                    obj.attrs[key] = value
+                # Numpy scalars are not JSON serializable. Try to convert to the approbriate Python type instead
+                except TypeError:
+                    if isinstance(value, np.generic):
+                        obj.attrs[key] = value.item()
+                    else:
+                        raise
 
     def __get_path(self, builder):
         curr = builder
