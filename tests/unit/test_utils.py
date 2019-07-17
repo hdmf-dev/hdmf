@@ -5,6 +5,18 @@ from hdmf.container import Container
 CORE_NAMESPACE = 'test_core'
 
 
+class CacheSpecTestHelper(object):
+
+    @staticmethod
+    def get_types(catalog):
+        types = set()
+        for ns_name in catalog.namespaces:
+            ns = catalog.get_namespace(ns_name)
+            for source in ns['schema']:
+                types.update(catalog.get_types(source['source']))
+        return types
+
+
 class Foo(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
