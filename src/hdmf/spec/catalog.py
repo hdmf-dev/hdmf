@@ -60,6 +60,7 @@ class SpecCatalog(object):
         '''
         Return all registered specifications
         '''
+        # kwargs is not used here but is used by docval
         return tuple(self.__specs.keys())
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type of the spec to get the source file for'},
@@ -121,7 +122,8 @@ class SpecCatalog(object):
             while parent is not None:
                 hierarchy.append(parent)
                 parent = self.__parent_types.get(parent)
-            # store computed hierarchy for later
+            # store the computed hierarchy for data_type and all types in between it and
+            # the top of the hierarchy
             tmp_hier = tuple(hierarchy)
             ret = tmp_hier
             while len(tmp_hier) > 0:

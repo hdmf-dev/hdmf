@@ -1,5 +1,9 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
-from collections import Iterable
+try:
+    from collections.abc import Iterable  # Python 3
+except ImportError:
+    from collections import Iterable  # Python 2.7
+
 from operator import itemgetter
 
 import numpy as np
@@ -288,6 +292,14 @@ class DataChunk(object):
 
     def __getattr__(self, attr):
         return getattr(self.data, attr)
+
+    def astype(self, dtype):
+        return DataChunk(data=self.data.astype(dtype),
+                         selection=self.selection)
+
+    @property
+    def dtype(self):
+        return self.data.dtype
 
 
 def assertEqualShape(data1,
