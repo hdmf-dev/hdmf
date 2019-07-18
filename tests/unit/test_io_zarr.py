@@ -144,7 +144,7 @@ class TestZarrWriter(unittest.TestCase):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
-        foofile = FooFile('test_foofile', [foobucket])
+        foofile = FooFile([foobucket])
 
         # Write the first file
         self.io.write(foofile, cache_spec=True)
