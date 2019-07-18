@@ -173,13 +173,18 @@ class ZarrIO(HDMFIO):
                 try:
                     obj.attrs[key] = tmp
                 # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
-                except TypeError:
+                except TypeError as e:
                     write_ok = False
                     try:
-                        tmp = tuple([ i.item() if isinstance(i, np.generic) else i.decode("utf-8") if isinstance(i, bytes)  else i for i in value])
+                        tmp = tuple([i.item()
+                                     if isinstance(i, np.generic)
+                                     else i.decode("utf-8")
+                                     if isinstance(i, bytes)
+                                     else i
+                                     for i in value])
                         obj.attrs[key] = tmp
                         write_ok = True
-                    except:
+                    except:  # noqa: E272
                         pass
                     if not write_ok:
                         raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
@@ -202,13 +207,17 @@ class ZarrIO(HDMFIO):
                 except TypeError as e:
                     write_ok = False
                     try:
-                        val = value.item() if isinstance(value, np.generic) else value.decode("utf-8") if isinstance(value, bytes)  else value
+                        val = value.item() \
+                            if isinstance(value, np.generic) \
+                            else value.decode("utf-8") \
+                            if isinstance(value, bytes) \
+                            else value
                         obj.attrs[key] = val
                         write_ok = True
-                    except:
+                    except:  # noqa: E272
                         pass
                     if not write_ok:
-                        raise TypeError(str(e) + "key="+ key + " type=" + str(type(value)) + "  data=" + str(value))
+                        raise TypeError(str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value))
 
     def __get_path(self, builder):
         curr = builder
@@ -615,7 +624,7 @@ class ZarrIO(HDMFIO):
             return ret
 
         if 'zarr_dtype' not in zarr_obj.attrs:
-            raise ValueError("Dataset missing zarr_dtype: " + str(name)+ "   " + str(zarr_obj))
+            raise ValueError("Dataset missing zarr_dtype: " + str(name) + "   " + str(zarr_obj))
 
         kwargs = {"attributes": self.__read_attrs(zarr_obj),
                   "dtype": zarr_obj.attrs['zarr_dtype'],
