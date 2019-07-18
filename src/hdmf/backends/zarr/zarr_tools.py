@@ -168,16 +168,32 @@ class ZarrIO(HDMFIO):
         for key, value in attributes.items():
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
-                obj.attrs[key] = tmp
+                try:
+                    obj.attrs[key] = tmp
+                except TypeError:
+                    write_ok = False
+                    try:
+                        tmp = tuple([ i.item() if isinstance(i, np.generic) else str(i) if isinstance(i, bytes)  else i for i in value])
+                        obj.attrs[key] = tmp
+                        write_ok = True
+                    except:
+                        pass
+                    if not write_ok:
+                        raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
             else:
                 try:
                     obj.attrs[key] = value
-                # Numpy scalars are not JSON serializable. Try to convert to the approbriate Python type instead
-                except TypeError:
-                    if isinstance(value, np.generic):
-                        obj.attrs[key] = value.item()
-                    else:
-                        raise
+                # Numpy scalars are not JSON serializable. Try to convert to the approbritate Python type instead
+                except TypeError as e:
+                    write_ok = False
+                    try:
+                        val = value.item() if isinstance(value, np.generic) else str(value) if isinstance(value, bytes)  else value
+                        obj.attrs[key] = val
+                        write_ok = True
+                    except:
+                        pass
+                    if not write_ok:
+                        raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
 
     def __get_path(self, builder):
         curr = builder
@@ -503,6 +519,8 @@ class ZarrIO(HDMFIO):
                 raise_from(Exception(msg), exc)
         dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, compressor=None, **io_settings)
         dset[:] = data
+        type_str = cls.__serial_dtype__(dtype)
+        dset.attrs['zarr_dtype'] = type_str
         return dset
 
     @docval(returns='a GroupBuilder representing the NWB Dataset', rtype='GroupBuilder')
