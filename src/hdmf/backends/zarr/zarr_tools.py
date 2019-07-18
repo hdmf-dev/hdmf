@@ -166,10 +166,13 @@ class ZarrIO(HDMFIO):
     def set_attributes(self, **kwargs):
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
+            # Case 1: list, set, tuple type attributes
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
+                # Attempt write of the attribute
                 try:
                     obj.attrs[key] = tmp
+                # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
                 except TypeError:
                     write_ok = False
                     try:
@@ -180,10 +183,22 @@ class ZarrIO(HDMFIO):
                         pass
                     if not write_ok:
                         raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
+            # Case 2: References
+            elif isinstance(value, (Container, Builder, ReferenceBuilder)):
+                if isinstance(value, RegionBuilder):
+                    type_str = 'region'
+                    refs = self.__get_ref(value.builder)
+                elif isinstance(value, ReferenceBuilder) or isinstance(value, Container) or isinstance(value, Builder):
+                    type_str = 'object'
+                    refs = self.__get_ref(value.builder)
+                tmp = {'zarr_type': type_str, 'value': refs}
+                obj.attrs[key] = tmp
+            # Case 3: Scalar attributes
             else:
+                # Attempt to write the attribute
                 try:
                     obj.attrs[key] = value
-                # Numpy scalars are not JSON serializable. Try to convert to the approbritate Python type instead
+                # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
                 except TypeError as e:
                     write_ok = False
                     try:
@@ -193,7 +208,7 @@ class ZarrIO(HDMFIO):
                     except:
                         pass
                     if not write_ok:
-                        raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
+                        raise TypeError(str(e) + "key="+ key + " type=" + str(type(value)) + "  data=" + str(value))
 
     def __get_path(self, builder):
         curr = builder
@@ -220,6 +235,8 @@ class ZarrIO(HDMFIO):
             returns='the reference', rtype=ZarrReference)
     def __get_ref(self, **kwargs):
         container, region = getargs('container', 'region', kwargs)
+        if isinstance(container, RegionBuilder) or region is not None:
+            raise NotImplementedError("Region references are currently not supported by ZarrIO")
         if isinstance(container, Builder):
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder
@@ -682,6 +699,7 @@ class ZarrIO(HDMFIO):
                 o = data[p[i]]
             o[p[-1]] = self.__read_dataset(target_zarr_obj, target_name)
 
+    # TODO Need to implement resolution of references stored as attributes
     def __read_attrs(self, zarr_obj):
         ret = dict()
         for k in zarr_obj.attrs.keys():
