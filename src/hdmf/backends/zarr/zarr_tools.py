@@ -176,7 +176,7 @@ class ZarrIO(HDMFIO):
                 except TypeError:
                     write_ok = False
                     try:
-                        tmp = tuple([ i.item() if isinstance(i, np.generic) else str(i) if isinstance(i, bytes)  else i for i in value])
+                        tmp = tuple([ i.item() if isinstance(i, np.generic) else i.decode("utf-8") if isinstance(i, bytes)  else i for i in value])
                         obj.attrs[key] = tmp
                         write_ok = True
                     except:
@@ -202,7 +202,7 @@ class ZarrIO(HDMFIO):
                 except TypeError as e:
                     write_ok = False
                     try:
-                        val = value.item() if isinstance(value, np.generic) else str(value) if isinstance(value, bytes)  else value
+                        val = value.item() if isinstance(value, np.generic) else value.decode("utf-8") if isinstance(value, bytes)  else value
                         obj.attrs[key] = val
                         write_ok = True
                     except:
@@ -614,21 +614,23 @@ class ZarrIO(HDMFIO):
         if ret is not None:
             return ret
 
+        if 'zarr_dtype' not in zarr_obj.attrs:
+            raise ValueError("Dataset missing zarr_dtype: " + str(name)+ "   " + str(zarr_obj))
+
         kwargs = {"attributes": self.__read_attrs(zarr_obj),
                   "dtype": zarr_obj.attrs['zarr_dtype'],
                   "maxshape": zarr_obj.shape,
                   "chunks": not (zarr_obj.shape == zarr_obj.chunks),
                   "source": self.__path}
+        dtype = kwargs['dtype']
 
         # data = deepcopy(zarr_obj[:])
         data = zarr_obj
         # kwargs['data'] = zarr_obj[:]
         # Read scalar dataset
-        if 'zarr_dtype' in zarr_obj.attrs:
-            if zarr_obj.attrs['zarr_dtype'] == 'scalar':
-                data = zarr_obj[0]
+        if dtype == 'scalar':
+            data = zarr_obj[0]
 
-        dtype = kwargs['dtype']
         obj_refs = False
         reg_refs = False
         has_reference = False
