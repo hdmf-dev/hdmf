@@ -166,18 +166,58 @@ class ZarrIO(HDMFIO):
     def set_attributes(self, **kwargs):
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
+            # Case 1: list, set, tuple type attributes
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
+                # Attempt write of the attribute
+                try:
+                    obj.attrs[key] = tmp
+                # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
+                except TypeError as e:
+                    write_ok = False
+                    try:
+                        tmp = tuple([i.item()
+                                     if isinstance(i, np.generic)
+                                     else i.decode("utf-8")
+                                     if isinstance(i, bytes)
+                                     else i
+                                     for i in value])
+                        obj.attrs[key] = tmp
+                        write_ok = True
+                    except:  # noqa: E272
+                        pass
+                    if not write_ok:
+                        raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
+            # Case 2: References
+            elif isinstance(value, (Container, Builder, ReferenceBuilder)):
+                if isinstance(value, RegionBuilder):
+                    type_str = 'region'
+                    refs = self.__get_ref(value.builder)
+                elif isinstance(value, ReferenceBuilder) or isinstance(value, Container) or isinstance(value, Builder):
+                    type_str = 'object'
+                    refs = self.__get_ref(value.builder)
+                tmp = {'zarr_dtype': type_str, 'value': refs}
                 obj.attrs[key] = tmp
+            # Case 3: Scalar attributes
             else:
+                # Attempt to write the attribute
                 try:
                     obj.attrs[key] = value
-                # Numpy scalars are not JSON serializable. Try to convert to the approbriate Python type instead
-                except TypeError:
-                    if isinstance(value, np.generic):
-                        obj.attrs[key] = value.item()
-                    else:
-                        raise
+                # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
+                except TypeError as e:
+                    write_ok = False
+                    try:
+                        val = value.item() \
+                            if isinstance(value, np.generic) \
+                            else value.decode("utf-8") \
+                            if isinstance(value, bytes) \
+                            else value
+                        obj.attrs[key] = val
+                        write_ok = True
+                    except:  # noqa: E272
+                        pass
+                    if not write_ok:
+                        raise TypeError(str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value))
 
     def __get_path(self, builder):
         curr = builder
@@ -204,6 +244,8 @@ class ZarrIO(HDMFIO):
             returns='the reference', rtype=ZarrReference)
     def __get_ref(self, **kwargs):
         container, region = getargs('container', 'region', kwargs)
+        if isinstance(container, RegionBuilder) or region is not None:
+            raise NotImplementedError("Region references are currently not supported by ZarrIO")
         if isinstance(container, Builder):
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder
@@ -503,6 +545,8 @@ class ZarrIO(HDMFIO):
                 raise_from(Exception(msg), exc)
         dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, compressor=None, **io_settings)
         dset[:] = data
+        type_str = 'scalar'
+        dset.attrs['zarr_dtype'] = type_str
         return dset
 
     @docval(returns='a GroupBuilder representing the NWB Dataset', rtype='GroupBuilder')
@@ -579,17 +623,23 @@ class ZarrIO(HDMFIO):
         if ret is not None:
             return ret
 
+        if 'zarr_dtype' not in zarr_obj.attrs:
+            raise ValueError("Dataset missing zarr_dtype: " + str(name) + "   " + str(zarr_obj))
+
         kwargs = {"attributes": self.__read_attrs(zarr_obj),
                   "dtype": zarr_obj.attrs['zarr_dtype'],
                   "maxshape": zarr_obj.shape,
                   "chunks": not (zarr_obj.shape == zarr_obj.chunks),
                   "source": self.__path}
+        dtype = kwargs['dtype']
 
         # data = deepcopy(zarr_obj[:])
         data = zarr_obj
         # kwargs['data'] = zarr_obj[:]
+        # Read scalar dataset
+        if dtype == 'scalar':
+            data = zarr_obj[0]
 
-        dtype = kwargs['dtype']
         obj_refs = False
         reg_refs = False
         has_reference = False
@@ -662,12 +712,34 @@ class ZarrIO(HDMFIO):
             o = data
             for i in range(0, len(p)-1):
                 o = data[p[i]]
-            o[p[-1]] = self.__read_dataset(target_zarr_obj, target_name)
+            if isinstance(target_zarr_obj, zarr.hierarchy.Group):
+                o[p[-1]] = self.__read_group(target_zarr_obj, target_name)
+            else:
+                o[p[-1]] = self.__read_dataset(target_zarr_obj, target_name)
 
     def __read_attrs(self, zarr_obj):
         ret = dict()
         for k in zarr_obj.attrs.keys():
             if k not in self.__reserve_attribute:
                 v = zarr_obj.attrs[k]
-                ret[k] = v
+                if isinstance(v, dict) and 'zarr_dtype' in v:
+                    # TODO Is this the correct way to resolve references?
+                    if v['zarr_dtype'] == 'object':
+                        source = v['value']['source']
+                        path = v['value']['path']
+                        if source is not None and source != "":
+                            path = source + path
+                        target_name = str(os.path.basename(path))
+                        target_zarr_obj = zarr.open(str(path), mode='r')
+                        if isinstance(target_zarr_obj, zarr.hierarchy.Group):
+                            ret[k] = self.__read_group(target_zarr_obj, target_name)
+                        else:
+                            ret[k] = self.__read_dataset(target_zarr_obj, target_name)
+                    # TODO Need to implement region references for attributes
+                    elif v['zarr_dtype'] == 'region':
+                        raise NotImplementedError("Read of region references from attributes not implemented in ZarrIO")
+                    else:
+                        raise NotImplementedError("Unsupported zarr_dtype for attribute " + str(v))
+                else:
+                    ret[k] = v
         return ret
