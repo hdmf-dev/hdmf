@@ -536,7 +536,7 @@ class ZarrIO(HDMFIO):
                 raise_from(Exception(msg), exc)
         dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, compressor=None, **io_settings)
         dset[:] = data
-        type_str = cls.__serial_dtype__(dtype)
+        type_str = 'scalar'
         dset.attrs['zarr_dtype'] = type_str
         return dset
 
@@ -623,6 +623,10 @@ class ZarrIO(HDMFIO):
         # data = deepcopy(zarr_obj[:])
         data = zarr_obj
         # kwargs['data'] = zarr_obj[:]
+        # Read scalar dataset
+        if 'zarr_dtype' in zarr_obj.attrs:
+            if zarr_obj.attrs['zarr_dtype'] == 'scalar':
+                data = zarr_obj[0]
 
         dtype = kwargs['dtype']
         obj_refs = False
