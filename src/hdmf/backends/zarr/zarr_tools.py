@@ -191,7 +191,7 @@ class ZarrIO(HDMFIO):
                 elif isinstance(value, ReferenceBuilder) or isinstance(value, Container) or isinstance(value, Builder):
                     type_str = 'object'
                     refs = self.__get_ref(value.builder)
-                tmp = {'zarr_type': type_str, 'value': refs}
+                tmp = {'zarr_dtype': type_str, 'value': refs}
                 obj.attrs[key] = tmp
             # Case 3: Scalar attributes
             else:
@@ -703,13 +703,34 @@ class ZarrIO(HDMFIO):
             o = data
             for i in range(0, len(p)-1):
                 o = data[p[i]]
-            o[p[-1]] = self.__read_dataset(target_zarr_obj, target_name)
+            if isinstance(target_zarr_obj, zarr.hierarchy.Group):
+                o[p[-1]] = self.__read_group(target_zarr_obj, target_name)
+            else:
+                o[p[-1]] = self.__read_dataset(target_zarr_obj, target_name)
 
-    # TODO Need to implement resolution of references stored as attributes
     def __read_attrs(self, zarr_obj):
         ret = dict()
         for k in zarr_obj.attrs.keys():
             if k not in self.__reserve_attribute:
                 v = zarr_obj.attrs[k]
-                ret[k] = v
+                if isinstance(v, dict) and 'zarr_dtype' in v:
+                    # TODO Is this the correct way to resolve references?
+                    if v['zarr_dtype'] == 'object':
+                        source = v['value']['source']
+                        path = v['value']['path']
+                        if source is not None and source != "":
+                            path = source + path
+                        target_name = str(os.path.basename(path))
+                        target_zarr_obj = zarr.open(str(path), mode='r')
+                        if isinstance(target_zarr_obj, zarr.hierarchy.Group):
+                            ret[k] = self.__read_group(target_zarr_obj, target_name)
+                        else:
+                            ret[k] = self.__read_dataset(target_zarr_obj, target_name)
+                    # TODO Need to implement region references for attributes
+                    elif v['zarr_dtype'] == 'region':
+                        raise NotImplementedError("Read of region references from attributes not implemented in ZarrIO")
+                    else:
+                        raise NotImplementedError("Unsupported zarr_dtype for attribute " + str(v))
+                else:
+                    ret[k] = v
         return ret
