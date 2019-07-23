@@ -75,7 +75,8 @@ class TestGetSubSpec(unittest.TestCase):
 
     def test_get_subspec_data_type_noname(self):
         parent_spec = GroupSpec('Something to hold a Bar', 'bar_bucket', groups=[self.bar_spec])
-        sub_builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE})
+        sub_builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
+                                                         'object_id': -1})
         builder = GroupBuilder('bar_bucket', groups={'my_bar': sub_builder})  # noqa: F841
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, self.bar_spec)
@@ -83,7 +84,8 @@ class TestGetSubSpec(unittest.TestCase):
     def test_get_subspec_named(self):
         child_spec = GroupSpec('A test group specification with a data type', 'my_subgroup')
         parent_spec = GroupSpec('Something to hold a Bar', 'my_group', groups=[child_spec])
-        sub_builder = GroupBuilder('my_subgroup', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE})
+        sub_builder = GroupBuilder('my_subgroup', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
+                                                              'object_id': -1})
         builder = GroupBuilder('my_group', groups={'my_bar': sub_builder})  # noqa: F841
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, child_spec)
@@ -341,10 +343,11 @@ class TestObjectMapperNested(TestObjectMapper):
     def test_construct(self):
         ''' Test default mapping functionality when object attributes map to an attribute
         deeper than top-level Builder '''
+        expected = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
             'data', list(range(10)), attributes={'attr2': 10})},
-                               attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE})
-        expected = Bar('my_bar', list(range(10)), 'value1', 10)
+                               attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
+                                           'object_id': expected.object_id})
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
 
@@ -382,10 +385,10 @@ class TestObjectMapperNoNesting(TestObjectMapper):
         self.assertDictEqual(builder, expected)
 
     def test_construct(self):
+        expected = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
                                attributes={'attr1': 'value1', 'attr2': 10, 'data_type': 'Bar',
-                                           'namespace': CORE_NAMESPACE})
-        expected = Bar('my_bar', list(range(10)), 'value1', 10)
+                                           'namespace': CORE_NAMESPACE, 'object_id': expected.object_id})
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
 
