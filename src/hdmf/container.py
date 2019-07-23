@@ -139,6 +139,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         cp.__parent = None
         cp.__container_source = None
         cp.__object_id = str(uuid4())
+        cp.__modified = True
 
         for child in cp.children:
             child.parent = cp
