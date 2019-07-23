@@ -468,6 +468,59 @@ def _get_manager():
     return manager
 
 
+class TestRoundTrip(unittest.TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.test_temp_file = tempfile.NamedTemporaryFile()
+        self.test_temp_file.close()
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        self.path = self.test_temp_file.name
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_roundtrip_basic(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets[0].foos[0].my_data,
+                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
+
+    def test_roundtrip_empty_dataset(self):
+        foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual([], read_foofile.buckets[0].foos[0].my_data[:].tolist())
+
+    def test_roundtrip_empty_group(self):
+        foobucket = FooBucket('test_bucket', [])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual([], read_foofile.buckets[0].foos)
+
+
 class TestCacheSpec(unittest.TestCase):
 
     def setUp(self):
@@ -749,9 +802,8 @@ class HDF5IOReadData(unittest.TestCase):
         bucket1 = FooBucket('test_bucket1', [foo1])
         self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
 
-        temp_io = HDF5IO(self.path, manager=_get_manager(), mode='w')
-        temp_io.write(self.foofile1)
-        temp_io.close()
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as temp_io:
+            temp_io.write(self.foofile1)
         self.io = None
 
     def tearDown(self):

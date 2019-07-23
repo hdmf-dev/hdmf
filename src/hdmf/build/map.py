@@ -955,29 +955,13 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 continue
             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
-    def __is_empty(self, val):
-        if val is None:
-            return True
-        if isinstance(val, DataIO):
-            val = val.data
-        if isinstance(val, AbstractDataChunkIterator):
-            return False
-        else:
-            if (hasattr(val, '__len__') and len(val) == 0):
-                return True
-            else:
-                return False
-
     def __add_datasets(self, builder, datasets, container, build_manager, source):
         for spec in datasets:
             attr_value = self.get_attr_value(spec, container, build_manager)
-            if self.__is_empty(attr_value):
-                if spec.required:
-                    msg = "empty dataset '%s' for '%s' of type (%s)"\
-                                  % (spec.name, builder.name, self.spec.data_type_def)
-                    warnings.warn(msg, MissingRequiredWarning)
-                if attr_value is None:
-                    continue
+            if attr_value is None:
+                continue
+            if isinstance(attr_value, DataIO) and attr_value.data is None:
+                continue
             if isinstance(attr_value, Builder):
                 builder.set_builder(attr_value)
             elif spec.data_type_def is None and spec.data_type_inc is None:
