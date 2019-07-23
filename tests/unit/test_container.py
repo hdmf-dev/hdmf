@@ -1,6 +1,7 @@
 import unittest2 as unittest
 
 from hdmf.container import Container
+from copy import deepcopy
 
 
 class Subcontainer(Container):
@@ -117,6 +118,35 @@ class TestContainer(unittest.TestCase):
     def test_type_hierarchy(self):
         self.assertEqual(Container.type_hierarchy(), (Container, object))
         self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, object))
+
+    def test_deepcopy(self):
+        parent_obj = Container('obj1')
+        parent_obj.container_source = 'a file'
+        parent_obj.set_modified(False)
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        child_obj.container_source = 'a file'
+        child_obj.set_modified(False)
+        child_child_obj = Container('obj3')
+        child_child_obj.parent = child_obj
+        child_child_obj.container_source = 'a file'
+
+        parent_copy = deepcopy(parent_obj)
+        self.assertEqual(parent_copy.name, 'obj1')
+        self.assertEqual(parent_copy.children[0].name, 'obj2')
+        self.assertEqual(parent_copy.children[0].children[0].name, 'obj3')
+        self.assertNotEqual(parent_copy.object_id, parent_obj.object_id)
+        self.assertNotEqual(parent_copy.children[0].object_id, child_obj.object_id)
+        self.assertNotEqual(parent_copy.children[0].children[0].object_id, child_child_obj.object_id)
+        self.assertIsNone(parent_copy.container_source)
+        self.assertIsNone(parent_copy.children[0].container_source)
+        self.assertIsNone(parent_copy.children[0].children[0].container_source)
+        self.assertTrue(parent_copy.modified)
+        self.assertTrue(parent_copy.children[0].modified)
+        self.assertTrue(parent_copy.children[0].children[0].modified)
+
+        child_copy = deepcopy(child_obj)
+        self.assertIsNone(child_copy.parent)
 
 
 if __name__ == '__main__':
