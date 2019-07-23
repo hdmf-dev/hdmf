@@ -20,6 +20,8 @@ from ...data_utils import get_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
 from ..hdf5.h5tools import NamespaceIOHelper
+from ..hdf5.h5_utils import H5ReferenceDataset
+
 
 
 ROOT_NAME = 'root'
@@ -128,12 +130,18 @@ class ZarrIO(HDMFIO):
             self.write_dataset(self.__file, dbldr, link_data)
         self.set_attributes(self.__file, f_builder.attributes)
 
+    def __builder_written_to_zarr(self, builder, parent):
+        # TODO We should make sure that this is done in the BuildManager, i.e., we need make sure that builder.written is valid for Zarr
+        builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
+        exists_on_disk =  os.path.exists(builder_path)
+        return builder.written and exists_on_disk  # If the file was previously written to an HDF5 file then we need to create the group
+
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        if builder.written:
+        if self.__builder_written_to_zarr(builder, parent):
             group = parent[builder.name]
         else:
             group = parent.require_group(builder.name)
@@ -167,7 +175,7 @@ class ZarrIO(HDMFIO):
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
             # Case 1: list, set, tuple type attributes
-            if isinstance(value, (set, list, tuple)):
+            if isinstance(value, (set, list, tuple)) or (isinstance(value, np.ndarray) and len(value) > 1):
                 tmp = tuple(value)
                 # Attempt write of the attribute
                 try:
@@ -177,9 +185,9 @@ class ZarrIO(HDMFIO):
                     write_ok = False
                     try:
                         tmp = tuple([i.item()
-                                     if isinstance(i, np.generic)
+                                     if (isinstance(i, np.generic) and not isinstance(i, np.bytes_))
                                      else i.decode("utf-8")
-                                     if isinstance(i, bytes)
+                                     if isinstance(i, (bytes, np.bytes_))
                                      else i
                                      for i in value])
                         obj.attrs[key] = tmp
@@ -195,7 +203,10 @@ class ZarrIO(HDMFIO):
                     refs = self.__get_ref(value.builder)
                 elif isinstance(value, ReferenceBuilder) or isinstance(value, Container) or isinstance(value, Builder):
                     type_str = 'object'
-                    refs = self.__get_ref(value.builder)
+                    if isinstance(value, Builder):
+                        refs = self.__get_ref(value)
+                    else:
+                        refs = self.__get_ref(value.builder)
                 tmp = {'zarr_dtype': type_str, 'value': refs}
                 obj.attrs[key] = tmp
             # Case 3: Scalar attributes
@@ -203,14 +214,14 @@ class ZarrIO(HDMFIO):
                 # Attempt to write the attribute
                 try:
                     obj.attrs[key] = value
-                # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
+                # Numpy scalars and bytes are not JSON serializable. Try to convert to a serializable type instead
                 except TypeError as e:
                     write_ok = False
                     try:
                         val = value.item() \
-                            if isinstance(value, np.generic) \
+                            if (isinstance(value, np.generic) and not isinstance(value, np.bytes_)) \
                             else value.decode("utf-8") \
-                            if isinstance(value, bytes) \
+                            if isinstance(value, (bytes, np.bytes_)) \
                             else value
                         obj.attrs[key] = val
                         write_ok = True
@@ -234,6 +245,8 @@ class ZarrIO(HDMFIO):
             return self.__is_ref(dtype.dtype)
         elif isinstance(dtype, RefSpec):
             return True
+        elif isinstance(dtype, np.dtype):
+            return False
         else:
             return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
 
@@ -273,7 +286,7 @@ class ZarrIO(HDMFIO):
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'})
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        if builder.written:
+        if self.__builder_written_to_zarr(builder, parent):
             return
         name = builder.name
         target_builder = builder.builder
@@ -288,7 +301,7 @@ class ZarrIO(HDMFIO):
             returns='the Zarr that was created', rtype=Array)
     def write_dataset(self, **kwargs):
         parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
-        if builder.written:
+        if self.__builder_written_to_zarr(builder, parent):
             return None
         name = builder.name
         data = builder.data
@@ -302,6 +315,13 @@ class ZarrIO(HDMFIO):
 
         attributes = builder.attributes
         options['dtype'] = builder.dtype
+
+        # When converting from HDF5 to Zarr we need to deal with HDF5 reference datasets as well
+        # TODO checking for H5ReferenceDataset in ZarrIO is not good practice. ZarrIO should not have to know about HDF5IO
+        if isinstance(data, H5ReferenceDataset):
+            # TODO Implement dealing with H5ReferenceDataset objects
+            warnings.warn("Skipped writing: %s" % os.path.join(parent.name, builder.name) )
+            return None
 
         linked = False
 
@@ -459,7 +479,7 @@ class ZarrIO(HDMFIO):
     def __resolve_dtype_helper__(cls, dtype):
         if dtype is None:
             return None
-        elif isinstance(dtype, type):
+        elif isinstance(dtype, (type, np.dtype)):
             return dtype
         elif isinstance(dtype, str):
             return cls.__dtypes.get(dtype)
@@ -507,8 +527,11 @@ class ZarrIO(HDMFIO):
             data_shape = get_shape(data)
 
         if isinstance(dtype, np.dtype):
-            dtype = object
-            io_settings['object_codec'] = numcodecs.JSON()
+            if np.issubdtype(dtype, np.number):
+                pass
+            else:
+                dtype = object
+                io_settings['object_codec'] = numcodecs.JSON()
             # chunks = io_settings['chunks']
 
         dset = parent.require_dataset(name, shape=data_shape, dtype=dtype, compressor=None, **io_settings)
@@ -522,7 +545,7 @@ class ZarrIO(HDMFIO):
                 o = data
                 for i in c:
                     o = o[i]
-                dset[c] = o
+                dset[c] = o if not isinstance(o, (bytes, np.bytes_)) else o.decode("utf-8") # bytes are not JSON serializable
             return dset
 
         dset[:] = data
@@ -543,6 +566,9 @@ class ZarrIO(HDMFIO):
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
                 raise_from(Exception(msg), exc)
+        if dtype == object:
+            io_settings['object_codec'] = numcodecs.JSON()
+
         dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, compressor=None, **io_settings)
         dset[:] = data
         type_str = 'scalar'
