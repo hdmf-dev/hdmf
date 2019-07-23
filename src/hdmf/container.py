@@ -3,6 +3,7 @@ from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta
 from warnings import warn
+from copy import deepcopy
 
 
 class Container(with_metaclass(ExtenderMeta, object)):
@@ -125,6 +126,24 @@ class Container(with_metaclass(ExtenderMeta, object)):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+
+    def __deepcopy__(self, memo):
+        ''' Create a deep copy of this Container
+        Reset the root parent to None, set all container_source to None, and set new object_id value
+        '''
+        deepcopy_method = self.__deepcopy__
+        self.__deepcopy__ = None
+        cp = deepcopy(self, memo)
+        self.__deepcopy__ = deepcopy_method
+
+        cp.__parent = None
+        cp.__container_source = None
+        cp.__object_id = str(uuid4())
+
+        for child in cp.children:
+            child.parent = cp
+
+        return cp
 
 
 class Data(Container):
