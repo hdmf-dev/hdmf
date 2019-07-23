@@ -486,8 +486,7 @@ class TestRoundTrip(unittest.TestCase):
     def test_roundtrip_basic(self):
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -497,13 +496,10 @@ class TestRoundTrip(unittest.TestCase):
             read_foofile = io.read()
             self.assertListEqual(foofile.buckets[0].foos[0].my_data,
                                  read_foofile.buckets[0].foos[0].my_data[:].tolist())
-            self.assertListEqual(foofile.buckets[0].foos[1].my_data,
-                                 read_foofile.buckets[0].foos[1].my_data[:].tolist())
 
     def test_roundtrip_empty_dataset(self):
         foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -512,8 +508,6 @@ class TestRoundTrip(unittest.TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
             self.assertListEqual([], read_foofile.buckets[0].foos[0].my_data[:].tolist())
-            self.assertListEqual(foofile.buckets[0].foos[1].my_data,
-                                 read_foofile.buckets[0].foos[1].my_data[:].tolist())
 
     def test_roundtrip_empty_group(self):
         foobucket = FooBucket('test_bucket', [])
