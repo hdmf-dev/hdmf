@@ -20,9 +20,8 @@ from ...data_utils import get_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
 from ..hdf5.h5tools import NamespaceIOHelper
-from ..hdf5.h5_utils import H5ReferenceDataset
-
-
+from ...query import HDMFDataset
+from ...container import Container
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -316,15 +315,9 @@ class ZarrIO(HDMFIO):
         attributes = builder.attributes
         options['dtype'] = builder.dtype
 
-        # When converting from HDF5 to Zarr we need to deal with HDF5 reference datasets as well
-        # TODO checking for H5ReferenceDataset in ZarrIO is not good practice. ZarrIO should not have to know about HDF5IO
-        if isinstance(data, H5ReferenceDataset):
-            # TODO Implement dealing with H5ReferenceDataset objects
-            warnings.warn("Skipped writing: %s" % os.path.join(parent.name, builder.name) )
-            return None
-
         linked = False
 
+        # Write a regular Zarr array
         if isinstance(data, Array):
             # copy the dataset
             if link_data:
@@ -333,6 +326,29 @@ class ZarrIO(HDMFIO):
             else:
                 zarr.copy(data, parent, name=name)
                 dset = parent[name]
+        # When converting data between backends we may encounter and HDMFDataset, e.g., a H55ReferenceDataset with references
+        elif isinstance(data, HDMFDataset):
+            # If we have a dataset of containers we need to make the references to the containers
+            if len(data) > 0 and isinstance(data[0], Container):
+                ref_data = [self.__get_ref(data[i]) for i in range(len(data))]
+                shape = (len(data), )
+                type_str = 'object'
+                dset = parent.require_dataset(name,
+                                              shape=shape,
+                                              dtype=object,
+                                              compressor=None,
+                                              object_codec=numcodecs.JSON(),
+                                              **options['io_settings'])
+                dset.attrs['zarr_dtype'] = type_str
+                dset[:] = ref_data
+                builder.written = True
+            # If we have a regular dataset, then load the data and write the builder after load
+            else:
+                cp_builder = deepcopy(builder)
+                cp_builder.data = data[:]
+                self.write_dataset(parent, cp_builder, link_data)
+                builder.written = True
+        # Write a compound dataset
         elif isinstance(options['dtype'], list):
 
             refs = list()
@@ -368,7 +384,7 @@ class ZarrIO(HDMFIO):
             else:
                 # write a compound datatype
                 dset = self.__list_fill__(parent, name, data, options)
-
+        # Write a dataset of references
         elif self.__is_ref(options['dtype']):
             if isinstance(data, RegionBuilder):
                 shape = (1,)
@@ -381,15 +397,11 @@ class ZarrIO(HDMFIO):
             elif options['dtype'] == 'region':
                 shape = (len(data), )
                 type_str = 'region'
-                refs = list()
-                for item in data:
-                    refs.append(self.__get_ref(item.builder, item.region))
+                refs = [self.__get_ref(item.builder, item.region) for item in data]
             else:
                 shape = (len(data), )
                 type_str = 'object'
-                refs = list()
-                for item in data:
-                    refs.append(self.__get_ref(item))
+                refs = [self.__get_ref(item) for item in data]
 
             dset = parent.require_dataset(name,
                                           shape=shape,
@@ -400,11 +412,9 @@ class ZarrIO(HDMFIO):
             builder.written = True
             dset.attrs['zarr_dtype'] = type_str
             if hasattr(refs, '__len__'):
-                for i in range(0, len(refs)):
-                    dset[i] = refs[i]
+                dset[:] = refs
             else:
                 dset[0] = refs
-
         # write a 'regular' dataset without DatasetIO info
         else:
             if isinstance(data, (text_type, binary_type)):
@@ -548,7 +558,8 @@ class ZarrIO(HDMFIO):
                 dset[c] = o if not isinstance(o, (bytes, np.bytes_)) else o.decode("utf-8") # bytes are not JSON serializable
             return dset
 
-        dset[:] = data
+        dset[:] = data  # If data is an h5py.Dataset then this will copy the data
+
         return dset
 
     @classmethod
