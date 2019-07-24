@@ -3,7 +3,6 @@ from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta
 from .query import HDMFDataset
-from .data_utils import DataIO
 from warnings import warn
 from copy import deepcopy
 
@@ -145,10 +144,6 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
         for child in cp.children:
             child.parent = cp
-
-        for k, v in cp.__dict__.items():
-            if isinstance(v, DataIO):
-                setattr(cp, k, v.data)
 
         # resolve HDMFDataset after and separately because DataIO can wrap an HDMFDataset
         for k, v in cp.__dict__.items():
