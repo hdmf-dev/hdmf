@@ -1,6 +1,9 @@
 import unittest2 as unittest
 
+from tests.unit.test_utils import Foo
 from hdmf.container import Container
+from hdmf.query import HDMFDataset
+from hdmf.data_utils import DataIO
 from copy import deepcopy
 
 
@@ -148,6 +151,21 @@ class TestContainer(unittest.TestCase):
         child_copy = deepcopy(child_obj)
         self.assertIsNone(child_copy.parent)
 
+    def test_deepcopy_data(self):
+        parent_obj = Foo('obj1', HDMFDataset([1, 2, 3, 4, 5]), 'a string', 10)
+        parent_obj.container_source = 'a file'
+        parent_obj.set_modified(False)
+        child_obj = Foo('obj2', DataIO(HDMFDataset([1, 2, 3, 4, 5])), 'a string2', 20)
+        child_obj.parent = parent_obj
+        child_obj.container_source = 'a file'
+
+        parent_copy = deepcopy(parent_obj)
+        self.assertListEqual(parent_copy.my_data, [1, 2, 3, 4, 5])
+        self.assertEqual(parent_copy.attr1, 'a string')
+        self.assertEqual(parent_copy.attr2, 10)
+        self.assertListEqual(parent_copy.children[0].my_data, [1, 2, 3, 4, 5])
+
+        # TODO test deepcopy with references and H5Dataset
 
 if __name__ == '__main__':
     unittest.main()
