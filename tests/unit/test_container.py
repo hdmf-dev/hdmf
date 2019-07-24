@@ -167,5 +167,6 @@ class TestContainer(unittest.TestCase):
 
         # TODO test deepcopy with references and H5Dataset
 
+
 if __name__ == '__main__':
     unittest.main()
