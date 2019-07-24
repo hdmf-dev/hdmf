@@ -26,6 +26,7 @@ from ...container import Container
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
 
+# TODO We should update the objectids when copying data between the backends
 
 class ZarrIO(HDMFIO):
 
@@ -51,6 +52,7 @@ class ZarrIO(HDMFIO):
         return self.__comm
 
     def open(self):
+        """Open the Zarr file"""
         if self.__file is None:
             if self.__comm:
                 sync_path = tempfile.mkdtemp()
@@ -61,6 +63,7 @@ class ZarrIO(HDMFIO):
             self.__file = zarr.open(self.__path, self.__mode, **kwargs)
 
     def close(self):
+        """Close the Zarr file"""
         self.__file = None
         return
 
@@ -122,6 +125,7 @@ class ZarrIO(HDMFIO):
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True})
     def write_builder(self, **kwargs):
+        """Write a builder to disk"""
         f_builder, link_data = getargs('builder', 'link_data', kwargs)
         for name, gbldr in f_builder.groups.items():
             self.write_group(self.__file, gbldr)
@@ -130,7 +134,8 @@ class ZarrIO(HDMFIO):
         self.set_attributes(self.__file, f_builder.attributes)
 
     def __builder_written_to_zarr(self, builder, parent):
-        # TODO We should make sure that this is done in the BuildManager, i.e., we need make sure that builder.written is valid for Zarr
+        """Check whether a given builder has been written to disk"""
+        # TODO Ideally we should only have to check builder.written. However, when copying between backends builder.written will be set to True because it was written on the other backend. This should be fixed in the Builders or BuildManager prior to write to be useful across backends.
         builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
         exists_on_disk =  os.path.exists(builder_path)
         return builder.written and exists_on_disk  # If the file was previously written to an HDF5 file then we need to create the group
@@ -139,6 +144,7 @@ class ZarrIO(HDMFIO):
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
+        """Write a GroupBuider to file"""
         parent, builder = getargs('parent', 'builder', kwargs)
         if self.__builder_written_to_zarr(builder, parent):
             group = parent[builder.name]
@@ -255,6 +261,7 @@ class ZarrIO(HDMFIO):
              'default': None},
             returns='the reference', rtype=ZarrReference)
     def __get_ref(self, **kwargs):
+        """Create a ZarrReference object that points to the given container"""
         container, region = getargs('container', 'region', kwargs)
         if isinstance(container, RegionBuilder) or region is not None:
             raise NotImplementedError("Region references are currently not supported by ZarrIO")
@@ -271,7 +278,14 @@ class ZarrIO(HDMFIO):
         # TODO Add to get region for region references
         # if isinstance(container, RegionBuilder):
         #    region = container.region
-        source = builder.source
+
+        # TODO When converting from HDF5 to Zarr the builder.source will already be set to HDF5 file. However, we can't link to that from Zarr. I.e., we need to force to change the path to Zarr.
+        # TODO The issue of the bad builder.source should be fixed in the builders or BuildManager prior to write to be useful across backends
+        if os.path.isdir(builder.source):
+            source = builder.source
+        else:
+            source = self.__path
+
         return ZarrReference(source, path)
 
     def __add_link__(self, parent, target_source, target_path, link_name):
@@ -289,8 +303,8 @@ class ZarrIO(HDMFIO):
             return
         name = builder.name
         target_builder = builder.builder
-        path = self.__get_path(target_builder)
-        self.__add_link__(parent, target_builder.source, path, name)
+        zarr_ref = self.__get_ref(target_builder)
+        self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         builder.written = True
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},  # noqa
@@ -327,6 +341,7 @@ class ZarrIO(HDMFIO):
                 zarr.copy(data, parent, name=name)
                 dset = parent[name]
         # When converting data between backends we may encounter and HDMFDataset, e.g., a H55ReferenceDataset with references
+        # TODO this conversion from HDMFDataset should happen for the builder outside of the I/O backend prior to write in order to be usable across backends
         elif isinstance(data, HDMFDataset):
             # If we have a dataset of containers we need to make the references to the containers
             if len(data) > 0 and isinstance(data[0], Container):
@@ -638,7 +653,11 @@ class ZarrIO(HDMFIO):
                 elif link['path'] is None:
                     l_path = str(link['source'])
                 else:
-                    l_path = str(link['source'] + "/" + link['path'])
+                    l_path = os.path.join(link['source'], link['path'].lstrip("/"))
+
+                if not os.path.exists(l_path):
+                    raise ValueError("Found bad link %s to %s" % (l_name, l_path))
+
                 target_name = str(os.path.basename(l_path))
                 target_zarr_obj = zarr.open(l_path, mode='r')
                 if isinstance(target_zarr_obj, Group):
@@ -742,9 +761,13 @@ class ZarrIO(HDMFIO):
             source = o['source']
             path = o['path']
             if source is not None and source != "":
-                path = source + path
-            target_name = str(os.path.basename(path))
-            target_zarr_obj = zarr.open(str(path), mode='r')
+                path = os.path.join(source, path.lstrip("/"))
+
+            if not os.path.exists(path):
+                raise ValueError("Found bad link in dataset to %s" % (path))
+
+            target_name = os.path.basename(path)
+            target_zarr_obj = zarr.open(path, mode='r')
 
             o = data
             for i in range(0, len(p)-1):
@@ -765,7 +788,11 @@ class ZarrIO(HDMFIO):
                         source = v['value']['source']
                         path = v['value']['path']
                         if source is not None and source != "":
-                            path = source + path
+                            path =  os.path.join(source, path.lstrip("/"))
+
+                        if not os.path.exists(path):
+                            raise ValueError("Found bad link in attribute to %s" % (path))
+
                         target_name = str(os.path.basename(path))
                         target_zarr_obj = zarr.open(str(path), mode='r')
                         if isinstance(target_zarr_obj, zarr.hierarchy.Group):
@@ -780,3 +807,4 @@ class ZarrIO(HDMFIO):
                 else:
                     ret[k] = v
         return ret
+
