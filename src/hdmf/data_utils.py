@@ -5,9 +5,9 @@ except ImportError:
     from collections import Iterable  # Python 2.7
 
 from operator import itemgetter
-
 import numpy as np
 from six import with_metaclass, text_type, binary_type
+from copy import deepcopy
 
 from .container import Data, DataRegion
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
@@ -511,6 +511,9 @@ class DataIO(with_metaclass(ABCMeta, object)):
     # Delegate iteration interface to data object:
     def __iter__(self):
         return self.data.__iter__()
+
+    def __deepcopy__(self, memo):
+        return deepcopy(self.data)
 
 
 class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):
