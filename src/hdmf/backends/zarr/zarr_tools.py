@@ -535,6 +535,8 @@ class ZarrIO(HDMFIO):
             io_settings = options.get('io_settings')
             if io_settings is None:
                 io_settings = dict()
+
+        # Determine the dtype
         if not isinstance(dtype, type):
             try:
                 dtype = cls.__resolve_dtype__(dtype, data)
@@ -542,38 +544,50 @@ class ZarrIO(HDMFIO):
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
                 raise_from(Exception(msg), exc)
 
+        # Set the type_str
         type_str = cls.__serial_dtype__(dtype)
 
-        if 'shape' in io_settings:
+        # Determine the shape and update the dtype if necessary when dtype==object
+        if 'shape' in io_settings:  # Use the shape set by the user
             data_shape = io_settings.pop('shape')
+        # If we have a numeric numpy array then use its shape
+        elif isinstance(dtype, np.dtype) and np.issubdtype(dtype, np.number) or dtype == np.bool_:
+            data_shape = get_shape(data)
+        # Deal with object dtype
         elif isinstance(dtype, np.dtype):
+            data = data[:]  # load the data in case we come from HDF5
             data_shape = (len(data), )
+            dtype = object
+             # sometimes bytes and strings can hide as object in numpy array so lets try to write those as strings and bytes rathern than as objects
+            if len(data) > 0 and isinstance(data, np.ndarray):
+                if isinstance(data.item(0), bytes):
+                    dtype=bytes
+                    data_shape = get_shape(data)
+                elif isinstance(data.item(0), str):
+                    dtype=str
+                    data_shape = get_shape(data)
+            # Set encoding for objects
+            if dtype == object:
+                io_settings['object_codec'] = numcodecs.JSON()
+        # Determine the shape from the data if all other cases have not been hit
         else:
             data_shape = get_shape(data)
 
-        if isinstance(dtype, np.dtype):
-            if np.issubdtype(dtype, np.number) or dtype == np.bool_:
-                pass
-            else:
-                dtype = object
-                io_settings['object_codec'] = numcodecs.JSON()
-            # chunks = io_settings['chunks']
-
+        # Create the dataset
         dset = parent.require_dataset(name, shape=data_shape, dtype=dtype, compressor=None, **io_settings)
         dset.attrs['zarr_dtype'] = type_str
+
+        # Write the data to file
         if dtype == object:
-            corr = []
-            for s in data_shape:
-                corr.append(range(s))
-            corr = tuple(corr)
-            for c in itertools.product(*corr):
+            for c in np.ndindex(data_shape):
                 o = data
                 for i in c:
                     o = o[i]
-                dset[c] = o if not isinstance(o, (bytes, np.bytes_)) else o.decode("utf-8") # bytes are not JSON serializable
+                dset[c] = o  if not isinstance(o, (bytes, np.bytes_)) else o.decode("utf-8") # bytes are not JSON serializable
             return dset
-
-        dset[:] = data  # If data is an h5py.Dataset then this will copy the data
+        # standard write
+        else:
+            dset[:] = data  # If data is an h5py.Dataset then this will copy the data
 
         return dset
 
