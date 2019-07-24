@@ -26,7 +26,7 @@ from ...container import Container
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
 
-# TODO We should update the objectids when copying data between the backends
+# TODO We should 1) update the objectids when copying data between the backends, 2) reset builder.source before write (or create new set of builders), 3) reset builder.written (or create new set of builders), 4) resolve reference stored in datasets to the containers
 
 class ZarrIO(HDMFIO):
 
@@ -552,7 +552,7 @@ class ZarrIO(HDMFIO):
             data_shape = get_shape(data)
 
         if isinstance(dtype, np.dtype):
-            if np.issubdtype(dtype, np.number):
+            if np.issubdtype(dtype, np.number) or dtype == np.bool_:
                 pass
             else:
                 dtype = object
