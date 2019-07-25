@@ -9,9 +9,11 @@ import six
 from six import raise_from, text_type, binary_type
 
 
+# on windows python<=3.5, h5py floats resolve as either np.float64 or float randomly.
+# a future version of h5py will fix this. then, np.float64 is redundant below. See #112
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, np.float64],
 }
 
 
