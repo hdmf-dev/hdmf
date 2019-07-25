@@ -536,8 +536,7 @@ class TestCacheSpec(unittest.TestCase):
         if os.path.exists(self.path):
             os.remove(self.path)
 
-    def test_no_cache_spec(self):
-        # Setup all the data we need
+    def test_cache_spec(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
@@ -547,7 +546,7 @@ class TestCacheSpec(unittest.TestCase):
             io.write(foofile)
 
             ns_catalog = NamespaceCatalog()
-            HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
+            HDF5IO.load_namespaces(ns_catalog, self.path)
             self.assertEqual(ns_catalog.namespaces, (CORE_NAMESPACE,))
             source_types = self.__get_types(io.manager.namespace_catalog)
             read_types = self.__get_types(ns_catalog)
