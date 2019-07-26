@@ -20,11 +20,11 @@ class TestContainer(unittest.TestCase):
         self.assertIsNotNone(child_obj.object_id)
 
     def test_constructor_object_id_none(self):
-        """Test that setting object_id to None in __new__ is OK
+        """Test that setting object_id to None in __new__ is OK and the object ID is set on get
         """
         parent_obj = Container('obj1')
         child_obj = Container.__new__(Container, parent=parent_obj, object_id=None)
-        self.assertIsNone(child_obj.object_id)
+        self.assertIsNotNone(child_obj.object_id)
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
