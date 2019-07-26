@@ -43,8 +43,7 @@ class Test1_1_0(unittest.TestCase):
         with HDF5IO(self.path_1_0_5, manager=self.manager, mode='a') as io:
             read_foofile = io.read()
             read_foofile.buckets.append(foobucket)
-            foobucket.parent = read_foofile  # this should be done automatically
-            read_foofile.set_modified(True)  # this should be done automatically
+            foobucket.parent = read_foofile
             io.write(read_foofile)
 
         with HDF5IO(self.path_1_0_5, manager=self.manager, mode='r') as io:
