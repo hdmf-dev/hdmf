@@ -34,6 +34,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     @property
     def object_id(self):
+        if self.__object_id is None:
+            self.__object_id = str(uuid4())
         return self.__object_id
 
     @property
