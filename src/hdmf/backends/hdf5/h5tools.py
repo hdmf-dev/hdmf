@@ -479,7 +479,10 @@ class HDF5IO(HDMFIO):
             return type(data)
         else:
             if len(data) == 0:
-                raise ValueError('cannot determine type for empty data')
+                if hasattr(data, 'dtype'):
+                    return data.dtype
+                else:
+                    raise ValueError('cannot determine type for empty data')
             return cls.get_type(data[0])
 
     __dtypes = {
