@@ -10,9 +10,11 @@ import six
 from six import raise_from, text_type, binary_type
 
 
+# on windows python<=3.5, h5py floats resolve as either np.float64 or float randomly.
+# a future version of h5py will fix this. then, np.float64 is redundant below. See #112
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset, zarr.Array],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, np.float64]
 }
 
 
@@ -109,7 +111,7 @@ def __format_type(argtype):
         else:
             return types[0]
     elif argtype is None:
-        return "NoneType"
+        return "any type"
     else:
         raise ValueError("argtype must be a type, str, list, or tuple")
 
@@ -173,8 +175,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 else:
                     if enforce_type:
                         if not __type_okay(argval, arg['type']):
-                            fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                            type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                            if argval is None:
+                                fmt_val = (argname, __format_type(arg['type']))
+                                type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                            else:
+                                fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                                type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
                     if enforce_shape and 'shape' in arg:
                         while not hasattr(argval, '__len__'):
                             if not hasattr(argval, argname):
@@ -203,8 +209,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             argval = ret[argname]
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
-                    fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                    type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                    if argval is None and arg['default'] is None:
+                        fmt_val = (argname, __format_type(arg['type']))
+                        type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                    else:
+                        fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                        type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
             if enforce_shape and 'shape' in arg and argval is not None:
                 while not hasattr(argval, '__len__'):
                     if not hasattr(argval, argname):
@@ -387,7 +397,11 @@ def docval(*validator, **options):
         pos = list()
         kw = list()
         for a in val_copy:
-            a['type'] = __resolve_type(a['type'])
+            try:
+                a['type'] = __resolve_type(a['type'])
+            except Exception as e:
+                msg = "error parsing '%s' argument' : %s" % (a['name'], e.args[0])
+                raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:

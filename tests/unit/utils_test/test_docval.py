@@ -56,8 +56,9 @@ class TestDocValidator(unittest.TestCase):
         self.test_obj_sub = MyTestSubclass()
 
     def test_bad_type(self):
-        exp_msg = "argtype must be a type, a str, a list, a tuple, or None - got <class|type 'dict'>"
-        with self.assertRaisesRegex(ValueError, exp_msg):
+        exp_msg = ("error parsing 'arg1' argument' : argtype must be a type, "
+                   "a str, a list, a tuple, or None - got <class|type 'dict'>")
+        with self.assertRaisesRegex(Exception, exp_msg):
             @docval({'name': 'arg1', 'type': {'a': 1}, 'doc': 'this is a bad type'})
             def method(self, **kwargs):
                 pass
@@ -238,11 +239,11 @@ class TestDocValidator(unittest.TestCase):
             kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)  # noqa: F841
 
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
-        """Test that docval catches NoneType  when called with a four positional
+        """Test that docval catches NoneType when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaisesRegex(TypeError, r"incorrect type for 'arg5' \(got 'NoneType', expected 'float'\)"):
+        with self.assertRaisesRegex(TypeError, r"None is not allowed for 'arg5' \(expected 'float', not None\)"):
             kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)  # noqa: F841
 
     def test_only_kw_no_args(self):

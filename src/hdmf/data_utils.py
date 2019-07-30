@@ -47,7 +47,7 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def __next__(self):
-        """
+        r"""
         Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
         HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
@@ -55,7 +55,7 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
 
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
-        """  # noqa: W605
+        """
         raise NotImplementedError("__next__ not implemented for derived class")
 
     @abstractmethod
@@ -210,7 +210,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         return self.__next_chunk
 
     def __next__(self):
-        """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
+        r"""Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
         HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
         is often useful to define the DataChunkk.selection of the current chunk
@@ -218,7 +218,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
 
-        """  # noqa: W605
+        """
         # If we have not already read the next chunk, then read it now
         if self.__next_chunk.data is None:
             self._read_next_chunk()
@@ -483,10 +483,14 @@ class DataIO(with_metaclass(ABCMeta, object)):
         return self.__data
 
     def __len__(self):
-        return len(self.__data)
+        if not self.valid:
+            raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
+        return len(self.data)
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
+        if not self.valid:
+            raise InvalidDataIOError("Cannot get attribute '%s' of data. Data is not valid." % attr)
         return getattr(self.data, attr)
 
     def __array__(self):
@@ -496,6 +500,8 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
         :return: An array instance of self.data
         """
+        if not self.valid:
+            raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
         if hasattr(self.data, '__array__'):
             return self.data.__array__()
         elif isinstance(self.data, DataChunkIterator):
@@ -506,11 +512,19 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
     # Delegate iteration interface to data object:
     def __next__(self):
+        if not self.valid:
+            raise InvalidDataIOError("Cannot iterate on data. Data is not valid.")
         return self.data.__next__()
 
     # Delegate iteration interface to data object:
     def __iter__(self):
+        if not self.valid:
+            raise InvalidDataIOError("Cannot iterate on data. Data is not valid.")
         return self.data.__iter__()
+
+    @property
+    def valid(self):
+        return self.data is not None
 
 
 class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):
@@ -581,3 +595,7 @@ class ListSlicer(RegionSlicer):
 
     def __len__(self):
         return self.__len
+
+
+class InvalidDataIOError(Exception):
+    pass
