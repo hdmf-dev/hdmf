@@ -902,6 +902,8 @@ class HDF5IO(HDMFIO):
         # define the data shape
         if 'shape' in io_settings:
             data_shape = io_settings.pop('shape')
+        elif hasattr(data, 'shape'):
+            data_shape = data.shape
         elif isinstance(dtype, np.dtype):
             data_shape = (len(data),)
         else:
