@@ -479,7 +479,10 @@ class HDF5IO(HDMFIO):
             return type(data)
         else:
             if len(data) == 0:
-                raise ValueError('cannot determine type for empty data')
+                if hasattr(data, 'dtype'):
+                    return data.dtype
+                else:
+                    raise ValueError('cannot determine type for empty data')
             return cls.get_type(data[0])
 
     __dtypes = {
@@ -899,6 +902,8 @@ class HDF5IO(HDMFIO):
         # define the data shape
         if 'shape' in io_settings:
             data_shape = io_settings.pop('shape')
+        elif hasattr(data, 'shape'):
+            data_shape = data.shape
         elif isinstance(dtype, np.dtype):
             data_shape = (len(data),)
         else:
