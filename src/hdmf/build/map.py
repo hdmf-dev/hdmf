@@ -690,12 +690,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         remaining_args = tuple(args[1:])
         if name in self.constructor_args:
             func = self.constructor_args[name]
-            try:
-                # remaining_args is [builder, manager]
-                return func(self, *remaining_args)
-            except TypeError:
-                # LEGACY: remaining_args is [manager]
-                return func(self, *remaining_args[:-1])
+            return func(self, *remaining_args)
         return None
 
     def __get_override_attr(self, name, container, manager):
@@ -993,7 +988,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 # handle subgroups that are not Containers
                 attr_name = self.get_attribute(spec)
                 if attr_name is not None:
-                    attr_value = getattr(container, attr_name, None)
                     attr_value = self.get_attr_value(spec, container, build_manager)
                     if any(isinstance(attr_value, t) for t in (list, tuple, set, dict)):
                         it = iter(attr_value)
@@ -1016,7 +1010,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
                 else:
                     attr_name = self.get_attribute(spec)
-                    attr_value = getattr(container, attr_name, None)
+                    attr_value = self.get_attr_value(spec, container, build_manager)
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
