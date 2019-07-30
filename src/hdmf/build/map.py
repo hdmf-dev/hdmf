@@ -1105,7 +1105,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     link_dt.setdefault(dt, list()).append(target)
             # now assign links to their respective specification
             for subspec in spec.links:
-                if subspec.name is not None:
+                if subspec.name is not None and subspec.name in links:
                     ret[subspec] = manager.construct(links[subspec.name].builder)
                 else:
                     sub_builder = link_dt.get(subspec.target_type)
