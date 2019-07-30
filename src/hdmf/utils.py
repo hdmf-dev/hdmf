@@ -396,7 +396,11 @@ def docval(*validator, **options):
         pos = list()
         kw = list()
         for a in val_copy:
-            a['type'] = __resolve_type(a['type'])
+            try:
+                a['type'] = __resolve_type(a['type'])
+            except Exception as e:
+                msg = "error parsing '%s' argument' : %s" % (a['name'], e.args[0])
+                raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:
