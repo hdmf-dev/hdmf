@@ -110,7 +110,7 @@ def __format_type(argtype):
         else:
             return types[0]
     elif argtype is None:
-        return "NoneType"
+        return "any type"
     else:
         raise ValueError("argtype must be a type, str, list, or tuple")
 
@@ -174,8 +174,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 else:
                     if enforce_type:
                         if not __type_okay(argval, arg['type']):
-                            fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                            type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                            if argval is None:
+                                fmt_val = (argname, __format_type(arg['type']))
+                                type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                            else:
+                                fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                                type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
                     if enforce_shape and 'shape' in arg:
                         while not hasattr(argval, '__len__'):
                             if not hasattr(argval, argname):
@@ -204,8 +208,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             argval = ret[argname]
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
-                    fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                    type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                    if argval is None and arg['default'] is None:
+                        fmt_val = (argname, __format_type(arg['type']))
+                        type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                    else:
+                        fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                        type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
             if enforce_shape and 'shape' in arg and argval is not None:
                 while not hasattr(argval, '__len__'):
                     if not hasattr(argval, argname):

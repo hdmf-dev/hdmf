@@ -2,7 +2,7 @@ import unittest2 as unittest
 import re
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
-from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
+from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 
@@ -18,21 +18,25 @@ class Bar(Container):
             {'name': 'data', 'type': list, 'doc': 'some data'},
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
-            {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14})
+            {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
+            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3 = getargs('name', 'data', 'attr1', 'attr2', 'attr3', kwargs)
+        name, data, attr1, attr2, attr3, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'foo', kwargs)
         super(Bar, self).__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
         self.__attr2 = attr2
         self.__attr3 = attr3
+        self.__foo = foo
+        if self.__foo is not None and self.__foo.parent is None:
+            self.__foo.parent = self
 
     def __eq__(self, other):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     def __str__(self):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
         return ','.join('%s=%s' % (a, getattr(self, a)) for a in attrs)
 
     @property
@@ -55,9 +59,16 @@ class Bar(Container):
     def attr3(self):
         return self.__attr3
 
+    @property
+    def foo(self):
+        return self.__foo
+
 
 class Foo(Container):
-    pass
+
+    @property
+    def data_type(self):
+        return 'Foo'
 
 
 class TestGetSubSpec(unittest.TestCase):
@@ -167,9 +178,10 @@ class TestDynamicContainer(unittest.TestCase):
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
         received_args = set()
         for x in get_docval(cls.__init__):
-            received_args.add(x['name'])
-            with self.subTest(name=x['name']):
-                self.assertNotIn('default', x)
+            if x['name'] != 'foo':
+                received_args.add(x['name'])
+                with self.subTest(name=x['name']):
+                    self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
@@ -188,7 +200,7 @@ class TestDynamicContainer(unittest.TestCase):
                                          AttributeSpec('attr4', 'another example float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
@@ -411,6 +423,64 @@ class TestObjectMapperContainer(TestObjectMapper):
         keys = set(attr_map.keys())
         expected = {'attr1', 'foo', 'attr2'}
         self.assertSetEqual(keys, expected)
+
+
+class TestLinkedContainer(unittest.TestCase):
+
+    def setUp(self):
+        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        self.bar_spec = GroupSpec('A test group specification with a data type Bar',
+                                  data_type_def='Bar',
+                                  groups=[self.foo_spec],
+                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                              AttributeSpec('attr2', 'an example integer attribute', 'int')])
+
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}], catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map.register_map(Foo, ObjectMapper)
+        self.type_map.register_map(Bar, ObjectMapper)
+        self.manager = BuildManager(self.type_map)
+        self.foo_mapper = ObjectMapper(self.foo_spec)
+        self.bar_mapper = ObjectMapper(self.bar_spec)
+
+    def test_build_child_link(self):
+        ''' Test default mapping functionality when one container contains a child link to another container '''
+        foo_inst = Foo('my_foo')
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)
+        # bar_inst2.foo should link to bar_inst1.foo
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10, foo=foo_inst)
+
+        foo_builder = self.foo_mapper.build(foo_inst, self.manager)
+        bar1_builder = self.bar_mapper.build(bar_inst1, self.manager)
+        bar2_builder = self.bar_mapper.build(bar_inst2, self.manager)
+
+        foo_expected = GroupBuilder('my_foo')
+
+        inner_foo_builder = GroupBuilder('my_foo',
+                                         attributes={'data_type': 'Foo',
+                                                     'namespace': CORE_NAMESPACE,
+                                                     'object_id': foo_inst.object_id})
+        bar1_expected = GroupBuilder('n/a',  # name doesn't matter
+                                     datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                     groups={'foo': inner_foo_builder},
+                                     attributes={'attr1': 'value1', 'attr2': 10})
+        link_foo_builder = LinkBuilder(builder=inner_foo_builder)
+        bar2_expected = GroupBuilder('n/a',
+                                     datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                     links={'foo': link_foo_builder},
+                                     attributes={'attr1': 'value1', 'attr2': 10})
+        self.assertDictEqual(foo_builder, foo_expected)
+        self.assertDictEqual(bar1_builder, bar1_expected)
+        self.assertDictEqual(bar2_builder, bar2_expected)
 
 
 if __name__ == '__main__':
