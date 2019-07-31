@@ -472,7 +472,7 @@ class TestDocValidatorChain(unittest.TestCase):
         err_msg = r"cannot check shape of object '<object object at .*>' for argument 'arg3' " \
                   r"\(expected shape '\(None, 2\)'\)"
         with self.assertRaisesRegex(ValueError, err_msg):
-            obj3 = MyChainClass(self.obj1, obj2, [[100, 200]])
+            MyChainClass(self.obj1, obj2, [[100, 200]])
 
     def test_shape_valid_unpack_default(self):
         """Test that passing an object for an argument with required shape and a default value tests the shape of
@@ -514,7 +514,7 @@ class TestDocValidatorChain(unittest.TestCase):
         err_msg = r"cannot check shape of object '<object object at .*>' for argument 'arg4' " \
                   r"\(expected shape '\(None, 2\)'\)"
         with self.assertRaisesRegex(ValueError, err_msg):
-            obj3 = MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
+            MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
 
 
 if __name__ == '__main__':
