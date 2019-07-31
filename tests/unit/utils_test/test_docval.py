@@ -463,6 +463,17 @@ class TestDocValidatorChain(unittest.TestCase):
         obj3 = MyChainClass(self.obj1, obj2, [[100, 200]])
         self.assertIsNone(obj3.arg3)
 
+    def test_shape_other_unpack(self):
+        """Test that passing an object for an argument with required shape and object.argument is an object without
+        an argument attribute raises an error"""
+        obj2 = MyChainClass(self.obj1, [[10, 20], [30, 40], [50, 60]], [[10, 20]])
+        obj2.arg3 = object()
+
+        err_msg = r"cannot check shape of object '<object object at .*>' for argument 'arg3' " \
+                  r"\(expected shape '\(None, 2\)'\)"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            obj3 = MyChainClass(self.obj1, obj2, [[100, 200]])
+
     def test_shape_valid_unpack_default(self):
         """Test that passing an object for an argument with required shape and a default value tests the shape of
         object.argument"""
@@ -484,13 +495,26 @@ class TestDocValidatorChain(unittest.TestCase):
 
     def test_shape_none_unpack_default(self):
         """Test that passing an object for an argument with required shape and a default value and object.argument is
-        None is OK"""
+        an object without an argument attribute raises an error"""
         obj2 = MyChainClass(self.obj1, [[10, 20], [30, 40], [50, 60]], arg4=[[10, 20]])
         # change arg3 of obj2 to fail the required shape - contrived, but could happen because datasets can change
         # shape after an object is initialized
         obj2.arg4 = None
         obj3 = MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
         self.assertIsNone(obj3.arg4)
+
+    def test_shape_other_unpack_default(self):
+        """Test that passing an object for an argument with required shape and a default value and object.argument is
+        None is OK"""
+        obj2 = MyChainClass(self.obj1, [[10, 20], [30, 40], [50, 60]], arg4=[[10, 20]])
+        # change arg3 of obj2 to fail the required shape - contrived, but could happen because datasets can change
+        # shape after an object is initialized
+        obj2.arg4 = object()
+
+        err_msg = r"cannot check shape of object '<object object at .*>' for argument 'arg4' " \
+                  r"\(expected shape '\(None, 2\)'\)"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            obj3 = MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
 
 
 if __name__ == '__main__':

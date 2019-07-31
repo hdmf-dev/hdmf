@@ -78,8 +78,6 @@ def __shape_okay_multi(value, argshape):
 
 
 def __shape_okay(value, argshape):
-    if value is None:
-        return False
     valshape = get_data_shape(value)
     if not len(valshape) == len(argshape):
         return False
