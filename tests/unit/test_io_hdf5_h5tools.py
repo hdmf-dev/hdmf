@@ -6,7 +6,7 @@ import numpy as np
 import re
 
 from hdmf.utils import docval, getargs
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
 from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
@@ -29,7 +29,7 @@ class FooFile(Container):
         super(FooFile, self).__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
-            self.add_child(f)
+            f.parent = self
 
     def __eq__(self, other):
         return set(self.buckets) == set(other.buckets)
@@ -468,6 +468,59 @@ def _get_manager():
     return manager
 
 
+class TestRoundTrip(unittest.TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.test_temp_file = tempfile.NamedTemporaryFile()
+        self.test_temp_file.close()
+        # On Windows h5py cannot truncate an open file in write mode.
+        # The temp file will be closed before h5py truncates it
+        # and will be removed during the tearDown step.
+        self.path = self.test_temp_file.name
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_roundtrip_basic(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets[0].foos[0].my_data,
+                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
+
+    def test_roundtrip_empty_dataset(self):
+        foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual([], read_foofile.buckets[0].foos[0].my_data[:].tolist())
+
+    def test_roundtrip_empty_group(self):
+        foobucket = FooBucket('test_bucket', [])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual([], read_foofile.buckets[0].foos)
+
+
 class TestCacheSpec(unittest.TestCase):
 
     def setUp(self):
@@ -483,8 +536,7 @@ class TestCacheSpec(unittest.TestCase):
         if os.path.exists(self.path):
             os.remove(self.path)
 
-    def test_no_cache_spec(self):
-        # Setup all the data we need
+    def test_cache_spec(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
@@ -494,7 +546,7 @@ class TestCacheSpec(unittest.TestCase):
             io.write(foofile)
 
             ns_catalog = NamespaceCatalog()
-            HDF5IO.load_namespaces(ns_catalog, self.test_temp_file.name)
+            HDF5IO.load_namespaces(ns_catalog, self.path)
             self.assertEqual(ns_catalog.namespaces, (CORE_NAMESPACE,))
             source_types = self.__get_types(io.manager.namespace_catalog)
             read_types = self.__get_types(ns_catalog)
@@ -749,9 +801,8 @@ class HDF5IOReadData(unittest.TestCase):
         bucket1 = FooBucket('test_bucket1', [foo1])
         self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
 
-        temp_io = HDF5IO(self.path, manager=_get_manager(), mode='w')
-        temp_io.write(self.foofile1)
-        temp_io.close()
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as temp_io:
+            temp_io.write(self.foofile1)
         self.io = None
 
     def tearDown(self):
@@ -790,20 +841,26 @@ class HDF5IOWriteNoFile(unittest.TestCase):
         if os.path.exists(self.path):
             os.remove(self.path)
 
-    def test_write_no_file_ok(self):
-        # test that no errors are thrown
-        modes = ('w', 'w-', 'x', 'a')
-        for m in modes:
-            with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
-                io.write(self.foofile1)
+    def test_write_no_file_w_ok(self):
+        self.__write_file('w')
 
-            with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
-                read_foofile = io.read()
-                self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
-                                     read_foofile.buckets[0].foos[0].my_data[:].tolist())
+    def test_write_no_file_wminus_ok(self):
+        self.__write_file('w-')
 
-            if os.path.exists(self.path):
-                os.remove(self.path)
+    def test_write_no_file_x_ok(self):
+        self.__write_file('x')
+
+    def test_write_no_file_a_ok(self):
+        self.__write_file('a')
+
+    def __write_file(self, mode):
+        with HDF5IO(self.path, manager=_get_manager(), mode=mode) as io:
+            io.write(self.foofile1)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
+                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
 
 
 class HDF5IOWriteFileExists(unittest.TestCase):
@@ -866,6 +923,105 @@ class HDF5IOWriteFileExists(unittest.TestCase):
                                             r"Please use mode 'r\+', 'w', 'w-', 'x', or 'a'")
                                         % re.escape(self.path)):
                 io.write(self.foofile2)
+
+
+class H5DataIOValid(unittest.TestCase):
+
+    def setUp(self):
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file.close()
+        self.paths = [temp_file.name, ]
+
+        self.foo1 = Foo('foo1', H5DataIO([1, 2, 3, 4, 5]), "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [self.foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as io:
+            io.write(foofile1)
+
+    def tearDown(self):
+        for path in self.paths:
+            if os.path.exists(path):
+                os.remove(path)
+
+    def test_valid(self):
+        self.assertTrue(self.foo1.my_data.valid)
+
+    def test_read_valid(self):
+        """Test that h5py.H5Dataset.id.valid works as expected"""
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as io:
+            read_foofile1 = io.read()
+            self.assertTrue(read_foofile1.buckets[0].foos[0].my_data.id.valid)
+
+        self.assertFalse(read_foofile1.buckets[0].foos[0].my_data.id.valid)
+
+    def test_link(self):
+        """Test that wrapping of linked data within H5DataIO """
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as io:
+            read_foofile1 = io.read()
+
+            self.foo2 = Foo('foo2', H5DataIO(data=read_foofile1.buckets[0].foos[0].my_data), "I am foo2", 17, 3.14)
+            bucket2 = FooBucket('test_bucket2', [self.foo2])
+            foofile2 = FooFile(buckets=[bucket2])
+
+            temp_file = tempfile.NamedTemporaryFile()
+            temp_file.close()
+            self.paths.append(temp_file.name)
+
+            with HDF5IO(self.paths[1], manager=_get_manager(), mode='w') as io:
+                io.write(foofile2)
+
+            self.assertTrue(self.foo2.my_data.valid)  # test valid
+            self.assertEqual(len(self.foo2.my_data), 5)  # test len
+            self.assertEqual(self.foo2.my_data.shape, (5,))  # test getattr with shape
+            self.assertTrue(np.array_equal(np.array(self.foo2.my_data), [1, 2, 3, 4, 5]))  # test array conversion
+
+            # test loop through iterable
+            match = [1, 2, 3, 4, 5]
+            for (i, j) in zip(self.foo2.my_data, match):
+                self.assertEqual(i, j)
+
+            # test iterator
+            my_iter = iter(self.foo2.my_data)
+            self.assertEqual(next(my_iter), 1)
+
+        # foo2.my_data dataset is now closed
+        self.assertFalse(self.foo2.my_data.valid)
+
+        with self.assertRaisesRegex(InvalidDataIOError, r"Cannot get length of data\. Data is not valid\."):
+            len(self.foo2.my_data)
+
+        with self.assertRaisesRegex(InvalidDataIOError, r"Cannot get attribute 'shape' of data\. Data is not valid\."):
+            self.foo2.my_data.shape
+
+        with self.assertRaisesRegex(InvalidDataIOError, r"Cannot convert data to array\. Data is not valid\."):
+            np.array(self.foo2.my_data)
+
+        with self.assertRaisesRegex(InvalidDataIOError, r"Cannot iterate on data\. Data is not valid\."):
+            for i in self.foo2.my_data:
+                pass
+
+        with self.assertRaisesRegex(InvalidDataIOError, r"Cannot iterate on data\. Data is not valid\."):
+            iter(self.foo2.my_data)
+
+        # re-open the file with the data linking to other file (still closed)
+        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as io:
+            read_foofile2 = io.read()
+            read_foo2 = read_foofile2.buckets[0].foos[0]
+
+            # note that read_foo2 dataset does not have an attribute 'valid'
+            self.assertEqual(len(read_foo2.my_data), 5)  # test len
+            self.assertEqual(read_foo2.my_data.shape, (5,))  # test getattr with shape
+            self.assertTrue(np.array_equal(np.array(read_foo2.my_data), [1, 2, 3, 4, 5]))  # test array conversion
+
+            # test loop through iterable
+            match = [1, 2, 3, 4, 5]
+            for (i, j) in zip(read_foo2.my_data, match):
+                self.assertEqual(i, j)
+
+            # test iterator
+            my_iter = iter(read_foo2.my_data)
+            self.assertEqual(next(my_iter), 1)
 
 
 if __name__ == '__main__':

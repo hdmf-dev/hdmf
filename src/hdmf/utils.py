@@ -9,13 +9,17 @@ import six
 from six import raise_from, text_type, binary_type
 
 
+# on windows python<=3.5, h5py floats resolve as either np.float64 or float randomly.
+# a future version of h5py will fix this. then, np.float64 is redundant below. See #112
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, np.float64],
 }
 
 
 def docval_macro(macro):
+    """Class decorator to add the class to a list of types associated with the key macro in the __macros dict
+    """
     def _dec(cls):
         if macro not in __macros:
             __macros[macro] = list()
@@ -106,7 +110,7 @@ def __format_type(argtype):
         else:
             return types[0]
     elif argtype is None:
-        return "NoneType"
+        return "any type"
     else:
         raise ValueError("argtype must be a type, str, list, or tuple")
 
@@ -170,10 +174,22 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 else:
                     if enforce_type:
                         if not __type_okay(argval, arg['type']):
-                            fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                            type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                            if argval is None:
+                                fmt_val = (argname, __format_type(arg['type']))
+                                type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                            else:
+                                fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                                type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
                     if enforce_shape and 'shape' in arg:
-                        if not __shape_okay_multi(argval, arg['shape']):
+                        while not hasattr(argval, '__len__'):
+                            if not hasattr(argval, argname):
+                                fmt_val = (argval, argname, arg['shape'])
+                                value_errors.append("cannot check object '%s' for shape for '%s' "
+                                                    "(expected shape '%s')" % fmt_val)
+                                continue
+                            # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
+                            argval = getattr(argval, argname)
+                        if hasattr(argval, '__len__') and not __shape_okay_multi(argval, arg['shape']):
                             fmt_val = (argname, get_data_shape(argval), arg['shape'])
                             value_errors.append("incorrect shape for '%s' (got '%s, expected '%s')" % fmt_val)
                     ret[argname] = argval
@@ -192,10 +208,22 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             argval = ret[argname]
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
-                    fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                    type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                    if argval is None and arg['default'] is None:
+                        fmt_val = (argname, __format_type(arg['type']))
+                        type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                    else:
+                        fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                        type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
             if enforce_shape and 'shape' in arg and argval is not None:
-                if not __shape_okay_multi(argval, arg['shape']):
+                while not hasattr(argval, '__len__'):
+                    if not hasattr(argval, argname):
+                        fmt_val = (argval, argname, arg['shape'])
+                        value_errors.append("cannot check object '%s' for shape for '%s' (expected shape '%s')"
+                                            % fmt_val)
+                        continue
+                    # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
+                    argval = getattr(argval, argname)
+                if hasattr(argval, '__len__') and not __shape_okay_multi(argval, arg['shape']):
                     fmt_val = (argname, get_data_shape(argval), arg['shape'])
                     value_errors.append("incorrect shape for '%s' (got '%s, expected '%s')" % fmt_val)
             arg = next(it)
@@ -223,19 +251,27 @@ def __sort_args(validator):
     return list(_itertools.chain(pos, kw))
 
 
+docval_idx_name = '__dv_idx__'
 docval_attr_name = '__docval__'
 __docval_args_loc = 'args'
 
 
-# TODO: write unit tests for get_docval* functions
-def get_docval(func):
-    '''get_docval(func)
-    Get a copy of docval arguments for a function
+def get_docval(func, *args):
+    '''Get a copy of docval arguments for a function.
+    If args are supplied, return only docval arguments with value for 'name' key equal to *args
     '''
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
+        if args:
+            docval_idx = getattr(func, docval_idx_name, None)
+            try:
+                return tuple(docval_idx[name] for name in args)
+            except KeyError as ke:
+                raise ValueError('Function %s does not have docval argument %s' % (func.__name__, str(ke)))
         return tuple(func_docval[__docval_args_loc])
     else:
+        if args:
+            raise ValueError('Function %s has no docval arguments' % func.__name__)
         return tuple()
 
 # def docval_wrap(func, is_method=True):
@@ -360,7 +396,11 @@ def docval(*validator, **options):
         pos = list()
         kw = list()
         for a in val_copy:
-            a['type'] = __resolve_type(a['type'])
+            try:
+                a['type'] = __resolve_type(a['type'])
+            except Exception as e:
+                msg = "error parsing '%s' argument' : %s" % (a['name'], e.args[0])
+                raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:
@@ -405,9 +445,11 @@ def docval(*validator, **options):
         if isinstance(rtype, type):
             _rtype = rtype.__name__
         docstring = __googledoc(func, _docval[__docval_args_loc], returns=returns, rtype=_rtype)
+        docval_idx = {a['name']: a for a in _docval[__docval_args_loc]}  # cache a name-indexed dictionary of args
         setattr(func_call, '__doc__', docstring)
         setattr(func_call, '__name__', func.__name__)
         setattr(func_call, docval_attr_name, _docval)
+        setattr(func_call, docval_idx_name, docval_idx)
         setattr(func_call, '__module__', func.__module__)
         return func_call
     return dec

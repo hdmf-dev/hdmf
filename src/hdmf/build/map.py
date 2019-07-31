@@ -197,13 +197,14 @@ class BuildManager(object):
         builder_id = self.__bldrhash__(builder)
         result = self.__containers.get(builder_id)
         if result is None:
-            result = self.__type_map.construct(builder, self)
             parent_builder = self.__get_parent_dt_builder(builder)
             if parent_builder is not None:
-                result.parent = self.__get_proxy_builder(parent_builder)
+                parent = self.__get_proxy_builder(parent_builder)
+                result = self.__type_map.construct(builder, self, parent)
             else:
                 # we are at the top of the hierarchy,
                 # so it must be time to resolve parents
+                result = self.__type_map.construct(builder, self, None)
                 self.__resolve_parents(result)
             self.prebuilt(result, builder)
         result.set_modified(False)
@@ -439,6 +440,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
+        elif isinstance(value, AbstractDataChunkIterator):
+            ret = value
+            ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
         else:
             if spec_dtype in (_unicode, _ascii):
                 ret_dtype = 'ascii'
@@ -686,12 +690,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         remaining_args = tuple(args[1:])
         if name in self.constructor_args:
             func = self.constructor_args[name]
-            try:
-                # remaining_args is [builder, manager]
-                return func(self, *remaining_args)
-            except TypeError:
-                # LEGACY: remaining_args is [manager]
-                return func(self, *remaining_args[:-1])
+            return func(self, *remaining_args)
         return None
 
     def __get_override_attr(self, name, container, manager):
@@ -951,29 +950,13 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 continue
             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
-    def __is_empty(self, val):
-        if val is None:
-            return True
-        if isinstance(val, DataIO):
-            val = val.data
-        if isinstance(val, AbstractDataChunkIterator):
-            return False
-        else:
-            if (hasattr(val, '__len__') and len(val) == 0):
-                return True
-            else:
-                return False
-
     def __add_datasets(self, builder, datasets, container, build_manager, source):
         for spec in datasets:
             attr_value = self.get_attr_value(spec, container, build_manager)
-            if self.__is_empty(attr_value):
-                if spec.required:
-                    msg = "empty dataset '%s' for '%s' of type (%s)"\
-                                  % (spec.name, builder.name, self.spec.data_type_def)
-                    warnings.warn(msg, MissingRequiredWarning)
-                if attr_value is None:
-                    continue
+            if attr_value is None:
+                continue
+            if isinstance(attr_value, DataIO) and attr_value.data is None:
+                continue
             if isinstance(attr_value, Builder):
                 builder.set_builder(attr_value)
             elif spec.data_type_def is None and spec.data_type_inc is None:
@@ -1005,7 +988,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 # handle subgroups that are not Containers
                 attr_name = self.get_attribute(spec)
                 if attr_name is not None:
-                    attr_value = getattr(container, attr_name, None)
                     attr_value = self.get_attr_value(spec, container, build_manager)
                     if any(isinstance(attr_value, t) for t in (list, tuple, set, dict)):
                         it = iter(attr_value)
@@ -1028,7 +1010,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
                 else:
                     attr_name = self.get_attribute(spec)
-                    attr_value = getattr(container, attr_name, None)
+                    attr_value = self.get_attr_value(spec, container, build_manager)
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
@@ -1117,7 +1099,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     link_dt.setdefault(dt, list()).append(target)
             # now assign links to their respective specification
             for subspec in spec.links:
-                if subspec.name is not None:
+                if subspec.name is not None and subspec.name in links:
                     ret[subspec] = manager.construct(links[subspec.name].builder)
                 else:
                     sub_builder = link_dt.get(subspec.target_type)
@@ -1174,10 +1156,12 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the builder to construct the Container from'},
-            {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'})
+            {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'},
+            {'name': 'parent', 'type': (Proxy, Container),
+             'doc': 'the parent Container/Proxy for the Container being built', 'default': None})
     def construct(self, **kwargs):
         ''' Construct an Container from the given Builder '''
-        builder, manager = getargs('builder', 'manager', kwargs)
+        builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
         cls = manager.get_cls(builder)
         # gather all subspecs
         subspecs = self.__get_subspec_values(builder, self.spec, manager)
@@ -1204,8 +1188,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 continue
             kwargs[argname] = val
         try:
-            obj = cls(**kwargs)
-            obj.container_source = builder.source
+            obj = cls.__new__(cls, container_source=builder.source, parent=parent,
+                              object_id=builder.attributes.get(self.__spec.id_key()))
+            obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
             raise_from(Exception(msg), ex)
@@ -1308,7 +1293,7 @@ class TypeMap(object):
             {'name': 'reader',
              'type': SpecReader,
              'doc': 'the class to user for reading specifications', 'default': None},
-            returns="the namespaces loaded from the given file", rtype=tuple)
+            returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
 
@@ -1324,7 +1309,7 @@ class TypeMap(object):
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
-        return tuple(deps.keys())
+        return deps
 
     _type_map = {
         'text': str,
@@ -1666,15 +1651,18 @@ class TypeMap(object):
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
         builder.set_attribute(attr_map.spec.type_key(), data_type)
+        builder.set_attribute(attr_map.spec.id_key(), container.object_id)
         return builder
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the builder to construct the Container from'},
             {'name': 'build_manager', 'type': BuildManager,
-             'doc': 'the BuildManager for constructing', 'default': None})
+             'doc': 'the BuildManager for constructing', 'default': None},
+            {'name': 'parent', 'type': (Proxy, Container),
+             'doc': 'the parent Container/Proxy for the Container being built', 'default': None})
     def construct(self, **kwargs):
         """ Construct the Container represented by the given builder """
-        builder, build_manager = getargs('builder', 'build_manager', kwargs)
+        builder, build_manager, parent = getargs('builder', 'build_manager', 'parent', kwargs)
         if build_manager is None:
             build_manager = BuildManager(self)
         attr_map = self.get_map(builder)
@@ -1682,7 +1670,7 @@ class TypeMap(object):
             dt = builder.attributes[self.namespace_catalog.group_spec_cls.type_key()]
             raise ValueError('No ObjectMapper found for builder of type %s' % dt)
         else:
-            return attr_map.construct(builder, build_manager)
+            return attr_map.construct(builder, build_manager, parent)
 
     @docval({"name": "container", "type": Container, "doc": "the container to convert to a Builder"},
             returns='The name a Builder should be given when building this container', rtype=str)
