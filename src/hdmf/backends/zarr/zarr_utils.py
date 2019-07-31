@@ -31,6 +31,7 @@ class ZarrSpecWriter(SpecWriter):
                                             dtype=object,
                                             object_codec=numcodecs.JSON(),
                                             compressor=None)
+        dset.attrs['zarr_dtype'] = 'scalar'
         dset[0] = data
         return dset
 
