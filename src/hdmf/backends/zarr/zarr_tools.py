@@ -15,7 +15,6 @@ from ..io import HDMFIO
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper
-from ...container import Container
 from ...data_utils import get_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
@@ -26,7 +25,12 @@ from ...container import Container
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
 
-# TODO We should 1) update the objectids when copying data between the backends, 2) reset builder.source before write (or create new set of builders), 3) reset builder.written (or create new set of builders), 4) resolve reference stored in datasets to the containers
+# TODO We should 1) update the objectids when copying data between the backends,
+# TODO We should 2) reset builder.source before write (or create new set of builders),
+# TODO We should 3) reset builder.written (or create new set of builders),
+# TODO We should 4) resolve reference stored in datasets to the containers
+# TODO We should 5) add support for AbstractDataChunkIterator
+
 
 class ZarrIO(HDMFIO):
 
@@ -35,9 +39,10 @@ class ZarrIO(HDMFIO):
             {'name': 'mode', 'type': str,
              'doc': 'the mode to open the Zarr file with, one of ("w", "r", "r+", "a", "w-")'},
             {'name': 'comm', 'type': 'Intracomm',
-             'doc': 'the MPI communicator to use for parallel I/O', 'default': None})
+             'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+            {'name': 'chunking', 'type': bool, 'doc': "Enable chunking of datasets by default", 'default': True})
     def __init__(self, **kwargs):
-        path, manager, mode, comm = popargs('path', 'manager', 'mode', 'comm', kwargs)
+        path, manager, mode, comm, chunking = popargs('path', 'manager', 'mode', 'comm', 'chunking', kwargs)
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
         self.__comm = comm
@@ -45,7 +50,12 @@ class ZarrIO(HDMFIO):
         self.__path = path
         self.__file = None
         self.__built = dict()
+        self.__chunking = chunking
         super(ZarrIO, self).__init__(manager, source=path)
+
+    @property
+    def chunking(self):
+        return self.__chunking
 
     @property
     def comm(self):
@@ -135,10 +145,13 @@ class ZarrIO(HDMFIO):
 
     def __builder_written_to_zarr(self, builder, parent):
         """Check whether a given builder has been written to disk"""
-        # TODO Ideally we should only have to check builder.written. However, when copying between backends builder.written will be set to True because it was written on the other backend. This should be fixed in the Builders or BuildManager prior to write to be useful across backends.
+        # TODO Ideally we should only have to check builder.written. However, when copying between backends
+        #      builder.written will be set to True because it was written on the other backend. This should
+        #      be fixed in the Builders or BuildManager prior to write to be useful across backends.
         builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
-        exists_on_disk =  os.path.exists(builder_path)
-        return builder.written and exists_on_disk  # If the file was previously written to an HDF5 file then we need to create the group
+        exists_on_disk = os.path.exists(builder_path)
+        # Check if exists because if the file was previously written to an HDF5 file then we need to create the group
+        return builder.written and exists_on_disk
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
@@ -180,7 +193,7 @@ class ZarrIO(HDMFIO):
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
             # Case 1: list, set, tuple type attributes
-            if isinstance(value, (set, list, tuple)) or (isinstance(value, np.ndarray) and len(value) > 1):
+            if isinstance(value, (set, list, tuple)) or (isinstance(value, np.ndarray) and np.ndim(value) != 0):
                 tmp = tuple(value)
                 # Attempt write of the attribute
                 try:
@@ -223,11 +236,12 @@ class ZarrIO(HDMFIO):
                 except TypeError as e:
                     write_ok = False
                     try:
+                        val = value.item if isinstance(value, np.ndarray) else value
                         val = value.item() \
                             if (isinstance(value, np.generic) and not isinstance(value, np.bytes_)) \
-                            else value.decode("utf-8") \
+                            else val.decode("utf-8") \
                             if isinstance(value, (bytes, np.bytes_)) \
-                            else value
+                            else val
                         obj.attrs[key] = val
                         write_ok = True
                     except:  # noqa: E272
@@ -279,8 +293,10 @@ class ZarrIO(HDMFIO):
         # if isinstance(container, RegionBuilder):
         #    region = container.region
 
-        # TODO When converting from HDF5 to Zarr the builder.source will already be set to HDF5 file. However, we can't link to that from Zarr. I.e., we need to force to change the path to Zarr.
-        # TODO The issue of the bad builder.source should be fixed in the builders or BuildManager prior to write to be useful across backends
+        # TODO When converting from HDF5 to Zarr the builder.source will already be set to the HDF5 file.
+        #      However, we can't link to that from Zarr. I.e., we need to force to change the path to Zarr.
+        # TODO The issue of the bad builder.source should be fixed in the builders or BuildManager
+        #      prior to write to be useful across backends
         if os.path.isdir(builder.source):
             source = builder.source
         else:
@@ -325,6 +341,8 @@ class ZarrIO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
+        if 'chunks' not in options['io_settings']:
+            options['io_settings']['chunks'] = self.chunking
 
         attributes = builder.attributes
         options['dtype'] = builder.dtype
@@ -340,8 +358,8 @@ class ZarrIO(HDMFIO):
             else:
                 zarr.copy(data, parent, name=name)
                 dset = parent[name]
-        # When converting data between backends we may encounter and HDMFDataset, e.g., a H55ReferenceDataset with references
-        # TODO this conversion from HDMFDataset should happen for the builder outside of the I/O backend prior to write in order to be usable across backends
+        # When converting data between backends we may see an HDMFDataset, e.g., a H55ReferenceDataset, with references
+        # TODO Conversion from HDMFDataset for builders should happen outside to be usable across backends
         elif isinstance(data, HDMFDataset):
             # If we have a dataset of containers we need to make the references to the containers
             if len(data) > 0 and isinstance(data[0], Container):
@@ -558,13 +576,14 @@ class ZarrIO(HDMFIO):
             data = data[:]  # load the data in case we come from HDF5
             data_shape = (len(data), )
             dtype = object
-             # sometimes bytes and strings can hide as object in numpy array so lets try to write those as strings and bytes rathern than as objects
+            # sometimes bytes and strings can hide as object in numpy array so lets try
+            # to write those as strings and bytes rathern than as objects
             if len(data) > 0 and isinstance(data, np.ndarray):
                 if isinstance(data.item(0), bytes):
-                    dtype=bytes
+                    dtype = bytes
                     data_shape = get_shape(data)
                 elif isinstance(data.item(0), str):
-                    dtype=str
+                    dtype = str
                     data_shape = get_shape(data)
             # Set encoding for objects
             if dtype == object:
@@ -583,7 +602,8 @@ class ZarrIO(HDMFIO):
                 o = data
                 for i in c:
                     o = o[i]
-                dset[c] = o  if not isinstance(o, (bytes, np.bytes_)) else o.decode("utf-8") # bytes are not JSON serializable
+                # bytes are not JSON serializable
+                dset[c] = o if not isinstance(o, (bytes, np.bytes_)) else o.decode("utf-8")
             return dset
         # standard write
         else:
@@ -604,7 +624,7 @@ class ZarrIO(HDMFIO):
             try:
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
-                msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
+                msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise_from(Exception(msg), exc)
         if dtype == object:
             io_settings['object_codec'] = numcodecs.JSON()
@@ -734,8 +754,11 @@ class ZarrIO(HDMFIO):
                 reg_refs = True
 
         if has_reference:
-            data = deepcopy(data[:])
-            self.__parse_ref(kwargs['maxshape'], obj_refs, reg_refs, data)
+            try:
+                data = deepcopy(data[:])
+                self.__parse_ref(kwargs['maxshape'], obj_refs, reg_refs, data)
+            except ValueError as e:
+                raise ValueError(str(e) + "  zarr-name=" + str(zarr_obj.name) + " name=" + str(name))
 
         kwargs['data'] = data
         if name is None:
@@ -802,7 +825,7 @@ class ZarrIO(HDMFIO):
                         source = v['value']['source']
                         path = v['value']['path']
                         if source is not None and source != "":
-                            path =  os.path.join(source, path.lstrip("/"))
+                            path = os.path.join(source, path.lstrip("/"))
 
                         if not os.path.exists(path):
                             raise ValueError("Found bad link in attribute to %s" % (path))
@@ -821,4 +844,3 @@ class ZarrIO(HDMFIO):
                 else:
                     ret[k] = v
         return ret
-
