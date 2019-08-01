@@ -33,9 +33,6 @@ class Container(with_metaclass(ExtenderMeta, object)):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
 
-    # def __repr__(self):
-        # return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
-
     @property
     def object_id(self):
         if self.__object_id is None:
@@ -132,19 +129,17 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
-    @docval(
-        {'name': 'hdmf_data_type', 'type': str,
-         'doc': 'the hdmf_data_type to search for', 'default': None})
+    @docval({'name': 'type', 'type': type, 'doc': 'the type to search for', 'default': None})
     def get_ancestor(self, **kwargs):
         """
-        Traverse parent hierarchy and return first instance of the specified neurodata_type
+        Traverse parent hierarchy and return first instance of the specified type
         """
-        data_type = getargs('hdmf_data_type', kwargs)
+        data_type = getargs('type', kwargs)
         if data_type is None:
             return self.parent
         p = self.parent
         while p is not None:
-            if p.hdmf_data_type == data_type:
+            if p.__class__ == data_type:
                 return p
             p = p.parent
         return None
@@ -214,23 +209,25 @@ class Container(with_metaclass(ExtenderMeta, object)):
         cls.__fields__ = tuple(new_fields)
 
     @staticmethod
-    def __smart_str(v, num_indent):
+    def __smart_str(obj, num_indent):
         """
         Print compact string representation of data.
 
-        If v is a list, try to print it using numpy. This will condense the string
-        representation of datasets with many elements. If that doesn't work, just print the list.
+        If obj is a list, try to print it using numpy. This will condense the string representation of datasets with
+        many elements. If that doesn't work, just print the list.
 
-        If v is a dictionary, print the name and type of each element
+        If obj is a dictionary, print the name and type of each element
 
-        If v is a set, print it sorted
+        If obj is a set, print it sorted
 
-        If v is a neurodata_type, print the name of type
+        If obj is a Container, print the name of type
 
         Otherwise, use the built-in str()
+
         Parameters
         ----------
-        v
+        obj - the object to print
+        num_indent - the number of spaces to place before printed elements, useful for printing nested objects
 
         Returns
         -------
@@ -238,21 +235,21 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
         """
 
-        if isinstance(v, list) or isinstance(v, tuple):
-            if len(v) and isinstance(v[0], Container):
-                return Container.__smart_str_list(v, num_indent, '(')
+        if isinstance(obj, list) or isinstance(obj, tuple):
+            if len(obj) and isinstance(obj[0], Container):
+                return Container.__smart_str_list(obj, num_indent, '(')
             try:
-                return str(np.asarray(v))
+                return str(np.asarray(obj))
             except ValueError:
-                return Container.__smart_str_list(v, num_indent, '(')
-        elif isinstance(v, dict):
-            return Container.__smart_str_dict(v, num_indent)
-        elif isinstance(v, set):
-            return Container.__smart_str_list(sorted(list(v)), num_indent, '{')
-        elif isinstance(v, Container):
-            return "{} {}".format(getattr(v, 'name'), type(v))
+                return Container.__smart_str_list(obj, num_indent, '(')
+        elif isinstance(obj, dict):
+            return Container.__smart_str_dict(obj, num_indent)
+        elif isinstance(obj, set):
+            return Container.__smart_str_list(sorted(list(obj)), num_indent, '{')
+        elif isinstance(obj, Container):
+            return "{} {}".format(getattr(obj, 'name'), type(obj))
         else:
-            return str(v)
+            return str(obj)
 
     @staticmethod
     def __smart_str_list(l, num_indent, left_br):
@@ -265,8 +262,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
         indent = num_indent * 2 * ' '
         indent_in = (num_indent + 1) * 2 * ' '
         out = left_br
-        for v in l[:-1]:
-            out += '\n' + indent_in + Container.__smart_str(v, num_indent + 1) + ','
+        for obj in l[:-1]:
+            out += '\n' + indent_in + Container.__smart_str(obj, num_indent + 1) + ','
         if l:
             out += '\n' + indent_in + Container.__smart_str(l[-1], num_indent + 1)
         out += '\n' + indent + right_br
@@ -293,7 +290,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
         template = "\n{} {}\nFields:\n""".format(getattr(self, 'name'), type(self))
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            template += "  {}: {}\n".format(k, Container.__smart_str(v, 1))
+            if hasattr(v, 'data') or not hasattr(v, '__len__') or len(v) > 0:
+                template += "  {}: {}\n".format(k, Container.__smart_str(v, 1))
         return template
 
 
@@ -328,34 +326,3 @@ class DataRegion(Data):
         The region that indexes into data e.g. slice or list of indices
         '''
         pass
-
-
-class LabelledDict(dict):
-    '''
-    A dict wrapper class for aggregating Timeseries
-    from the standard locations
-    '''
-
-    @docval({'name': 'label', 'type': str, 'doc': 'the TimeSeries type ('})
-    def __init__(self, **kwargs):
-        label = getargs('label', kwargs)
-        self.__label = label
-
-    @property
-    def label(self):
-        return self.__label
-
-    def __getitem__(self, args):
-        key = args
-        if '==' in args:
-            key, val = args.split("==")
-            key = key.strip()
-            val = val.strip()
-            if key != 'name':
-                ret = list()
-                for item in self.values():
-                    if getattr(item, key, None) == val:
-                        ret.append(item)
-                return ret if len(ret) else None
-            key = val
-        return super(LabelledDict, self).__getitem__(key)
