@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
 from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
-from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
+from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, ZERO_OR_MANY, ONE_OR_MANY
 from hdmf.spec.namespace import SpecNamespace
@@ -1022,6 +1022,62 @@ class H5DataIOValid(unittest.TestCase):
             # test iterator
             my_iter = iter(read_foo2.my_data)
             self.assertEqual(next(my_iter), 1)
+
+
+def get_temp_filepath():
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name
+
+class TestReadLink(unittest.TestCase):
+    def setUp(self):
+        self.target_path = get_temp_filepath()
+        self.link_path = get_temp_filepath()
+        self.root1 = GroupBuilder(name='root')
+        self.subgroup = self.root1.add_group('test_group')
+
+        self.dataset = self.subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+
+
+        self.root2 = GroupBuilder(name='root')
+
+        self.group_link = self.root2.add_link(self.subgroup, 'link_to_test_group')
+        self.dataset_link = self.root2.add_link(self.dataset, 'link_to_test_dataset')
+
+        with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(self.root1)
+        self.root1.source = self.target_path
+
+        with HDF5IO(self.link_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(self.root2)
+
+    def test_set_link_loc(self):
+        """
+        Test that Builder location is set when it is read as a link
+        """
+        read_io = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        bldr = read_io.read_builder()
+        self.assertEqual(bldr['link_to_test_group'].builder.location, '/')
+        self.assertEqual(bldr['link_to_test_dataset'].builder.location, '/test_group')
+        read_io.close()
+
+    def test_link_to_link(self):
+        """
+        Test that link to link gets written and read properly
+        """
+        link_to_link_path = get_temp_filepath()
+        read_io1 = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        bldr1 = read_io1.read_builder()
+        root3 = GroupBuilder(name='root')
+        root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
+        with HDF5IO(link_to_link_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(root3)
+        read_io1.close()
+
+        read_io2 = HDF5IO(link_to_link_path, manager=_get_manager(), mode='r')
+        bldr2 = read_io2.read_builder()
+        self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
+        read_io2.close()
 
 
 if __name__ == '__main__':
