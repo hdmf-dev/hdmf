@@ -181,17 +181,21 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                                 fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
                                 type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
                     if enforce_shape and 'shape' in arg:
-                        while not hasattr(argval, '__len__'):
+                        valshape = get_data_shape(argval)
+                        while valshape is None:
+                            if argval is None:
+                                break
                             if not hasattr(argval, argname):
                                 fmt_val = (argval, argname, arg['shape'])
-                                value_errors.append("cannot check object '%s' for shape for '%s' "
+                                value_errors.append("cannot check shape of object '%s' for argument '%s' "
                                                     "(expected shape '%s')" % fmt_val)
-                                continue
+                                break
                             # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
                             argval = getattr(argval, argname)
-                        if hasattr(argval, '__len__') and not __shape_okay_multi(argval, arg['shape']):
-                            fmt_val = (argname, get_data_shape(argval), arg['shape'])
-                            value_errors.append("incorrect shape for '%s' (got '%s, expected '%s')" % fmt_val)
+                            valshape = get_data_shape(argval)
+                        if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
+                            fmt_val = (argname, valshape, arg['shape'])
+                            value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
                     ret[argname] = argval
             argsi += 1
             arg = next(it)
@@ -215,17 +219,21 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                         fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
                         type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
             if enforce_shape and 'shape' in arg and argval is not None:
-                while not hasattr(argval, '__len__'):
+                valshape = get_data_shape(argval)
+                while valshape is None:
+                    if argval is None:
+                        break
                     if not hasattr(argval, argname):
                         fmt_val = (argval, argname, arg['shape'])
-                        value_errors.append("cannot check object '%s' for shape for '%s' (expected shape '%s')"
+                        value_errors.append("cannot check shape of object '%s' for argument '%s' (expected shape '%s')"
                                             % fmt_val)
-                        continue
+                        break
                     # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
                     argval = getattr(argval, argname)
-                if hasattr(argval, '__len__') and not __shape_okay_multi(argval, arg['shape']):
-                    fmt_val = (argname, get_data_shape(argval), arg['shape'])
-                    value_errors.append("incorrect shape for '%s' (got '%s, expected '%s')" % fmt_val)
+                    valshape = get_data_shape(argval)
+                if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
+                    fmt_val = (argname, valshape, arg['shape'])
+                    value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
             arg = next(it)
     except StopIteration:
         pass
