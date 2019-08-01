@@ -644,3 +644,105 @@ def pystr(s):
         return s.decode('utf-8')
     else:
         return s
+
+
+class LabelledDict(dict):
+    """A dict wrapper class with a label and which allows retrieval of values based on an attribute of the values
+
+    For example, if the key attribute is set as 'name' in __init__, then all objects added to the LabelledDict must have
+    a 'name' attribute and a particular object in the LabelledDict can be accessed using the syntax ['object_name'] if
+    the object.name == 'object_name'. In this way, LabelledDict acts like a set where values can be retrieved using
+    square brackets around the value of the key attribute. An 'add' method makes clear the association between the key
+    attribute of the LabelledDict and the values of the LabelledDict.
+
+    LabelledDict also supports retrieval of values with the syntax my_dict['attr == val'], which returns a set of
+    objects in the LabelledDict which have an attribute 'attr' with a string value 'val'. If no objects match that
+    condition, a KeyError is raised. Note that if 'attr' equals the key attribute, then the single matching value is
+    returned, not a set.
+
+    Usage:
+      LabelledDict(label='my_objects', def_key_name = 'name')
+      my_dict[obj.name] = obj
+      my_dict.add(obj)  # simpler syntax
+
+    Example:
+      # MyTestClass is a class with attributes 'prop1' and 'prop2'. MyTestClass.__init__ sets those attributes.
+      ld = LabelledDict(label='all_objects', key_attr='prop1')
+      obj1 = MyTestClass('a', 'b')
+      obj2 = MyTestClass('d', 'b')
+      ld[obj1.prop1] = obj1  # obj1 is added to the LabelledDict with the key obj1.prop1. Any other key is not allowed.
+      ld.add(obj2)           # Simpler 'add' syntax enforces the required relationship
+      ld['a']                # Returns obj1
+      ld['prop1 == a']       # Also returns obj1
+      ld['prop2 == b']       # Returns set([obj1, obj2]) - the set of all values v in ld where v.prop2 == 'b'
+    """
+
+    @docval({'name': 'label', 'type': str, 'doc': 'the label on this dictionary'},
+            {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'})
+    def __init__(self, **kwargs):
+        label, key_attr = getargs('label', 'key_attr', kwargs)
+        self.__label = label
+        self.__key_attr = key_attr
+
+    @property
+    def label(self):
+        """Return the label of this LabelledDict"""
+        return self.__label
+
+    @property
+    def key_attr(self):
+        """Return the attribute used as the key for values in this LabelledDict"""
+        return self.__key_attr
+
+    def __getitem__(self, args):
+        """Get a value from the LabelledDict with the given key.
+
+        Supports syntax my_dict['attr == val'], which returns a set of objects in the LabelledDict which have an
+        attribute 'attr' with a string value 'val'. If no objects match that condition, a KeyError is raised.
+
+        Note that if 'attr' equals the key attribute, then the single matching value is returned, not a set.
+        """
+        key = args
+        if '==' in args:
+            key, val = args.split("==")
+            key = key.strip()
+            val = val.strip()  # val is a string
+            if not key:
+                raise KeyError("An attribute name is required before '=='.")
+            if not val:
+                raise KeyError("A value is required after '=='.")
+            if key != self.key_attr:
+                ret = set()
+                for item in self.values():
+                    if getattr(item, key, None) == val:
+                        ret.add(item)
+                if len(ret):
+                    return ret
+                else:
+                    raise KeyError(val)
+            # if key == self.key_attr, then call __getitem__ normally on val
+            key = val
+        return super(LabelledDict, self).__getitem__(key)
+
+    def __setitem__(self, key, value):
+        """Set a value in the LabelledDict with the given key. The key must equal value.key_attr.
+
+        See LabelledDict.add for simpler syntax. Raises ValueError if value does not have attribute key_attr.
+        """
+        self.__check_value(value)
+        if key != getattr(value, self.key_attr):
+            raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
+        super(LabelledDict, self).__setitem__(key, value)
+
+    def add(self, value):
+        """Add a value to the dict with the key value.key_attr.
+
+        Raises ValueError if value does not have attribute key_attr.
+        """
+        self.__check_value(value)
+        self.__setitem__(getattr(value, self.key_attr), value)
+
+    def __check_value(self, value):
+        if not hasattr(value, self.key_attr):
+            raise ValueError("Cannot set value '%s' in LabelledDict. Value must have key '%s'."
+                             % (value, self.key_attr))
