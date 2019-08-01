@@ -448,6 +448,8 @@ class HDF5IO(HDMFIO):
             self.write_group(self.__file, gbldr)
         for name, dbldr in f_builder.datasets.items():
             self.write_dataset(self.__file, dbldr, link_data)
+        for name, lbldr in f_builder.links.items():
+            self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
 
