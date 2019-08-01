@@ -6,7 +6,6 @@ except ImportError:
 from six import binary_type, text_type
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 import json
-import h5py
 import numpy as np
 import warnings
 import os
@@ -207,7 +206,7 @@ class H5DataIO(DataIO):
     """
 
     @docval({'name': 'data',
-             'type': (np.ndarray, list, tuple, h5py.Dataset, Iterable),
+             'type': (np.ndarray, list, tuple, Dataset, Iterable),
              'doc': 'the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data' +
                     ' will be ignored as the dataset will either be linked to or copied as is in H5DataIO.'},
             {'name': 'maxshape',
@@ -217,7 +216,7 @@ class H5DataIO(DataIO):
              'default': None},
             {'name': 'chunks',
              'type': (bool, tuple),
-             'doc': 'Chunk shape or True ti enable auto-chunking',
+             'doc': 'Chunk shape or True to enable auto-chunking',
              'default': None},
             {'name': 'compression',
              'type': (str, bool),
@@ -230,7 +229,7 @@ class H5DataIO(DataIO):
              'default': None},
             {'name': 'fillvalue',
              'type': None,
-             'doc': 'Value to eb returned when reading uninitialized parts of the dataset',
+             'doc': 'Value to be returned when reading uninitialized parts of the dataset',
              'default': None},
             {'name': 'shuffle',
              'type': bool,
@@ -296,3 +295,9 @@ class H5DataIO(DataIO):
     @property
     def io_settings(self):
         return self.__iosettings
+
+    @property
+    def valid(self):
+        if isinstance(self.data, Dataset) and not self.data.id.valid:
+            return False
+        return super(H5DataIO, self).valid

@@ -1,4 +1,5 @@
 import abc
+from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta, get_docval
 from warnings import warn
@@ -12,19 +13,34 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     __fields__ = tuple()
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'parent', 'type': 'Container', 'doc': 'the Container that holds this Container', 'default': None},
-            {'name': 'container_source', 'type': str, 'doc': 'the source of this container', 'default': None})
+    # @docval({'name': 'container_source', 'type': str, 'doc': 'source of this Container', 'default': None},
+    #         {'name': 'object_id', 'type': str, 'doc': 'UUID4 unique identifier for this Container', 'default': None},
+    #         {'name': 'parent', 'type': str, 'doc': 'parent Container for this Container', 'default': None})
+    def __new__(cls, *args, **kwargs):
+        inst = super(Container, cls).__new__(cls)
+        inst.__container_source = kwargs.pop('container_source', None)
+        inst.__parent = None
+        inst.__children = list()
+        inst.__modified = True
+        inst.__object_id = kwargs.pop('object_id', str(uuid4()))
+        inst.parent = kwargs.pop('parent', None)
+        return inst
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-        self.__parent = getargs('parent', kwargs)
-        self.__container_source = getargs('container_source', kwargs)
-        self.__children = list()
-        self.__modified = True
-        self.__fields = dict()
+
+    # def __repr__(self):
+        # return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
+
+    @property
+    def object_id(self):
+        if self.__object_id is None:
+            self.__object_id = str(uuid4())
+        return self.__object_id
 
     @property
     def modified(self):
@@ -35,7 +51,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
     def set_modified(self, **kwargs):
         modified = getargs('modified', kwargs)
         self.__modified = modified
-        if modified and self.parent is not None:
+        if modified and isinstance(self.parent, Container):
             self.parent.set_modified()
 
     @property
@@ -45,14 +61,14 @@ class Container(with_metaclass(ExtenderMeta, object)):
     @docval({'name': 'child', 'type': 'Container',
              'doc': 'the child Container for this Container', 'default': None})
     def add_child(self, **kwargs):
+        warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
         child = getargs('child', kwargs)
         if child is not None:
             # if child.parent is a Container, then the mismatch between child.parent and parent
             # is used to make a soft/external link from the parent to a child elsewhere
             # if child.parent is not a Container, it is either None or a Proxy and should be set to self
             if not isinstance(child.parent, Container):
-                self.__children.append(child)
-                self.set_modified()
+                # actually add the child to the parent in parent setter
                 child.parent = self
         else:
             warn('Cannot add None as child to a container %s' % self.name)
@@ -86,7 +102,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
         '''
         The parent Container of this Container
         '''
-        return self.__parent
+        # do it this way because __parent may not exist yet (not set in constructor)
+        return getattr(self, '_Container__parent', None)
 
     @parent.setter
     def parent(self, parent_container):
@@ -105,10 +122,15 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 # or Container extended with this functionality in build/map.py
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
+                    parent_container.__children.append(self)
+                    parent_container.set_modified()
                 else:
-                    self.__parent.add_candidate(parent_container)
+                    self.__parent.add_candidate(parent_container, self)
         else:
             self.__parent = parent_container
+            if isinstance(parent_container, Container):
+                parent_container.__children.append(self)
+                parent_container.set_modified()
 
     @docval(
         {'name': 'hdmf_data_type', 'type': str,
