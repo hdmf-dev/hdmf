@@ -9,9 +9,9 @@ import numpy as np
 
 class Container(with_metaclass(ExtenderMeta, object)):
 
-    _fieldsname = '__fields__'
+    _fieldsname = '__props__'
 
-    __fields__ = tuple()
+    __props__ = tuple()
 
     # @docval({'name': 'container_source', 'type': str, 'doc': 'source of this Container', 'default': None},
     #         {'name': 'object_id', 'type': str, 'doc': 'UUID4 unique identifier for this Container', 'default': None},
@@ -24,6 +24,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         inst.__modified = True
         inst.__object_id = kwargs.pop('object_id', str(uuid4()))
         inst.parent = kwargs.pop('parent', None)
+        inst.__fields = dict()
         return inst
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
@@ -153,7 +154,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         tmp = field
         if isinstance(tmp, dict):
             if 'name' not in tmp:
-                raise ValueError("must specify 'name' if using dict in __fields__")
+                raise ValueError("must specify 'name' if using dict in __props__")
         else:
             tmp = {'name': tmp}
         return tmp
@@ -189,24 +190,24 @@ class Container(with_metaclass(ExtenderMeta, object)):
         This classmethod will be called during class declaration in the metaclass to automatically
         create setters and getters for fields that need to be exported
         '''
-        if not isinstance(cls.__fields__, tuple):
-            raise TypeError("'__fields__' must be of type tuple")
+        if not isinstance(cls.__props__, tuple):
+            raise TypeError("'__props__' must be of type tuple")
 
         if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
-                and bases[-1].__fields__ is not cls.__fields__:
-            new_fields = list(cls.__fields__)
-            new_fields[0:0] = bases[-1].__fields__
-            cls.__fields__ = tuple(new_fields)
+                and bases[-1].__props__ is not cls.__props__:
+            new_fields = list(cls.__props__)
+            new_fields[0:0] = bases[-1].__props__
+            cls.__props__ = tuple(new_fields)
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
-        for f in cls.__fields__:
+        for f in cls.__props__:
             pconf = cls._transform_arg(f)
             pname = pconf['name']
             pconf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
                 setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
             new_fields.append(pname)
-        cls.__fields__ = tuple(new_fields)
+        cls.__props__ = tuple(new_fields)
 
     @staticmethod
     def __smart_str(obj, num_indent):
