@@ -104,6 +104,18 @@ class BaseBuilder(Builder):
         super(BaseBuilder, self).__setitem__(BaseBuilder.__attribute, dict())
         for name, val in attributes.items():
             self.set_attribute(name, val)
+        self.__location = None
+
+    @property
+    def location(self):
+        """
+        The location of this Builder in its source
+        """
+        return self.__location
+
+    @location.setter
+    def location(self, val):
+        self.__location = val
 
     @property
     def attributes(self):
