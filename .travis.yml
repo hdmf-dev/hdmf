@@ -26,20 +26,10 @@ matrix:
         - BUILD_TOX_ENV=build-py35
         - TEST_WHEELINSTALL_ENV=wheelinstall-py35
 
-    - os: osx
-      language: generic
-      env:
-        - TRAVIS_PYTHON_VERSION=2.7.14
-        - TEST_TOX_ENV=py27
-        - COVERAGE_TOX_ENV=coverage-py27
-        - BUILD_TOX_ENV=build-py27
-        - TEST_WHEELINSTALL_ENV=wheelinstall-py27
-
 cache:
   directories:
     - $HOME/.pyenv/versions/3.6.3
     - $HOME/.pyenv/versions/3.5.4
-    - $HOME/.pyenv/versions/2.7.14
 
 before_install:
   - export PATH=$HOME/.pyenv/versions/$TRAVIS_PYTHON_VERSION/bin:$PATH
