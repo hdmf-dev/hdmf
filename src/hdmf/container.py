@@ -1,4 +1,4 @@
-import abc
+from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, getargs, ExtenderMeta
@@ -131,7 +131,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
 class Data(Container):
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def data(self):
         '''
         The data that is held by this Container
@@ -144,14 +145,16 @@ class Data(Container):
 
 class DataRegion(Data):
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def data(self):
         '''
         The target data that this region applies to
         '''
         pass
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def region(self):
         '''
         The region that indexes into data e.g. slice or list of indices
