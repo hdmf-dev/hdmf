@@ -9,11 +9,9 @@ import six
 from six import raise_from, text_type, binary_type
 
 
-# on windows python<=3.5, h5py floats resolve as either np.float64 or float randomly.
-# a future version of h5py will fix this. then, np.float64 is redundant below. See #112
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, np.float64],
+    'scalar_data': [str, int, float],
 }
 
 
@@ -95,6 +93,10 @@ def __is_float(value):
     SUPPORTED_FLOAT_TYPES = [float, np.float16, np.float32, np.float64]
     if hasattr(np, "float128"):
         SUPPORTED_FLOAT_TYPES.append(np.float128)
+    if hasattr(np, "longdouble"):
+        # on windows python<=3.5, h5py floats resolve float64s as either np.float64 or np.longdouble
+        # non-deterministically. a future version of h5py will fix this. see #112
+        SUPPORTED_FLOAT_TYPES.append(np.longdouble)
     return any(isinstance(value, i) for i in SUPPORTED_FLOAT_TYPES)
 
 
