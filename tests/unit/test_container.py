@@ -120,7 +120,7 @@ class TestContainer(unittest.TestCase):
 
 
 class SubData(Data):
-    
+
     def __init__(self, name, data):
         super(SubData, self).__init__(name=name)
         self.__data = data
