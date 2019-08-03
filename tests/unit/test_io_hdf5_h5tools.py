@@ -533,15 +533,15 @@ class TestHDF5IO(unittest.TestCase):
             os.remove(self.path)
             
         if self.file_obj is not None:
+            fn = self.file_obj.filename
             self.file_obj.close()
-            if os.path.exists(self.file_obj.filename):
-                os.remove(self.file_obj)
+            if os.path.exists(fn):
+                os.remove(fn)
 
     def test_constructor(self):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             self.assertEquals(io.manager, self.manager)
             self.assertEquals(io.source, self.path)
-            self.assertEquals(io.mode, 'w')
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath())
