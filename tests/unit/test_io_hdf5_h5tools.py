@@ -517,21 +517,21 @@ class TestRoundTrip(unittest.TestCase):
 
 
 class TestHDF5IO(unittest.TestCase):
-    
+
     def setUp(self):
         self.manager = _get_manager()
         self.path = get_temp_filepath()
-        
+
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         self.foofile = FooFile([foobucket])
-        
+
         self.file_obj = None
 
     def tearDown(self):
         if os.path.exists(self.path):
             os.remove(self.path)
-            
+
         if self.file_obj is not None:
             fn = self.file_obj.filename
             self.file_obj.close()
