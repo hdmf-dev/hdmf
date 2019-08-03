@@ -516,6 +516,41 @@ class TestRoundTrip(unittest.TestCase):
             self.assertListEqual([], read_foofile.buckets[0].foos)
 
 
+class TestHDF5IO(unittest.TestCase):
+    
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path = get_temp_filepath()
+        
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        self.foofile = FooFile([foobucket])
+        
+        self.file_obj = None
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+            
+        if self.file_obj is not None:
+            self.file_obj.close()
+            if os.path.exists(self.file_obj.filename):
+                os.remove(self.file_obj)
+
+    def test_constructor(self):
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            self.assertEquals(io.manager, self.manager)
+            self.assertEquals(io.source, self.path)
+            self.assertEquals(io.mode, 'w')
+            
+    def test_set_file_mismatch(self):
+        self.file_obj = File(get_temp_filepath())
+        err_msg = "You argued %s as this object's path, but supplied a file with filename: %s" % 
+                  (self.path, self.file_obj.filename)
+        with self.assertRaisesRegex(ValueError, err_msg):
+            HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
+            
+            
 class TestCacheSpec(unittest.TestCase):
 
     def setUp(self):
