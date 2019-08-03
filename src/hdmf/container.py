@@ -139,7 +139,9 @@ class Data(Container):
         '''
         pass
 
-    def __nonzero__(self):
+    def __bool__(self):
+        if not hasattr(self.data, '__len__'):
+            raise NotImplementedError('__bool__ must be implemented when data has no __len__')
         return len(self.data) != 0
 
 
