@@ -20,6 +20,7 @@ from h5py import SoftLink, HardLink, ExternalLink, File
 
 from tests.unit.test_utils import Foo, FooBucket, CacheSpecTestHelper, CORE_NAMESPACE
 
+
 class FooFile(Container):
 
     @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
@@ -564,7 +565,7 @@ class TestCacheSpec(unittest.TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='a') as io:
             io.write(foofile)
 
-            
+
 class TestNoCacheSpec(unittest.TestCase):
 
     def setUp(self):
