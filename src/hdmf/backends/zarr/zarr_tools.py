@@ -53,7 +53,7 @@ class ZarrIO(HDMFIO):
         self.__chunking = chunking
         super(ZarrIO, self).__init__(manager, source=path)
         warn_msg = '\033[91m' + 'The ZarrIO backend is experimental. It is under active ' + \
-                      'development and backward compatibility is not guaranteed for the backend.' + '\033[0m'
+                   'development and backward compatibility is not guaranteed for the backend.' + '\033[0m'
         warnings.warn(warn_msg)
 
     @property
