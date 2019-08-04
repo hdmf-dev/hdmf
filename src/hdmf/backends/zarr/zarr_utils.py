@@ -70,7 +70,6 @@ class ZarrDataIO(DataIO):
     Wrap data arrays for write via ZarrIO to customize I/O behavior, such as compression and chunking
     for data arrays.
     """
-
     @docval({'name': 'data',
              'type': (np.ndarray, list, tuple, zarr.Array, Iterable),
              'doc': 'the data to be written. NOTE: If an zarr.Array is used, all other settings but link_data' +
@@ -90,6 +89,7 @@ class ZarrDataIO(DataIO):
              'default': False}
             )
     def __init__(self, **kwargs):
+        # TODO Need to add error checks and warnings to ZarrDataIO to check for parameter collisions and add tests
         data, chunks, fill_value, self.__link_data = getargs('data', 'chunks', 'fillvalue', 'link_data', kwargs)
         call_docval_func(super(ZarrDataIO, self).__init__, kwargs)
         if not isinstance(data, zarr.Array) and self.__link_data:
