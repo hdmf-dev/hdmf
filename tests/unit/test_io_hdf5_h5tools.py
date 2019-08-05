@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
 from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
-from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
+from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, ZERO_OR_MANY, ONE_OR_MANY
 from hdmf.spec.namespace import SpecNamespace
@@ -424,6 +424,12 @@ def _get_manager():
                             data_type_def='FooBucket',
                             groups=[tmp_spec])
 
+    class FooMapper(ObjectMapper):
+        def __init__(self, spec):
+            super(FooMapper, self).__init__(spec)
+            my_data_spec = spec.get_dataset('my_data')
+            self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
+
     class BucketMapper(ObjectMapper):
         def __init__(self, spec):
             super(BucketMapper, self).__init__(spec)
@@ -461,6 +467,7 @@ def _get_manager():
     type_map.register_container_type(CORE_NAMESPACE, 'FooBucket', FooBucket)
     type_map.register_container_type(CORE_NAMESPACE, 'FooFile', FooFile)
 
+    type_map.register_map(Foo, FooMapper)
     type_map.register_map(FooBucket, BucketMapper)
     type_map.register_map(FooFile, FileMapper)
 
@@ -472,12 +479,7 @@ class TestRoundTrip(unittest.TestCase):
 
     def setUp(self):
         self.manager = _get_manager()
-        self.test_temp_file = tempfile.NamedTemporaryFile()
-        self.test_temp_file.close()
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        self.path = self.test_temp_file.name
+        self.path = get_temp_filepath()
 
     def tearDown(self):
         if os.path.exists(self.path):
@@ -525,12 +527,7 @@ class TestCacheSpec(unittest.TestCase):
 
     def setUp(self):
         self.manager = _get_manager()
-        self.test_temp_file = tempfile.NamedTemporaryFile()
-        self.test_temp_file.close()
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        self.path = self.test_temp_file.name
+        self.path = get_temp_filepath()
 
     def tearDown(self):
         if os.path.exists(self.path):
@@ -578,12 +575,7 @@ class TestNoCacheSpec(unittest.TestCase):
 
     def setUp(self):
         self.manager = _get_manager()
-        self.test_temp_file = tempfile.NamedTemporaryFile()
-        self.test_temp_file.close()
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        self.path = self.test_temp_file.name
+        self.path = get_temp_filepath()
 
     def tearDown(self):
         if os.path.exists(self.path):
@@ -599,7 +591,7 @@ class TestNoCacheSpec(unittest.TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(foofile, cache_spec=False)
 
-        with File(self.test_temp_file.name) as f:
+        with File(self.path) as f:
             self.assertNotIn('specifications', f)
 
 
@@ -745,12 +737,7 @@ class HDF5IOReadNoDataTest(unittest.TestCase):
     """ Test if file exists and there is no data, read with mode (r, r+, a) throws error """
 
     def setUp(self):
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.close()
-        self.path = temp_file.name
+        self.path = get_temp_filepath()
         temp_io = HDF5IO(self.path, mode='w')
         temp_io.close()
         self.io = None
@@ -791,12 +778,7 @@ class HDF5IOReadData(unittest.TestCase):
     """
 
     def setUp(self):
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.close()
-        self.path = temp_file.name
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
+        self.path = get_temp_filepath()
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
         self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
@@ -867,9 +849,7 @@ class HDF5IOWriteFileExists(unittest.TestCase):
     """ Test if file exists, write in mode (r+, w, a) is ok and write in mode r throws error """
 
     def setUp(self):
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.close()
-        self.path = temp_file.name
+        self.path = get_temp_filepath()
 
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
@@ -928,9 +908,7 @@ class HDF5IOWriteFileExists(unittest.TestCase):
 class H5DataIOValid(unittest.TestCase):
 
     def setUp(self):
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.close()
-        self.paths = [temp_file.name, ]
+        self.paths = [get_temp_filepath(), ]
 
         self.foo1 = Foo('foo1', H5DataIO([1, 2, 3, 4, 5]), "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [self.foo1])
@@ -964,9 +942,7 @@ class H5DataIOValid(unittest.TestCase):
             bucket2 = FooBucket('test_bucket2', [self.foo2])
             foofile2 = FooFile(buckets=[bucket2])
 
-            temp_file = tempfile.NamedTemporaryFile()
-            temp_file.close()
-            self.paths.append(temp_file.name)
+            self.paths.append(get_temp_filepath())
 
             with HDF5IO(self.paths[1], manager=_get_manager(), mode='w') as io:
                 io.write(foofile2)
@@ -1022,6 +998,64 @@ class H5DataIOValid(unittest.TestCase):
             # test iterator
             my_iter = iter(read_foo2.my_data)
             self.assertEqual(next(my_iter), 1)
+
+
+def get_temp_filepath():
+    # On Windows h5py cannot truncate an open file in write mode.
+    # The temp file will be closed before h5py truncates it
+    # and will be removed during the tearDown step.
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name
+
+
+class TestReadLink(unittest.TestCase):
+    def setUp(self):
+        self.target_path = get_temp_filepath()
+        self.link_path = get_temp_filepath()
+        self.root1 = GroupBuilder(name='root')
+        self.subgroup = self.root1.add_group('test_group')
+        self.dataset = self.subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+
+        self.root2 = GroupBuilder(name='root')
+        self.group_link = self.root2.add_link(self.subgroup, 'link_to_test_group')
+        self.dataset_link = self.root2.add_link(self.dataset, 'link_to_test_dataset')
+
+        with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(self.root1)
+        self.root1.source = self.target_path
+
+        with HDF5IO(self.link_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(self.root2)
+        self.root2.source = self.link_path
+
+    def test_set_link_loc(self):
+        """
+        Test that Builder location is set when it is read as a link
+        """
+        read_io = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        bldr = read_io.read_builder()
+        self.assertEqual(bldr['link_to_test_group'].builder.location, '/')
+        self.assertEqual(bldr['link_to_test_dataset'].builder.location, '/test_group')
+        read_io.close()
+
+    def test_link_to_link(self):
+        """
+        Test that link to link gets written and read properly
+        """
+        link_to_link_path = get_temp_filepath()
+        read_io1 = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        bldr1 = read_io1.read_builder()
+        root3 = GroupBuilder(name='root')
+        root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
+        with HDF5IO(link_to_link_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(root3)
+        read_io1.close()
+
+        read_io2 = HDF5IO(link_to_link_path, manager=_get_manager(), mode='r')
+        bldr2 = read_io2.read_builder()
+        self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
+        read_io2.close()
 
 
 if __name__ == '__main__':

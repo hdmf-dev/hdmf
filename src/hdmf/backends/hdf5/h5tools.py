@@ -310,6 +310,7 @@ class HDF5IO(HDMFIO):
                     # get path of link (the key used for tracking what's been built)
                     target_path = link_type.path
                     builder_name = os.path.basename(target_path)
+                    parent_loc = os.path.dirname(target_path)
                     # get builder if already read, else build it
                     builder = self.__get_built(sub_h5obj.file.filename, target_path)
                     if builder is None:
@@ -319,6 +320,7 @@ class HDF5IO(HDMFIO):
                         else:
                             builder = self.__read_group(sub_h5obj, builder_name, ignore=ignore)
                         self.__set_built(sub_h5obj.file.filename, target_path, builder)
+                    builder.location = parent_loc
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
                     link_builder.written = True
                     kwargs['links'][builder_name] = link_builder
@@ -446,6 +448,8 @@ class HDF5IO(HDMFIO):
             self.write_group(self.__file, gbldr)
         for name, dbldr in f_builder.datasets.items():
             self.write_dataset(self.__file, dbldr, link_data)
+        for name, lbldr in f_builder.links.items():
+            self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
 
@@ -632,6 +636,8 @@ class HDF5IO(HDMFIO):
             target_filename = os.path.abspath(target_builder.source)
             parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
+            if target_builder.location is not None:
+                path = target_builder.location + path
             link_obj = ExternalLink(relative_path, path)
         else:
             msg = 'cannot create external link to %s' % path

@@ -11,6 +11,16 @@ from six import with_metaclass
 from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
 
+class FooMapper(ObjectMapper):
+    """Maps nested 'attr2' attribute on dataset 'my_data' to Foo.attr2 in constructor and attribute map
+    """
+
+    def __init__(self, spec):
+        super(FooMapper, self).__init__(spec)
+        my_data_spec = spec.get_dataset('my_data')
+        self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
+
+
 class TestBase(unittest.TestCase):
 
     def setUp(self):
@@ -37,7 +47,7 @@ class TestBase(unittest.TestCase):
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        self.type_map.register_map(Foo, ObjectMapper)
+        self.type_map.register_map(Foo, FooMapper)
         self.manager = BuildManager(self.type_map)
 
 
@@ -130,13 +140,16 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
 
         self.spec_catalog.register_spec(self.bucket_spec, 'test.yaml')
         self.type_map.register_container_type(CORE_NAMESPACE, 'FooBucket', FooBucket)
-        self.type_map.register_map(FooBucket, ObjectMapper)
+        self.type_map.register_map(FooBucket, self.setUpBucketMapper())
         self.manager = BuildManager(self.type_map)
 
     def setUpBucketBuilder(self):
         raise unittest.SkipTest('Abstract Base Class')
 
     def setUpBucketSpec(self):
+        raise unittest.SkipTest('Abstract Base Class')
+
+    def setUpBucketMapper(self):
         raise unittest.SkipTest('Abstract Base Class')
 
     def test_build(self):
@@ -171,6 +184,9 @@ class TestNestedContainersNoSubgroups(TestNestedBase):
                                          data_type_inc='Foo',
                                          quantity=ZERO_OR_MANY)])
 
+    def setUpBucketMapper(self):
+        return ObjectMapper
+
 
 class TestNestedContainersSubgroup(TestNestedBase):
     '''
@@ -196,6 +212,14 @@ class TestNestedContainersSubgroup(TestNestedBase):
                                      name="test_foo_bucket",
                                      data_type_def='FooBucket',
                                      groups=[tmp_spec])
+
+    def setUpBucketMapper(self):
+        class BucketMapper(ObjectMapper):
+            def __init__(self, spec):
+                super(BucketMapper, self).__init__(spec)
+                self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Foo'))
+
+        return BucketMapper
 
 
 class TestNestedContainersSubgroupSubgroup(TestNestedBase):
@@ -224,6 +248,14 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
                                      name="test_foo_bucket",
                                      data_type_def='FooBucket',
                                      groups=[tmp_spec])
+
+    def setUpBucketMapper(self):
+        class BucketMapper(ObjectMapper):
+            def __init__(self, spec):
+                super(BucketMapper, self).__init__(spec)
+                self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
+
+        return BucketMapper
 
 
 class TestTypeMap(TestBase):
