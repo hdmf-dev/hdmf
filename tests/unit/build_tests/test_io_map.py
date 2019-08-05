@@ -348,6 +348,7 @@ class TestObjectMapperNested(TestObjectMapper):
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
             'data', list(range(10)), attributes={'attr2': 10})},
                                 attributes={'attr1': 'value1'})
+        self._remap_nested_attr()
         builder = self.mapper.build(container_inst, self.manager)
         self.assertDictEqual(builder, expected)
 
@@ -359,14 +360,26 @@ class TestObjectMapperNested(TestObjectMapper):
             'data', list(range(10)), attributes={'attr2': 10})},
                                attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
                                            'object_id': expected.object_id})
+        self._remap_nested_attr()
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
 
     def test_default_mapping_keys(self):
         attr_map = self.mapper.get_attr_names(self.bar_spec)
         keys = set(attr_map.keys())
-        expected = {'attr1', 'data', 'attr2'}
+        expected = {'attr1', 'data', 'data__attr2'}
         self.assertSetEqual(keys, expected)
+
+    def test_remap_keys(self):
+        self._remap_nested_attr()
+        self.assertEqual(self.mapper.get_attr_spec('attr2'),
+                         self.mapper.spec.get_dataset('data').get_attribute('attr2'))
+        self.assertEqual(self.mapper.get_attr_spec('attr1'), self.mapper.spec.get_attribute('attr1'))
+        self.assertEqual(self.mapper.get_attr_spec('data'), self.mapper.spec.get_dataset('data'))
+
+    def _remap_nested_attr(self):
+        data_spec = self.mapper.spec.get_dataset('data')
+        self.mapper.map_spec('attr2', data_spec.get_attribute('attr2'))
 
 
 class TestObjectMapperNoNesting(TestObjectMapper):
