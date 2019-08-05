@@ -598,12 +598,12 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         if spec.name is None:
             name = cls.convert_dt_name(spec)
         name_stack.append(name)
-        if name in all_names:
-            name = "_".join(name_stack)
+        name = '__'.join(name_stack)
         all_names[name] = spec
         if isinstance(spec, BaseStorageSpec):
             if not (spec.data_type_def is None and spec.data_type_inc is None):
                 # don't get names for components in data_types
+                name_stack.pop()
                 return
             for subspec in spec.attributes:
                 cls.__get_fields(name_stack, all_names, subspec)
@@ -643,10 +643,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     def map_attr(self, **kwargs):
         """ Map an attribute to spec. Use this to override default behavior """
         attr_name, spec = getargs('attr_name', 'spec', kwargs)
-        if hasattr(spec, 'name') and spec.name is not None:
-            n = spec.name
-        elif hasattr(spec, 'data_type_def') and spec.data_type_def is not None:
-            n = spec.data_type_def  # noqa: F841
         self.__spec2attr[spec] = attr_name
         self.__attr2spec[attr_name] = spec
 
