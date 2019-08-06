@@ -1,28 +1,28 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Create a report to help us fix a bug
 title: ''
 labels: bug
 assignees: ''
 
 ---
 
-1) Bug
+## Description
 
-If you are reporting a bug please provide the following:
-Steps to Reproduce
+<!--Please provide the following in your bug report:-->
 
-Provide a minimal code snippet here to reproduce this error.
+## Steps to Reproduce
 
-Environment
+<!--Provide a minimal code snippet here to reproduce this error.-->
 
-Please describe your environment according to the following bullet points.
+## Environment
+
+<!--Please describe your environment according to the following bullet points.-->
 
     Python Executable: Conda or Python
-    Python Version: Python 2.7 or Python 3.6
+    Python Version: Python 3.5, 3.6, or 3.7
     Operating System: Windows, macOS or Linux
     HDMF Version: Version of HDMF used
-
 
 ## Checklist
 

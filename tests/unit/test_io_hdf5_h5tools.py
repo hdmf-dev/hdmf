@@ -424,6 +424,12 @@ def _get_manager():
                             data_type_def='FooBucket',
                             groups=[tmp_spec])
 
+    class FooMapper(ObjectMapper):
+        def __init__(self, spec):
+            super(FooMapper, self).__init__(spec)
+            my_data_spec = spec.get_dataset('my_data')
+            self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
+
     class BucketMapper(ObjectMapper):
         def __init__(self, spec):
             super(BucketMapper, self).__init__(spec)
@@ -461,6 +467,7 @@ def _get_manager():
     type_map.register_container_type(CORE_NAMESPACE, 'FooBucket', FooBucket)
     type_map.register_container_type(CORE_NAMESPACE, 'FooFile', FooFile)
 
+    type_map.register_map(Foo, FooMapper)
     type_map.register_map(FooBucket, BucketMapper)
     type_map.register_map(FooFile, FileMapper)
 
