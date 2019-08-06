@@ -552,8 +552,8 @@ class TestHDF5IO(unittest.TestCase):
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath())
-        err_msg = "You argued %s as this object's path, but supplied a file with filename: %s" \
-                  % (self.path, self.file_obj.filename)
+        err_msg = re.escape("You argued %s as this object's path, but supplied a file with filename: %s"
+                            % (self.path, self.file_obj.filename))
         with self.assertRaisesRegex(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
 
