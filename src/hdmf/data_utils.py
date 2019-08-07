@@ -201,8 +201,6 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 sel = np.s_[start_index:stop_index, ...] if len(self.data.shape) > 1 else np.s_[start_index:stop_index]
                 self.__next_chunk.data = self.data[sel]
                 self.__next_chunk.selection = sel
-                print(self.chunk_index, sel)
-
         elif self.__data_iter is not None:
             curr_next_chunk = []
             for i in range(self.buffer_size):
