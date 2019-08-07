@@ -203,9 +203,16 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__next_chunk.selection = sel
         elif self.__data_iter is not None:
             curr_next_chunk = []
+            curr_chunk_offset = 0
             for i in range(self.buffer_size):
                 try:
-                    curr_next_chunk.append(next(self.__data_iter))
+                    dat = next(self.__data_iter)
+                    if dat is None and i > 0:  # Stop iteration if we hit empty data while constructing our block
+                        break
+                    elif dat is None and i == curr_chunk_offset: # Skip forward in our chunk until we find data
+                        curr_chunk_offset += 1
+                    else:  # Add the data t our block
+                        curr_next_chunk.append(dat)
                 except StopIteration:
                     pass
             next_chunk_size = len(curr_next_chunk)
@@ -214,10 +221,14 @@ class DataChunkIterator(AbstractDataChunkIterator):
             else:
                 self.__next_chunk.data = np.asarray(curr_next_chunk)
                 if self.__next_chunk.selection is None:
-                    self.__next_chunk.selection = slice(0, next_chunk_size)
+                    self.__next_chunk.selection = slice(start=curr_chunk_offset,
+                                                        stop=curr_chunk_offset+next_chunk_size)
                 else:
-                    self.__next_chunk.selection = slice(self.__next_chunk.selection.stop,
-                                                        self.__next_chunk.selection.stop+next_chunk_size)
+                    self.__next_chunk.selection = slice(start=self.__next_chunk.selection.stop +
+                                                              curr_chunk_offset,
+                                                        stop=self.__next_chunk.selection.stop +
+                                                             next_chunk_size +
+                                                             curr_chunk_offset)
         else:
             self.__next_chunk = DataChunk(None, None)
 
