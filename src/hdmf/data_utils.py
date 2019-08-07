@@ -128,6 +128,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                                                                              'dtype',
                                                                              'buffer_size',
                                                                              kwargs)
+        self.chunk_index = 0
         # Create an iterator for the data if possible
         self.__data_iter = iter(self.data) if isinstance(self.data, Iterable) else None
         self.__next_chunk = DataChunk(None, None)
@@ -187,7 +188,22 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
         :returns: self.__next_chunk, i.e., the DataChunk object describing the next chunk
         """
-        if self.__data_iter is not None:
+        from h5py import Dataset as H5Dataset
+        if isinstance(self.data, H5Dataset):
+            start_index = self.chunk_index * self.buffer_size
+            stop_index = start_index + self.buffer_size
+            if start_index > self.data.shape[0]:
+                self.__next_chunk = DataChunk(None, None)
+            else:
+                if stop_index > self.data.shape[0]:
+                    stop_index = self.data.shape[0]
+
+                sel = np.s_[start_index:stop_index, ...] if len(self.data.shape) > 1 else np.s_[start_index:stop_index]
+                self.__next_chunk.data = self.data[sel]
+                self.__next_chunk.selection = sel
+                print(self.chunk_index, sel)
+
+        elif self.__data_iter is not None:
             curr_next_chunk = []
             for i in range(self.buffer_size):
                 try:
@@ -206,6 +222,8 @@ class DataChunkIterator(AbstractDataChunkIterator):
                                                         self.__next_chunk.selection.stop+next_chunk_size)
         else:
             self.__next_chunk = DataChunk(None, None)
+
+        self.chunk_index += 1
 
         return self.__next_chunk
 
