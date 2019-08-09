@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from hdmf.container import Container
+from hdmf.container import Container, Data
 
 
 class Subcontainer(Container):
@@ -120,6 +120,43 @@ Fields:
     def test_type_hierarchy(self):
         self.assertEqual(Container.type_hierarchy(), (Container, object))
         self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, object))
+
+
+class SubData(Data):
+
+    def __init__(self, name, data):
+        super(SubData, self).__init__(name=name)
+        self.__data = data
+
+    @property
+    def data(self):
+        return self.__data
+
+
+class TestData(unittest.TestCase):
+
+    def test_bool_true(self):
+        """Test that __bool__ method works correctly on data with len
+        """
+        data_obj = SubData('my_data', [1, 2, 3, 4, 5])
+        self.assertTrue(data_obj)
+
+    def test_bool_false(self):
+        """Test that __bool__ method works correctly on empty data
+        """
+        data_obj = SubData('my_data', '')
+        self.assertFalse(data_obj)
+
+        data_obj = SubData('my_data', [])
+        self.assertFalse(data_obj)
+
+    def test_bool_no_len(self):
+        """Test that__bool__ method works correctly on data with no len
+        """
+        data_obj = SubData('my_data', Container(''))
+        err_msg = '__bool__ must be implemented when data has no __len__'
+        with self.assertRaisesRegex(NotImplementedError, err_msg):
+            bool(data_obj)
 
 
 if __name__ == '__main__':
