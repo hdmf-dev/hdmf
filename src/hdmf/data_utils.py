@@ -198,37 +198,32 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__next_chunk.data = self.data[selection]
                 self.__next_chunk.selection = selection
         elif self.__data_iter is not None:
-            curr_next_chunk = None  # the chunk that we are building
+            curr_next_chunk = []  # the chunks in the buffer
             curr_chunk_offset = 0  # offset of where data begins -- shift the selection by this much later
-            buffer_val_count = 0  # number of values inserted into the buffer so far
-            while buffer_val_count < self.buffer_size:
+            while len(curr_next_chunk) < self.buffer_size:
                 try:
                     dat = next(self.__data_iter)
-                    if dat is None and buffer_val_count == 0:
+                    if dat is None and len(curr_next_chunk) == 0:
                         # Skip forward in our chunk until we find data
                         curr_chunk_offset += 1
-                    elif dat is None and buffer_val_count > 0:
+                    elif dat is None and len(curr_next_chunk) > 0:
                         # Stop iteration if we hit empty data while constructing our block
                         # Buffer may not be full
                         break
                     else:
                         # Add the data to our buffer
-                        if curr_next_chunk is None:
-                            curr_next_chunk = np.asarray(dat)
-                        else:
-                            curr_next_chunk = np.concatenate((curr_next_chunk, np.asarray(dat)), axis=self.iter_axis)
-                        buffer_val_count += 1
+                        curr_next_chunk.append(np.asarray(dat))
                 except StopIteration:
                     break
 
-            if buffer_val_count == 0:
+            if len(curr_next_chunk) == 0:
                 self.__next_chunk = DataChunk(None, None)  # signal end of iteration
             else:
-                self.__next_chunk.data = curr_next_chunk
+                self.__next_chunk.data = np.asarray(curr_next_chunk)
                 if self.__next_chunk.data is None:
                     next_chunk_size = 0  # no data, selection will be empty
                 else:
-                    next_chunk_size = self.__next_chunk.data.shape[self.iter_axis]
+                    next_chunk_size = len(curr_next_chunk)
 
                 if self.__maxshape is None and self.__next_chunk.data is not None:
                     self._set_maxshape_from_next_chunk()
@@ -255,7 +250,11 @@ class DataChunkIterator(AbstractDataChunkIterator):
             # Size of self.__next_chunk.data along self.iter_axis is not accurate for maxshape because it is just a
             # chunk. So try to set maxshape along the dimension self.iter_axis based on the shape of self.data if
             # possible. Otherwise, use None to represent an unlimited size
-            self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
+            if hasattr(self.data, '__len__') and self.iter_axis == 0:
+                # special case of 1-D array
+                self.__maxshape[0] = len(self.data)
+            else:
+                self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
         except AttributeError:
             self.__maxshape[self.iter_axis] = None
         self.__maxshape = tuple(self.__maxshape)
