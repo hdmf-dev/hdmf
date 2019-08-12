@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 try:
     from collections.abc import Iterable  # Python 3
 except ImportError:
@@ -83,7 +83,8 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError("recommended_data_shape not implemented for derived class")
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def dtype(self):
         """
         Define the data type of the array
@@ -92,7 +93,8 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError("dtype not implemented for derived class")
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def maxshape(self):
         """
         Property describing the maximum shape of the data array that is being iterated over
@@ -606,11 +608,13 @@ class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):
     def slice(self):
         return self.__slice
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def __getitem__(self, idx):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def __len__(self):
         pass
 
