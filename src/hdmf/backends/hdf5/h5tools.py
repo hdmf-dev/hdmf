@@ -849,7 +849,7 @@ class HDF5IO(HDMFIO):
         :param data: The data to be written.
         :type data: DataChunkIterator
         :param options: Dict with options for creating a dataset. available options are 'dtype' and 'io_settings'
-        :type data: dict
+        :type options: dict
 
         """
         io_settings = {}

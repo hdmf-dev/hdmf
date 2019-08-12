@@ -7,6 +7,7 @@ except ImportError:
 from operator import itemgetter
 
 import numpy as np
+from warnings import warn
 from six import with_metaclass, text_type, binary_type
 
 from .container import Data, DataRegion
@@ -138,7 +139,20 @@ class DataChunkIterator(AbstractDataChunkIterator):
                                                                                              kwargs)
         self.chunk_index = 0
         # Create an iterator for the data if possible
-        self.__data_iter = iter(self.data) if isinstance(self.data, Iterable) else None
+        if isinstance(self.data, Iterable):
+            if self.iter_axis != 0 and isinstance(self.data, (list, tuple)):
+                warn('Iterating over an axis other than the first dimension of list or tuple data '
+                     'involves converting the data object to a numpy ndarray, which may incur a computational '
+                     'cost.')
+                self.data = np.asarray(self.data)
+            if isinstance(self.data, np.ndarray):
+                # iterate over the given axis by adding a new view on data (iter only works on the first dim)
+                self.__data_iter = iter(np.moveaxis(self.data, self.iter_axis, 0))
+            else:
+                # TODO what if self.axis != 0 and self.data is a generator function
+                self.__data_iter = iter(self.data)
+        else:
+            self.__data_iter = None
         self.__next_chunk = DataChunk(None, None)
         self.__first_chunk_shape = None
         # Determine the shape of the data if possible
@@ -200,35 +214,46 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__next_chunk.data = self.data[selection]
                 self.__next_chunk.selection = selection
         elif self.__data_iter is not None:
-            curr_next_chunk = []  # the chunks in the buffer
-            curr_chunk_offset = 0  # offset of where data begins -- shift the selection by this much later
-            while len(curr_next_chunk) < self.buffer_size:
+            # the pieces in the buffer - first dimension consists of individual calls to next
+            iter_pieces = []
+            # offset of where data begins - shift the selection of where to place this chunk by this much
+            curr_chunk_offset = 0
+            while len(iter_pieces) < self.buffer_size:
                 try:
                     dat = next(self.__data_iter)
-                    if dat is None and len(curr_next_chunk) == 0:
+                    if dat is None and len(iter_pieces) == 0:
                         # Skip forward in our chunk until we find data
                         curr_chunk_offset += 1
-                    elif dat is None and len(curr_next_chunk) > 0:
+                    elif dat is None and len(iter_pieces) > 0:
                         # Stop iteration if we hit empty data while constructing our block
                         # Buffer may not be full
                         break
                     else:
-                        # Add the data to our buffer
-                        curr_next_chunk.append(np.asarray(dat))
+                        # Add pieces of data to our buffer
+                        iter_pieces.append(np.asarray(dat))
                 except StopIteration:
                     break
 
-            if len(curr_next_chunk) == 0:
+            if len(iter_pieces) == 0:
                 self.__next_chunk = DataChunk(None, None)  # signal end of iteration
             else:
-                self.__next_chunk.data = np.asarray(curr_next_chunk)
-                if self.__next_chunk.data is None:
-                    next_chunk_size = 0  # no data, selection will be empty
-                else:
-                    next_chunk_size = len(curr_next_chunk)
+                # concatenate all the pieces into the chunk along the iteration axis
+                piece_shape = list(get_data_shape(iter_pieces[0]))
+                piece_shape.insert(self.iter_axis, 1)  # insert the missing axis
+                next_chunk_shape = piece_shape.copy()
+                next_chunk_shape[self.iter_axis] *= len(iter_pieces)
+                next_chunk_size = next_chunk_shape[self.iter_axis]
 
+                self.__next_chunk.data = np.empty(next_chunk_shape, dtype=iter_pieces[0].dtype)
                 if self.__maxshape is None and self.__next_chunk.data is not None:
                     self._set_maxshape_from_next_chunk()
+
+                piece_selection = [slice(None)] * len(self.__maxshape)
+                piece_selection[self.iter_axis] = slice(0, 1)
+                for piece in iter_pieces:
+                    self.__next_chunk.data[piece_selection] = piece.reshape(piece_shape)
+                    piece_selection[self.iter_axis] = slice(piece_selection[self.iter_axis].start + 1,
+                                                            piece_selection[self.iter_axis].stop + 1)
 
                 if self.__next_chunk.selection is None:
                     prev_chunk_stop = 0  # this is the first chunk

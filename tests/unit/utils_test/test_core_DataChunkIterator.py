@@ -13,9 +13,13 @@ class DataChunkIteratorTests(unittest.TestCase):
         pass
 
     def test_none_iter(self):
-        dci = DataChunkIterator(None)
+        """Test that DataChunkIterator __init__ sets defaults correctly and all chunks and recommended shapes are None.
+        """
+        dci = DataChunkIterator()
         self.assertIsNone(dci.maxshape)
         self.assertIsNone(dci.dtype)
+        self.assertEqual(dci.buffer_size, 1)
+        self.assertEqual(dci.iter_axis, 0)
         count = 0
         for chunk in dci:
             self.assertEqual(chunk.data, None)
@@ -25,17 +29,92 @@ class DataChunkIteratorTests(unittest.TestCase):
         self.assertIsNone(dci.recommended_data_shape())
         self.assertIsNone(dci.recommended_chunk_shape())
 
-    """ def test_numpy_iter_unbuffered(self):
-        a = np.arange(20).reshape(10,2)
+    def test_numpy_iter_unbuffered_first_axis(self):
+        """Test DataChunkIterator with numpy data, no buffering, and iterating on the first dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3)
         dci = DataChunkIterator(data=a, buffer_size=1)
         count = 0
-        for v, l in dci:
-            self.assertEqual(v.shape[0], 1)
-            self.assertEqual(v.shape[1], 2)
-            count+=1
-        self.assertEqual(count, 10)
+        for v in dci:
+            self.assertTupleEqual(v.shape, (1, 2, 3))
+            count += 1
+        self.assertEqual(count, 5)
         self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
-        self.assertIsNone(dci.recommended_chunk_shape())"""
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_numpy_iter_unbuffered_middle_axis(self):
+        """Test DataChunkIterator with numpy data, no buffering, and iterating on a middle dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        dci = DataChunkIterator(data=a, buffer_size=1, iter_axis=1)
+        count = 0
+        for v in dci:
+            self.assertTupleEqual(v.shape, (5, 1, 3))
+            count += 1
+        self.assertEqual(count, 2)
+        self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_numpy_iter_unbuffered_last_axis(self):
+        """Test DataChunkIterator with numpy data, no buffering, and iterating on the last dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        dci = DataChunkIterator(data=a, buffer_size=1, iter_axis=2)
+        count = 0
+        for v in dci:
+            self.assertTupleEqual(v.shape, (5, 2, 1))
+            count += 1
+        self.assertEqual(count, 3)
+        self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_numpy_iter_buffered_first_axis(self):
+        """Test DataChunkIterator with numpy data, buffering, and iterating on the first dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        dci = DataChunkIterator(data=a, buffer_size=2)
+        count = 0
+        for v in dci:
+            if count < 2:
+                self.assertTupleEqual(v.shape, (2, 2, 3))
+            else:
+                self.assertTupleEqual(v.shape, (1, 2, 3))
+            count += 1
+        self.assertEqual(count, 3)
+        self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_numpy_iter_buffered_middle_axis(self):
+        """Test DataChunkIterator with numpy data, buffering, and iterating on a middle dimension.
+        """
+        a = np.arange(45).reshape(5, 3, 3)
+        dci = DataChunkIterator(data=a, buffer_size=2, iter_axis=1)
+        count = 0
+        for v in dci:
+            if count < 1:
+                self.assertTupleEqual(v.shape, (5, 2, 3))
+            else:
+                self.assertTupleEqual(v.shape, (5, 1, 3))
+            count += 1
+        self.assertEqual(count, 2)
+        self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_numpy_iter_buffered_last_axis(self):
+        """Test DataChunkIterator with numpy data, buffering, and iterating on the last dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        dci = DataChunkIterator(data=a, buffer_size=2, iter_axis=2)
+        count = 0
+        for v in dci:
+            if count < 1:
+                self.assertTupleEqual(v.shape, (5, 2, 2))
+            else:
+                self.assertTupleEqual(v.shape, (5, 2, 1))
+            count += 1
+        self.assertEqual(count, 2)
+        self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
+        self.assertIsNone(dci.recommended_chunk_shape())
 
     def test_numpy_iter_unmatched_buffer_size(self):
         a = np.arange(10)
@@ -45,9 +124,9 @@ class DataChunkIteratorTests(unittest.TestCase):
         count = 0
         for chunk in dci:
             if count < 3:
-                self.assertEqual(chunk.data.shape[0], 3)
+                self.assertTupleEqual(chunk.data.shape, (3,))
             else:
-                self.assertEqual(chunk.data.shape[0], 1)
+                self.assertTupleEqual(chunk.data.shape, (1,))
             count += 1
         self.assertEqual(count, 4)
         self.assertTupleEqual(dci.recommended_data_shape(), a.shape)
@@ -60,7 +139,7 @@ class DataChunkIteratorTests(unittest.TestCase):
         self.assertTupleEqual(dci.recommended_data_shape(), (10,))  # Test before and after iteration
         count = 0
         for chunk in dci:
-            self.assertEqual(chunk.data.shape[0], 1)
+            self.assertTupleEqual(chunk.data.shape, (1,))
             count += 1
         self.assertEqual(count, 10)
         self.assertTupleEqual(dci.recommended_data_shape(), (10,))  # Test before and after iteration
@@ -75,14 +154,16 @@ class DataChunkIteratorTests(unittest.TestCase):
         count = 0
         for chunk in dci:
             if count < 3:
-                self.assertEqual(chunk.data.shape[0], 3)
+                self.assertTupleEqual(chunk.data.shape, (3,))
             else:
-                self.assertEqual(chunk.data.shape[0], 1)
+                self.assertTupleEqual(chunk.data.shape, (1,))
             count += 1
-        self.assertTupleEqual(dci.recommended_data_shape(), (10,))  # Test before and after iteration
         self.assertEqual(count, 4)
+        self.assertTupleEqual(dci.recommended_data_shape(), (10,))  # Test before and after iteration
 
-    def test_multidimensional_list(self):
+    def test_multidimensional_list_first_axis(self):
+        """Test DataChunkIterator with multidimensional list data, no buffering, and iterating on the first dimension.
+        """
         a = np.arange(30).reshape(5, 2, 3).tolist()
         dci = DataChunkIterator(a)
         self.assertTupleEqual(dci.maxshape, (5, 2, 3))
@@ -92,6 +173,44 @@ class DataChunkIteratorTests(unittest.TestCase):
             self.assertTupleEqual(chunk.data.shape, (1, 2, 3))
             count += 1
         self.assertEqual(count, 5)
+        self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 3))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_multidimensional_list_middle_axis(self):
+        """Test DataChunkIterator with multidimensional list data, no buffering, and iterating on a middle dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3).tolist()
+        warn_msg = 'Iterating over an axis other than the first dimension of list or tuple data ' \
+                   'involves converting the data object to a numpy ndarray, which may incur a computational ' \
+                   'cost.'
+        with self.assertWarnsRegex(UserWarning, warn_msg):
+            dci = DataChunkIterator(a, iter_axis=1)
+        self.assertTupleEqual(dci.maxshape, (5, 2, 3))
+        self.assertEqual(dci.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci:
+            self.assertTupleEqual(chunk.data.shape, (5, 1, 3))
+            count += 1
+        self.assertEqual(count, 2)
+        self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 3))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_multidimensional_list_last_axis(self):
+        """Test DataChunkIterator with multidimensional list data, no buffering, and iterating on the last dimension.
+        """
+        a = np.arange(30).reshape(5, 2, 3).tolist()
+        warn_msg = 'Iterating over an axis other than the first dimension of list or tuple data ' \
+                   'involves converting the data object to a numpy ndarray, which may incur a computational ' \
+                   'cost.'
+        with self.assertWarnsRegex(UserWarning, warn_msg):
+            dci = DataChunkIterator(a, iter_axis=2)
+        self.assertTupleEqual(dci.maxshape, (5, 2, 3))
+        self.assertEqual(dci.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci:
+            self.assertTupleEqual(chunk.data.shape, (5, 2, 1))
+            count += 1
+        self.assertEqual(count, 3)
         self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 3))
         self.assertIsNone(dci.recommended_chunk_shape())
 
