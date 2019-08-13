@@ -154,6 +154,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         else:
             self.__data_iter = None
         self.__next_chunk = DataChunk(None, None)
+        self.__next_chunk_start = 0
         self.__first_chunk_shape = None
         # Determine the shape of the data if possible
         if self.__maxshape is None:
@@ -218,6 +219,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
             iter_pieces = []
             # offset of where data begins - shift the selection of where to place this chunk by this much
             curr_chunk_offset = 0
+            read_next_empty = False
             while len(iter_pieces) < self.buffer_size:
                 try:
                     dat = next(self.__data_iter)
@@ -226,7 +228,8 @@ class DataChunkIterator(AbstractDataChunkIterator):
                         curr_chunk_offset += 1
                     elif dat is None and len(iter_pieces) > 0:
                         # Stop iteration if we hit empty data while constructing our block
-                        # Buffer may not be full
+                        # Buffer may not be full.
+                        read_next_empty = True
                         break
                     else:
                         # Add pieces of data to our buffer
@@ -255,15 +258,16 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     piece_selection[self.iter_axis] = slice(piece_selection[self.iter_axis].start + 1,
                                                             piece_selection[self.iter_axis].stop + 1)
 
-                if self.__next_chunk.selection is None:
-                    prev_chunk_stop = 0  # this is the first chunk
-                else:
-                    prev_chunk_stop = self.__next_chunk.selection[self.iter_axis].stop
-
                 selection = [slice(None)] * len(self.__maxshape)
-                selection[self.iter_axis] = slice(prev_chunk_stop + curr_chunk_offset,
-                                                  prev_chunk_stop + curr_chunk_offset + next_chunk_size)
+                selection[self.iter_axis] = slice(self.__next_chunk_start + curr_chunk_offset,
+                                                  self.__next_chunk_start + curr_chunk_offset + next_chunk_size)
                 self.__next_chunk.selection = tuple(selection)
+
+                # next chunk should start at self.__next_chunk.selection[self.iter_axis].stop
+                # but if this chunk stopped because of reading empty data, then this should be adjusted by 1
+                self.__next_chunk_start = self.__next_chunk.selection[self.iter_axis].stop
+                if read_next_empty:
+                    self.__next_chunk_start += 1
         else:
             self.__next_chunk = DataChunk(None, None)
 

@@ -870,6 +870,8 @@ class HDF5IO(HDMFIO):
             if (options is not None) and ('dtype' in options):
                 io_settings['dtype'] = options['dtype']
             else:
+                if data.dtype is None:
+                    raise Exception("Could not create dataset %s in %s when data.dtype is None" % (name, parent.name))
                 io_settings['dtype'] = data.dtype
         try:
             dset = parent.create_dataset(name, **io_settings)
