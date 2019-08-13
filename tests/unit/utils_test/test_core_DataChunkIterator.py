@@ -424,7 +424,6 @@ class DataChunkIteratorTests(unittest.TestCase):
         self.assertIsNone(dci.recommended_chunk_shape())
 
 
-
 class DataChunkTests(unittest.TestCase):
 
     def setUp(self):
