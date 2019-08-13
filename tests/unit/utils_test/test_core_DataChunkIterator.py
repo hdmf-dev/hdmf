@@ -22,11 +22,23 @@ class DataChunkIteratorTests(unittest.TestCase):
         self.assertEqual(dci.iter_axis, 0)
         count = 0
         for chunk in dci:
-            self.assertEqual(chunk.data, None)
-            self.assertEqual(chunk.selection, None)
-            count += 1
+            pass
         self.assertEqual(count, 0)
         self.assertIsNone(dci.recommended_data_shape())
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_list_none(self):
+        """Test that DataChunkIterator has no dtype or chunks when given a list of None.
+        """
+        a = [None, None, None]
+        dci = DataChunkIterator(a)
+        self.assertTupleEqual(dci.maxshape, (3,))
+        self.assertIsNone(dci.dtype)
+        count = 0
+        for chunk in dci:
+            pass
+        self.assertEqual(count, 0)
+        self.assertTupleEqual(dci.recommended_data_shape(), (3,))
         self.assertIsNone(dci.recommended_chunk_shape())
 
     def test_numpy_iter_unbuffered_first_axis(self):
@@ -280,6 +292,137 @@ class DataChunkIteratorTests(unittest.TestCase):
         self.assertEqual(count, 1)
         self.assertTupleEqual(dci.recommended_data_shape(), (3,))
         self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_list_scalar(self):
+        a = [3]
+        dci = DataChunkIterator(a, buffer_size=2)
+        self.assertTupleEqual(dci.maxshape, (1,))
+        self.assertEqual(dci.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci:
+            self.assertListEqual(chunk.data.tolist(), [3])
+            self.assertEqual(len(chunk.selection), 1)
+            self.assertEqual(chunk.selection[0], slice(0, 1))
+            count += 1
+        self.assertEqual(count, 1)
+        self.assertTupleEqual(dci.recommended_data_shape(), (1,))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_list_numpy_scalar(self):
+        a = np.array([3])
+        dci = DataChunkIterator(a, buffer_size=2)
+        self.assertTupleEqual(dci.maxshape, (1,))
+        self.assertEqual(dci.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci:
+            self.assertListEqual(chunk.data.tolist(), [3])
+            self.assertEqual(len(chunk.selection), 1)
+            self.assertEqual(chunk.selection[0], slice(0, 1))
+            count += 1
+        self.assertEqual(count, 1)
+        self.assertTupleEqual(dci.recommended_data_shape(), (1,))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_set_maxshape(self):
+        a = np.array([3])
+        dci = DataChunkIterator(a, maxshape=(5, 2, 3), buffer_size=2)
+        self.assertTupleEqual(dci.maxshape, (5, 2, 3))
+        self.assertEqual(dci.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci:
+            self.assertListEqual(chunk.data.tolist(), [3])
+            self.assertTupleEqual(chunk.selection, (slice(0, 1), slice(None), slice(None)))
+            count += 1
+        self.assertEqual(count, 1)
+        self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 3))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_custom_iter_first_axis(self):
+        def my_iter():
+            count = 0
+            a = np.arange(30).reshape(5, 2, 3)
+            while count < a.shape[0]:
+                val = a[count, :, :]
+                count = count + 1
+                yield val
+            return
+        dci = DataChunkIterator(data=my_iter(), buffer_size=2)
+        count = 0
+        for chunk in dci:
+            if count < 2:
+                self.assertTupleEqual(chunk.shape, (2, 2, 3))
+            else:
+                self.assertTupleEqual(chunk.shape, (1, 2, 3))
+            count += 1
+        self.assertEqual(count, 3)
+        # self.assertTupleEqual(dci.recommended_data_shape(), (2, 2, 3))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_custom_iter_middle_axis(self):
+        def my_iter():
+            count = 0
+            a = np.arange(45).reshape(5, 3, 3)
+            while count < a.shape[1]:
+                val = a[:, count, :]
+                count = count + 1
+                yield val
+            return
+        dci = DataChunkIterator(data=my_iter(), buffer_size=2, iter_axis=1)
+        count = 0
+        for chunk in dci:
+            if count < 1:
+                self.assertTupleEqual(chunk.shape, (5, 2, 3))
+            else:
+                self.assertTupleEqual(chunk.shape, (5, 1, 3))
+            count += 1
+        self.assertEqual(count, 2)
+        # self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 3))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_custom_iter_last_axis(self):
+        def my_iter():
+            count = 0
+            a = np.arange(30).reshape(5, 2, 3)
+            while count < a.shape[2]:
+                val = a[:, :, count]
+                count = count + 1
+                yield val
+            return
+        dci = DataChunkIterator(data=my_iter(), buffer_size=2, iter_axis=2)
+        count = 0
+        for chunk in dci:
+            if count < 1:
+                self.assertTupleEqual(chunk.shape, (5, 2, 2))
+            else:
+                self.assertTupleEqual(chunk.shape, (5, 2, 1))
+            count += 1
+        self.assertEqual(count, 2)
+        # self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 2))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
+    def test_custom_iter_mismatched_axis(self):
+        def my_iter():
+            count = 0
+            a = np.arange(30).reshape(5, 2, 3)
+            while count < a.shape[2]:
+                val = a[:, :, count]
+                count = count + 1
+                yield val
+            return
+        # iterator returns slices of size (5, 2)
+        # because iter_axis is by default 0, these chunks will be placed along the first dimension
+        dci = DataChunkIterator(data=my_iter(), buffer_size=2)
+        count = 0
+        for chunk in dci:
+            if count < 1:
+                self.assertTupleEqual(chunk.shape, (2, 5, 2))
+            else:
+                self.assertTupleEqual(chunk.shape, (1, 5, 2))
+            count += 1
+        self.assertEqual(count, 2)
+        # self.assertTupleEqual(dci.recommended_data_shape(), (5, 2, 2))
+        self.assertIsNone(dci.recommended_chunk_shape())
+
 
 
 class DataChunkTests(unittest.TestCase):

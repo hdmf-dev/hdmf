@@ -248,15 +248,16 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 next_chunk_size = next_chunk_shape[self.iter_axis]
 
                 self.__next_chunk.data = np.empty(next_chunk_shape, dtype=iter_pieces[0].dtype)
-                if self.__maxshape is None and self.__next_chunk.data is not None:
-                    self._set_maxshape_from_next_chunk()
 
-                piece_selection = [slice(None)] * len(self.__maxshape)
+                piece_selection = [slice(None)] * len(next_chunk_shape)
                 piece_selection[self.iter_axis] = slice(0, 1)
                 for piece in iter_pieces:
                     self.__next_chunk.data[piece_selection] = piece.reshape(piece_shape)
                     piece_selection[self.iter_axis] = slice(piece_selection[self.iter_axis].start + 1,
                                                             piece_selection[self.iter_axis].stop + 1)
+
+                if self.__maxshape is None:
+                    self._set_maxshape_from_next_chunk()
 
                 selection = [slice(None)] * len(self.__maxshape)
                 selection[self.iter_axis] = slice(self.__next_chunk_start + curr_chunk_offset,
