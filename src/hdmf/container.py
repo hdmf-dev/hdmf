@@ -9,9 +9,8 @@ class Container(with_metaclass(ExtenderMeta, object)):
 
     _fieldsname = '__fields__'
 
-    # @docval({'name': 'container_source', 'type': str, 'doc': 'source of this Container', 'default': None},
-    #         {'name': 'object_id', 'type': str, 'doc': 'UUID4 unique identifier for this Container', 'default': None},
-    #         {'name': 'parent', 'type': str, 'doc': 'parent Container for this Container', 'default': None})
+    __fields__ = tuple()
+
     def __new__(cls, *args, **kwargs):
         inst = super(Container, cls).__new__(cls)
         inst.__container_source = kwargs.pop('container_source', None)
@@ -28,9 +27,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-
-    def __repr__(self):
-        return "<%s '%s' at 0x%d>" % (self.__class__.__name__, self.name, id(self))
+        self.__fields = dict()
 
     @property
     def object_id(self):
@@ -128,21 +125,215 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
+    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to search for', 'default': None})
+    def get_ancestor(self, **kwargs):
+        """
+        Traverse parent hierarchy and return first instance of the specified data_type
+        """
+        data_type = getargs('data_type', kwargs)
+        if data_type is None:
+            return self.parent
+        p = self.parent
+        while p is not None:
+            if p.data_type == data_type:
+                return p
+            p = p.parent
+        return None
+
+    @property
+    def fields(self):
+        return self.__fields
+
+    @staticmethod
+    def _transform_arg(field):
+        tmp = field
+        if isinstance(tmp, dict):
+            if 'name' not in tmp:
+                raise ValueError("must specify 'name' if using dict in __fields__")
+        else:
+            tmp = {'name': tmp}
+        return tmp
+
+    @classmethod
+    def _getter(cls, field):
+        doc = field.get('doc')
+        name = field['name']
+
+        def getter(self):
+            return self.fields.get(name)
+
+        setattr(getter, '__doc__', doc)
+        return getter
+
+    @classmethod
+    def _setter(cls, field):
+        name = field['name']
+
+        if not field.get('settable', True):
+            return None
+
+        def setter(self, val):
+            if val is None:
+                return
+            if name in self.fields:
+                msg = "can't set attribute '%s' -- already set" % name
+                raise AttributeError(msg)
+            self.fields[name] = val
+
+        return setter
+
+    @ExtenderMeta.pre_init
+    def __gather_fields(cls, name, bases, classdict):
+        '''
+        This classmethod will be called during class declaration in the metaclass to automatically
+        create setters and getters for fields that need to be exported
+        '''
+        if not isinstance(cls.__fields__, tuple):
+            raise TypeError("'__fields__' must be of type tuple")
+
+        if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
+                and bases[-1].__fields__ is not cls.__fields__:
+            new_fields = list(cls.__fields__)
+            new_fields[0:0] = bases[-1].__fields__
+            cls.__fields__ = tuple(new_fields)
+        new_fields = list()
+        docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
+        for f in cls.__fields__:
+            pconf = cls._transform_arg(f)
+            pname = pconf['name']
+            pconf.setdefault('doc', docs.get(pname))
+            if not hasattr(cls, pname):
+                setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
+            new_fields.append(pname)
+        cls.__fields__ = tuple(new_fields)
+
+    def __repr__(self):
+        template = "\n{} {}\nFields:\n""".format(getattr(self, 'name'), type(self))
+        for k in sorted(self.fields):  # sorted to enable tests
+            v = self.fields[k]
+            if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
+                template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
+        return template
+
+    @staticmethod
+    def __smart_str(v, num_indent):
+        """
+        Print compact string representation of data.
+
+        If v is a list, try to print it using numpy. This will condense the string
+        representation of datasets with many elements. If that doesn't work, just print the list.
+
+        If v is a dictionary, print the name and type of each element
+
+        If v is a set, print it sorted
+
+        If v is a neurodata_type, print the name of type
+
+        Otherwise, use the built-in str()
+        Parameters
+        ----------
+        v
+
+        Returns
+        -------
+        str
+
+        """
+
+        if isinstance(v, list) or isinstance(v, tuple):
+            if len(v) and isinstance(v[0], Container):
+                return Container.__smart_str_list(v, num_indent, '(')
+            try:
+                return str(np.asarray(v))
+            except ValueError:
+                return Container.__smart_str_list(v, num_indent, '(')
+        elif isinstance(v, dict):
+            return Container.__smart_str_dict(v, num_indent)
+        elif isinstance(v, set):
+            return Container.__smart_str_list(sorted(list(v)), num_indent, '{')
+        elif isinstance(v, Container):
+            return "{} {}".format(getattr(v, 'name'), type(v))
+        else:
+            return str(v)
+
+    @staticmethod
+    def __smart_str_list(l, num_indent, left_br):
+        if left_br == '(':
+            right_br = ')'
+        if left_br == '{':
+            right_br = '}'
+        if len(l) == 0:
+            return left_br + ' ' + right_br
+        indent = num_indent * 2 * ' '
+        indent_in = (num_indent + 1) * 2 * ' '
+        out = left_br
+        for v in l[:-1]:
+            out += '\n' + indent_in + Container.__smart_str(v, num_indent + 1) + ','
+        if l:
+            out += '\n' + indent_in + Container.__smart_str(l[-1], num_indent + 1)
+        out += '\n' + indent + right_br
+        return out
+
+    @staticmethod
+    def __smart_str_dict(d, num_indent):
+        left_br = '{'
+        right_br = '}'
+        if len(d) == 0:
+            return left_br + ' ' + right_br
+        indent = num_indent * 2 * ' '
+        indent_in = (num_indent + 1) * 2 * ' '
+        out = left_br
+        keys = sorted(list(d.keys()))
+        for k in keys[:-1]:
+            out += '\n' + indent_in + Container.__smart_str(k, num_indent + 1) + ' ' + str(type(d[k])) + ','
+        if keys:
+            out += '\n' + indent_in + Container.__smart_str(keys[-1], num_indent + 1) + ' ' + str(type(d[keys[-1]]))
+        out += '\n' + indent + right_br
+        return out
+
 
 class Data(Container):
 
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
+            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
+    def __init__(self, **kwargs):
+        call_docval_func(super(Data, self).__init__, kwargs)
+        self.__data = getargs('data', kwargs)
+
     @property
-    @abstractmethod
     def data(self):
-        '''
-        The data that is held by this Container
-        '''
-        pass
+        return self.__data
 
     def __bool__(self):
         if not hasattr(self.data, '__len__'):
             raise NotImplementedError('__bool__ must be implemented when data has no __len__')
         return len(self.data) != 0
+
+    def __len__(self):
+        return len(self.__data)
+
+    def __getitem__(self, args):
+        if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list)):
+            return [self.data[i] for i in args]
+        return self.data[args]
+
+    def append(self, arg):
+        if isinstance(self.data, list):
+            self.data.append(arg)
+        elif isinstance(self.data, np.ndarray):
+            self.__data = np.append(self.__data, [arg])
+        else:
+            msg = "NWBData cannot append to object of type '%s'" % type(self.__data)
+            raise ValueError(msg)
+
+    def extend(self, arg):
+        if isinstance(self.data, list):
+            self.data.extend(arg)
+        elif isinstance(self.data, np.ndarray):
+            self.__data = np.append(self.__data, [arg])
+        else:
+            msg = "NWBData cannot extend object of type '%s'" % type(self.__data)
+            raise ValueError(msg)
 
 
 class DataRegion(Data):
