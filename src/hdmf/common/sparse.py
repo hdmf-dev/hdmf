@@ -1,16 +1,20 @@
-from ..container import Container
 import scipy.sparse as sps
 import numpy as np
 import h5py
+
+from ..container import Container
+from ..utils import docval, getargs, call_docval_func
 
 from . import register_class
 
 @register_class('CSRMatrix')
 class CSRMatrix(Container):
 
-    @docval({'name': 'data', 'type': (sps.csr_matrix, np.ndarray, h5py.Dataset), 'doc': 'the data to use for this CSRMatrix'},
-            {'name': 'indptr', 'type': (np.ndarray, h5py.Dataset), 'doc': '', 'default': None},
-            {'name': 'indices', 'type': (np.ndarray, h5py.Dataset), 'doc': '', 'default': None},
+    @docval({'name': 'data', 'type': (sps.csr_matrix, np.ndarray, h5py.Dataset),
+             'doc': 'the data to use for this CSRMatrix or CSR data array.'\
+                    'If passing CSR data array, *indices*, *indptr*, and *shape* must also be provided'},
+            {'name': 'indices', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index array', 'default': None},
+            {'name': 'indptr', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index pointer array', 'default': None},
             {'name': 'shape', 'type': (list, tuple, np.ndarray), 'doc': 'the shape of the matrix', 'default': None},
             {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'})
     def __init__(self, **kwargs):
@@ -21,6 +25,8 @@ class CSRMatrix(Container):
                 data = sps.csr_matrix(self.data)
             elif data.ndim == 1:
                 indptr, indices, shape = getargs('indptr', 'indices', 'shape', kwargs)
+                if any(_ is None for _ in (indptr, indices, shape)):
+                    raise ValueError("must specify indptr, indices, and shape when passing data array")
                 self.__check_ind(indptr, 'indptr')
                 self.__check_ind(indices, 'indices')
                 if len(shape) != 2:

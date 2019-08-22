@@ -1,18 +1,86 @@
+import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
-from .utils import docval, getargs, ExtenderMeta
+from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
 from warnings import warn
 
 
-class Container(with_metaclass(ExtenderMeta, object)):
+class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
     _fieldsname = '__fields__'
 
     __fields__ = tuple()
 
+    _pconf_allowed_keys = {'name', 'doc', 'settable'}
+
+    # Override the _setter factor function, so directives that apply to
+    # Container do not get used on Data
+    @classmethod
+    def _setter(cls, field):
+        name = field['name']
+
+        if not field.get('settable', True):
+            return None
+
+        def setter(self, val):
+            if val is None:
+                return
+            if name in self.fields:
+                msg = "can't set attribute '%s' -- already set" % name
+                raise AttributeError(msg)
+            self.fields[name] = val
+
+        return setter
+
+    @classmethod
+    def _getter(cls, field):
+        doc = field.get('doc')
+        name = field['name']
+
+        def getter(self):
+            return self.fields.get(name)
+
+        setattr(getter, '__doc__', doc)
+        return getter
+
+    @staticmethod
+    def _transform_arg(field):
+        tmp = field
+        if isinstance(tmp, dict):
+            if 'name' not in tmp:
+                raise ValueError("must specify 'name' if using dict in __fields__")
+        else:
+            tmp = {'name': tmp}
+        return tmp
+
+    @ExtenderMeta.pre_init
+    def __gather_fields(cls, name, bases, classdict):
+        '''
+        This classmethod will be called during class declaration in the metaclass to automatically
+        create setters and getters for fields that need to be exported
+        '''
+        if not isinstance(cls.__fields__, tuple):
+            raise TypeError("'__fields__' must be of type tuple")
+
+        if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
+                and bases[-1].__fields__ is not cls.__fields__:
+            new_fields = list(cls.__fields__)
+            new_fields[0:0] = bases[-1].__fields__
+            cls.__fields__ = tuple(new_fields)
+        new_fields = list()
+        docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
+        for f in cls.__fields__:
+            pconf = cls._transform_arg(f)
+            pname = pconf['name']
+            pconf.setdefault('doc', docs.get(pname))
+            if not hasattr(cls, pname):
+                setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
+            new_fields.append(pname)
+        cls.__fields__ = tuple(new_fields)
+
     def __new__(cls, *args, **kwargs):
-        inst = super(Container, cls).__new__(cls)
+        inst = super().__new__(cls)
         inst.__container_source = kwargs.pop('container_source', None)
         inst.__parent = None
         inst.__children = list()
@@ -28,6 +96,32 @@ class Container(with_metaclass(ExtenderMeta, object)):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__fields = dict()
+
+    @property
+    def name(self):
+        '''
+        The name of this Container
+        '''
+        return self.__name
+
+    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to search for', 'default': None})
+    def get_ancestor(self, **kwargs):
+        """
+        Traverse parent hierarchy and return first instance of the specified data_type
+        """
+        data_type = getargs('data_type', kwargs)
+        if data_type is None:
+            return self.parent
+        p = self.parent
+        while p is not None:
+            if p.data_type == data_type:
+                return p
+            p = p.parent
+        return None
+
+    @property
+    def fields(self):
+        return self.__fields
 
     @property
     def object_id(self):
@@ -60,7 +154,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
             # if child.parent is a Container, then the mismatch between child.parent and parent
             # is used to make a soft/external link from the parent to a child elsewhere
             # if child.parent is not a Container, it is either None or a Proxy and should be set to self
-            if not isinstance(child.parent, Container):
+            if not isinstance(child.parent, AbstractContainer):
                 # actually add the child to the parent in parent setter
                 child.parent = self
         else:
@@ -69,13 +163,6 @@ class Container(with_metaclass(ExtenderMeta, object)):
     @classmethod
     def type_hierarchy(cls):
         return cls.__mro__
-
-    @property
-    def name(self):
-        '''
-        The name of this Container
-        '''
-        return self.__name
 
     @property
     def container_source(self):
@@ -96,7 +183,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         The parent Container of this Container
         '''
         # do it this way because __parent may not exist yet (not set in constructor)
-        return getattr(self, '_Container__parent', None)
+        return getattr(self, '_AbstractContainer__parent', None)
 
     @parent.setter
     def parent(self, parent_container):
@@ -104,7 +191,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
             return
 
         if self.parent is not None:
-            if isinstance(self.parent, Container):
+            if isinstance(self.parent, AbstractContainer):
                 raise ValueError(('Cannot reassign parent to Container: %s. '
                                   'Parent is already: %s.' % (repr(self), repr(self.parent))))
             else:
@@ -125,93 +212,63 @@ class Container(with_metaclass(ExtenderMeta, object)):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to search for', 'default': None})
-    def get_ancestor(self, **kwargs):
-        """
-        Traverse parent hierarchy and return first instance of the specified data_type
-        """
-        data_type = getargs('data_type', kwargs)
-        if data_type is None:
-            return self.parent
-        p = self.parent
-        while p is not None:
-            if p.data_type == data_type:
-                return p
-            p = p.parent
-        return None
 
-    @property
-    def fields(self):
-        return self.__fields
 
-    @staticmethod
-    def _transform_arg(field):
-        tmp = field
-        if isinstance(tmp, dict):
-            if 'name' not in tmp:
-                raise ValueError("must specify 'name' if using dict in __fields__")
-        else:
-            tmp = {'name': tmp}
-        return tmp
+class Container(AbstractContainer):
 
-    @classmethod
-    def _getter(cls, field):
-        doc = field.get('doc')
-        name = field['name']
-
-        def getter(self):
-            return self.fields.get(name)
-
-        setattr(getter, '__doc__', doc)
-        return getter
+    _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
     @classmethod
     def _setter(cls, field):
-        name = field['name']
+        super_setter = AbstractContainer._setter(field)
+        ret = [super_setter]
+        if isinstance(field, dict):
+            for k in field.keys():
+                if k not in cls._pconf_allowed_keys:
+                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" %\
+                           (k, field['name'], cls.__name__)
+                    raise ValueError(msg)
+            if field.get('required_name', None) is not None:
+                name = field['required_name']
+                idx1 = len(ret) - 1
 
-        if not field.get('settable', True):
-            return None
+                def container_setter(self, val):
+                    if val is not None and val.name != name:
+                        msg = "%s field on %s must be named '%s'" % (field['name'], self.__class__.__name__, name)
+                        raise ValueError(msg)
+                    ret[idx1](self, val)
 
-        def setter(self, val):
-            if val is None:
-                return
-            if name in self.fields:
-                msg = "can't set attribute '%s' -- already set" % name
-                raise AttributeError(msg)
-            self.fields[name] = val
+                ret.append(container_setter)
+            if field.get('child', False):
+                idx2 = len(ret) - 1
 
-        return setter
+                def container_setter(self, val):
+                    ret[idx2](self, val)
+                    if val is not None:
+                        if isinstance(val, (tuple, list)):
+                            pass
+                        elif isinstance(val, dict):
+                            val = val.values()
+                        else:
+                            val = [val]
+                        for v in val:
+                            if not isinstance(v.parent, Container):
+                                v.parent = self
+                            # else, the ObjectMapper will create a link from self (parent) to v (child with existing
+                            # parent)
 
-    @ExtenderMeta.pre_init
-    def __gather_fields(cls, name, bases, classdict):
-        '''
-        This classmethod will be called during class declaration in the metaclass to automatically
-        create setters and getters for fields that need to be exported
-        '''
-        if not isinstance(cls.__fields__, tuple):
-            raise TypeError("'__fields__' must be of type tuple")
-
-        if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
-                and bases[-1].__fields__ is not cls.__fields__:
-            new_fields = list(cls.__fields__)
-            new_fields[0:0] = bases[-1].__fields__
-            cls.__fields__ = tuple(new_fields)
-        new_fields = list()
-        docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
-        for f in cls.__fields__:
-            pconf = cls._transform_arg(f)
-            pname = pconf['name']
-            pconf.setdefault('doc', docs.get(pname))
-            if not hasattr(cls, pname):
-                setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
-            new_fields.append(pname)
-        cls.__fields__ = tuple(new_fields)
+                ret.append(container_setter)
+        return ret[-1]
 
     def __repr__(self):
-        template = "\n{} {}\nFields:\n""".format(getattr(self, 'name'), type(self))
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d" % (self.name, cls.__module__, cls.__name__, id(self))
+        if len(self.fields):
+            template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
+            # if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
+            if hasattr(v, '__len__') or len(v) > 0:
                 template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
         return template
 
@@ -241,7 +298,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         """
 
         if isinstance(v, list) or isinstance(v, tuple):
-            if len(v) and isinstance(v[0], Container):
+            if len(v) and isinstance(v[0], AbstractContainer):
                 return Container.__smart_str_list(v, num_indent, '(')
             try:
                 return str(np.asarray(v))
@@ -292,7 +349,7 @@ class Container(with_metaclass(ExtenderMeta, object)):
         return out
 
 
-class Data(Container):
+class Data(AbstractContainer):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
@@ -305,8 +362,6 @@ class Data(Container):
         return self.__data
 
     def __bool__(self):
-        if not hasattr(self.data, '__len__'):
-            raise NotImplementedError('__bool__ must be implemented when data has no __len__')
         return len(self.data) != 0
 
     def __len__(self):

@@ -20,20 +20,20 @@ __rct_kwargs = list()
 
 
 # a function to register a container classes with the global map
-@docval({'name': 'neurodata_type', 'type': str, 'doc': 'the neurodata_type to get the spec for'},
+@docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
         {'name': 'namespace', 'type': str, 'doc': 'the name of the namespace', 'default': CORE_NAMESPACE},
         {"name": "container_cls", "type": type,
-         "doc": "the class to map to the specified neurodata_type", 'default': None},
+         "doc": "the class to map to the specified data_type", 'default': None},
         is_method=False)
 def register_class(**kwargs):
-    """Register an NWBContainer class to use for reading and writing a neurodata_type from a specification
+    """Register an NWBContainer class to use for reading and writing a data_type from a specification
     If container_cls is not specified, returns a decorator for registering an NWBContainer subclass
-    as the class for neurodata_type in namespace.
+    as the class for data_type in namespace.
     """
-    neurodata_type, namespace, container_cls = getargs('neurodata_type', 'namespace', 'container_cls', kwargs)
+    data_type, namespace, container_cls = getargs('data_type', 'namespace', 'container_cls', kwargs)
 
     def _dec(cls):
-        __rct_kwargs.append({'data_type': neurodata_type, 'namespace': namespace, 'container_cls': cls})
+        __rct_kwargs.append({'data_type': data_type, 'namespace': namespace, 'container_cls': cls})
         return cls
     if container_cls is None:
         return _dec
@@ -117,6 +117,7 @@ elif os.path.exists(__resources['namespace_path']):
     from . import io as __io  # noqa: F401,E402
 
     from . import table  # noqa: F401,E402
+    from . import sparse  # noqa: F401,E402
 
     for _ in __rct_kwargs:
         __TYPE_MAP.register_container_type(**_)
@@ -126,7 +127,7 @@ else:
     raise RuntimeError("Unable to load a TypeMap")
 
 
-DynamiceTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamiceTable')
+DynamicTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTable')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
 
 
@@ -180,15 +181,15 @@ def get_manager(**kwargs):
 
 
 # a function to get the container class for a give type
-@docval({'name': 'neurodata_type', 'type': str,
-         'doc': 'the neurodata_type to get the Container class for'},
-        {'name': 'namespace', 'type': str, 'doc': 'the namespace the neurodata_type is defined in'},
+@docval({'name': 'data_type', 'type': str,
+         'doc': 'the data_type to get the Container class for'},
+        {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
         is_method=False)
 def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
     """
-    neurodata_type, namespace = getargs('neurodata_type', 'namespace', kwargs)
-    return __TYPE_MAP.get_container_cls(namespace, neurodata_type)
+    data_type, namespace = getargs('data_type', 'namespace', kwargs)
+    return __TYPE_MAP.get_container_cls(namespace, data_type)
 
 
 @docval({'name': 'io', 'type': HDMFIO,

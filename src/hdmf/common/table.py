@@ -12,7 +12,7 @@ from six import with_metaclass
 @register_class('Index')
 class Index(Data):
 
-    __nwbfields__ = ("target",)
+    __fields__ = ("target",)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'data', 'type': ('array_data', 'data'),
@@ -26,7 +26,7 @@ class Index(Data):
 @register_class('VectorData')
 class VectorData(Data):
 
-    __nwbfields__ = ("description",)
+    __fields__ = ("description",)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
@@ -91,12 +91,12 @@ class ElementIdentifiers(Data):
 class DynamicTable(Container):
     r"""
     A column-based table. Columns are defined by the argument *columns*. This argument
-    must be a list/tuple of :class:`~pynwb.core.VectorData` and :class:`~pynwb.core.VectorIndex` objects
+    must be a list/tuple of :class:`~hdmf.common.table.VectorData` and :class:`~hdmf.common.table.VectorIndex` objects
     or a list/tuple of dicts containing the keys ``name`` and ``description`` that provide the name and description
     of each column in the table. Additionally, the keys ``index`` and ``table`` for specifying additional structure to
     the table columns. Setting the key ``index`` to ``True`` can be used to indicate that the
-    :class:`~pynwb.core.VectorData` column will store a ragged array (i.e. will be accompanied with a
-    :class:`~pynwb.core.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the column
+    :class:`~hdmf.common.table.VectorData` column will store a ragged array (i.e. will be accompanied with a
+    :class:`~hdmf.common.table.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the column
     will store regions to another DynamicTable.
 
     Columns in DynamicTable subclasses can be statically defined by specifying the class attribute *\_\_columns\_\_*,
@@ -105,7 +105,7 @@ class DynamicTable(Container):
     for specifying table columns with the *columns* argument to the DynamicTable constructor.
     """
 
-    __nwbfields__ = (
+    __fields__ = (
         {'name': 'id', 'child': True},
         {'name': 'columns', 'child': True},
         'colnames',
@@ -247,6 +247,7 @@ class DynamicTable(Container):
                 self.add_column(col['name'], col['description'],
                                 index=col.get('index', False),
                                 table=col.get('table', False))
+
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -502,7 +503,7 @@ class DynamicTable(Container):
         parameter. We recommend that you supply *columns* - a list/tuple of
         dictionaries containing the name and description of the column- to help
         others understand the contents of your table. See
-        :py:class:`~pynwb.core.DynamicTable` for more details on *columns*.
+        :py:class:`~hdmf.common.table.DynamicTable` for more details on *columns*.
         '''
 
         columns = kwargs.pop('columns')
@@ -510,6 +511,7 @@ class DynamicTable(Container):
         name = kwargs.pop('name')
         index_column = kwargs.pop('index_column')
         table_description = kwargs.pop('table_description')
+        column_descriptions = kwargs.pop('column_descriptions', dict())
 
         supplied_columns = dict()
         if columns:
@@ -530,7 +532,7 @@ class DynamicTable(Container):
                 columns.append(supplied_columns[col_name])
             else:
                 columns.append({'name': col_name,
-                                'description': 'no description'})
+                                'description': column_descriptions.get(col_name, 'no description')})
                 if hasattr(df[col_name].iloc[0], '__len__') and not isinstance(df[col_name].iloc[0], str):
                     lengths = [len(x) for x in df[col_name]]
                     if not lengths[1:] == lengths[:-1]:
@@ -562,7 +564,7 @@ class DynamicTableRegion(VectorData):
     An object for easily slicing into a DynamicTable
     """
 
-    __nwbfields__ = (
+    __fields__ = (
         'table',
         'description'
     )
