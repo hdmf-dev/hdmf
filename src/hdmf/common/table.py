@@ -1,4 +1,4 @@
-from h5py import RegionReference, Dataset
+from h5py import Dataset
 import numpy as np
 import pandas as pd
 
@@ -6,7 +6,6 @@ from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, py
 from ..container import Container, Data
 
 from . import register_class
-from six import with_metaclass
 
 
 @register_class('Index')
@@ -96,8 +95,8 @@ class DynamicTable(Container):
     of each column in the table. Additionally, the keys ``index`` and ``table`` for specifying additional structure to
     the table columns. Setting the key ``index`` to ``True`` can be used to indicate that the
     :class:`~hdmf.common.table.VectorData` column will store a ragged array (i.e. will be accompanied with a
-    :class:`~hdmf.common.table.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the column
-    will store regions to another DynamicTable.
+    :class:`~hdmf.common.table.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the
+    column will store regions to another DynamicTable.
 
     Columns in DynamicTable subclasses can be statically defined by specifying the class attribute *\_\_columns\_\_*,
     rather than specifying them at runtime at the instance level. This is useful for defining a table structure
@@ -247,7 +246,6 @@ class DynamicTable(Container):
                 self.add_column(col['name'], col['description'],
                                 index=col.get('index', False),
                                 table=col.get('table', False))
-
 
     @staticmethod
     def __build_columns(columns, df=None):

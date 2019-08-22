@@ -3,14 +3,11 @@ for reading and writing data in NWB format
 '''
 import os.path
 from copy import deepcopy
-from warnings import warn
-
-import h5py
 
 CORE_NAMESPACE = 'hdmf-common'
 
 from ..spec import NamespaceCatalog  # noqa: E402
-from ..utils import docval, getargs, popargs, call_docval_func  # noqa: E402
+from ..utils import docval, getargs, call_docval_func  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402

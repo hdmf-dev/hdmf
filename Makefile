@@ -43,7 +43,7 @@ flake:
 	$(FLAKE) --ignore E402,W504 docs/gallery
 
 checkpdb:
-	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print -e breakpoint {} \;
+	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print\( -e breakpoint {} \;
 
 devtest:
 	$(PYTHON) -W ignore:::pynwb.form.build.map: test.py -fpi

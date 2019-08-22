@@ -10,6 +10,8 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
     _fieldsname = '__fields__'
 
+    _data_type_attr = 'data_type'
+
     __fields__ = tuple()
 
     _pconf_allowed_keys = {'name', 'doc', 'settable'}
@@ -60,24 +62,26 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         This classmethod will be called during class declaration in the metaclass to automatically
         create setters and getters for fields that need to be exported
         '''
-        if not isinstance(cls.__fields__, tuple):
-            raise TypeError("'__fields__' must be of type tuple")
+        fields = getattr(cls, cls._fieldsname)
+        if not isinstance(fields, tuple):
+            msg = "'%s' must be of type tuple" % cls._fieldsname
+            raise TypeError(msg)
 
         if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
-                and bases[-1].__fields__ is not cls.__fields__:
-            new_fields = list(cls.__fields__)
-            new_fields[0:0] = bases[-1].__fields__
-            cls.__fields__ = tuple(new_fields)
+                and getattr(bases[-1], bases[-1]._fieldsname) is not fields:
+            new_fields = list(fields)
+            new_fields[0:0] = getattr(bases[-1], bases[-1]._fieldsname)
+            setattr(cls, cls._fieldsname, tuple(new_fields))
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
-        for f in cls.__fields__:
+        for f in getattr(cls, cls._fieldsname):
             pconf = cls._transform_arg(f)
             pname = pconf['name']
             pconf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
                 setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
             new_fields.append(pname)
-        cls.__fields__ = tuple(new_fields)
+        setattr(cls, cls._fieldsname, tuple(new_fields))
 
     def __new__(cls, *args, **kwargs):
         inst = super().__new__(cls)
@@ -114,7 +118,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
             return self.parent
         p = self.parent
         while p is not None:
-            if p.data_type == data_type:
+            if getattr(p, self._data_type_attr) == data_type:
                 return p
             p = p.parent
         return None
@@ -213,7 +217,6 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
                 parent_container.set_modified()
 
 
-
 class Container(AbstractContainer):
 
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
@@ -268,8 +271,14 @@ class Container(AbstractContainer):
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
             # if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
-            if hasattr(v, '__len__') or len(v) > 0:
-                template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
+            if hasattr(v, '__len__'):
+                if isinstance(v, (np.ndarray, list, tuple)):
+                    if len(v) > 0:
+                        template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
+                elif v:
+                    template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
+            else:
+                template += "  {}: {}\n".format(k, v)
         return template
 
     @staticmethod

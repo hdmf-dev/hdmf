@@ -7,11 +7,12 @@ from ..utils import docval, getargs, call_docval_func
 
 from . import register_class
 
+
 @register_class('CSRMatrix')
 class CSRMatrix(Container):
 
     @docval({'name': 'data', 'type': (sps.csr_matrix, np.ndarray, h5py.Dataset),
-             'doc': 'the data to use for this CSRMatrix or CSR data array.'\
+             'doc': 'the data to use for this CSRMatrix or CSR data array.'
                     'If passing CSR data array, *indices*, *indptr*, and *shape* must also be provided'},
             {'name': 'indices', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index array', 'default': None},
             {'name': 'indptr', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index pointer array', 'default': None},
@@ -51,4 +52,3 @@ class CSRMatrix(Container):
 
     def to_spmat(self):
         return self.__data
-

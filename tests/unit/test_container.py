@@ -1,6 +1,6 @@
 import unittest2 as unittest
 
-from hdmf.container import Container, Data
+from hdmf.container import AbstractContainer, Container, Data
 
 
 class Subcontainer(Container):
@@ -115,8 +115,8 @@ class TestContainer(unittest.TestCase):
         self.assertRegex(str(parent_obj), r"obj1 hdmf.container.Container at 0x\d+")
 
     def test_type_hierarchy(self):
-        self.assertEqual(Container.type_hierarchy(), (Container, object))
-        self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, object))
+        self.assertEqual(Container.type_hierarchy(), (Container, AbstractContainer, object))
+        self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, AbstractContainer, object))
 
 
 class TestData(unittest.TestCase):
