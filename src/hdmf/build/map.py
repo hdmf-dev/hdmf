@@ -1158,16 +1158,16 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     def construct(self, **kwargs):
         ''' Construct an AbstractContainer from the given Builder '''
         builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
-        if builder.name == 'qux':
-            breakpoint()
         cls = manager.get_cls(builder)
         # gather all subspecs
         subspecs = self.__get_subspec_values(builder, self.spec, manager)
         # get the constructor argument that each specification corresponds to
         const_args = dict()
+        if issubclass(cls, Data):
+            if not isinstance(builder, DatasetBuilder):
+                raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
+            const_args['data'] = builder.data
         for subspec, value in subspecs.items():
-            if value.__class__.__name__ == 'Dataset':
-                breakpoint()
             # FOR SOME REASON, no specs are getting mapped to the 'data' constructor argument
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
@@ -1177,8 +1177,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         value = existing_value + value
                 const_args[const_arg] = value
         # build kwargs for the constructor
-        if builder.name == 'qux':
-            breakpoint()
         kwargs = dict()
         for const_arg in get_docval(cls.__init__):
             argname = const_arg['name']
@@ -1191,8 +1189,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 continue
             kwargs[argname] = val
         try:
-            if builder.name == 'qux':
-                breakpoint()
             obj = cls.__new__(cls, container_source=builder.source, parent=parent,
                               object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
