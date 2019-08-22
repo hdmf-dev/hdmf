@@ -3,7 +3,6 @@ from hdmf.common import DynamicTable
 from . import base
 
 import pandas as pd
-import numpy as np
 
 
 class TestDynamicTable(base.TestMapRoundTrip):
@@ -24,9 +23,9 @@ class TestDynamicTable(base.TestMapRoundTrip):
         expected = DynamicTable('test_table', 'the expected table')
         expected.add_column('a', '2d column')
         expected.add_column('b', '1d column')
-        expected.add_row(a=[1,2,3], b='4')
-        expected.add_row(a=[1,2,3], b='5')
-        expected.add_row(a=[1,2,3], b='6')
+        expected.add_row(a=[1, 2, 3], b='4')
+        expected.add_row(a=[1, 2, 3], b='5')
+        expected.add_row(a=[1, 2, 3], b='6')
 
         coldesc = {'a': '2d column', 'b': '1d column'}
 

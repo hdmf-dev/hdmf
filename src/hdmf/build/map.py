@@ -106,7 +106,8 @@ class BuildManager(object):
     def type_map(self):
         return self.__type_map
 
-    @docval({"name": "object", "type": (BaseBuilder, AbstractContainer), "doc": "the container or builder to get a proxy for"},
+    @docval({"name": "object", "type": (BaseBuilder, AbstractContainer),
+             "doc": "the container or builder to get a proxy for"},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None})
     def get_proxy(self, **kwargs):
@@ -857,7 +858,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 # In case of a numeric array stop the iteration at the first element to avoid long-running loop
                 if isinstance(t, (integer_types, float, complex, bool)):
                     break
-                if hasattr(t, '__len__') and not isinstance(t, (AbstractContainer, text_type, binary_type)) and len(t) > 0:
+                if hasattr(t, '__len__') and len(t) > 0 and \
+                   not isinstance(t, (AbstractContainer, text_type, binary_type)):
                     tmptmp = tmp[0]
                     break
             if tmptmp is not None:
@@ -917,7 +919,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         msg = "object of data_type %s not found on %s '%s'" % \
                               (spec.dtype.target_type, type(container).__name__, container.name)
                     else:
-                        msg = "invalid type for reference '%s' (%s) - must be AbstractContainer" % (spec.name, type(attr_value))
+                        msg = "invalid type for reference '%s' (%s) - "\
+                              "must be AbstractContainer" % (spec.name, type(attr_value))
                     raise ValueError(msg)
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
@@ -1197,7 +1200,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             raise_from(Exception(msg), ex)
         return obj
 
-    @docval({'name': 'container', 'type': AbstractContainer, 'doc': 'the AbstractContainer to get the Builder name for'})
+    @docval({'name': 'container', 'type': AbstractContainer,
+             'doc': 'the AbstractContainer to get the Builder name for'})
     def get_builder_name(self, **kwargs):
         '''Get the name of a Builder that represents a AbstractContainer'''
         container = getargs('container', kwargs)
