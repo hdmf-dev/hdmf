@@ -68,43 +68,46 @@ class H5IOTest(unittest.TestCase):
     ##########################################
     #  __chunked_iter_fill__(...) tests
     ##########################################
-    def test__chunked_iter_fill_iterator_matched_buffer_size(self):
-        dci = DataChunkIterator(data=range(10), buffer_size=2)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertListEqual(my_dset[:].tolist(), list(range(10)))
+    def test__chunked_iter_fill(self):
+        """Matrix test of HDF5IO.__chunked_iter_fill__ using a DataChunkIterator with different parameters"""
+        data_opts = {'iterator': range(10),
+                     'numpy': np.arange(30).reshape(5, 2, 3),
+                     'list': np.arange(30).reshape(5, 2, 3).tolist(),
+                     'sparselist1': [1, 2, 3, None, None, None, None, 8, 9, 10],
+                     'sparselist2': [None, None, 3],
+                     'sparselist3': [1, 2, 3, None, None]}
+        buffer_size_opts = [1, 2, 3, 4]
+        for data_type, data in data_opts.items():
+            iter_axis_opts = [0, 1, 2]
+            if data_type == 'iterator' or data_type.startswith('sparselist'):
+                iter_axis_opts = [0]
 
-    def test__chunked_iter_fill_iterator_unmatched_buffer_size(self):
-        dci = DataChunkIterator(data=range(10), buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertListEqual(my_dset[:].tolist(), list(range(10)))
+            for iter_axis in iter_axis_opts:
+                for buffer_size in buffer_size_opts:
+                    with self.subTest(data_type=data_type, iter_axis=iter_axis, buffer_size=buffer_size):
+                        with warnings.catch_warnings(record=True) as w:
+                            dci = DataChunkIterator(data=data, buffer_size=buffer_size, iter_axis=iter_axis)
+                            if len(w) <= 1:
+                                # init may throw UserWarning for iterating over not-first dim of a list
+                                pass
 
-    def test__chunked_iter_fill_numpy_matched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a, buffer_size=1)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
+                        dset_name = '%s, %d, %d' % (data_type, iter_axis, buffer_size)
+                        my_dset = HDF5IO.__chunked_iter_fill__(self.f, dset_name, dci)
 
-    def test__chunked_iter_fill_numpy_unmatched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a, buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_list_matched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a.tolist(), buffer_size=1)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_numpy_unmatched_buffer_size(self):  # noqa: F811
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a.tolist(), buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
+                        if data_type == 'iterator':
+                            self.assertListEqual(my_dset[:].tolist(), list(data))
+                        elif data_type == 'numpy':
+                            self.assertTrue(np.all(my_dset[:] == data))
+                            self.assertTupleEqual(my_dset.shape, data.shape)
+                        elif data_type == 'list':
+                            data_np = np.array(data)
+                            self.assertTrue(np.all(my_dset[:] == data_np))
+                            self.assertTupleEqual(my_dset.shape, data_np.shape)
+                        elif data_type.startswith('sparselist'):
+                            # replace None in original data with default hdf5 fillvalue 0
+                            data_zeros = np.where(np.equal(np.array(data), None), 0, data)
+                            self.assertTrue(np.all(my_dset[:] == data_zeros))
+                            self.assertTupleEqual(my_dset.shape, data_zeros.shape)
 
     ##########################################
     #  write_dataset tests: scalars
