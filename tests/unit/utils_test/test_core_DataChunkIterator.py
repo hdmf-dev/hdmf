@@ -15,9 +15,9 @@ class DataChunkIteratorTests(unittest.TestCase):
     def test_none_iter(self):
         """Test that DataChunkIterator __init__ sets defaults correctly and all chunks and recommended shapes are None.
         """
-        dci = DataChunkIterator()
+        dci = DataChunkIterator(dtype=np.dtype('int'))
         self.assertIsNone(dci.maxshape)
-        self.assertIsNone(dci.dtype)
+        self.assertEqual(dci.dtype, np.dtype('int'))
         self.assertEqual(dci.buffer_size, 1)
         self.assertEqual(dci.iter_axis, 0)
         count = 0
@@ -31,9 +31,17 @@ class DataChunkIteratorTests(unittest.TestCase):
         """Test that DataChunkIterator has no dtype or chunks when given a list of None.
         """
         a = [None, None, None]
-        dci = DataChunkIterator(a)
+        with self.assertRaisesRegex(Exception, 'Data type could not be determined. Please specify dtype in '
+                                    'DataChunkIterator init.'):
+            DataChunkIterator(a)
+
+    def test_list_none_dtype(self):
+        """Test that DataChunkIterator has the passed-in dtype and no chunks when given a list of None.
+        """
+        a = [None, None, None]
+        dci = DataChunkIterator(a, dtype=np.dtype('int'))
         self.assertTupleEqual(dci.maxshape, (3,))
-        self.assertIsNone(dci.dtype)
+        self.assertEqual(dci.dtype, np.dtype('int'))
         count = 0
         for chunk in dci:
             pass

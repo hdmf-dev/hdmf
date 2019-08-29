@@ -400,13 +400,6 @@ class H5IOTest(unittest.TestCase):
         self.assertTupleEqual(dci2.recommended_data_shape(), (1,))
         self.assertIsNone(dci2.recommended_chunk_shape())
 
-    def test_dci_h5dataset_list_none(self):
-        data = [None, None, None, None]
-        dci1 = DataChunkIterator(data=data, buffer_size=3)
-        with self.assertRaisesRegex(Exception, "Could not create dataset %s in %s when data.dtype is None"
-                                               % ('test_dataset', self.f.name)):
-            HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
-
     #############################################
     #  H5DataIO general
     #############################################

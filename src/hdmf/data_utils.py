@@ -149,7 +149,6 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 # iterate over the given axis by adding a new view on data (iter only works on the first dim)
                 self.__data_iter = iter(np.moveaxis(self.data, self.iter_axis, 0))
             else:
-                # TODO what if self.axis != 0 and self.data is a generator function
                 self.__data_iter = iter(self.data)
         else:
             self.__data_iter = None
@@ -183,6 +182,9 @@ class DataChunkIterator(AbstractDataChunkIterator):
         if self.__next_chunk.data is not None:
             self.__dtype = self.__next_chunk.data.dtype
             self.__first_chunk_shape = get_data_shape(self.__next_chunk.data)
+
+        if self.__dtype is None:
+            raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
 
     @classmethod
     @docval(*__docval_init)
@@ -248,14 +250,10 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 next_chunk_shape[self.iter_axis] *= len(iter_pieces)
                 next_chunk_size = next_chunk_shape[self.iter_axis]
 
+                # use the piece dtype because the actual dtype may not have been determined yet
+                # NOTE: this could be problematic if a generator returns e.g. floats first and ints later
                 self.__next_chunk.data = np.empty(next_chunk_shape, dtype=iter_pieces[0].dtype)
-
-                piece_selection = [slice(None)] * len(next_chunk_shape)
-                piece_selection[self.iter_axis] = slice(0, 1)
-                for piece in iter_pieces:
-                    self.__next_chunk.data[piece_selection] = piece.reshape(piece_shape)
-                    piece_selection[self.iter_axis] = slice(piece_selection[self.iter_axis].start + 1,
-                                                            piece_selection[self.iter_axis].stop + 1)
+                self.__next_chunk.data = np.stack(iter_pieces, axis=self.iter_axis)
 
                 if self.__maxshape is None:
                     self._set_maxshape_from_next_chunk()
@@ -288,7 +286,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__maxshape[0] = len(self.data)
             else:
                 self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
-        except AttributeError:
+        except AttributeError:  # from self.data.shape
             self.__maxshape[self.iter_axis] = None
         self.__maxshape = tuple(self.__maxshape)
 
