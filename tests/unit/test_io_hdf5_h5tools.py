@@ -43,27 +43,25 @@ class FooFile(Container):
         return self.__buckets
 
 
+def get_temp_filepath():
+    # On Windows, h5py cannot truncate an open file in write mode.
+    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name
+
+
 class H5IOTest(unittest.TestCase):
     """Tests for h5tools IO tools"""
 
     def setUp(self):
-        self.test_temp_file = tempfile.NamedTemporaryFile()
-
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        self.test_temp_file.close()
-        self.io = HDF5IO(self.test_temp_file.name, mode='a')
+        self.path = get_temp_filepath()
+        self.io = HDF5IO(self.path, mode='a')
         self.f = self.io._file
 
     def tearDown(self):
-        path = self.f.filename
-        self.f.close()
-        os.remove(path)
-        del self.f
-        del self.test_temp_file
-        self.f = None
-        self.test_temp_file = None
+        self.io.close()
+        os.remove(self.path)
 
     ##########################################
     #  __chunked_iter_fill__(...) tests
@@ -76,11 +74,11 @@ class H5IOTest(unittest.TestCase):
                      'sparselist1': [1, 2, 3, None, None, None, None, 8, 9, 10],
                      'sparselist2': [None, None, 3],
                      'sparselist3': [1, 2, 3, None, None]}
-        buffer_size_opts = [1, 2, 3, 4]
+        buffer_size_opts = [1, 2, 3, 4]  # data is divisible by some of these, some not
         for data_type, data in data_opts.items():
             iter_axis_opts = [0, 1, 2]
             if data_type == 'iterator' or data_type.startswith('sparselist'):
-                iter_axis_opts = [0]
+                iter_axis_opts = [0]  # only one dimension
 
             for iter_axis in iter_axis_opts:
                 for buffer_size in buffer_size_opts:
@@ -88,7 +86,7 @@ class H5IOTest(unittest.TestCase):
                         with warnings.catch_warnings(record=True) as w:
                             dci = DataChunkIterator(data=data, buffer_size=buffer_size, iter_axis=iter_axis)
                             if len(w) <= 1:
-                                # init may throw UserWarning for iterating over not-first dim of a list
+                                # init may throw UserWarning for iterating over not-first dim of a list. ignore here
                                 pass
 
                         dset_name = '%s, %d, %d' % (data_type, iter_axis, buffer_size)
@@ -284,6 +282,7 @@ class H5IOTest(unittest.TestCase):
         class DC(DataChunkIterator):
             def recommended_chunk_shape(self):
                 return (5, 1, 1)
+
         dci = DC(data=np.arange(30).reshape(5, 2, 3))
         wrapped_dci = H5DataIO(data=dci,
                                compression='gzip',
@@ -734,12 +733,7 @@ class HDF5IOInitFileExistsTest(unittest.TestCase):
     """ Test if file exists, init with mode w-/x throws error, all others succeed """
 
     def setUp(self):
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.close()
-        self.path = temp_file.name
+        self.path = get_temp_filepath()
         temp_io = HDF5IO(self.path, mode='w')
         temp_io.close()
         self.io = None
@@ -1038,15 +1032,6 @@ class H5DataIOValid(unittest.TestCase):
             self.assertEqual(next(my_iter), 1)
 
 
-def get_temp_filepath():
-    # On Windows h5py cannot truncate an open file in write mode.
-    # The temp file will be closed before h5py truncates it
-    # and will be removed during the tearDown step.
-    temp_file = tempfile.NamedTemporaryFile()
-    temp_file.close()
-    return temp_file.name
-
-
 class TestReadLink(unittest.TestCase):
     def setUp(self):
         self.target_path = get_temp_filepath()
@@ -1094,7 +1079,3 @@ class TestReadLink(unittest.TestCase):
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
-
-
-if __name__ == '__main__':
-    unittest.main()
