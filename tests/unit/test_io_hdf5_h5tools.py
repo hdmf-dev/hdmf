@@ -73,7 +73,9 @@ class H5IOTest(unittest.TestCase):
                      'list': np.arange(30).reshape(5, 2, 3).tolist(),
                      'sparselist1': [1, 2, 3, None, None, None, None, 8, 9, 10],
                      'sparselist2': [None, None, 3],
-                     'sparselist3': [1, 2, 3, None, None]}
+                     'sparselist3': [1, 2, 3, None, None],  # note: cannot process None in ndarray
+                     'nanlist': [[[1, 2, 3, np.nan, np.nan, 6], [np.nan, np.nan, 3, 4, np.nan, np.nan]],
+                                 [[10, 20, 30, 40, np.nan, np.nan], [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]]]}
         buffer_size_opts = [1, 2, 3, 4]  # data is divisible by some of these, some not
         for data_type, data in data_opts.items():
             iter_axis_opts = [0, 1, 2]
@@ -97,14 +99,14 @@ class H5IOTest(unittest.TestCase):
                         elif data_type == 'numpy':
                             self.assertTrue(np.all(my_dset[:] == data))
                             self.assertTupleEqual(my_dset.shape, data.shape)
-                        elif data_type == 'list':
+                        elif data_type == 'list' or data_type == 'nanlist':
                             data_np = np.array(data)
-                            self.assertTrue(np.all(my_dset[:] == data_np))
+                            np.testing.assert_array_equal(my_dset[:], data_np)
                             self.assertTupleEqual(my_dset.shape, data_np.shape)
                         elif data_type.startswith('sparselist'):
                             # replace None in original data with default hdf5 fillvalue 0
                             data_zeros = np.where(np.equal(np.array(data), None), 0, data)
-                            self.assertTrue(np.all(my_dset[:] == data_zeros))
+                            np.testing.assert_array_equal(my_dset[:], data_zeros)
                             self.assertTupleEqual(my_dset.shape, data_zeros.shape)
 
     ##########################################
@@ -296,6 +298,114 @@ class H5IOTest(unittest.TestCase):
         self.assertEqual(dset.compression_opts, 5)
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
+
+    def test_dci_h5dataset(self):
+        data = np.arange(30).reshape(5, 2, 3)
+        dci1 = DataChunkIterator(data=data, buffer_size=1, iter_axis=0)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=2, iter_axis=2)
+
+        chunk = dci2.next()
+        self.assertTupleEqual(chunk.shape, (5, 2, 2))
+        chunk = dci2.next()
+        self.assertTupleEqual(chunk.shape, (5, 2, 1))
+
+        # TODO test chunk data, shape, selection
+
+        self.assertTupleEqual(dci2.recommended_data_shape(), data.shape)
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_sparse_matched(self):
+        data = [1, 2, 3, None, None, None, None, 8, 9, 10]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=2)
+        # dataset is read such that Nones in original data were not written, but are read as 0s
+
+        self.assertTupleEqual(dci2.maxshape, (10,))
+        self.assertEqual(dci2.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci2:
+            self.assertEqual(len(chunk.selection), 1)
+            if count == 0:
+                self.assertListEqual(chunk.data.tolist(), [1, 2])
+                self.assertEqual(chunk.selection[0], slice(0, 2))
+            elif count == 1:
+                self.assertListEqual(chunk.data.tolist(), [3, 0])
+                self.assertEqual(chunk.selection[0], slice(2, 4))
+            elif count == 2:
+                self.assertListEqual(chunk.data.tolist(), [0, 0])
+                self.assertEqual(chunk.selection[0], slice(4, 6))
+            elif count == 3:
+                self.assertListEqual(chunk.data.tolist(), [0, 8])
+                self.assertEqual(chunk.selection[0], slice(6, 8))
+            elif count == 4:
+                self.assertListEqual(chunk.data.tolist(), [9, 10])
+                self.assertEqual(chunk.selection[0], slice(8, 10))
+            count += 1
+
+        self.assertEqual(count, 5)
+        self.assertTupleEqual(dci2.recommended_data_shape(), (10,))
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_sparse_unmatched(self):
+        data = [1, 2, 3, None, None, None, None, 8, 9, 10]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=4)
+        # dataset is read such that Nones in original data were not written, but are read as 0s
+
+        self.assertTupleEqual(dci2.maxshape, (10,))
+        self.assertEqual(dci2.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci2:
+            self.assertEqual(len(chunk.selection), 1)
+            if count == 0:
+                self.assertListEqual(chunk.data.tolist(), [1, 2, 3, 0])
+                self.assertEqual(chunk.selection[0], slice(0, 4))
+            elif count == 1:
+                self.assertListEqual(chunk.data.tolist(), [0, 0, 0, 8])
+                self.assertEqual(chunk.selection[0], slice(4, 8))
+            elif count == 2:
+                self.assertListEqual(chunk.data.tolist(), [9, 10])
+                self.assertEqual(chunk.selection[0], slice(8, 10))
+            count += 1
+
+        self.assertEqual(count, 3)
+        self.assertTupleEqual(dci2.recommended_data_shape(), (10,))
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_scalar(self):
+        data = [1]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=4)
+        # dataset is read such that Nones in original data were not written, but are read as 0s
+
+        self.assertTupleEqual(dci2.maxshape, (1,))
+        self.assertEqual(dci2.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci2:
+            self.assertEqual(len(chunk.selection), 1)
+            if count == 0:
+                self.assertListEqual(chunk.data.tolist(), [1])
+                self.assertEqual(chunk.selection[0], slice(0, 1))
+            count += 1
+
+        self.assertEqual(count, 1)
+        self.assertTupleEqual(dci2.recommended_data_shape(), (1,))
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_list_none(self):
+        data = [None, None, None, None]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        with self.assertRaisesRegex(Exception, "Could not create dataset %s in %s when data.dtype is None"
+                                               % ('test_dataset', self.f.name)):
+            HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
 
     #############################################
     #  H5DataIO general

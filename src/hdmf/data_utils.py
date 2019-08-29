@@ -203,11 +203,12 @@ class DataChunkIterator(AbstractDataChunkIterator):
         if isinstance(self.data, H5Dataset):
             start_index = self.chunk_index * self.buffer_size
             stop_index = start_index + self.buffer_size
-            if start_index > self.data.shape[0]:
+            iter_data_bounds = self.data.shape[self.iter_axis]
+            if start_index >= iter_data_bounds:
                 self.__next_chunk = DataChunk(None, None)
             else:
-                if stop_index > self.data.shape[0]:
-                    stop_index = self.data.shape[0]
+                if stop_index > iter_data_bounds:
+                    stop_index = iter_data_bounds
 
                 selection = [slice(None)] * len(self.__maxshape)
                 selection[self.iter_axis] = slice(start_index, stop_index)
