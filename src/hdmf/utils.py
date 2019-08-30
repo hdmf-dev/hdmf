@@ -117,7 +117,7 @@ def __format_type(argtype):
         raise ValueError("argtype must be a type, str, list, or tuple")
 
 
-def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False):   # noqa: 901
+def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False):   # noqa: C901
     """
     Internal helper function used by the docval decorator to parse and validate function arguments
 

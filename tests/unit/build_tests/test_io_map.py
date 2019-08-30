@@ -87,7 +87,7 @@ class TestGetSubSpec(unittest.TestCase):
         parent_spec = GroupSpec('Something to hold a Bar', 'bar_bucket', groups=[self.bar_spec])
         sub_builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
                                                          'object_id': -1})
-        builder = GroupBuilder('bar_bucket', groups={'my_bar': sub_builder})  # noqa: F841
+        GroupBuilder('bar_bucket', groups={'my_bar': sub_builder})
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, self.bar_spec)
 
@@ -96,7 +96,7 @@ class TestGetSubSpec(unittest.TestCase):
         parent_spec = GroupSpec('Something to hold a Bar', 'my_group', groups=[child_spec])
         sub_builder = GroupBuilder('my_subgroup', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
                                                               'object_id': -1})
-        builder = GroupBuilder('my_group', groups={'my_bar': sub_builder})  # noqa: F841
+        GroupBuilder('my_group', groups={'my_bar': sub_builder})
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, child_spec)
 

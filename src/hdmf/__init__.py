@@ -1,4 +1,3 @@
-# flake8: noqa: F401
 from .container import Container, Data, DataRegion
 from .utils import docval, getargs
 from .data_utils import ListSlicer
