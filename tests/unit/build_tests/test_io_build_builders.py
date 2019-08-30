@@ -137,7 +137,7 @@ class GroupBuilderGetterTests(unittest.TestCase):
         """Test get() for attributes"""
         self.assertEqual(self.gb.get('str_attr'), self.str_attr)
 
-    def test_get_item_soft_link(self):  # noqa: F811
+    def test_get_item_fcn_soft_link(self):
         """Test get() for soft links"""
         self.assertIs(self.gb.get('soft_link1'), self.soft_link1)
 

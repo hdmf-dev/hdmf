@@ -23,12 +23,12 @@ class TestSpecLoad(unittest.TestCase):
             AttributeSpec('attribute6', 'my sixth attribute', 'text')
         ]
         self.datasets = [
-            DatasetSpec('my first dataset',  # noqa: F405
+            DatasetSpec('my first dataset',
                         'int',
                         name='dataset1',
                         attributes=self.dset1_attributes,
                         linkable=True),
-            DatasetSpec('my second dataset',  # noqa: F405
+            DatasetSpec('my second dataset',
                         'int',
                         name='dataset2',
                         dims=(None, None),
@@ -36,7 +36,7 @@ class TestSpecLoad(unittest.TestCase):
                         linkable=True,
                         data_type_def='VoltageArray')
         ]
-        self.spec = GroupSpec('A test group',  # noqa: F405
+        self.spec = GroupSpec('A test group',
                               name='root_constructor_datatype',
                               datasets=self.datasets,
                               attributes=self.attributes,
@@ -46,7 +46,7 @@ class TestSpecLoad(unittest.TestCase):
             AttributeSpec('dset1_extra_attribute', 'an extra attribute for the first dataset', 'text')
         ]
         self.ext_datasets = [
-            DatasetSpec('my first dataset extension',  # noqa: F405
+            DatasetSpec('my first dataset extension',
                         'int',
                         name='dataset1',
                         attributes=dset1_attributes_ext,
@@ -55,13 +55,13 @@ class TestSpecLoad(unittest.TestCase):
         self.ext_attributes = [
             AttributeSpec('ext_extra_attribute', 'an extra attribute for the group', 'text'),
         ]
-        self.ext_spec = GroupSpec('A test group extension',  # noqa: F405
-                                   name='root_constructor_datatype',
-                                   datasets=self.ext_datasets,
-                                   attributes=self.ext_attributes,
-                                   linkable=False,
-                                   data_type_inc='EphysData',
-                                   data_type_def='SpikeData')
+        self.ext_spec = GroupSpec('A test group extension',
+                                  name='root_constructor_datatype',
+                                  datasets=self.ext_datasets,
+                                  attributes=self.ext_attributes,
+                                  linkable=False,
+                                  data_type_inc='EphysData',
+                                  data_type_def='SpikeData')
         to_dump = {'groups': [self.spec, self.ext_spec]}
         self.specs_path = 'test_load_namespace.specs.yaml'
         self.namespace_path = 'test_load_namespace.namespace.yaml'
@@ -74,11 +74,11 @@ class TestSpecLoad(unittest.TestCase):
                 {'source': self.specs_path}
             ]
         }
-        self.namespace = SpecNamespace.build_namespace(**ns_dict)  # noqa: F405
+        self.namespace = SpecNamespace.build_namespace(**ns_dict)
         to_dump = {'namespaces': [self.namespace]}
         with open(self.namespace_path, 'w') as tmp:
             yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
-        self.ns_catalog = NamespaceCatalog()  # noqa: F405
+        self.ns_catalog = NamespaceCatalog()
 
     def tearDown(self):
         if os.path.exists(self.namespace_path):

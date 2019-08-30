@@ -17,18 +17,18 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
 
     def setUp(self):
         self.dset = self.getDataset()
-        self.wrapper = HDMFDataset(self.dset)  # noqa: F405
+        self.wrapper = HDMFDataset(self.dset)
 
     def test_get_dataset(self):
         array = self.wrapper.dataset
-        self.assertIsInstance(array, SortedArray)  # noqa: F405
+        self.assertIsInstance(array, SortedArray)
 
     def test___gt__(self):
         '''
         Test wrapper greater than magic method
         '''
         q = self.wrapper > 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [False, False, False, False, False,
                     False, True, True, True, True]
@@ -40,7 +40,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper greater than or equal magic method
         '''
         q = self.wrapper >= 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [False, False, False, False, False,
                     True, True, True, True, True]
@@ -52,7 +52,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper less than magic method
         '''
         q = self.wrapper < 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [True, True, True, True, True,
                     False, False, False, False, False]
@@ -64,7 +64,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper less than or equal magic method
         '''
         q = self.wrapper <= 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [True, True, True, True, True,
                     True, False, False, False, False]
@@ -76,7 +76,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper equals magic method
         '''
         q = self.wrapper == 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [False, False, False, False, False,
                     True, False, False, False, False]
@@ -88,7 +88,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper not equal magic method
         '''
         q = self.wrapper != 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [True, True, True, True, True,
                     False, True, True, True, True]
@@ -121,7 +121,7 @@ class SortedQueryTest(AbstractQueryTest):
         self.f = File(self.path, 'w')
         self.input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         self.d = self.f.create_dataset('dset', data=self.input)
-        return SortedArray(self.d)  # noqa: F405
+        return SortedArray(self.d)
 
     def tearDown(self):
         self.f.close()
@@ -134,7 +134,7 @@ class LinspaceQueryTest(AbstractQueryTest):
     path = 'LinspaceQueryTest.h5'
 
     def getDataset(self):
-        return LinSpace(0, 10, 1)  # noqa: F405
+        return LinSpace(0, 10, 1)
 
 
 class CompoundQueryTest(unittest.TestCase):

@@ -15,7 +15,7 @@ class MyTestClass(object):
     def basic_add2(self, **kwargs):
         return kwargs
 
-    @docval({'name': 'arg1', 'type': text_type, 'doc': 'argument1 is a str'},  # noqa: F40
+    @docval({'name': 'arg1', 'type': text_type, 'doc': 'argument1 is a str'},
             {'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'})
     def basic_add2_text_type(self, **kwargs):
         return kwargs
@@ -167,7 +167,7 @@ class TestDocValidator(unittest.TestCase):
            with a single positional argument
         """
         with self.assertRaisesRegex(TypeError, "missing argument 'arg1'"):
-            kwargs = self.test_obj.basic_add()  # noqa: F841
+            self.test_obj.basic_add()
 
     def test_docval_add2(self):
         """Test that docval works with two positional
@@ -237,7 +237,7 @@ class TestDocValidator(unittest.TestCase):
            keyword argument value with positional syntax
         """
         with self.assertRaisesRegex(TypeError, r"incorrect type for 'arg2' \(got 'str', expected 'int'\)"):
-            kwargs = self.test_obj.basic_add2_kw('a string', 'bad string')  # noqa: F841
+            self.test_obj.basic_add2_kw('a string', 'bad string')
 
     def test_docval_add_sub(self):
         """Test that docval works with a two positional arguments,
@@ -265,7 +265,7 @@ class TestDocValidator(unittest.TestCase):
            when using default values for keyword arguments
         """
         with self.assertRaisesRegex(TypeError, "missing argument 'arg5'"):
-            kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string')  # noqa: F841
+            self.test_obj_sub.basic_add2_kw('a string', 100, 'another string')
 
     def test_docval_add2_kw_kwsyntax_sub(self):
         """Test that docval works when called with a four positional
@@ -285,7 +285,7 @@ class TestDocValidator(unittest.TestCase):
            argument is specified in both the parent and sublcass implementations
         """
         with self.assertRaisesRegex(TypeError, "missing argument 'arg5'"):
-            kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)  # noqa: F841
+            self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)
 
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
         """Test that docval catches NoneType when called with a four positional
@@ -293,7 +293,7 @@ class TestDocValidator(unittest.TestCase):
            argument is specified in both the parent and sublcass implementations
         """
         with self.assertRaisesRegex(TypeError, r"None is not allowed for 'arg5' \(expected 'float', not None\)"):
-            kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)  # noqa: F841
+            self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)
 
     def test_only_kw_no_args(self):
         """Test that docval parses arguments when only keyword
