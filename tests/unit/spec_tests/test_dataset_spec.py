@@ -102,11 +102,11 @@ class DatasetSpecTests(unittest.TestCase):
         base = GroupSpec('a fake grop',
                          data_type_def='EphysData')
         with self.assertRaises(TypeError):
-            ext = DatasetSpec('my first dataset extension',  # noqa: F841
-                              'int',
-                              name='dataset1',
-                              data_type_inc=base,
-                              data_type_def='SpikeData')
+            DatasetSpec('my first dataset extension',
+                        'int',
+                        name='dataset1',
+                        data_type_inc=base,
+                        data_type_def='SpikeData')
 
     def test_constructor_table(self):
         dtype1 = DtypeSpec('column1', 'the first column', 'int')
@@ -210,10 +210,10 @@ class DatasetSpecTests(unittest.TestCase):
         self.assertEqual(base['doc'], 'my first table')
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'float32')
         with self.assertRaisesRegex(ValueError, 'Cannot extend float64 to float32'):
-            ext = DatasetSpec('my first table extension',  # noqa: F841
-                              [dtype3],
-                              data_type_inc=base,
-                              data_type_def='ExtendedTable')
+            DatasetSpec('my first table extension',
+                        [dtype3],
+                        data_type_inc=base,
+                        data_type_def='ExtendedTable')
 
     def test_datatype_table_extension_diff_format(self):
         dtype1 = DtypeSpec('column1', 'the first column', 'int')
@@ -226,7 +226,7 @@ class DatasetSpecTests(unittest.TestCase):
         self.assertEqual(base['doc'], 'my first table')
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'int32')
         with self.assertRaisesRegex(ValueError, 'Cannot extend float64 to int32'):
-            ext = DatasetSpec('my first table extension',  # noqa: F841
-                          [dtype3],
-                          data_type_inc=base,
-                          data_type_def='ExtendedTable')
+            DatasetSpec('my first table extension',
+                        [dtype3],
+                        data_type_inc=base,
+                        data_type_def='ExtendedTable')

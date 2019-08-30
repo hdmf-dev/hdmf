@@ -358,8 +358,8 @@ class GroupBuilder(BaseBuilder):
            subgroups that contain datasets, attributes or links. False otherwise.
         '''
         if (len(super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset)) or
-            len(super(GroupBuilder, self).__getitem__(GroupBuilder.__attribute)) or
-            len(super(GroupBuilder, self).__getitem__(GroupBuilder.__link))):  # noqa: E129
+                len(super(GroupBuilder, self).__getitem__(GroupBuilder.__attribute)) or
+                len(super(GroupBuilder, self).__getitem__(GroupBuilder.__link))):
             return False
         elif len(super(GroupBuilder, self).__getitem__(GroupBuilder.__group)):
             return all(g.is_empty() for g in super(GroupBuilder, self).__getitem__(GroupBuilder.__group).values())

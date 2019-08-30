@@ -43,7 +43,7 @@ class TestEmptySpec(ValidatorTestBase):
         builder = GroupBuilder('my_bar')
         err_msg = "builder must have data type defined with attribute '[A-Za-z_]+'"
         with self.assertRaisesRegex(ValueError, err_msg):
-            result = self.vmap.validate(builder)  # noqa: F841
+            self.vmap.validate(builder)
 
 
 class TestBasicSpec(ValidatorTestBase):
