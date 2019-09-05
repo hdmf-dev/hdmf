@@ -317,7 +317,7 @@ class Container(AbstractContainer):
             return Container.__smart_str_dict(v, num_indent)
         elif isinstance(v, set):
             return Container.__smart_str_list(sorted(list(v)), num_indent, '{')
-        elif isinstance(v, Container):
+        elif isinstance(v, AbstractContainer):
             return "{} {}".format(getattr(v, 'name'), type(v))
         else:
             return str(v)
