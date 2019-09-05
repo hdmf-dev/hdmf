@@ -3,7 +3,7 @@ import re
 import numpy as np
 import warnings
 from collections import OrderedDict
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime
 from six import with_metaclass, raise_from, text_type, binary_type, integer_types
 
@@ -1392,7 +1392,7 @@ class TypeMap(object):
         docval_args = list()
         new_args = list()
         fields = list()
-        for arg in get_docval(base.__init__):
+        for arg in deepcopy(get_docval(base.__init__)):
             existing_args.add(arg['name'])
             if arg['name'] in addl_fields:
                 continue
