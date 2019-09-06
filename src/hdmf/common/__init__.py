@@ -13,6 +13,10 @@ from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
 
 
+# a global type map
+global __TYPE_MAP
+
+
 __rct_kwargs = list()
 
 
@@ -31,6 +35,7 @@ def register_class(**kwargs):
 
     def _dec(cls):
         __rct_kwargs.append({'data_type': data_type, 'namespace': namespace, 'container_cls': cls})
+        __TYPE_MAP.register_container_type(namespace, data_type, cls)
         return cls
     if container_cls is None:
         return _dec
@@ -55,6 +60,7 @@ def register_map(**kwargs):
 
     def _dec(cls):
         __rm_kwargs.append({'mapper_cls': cls, 'container_cls': container_cls})
+        __TYPE_MAP.register_map(container_cls, cls)
         return cls
     if mapper_cls is None:
         return _dec
@@ -77,10 +83,6 @@ def __get_resources():
 def _get_resources():
     # LEGACY: Needed to support legacy implementation.
     return __get_resources()
-
-
-# a global type map
-global __TYPE_MAP
 
 
 @docval({'name': 'namespace_path', 'type': str,
