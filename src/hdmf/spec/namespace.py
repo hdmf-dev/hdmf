@@ -243,6 +243,10 @@ class NamespaceCatalog(object):
         ret.__included_sources = copy(self.__included_sources)
         return ret
 
+    def merge(self, ns_catalog):
+        for name, namespace in ns_catalog.__namespaces.items():
+            self.add_namespace(name, namespace)
+
     @property
     @docval(returns='a tuple of the available namespaces', rtype=tuple)
     def namespaces(self):
