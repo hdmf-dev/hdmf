@@ -5,7 +5,6 @@ from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTab
 from . import base
 
 import pandas as pd
-import numpy as np
 
 
 class TestDynamicTable(unittest.TestCase):
