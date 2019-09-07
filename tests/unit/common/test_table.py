@@ -1,8 +1,11 @@
-from hdmf.common import DynamicTable
+import unittest2 as unittest
+
+from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
 
 from . import base
 
 import pandas as pd
+import numpy as np
 
 
 class TestDynamicTable(unittest.TestCase):
@@ -145,17 +148,6 @@ class TestDynamicTable(unittest.TestCase):
         val = table[2, 2]
         self.assertEqual(val, 30.0)
 
-    def test_add_to_file(self):
-        table = self.with_spec()
-        self.add_rows(table)
-
-        nwbfile = NWBFile(session_description='session_description',
-                          identifier='identifier', session_start_time=datetime.now(tzlocal()))
-
-        module_behavior = nwbfile.create_processing_module('a', 'b')
-
-        module_behavior.add(table)
-
     def test_pandas_roundtrip(self):
         df = pd.DataFrame({
             'a': [1, 2, 3, 4],
@@ -219,7 +211,7 @@ class TestDynamicTable(unittest.TestCase):
         df = DynamicTable('test', 'desc', np.arange(3, dtype='int'), (col, )).to_dataframe()
         df2 = pd.DataFrame({'name': [x for x in data]},
                            index=pd.Index(name='id', data=[0, 1, 2]))
-        assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(df, df2)
 
 
 class TestDynamicTableRoundTrip(base.TestMapRoundTrip):

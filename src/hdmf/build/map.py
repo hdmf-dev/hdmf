@@ -1284,13 +1284,13 @@ class TypeMap(object):
                 if container_cls in type_map.__mapper_cls:
                     self.register_map(container_cls, type_map.__mapper_cls[container_cls])
 
-    def merge(self, type_map):
+    def merge(self, type_map, ns_catalog=False):
+        if ns_catalog:
+            self.namespace_catalog.merge(type_map.namespace_catalog)
         for namespace in type_map.__container_types:
             for data_type in type_map.__container_types[namespace]:
-
                 container_cls = type_map.__container_types[namespace][data_type]
                 self.register_container_type(namespace, data_type, container_cls)
-
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
 
@@ -1495,6 +1495,17 @@ class TypeMap(object):
                 self.register_container_type(namespace, data_type, ret)
         return ret
 
+    @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder,
+                                     GroupSpec, DatasetSpec),
+             'doc': 'the object to get the type key for'})
+    def __type_key(self, obj):
+        if isinstance(obj, LinkBuilder):
+            obj = obj.builder
+        if isinstance(obj, (GroupBuilder, GroupSpec)):
+            return self.__ns_catalog.group_spec_cls.type_key()
+        else:
+            return self.__ns_catalog.dataset_spec_cls.type_key()
+
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
              'doc': 'the builder to get the data_type for'})
     def get_builder_dt(self, **kwargs):
@@ -1502,7 +1513,13 @@ class TypeMap(object):
         Get the data_type of a builder
         '''
         builder = getargs('builder', kwargs)
-        ret = builder.attributes.get(self.__ns_catalog.group_spec_cls.type_key())
+        ret = None
+        if isinstance(builder, LinkBuilder):
+            builder = builder.builder
+        if isinstance(builder, GroupBuilder):
+            ret = builder.attributes.get(self.__ns_catalog.group_spec_cls.type_key())
+        else:
+            ret = builder.attributes.get(self.__ns_catalog.dataset_spec_cls.type_key())
         if isinstance(ret, bytes):
             ret = ret.decode('UTF-8')
         return ret
@@ -1657,7 +1674,7 @@ class TypeMap(object):
             builder = attr_map.build(container, manager, builder=builder, source=source, spec_ext=spec_ext)
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
-        builder.set_attribute(attr_map.spec.type_key(), data_type)
+        builder.set_attribute(self.__type_key(attr_map.spec), data_type)
         builder.set_attribute(attr_map.spec.id_key(), container.object_id)
         return builder
 

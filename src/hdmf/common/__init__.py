@@ -129,6 +129,7 @@ else:
 DynamicTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTable')
 VectorData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorData')
 VectorIndex = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorIndex')
+ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdentifiers')
 DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
 

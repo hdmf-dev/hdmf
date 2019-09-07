@@ -419,6 +419,10 @@ class NamespaceCatalog(object):
                 for ndt in types:
                     spec = inc_ns.get_spec(ndt)
                     spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+                    if isinstance(spec, DatasetSpec):
+                        spec = self.dataset_spec_cls.build_spec(spec)
+                    else:
+                        spec = self.group_spec_cls.build_spec(spec)
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
