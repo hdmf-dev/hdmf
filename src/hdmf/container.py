@@ -68,9 +68,9 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
             raise TypeError(msg)
 
         if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
-                and getattr(bases[-1], cls._fieldsname) is not fields:
+                and getattr(bases[-1], bases[-1]._fieldsname) is not fields:
             new_fields = list(fields)
-            new_fields[0:0] = getattr(bases[-1], cls._fieldsname)
+            new_fields[0:0] = getattr(bases[-1], bases[-1]._fieldsname)
             setattr(cls, cls._fieldsname, tuple(new_fields))
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
