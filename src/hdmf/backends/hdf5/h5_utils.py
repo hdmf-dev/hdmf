@@ -160,6 +160,7 @@ class H5SpecReader(SpecReader):
         self.__group = getargs('group', kwargs)
         super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
         call_docval_func(super(H5SpecReader, self).__init__, super_kwargs)
+        self.__cache = None
 
     def __read(self, path):
         s = self.__group[path][()]
@@ -177,8 +178,9 @@ class H5SpecReader(SpecReader):
         return self.__read(spec_path)
 
     def read_namespace(self, ns_path):
-        ret = self.__read(ns_path)
-        ret = ret['namespaces']
+        if self.__cache is None:
+            self.__cache = self.__read(ns_path)
+        ret = self.__cache['namespaces']
         return ret
 
 

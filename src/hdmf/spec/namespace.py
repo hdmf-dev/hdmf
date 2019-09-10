@@ -352,11 +352,11 @@ class NamespaceCatalog(object):
             raise ValueError("spec source '%s' already loaded" % spec_source)
 
         def __reg_spec(spec_cls, spec_dict):
-            dt_def = spec_dict.get(spec_cls.def_key())
+            parent_cls = GroupSpec if issubclass(spec_cls, GroupSpec) else DatasetSpec
+            dt_def = spec_dict.get(spec_cls.def_key(), spec_dict.get(parent_cls.def_key()))
             if dt_def is None:
-                msg = 'skipping spec in %s, no %s found' % (spec_source, spec_cls.def_key())
-                warn(msg)
-                return
+                msg = 'no %s or %s found in spec %s' % (spec_cls.def_key(), parent_cls.def_key(), spec_source)
+                raise ValueError(msg)
             if dtypes and dt_def not in dtypes:
                 return
             if resolve:

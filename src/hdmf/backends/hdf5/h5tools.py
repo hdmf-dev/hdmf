@@ -101,14 +101,46 @@ class HDF5IO(HDMFIO):
             if namespaces is None:
                 namespaces = list(spec_group.keys())
 
+            readers = dict()
+            deps = dict()
             for ns in namespaces:
                 ns_group = spec_group[ns]
                 latest_version = list(ns_group.keys())[-1]
                 ns_group = ns_group[latest_version]
                 reader = H5SpecReader(ns_group)
+                readers[ns] = reader
+                for spec_ns in reader.read_namespace('namespace'):
+                    deps[ns] = list()
+                    for s in spec_ns['schema']:
+                        dep = s.get('namespace')
+                        if dep is not None:
+                            deps[ns].append(dep)
+
+            order = cls._order_deps(deps)
+            for ns in order:
+                reader = readers[ns]
                 d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
 
             return d
+
+    @classmethod
+    def _order_deps(cls, deps):
+        order = list()
+        keys = list(deps.keys())
+        deps = dict(deps)
+        for k in keys:
+            if k in deps:
+                cls.__order_deps_aux(order, deps, k)
+        return order
+
+    @classmethod
+    def __order_deps_aux(cls, order, deps, key):
+        if key not in deps:
+            return
+        subdeps = deps.pop(key)
+        for subk in subdeps:
+            cls.__order_deps_aux(order, deps, subk)
+        order.append(key)
 
     @classmethod
     def __convert_namespace(cls, ns_catalog, namespace):
