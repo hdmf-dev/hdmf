@@ -43,68 +43,71 @@ class FooFile(Container):
         return self.__buckets
 
 
+def get_temp_filepath():
+    # On Windows, h5py cannot truncate an open file in write mode.
+    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name
+
+
 class H5IOTest(unittest.TestCase):
     """Tests for h5tools IO tools"""
 
     def setUp(self):
-        self.test_temp_file = tempfile.NamedTemporaryFile()
-
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        self.test_temp_file.close()
-        self.io = HDF5IO(self.test_temp_file.name, mode='a')
+        self.path = get_temp_filepath()
+        self.io = HDF5IO(self.path, mode='a')
         self.f = self.io._file
 
     def tearDown(self):
-        path = self.f.filename
-        self.f.close()
-        os.remove(path)
-        del self.f
-        del self.test_temp_file
-        self.f = None
-        self.test_temp_file = None
+        self.io.close()
+        os.remove(self.path)
 
     ##########################################
     #  __chunked_iter_fill__(...) tests
     ##########################################
-    def test__chunked_iter_fill_iterator_matched_buffer_size(self):
-        dci = DataChunkIterator(data=range(10), buffer_size=2)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertListEqual(my_dset[:].tolist(), list(range(10)))
+    def test__chunked_iter_fill(self):
+        """Matrix test of HDF5IO.__chunked_iter_fill__ using a DataChunkIterator with different parameters"""
+        data_opts = {'iterator': range(10),
+                     'numpy': np.arange(30).reshape(5, 2, 3),
+                     'list': np.arange(30).reshape(5, 2, 3).tolist(),
+                     'sparselist1': [1, 2, 3, None, None, None, None, 8, 9, 10],
+                     'sparselist2': [None, None, 3],
+                     'sparselist3': [1, 2, 3, None, None],  # note: cannot process None in ndarray
+                     'nanlist': [[[1, 2, 3, np.nan, np.nan, 6], [np.nan, np.nan, 3, 4, np.nan, np.nan]],
+                                 [[10, 20, 30, 40, np.nan, np.nan], [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]]]}
+        buffer_size_opts = [1, 2, 3, 4]  # data is divisible by some of these, some not
+        for data_type, data in data_opts.items():
+            iter_axis_opts = [0, 1, 2]
+            if data_type == 'iterator' or data_type.startswith('sparselist'):
+                iter_axis_opts = [0]  # only one dimension
 
-    def test__chunked_iter_fill_iterator_unmatched_buffer_size(self):
-        dci = DataChunkIterator(data=range(10), buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertListEqual(my_dset[:].tolist(), list(range(10)))
+            for iter_axis in iter_axis_opts:
+                for buffer_size in buffer_size_opts:
+                    with self.subTest(data_type=data_type, iter_axis=iter_axis, buffer_size=buffer_size):
+                        with warnings.catch_warnings(record=True) as w:
+                            dci = DataChunkIterator(data=data, buffer_size=buffer_size, iter_axis=iter_axis)
+                            if len(w) <= 1:
+                                # init may throw UserWarning for iterating over not-first dim of a list. ignore here
+                                pass
 
-    def test__chunked_iter_fill_numpy_matched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a, buffer_size=1)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
+                        dset_name = '%s, %d, %d' % (data_type, iter_axis, buffer_size)
+                        my_dset = HDF5IO.__chunked_iter_fill__(self.f, dset_name, dci)
 
-    def test__chunked_iter_fill_numpy_unmatched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a, buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_list_matched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a.tolist(), buffer_size=1)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_numpy_unmatched_buffer_size(self):  # noqa: F811
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a.tolist(), buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
+                        if data_type == 'iterator':
+                            self.assertListEqual(my_dset[:].tolist(), list(data))
+                        elif data_type == 'numpy':
+                            self.assertTrue(np.all(my_dset[:] == data))
+                            self.assertTupleEqual(my_dset.shape, data.shape)
+                        elif data_type == 'list' or data_type == 'nanlist':
+                            data_np = np.array(data)
+                            np.testing.assert_array_equal(my_dset[:], data_np)
+                            self.assertTupleEqual(my_dset.shape, data_np.shape)
+                        elif data_type.startswith('sparselist'):
+                            # replace None in original data with default hdf5 fillvalue 0
+                            data_zeros = np.where(np.equal(np.array(data), None), 0, data)
+                            np.testing.assert_array_equal(my_dset[:], data_zeros)
+                            self.assertTupleEqual(my_dset.shape, data_zeros.shape)
 
     ##########################################
     #  write_dataset tests: scalars
@@ -281,6 +284,7 @@ class H5IOTest(unittest.TestCase):
         class DC(DataChunkIterator):
             def recommended_chunk_shape(self):
                 return (5, 1, 1)
+
         dci = DC(data=np.arange(30).reshape(5, 2, 3))
         wrapped_dci = H5DataIO(data=dci,
                                compression='gzip',
@@ -294,6 +298,107 @@ class H5IOTest(unittest.TestCase):
         self.assertEqual(dset.compression_opts, 5)
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
+
+    def test_dci_h5dataset(self):
+        data = np.arange(30).reshape(5, 2, 3)
+        dci1 = DataChunkIterator(data=data, buffer_size=1, iter_axis=0)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=2, iter_axis=2)
+
+        chunk = dci2.next()
+        self.assertTupleEqual(chunk.shape, (5, 2, 2))
+        chunk = dci2.next()
+        self.assertTupleEqual(chunk.shape, (5, 2, 1))
+
+        # TODO test chunk data, shape, selection
+
+        self.assertTupleEqual(dci2.recommended_data_shape(), data.shape)
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_sparse_matched(self):
+        data = [1, 2, 3, None, None, None, None, 8, 9, 10]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=2)
+        # dataset is read such that Nones in original data were not written, but are read as 0s
+
+        self.assertTupleEqual(dci2.maxshape, (10,))
+        self.assertEqual(dci2.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci2:
+            self.assertEqual(len(chunk.selection), 1)
+            if count == 0:
+                self.assertListEqual(chunk.data.tolist(), [1, 2])
+                self.assertEqual(chunk.selection[0], slice(0, 2))
+            elif count == 1:
+                self.assertListEqual(chunk.data.tolist(), [3, 0])
+                self.assertEqual(chunk.selection[0], slice(2, 4))
+            elif count == 2:
+                self.assertListEqual(chunk.data.tolist(), [0, 0])
+                self.assertEqual(chunk.selection[0], slice(4, 6))
+            elif count == 3:
+                self.assertListEqual(chunk.data.tolist(), [0, 8])
+                self.assertEqual(chunk.selection[0], slice(6, 8))
+            elif count == 4:
+                self.assertListEqual(chunk.data.tolist(), [9, 10])
+                self.assertEqual(chunk.selection[0], slice(8, 10))
+            count += 1
+
+        self.assertEqual(count, 5)
+        self.assertTupleEqual(dci2.recommended_data_shape(), (10,))
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_sparse_unmatched(self):
+        data = [1, 2, 3, None, None, None, None, 8, 9, 10]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=4)
+        # dataset is read such that Nones in original data were not written, but are read as 0s
+
+        self.assertTupleEqual(dci2.maxshape, (10,))
+        self.assertEqual(dci2.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci2:
+            self.assertEqual(len(chunk.selection), 1)
+            if count == 0:
+                self.assertListEqual(chunk.data.tolist(), [1, 2, 3, 0])
+                self.assertEqual(chunk.selection[0], slice(0, 4))
+            elif count == 1:
+                self.assertListEqual(chunk.data.tolist(), [0, 0, 0, 8])
+                self.assertEqual(chunk.selection[0], slice(4, 8))
+            elif count == 2:
+                self.assertListEqual(chunk.data.tolist(), [9, 10])
+                self.assertEqual(chunk.selection[0], slice(8, 10))
+            count += 1
+
+        self.assertEqual(count, 3)
+        self.assertTupleEqual(dci2.recommended_data_shape(), (10,))
+        self.assertIsNone(dci2.recommended_chunk_shape())
+
+    def test_dci_h5dataset_scalar(self):
+        data = [1]
+        dci1 = DataChunkIterator(data=data, buffer_size=3)
+        HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci1)
+        dset = self.f['test_dataset']
+        dci2 = DataChunkIterator(data=dset, buffer_size=4)
+        # dataset is read such that Nones in original data were not written, but are read as 0s
+
+        self.assertTupleEqual(dci2.maxshape, (1,))
+        self.assertEqual(dci2.dtype, np.dtype(int))
+        count = 0
+        for chunk in dci2:
+            self.assertEqual(len(chunk.selection), 1)
+            if count == 0:
+                self.assertListEqual(chunk.data.tolist(), [1])
+                self.assertEqual(chunk.selection[0], slice(0, 1))
+            count += 1
+
+        self.assertEqual(count, 1)
+        self.assertTupleEqual(dci2.recommended_data_shape(), (1,))
+        self.assertIsNone(dci2.recommended_chunk_shape())
 
     #############################################
     #  H5DataIO general
@@ -731,12 +836,7 @@ class HDF5IOInitFileExistsTest(unittest.TestCase):
     """ Test if file exists, init with mode w-/x throws error, all others succeed """
 
     def setUp(self):
-        # On Windows h5py cannot truncate an open file in write mode.
-        # The temp file will be closed before h5py truncates it
-        # and will be removed during the tearDown step.
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file.close()
-        self.path = temp_file.name
+        self.path = get_temp_filepath()
         temp_io = HDF5IO(self.path, mode='w')
         temp_io.close()
         self.io = None
@@ -1035,15 +1135,6 @@ class H5DataIOValid(unittest.TestCase):
             self.assertEqual(next(my_iter), 1)
 
 
-def get_temp_filepath():
-    # On Windows h5py cannot truncate an open file in write mode.
-    # The temp file will be closed before h5py truncates it
-    # and will be removed during the tearDown step.
-    temp_file = tempfile.NamedTemporaryFile()
-    temp_file.close()
-    return temp_file.name
-
-
 class TestReadLink(unittest.TestCase):
     def setUp(self):
         self.target_path = get_temp_filepath()
@@ -1091,7 +1182,3 @@ class TestReadLink(unittest.TestCase):
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
-
-
-if __name__ == '__main__':
-    unittest.main()

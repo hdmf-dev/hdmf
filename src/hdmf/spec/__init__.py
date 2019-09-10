@@ -1,6 +1,3 @@
-# flake8: noqa: F401
-import os.path
-
 from .spec import NAME_WILDCARD
 from .spec import Spec
 from .spec import AttributeSpec

@@ -3,6 +3,7 @@ from copy import deepcopy
 from collections import OrderedDict
 import re
 from warnings import warn
+from six import with_metaclass
 
 from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
 
@@ -16,8 +17,6 @@ FLAGS = {
     'zero_or_many': ZERO_OR_MANY,
     'one_or_many': ONE_OR_MANY
 }
-
-from six import with_metaclass  # noqa: E402
 
 
 class DtypeHelper():
