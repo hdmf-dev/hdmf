@@ -118,7 +118,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
             return self.parent
         p = self.parent
         while p is not None:
-            if getattr(p, self._data_type_attr) == data_type:
+            if getattr(p, p._data_type_attr) == data_type:
                 return p
             p = p.parent
         return None
