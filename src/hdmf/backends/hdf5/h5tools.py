@@ -649,7 +649,7 @@ class HDF5IO(HDMFIO):
         builder.written = True
         return link_obj
 
-    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},  # noqa
+    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},  # noqa: C901
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
@@ -852,7 +852,7 @@ class HDF5IO(HDMFIO):
         :param data: The data to be written.
         :type data: DataChunkIterator
         :param options: Dict with options for creating a dataset. available options are 'dtype' and 'io_settings'
-        :type data: dict
+        :type options: dict
 
         """
         io_settings = {}

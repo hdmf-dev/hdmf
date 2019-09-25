@@ -432,7 +432,7 @@ class GroupValidator(BaseStorageValidator):
                 dt_builders = data_types.get(sub_dt)
                 if dt_builders is not None:
                     if inc_name is not None:
-                        dt_builders = filter(lambda x: x.name == inc_name, dt_builders)  # noqa: F405
+                        dt_builders = filter(lambda x: x.name == inc_name, dt_builders)
                     for bldr in dt_builders:
                         tmp = bldr
                         if isinstance(bldr, LinkBuilder):
