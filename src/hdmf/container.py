@@ -99,7 +99,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
-        self.__fields = dict()
+        self.__field_values = dict()
 
     @property
     def name(self):
@@ -125,7 +125,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
     @property
     def fields(self):
-        return self.__fields
+        return self.__field_values
 
     @property
     def object_id(self):
