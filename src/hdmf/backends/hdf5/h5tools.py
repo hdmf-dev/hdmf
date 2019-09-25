@@ -30,7 +30,8 @@ H5_REGREF = special_dtype(ref=RegionReference)
 class HDF5IO(HDMFIO):
 
     @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-            {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
+            {'name': 'manager', 'type': (TypeMap, BuildManager),
+             'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
             {'name': 'comm', 'type': 'Intracomm',
@@ -58,6 +59,8 @@ class HDF5IO(HDMFIO):
 
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
+        elif isinstance(manager, TypeMap):
+            manager = BuildManager(manager)
         self.__comm = comm
         self.__mode = mode
         self.__path = path
