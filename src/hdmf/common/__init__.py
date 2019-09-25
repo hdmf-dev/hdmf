@@ -64,11 +64,9 @@ def __get_resources():
     from pkg_resources import resource_filename
     from os.path import join
     __core_ns_file_name = 'namespace.yaml'
-    __typemap_pkl_name = 'typemap.pkl'
 
     ret = dict()
     ret['namespace_path'] = join(resource_filename(__name__, 'hdmf-common-schema/common'), __core_ns_file_name)
-    ret['cached_typemap_path'] = resource_filename(__name__, __typemap_pkl_name)
     return ret
 
 
