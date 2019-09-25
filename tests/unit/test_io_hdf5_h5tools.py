@@ -423,15 +423,14 @@ class H5IOTest(unittest.TestCase):
             self.assertEqual(len(w), 1)
             self.assertEqual(dset.io_settings['compression'], 'lzf')
 
-    def test_h5dataio_slide_delegation(self):
+    def test_h5dataio_slice_delegation(self):
         indata = np.arange(30)
         dset = H5DataIO(indata)
         self.assertTrue(np.all(dset[2:15] == indata[2:15]))
 
-        indata = np.arange(50).reshape(5,10)
+        indata = np.arange(50).reshape(5, 10)
         dset = H5DataIO(indata)
         self.assertTrue(np.all(dset[1:3, 5:8] == indata[1:3, 5:8]))
-
 
     def test_warning_on_linking_of_regular_array(self):
         with warnings.catch_warnings(record=True) as w:
