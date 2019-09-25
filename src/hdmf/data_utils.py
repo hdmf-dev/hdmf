@@ -574,6 +574,12 @@ class DataIO(with_metaclass(ABCMeta, object)):
             raise InvalidDataIOError("Cannot get attribute '%s' of data. Data is not valid." % attr)
         return getattr(self.data, attr)
 
+    def __getitem__(self, item):
+        """Delegate slicing to the data object"""
+        if not self.valid:
+            raise InvalidDataIOError("Cannot get item from data. Data is not valid.")
+        return self.data[item]
+
     def __array__(self):
         """
         Support conversion of DataIO.data to a numpy array. This function is
