@@ -17,9 +17,6 @@ from ..build import BuildManager, TypeMap  # noqa: E402
 global __TYPE_MAP
 
 
-__rct_kwargs = list()
-
-
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
         {'name': 'namespace', 'type': str, 'doc': 'the name of the namespace', 'default': CORE_NAMESPACE},
@@ -34,16 +31,12 @@ def register_class(**kwargs):
     data_type, namespace, container_cls = getargs('data_type', 'namespace', 'container_cls', kwargs)
 
     def _dec(cls):
-        __rct_kwargs.append({'data_type': data_type, 'namespace': namespace, 'container_cls': cls})
         __TYPE_MAP.register_container_type(namespace, data_type, cls)
         return cls
     if container_cls is None:
         return _dec
     else:
         _dec(container_cls)
-
-
-__rm_kwargs = list()
 
 
 # a function to register an object mapper for a container class
@@ -59,7 +52,6 @@ def register_map(**kwargs):
     container_cls, mapper_cls = getargs('container_cls', 'mapper_cls', kwargs)
 
     def _dec(cls):
-        __rm_kwargs.append({'mapper_cls': cls, 'container_cls': container_cls})
         __TYPE_MAP.register_map(container_cls, cls)
         return cls
     if mapper_cls is None:
@@ -103,11 +95,7 @@ def available_namespaces():
 
 # load the core namespace i.e. base NWB specification
 __resources = __get_resources()
-if os.path.exists(__resources['cached_typemap_path']):
-    import pickle
-    with open(__resources['cached_typemap_path'], 'rb') as f:
-        __TYPE_MAP = pickle.load(f)
-elif os.path.exists(__resources['namespace_path']):
+if os.path.exists(__resources['namespace_path']):
     __TYPE_MAP = TypeMap(NamespaceCatalog())
 
     load_namespaces(__resources['namespace_path'])
@@ -118,12 +106,8 @@ elif os.path.exists(__resources['namespace_path']):
     from . import table  # noqa: F401,E402
     from . import sparse  # noqa: F401,E402
 
-    for _ in __rct_kwargs:
-        __TYPE_MAP.register_container_type(**_)
-    for _ in __rm_kwargs:
-        __TYPE_MAP.register_map(**_)
 else:
-    raise RuntimeError("Unable to load a TypeMap")
+    raise RuntimeError("Unable to load a TypeMap - no namespace file found")
 
 
 DynamicTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTable')
