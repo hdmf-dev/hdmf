@@ -29,7 +29,7 @@ def get_shape(data):
     """
     Determine the data shape for the given data
     :param data: Array for which the data should be determined
-    :type data: list, ndarray, dict,
+    :type data: list, ndarray, dict
     :return: None in case shape is unknown and shape tuple otherwise
     """
     if isinstance(data, dict):
@@ -204,8 +204,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         return self
 
     def _read_next_chunk(self):
-        """Read a single chunk from self.__data_iter and store the results in
-           self.__next_chunk
+        """Read a single chunk from self.__data_iter and store the results in self.__next_chunk
 
         :returns: self.__next_chunk, i.e., the DataChunk object describing the next chunk
         """
@@ -348,7 +347,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     'recommendation is available')
     def recommended_data_shape(self):
         """Recommend an initial shape of the data. This is useful when progressively writing data and
-        we want to recommend and initial size for the dataset"""
+        we want to recommend an initial size for the dataset"""
         if self.__maxshape is not None:
             if np.all([i is not None for i in self.__maxshape]):
                 return self.__maxshape
@@ -357,10 +356,9 @@ class DataChunkIterator(AbstractDataChunkIterator):
     @property
     def maxshape(self):
         """
-        Get a shape tuple describing the maximum shape of the array described by
-        this DataChunkIterator.
+        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator.
 
-        :return: Shape tuple. None is used for dimenions where the maximum shape is not know or unlimited.
+        :return: Shape tuple. None is used for dimenwions where the maximum shape is not known or unlimited.
         """
         return self.__maxshape
 
@@ -369,7 +367,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         """
         Get the value data type
 
-        :return:  np.dtype object describing the datatype
+        :return: np.dtype object describing the datatype
         """
         return self.__dtype
 
@@ -585,7 +583,7 @@ class ShapeValidatorResult(object):
 @docval_macro('data')
 class DataIO(with_metaclass(ABCMeta, object)):
     """
-    Base class for warpping data arrays for I/O. Derived classes of DataIO are typically
+    Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
     """
     @docval({'name': 'data', 'type': 'array_data', 'doc': 'the data to be written'})
@@ -603,7 +601,7 @@ class DataIO(with_metaclass(ABCMeta, object)):
         Define a custom copy method for shallow copy..
 
         This is needed due to delegation of __getattr__ to the data to
-        ensure propper copy.
+        ensure proper copy.
 
         :return: Shallow copy of self, ie., a new instance of DataIO wrapping the same self.data object
         """
@@ -612,7 +610,7 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
     def __deepcopy__(self, memo):
         """
-        Define a custom copy method for shallow copy.
+        Define a custom copy method for deep copy.
 
         This is needed due to delegation of __getattr__ to the data to
         ensure proper copy.
@@ -677,7 +675,7 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
     @property
     def valid(self):
-        """bool indicating if the data object is svalid"""
+        """bool indicating if the data object is valid"""
         return self.data is not None
 
 
