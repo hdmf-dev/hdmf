@@ -283,6 +283,7 @@ jobs:
       - run:
           name: Run the PyNWB tests
           command: |
+            . ../venv/bin/activate
             cd pynwb
             python test.py -v
 
