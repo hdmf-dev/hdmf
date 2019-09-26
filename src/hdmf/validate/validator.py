@@ -152,7 +152,6 @@ class ValidatorMap(object):
     def __init__(self, **kwargs):
         ns = getargs('namespace', kwargs)
         self.__ns = ns
-        self._ns = ns
         tree = dict()
         types = ns.get_registered_types()
         self.__type_key = ns.get_spec(types[0]).type_key()

@@ -1173,7 +1173,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
             const_args['data'] = builder.data
         for subspec, value in subspecs.items():
-            # FOR SOME REASON, no specs are getting mapped to the 'data' constructor argument
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
                 if isinstance(subspec, BaseStorageSpec) and subspec.is_many():
