@@ -42,7 +42,7 @@ flake:
 	$(FLAKE) tests/
 
 checkpdb:
-	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print -e breakpoint {} \;
+	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print\( -e breakpoint {} \;
 
 devtest:
 	$(PYTHON) test.py

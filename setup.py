@@ -10,7 +10,7 @@ with open('README.rst', 'r') as fp:
 pkgs = find_packages('src', exclude=['data'])
 print('found these packages:', pkgs)
 
-schema_dir = 'data'
+schema_dir = 'common/hdmf-common-schema/common'
 
 setup_args = {
     'name': 'hdmf',
@@ -35,6 +35,7 @@ setup_args = {
     ],
     'packages': pkgs,
     'package_dir': {'': 'src'},
+    'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
     'classifiers': [
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.5",
