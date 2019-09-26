@@ -25,7 +25,7 @@ class DataIOTests(unittest.TestCase):
         self.assertNotEqual(id(obj), id(obj_copy))
         self.assertNotEqual(id(obj.data), id(obj_copy.data))
 
-    def test_dataio_slide_delegation(self):
+    def test_dataio_slice_delegation(self):
         indata = np.arange(30)
         dset = DataIO(indata)
         self.assertTrue(np.all(dset[2:15] == indata[2:15]))
