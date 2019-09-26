@@ -471,12 +471,21 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             return value, spec.dtype
         if isinstance(value, DataIO):
             return value, cls.convert_dtype(spec, value.data)[1]
-        if spec.dtype is None:
-            return value, None
-        if spec.dtype == 'numeric':
-            return value, None
-        if type(value) in cls.__no_convert:
-            return value, None
+        if spec.dtype is None or spec.dtype == 'numeric' or type(value) in cls.__no_convert:
+            # infer type from value
+            if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
+                return value, value.dtype
+            if isinstance(value, (list, tuple)):
+                if len(value) == 0:
+                    msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
+                    raise ValueError(msg)
+                return value, cls.__check_edgecases(spec, value[0])[1]  # infer dtype from first element
+            ret_dtype = type(value)
+            if ret_dtype is str:
+                ret_dtype = 'utf8'
+            elif ret_dtype is bytes:
+                ret_dtype = 'ascii'
+            return value, ret_dtype
         if isinstance(spec.dtype, RefSpec):
             if not isinstance(value, ReferenceBuilder):
                 msg = "got RefSpec for value of type %s" % type(value)
