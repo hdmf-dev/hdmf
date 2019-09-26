@@ -539,7 +539,7 @@ class TestConvertDtype(unittest.TestCase):
             with self.subTest(dtype=dtype):
                 ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
-                self.assertEqual(ret[0].dtype, match[1])
+                self.assertIs(ret[0].dtype, match[1])
 
     def test_keep_higher_precision(self):
         """Test that passing a data type with a precision >= specified return the given type"""
@@ -572,7 +572,7 @@ class TestConvertDtype(unittest.TestCase):
             with self.subTest(dtype=dtype):
                 ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
-                self.assertEqual(ret[0].dtype, match[1])
+                self.assertIs(ret[0].dtype, match[1])
 
     def test_no_spec(self):
         spec_type = None
@@ -582,49 +582,49 @@ class TestConvertDtype(unittest.TestCase):
         ret = ObjectMapper.convert_dtype(spec, value)
         match = (value, int)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(type(ret[0][0]), match[1])
+        self.assertIs(type(ret[0][0]), match[1])
 
         value = np.uint64(4)
         ret = ObjectMapper.convert_dtype(spec, value)
         match = (value, np.uint64)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(type(ret[0]), match[1])
+        self.assertIs(type(ret[0]), match[1])
 
         value = 'hello'
         ret = ObjectMapper.convert_dtype(spec, value)
         match = (value, 'utf8')
         self.assertTupleEqual(ret, match)
-        self.assertEqual(type(ret[0]), str)
+        self.assertIs(type(ret[0]), str)
 
         value = bytes('hello', encoding='utf-8')
         ret = ObjectMapper.convert_dtype(spec, value)
         match = (value, 'ascii')
         self.assertTupleEqual(ret, match)
-        self.assertEqual(type(ret[0]), bytes)
+        self.assertIs(type(ret[0]), bytes)
 
         value = DataChunkIterator(data=[1, 2, 3])
         ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int))
+        match = (value, np.dtype(int).type)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(ret[0].dtype, match[1])
+        self.assertIs(ret[0].dtype.type, match[1])
 
         value = DataChunkIterator(data=[1., 2., 3.])
         ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(float))
+        match = (value, np.dtype(float).type)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(ret[0].dtype, match[1])
+        self.assertIs(ret[0].dtype.type, match[1])
 
         value = H5DataIO(np.arange(30).reshape(5, 2, 3))
         ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int))
+        match = (value, np.dtype(int).type)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(ret[0].dtype, match[1])
+        self.assertIs(ret[0].dtype.type, match[1])
 
         value = H5DataIO(['foo' 'bar'])
         ret = ObjectMapper.convert_dtype(spec, value)
         match = (value, 'utf8')
         self.assertTupleEqual(ret, match)
-        self.assertEqual(type(ret[0].data[0]), str)
+        self.assertIs(type(ret[0].data[0]), str)
 
     def test_numeric_spec(self):
         spec_type = 'numeric'
@@ -634,13 +634,13 @@ class TestConvertDtype(unittest.TestCase):
         ret = ObjectMapper.convert_dtype(spec, value)
         match = (value, np.uint64)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(type(ret[0]), match[1])
+        self.assertIs(type(ret[0]), match[1])
 
         value = DataChunkIterator(data=[1, 2, 3])
         ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int))
+        match = (value, np.dtype(int).type)
         self.assertTupleEqual(ret, match)
-        self.assertEqual(ret[0].dtype, match[1])
+        self.assertIs(ret[0].dtype.type, match[1])
 
 
 if __name__ == '__main__':
