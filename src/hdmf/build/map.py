@@ -474,7 +474,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         if spec.dtype is None or spec.dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
-                return value, value.dtype
+                return value, value.dtype.type
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
                     msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
