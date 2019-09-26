@@ -266,18 +266,25 @@ jobs:
       - run:
           <<: *initialize-venv
       - run:
-          name: Run the PyNWB tests
+          name: Install dev branch of PyNWB and re-install hdmf
           command: |
             . ../venv/bin/activate
             git clone https://github.com/NeurodataWithoutBorders/pynwb.git
             cd pynwb
             pip install -U -rrequirements-dev.txt -rrequirements.txt
             pip check
+            python setup.py develop
+            cd ..
+            python setup.py develop
             pip show hdmf
-            python test.py -v
           # Install is expected to be quick. Increase timeout in case there are some network issues.
           # While pip installing tox does not output by default. Circle thinks task is dead after 10 min.
           no_output_timeout: 30m
+      - run:
+          name: Run the PyNWB tests
+          command: |
+            cd pynwb
+            python test.py -v
 
 workflows:
   version: 2
