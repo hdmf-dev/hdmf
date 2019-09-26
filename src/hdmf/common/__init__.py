@@ -1,5 +1,5 @@
 '''This package will contain functions, classes, and objects
-for reading and writing data in NWB format
+for reading and writing data in according to the HDMF-common specification
 '''
 import os.path
 from copy import deepcopy
@@ -24,8 +24,8 @@ global __TYPE_MAP
          "doc": "the class to map to the specified data_type", 'default': None},
         is_method=False)
 def register_class(**kwargs):
-    """Register an NWBContainer class to use for reading and writing a data_type from a specification
-    If container_cls is not specified, returns a decorator for registering an NWBContainer subclass
+    """Register an Container class to use for reading and writing a data_type from a specification
+    If container_cls is not specified, returns a decorator for registering an Container subclass
     as the class for data_type in namespace.
     """
     data_type, namespace, container_cls = getargs('data_type', 'namespace', 'container_cls', kwargs)
@@ -91,7 +91,7 @@ def available_namespaces():
     return __TYPE_MAP.namespace_catalog.namespaces
 
 
-# load the core namespace i.e. base NWB specification
+# load the hdmf-common namespace
 __resources = __get_resources()
 if os.path.exists(__resources['namespace_path']):
     __TYPE_MAP = TypeMap(NamespaceCatalog())

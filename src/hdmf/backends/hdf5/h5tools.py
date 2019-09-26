@@ -128,6 +128,15 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def _order_deps(cls, deps):
+        """
+        Order namespaces according to dependency for loading into a NamespaceCatalog
+
+        Args:
+            deps (dict): a dictionary that maps a namespace name to a list of name of
+                         the namespaces on which the the namespace is directly dependent
+                         Example: {'a': ['b', 'c'], 'b': ['d'], c: ['d'], 'd': []}
+                         Expected output: ['d', 'b', 'c', 'a']
+        """
         order = list()
         keys = list(deps.keys())
         deps = dict(deps)
@@ -138,6 +147,9 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __order_deps_aux(cls, order, deps, key):
+        """
+        A recursive helper function for _order_deps
+        """
         if key not in deps:
             return
         subdeps = deps.pop(key)

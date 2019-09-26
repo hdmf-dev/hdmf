@@ -1500,6 +1500,11 @@ class TypeMap(object):
                                      GroupSpec, DatasetSpec),
              'doc': 'the object to get the type key for'})
     def __type_key(self, obj):
+        """
+        A wrapper function to simplify the process of getting a type_key for an object.
+
+        The type_key is used to get the data_type from a Builder's attributes.
+        """
         if isinstance(obj, LinkBuilder):
             obj = obj.builder
         if isinstance(obj, (GroupBuilder, GroupSpec)):

@@ -392,7 +392,7 @@ class Data(AbstractContainer):
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
         else:
-            msg = "NWBData cannot append to object of type '%s'" % type(self.__data)
+            msg = "Data cannot append to object of type '%s'" % type(self.__data)
             raise ValueError(msg)
 
     def extend(self, arg):
@@ -401,7 +401,7 @@ class Data(AbstractContainer):
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
         else:
-            msg = "NWBData cannot extend object of type '%s'" % type(self.__data)
+            msg = "Data cannot extend object of type '%s'" % type(self.__data)
             raise ValueError(msg)
 
 
