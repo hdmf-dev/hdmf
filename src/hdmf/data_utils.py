@@ -9,6 +9,7 @@ from operator import itemgetter
 import numpy as np
 from warnings import warn
 from six import with_metaclass, text_type, binary_type
+import copy
 
 from .container import Data, DataRegion
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
@@ -562,6 +563,15 @@ class DataIO(with_metaclass(ABCMeta, object)):
     @property
     def data(self):
         return self.__data
+
+    def __copy__(self):
+        newobj = DataIO(data=self.data)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        result = DataIO(data=copy.deepcopy(self.__data))
+        memo[id(self)] = result
+        return result
 
     def __len__(self):
         if not self.valid:
