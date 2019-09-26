@@ -12,8 +12,7 @@ HDMF is tested against Ubuntu, macOS and Windows operating systems.
 The project has both unit and integration tests.
 
 * CircleCI runs all HDMF tests on Ubuntu
-* Appveyor runs all HDMF tests on Windows
-* Travis runs all HDMF tests on macOS
+* Azure Pipelines runs all HDMF tests on Windows and macOS
 
 Each time a PR is published or updated, the project is built, packaged and tested on all support operating systems and python distributions. That way, as a contributor you know if you introduced regressions or coding style inconsistencies.
 
