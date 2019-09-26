@@ -568,6 +568,9 @@ class DataIO(with_metaclass(ABCMeta, object)):
             raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
         return len(self.data)
 
+    def __bool__(self):
+        return self.valid and len(self) > 0
+
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
         if not self.valid:

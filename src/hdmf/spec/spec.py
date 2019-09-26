@@ -81,7 +81,6 @@ class ConstructableDict(with_metaclass(abc.ABCMeta, dict)):
         args = list()
         kwargs = dict()
         try:
-
             for x in get_docval(cls.__init__):
                 if not x['name'] in vargs:
                     continue

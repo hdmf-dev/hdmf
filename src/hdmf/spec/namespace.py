@@ -243,6 +243,10 @@ class NamespaceCatalog(object):
         ret.__included_sources = copy(self.__included_sources)
         return ret
 
+    def merge(self, ns_catalog):
+        for name, namespace in ns_catalog.__namespaces.items():
+            self.add_namespace(name, namespace)
+
     @property
     @docval(returns='a tuple of the available namespaces', rtype=tuple)
     def namespaces(self):
@@ -348,11 +352,11 @@ class NamespaceCatalog(object):
             raise ValueError("spec source '%s' already loaded" % spec_source)
 
         def __reg_spec(spec_cls, spec_dict):
-            dt_def = spec_dict.get(spec_cls.def_key())
+            parent_cls = GroupSpec if issubclass(spec_cls, GroupSpec) else DatasetSpec
+            dt_def = spec_dict.get(spec_cls.def_key(), spec_dict.get(parent_cls.def_key()))
             if dt_def is None:
-                msg = 'skipping spec in %s, no %s found' % (spec_source, spec_cls.def_key())
-                warn(msg)
-                return
+                msg = 'no %s or %s found in spec %s' % (spec_cls.def_key(), parent_cls.def_key(), spec_source)
+                raise ValueError(msg)
             if dtypes and dt_def not in dtypes:
                 return
             if resolve:
@@ -415,6 +419,10 @@ class NamespaceCatalog(object):
                 for ndt in types:
                     spec = inc_ns.get_spec(ndt)
                     spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+                    if isinstance(spec, DatasetSpec):
+                        spec = self.dataset_spec_cls.build_spec(spec)
+                    else:
+                        spec = self.group_spec_cls.build_spec(spec)
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
