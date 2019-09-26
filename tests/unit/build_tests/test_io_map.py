@@ -1,13 +1,16 @@
 import unittest2 as unittest
 import re
 
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
+from hdmf.data_utils import DataChunkIterator
+from hdmf.backends.hdf5 import H5DataIO
 
 from abc import ABCMeta
 from six import with_metaclass
+import numpy as np
 
 from tests.unit.test_utils import CORE_NAMESPACE
 
@@ -494,6 +497,150 @@ class TestLinkedContainer(unittest.TestCase):
         self.assertDictEqual(foo_builder, foo_expected)
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
+
+
+class TestConvertDtype(unittest.TestCase):
+
+    def test_value_none(self):
+        spec = DatasetSpec('an example dataset', 'int', name='data')
+        self.assertTupleEqual(ObjectMapper.convert_dtype(spec, None), (None, 'int'))
+
+        spec = DatasetSpec('an example dataset', RefSpec(reftype='object', target_type='int'), name='data')
+        self.assertTupleEqual(ObjectMapper.convert_dtype(spec, None), (None, 'object'))
+
+    def test_convert_higher_precision(self):
+        """Test that passing a data type with a precision <= specified returns the higher precision type"""
+        spec_type = 'float64'
+        value_types = ['float', 'float32', 'double', 'float64']
+        self.convert_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'int64'
+        value_types = ['long', 'int64', 'uint64', 'int', 'int32', 'int16', 'int8']
+        self.convert_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'int32'
+        value_types = ['int32', 'int16', 'int8']
+        self.convert_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'int16'
+        value_types = ['int16', 'int8']
+        self.convert_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'uint32'
+        value_types = ['uint32', 'uint16', 'uint8']
+        self.convert_higher_precision_helper(spec_type, value_types)
+
+    def convert_higher_precision_helper(self, spec_type, value_types):
+        data = 2
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        match = (np.dtype(spec_type).type(data), np.dtype(spec_type))
+        for dtype in value_types:
+            value = np.dtype(dtype).type(data)
+            with self.subTest(dtype=dtype):
+                ret = ObjectMapper.convert_dtype(spec, value)
+                self.assertTupleEqual(ret, match)
+                self.assertEqual(ret[0].dtype, match[1])
+
+    def test_keep_higher_precision(self):
+        """Test that passing a data type with a precision >= specified return the given type"""
+        spec_type = 'float'
+        value_types = ['double', 'float64']
+        self.keep_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'int'
+        value_types = ['int64']
+        self.keep_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'int8'
+        value_types = ['long', 'int64', 'int', 'int32', 'int16']
+        self.keep_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'uint'
+        value_types = ['uint64']
+        self.keep_higher_precision_helper(spec_type, value_types)
+
+        spec_type = 'uint8'
+        value_types = ['uint64', 'uint32', 'uint', 'uint16']
+        self.keep_higher_precision_helper(spec_type, value_types)
+
+    def keep_higher_precision_helper(self, spec_type, value_types):
+        data = 2
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        for dtype in value_types:
+            value = np.dtype(dtype).type(data)
+            match = (value, np.dtype(dtype))
+            with self.subTest(dtype=dtype):
+                ret = ObjectMapper.convert_dtype(spec, value)
+                self.assertTupleEqual(ret, match)
+                self.assertEqual(ret[0].dtype, match[1])
+
+    def test_no_spec(self):
+        spec_type = None
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = [1, 2, 3]
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, int)
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(type(ret[0][0]), match[1])
+
+        value = np.uint64(4)
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.uint64)
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(type(ret[0]), match[1])
+
+        value = 'hello'
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, 'utf8')
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(type(ret[0]), str)
+
+        value = bytes('hello', encoding='utf-8')
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, 'ascii')
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(type(ret[0]), bytes)
+
+        value = DataChunkIterator(data=[1, 2, 3])
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.dtype(int))
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(ret[0].dtype, match[1])
+
+        value = DataChunkIterator(data=[1., 2., 3.])
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.dtype(float))
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(ret[0].dtype, match[1])
+
+        value = H5DataIO(np.arange(30).reshape(5, 2, 3))
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.dtype(int))
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(ret[0].dtype, match[1])
+
+        value = H5DataIO(['foo' 'bar'])
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, 'utf8')
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(type(ret[0].data[0]), str)
+
+    def test_numeric_spec(self):
+        spec_type = 'numeric'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = np.uint64(4)
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.uint64)
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(type(ret[0]), match[1])
+
+        value = DataChunkIterator(data=[1, 2, 3])
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.dtype(int))
+        self.assertTupleEqual(ret, match)
+        self.assertEqual(ret[0].dtype, match[1])
 
 
 if __name__ == '__main__':
