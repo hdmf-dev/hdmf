@@ -141,6 +141,8 @@ class DynamicTable(Container):
         call_docval_func(super(DynamicTable, self).__init__, kwargs)
         self.description = desc
 
+        # All tables must have ElementIdentifiers (i.e. a primary key column)
+        # Here, we figure out what to do for that
         if id is not None:
             if not isinstance(id, ElementIdentifiers):
                 id = ElementIdentifiers('id', data=id)
@@ -149,6 +151,8 @@ class DynamicTable(Container):
 
         if columns is not None:
             if len(columns) > 0:
+                # If columns have been passed in, check them over
+                # and process accordingly
                 if isinstance(columns[0], dict):
                     columns = self.__build_columns(columns)
                 elif not all(isinstance(c, (VectorData, VectorIndex)) for c in columns):
@@ -166,15 +170,19 @@ class DynamicTable(Container):
                     else:
                         id.data.extend(range(lens[0]))
         else:
+            # if the user has not passed in columns, make a place to put them,
+            # as they will presumably be adding new columns
             columns = list()
 
         self.id = id
 
         if colnames is None:
             if columns is None:
+                # make placeholder for columns if nothing was given
                 self.colnames = list()
                 self.columns = list()
             else:
+                # Figure out column names if columns were given
                 tmp = list()
                 for col in columns:
                     if isinstance(col, VectorIndex):
@@ -183,10 +191,11 @@ class DynamicTable(Container):
                 self.colnames = tuple(tmp)
                 self.columns = columns
         else:
+            # Calculate the order of column names
             if columns is None:
                 raise ValueError("Must supply 'columns' if specifying 'colnames'")
             else:
-                # make sure columns order matches colnames order
+                # order the columns according to the column names
                 self.colnames = tuple(pystr(c) for c in colnames)
                 col_dict = {col.name: col for col in columns}
                 order = dict()
@@ -249,6 +258,9 @@ class DynamicTable(Container):
 
     @staticmethod
     def __build_columns(columns, df=None):
+        """
+        Build column objects according to specifications
+        """
         tmp = list()
         for d in columns:
             name = d['name']

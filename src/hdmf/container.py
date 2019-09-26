@@ -25,6 +25,9 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
     # Container do not get used on Data
     @classmethod
     def _setter(cls, field):
+        """
+        Make a setter function for creating a :py:func:`property`
+        """
         name = field['name']
 
         if not field.get('settable', True):
@@ -42,6 +45,9 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
     @classmethod
     def _getter(cls, field):
+        """
+        Make a getter function for creating a :py:func:`property`
+        """
         doc = field.get('doc')
         name = field['name']
 
@@ -52,7 +58,11 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         return getter
 
     @staticmethod
-    def _transform_arg(field):
+    def __check_field_spec(field):
+        """
+        A helper function for __gather_fields to make sure we are always working
+        with a dict specification and that the specification contains the correct keys
+        """
         tmp = field
         if isinstance(tmp, dict):
             if 'name' not in tmp:
@@ -80,7 +90,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
         for f in getattr(cls, cls._fieldsname):
-            pconf = cls._transform_arg(f)
+            pconf = cls.__check_field_spec(f)
             pname = pconf['name']
             pconf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
