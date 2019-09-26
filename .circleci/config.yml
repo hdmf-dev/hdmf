@@ -256,6 +256,27 @@ jobs:
               create $CIRCLE_TAG --name $CIRCLE_TAG \
               --publish ./dist/*
 
+  pynwb-dev-python37:
+    docker:
+      - image: circleci/python:3.7.0-stretch
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - run:
+          <<: *initialize-venv
+      - run:
+          name: Run the PyNWB tests
+          command: |
+            . ../venv/bin/activate
+            git clone https://github.com/NeurodataWithoutBorders/pynwb.git
+            cd pynwb
+            pip install tox
+            tox -e py37
+          # Install is expected to be quick. Increase timeout in case there are some network issues.
+          # While pip installing tox does not output by default. Circle thinks task is dead after 10 min.
+          no_output_timeout: 30m
+
 workflows:
   version: 2
   test-package-publish:
@@ -312,3 +333,5 @@ workflows:
               only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
             branches:
               ignore: /.*/
+      - pynwb-dev-python37:
+          <<: *no_filters
