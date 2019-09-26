@@ -518,16 +518,16 @@ class TestConvertDtype(unittest.TestCase):
         value_types = ['long', 'int64', 'uint64', 'int', 'int32', 'int16', 'int8']
         self.convert_higher_precision_helper(spec_type, value_types)
 
-        spec_type = 'int'
-        value_types = ['int', 'int32', 'int16', 'int8']
+        spec_type = 'int32'
+        value_types = ['int32', 'int16', 'int8']
         self.convert_higher_precision_helper(spec_type, value_types)
 
         spec_type = 'int16'
         value_types = ['int16', 'int8']
         self.convert_higher_precision_helper(spec_type, value_types)
 
-        spec_type = 'uint'
-        value_types = ['uint32', 'uint', 'uint16', 'uint8']
+        spec_type = 'uint32'
+        value_types = ['uint32', 'uint16', 'uint8']
         self.convert_higher_precision_helper(spec_type, value_types)
 
     def convert_higher_precision_helper(self, spec_type, value_types):
@@ -536,7 +536,7 @@ class TestConvertDtype(unittest.TestCase):
         match = (np.dtype(spec_type).type(data), np.dtype(spec_type))
         for dtype in value_types:
             value = np.dtype(dtype).type(data)
-            with self.subTest(dtype=dtype, value=value):
+            with self.subTest(dtype=dtype):
                 ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
                 self.assertEqual(ret[0].dtype, match[1])
@@ -569,7 +569,7 @@ class TestConvertDtype(unittest.TestCase):
         for dtype in value_types:
             value = np.dtype(dtype).type(data)
             match = (value, np.dtype(dtype))
-            with self.subTest(dtype=dtype, value=value):
+            with self.subTest(dtype=dtype):
                 ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
                 self.assertEqual(ret[0].dtype, match[1])
