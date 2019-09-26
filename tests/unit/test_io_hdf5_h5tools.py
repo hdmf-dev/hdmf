@@ -258,9 +258,10 @@ class H5IOTest(unittest.TestCase):
     #############################################
     def test_write_dataset_data_chunk_iterator(self):
         dci = DataChunkIterator(data=np.arange(10), buffer_size=2)
-        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', dci, attributes={}))
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', dci, attributes={}, dtype=dci.dtype))
         dset = self.f['test_dataset']
         self.assertListEqual(dset[:].tolist(), list(range(10)))
+        self.assertEqual(dset[:].dtype, dci.dtype)
 
     def test_write_dataset_data_chunk_iterator_with_compression(self):
         dci = DataChunkIterator(data=np.arange(10), buffer_size=2)

@@ -967,10 +967,11 @@ class HDF5IO(HDMFIO):
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):
             return self.__is_ref(dtype.dtype)
-        elif isinstance(dtype, RefSpec):
+        if isinstance(dtype, RefSpec):
             return True
-        else:
+        if isinstance(dtype, str):
             return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
+        return False
 
     def __queue_ref(self, func):
         '''Set aside filling dset with references

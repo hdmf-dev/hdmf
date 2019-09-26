@@ -2,7 +2,7 @@
 The Hierarchical Data Modeling Framework
 ========================================
 
-The Hierarchical Data Modeling Framework, or *HDMF* is a Python package for working with hierarchical data.
+The Hierarchical Data Modeling Framework, or *HDMF*, is a Python package for working with hierarchical data.
 It provides APIs for specifying data models, reading and writing data to different storage backends, and
 representing data with Python object.
 
@@ -23,12 +23,12 @@ Build Status
 
 .. table::
 
-  +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
-  | Linux                                                               | macOS                                                          | Windows                                                                               |
-  +=====================================================================+================================================================+=======================================================================================+
-  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://travis-ci.com/hdmf-dev/hdmf.svg?branch=dev  | .. image:: https://ci.appveyor.com/api/projects/status/oi06lb719n2mkdby?svg=true      |
-  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://travis-ci.com/hdmf-dev/hdmf               |     :target: https://ci.appveyor.com/project/hdmf-dev/hdmf                            |
-  +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
+  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
+  | Linux                                                               | Windows and macOS                                                                                |
+  +=====================================================================+==================================================================================================+
+  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://dev.azure.com/hdmf-dev/hdmf/_apis/build/status/hdmf-dev.hdmf?branchName=dev   |
+  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://dev.azure.com/hdmf-dev/hdmf/_build/latest?definitionId=1&branchName=dev     |
+  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
 
 
 **Conda**

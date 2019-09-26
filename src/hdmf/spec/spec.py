@@ -305,8 +305,8 @@ class BaseStorageSpec(Spec):
              getargs('name', 'doc', 'parent', 'quantity', 'attributes',
                      'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
-            raise ValueError("Cannot create Group or Dataset spec with wildcard name \
-            without specifying 'data_type_def' and/or 'data_type_inc'")
+            raise ValueError("Cannot create Group or Dataset spec with wildcard name "
+                             "without specifying 'data_type_def' and/or 'data_type_inc'")
         super(BaseStorageSpec, self).__init__(doc, name=name, parent=parent)
         default_name = getargs('default_name', kwargs)
         if default_name:
