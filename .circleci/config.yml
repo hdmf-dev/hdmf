@@ -275,7 +275,7 @@ jobs:
             pip check
             python setup.py develop
             cd ..
-            pip uninstall -y hdmf==1.2.0
+            pip uninstall -y hdmf
             python setup.py develop
             pip show hdmf
           # Install is expected to be quick. Increase timeout in case there are some network issues.
