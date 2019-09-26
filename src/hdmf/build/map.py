@@ -1245,10 +1245,12 @@ class TypeMap(object):
     ''' A class to maintain the map between ObjectMappers and Container classes
     '''
 
-    @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use'},
+    @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
             {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': ObjectMapper})
     def __init__(self, **kwargs):
         namespaces = getargs('namespaces', kwargs)
+        if namespaces is None:
+            namespaces = NamespaceCatalog()
         self.__ns_catalog = namespaces
         self.__mappers = dict()     # already constructed ObjectMapper classes
         self.__mapper_cls = dict()  # the ObjectMapper class to use for each container type
