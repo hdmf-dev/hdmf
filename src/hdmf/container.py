@@ -58,7 +58,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         return getter
 
     @staticmethod
-    def __check_field_spec(field):
+    def _check_field_spec(field):
         """
         A helper function for __gather_fields to make sure we are always working
         with a dict specification and that the specification contains the correct keys
@@ -90,7 +90,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
         for f in getattr(cls, cls._fieldsname):
-            pconf = cls.__check_field_spec(f)
+            pconf = cls._check_field_spec(f)
             pname = pconf['name']
             pconf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
