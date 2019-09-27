@@ -375,6 +375,17 @@ class DataChunk(object):
     def __getattr__(self, attr):
         return getattr(self.data, attr)
 
+    def __copy__(self):
+        newobj = DataChunk(data=self.data,
+                           selection=self.selection)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        result = DataChunk(data=copy.deepcopy(self.data),
+                           selection=copy.deepcopy(self.selection))
+        memo[id(self)] = result
+        return result
+
     def astype(self, dtype):
         return DataChunk(data=self.data.astype(dtype),
                          selection=self.selection)
