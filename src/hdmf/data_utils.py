@@ -397,6 +397,17 @@ class DataChunk(object):
         """Delegate retrival of attributes to the data in self.data"""
         return getattr(self.data, attr)
 
+    def __copy__(self):
+        newobj = DataChunk(data=self.data,
+                           selection=self.selection)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        result = DataChunk(data=copy.deepcopy(self.data),
+                           selection=copy.deepcopy(self.selection))
+        memo[id(self)] = result
+        return result
+
     def astype(self, dtype):
         """Get a new DataChunk with the self.data converted to the given type"""
         return DataChunk(data=self.data.astype(dtype),
