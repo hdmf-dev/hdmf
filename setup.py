@@ -31,7 +31,8 @@ setup_args = {
         'ruamel.yaml',
         'python-dateutil',
         'six',
-        'chardet'
+        'chardet',
+        'scipy'
     ],
     'packages': pkgs,
     'package_dir': {'': 'src'},
