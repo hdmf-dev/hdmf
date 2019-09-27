@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+import re
 
 import versioneer
 
@@ -11,6 +12,12 @@ pkgs = find_packages('src', exclude=['data'])
 print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
+
+reqs_re = re.compile("[<=>]+")
+with open('requirements.txt', 'r') as fp:
+    reqs = [reqs_re.split(x.strip())[0] for x in fp.readlines()]
+
+print(reqs)
 
 setup_args = {
     'name': 'hdmf',
@@ -23,17 +30,7 @@ setup_args = {
     'author_email': 'ajtritt@lbl.gov',
     'url': 'https://github.com/hdmf-dev/hdmf',
     'license': "BSD",
-    'install_requires':
-    [
-        'numpy',
-        'pandas',
-        'h5py',
-        'ruamel.yaml',
-        'python-dateutil',
-        'six',
-        'chardet',
-        'scipy'
-    ],
+    'install_requires': reqs,
     'packages': pkgs,
     'package_dir': {'': 'src'},
     'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
