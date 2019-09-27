@@ -16,6 +16,7 @@ from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
 def __get_shape_helper(data):
+    """Helper function used by get_shape"""
     shape = list()
     if hasattr(data, '__len__'):
         shape.append(len(data))
@@ -25,6 +26,12 @@ def __get_shape_helper(data):
 
 
 def get_shape(data):
+    """
+    Determine the data shape for the given data
+    :param data: Array for which the data should be determined
+    :type data: list, ndarray, dict
+    :return: None in case shape is unknown and shape tuple otherwise
+    """
     if isinstance(data, dict):
         return None
     elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
@@ -197,8 +204,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         return self
 
     def _read_next_chunk(self):
-        """Read a single chunk from self.__data_iter and store the results in
-           self.__next_chunk
+        """Read a single chunk from self.__data_iter and store the results in self.__next_chunk
 
         :returns: self.__next_chunk, i.e., the DataChunk object describing the next chunk
         """
@@ -276,6 +282,10 @@ class DataChunkIterator(AbstractDataChunkIterator):
         return self.__next_chunk
 
     def _set_maxshape_from_next_chunk(self):
+        """
+        Internal helper function used to determine the maxshape to be used from
+        the self.__next_chunk object. The function initializes self.__maxshape.
+        """
         data_shape = get_data_shape(self.__next_chunk.data)
         self.__maxshape = list(data_shape)
         try:
@@ -337,7 +347,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     'recommendation is available')
     def recommended_data_shape(self):
         """Recommend an initial shape of the data. This is useful when progressively writing data and
-        we want to recommend and initial size for the dataset"""
+        we want to recommend an initial size for the dataset"""
         if self.__maxshape is not None:
             if np.all([i is not None for i in self.__maxshape]):
                 return self.__maxshape
@@ -345,10 +355,20 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
     @property
     def maxshape(self):
+        """
+        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator.
+
+        :return: Shape tuple. None is used for dimenwions where the maximum shape is not known or unlimited.
+        """
         return self.__maxshape
 
     @property
     def dtype(self):
+        """
+        Get the value data type
+
+        :return: np.dtype object describing the datatype
+        """
         return self.__dtype
 
 
@@ -367,20 +387,28 @@ class DataChunk(object):
         self.data, self.selection = getargs('data', 'selection', kwargs)
 
     def __len__(self):
+        """Get the number of values in the data chunk"""
         if self.data is not None:
             return len(self.data)
         else:
             return 0
 
     def __getattr__(self, attr):
+        """Delegate retrival of attributes to the data in self.data"""
         return getattr(self.data, attr)
 
     def astype(self, dtype):
+        """Get a new DataChunk with the self.data converted to the given type"""
         return DataChunk(data=self.data.astype(dtype),
                          selection=self.selection)
 
     @property
     def dtype(self):
+        """
+        Data type of the values in the chunk
+
+        :returns: np.dtype of the values in the DataChunk
+        """
         return self.data.dtype
 
 
@@ -554,7 +582,10 @@ class ShapeValidatorResult(object):
 
 @docval_macro('data')
 class DataIO(with_metaclass(ABCMeta, object)):
-
+    """
+    Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
+    used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
+    """
     @docval({'name': 'data', 'type': 'array_data', 'doc': 'the data to be written'})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
@@ -562,18 +593,38 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
     @property
     def data(self):
+        """Get the wrapped data object"""
         return self.__data
 
     def __copy__(self):
+        """
+        Define a custom copy method for shallow copy..
+
+        This is needed due to delegation of __getattr__ to the data to
+        ensure proper copy.
+
+        :return: Shallow copy of self, ie., a new instance of DataIO wrapping the same self.data object
+        """
         newobj = DataIO(data=self.data)
         return newobj
 
     def __deepcopy__(self, memo):
+        """
+        Define a custom copy method for deep copy.
+
+        This is needed due to delegation of __getattr__ to the data to
+        ensure proper copy.
+
+        :param memo:
+        :return: Deep copy of self, i.e., a new instance of DataIO wrapping a deepcopy of the
+        self.data object.
+        """
         result = DataIO(data=copy.deepcopy(self.__data))
         memo[id(self)] = result
         return result
 
     def __len__(self):
+        """Number of values in self.data"""
         if not self.valid:
             raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
         return len(self.data)
@@ -610,20 +661,21 @@ class DataIO(with_metaclass(ABCMeta, object)):
             # NOTE this may result in a copy of the array
             return np.asarray(self.data)
 
-    # Delegate iteration interface to data object:
     def __next__(self):
+        """Delegate iteration interface to data object"""
         if not self.valid:
             raise InvalidDataIOError("Cannot iterate on data. Data is not valid.")
         return self.data.__next__()
 
-    # Delegate iteration interface to data object:
     def __iter__(self):
+        """Delegate iteration interface to the data object"""
         if not self.valid:
             raise InvalidDataIOError("Cannot iterate on data. Data is not valid.")
         return self.data.__iter__()
 
     @property
     def valid(self):
+        """bool indicating if the data object is valid"""
         return self.data is not None
 
 
@@ -642,34 +694,40 @@ class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):
 
     @property
     def data(self):
+        """The target data. Same as self.target"""
         return self.target
 
     @property
     def region(self):
+        """The selected region. Same as self.slice"""
         return self.slice
 
     @property
     def target(self):
+        """The target data"""
         return self.__target
 
     @property
     def slice(self):
+        """The selected slice"""
         return self.__slice
 
     @property
     @abstractmethod
     def __getitem__(self, idx):
+        """Must be implemented by subclasses"""
         pass
 
     @property
     @abstractmethod
     def __len__(self):
+        """Must be implemented by subclasses"""
         pass
 
 
 class ListSlicer(RegionSlicer):
-
-    @docval({'name': 'dataset', 'type': (list, tuple, Data), 'doc': 'the HDF5 dataset to slice'},
+    """Implementation of RegionSlicer for slicing Lists and Data"""
+    @docval({'name': 'dataset', 'type': (list, tuple, Data), 'doc': 'the dataset to slice'},
             {'name': 'region', 'type': (list, tuple, slice), 'doc': 'the region reference to use to slice'})
     def __init__(self, **kwargs):
         self.__dataset, self.__region = getargs('dataset', 'region', kwargs)
@@ -682,11 +740,17 @@ class ListSlicer(RegionSlicer):
             self.__len = len(self.__region)
 
     def __read_region(self):
+        """
+        Internal helper function used to define self._read
+        """
         if not hasattr(self, '_read'):
             self._read = self.__getter(self.__dataset)
             del self.__getter
 
     def __getitem__(self, idx):
+        """
+        Get data values from selected data
+        """
         self.__read_region()
         getter = None
         if isinstance(idx, (list, tuple)):
@@ -696,6 +760,7 @@ class ListSlicer(RegionSlicer):
         return getter(self._read)
 
     def __len__(self):
+        """Number of values in the slice/region"""
         return self.__len
 
 
