@@ -271,6 +271,8 @@ jobs:
             . ../venv/bin/activate
             git clone https://github.com/NeurodataWithoutBorders/pynwb.git
             cd pynwb
+            git submodule sync
+            git submodule update --init
             pip install -U -rrequirements-dev.txt -rrequirements.txt
             pip check
             python setup.py develop
