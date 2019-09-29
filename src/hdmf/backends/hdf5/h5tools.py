@@ -285,6 +285,7 @@ class HDF5IO(HDMFIO):
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
 
+    @docval(returns='the Container object that was read in', rtype=Container)
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
@@ -295,6 +296,11 @@ class HDF5IO(HDMFIO):
             if str(e) == 'Cannot build data. There are no values.':
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
                                            % (self.__path, self.__mode))
+        except ValueError as e:
+            if str(e) == 'No data_type found for builder %s' % ROOT_NAME:
+                raise MissingRootException()
+            else:
+                raise
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
@@ -1043,3 +1049,7 @@ class HDF5IO(HDMFIO):
             else:
                 ret.append(elem)
         return ret
+
+
+class MissingRootException(ValueError):
+    pass
