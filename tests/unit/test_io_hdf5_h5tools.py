@@ -7,7 +7,7 @@ import re
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, MissingRootException
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
@@ -921,20 +921,17 @@ class HDF5IOReadData(unittest.TestCase):
 
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as temp_io:
             temp_io.write(self.foofile1)
-        self.io = None
 
     def tearDown(self):
-        if self.io is not None:
-            self.io.close()
-            del(self.io)
         if os.path.exists(self.path):
             os.remove(self.path)
 
     def test_read_file_ok(self):
         modes = ('r', 'r+', 'a')
         for m in modes:
-            with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
-                io.read()
+            with self.subTest(mode=m):
+                with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
+                    io.read()
 
     def test_read_file_w(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
@@ -944,6 +941,35 @@ class HDF5IOReadData(unittest.TestCase):
                 read_foofile1 = io.read()
                 self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
                                      read_foofile1.buckets[0].foos[0].my_data[:].tolist())
+
+
+class HDF5IOReadNoRoot(unittest.TestCase):
+    """ Test if file exists and the data has no data_type attribute for the root group, an error is raised.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as temp_io:
+            temp_io.write(self.foofile1)
+
+        with File(self.path, mode='r+') as temp_file:
+            del temp_file.attrs['data_type']
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_read_file_noroot(self):
+        modes = ('r', 'r+', 'a')
+        for m in modes:
+            with self.subTest(mode=m):
+                with HDF5IO(self.path, manager=_get_manager(), mode=m) as io:
+                    with self.assertRaises(MissingRootException):
+                        io.read()
 
 
 class HDF5IOWriteNoFile(unittest.TestCase):
