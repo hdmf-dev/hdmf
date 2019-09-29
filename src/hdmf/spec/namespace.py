@@ -272,9 +272,6 @@ class NamespaceCatalog(object):
             {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
     def add_namespace(self, **kwargs):
         """Add a namespace to this catalog"""
-        msg = ("NamespaceCatalog.add_namespace has been deprecated. "
-               "SpecNamespaces should be added with load_namespaces.")
-        warn(msg, DeprecationWarning)
         name, namespace = getargs('name', 'namespace', kwargs)
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
