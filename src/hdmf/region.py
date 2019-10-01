@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, text_type, binary_type
+from six import with_metaclass
 from .container import Data, DataRegion
 from .utils import docval, getargs
 
+from operator import itemgetter
 
 
 class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):

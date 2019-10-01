@@ -4,14 +4,11 @@ try:
 except ImportError:
     from collections import Iterable  # Python 2.7
 
-from operator import itemgetter
-
 import numpy as np
 from warnings import warn
 from six import with_metaclass, text_type, binary_type
 import copy
 
-#from .container import Data, DataRegion
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
@@ -609,7 +606,7 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
     @data.setter
     def data(self, val):
-        """Get the wrapped data object"""
+        """Set the wrapped data object"""
         if self.__data is not None:
             raise ValueError("cannot overwrite 'data' on DataIO")
         self.__data = val
