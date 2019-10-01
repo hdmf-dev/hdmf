@@ -46,7 +46,6 @@ class DataIOTests(unittest.TestCase):
         self.assertIs(dataio.data, data)
         self.assertIs(dataio, container.data)
 
-
     def test_set_dataio_data_already_set(self):
         """
         Test that Data.set_dataio works as intended
