@@ -1,6 +1,7 @@
 import unittest2 as unittest
 
 from hdmf.data_utils import DataIO
+from hdmf.container import Data
 import numpy as np
 from copy import copy, deepcopy
 
@@ -33,6 +34,28 @@ class DataIOTests(unittest.TestCase):
         indata = np.arange(50).reshape(5, 10)
         dset = DataIO(indata)
         self.assertTrue(np.all(dset[1:3, 5:8] == indata[1:3, 5:8]))
+
+    def test_set_dataio(self):
+        """
+        Test that Data.set_dataio works as intended
+        """
+        dataio = DataIO()
+        data = np.arange(30).reshape(5, 2, 3)
+        container = Data('wrapped_data', data)
+        container.set_dataio(dataio)
+        self.assertIs(dataio.data, data)
+        self.assertIs(dataio, container.data)
+
+
+    def test_set_dataio_data_already_set(self):
+        """
+        Test that Data.set_dataio works as intended
+        """
+        dataio = DataIO(data=np.arange(30).reshape(5, 2, 3))
+        data = np.arange(30).reshape(5, 2, 3)
+        container = Data('wrapped_data', data)
+        with self.assertRaisesRegex(ValueError, "cannot overwrite 'data' on DataIO"):
+            container.set_dataio(dataio)
 
 
 if __name__ == '__main__':
