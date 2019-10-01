@@ -3,6 +3,7 @@ from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
+from .data_utils import DataIO
 from warnings import warn
 
 
@@ -384,6 +385,15 @@ class Data(AbstractContainer):
     @property
     def data(self):
         return self.__data
+
+    @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
+    def set_dataio(self, **kwargs):
+        """
+        Apply DataIO object to the data held by this Data object
+        """
+        dataio = getargs('dataio', kwargs)
+        dataio.data = self.__data
+        self.__data = dataio
 
     def __bool__(self):
         return len(self.data) != 0
