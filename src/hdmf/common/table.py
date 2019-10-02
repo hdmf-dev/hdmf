@@ -38,7 +38,7 @@ class VectorData(Data):
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
         val = getargs('val', kwargs)
-        self.data.append(val)
+        self.append(val)
 
 
 @register_class('VectorIndex')
@@ -55,7 +55,7 @@ class VectorIndex(Index):
 
     def add_vector(self, arg):
         self.target.extend(arg)
-        self.data.append(len(self.target))
+        self.append(len(self.target))
 
     def add_row(self, arg):
         self.add_vector(arg)
@@ -332,7 +332,7 @@ class DynamicTable(Container):
             row_id = data.pop('id', None)
         if row_id is None:
             row_id = len(self)
-        self.id.data.append(row_id)
+        self.id.append(row_id)
 
         for colname, colnum in self.__colids.items():
             if colname not in data:

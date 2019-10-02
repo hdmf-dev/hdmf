@@ -5,6 +5,7 @@ from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
 from .data_utils import DataIO
 from warnings import warn
+import h5py
 
 
 class AbstractContainer(with_metaclass(ExtenderMeta, object)):
@@ -414,6 +415,11 @@ class Data(AbstractContainer):
             self.data.append(arg)
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
+        elif isinstance(self.data, h5py.Dataset):
+            shape = list(self.__data.shape)
+            shape[0] += 1
+            self.__data.resize(shape)
+            self.__data[-1] = arg
         else:
             msg = "Data cannot append to object of type '%s'" % type(self.__data)
             raise ValueError(msg)
@@ -423,6 +429,11 @@ class Data(AbstractContainer):
             self.data.extend(arg)
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
+        elif isinstance(self.data, h5py.Dataset):
+            shape = list(self.__data.shape)
+            shape[0] += len(arg)
+            self.__data.resize(shape)
+            self.__data[-len(arg):] = arg
         else:
             msg = "Data cannot extend object of type '%s'" % type(self.__data)
             raise ValueError(msg)
