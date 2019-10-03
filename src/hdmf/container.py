@@ -429,7 +429,7 @@ class Data(AbstractContainer):
             self.data.extend(arg)
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
-        elif isinstance(h5py.Dataset):
+        elif isinstance(self.data, h5py.Dataset):
             shape = list(self.__data.shape)
             shape[0] += len(arg)
             self.__data.resize(shape)

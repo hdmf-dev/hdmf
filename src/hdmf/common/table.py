@@ -55,7 +55,7 @@ class VectorIndex(Index):
 
     def add_vector(self, arg):
         self.target.extend(arg)
-        self.data.append(len(self.target))
+        self.append(len(self.target))
 
     def add_row(self, arg):
         self.add_vector(arg)

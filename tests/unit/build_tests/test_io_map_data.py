@@ -4,6 +4,9 @@ from hdmf.spec import AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, Na
 from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Data
 from hdmf.utils import docval, getargs
+import h5py
+import numpy as np
+import os
 
 from tests.unit.test_utils import CORE_NAMESPACE
 
@@ -11,7 +14,7 @@ from tests.unit.test_utils import CORE_NAMESPACE
 class Baz(Data):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Baz'},
-            {'name': 'data', 'type': list, 'doc': 'some data'},
+            {'name': 'data', 'type': (list, h5py.Dataset), 'doc': 'some data'},
             {'name': 'baz_attr', 'type': str, 'doc': 'an attribute'})
     def __init__(self, **kwargs):
         name, data, baz_attr = getargs('name', 'data', 'baz_attr', kwargs)
@@ -49,3 +52,19 @@ class TestDataMap(unittest.TestCase):
         builder = self.mapper.build(container, self.manager)
         expected = DatasetBuilder('my_baz', list(range(10)), attributes={'baz_attr': 'abcdefghijklmnopqrstuvwxyz'})
         self.assertDictEqual(builder, expected)
+
+    def test_append(self):
+        with h5py.File('test.h5', 'w') as file:
+            test_ds = file.create_dataset('test_ds', data=[1, 2, 3], chunks=True, maxshape=(None,))
+            container = Baz('my_baz', test_ds, 'abcdefghijklmnopqrstuvwxyz')
+            container.append(4)
+            np.testing.assert_array_equal(container[:], [1, 2, 3, 4])
+        os.remove('test.h5')
+
+    def test_extend(self):
+        with h5py.File('test.h5', 'w') as file:
+            test_ds = file.create_dataset('test_ds', data=[1, 2, 3], chunks=True, maxshape=(None,))
+            container = Baz('my_baz', test_ds, 'abcdefghijklmnopqrstuvwxyz')
+            container.extend([4, 5])
+            np.testing.assert_array_equal(container[:], [1, 2, 3, 4, 5])
+        os.remove('test.h5')
