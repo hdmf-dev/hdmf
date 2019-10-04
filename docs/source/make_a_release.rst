@@ -92,7 +92,7 @@ PyPI: Step-by-step
 
   .. code::
 
-    $ cd /tmp && git clone --recurse-submodules git@github.com:hdmf-dev/hdmf && cd hdmf
+    $ cd /tmp && git clone git@github.com:hdmf-dev/hdmf && cd hdmf
 
 
 5. Tag the release

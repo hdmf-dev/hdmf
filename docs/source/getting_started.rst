@@ -72,7 +72,7 @@ For development an editable install is recommended.
    $ pip install -U virtualenv
    $ virtualenv ~/hdmf
    $ source ~/hdmf/bin/activate
-   $ git clone --recurse-submodules git@github.com:hdmf-dev/hdmf.git
+   $ git clone git@github.com:hdmf-dev/hdmf.git
    $ cd hdmf
    $ pip install -r requirements.txt
    $ pip install -e .
@@ -88,7 +88,7 @@ For running the tests, it is required to install the development requirements.
    $ pip install -U virtualenv
    $ virtualenv ~/hdmf
    $ source ~/hdmf/bin/activate
-   $ git clone  --recurse-submodules git@github.com:hdmf-dev/hdmf.git
+   $ git clone git@github.com:hdmf-dev/hdmf.git
    $ cd hdmf
    $ pip install -r requirements.txt -r requirements-dev.txt
    $ pip install -e .
