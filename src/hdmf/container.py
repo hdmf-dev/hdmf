@@ -3,7 +3,9 @@ from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
+from .data_utils import DataIO
 from warnings import warn
+import h5py
 
 
 class AbstractContainer(with_metaclass(ExtenderMeta, object)):
@@ -374,6 +376,9 @@ class Container(AbstractContainer):
 
 
 class Data(AbstractContainer):
+    """
+    A class for representing dataset containers
+    """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
@@ -384,6 +389,15 @@ class Data(AbstractContainer):
     @property
     def data(self):
         return self.__data
+
+    @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
+    def set_dataio(self, **kwargs):
+        """
+        Apply DataIO object to the data held by this Data object
+        """
+        dataio = getargs('dataio', kwargs)
+        dataio.data = self.__data
+        self.__data = dataio
 
     def __bool__(self):
         return len(self.data) != 0
@@ -401,6 +415,11 @@ class Data(AbstractContainer):
             self.data.append(arg)
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
+        elif isinstance(self.data, h5py.Dataset):
+            shape = list(self.__data.shape)
+            shape[0] += 1
+            self.__data.resize(shape)
+            self.__data[-1] = arg
         else:
             msg = "Data cannot append to object of type '%s'" % type(self.__data)
             raise ValueError(msg)
@@ -410,6 +429,11 @@ class Data(AbstractContainer):
             self.data.extend(arg)
         elif isinstance(self.data, np.ndarray):
             self.__data = np.append(self.__data, [arg])
+        elif isinstance(self.data, h5py.Dataset):
+            shape = list(self.__data.shape)
+            shape[0] += len(arg)
+            self.__data.resize(shape)
+            self.__data[-len(arg):] = arg
         else:
             msg = "Data cannot extend object of type '%s'" % type(self.__data)
             raise ValueError(msg)

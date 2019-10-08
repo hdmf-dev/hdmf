@@ -13,7 +13,8 @@ import os
 from ...query import HDMFDataset
 from ...array import Array
 from ...utils import docval, getargs, popargs, call_docval_func
-from ...data_utils import RegionSlicer, DataIO, AbstractDataChunkIterator
+from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...region import RegionSlicer
 
 from ...spec import SpecWriter, SpecReader
 
@@ -215,7 +216,8 @@ class H5DataIO(DataIO):
     @docval({'name': 'data',
              'type': (np.ndarray, list, tuple, Dataset, Iterable),
              'doc': 'the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data' +
-                    ' will be ignored as the dataset will either be linked to or copied as is in H5DataIO.'},
+                    ' will be ignored as the dataset will either be linked to or copied as is in H5DataIO.',
+             'default': None},
             {'name': 'maxshape',
              'type': tuple,
              'doc': 'Dataset will be resizable up to this shape (Tuple). Automatically enables chunking.' +
