@@ -176,7 +176,7 @@ class H5IOTest(unittest.TestCase):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a.data))
-        self.assertEqual(dset.compression, 'lzf')
+        self.assertEqual(dset.compression, 'szip')
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
 
