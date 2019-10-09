@@ -70,7 +70,8 @@ class YAMLSpecWriter(SpecWriter):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
-        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'default_name',
+        order = ['neurodata_type_def', 'neurodata_type_inc', 'data_type_def', 'data_type_inc',
+                 'name', 'default_name',
                  'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
                  'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
         if isinstance(obj, dict):
@@ -237,7 +238,7 @@ def export_spec(ns_builder, new_data_types, output_dir):
         warnings.warn('No data types specified. Exiting.')
         return
 
-    if ns_builder.name is None:
+    if not ns_builder.name:
         raise RuntimeError('Namespace name is required to export specs')
 
     ns_path = ns_builder.name + '.namespace.yaml'

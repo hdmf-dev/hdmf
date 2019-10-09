@@ -52,15 +52,15 @@ class TestSpec(unittest.TestCase):
         with open(self.ext_source_path, 'r') as file:
             match_str = \
 """groups:
-- doc: A custom DataSeries interface
-  data_type_def: MyDataSeries
-- doc: An extension of a DataSeries interface
+- data_type_def: MyDataSeries
+  doc: A custom DataSeries interface
+- data_type_def: MyExtendedMyDataSeries
+  data_type_inc: MyDataSeries
+  doc: An extension of a DataSeries interface
   datasets:
   - name: testdata
     dtype: float
     doc: test
-  data_type_inc: MyDataSeries
-  data_type_def: MyExtendedMyDataSeries
 """  # noqa: E128
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
@@ -216,3 +216,12 @@ class TestExportSpec(TestSpec):
   version: 0.0.1
 """ % self.date.isoformat()  # noqa: E128
             self.assertEqual(nsstr, match_str)
+
+    def test_missing_data_types(self):
+        with self.assertWarnsRegex(UserWarning, 'No data types specified. Exiting.'):
+            export_spec(self.ns_builder, [], '.')
+
+    def test_missing_name(self):
+        self.ns_builder._NamespaceBuilder__ns_args['name'] = None
+        with self.assertRaisesRegex(RuntimeError, 'Namespace name is required to export specs'):
+            export_spec(self.ns_builder, self.data_types, '.')
