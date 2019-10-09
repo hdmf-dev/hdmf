@@ -5,6 +5,7 @@ except ImportError:
     from collections import Iterable  # Python 2.7
 from six import binary_type, text_type
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
+from h5py import filters as h5py_filters
 import json
 import numpy as np
 import warnings
@@ -233,7 +234,7 @@ class H5DataIO(DataIO):
                     'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
              'default': None},
             {'name': 'compression_opts',
-             'type': int,
+             'type': (int, tuple),
              'doc': 'Parameter for compression filter',
              'default': None},
             {'name': 'fillvalue',
@@ -277,25 +278,66 @@ class H5DataIO(DataIO):
             # Define the maxshape of the data if not provided by the user
             if 'maxshape' not in self.__iosettings:
                 self.__iosettings['maxshape'] = self.data.maxshape
-        if 'compression' in self.__iosettings:
-            if isinstance(self.__iosettings['compression'], bool):
-                if self.__iosettings['compression']:
-                    self.__iosettings['compression'] = 'gzip'
-                else:
-                    self.__iosettings.pop('compression', None)
-                    if 'compression_opts' in self.__iosettings:
-                        warnings.warn('Compression disabled by compression=False setting. ' +
-                                      'compression_opts parameter will, therefore, be ignored.')
-                        self.__iosettings.pop('compression_opts', None)
-        if 'compression' in self.__iosettings:
-            if self.__iosettings['compression'] != 'gzip':
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available" +
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of" +
-                              "the generated HDF5 files.")
+        # Make default settings when compression set to bool (True/False)
+        if isinstance(self.__iosettings.get('compression', None), bool):
+            if self.__iosettings['compression']:
+                self.__iosettings['compression'] = 'gzip'
+            else:
+                self.__iosettings.pop('compression', None)
+                if 'compression_opts' in self.__iosettings:
+                    warnings.warn('Compression disabled by compression=False setting. ' +
+                                  'compression_opts parameter will, therefore, be ignored.')
+                    self.__iosettings.pop('compression_opts', None)
+        # Validate the compression options used
+        self._check_compression_options()
+        # Confirm that the compressor is supported by h5py
+        if not self.filter_available(self.__iosettings.get('compression', None)):
+            raise ValueError("%s compression not support by this version of h5py." %
+                             str(self.__iosettings['compression']))
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k)
+
+    def _check_compression_options(self):
+        """
+        Internal helper function used to check if compression options are compliant
+        with the compression filter used.
+
+        :raises ValueError: If incompatible options are detected
+        """
+        if 'compression' in self.__iosettings:
+            if 'compression_opts' in self.__iosettings:
+                if self.__iosettings['compression'] == 'gzip':
+                    if self.__iosettings['compression_opts'] not in range(10):
+                        raise ValueError("GZIP compression_opts setting must be an integer from 0-9, " +
+                                         "not " + str(self.__iosettings['compression_opts']))
+                elif self.__iosettings['compression'] == 'lzf':
+                    if self.__iosettings['compression_opts'] is not None:
+                        raise ValueError("LZF compression filter accepts no compression_opts")
+                elif self.__iosettings['compression'] == 'szip':
+                    if not isinstance(self.__iosettings['compression_opts'], tuple) or \
+                                    len(self.__iosettings['compression_opts']) != 2:
+                        raise ValueError("SZIP compression filter compression_opts" +
+                                         " must be a 2-tuple ('ec'|'nn', even integer 0-32")
+            # Warn if compressor other than gzip is being used
+            if self.__iosettings['compression'] != 'gzip':
+                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available" +
+                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of" +
+                              "the generated HDF5 files.")
+
+    @staticmethod
+    def filter_available(filter):
+        """
+        Check if a given I/O filter is available
+        :param filter: String with the name of the filter, e.g., gzip, szip etc.
+        :type filter: String
+        :return: bool indicating wether the given filter is available
+        """
+        if filter is not None:
+            return filter in h5py_filters.encode
+        else:
+            return True
 
     @property
     def link_data(self):
