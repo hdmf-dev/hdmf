@@ -63,7 +63,7 @@ class TestSpec(unittest.TestCase):
   data_type_def: MyExtendedMyDataSeries
 """  # noqa: E128
             nsstr = file.read()
-            self.assertTrue(nsstr == match_str)
+            self.assertEqual(nsstr, match_str)
 
 
 class TestNamespaceBuilder(TestSpec):
@@ -105,7 +105,7 @@ class TestNamespaceBuilder(TestSpec):
   version: 0.0.1
 """ % self.date.isoformat()  # noqa: E128
             nsstr = file.read()
-            self.assertTrue(nsstr == match_str)
+            self.assertEqual(nsstr, match_str)
 
     def test_read_namespace(self):
         ns_catalog = NamespaceCatalog()
@@ -184,7 +184,7 @@ class TestYAMLSpecWrite(TestSpec):
   version: 0.0.1
 """ % self.date.isoformat()  # noqa: E128
             nsstr = file.read()
-            self.assertTrue(nsstr == match_str)
+            self.assertEqual(nsstr, match_str)
 
 
 class TestExportSpec(TestSpec):
@@ -215,4 +215,4 @@ class TestExportSpec(TestSpec):
   - source: mylab.extensions.yaml
   version: 0.0.1
 """ % self.date.isoformat()  # noqa: E128
-            self.assertTrue(nsstr == match_str)
+            self.assertEqual(nsstr, match_str)
