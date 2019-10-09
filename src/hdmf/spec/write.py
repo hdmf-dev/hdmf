@@ -2,6 +2,7 @@ import copy
 import json
 import ruamel.yaml as yaml
 import os.path
+import warnings
 from collections import OrderedDict
 from six import with_metaclass
 from abc import ABCMeta, abstractmethod
@@ -218,3 +219,42 @@ class SpecFileBuilder(dict):
             self.setdefault('groups', list()).append(spec)
         elif isinstance(spec, DatasetSpec):
             self.setdefault('datasets', list()).append(spec)
+
+
+def export_spec(ns_builder, new_data_types, output_dir):
+    """
+    Create YAML specification files for a new namespace and extensions with
+    the given data type specs.
+
+    Args:
+        ns_builder - NamespaceBuilder instance used to build the
+                     namespace and extension
+        new_data_types - Iterable of specs that represent new data types
+                         to be added
+    """
+
+    if len(new_data_types) == 0:
+        warnings.warn('No data types specified. Exiting.')
+        return
+
+    if ns_builder.name is None:
+        raise RuntimeError('Namespace name is required to export specs')
+
+    ns_path = ns_builder.name + '.namespace.yaml'
+    ext_path = ns_builder.name + '.extensions.yaml'
+
+    if len(new_data_types) > 1:
+        pluralize = 's'
+    else:
+        pluralize = ''
+
+    print('Creating file {output_dir}/{ext_path} with {new_data_types_count} data type{pluralize}'.format(
+        pluralize=pluralize, output_dir=output_dir, ext_path=ext_path,
+        new_data_types_count=len(new_data_types)))
+
+    for data_type in new_data_types:
+        ns_builder.add_spec(ext_path, data_type)
+
+    print('Creating file {output_dir}/{ns_path}'.format(output_dir=output_dir, ns_path=ns_path))
+
+    ns_builder.export(ns_path, outdir=output_dir)
