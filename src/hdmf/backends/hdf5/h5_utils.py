@@ -310,20 +310,30 @@ class H5DataIO(DataIO):
             if 'compression_opts' in self.__iosettings:
                 if self.__iosettings['compression'] == 'gzip':
                     if self.__iosettings['compression_opts'] not in range(10):
-                        raise ValueError("GZIP compression_opts setting must be an integer from 0-9, " +
+                        raise ValueError("GZIP compression_opts setting must be an integer from 0-9, "
                                          "not " + str(self.__iosettings['compression_opts']))
                 elif self.__iosettings['compression'] == 'lzf':
                     if self.__iosettings['compression_opts'] is not None:
                         raise ValueError("LZF compression filter accepts no compression_opts")
                 elif self.__iosettings['compression'] == 'szip':
-                    if not isinstance(self.__iosettings['compression_opts'], tuple) or \
-                                    len(self.__iosettings['compression_opts']) != 2:
-                        raise ValueError("SZIP compression filter compression_opts" +
-                                         " must be a 2-tuple ('ec'|'nn', even integer 0-32")
+                    szip_opts_error = False
+                    # Check that we have a tuple
+                    szip_opts_error |= not isinstance(self.__iosettings['compression_opts'], tuple)
+                    # Check that we have a tuple of the right length and correct settings
+                    if not szip_opts_error:
+                        try:
+                            szmethod, szpix = self.__iosettings['compression_opts']
+                            szip_opts_error |= (szmethod not in ('ec', 'nn'))
+                            szip_opts_error |= (not (0 < szpix <= 32 and szpix % 2 == 0))
+                        except ValueError:  # ValueError is raised if tuple does not have the right length to unpack
+                            szip_opts_error = True
+                    if szip_opts_error:
+                        raise ValueError("SZIP compression filter compression_opts"
+                                         " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
             # Warn if compressor other than gzip is being used
             if self.__iosettings['compression'] != 'gzip':
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available" +
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of" +
+                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available"
+                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of"
                               "the generated HDF5 files.")
 
     @staticmethod

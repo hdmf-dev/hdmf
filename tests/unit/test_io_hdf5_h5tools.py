@@ -441,7 +441,7 @@ class H5IOTest(unittest.TestCase):
                             compression='gzip')
             self.assertEqual(len(w), 0)
             self.assertEqual(dset.io_settings['compression'], 'gzip')
-        # Make sure no warning is issued when using szip (if installed)
+        # Make sure a warning is issued when using szip (even if installed)
         if "szip" in h5py_filters.encode:
             with warnings.catch_warnings(record=True) as w:
                 dset = H5DataIO(np.arange(30),
@@ -452,7 +452,7 @@ class H5IOTest(unittest.TestCase):
         else:
             with self.assertRaises(ValueError):
                 H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
-        # Make sure no warning is issued when using lzf
+        # Make sure a warning is issued when using lzf compression
         with warnings.catch_warnings(record=True) as w:
             dset = H5DataIO(np.arange(30),
                             compression='lzf')
@@ -494,6 +494,12 @@ class H5IOTest(unittest.TestCase):
         # Make sure we warn if szip with gzip compression option is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=4)
+        # Make sure szip raises a ValueError if bad options are used (odd compression option)
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 3))
+        # Make sure szip raises a ValueError if bad options are used (bad methos)
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='szip', compression_opts=('bad_method', 16))
 
     def test_warning_on_linking_of_regular_array(self):
         with warnings.catch_warnings(record=True) as w:
