@@ -297,6 +297,14 @@ class H5DataIO(DataIO):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k)
 
+    def get_io_params(self):
+        """
+        Returns a dict with the I/O parameters specifiedin in this DataIO.
+        """
+        ret = dict(self.__iosettings)
+        ret['link_data'] = self.__link_data
+        return ret
+
     @property
     def link_data(self):
         return self.__link_data
