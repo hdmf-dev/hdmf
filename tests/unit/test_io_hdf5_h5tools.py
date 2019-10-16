@@ -730,8 +730,8 @@ class TestHDF5IO(unittest.TestCase):
 
     def test_constructor(self):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            self.assertEquals(io.manager, self.manager)
-            self.assertEquals(io.source, self.path)
+            self.assertEqual(io.manager, self.manager)
+            self.assertEqual(io.source, self.path)
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'r')
