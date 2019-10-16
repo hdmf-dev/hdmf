@@ -37,6 +37,8 @@ class DynamicTableMap(ObjectMapper):
                     attr_value = attr_value.target
             elif spec.data_type_inc == 'DynamicTableRegion':
                 attr_value = container[spec.name]
+                if isinstance(attr_value, VectorIndex):
+                    attr_value = attr_value.target
                 if attr_value.table is None:
                     msg = "empty or missing table for DynamicTableRegion '%s' in DynamicTable '%s'" %\
                           (attr_value.name, container.name)
