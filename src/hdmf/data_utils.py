@@ -601,7 +601,7 @@ class DataIO(object):
 
     def get_io_params(self):
         """
-        Returns a dict with the I/O parameters specifiedin in this DataIO.
+        Returns a dict with the I/O parameters specified in this DataIO.
         """
         return dict()
 
