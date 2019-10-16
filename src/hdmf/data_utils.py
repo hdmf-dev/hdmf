@@ -599,6 +599,13 @@ class DataIO(with_metaclass(ABCMeta, object)):
         data = popargs('data', kwargs)
         self.__data = data
 
+    @abstractmethod
+    def get_io_params(self):
+        """
+        Returns a dict with the I/O parameters specifiedin in this DataIO.
+        """
+        pass
+
     @property
     def data(self):
         """Get the wrapped data object"""
