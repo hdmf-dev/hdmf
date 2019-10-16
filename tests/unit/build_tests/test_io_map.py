@@ -18,7 +18,7 @@ from tests.unit.test_utils import CORE_NAMESPACE
 class Bar(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
-            {'name': 'data', 'type': list, 'doc': 'some data'},
+            {'name': 'data', 'type': ('data', 'array_data'), 'doc': 'some data'},
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
@@ -148,6 +148,58 @@ class TestTypeMap(unittest.TestCase):
         mapper = self.type_map.get_map(container_inst)
         self.assertIs(mapper.spec, self.bar_spec)
         self.assertIsInstance(mapper, MyMap)
+
+
+class TestMapStrings(unittest.TestCase):
+
+    def customSetUp(self, bar_spec):
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        return type_map
+
+    def test_build_1d(self):
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,),
+                                                   attributes=[AttributeSpec(
+                                                       'attr2', 'an example integer attribute', 'int')])],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, ObjectMapper)
+        bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
+        builder = type_map.build(bar_inst)
+        self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
+
+    def test_build_scalar(self):
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'text', name='data',
+                                                   attributes=[AttributeSpec(
+                                                       'attr2', 'an example integer attribute', 'int')])],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, ObjectMapper)
+        bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
+        builder = type_map.build(bar_inst)
+        self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
+
+    def test_build_dataio(self):
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,),
+                                                   attributes=[AttributeSpec(
+                                                       'attr2', 'an example integer attribute', 'int')])],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, ObjectMapper)
+        bar_inst = Bar('my_bar', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1', 10)
+        builder = type_map.build(bar_inst)
+        self.assertIsInstance(builder.get('data').data, H5DataIO)
 
 
 class TestDynamicContainer(unittest.TestCase):

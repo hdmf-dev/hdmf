@@ -589,7 +589,7 @@ class ShapeValidatorResult(object):
 
 
 @docval_macro('data')
-class DataIO(with_metaclass(ABCMeta, object)):
+class DataIO(object):
     """
     Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
@@ -598,6 +598,12 @@ class DataIO(with_metaclass(ABCMeta, object)):
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         self.__data = data
+
+    def get_io_params(self):
+        """
+        Returns a dict with the I/O parameters specified in this DataIO.
+        """
+        return dict()
 
     @property
     def data(self):
