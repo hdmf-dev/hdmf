@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
 

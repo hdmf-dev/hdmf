@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 import json
 
 from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, DtypeSpec, RefSpec
