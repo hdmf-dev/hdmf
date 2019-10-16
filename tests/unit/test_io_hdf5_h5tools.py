@@ -734,7 +734,7 @@ class TestHDF5IO(unittest.TestCase):
             self.assertEquals(io.source, self.path)
 
     def test_set_file_mismatch(self):
-        self.file_obj = File(get_temp_filepath())
+        self.file_obj = File(get_temp_filepath(), 'r')
         err_msg = re.escape("You argued %s as this object's path, but supplied a file with filename: %s"
                             % (self.path, self.file_obj.filename))
         with self.assertRaisesRegex(ValueError, err_msg):
@@ -809,7 +809,7 @@ class TestNoCacheSpec(unittest.TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(foofile, cache_spec=False)
 
-        with File(self.path) as f:
+        with File(self.path, 'r') as f:
             self.assertNotIn('specifications', f)
 
 
@@ -872,13 +872,13 @@ class HDF5IOMultiFileTest(unittest.TestCase):
 
         # Test that everything is working as expected
         # Confirm that our original data file is correct
-        f1 = File(self.test_temp_files[0])
+        f1 = File(self.test_temp_files[0], 'r')
         self.assertIsInstance(f1.get('/buckets/test_bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
         # Confirm that we successfully created and External Link in our second file
-        f2 = File(self.test_temp_files[1])
+        f2 = File(self.test_temp_files[1], 'r')
         self.assertIsInstance(f2.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
         # Confirm that we successfully resolved the External Link when we copied our second file
-        f3 = File(self.test_temp_files[2])
+        f3 = File(self.test_temp_files[2], 'r')
         self.assertIsInstance(f3.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
 
 
