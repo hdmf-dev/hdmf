@@ -738,6 +738,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         return attr_val
 
     def __convert_value(self, value, spec):
+        """
+        Convert string types to the specified dtype
+        """
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
@@ -763,6 +766,11 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                             ret = list(map(string_type, value))
                         else:
                             ret = string_type(value)
+                        # copy over any I/O parameters if they were specified
+                        if isinstance(value, DataIO):
+                            params = value.get_io_params()
+                            params['data'] = ret
+                            ret = value.__class__(**params)
         return ret
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the constructor argument for"},
