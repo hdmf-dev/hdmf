@@ -31,6 +31,8 @@ def get_shape(data):
     """
     if isinstance(data, dict):
         return None
+    elif hasattr(data, 'shape'):
+        return data.shape
     elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
         return __get_shape_helper(data)
     else:
