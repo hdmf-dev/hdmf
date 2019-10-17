@@ -12,4 +12,3 @@ class TestCommonTypeMap(unittest.TestCase):
         self.assertIs(cls, Container)
         cls = tm.get_container_cls('hdmf-common', 'Data')
         self.assertIs(cls, Data)
-
