@@ -39,6 +39,10 @@ class H5Dataset(HDMFDataset):
     def ref(self):
         return self.dataset.ref
 
+    @property
+    def shape(self):
+        return self.dataset.shape
+
 
 class H5TableDataset(H5Dataset):
 
