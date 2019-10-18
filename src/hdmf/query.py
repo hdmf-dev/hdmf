@@ -1,4 +1,5 @@
 from six import with_metaclass
+from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from .utils import ExtenderMeta, docval_macro, docval, getargs
@@ -160,3 +161,30 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     def next(self):
         return self.dataset.next()
+
+
+class ReferenceResolver(with_metaclass(ABCMeta, object)):
+
+    @abstractmethod
+    def invert(self):
+        """
+        Return an object that defers reference resolution
+        but in the opposite direction.
+        """
+        pass
+
+
+class BuilderResolver(ReferenceResolver):
+    """
+    A reference resolver that resolves references to Builders
+    """
+
+    pass
+
+
+class ContainerResolver(ReferenceResolver):
+    """
+    A reference resolver that resolves references to Containers
+    """
+
+    pass

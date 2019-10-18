@@ -3,7 +3,8 @@ try:
     from collections.abc import Iterable  # Python 3
 except ImportError:
     from collections import Iterable  # Python 2.7
-from six import binary_type, text_type
+from abc import ABCMeta, abstractmethod
+from six import binary_type, text_type, with_metaclass
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
@@ -11,7 +12,7 @@ import numpy as np
 import warnings
 import os
 
-from ...query import HDMFDataset
+from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...data_utils import DataIO, AbstractDataChunkIterator
@@ -44,7 +45,37 @@ class H5Dataset(HDMFDataset):
         return self.dataset.shape
 
 
-class H5TableDataset(H5Dataset):
+class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver)):
+
+    @abstractmethod
+    def get_object(self, h5obj):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def get_inverse_class(cls):
+        pass
+
+    def invert(self):
+        if not hasattr(self, '__inverted'):
+            cls = self.get_inverse_class()
+            self.__inverted = call_docval_func(cls.__init__, self.__dict__)
+        return self.__inverted
+
+
+class BuilderResolverMixin(BuilderResolver):
+
+    def get_object(self, h5obj):
+        return self.io.get_builder(h5obj)
+
+
+class ContainerResolverMixin(ContainerResolver):
+
+    def get_object(self, h5obj):
+        return self.io.get_container(h5obj)
+
+
+class AbstractH5TableDataset(DatasetOfReferences):
 
     @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'},
@@ -52,7 +83,7 @@ class H5TableDataset(H5Dataset):
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         types = popargs('types', kwargs)
-        call_docval_func(super(H5TableDataset, self).__init__, kwargs)
+        call_docval_func(super(AbstractH5TableDataset, self).__init__, kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is RegionReference:
@@ -84,7 +115,7 @@ class H5TableDataset(H5Dataset):
         return self.__dtype
 
     def __getitem__(self, arg):
-        rows = copy(super(H5TableDataset, self).__getitem__(arg))
+        rows = copy(super(AbstractH5TableDataset, self).__getitem__(arg))
         if isinstance(arg, int):
             self.__swap_refs(rows)
         else:
@@ -98,37 +129,82 @@ class H5TableDataset(H5Dataset):
             row[i] = getref(row[i])
 
     def __get_ref(self, ref):
-        return self.io.get_container(self.dataset.file[ref])
+        return self.get_object(self.dataset.file[ref])
 
     def __get_regref(self, ref):
         obj = self.__get_ref(ref)
         return obj[ref]
 
+    def resolve(self, manager):
+        return self[0:len(self)]
 
-class H5ReferenceDataset(H5Dataset):
+
+class AbstractH5ReferenceDataset(DatasetOfReferences):
 
     def __getitem__(self, arg):
-        ref = super(H5ReferenceDataset, self).__getitem__(arg)
+        ref = super(AbstractH5ReferenceDataset, self).__getitem__(arg)
         if isinstance(ref, np.ndarray):
-            return [self.io.get_container(self.dataset.file[x]) for x in ref]
+            return [self.get_object(self.dataset.file[x]) for x in ref]
         else:
-            return self.io.get_container(self.dataset.file[ref])
+            return self.get_object(self.dataset.file[ref])
 
     @property
     def dtype(self):
         return 'object'
 
 
-class H5RegionDataset(H5ReferenceDataset):
+class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
 
     def __getitem__(self, arg):
-        obj = super(H5RegionDataset, self).__getitem__(arg)
+        obj = super(AbstractH5RegionDataset, self).__getitem__(arg)
         ref = self.dataset[arg]
         return obj[ref]
 
     @property
     def dtype(self):
         return 'region'
+
+
+class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
+
+    @classmethod
+    def get_inverse_class(cls):
+        return BuilderH5TableDataset
+
+
+class BuilderH5TableDataset(BuilderResolverMixin, AbstractH5TableDataset):
+
+    @classmethod
+    def get_inverse_class(cls):
+        return ContainerH5TableDataset
+
+
+class ContainerH5ReferenceDataset(ContainerResolverMixin, AbstractH5ReferenceDataset):
+
+    @classmethod
+    def get_inverse_class(cls):
+        return BuilderH5ReferenceDataset
+
+
+class BuilderH5ReferenceDataset(BuilderResolverMixin, AbstractH5ReferenceDataset):
+
+    @classmethod
+    def get_inverse_class(cls):
+        return ContainerH5ReferenceDataset
+
+
+class ContainerH5RegionDataset(ContainerResolverMixin, AbstractH5RegionDataset):
+
+    @classmethod
+    def get_inverse_class(cls):
+        return BuilderH5RegionDataset
+
+
+class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
+
+    @classmethod
+    def get_inverse_class(cls):
+        return ContainerH5RegionDataset
 
 
 class H5SpecWriter(SpecWriter):
