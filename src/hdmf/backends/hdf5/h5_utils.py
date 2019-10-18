@@ -46,17 +46,23 @@ class H5Dataset(HDMFDataset):
 
 
 class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver)):
+    """
+    An extension of the base ReferenceResolver class to add more abstract methods for
+    subclasses that will read HDF5 references
+    """
 
     @abstractmethod
     def get_object(self, h5obj):
-        pass
-
-    @classmethod
-    @abstractmethod
-    def get_inverse_class(cls):
+        """
+        A class that maps an HDF5 object to a Builder or Container
+        """
         pass
 
     def invert(self):
+        """
+        Return an object that defers reference resolution
+        but in the opposite direction.
+        """
         if not hasattr(self, '__inverted'):
             cls = self.get_inverse_class()
             docval = get_docval(cls.__init__)
@@ -68,14 +74,28 @@ class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver))
 
 
 class BuilderResolverMixin(BuilderResolver):
+    """
+    A mixin for adding to HDF5 reference-resolving types
+    the get_object method that returns Builders
+    """
 
     def get_object(self, h5obj):
+        """
+        A class that maps an HDF5 object to a Builder
+        """
         return self.io.get_builder(h5obj)
 
 
 class ContainerResolverMixin(ContainerResolver):
+    """
+    A mixin for adding to HDF5 reference-resolving types
+    the get_object method that returns Containers
+    """
 
     def get_object(self, h5obj):
+        """
+        A class that maps an HDF5 object to a Container
+        """
         return self.io.get_container(h5obj)
 
 
@@ -175,6 +195,10 @@ class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
 
 
 class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
+    """
+    A reference-resolving dataset for resolving references inside tables
+    (i.e. compound dtypes) that returns resolved references as Containers
+    """
 
     @classmethod
     def get_inverse_class(cls):
@@ -182,6 +206,10 @@ class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
 
 
 class BuilderH5TableDataset(BuilderResolverMixin, AbstractH5TableDataset):
+    """
+    A reference-resolving dataset for resolving references inside tables
+    (i.e. compound dtypes) that returns resolved references as Builders
+    """
 
     @classmethod
     def get_inverse_class(cls):
@@ -189,6 +217,10 @@ class BuilderH5TableDataset(BuilderResolverMixin, AbstractH5TableDataset):
 
 
 class ContainerH5ReferenceDataset(ContainerResolverMixin, AbstractH5ReferenceDataset):
+    """
+    A reference-resolving dataset for resolving object references that returns
+    resolved references as Containers
+    """
 
     @classmethod
     def get_inverse_class(cls):
@@ -196,6 +228,10 @@ class ContainerH5ReferenceDataset(ContainerResolverMixin, AbstractH5ReferenceDat
 
 
 class BuilderH5ReferenceDataset(BuilderResolverMixin, AbstractH5ReferenceDataset):
+    """
+    A reference-resolving dataset for resolving object references that returns
+    resolved references as Builders
+    """
 
     @classmethod
     def get_inverse_class(cls):
@@ -203,6 +239,10 @@ class BuilderH5ReferenceDataset(BuilderResolverMixin, AbstractH5ReferenceDataset
 
 
 class ContainerH5RegionDataset(ContainerResolverMixin, AbstractH5RegionDataset):
+    """
+    A reference-resolving dataset for resolving region references that returns
+    resolved references as Containers
+    """
 
     @classmethod
     def get_inverse_class(cls):
@@ -210,6 +250,10 @@ class ContainerH5RegionDataset(ContainerResolverMixin, AbstractH5RegionDataset):
 
 
 class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
+    """
+    A reference-resolving dataset for resolving region references that returns
+    resolved references as Builders
+    """
 
     @classmethod
     def get_inverse_class(cls):
