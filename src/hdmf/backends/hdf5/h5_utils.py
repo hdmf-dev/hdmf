@@ -14,7 +14,7 @@ import os
 
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
-from ...utils import docval, getargs, popargs, call_docval_func
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...region import RegionSlicer
 
@@ -59,7 +59,11 @@ class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver))
     def invert(self):
         if not hasattr(self, '__inverted'):
             cls = self.get_inverse_class()
-            self.__inverted = call_docval_func(cls.__init__, self.__dict__)
+            docval = get_docval(cls.__init__)
+            kwargs = dict()
+            for arg in docval:
+                kwargs[arg['name']] = getattr(self, arg['name'])
+            self.__inverted = cls(**kwargs)
         return self.__inverted
 
 
@@ -90,6 +94,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
                 self.__refgetters[i] = self.__get_ref
+        self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
             sub = self.dataset.dtype[i]
@@ -109,6 +114,10 @@ class AbstractH5TableDataset(DatasetOfReferences):
             else:
                 tmp.append(sub.type.__name__)
         self.__dtype = tmp
+
+    @property
+    def types(self):
+        return self.__types
 
     @property
     def dtype(self):
