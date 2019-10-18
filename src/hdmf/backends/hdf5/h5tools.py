@@ -14,7 +14,7 @@ from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildMa
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec
 from ...spec import NamespaceBuilder
 
-from .h5_utils import H5ReferenceDataset, H5RegionDataset, H5TableDataset,\
+from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
 
 from ..io import HDMFIO, UnsupportedOperation
@@ -320,8 +320,8 @@ class HDF5IO(HDMFIO):
             return None
 
     @docval({'name': 'h5obj', 'type': (Dataset, Group),
-             'doc': 'the HDF5 object to the corresponding Container/Data object for'})
-    def get_container(self, **kwargs):
+             'doc': 'the HDF5 object to the corresponding Builder object for'})
+    def get_builder(self, **kwargs):
         h5obj = getargs('h5obj', kwargs)
         fpath = h5obj.file.filename
         path = h5obj.name
@@ -329,6 +329,13 @@ class HDF5IO(HDMFIO):
         if builder is None:
             msg = '%s:%s has not been built' % (fpath, path)
             raise ValueError(msg)
+        return builder
+
+    @docval({'name': 'h5obj', 'type': (Dataset, Group),
+             'doc': 'the HDF5 object to the corresponding Container/Data object for'})
+    def get_container(self, **kwargs):
+        h5obj = getargs('h5obj', kwargs)
+        builder = self.get_builder(h5obj)
         container = self.manager.construct(builder)
         return container
 
@@ -431,13 +438,13 @@ class HDF5IO(HDMFIO):
                 if isinstance(elem1, (text_type, binary_type)):
                     d = h5obj
                 elif isinstance(elem1, RegionReference):  # read list of references
-                    d = H5RegionDataset(h5obj, self)
+                    d = BuilderH5RegionDataset(h5obj, self)
                 elif isinstance(elem1, Reference):
-                    d = H5ReferenceDataset(h5obj, self)
+                    d = BuilderH5ReferenceDataset(h5obj, self)
             elif h5obj.dtype.kind == 'V':    # table
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
-                d = H5TableDataset(h5obj, self, ref_cols)
+                d = BuilderH5TableDataset(h5obj, self, ref_cols)
             else:
                 d = h5obj
             kwargs["data"] = d

@@ -1,4 +1,5 @@
 from six import with_metaclass
+from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from .utils import ExtenderMeta, docval_macro, docval, getargs
@@ -160,3 +161,60 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     def next(self):
         return self.dataset.next()
+
+
+class ReferenceResolver(with_metaclass(ABCMeta, object)):
+    """
+    A base class for classes that resolve references
+    """
+
+    @classmethod
+    @abstractmethod
+    def get_inverse_class(cls):
+        """
+        Return the class the represents the ReferenceResolver
+        that resolves refernces to the opposite type.
+
+        BuilderResolver.get_inverse_class should return a class
+        that subclasses ContainerResolver.
+
+        ContainerResolver.get_inverse_class should return a class
+        that subclasses BuilderResolver.
+        """
+        pass
+
+    @abstractmethod
+    def invert(self):
+        """
+        Return an object that defers reference resolution
+        but in the opposite direction.
+        """
+        pass
+
+
+class BuilderResolver(ReferenceResolver):
+    """
+    A reference resolver that resolves references to Builders
+
+    Subclasses should implement the invert method and the get_inverse_class
+    classmethod
+
+    BuilderResolver.get_inverse_class should return a class that subclasses
+    ContainerResolver.
+    """
+
+    pass
+
+
+class ContainerResolver(ReferenceResolver):
+    """
+    A reference resolver that resolves references to Containers
+
+    Subclasses should implement the invert method and the get_inverse_class
+    classmethod
+
+    ContainerResolver.get_inverse_class should return a class that subclasses
+    BuilderResolver.
+    """
+
+    pass
