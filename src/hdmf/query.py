@@ -196,10 +196,11 @@ class BuilderResolver(ReferenceResolver):
     """
     A reference resolver that resolves references to Builders
 
-    Subclasses should implement invert and the calssmethod get_inverse_class
+    Subclasses should implement the invert method and the get_inverse_class
+    classmethod
 
-    BuilderResolver.get_inverse_class should return a class
-    that subclasses ContainerResolver.
+    BuilderResolver.get_inverse_class should return a class that subclasses
+    ContainerResolver.
     """
 
     pass
@@ -209,10 +210,11 @@ class ContainerResolver(ReferenceResolver):
     """
     A reference resolver that resolves references to Containers
 
-    Subclasses should implement invert and the calssmethod get_inverse_class
+    Subclasses should implement the invert method and the get_inverse_class
+    classmethod
 
-    ContainerResolver.get_inverse_class should return a class
-    that subclasses BuilderResolver.
+    ContainerResolver.get_inverse_class should return a class that subclasses
+    BuilderResolver.
     """
 
     pass
