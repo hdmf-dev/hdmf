@@ -12,6 +12,7 @@ from ..container import AbstractContainer, Container, Data, DataRegion
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec,\
                    SpecReader
 from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
@@ -930,6 +931,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 if attr_value is None:
                     attr_value = spec.default_value
 
+            attr_value = self.__check_ref_resolver(attr_value)
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
                     if attr_value is None:
@@ -971,6 +973,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
                 continue
+            attr_value = self.__check_ref_resolver(attr_value)
             if isinstance(attr_value, DataIO) and attr_value.data is None:
                 continue
             if isinstance(attr_value, Builder):
@@ -1127,8 +1130,17 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
-            ret[spec] = builder.data
+            ret[spec] = self.__check_ref_resolver(builder.data)
         return ret
+
+    @staticmethod
+    def __check_ref_resolver(data):
+        """
+        Check if this dataset is a reference resolver, and invert it if so.
+        """
+        if isinstance(data, ReferenceResolver):
+            return data.invert()
+        return data
 
     def __get_sub_builders(self, sub_builders, subspecs, manager, ret):
         # index builders by data_type
@@ -1188,7 +1200,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
-            const_args['data'] = builder.data
+            const_args['data'] = self.__check_ref_resolver(builder.data)
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
