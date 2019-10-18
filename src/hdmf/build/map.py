@@ -931,6 +931,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 if attr_value is None:
                     attr_value = spec.default_value
 
+            attr_value = self.__check_ref_resolver(attr_value)
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
                     if attr_value is None:
@@ -972,6 +973,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
                 continue
+            attr_value = self.__check_ref_resolver(attr_value)
             if isinstance(attr_value, DataIO) and attr_value.data is None:
                 continue
             if isinstance(attr_value, Builder):
@@ -1133,7 +1135,10 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
 
     @staticmethod
     def __check_ref_resolver(data):
-        if isinstance(ReferenceResolver):
+        """
+        Check if this dataset is a reference resolver, and invert it if so.
+        """
+        if isinstance(data, ReferenceResolver):
             return data.invert()
         return data
 
