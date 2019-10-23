@@ -265,7 +265,29 @@ class H5IOTest(unittest.TestCase):
         dset = self.f['test_dataset']
         self.assertListEqual(dset[:].tolist(), a.tolist())
 
-    def test_write_multi_dci(self):
+    def test_write_multi_dci_oaat(self):
+        """
+        Test writing multiple DataChunkIterators, one at a time
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        b = np.arange(30, 60).reshape(5, 2, 3)
+        aiter = iter(a)
+        biter = iter(b)
+        daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
+        daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
+        builder = GroupBuilder("root")
+        builder.add_dataset('test_dataset1', daiter1, attributes={})
+        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        self.io.write_builder(builder)
+        dset1 = self.f['test_dataset1']
+        self.assertListEqual(dset1[:].tolist(), a.tolist())
+        dset2 = self.f['test_dataset2']
+        self.assertListEqual(dset2[:].tolist(), b.tolist())
+
+    def test_write_multi_dci_conc(self):
+        """
+        Test writing multiple DataChunkIterators, concurrently
+        """
         a = np.arange(30).reshape(5, 2, 3)
         b = np.arange(30, 60).reshape(5, 2, 3)
         aiter = iter(a)
