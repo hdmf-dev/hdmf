@@ -35,7 +35,9 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
         container = self.__manager.construct(f_builder)
         return container
 
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'})
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write(self, **kwargs):
         container = popargs('container', kwargs)
         f_builder = self.__manager.build(container, source=self.__source)
@@ -48,7 +50,9 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'})
+    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write_builder(self, **kwargs):
         ''' Write a GroupBuilder representing an Container object '''
         pass
