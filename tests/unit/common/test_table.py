@@ -181,9 +181,22 @@ class TestDynamicTable(unittest.TestCase):
 
     def test_missing_columns(self):
         table = self.with_spec()
-
         with self.assertRaises(ValueError):
             table.add_row({'bar': 60.0, 'foo': [6]}, None)
+
+    def test_enforce_unique_id_error(self):
+        table = self.with_spec()
+        table.add_row(id=10, data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=True)
+        with self.assertRaises(ValueError):
+            table.add_row(id=10, data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=True)
+
+    def test_not_enforce_unique_id_error(self):
+        table = self.with_spec()
+        table.add_row(id=10, data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=False)
+        try:
+            table.add_row(id=10, data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=False)
+        except ValueError as e:
+            self.fail("add row with non unique id raised error %s" % str(e))
 
     def test_extra_columns(self):
         table = self.with_spec()
