@@ -7,7 +7,7 @@ from six import raise_from, text_type, string_types, binary_type
 import warnings
 from ...container import Container
 
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, get_docval, fmt_docval_args
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
@@ -1112,3 +1112,9 @@ class HDF5IO(HDMFIO):
             else:
                 ret.append(elem)
         return ret
+
+    @classmethod
+    @docval(*get_docval(H5DataIO.__init__))
+    def set_dataio(cls, **kwargs):
+        cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
+        return H5DataIO(*cargs, **ckwargs)
