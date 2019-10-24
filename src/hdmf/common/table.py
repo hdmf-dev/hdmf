@@ -10,6 +10,7 @@ from collections import OrderedDict
 from warnings import warn
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
+from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..container import Container, Data
 
 from . import register_class
@@ -200,7 +201,7 @@ class DynamicTable(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
-            {'name': 'id', 'type': ('array_data', ElementIdentifiers), 'doc': 'the identifiers for this table',
+            {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data',
@@ -244,6 +245,11 @@ class DynamicTable(Container):
             for c in columns:  # remove all VectorData objects that have an associated VectorIndex from colset
                 if isinstance(c, VectorIndex):
                     colset.pop(c.target.name)
+                _data = c.data
+                if isinstance(_data, DataIO):
+                    _data = _data.data
+                if isinstance(_data, AbstractDataChunkIterator):
+                    colset.pop(c.name, None)
             lens = [len(c) for c in colset.values()]
             if not all(i == lens[0] for i in lens):
                 raise ValueError("columns must be the same length")

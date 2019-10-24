@@ -17,7 +17,7 @@ class DynamicTableMap(ObjectMapper):
 
     @ObjectMapper.object_attr('colnames')
     def attr_columns(self, container, manager):
-        if all(len(col) == 0 for col in container.columns):
+        if all(not col for col in container.columns):
             return tuple()
         return container.colnames
 
