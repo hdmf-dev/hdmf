@@ -7,7 +7,7 @@ import logging
 import warnings
 
 from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval, get_data_shape, fmt_docval_args
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
@@ -1219,3 +1219,21 @@ class HDF5IO(HDMFIO):
         Return the HDF5 file mode. One of ("w", "r", "r+", "a", "w-", "x").
         """
         return self.__mode
+
+    @classmethod
+    @docval(*get_docval(H5DataIO.__init__))
+    def set_dataio(cls, **kwargs):
+        """
+        Wrap the given Data object with an H5DataIO.
+
+        This method is provided merely for convenience. It is the equivalent
+        of the following:
+
+        ```
+        from hdmf.backends.hdf5 import H5DataIO
+        data = ...
+        data = H5DataIO(data)
+        ```
+        """
+        cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
+        return H5DataIO(*cargs, **ckwargs)
