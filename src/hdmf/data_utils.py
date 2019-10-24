@@ -161,9 +161,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
         # This should be done as a last resort only
         if self.__first_chunk_shape is None and self.__maxshape is not None:
-            tmp = list(self.__maxshape)
-            tmp[0] = 1
-            self.__first_chunk_shape = tuple(tmp)
+            self.__first_chunk_shape = tuple(1 if i is None else i for i in self.__maxshape)
 
         if self.__dtype is None:
             raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
