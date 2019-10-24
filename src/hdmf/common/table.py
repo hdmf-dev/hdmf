@@ -443,7 +443,7 @@ class DynamicTable(Container):
                     return self.__indices[arg]
                 else:
                     raise KeyError(arg)
-            elif isinstance(arg, (int, np.int8, np.int16, np.int32, np.int64)):
+            elif np.issubdtype(type(arg), np.integer):
                 # index by int, return row
                 ret = tuple(col[arg] for col in self.__df_cols)
             elif isinstance(arg, (tuple, list, np.ndarray)):
