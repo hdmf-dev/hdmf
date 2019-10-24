@@ -945,9 +945,12 @@ class HDF5IO(HDMFIO):
             io_settings['maxshape'] = data.maxshape
         if 'dtype' not in io_settings:
             if (options is not None) and ('dtype' in options):
-                io_settings['dtype'] = cls.__dtypes.get(options['dtype'])
+                io_settings['dtype'] = options['dtype']
             else:
                 io_settings['dtype'] = data.dtype
+            if isinstance(io_settings['dtype'], str):
+                # map to real dtype if we were given a string
+                io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
