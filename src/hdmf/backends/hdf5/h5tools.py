@@ -945,7 +945,7 @@ class HDF5IO(HDMFIO):
             io_settings['maxshape'] = data.maxshape
         if 'dtype' not in io_settings:
             if (options is not None) and ('dtype' in options):
-                io_settings['dtype'] = options['dtype']
+                io_settings['dtype'] = cls.__dtypes.get(options['dtype'])
             else:
                 io_settings['dtype'] = data.dtype
         try:

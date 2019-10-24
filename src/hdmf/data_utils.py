@@ -159,6 +159,12 @@ class DataChunkIterator(AbstractDataChunkIterator):
             self.__dtype = self.__next_chunk.data.dtype
             self.__first_chunk_shape = get_data_shape(self.__next_chunk.data)
 
+        # This should be done as a last resort only
+        if self.__first_chunk_shape is None and self.__maxshape is not None:
+            tmp = list(self.__maxshape)
+            tmp[0] = 1
+            self.__first_chunk_shape = tuple(tmp)
+
         if self.__dtype is None:
             raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
 
@@ -624,7 +630,11 @@ class DataIO(object):
         return len(self.data)
 
     def __bool__(self):
-        return self.valid and len(self) > 0
+        if self.valid:
+            if isinstance(self.data, AbstractDataChunkIterator):
+                return True
+            return len(self) > 0
+        return False
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""

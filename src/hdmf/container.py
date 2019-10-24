@@ -409,6 +409,8 @@ class Data(AbstractContainer):
         self.__data = dataio
 
     def __bool__(self):
+        if self.data:
+            return True
         return len(self.data) != 0
 
     def __len__(self):

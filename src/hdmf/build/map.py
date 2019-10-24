@@ -386,6 +386,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         This amounts to determining the greater precision of the two arguments, but also
         checks to make sure the same base dtype is being used.
         """
+        if specified is _unicode or specified is _ascii:
+            return specified
         g = np.dtype(given)
         s = np.dtype(specified)
         if g.itemsize <= s.itemsize:
@@ -444,7 +446,12 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             ret_dtype = tmp_dtype
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
+            if spec_dtype is _unicode:
+                ret_dtype = "utf8"
+            elif spec_dtype is _ascii:
+                ret_dtype = "ascii"
+            else:
+                ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
         else:
             if spec_dtype in (_unicode, _ascii):
                 ret_dtype = 'ascii'
