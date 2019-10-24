@@ -104,6 +104,10 @@ if os.path.exists(__resources['namespace_path']):
     from . import table  # noqa: F401,E402
     from . import sparse  # noqa: F401,E402
 
+    from .. import Data, Container
+    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
+    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
+
 else:
     raise RuntimeError("Unable to load a TypeMap - no namespace file found")
 

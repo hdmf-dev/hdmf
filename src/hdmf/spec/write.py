@@ -2,6 +2,7 @@ import copy
 import json
 import ruamel.yaml as yaml
 import os.path
+import warnings
 from collections import OrderedDict
 from six import with_metaclass
 from abc import ABCMeta, abstractmethod
@@ -69,7 +70,8 @@ class YAMLSpecWriter(SpecWriter):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
-        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'default_name',
+        order = ['neurodata_type_def', 'neurodata_type_inc', 'data_type_def', 'data_type_inc',
+                 'name', 'default_name',
                  'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
                  'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
         if isinstance(obj, dict):
@@ -218,3 +220,31 @@ class SpecFileBuilder(dict):
             self.setdefault('groups', list()).append(spec)
         elif isinstance(spec, DatasetSpec):
             self.setdefault('datasets', list()).append(spec)
+
+
+def export_spec(ns_builder, new_data_types, output_dir):
+    """
+    Create YAML specification files for a new namespace and extensions with
+    the given data type specs.
+
+    Args:
+        ns_builder - NamespaceBuilder instance used to build the
+                     namespace and extension
+        new_data_types - Iterable of specs that represent new data types
+                         to be added
+    """
+
+    if len(new_data_types) == 0:
+        warnings.warn('No data types specified. Exiting.')
+        return
+
+    if not ns_builder.name:
+        raise RuntimeError('Namespace name is required to export specs')
+
+    ns_path = ns_builder.name + '.namespace.yaml'
+    ext_path = ns_builder.name + '.extensions.yaml'
+
+    for data_type in new_data_types:
+        ns_builder.add_spec(ext_path, data_type)
+
+    ns_builder.export(ns_path, outdir=output_dir)

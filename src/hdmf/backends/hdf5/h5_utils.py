@@ -3,16 +3,18 @@ try:
     from collections.abc import Iterable  # Python 3
 except ImportError:
     from collections import Iterable  # Python 2.7
-from six import binary_type, text_type
+from abc import ABCMeta, abstractmethod
+from six import binary_type, text_type, with_metaclass
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
+from h5py import filters as h5py_filters
 import json
 import numpy as np
 import warnings
 import os
 
-from ...query import HDMFDataset
+from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
-from ...utils import docval, getargs, popargs, call_docval_func
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...region import RegionSlicer
 
@@ -38,8 +40,66 @@ class H5Dataset(HDMFDataset):
     def ref(self):
         return self.dataset.ref
 
+    @property
+    def shape(self):
+        return self.dataset.shape
 
-class H5TableDataset(H5Dataset):
+
+class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver)):
+    """
+    An extension of the base ReferenceResolver class to add more abstract methods for
+    subclasses that will read HDF5 references
+    """
+
+    @abstractmethod
+    def get_object(self, h5obj):
+        """
+        A class that maps an HDF5 object to a Builder or Container
+        """
+        pass
+
+    def invert(self):
+        """
+        Return an object that defers reference resolution
+        but in the opposite direction.
+        """
+        if not hasattr(self, '__inverted'):
+            cls = self.get_inverse_class()
+            docval = get_docval(cls.__init__)
+            kwargs = dict()
+            for arg in docval:
+                kwargs[arg['name']] = getattr(self, arg['name'])
+            self.__inverted = cls(**kwargs)
+        return self.__inverted
+
+
+class BuilderResolverMixin(BuilderResolver):
+    """
+    A mixin for adding to HDF5 reference-resolving types
+    the get_object method that returns Builders
+    """
+
+    def get_object(self, h5obj):
+        """
+        A class that maps an HDF5 object to a Builder
+        """
+        return self.io.get_builder(h5obj)
+
+
+class ContainerResolverMixin(ContainerResolver):
+    """
+    A mixin for adding to HDF5 reference-resolving types
+    the get_object method that returns Containers
+    """
+
+    def get_object(self, h5obj):
+        """
+        A class that maps an HDF5 object to a Container
+        """
+        return self.io.get_container(h5obj)
+
+
+class AbstractH5TableDataset(DatasetOfReferences):
 
     @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'},
@@ -47,13 +107,14 @@ class H5TableDataset(H5Dataset):
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         types = popargs('types', kwargs)
-        call_docval_func(super(H5TableDataset, self).__init__, kwargs)
+        call_docval_func(super(AbstractH5TableDataset, self).__init__, kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is RegionReference:
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
                 self.__refgetters[i] = self.__get_ref
+        self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
             sub = self.dataset.dtype[i]
@@ -75,11 +136,15 @@ class H5TableDataset(H5Dataset):
         self.__dtype = tmp
 
     @property
+    def types(self):
+        return self.__types
+
+    @property
     def dtype(self):
         return self.__dtype
 
     def __getitem__(self, arg):
-        rows = copy(super(H5TableDataset, self).__getitem__(arg))
+        rows = copy(super(AbstractH5TableDataset, self).__getitem__(arg))
         if isinstance(arg, int):
             self.__swap_refs(rows)
         else:
@@ -93,37 +158,106 @@ class H5TableDataset(H5Dataset):
             row[i] = getref(row[i])
 
     def __get_ref(self, ref):
-        return self.io.get_container(self.dataset.file[ref])
+        return self.get_object(self.dataset.file[ref])
 
     def __get_regref(self, ref):
         obj = self.__get_ref(ref)
         return obj[ref]
 
+    def resolve(self, manager):
+        return self[0:len(self)]
 
-class H5ReferenceDataset(H5Dataset):
+
+class AbstractH5ReferenceDataset(DatasetOfReferences):
 
     def __getitem__(self, arg):
-        ref = super(H5ReferenceDataset, self).__getitem__(arg)
+        ref = super(AbstractH5ReferenceDataset, self).__getitem__(arg)
         if isinstance(ref, np.ndarray):
-            return [self.io.get_container(self.dataset.file[x]) for x in ref]
+            return [self.get_object(self.dataset.file[x]) for x in ref]
         else:
-            return self.io.get_container(self.dataset.file[ref])
+            return self.get_object(self.dataset.file[ref])
 
     @property
     def dtype(self):
         return 'object'
 
 
-class H5RegionDataset(H5ReferenceDataset):
+class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
 
     def __getitem__(self, arg):
-        obj = super(H5RegionDataset, self).__getitem__(arg)
+        obj = super(AbstractH5RegionDataset, self).__getitem__(arg)
         ref = self.dataset[arg]
         return obj[ref]
 
     @property
     def dtype(self):
         return 'region'
+
+
+class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
+    """
+    A reference-resolving dataset for resolving references inside tables
+    (i.e. compound dtypes) that returns resolved references as Containers
+    """
+
+    @classmethod
+    def get_inverse_class(cls):
+        return BuilderH5TableDataset
+
+
+class BuilderH5TableDataset(BuilderResolverMixin, AbstractH5TableDataset):
+    """
+    A reference-resolving dataset for resolving references inside tables
+    (i.e. compound dtypes) that returns resolved references as Builders
+    """
+
+    @classmethod
+    def get_inverse_class(cls):
+        return ContainerH5TableDataset
+
+
+class ContainerH5ReferenceDataset(ContainerResolverMixin, AbstractH5ReferenceDataset):
+    """
+    A reference-resolving dataset for resolving object references that returns
+    resolved references as Containers
+    """
+
+    @classmethod
+    def get_inverse_class(cls):
+        return BuilderH5ReferenceDataset
+
+
+class BuilderH5ReferenceDataset(BuilderResolverMixin, AbstractH5ReferenceDataset):
+    """
+    A reference-resolving dataset for resolving object references that returns
+    resolved references as Builders
+    """
+
+    @classmethod
+    def get_inverse_class(cls):
+        return ContainerH5ReferenceDataset
+
+
+class ContainerH5RegionDataset(ContainerResolverMixin, AbstractH5RegionDataset):
+    """
+    A reference-resolving dataset for resolving region references that returns
+    resolved references as Containers
+    """
+
+    @classmethod
+    def get_inverse_class(cls):
+        return BuilderH5RegionDataset
+
+
+class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
+    """
+    A reference-resolving dataset for resolving region references that returns
+    resolved references as Builders
+    """
+
+    @classmethod
+    def get_inverse_class(cls):
+        return ContainerH5RegionDataset
 
 
 class H5SpecWriter(SpecWriter):
@@ -233,7 +367,7 @@ class H5DataIO(DataIO):
                     'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
              'default': None},
             {'name': 'compression_opts',
-             'type': int,
+             'type': (int, tuple),
              'doc': 'Parameter for compression filter',
              'default': None},
             {'name': 'fillvalue',
@@ -277,25 +411,84 @@ class H5DataIO(DataIO):
             # Define the maxshape of the data if not provided by the user
             if 'maxshape' not in self.__iosettings:
                 self.__iosettings['maxshape'] = self.data.maxshape
-        if 'compression' in self.__iosettings:
-            if isinstance(self.__iosettings['compression'], bool):
-                if self.__iosettings['compression']:
-                    self.__iosettings['compression'] = 'gzip'
-                else:
-                    self.__iosettings.pop('compression', None)
-                    if 'compression_opts' in self.__iosettings:
-                        warnings.warn('Compression disabled by compression=False setting. ' +
-                                      'compression_opts parameter will, therefore, be ignored.')
-                        self.__iosettings.pop('compression_opts', None)
-        if 'compression' in self.__iosettings:
-            if self.__iosettings['compression'] != 'gzip':
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available" +
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of" +
-                              "the generated HDF5 files.")
+        # Make default settings when compression set to bool (True/False)
+        if isinstance(self.__iosettings.get('compression', None), bool):
+            if self.__iosettings['compression']:
+                self.__iosettings['compression'] = 'gzip'
+            else:
+                self.__iosettings.pop('compression', None)
+                if 'compression_opts' in self.__iosettings:
+                    warnings.warn('Compression disabled by compression=False setting. ' +
+                                  'compression_opts parameter will, therefore, be ignored.')
+                    self.__iosettings.pop('compression_opts', None)
+        # Validate the compression options used
+        self._check_compression_options()
+        # Confirm that the compressor is supported by h5py
+        if not self.filter_available(self.__iosettings.get('compression', None)):
+            raise ValueError("%s compression not support by this version of h5py." %
+                             str(self.__iosettings['compression']))
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k)
+
+    def get_io_params(self):
+        """
+        Returns a dict with the I/O parameters specifiedin in this DataIO.
+        """
+        ret = dict(self.__iosettings)
+        ret['link_data'] = self.__link_data
+        return ret
+
+    def _check_compression_options(self):
+        """
+        Internal helper function used to check if compression options are compliant
+        with the compression filter used.
+
+        :raises ValueError: If incompatible options are detected
+        """
+        if 'compression' in self.__iosettings:
+            if 'compression_opts' in self.__iosettings:
+                if self.__iosettings['compression'] == 'gzip':
+                    if self.__iosettings['compression_opts'] not in range(10):
+                        raise ValueError("GZIP compression_opts setting must be an integer from 0-9, "
+                                         "not " + str(self.__iosettings['compression_opts']))
+                elif self.__iosettings['compression'] == 'lzf':
+                    if self.__iosettings['compression_opts'] is not None:
+                        raise ValueError("LZF compression filter accepts no compression_opts")
+                elif self.__iosettings['compression'] == 'szip':
+                    szip_opts_error = False
+                    # Check that we have a tuple
+                    szip_opts_error |= not isinstance(self.__iosettings['compression_opts'], tuple)
+                    # Check that we have a tuple of the right length and correct settings
+                    if not szip_opts_error:
+                        try:
+                            szmethod, szpix = self.__iosettings['compression_opts']
+                            szip_opts_error |= (szmethod not in ('ec', 'nn'))
+                            szip_opts_error |= (not (0 < szpix <= 32 and szpix % 2 == 0))
+                        except ValueError:  # ValueError is raised if tuple does not have the right length to unpack
+                            szip_opts_error = True
+                    if szip_opts_error:
+                        raise ValueError("SZIP compression filter compression_opts"
+                                         " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
+            # Warn if compressor other than gzip is being used
+            if self.__iosettings['compression'] != 'gzip':
+                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available"
+                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of"
+                              "the generated HDF5 files.")
+
+    @staticmethod
+    def filter_available(filter):
+        """
+        Check if a given I/O filter is available
+        :param filter: String with the name of the filter, e.g., gzip, szip etc.
+        :type filter: String
+        :return: bool indicating wether the given filter is available
+        """
+        if filter is not None:
+            return filter in h5py_filters.encode
+        else:
+            return True
 
     @property
     def link_data(self):

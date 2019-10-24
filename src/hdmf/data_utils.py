@@ -31,6 +31,8 @@ def get_shape(data):
     """
     if isinstance(data, dict):
         return None
+    elif hasattr(data, 'shape'):
+        return data.shape
     elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
         return __get_shape_helper(data)
     else:
@@ -589,7 +591,7 @@ class ShapeValidatorResult(object):
 
 
 @docval_macro('data')
-class DataIO(with_metaclass(ABCMeta, object)):
+class DataIO(object):
     """
     Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
@@ -598,6 +600,12 @@ class DataIO(with_metaclass(ABCMeta, object)):
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         self.__data = data
+
+    def get_io_params(self):
+        """
+        Returns a dict with the I/O parameters specified in this DataIO.
+        """
+        return dict()
 
     @property
     def data(self):

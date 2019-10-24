@@ -14,7 +14,7 @@ from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildMa
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec
 from ...spec import NamespaceBuilder
 
-from .h5_utils import H5ReferenceDataset, H5RegionDataset, H5TableDataset,\
+from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
 
 from ..io import HDMFIO, UnsupportedOperation
@@ -69,6 +69,7 @@ class HDF5IO(HDMFIO):
         self.__built = dict()       # keep track of which files have been read
         self.__read = dict()        # keep track of each builder for each dataset/group/link
         self.__ref_queue = deque()  # a queue of the references that need to be added
+        self.__dci_queue = deque()       # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
 
     @property
@@ -255,7 +256,9 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': True},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
+             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write(self, **kwargs):
         if self.__mode == 'r':
             raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
@@ -320,8 +323,8 @@ class HDF5IO(HDMFIO):
             return None
 
     @docval({'name': 'h5obj', 'type': (Dataset, Group),
-             'doc': 'the HDF5 object to the corresponding Container/Data object for'})
-    def get_container(self, **kwargs):
+             'doc': 'the HDF5 object to the corresponding Builder object for'})
+    def get_builder(self, **kwargs):
         h5obj = getargs('h5obj', kwargs)
         fpath = h5obj.file.filename
         path = h5obj.name
@@ -329,6 +332,13 @@ class HDF5IO(HDMFIO):
         if builder is None:
             msg = '%s:%s has not been built' % (fpath, path)
             raise ValueError(msg)
+        return builder
+
+    @docval({'name': 'h5obj', 'type': (Dataset, Group),
+             'doc': 'the HDF5 object to the corresponding Container/Data object for'})
+    def get_container(self, **kwargs):
+        h5obj = getargs('h5obj', kwargs)
+        builder = self.get_builder(h5obj)
         container = self.manager.construct(builder)
         return container
 
@@ -431,13 +441,13 @@ class HDF5IO(HDMFIO):
                 if isinstance(elem1, (text_type, binary_type)):
                     d = h5obj
                 elif isinstance(elem1, RegionReference):  # read list of references
-                    d = H5RegionDataset(h5obj, self)
+                    d = BuilderH5RegionDataset(h5obj, self)
                 elif isinstance(elem1, Reference):
-                    d = H5ReferenceDataset(h5obj, self)
+                    d = BuilderH5ReferenceDataset(h5obj, self)
             elif h5obj.dtype.kind == 'V':    # table
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
-                d = H5TableDataset(h5obj, self, ref_cols)
+                d = BuilderH5TableDataset(h5obj, self, ref_cols)
             else:
                 d = h5obj
             kwargs["data"] = d
@@ -488,17 +498,20 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
+             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write_builder(self, **kwargs):
-        f_builder, link_data = getargs('builder', 'link_data', kwargs)
+        f_builder, link_data, exhaust_dci = getargs('builder', 'link_data', 'exhaust_dci', kwargs)
         for name, gbldr in f_builder.groups.items():
-            self.write_group(self.__file, gbldr)
+            self.write_group(self.__file, gbldr, exhaust_dci=exhaust_dci)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, link_data)
+            self.write_dataset(self.__file, dbldr, link_data, exhaust_dci=exhaust_dci)
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
+        self.__exhaust_dcis()
 
     def __add_refs(self):
         '''
@@ -519,6 +532,15 @@ class HDF5IO(HDMFIO):
                     raise RuntimeError('Unable to resolve reference')
                 failed.add(id(call))
                 self.__ref_queue.append(call)
+
+    def __exhaust_dcis(self):
+        """
+        Read and write from any queued DataChunkIterators in a round-robin fashion
+        """
+        while len(self.__dci_queue) > 0:
+            dset, data = self.__dci_queue.popleft()
+            if self.__write_chunk__(dset, data):
+                self.__dci_queue.append((dset, data))
 
     @classmethod
     def get_type(cls, data):
@@ -627,10 +649,12 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
 
-        parent, builder = getargs('parent', 'builder', kwargs)
+        parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
         if builder.written:
             group = parent[builder.name]
         else:
@@ -640,12 +664,12 @@ class HDF5IO(HDMFIO):
         if subgroups:
             for subgroup_name, sub_builder in subgroups.items():
                 # do not create an empty group without attributes or links
-                self.write_group(group, sub_builder)
+                self.write_group(group, sub_builder, exhaust_dci=exhaust_dci)
         # write all datasets
         datasets = builder.datasets
         if datasets:
             for dset_name, sub_builder in datasets.items():
-                self.write_dataset(group, sub_builder)
+                self.write_dataset(group, sub_builder, exhaust_dci=exhaust_dci)
         # write all links
         links = builder.links
         if links:
@@ -697,14 +721,16 @@ class HDF5IO(HDMFIO):
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):
         """ Write a dataset to HDF5
 
         The function uses other dataset-dependent write functions, e.g,
-        __scalar_fill__, __list_fill__ and __chunked_iter_fill__ to write the data.
+        __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
-        parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
+        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
         if builder.written:
             return None
         name = builder.name
@@ -836,7 +862,8 @@ class HDF5IO(HDMFIO):
                 dset = self.__scalar_fill__(parent, name, data, options)
             # Iterative write of a data chunk iterator
             elif isinstance(data, AbstractDataChunkIterator):
-                dset = self.__chunked_iter_fill__(parent, name, data, options)
+                dset = self.__setup_chunked_dset__(parent, name, data, options)
+                self.__dci_queue.append((dset, data))
             # Write a regular in memory array (e.g., numpy array, list etc.)
             elif hasattr(data, '__len__'):
                 dset = self.__list_fill__(parent, name, data, options)
@@ -850,6 +877,8 @@ class HDF5IO(HDMFIO):
         elif len(attributes) > 0:
             pass
         builder.written = True
+        if exhaust_dci:
+            self.__exhaust_dcis()
         return
 
     @classmethod
@@ -885,9 +914,9 @@ class HDF5IO(HDMFIO):
         return dset
 
     @classmethod
-    def __chunked_iter_fill__(cls, parent, name, data, options=None):
+    def __setup_chunked_dset__(cls, parent, name, data, options=None):
         """
-        Write data to a dataset one-chunk-at-a-time based on the given DataChunkIterator
+        Setup a dataset for writing to one-chunk-at-a-time based on the given DataChunkIterator
 
         :param parent: The parent object to which the dataset should be added
         :type parent: h5py.Group, h5py.File
@@ -922,7 +951,23 @@ class HDF5IO(HDMFIO):
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
             raise_from(Exception("Could not create dataset %s in %s" % (name, parent.name)), exc)
-        for chunk_i in data:
+        return dset
+
+    @classmethod
+    def __write_chunk__(cls, dset, data):
+        """
+        Read a chunk from the given DataChunkIterator and write it to the given Dataset
+
+        :param dset: The Dataset to write to
+        :type dset: Dataset
+        :param data: The DataChunkIterator to read from
+        :type data: DataChunkIterator
+        :return: True of a chunk was written, False otherwise
+        :rtype: bool
+
+        """
+        try:
+            chunk_i = next(data)
             # Determine the minimum array dimensions to fit the chunk selection
             max_bounds = cls.__selection_max_bounds__(chunk_i.selection)
             if not hasattr(max_bounds, '__len__'):
@@ -936,6 +981,29 @@ class HDF5IO(HDMFIO):
                 dset.resize(new_shape)
             # Process and write the data
             dset[chunk_i.selection] = chunk_i.data
+        except StopIteration:
+            return False
+        return True
+
+    @classmethod
+    def __chunked_iter_fill__(cls, parent, name, data, options=None):
+        """
+        Write data to a dataset one-chunk-at-a-time based on the given DataChunkIterator
+
+        :param parent: The parent object to which the dataset should be added
+        :type parent: h5py.Group, h5py.File
+        :param name: The name of the dataset
+        :type name: str
+        :param data: The data to be written.
+        :type data: DataChunkIterator
+        :param options: Dict with options for creating a dataset. available options are 'dtype' and 'io_settings'
+        :type options: dict
+
+        """
+        dset = cls.__setup_chunked_dset__(parent, name, data, options=options)
+        read = True
+        while read:
+            read = cls.__write_chunk__(dset, data)
         return dset
 
     @classmethod

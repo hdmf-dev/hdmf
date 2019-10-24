@@ -17,6 +17,7 @@ from hdmf.spec.namespace import SpecNamespace
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.container import Container
 from h5py import SoftLink, HardLink, ExternalLink, File
+from h5py import filters as h5py_filters
 
 from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
@@ -136,7 +137,7 @@ class H5IOTest(unittest.TestCase):
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a))
 
-    def test_write_dataset_list_compress(self):
+    def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
                      compression='gzip',
                      compression_opts=5,
@@ -147,6 +148,35 @@ class H5IOTest(unittest.TestCase):
         self.assertTrue(np.all(dset[:] == a.data))
         self.assertEqual(dset.compression, 'gzip')
         self.assertEqual(dset.compression_opts, 5)
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
+    @unittest.skipIf("lzf" not in h5py_filters.encode,
+                     "LZF compression not supported in this h5py library install")
+    def test_write_dataset_list_compress_lzf(self):
+        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
+                     compression='lzf',
+                     shuffle=True,
+                     fletcher32=True)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertEqual(dset.compression, 'lzf')
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
+    @unittest.skipIf("szip" not in h5py_filters.encode,
+                     "SZIP compression not supported in this h5py library install")
+    def test_write_dataset_list_compress_szip(self):
+        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
+                     compression='szip',
+                     compression_opts=('ec', 16),
+                     shuffle=True,
+                     fletcher32=True)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertEqual(dset.compression, 'szip')
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
 
@@ -234,6 +264,44 @@ class H5IOTest(unittest.TestCase):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', daiter, attributes={}))
         dset = self.f['test_dataset']
         self.assertListEqual(dset[:].tolist(), a.tolist())
+
+    def test_write_multi_dci_oaat(self):
+        """
+        Test writing multiple DataChunkIterators, one at a time
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        b = np.arange(30, 60).reshape(5, 2, 3)
+        aiter = iter(a)
+        biter = iter(b)
+        daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
+        daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
+        builder = GroupBuilder("root")
+        builder.add_dataset('test_dataset1', daiter1, attributes={})
+        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        self.io.write_builder(builder)
+        dset1 = self.f['test_dataset1']
+        self.assertListEqual(dset1[:].tolist(), a.tolist())
+        dset2 = self.f['test_dataset2']
+        self.assertListEqual(dset2[:].tolist(), b.tolist())
+
+    def test_write_multi_dci_conc(self):
+        """
+        Test writing multiple DataChunkIterators, concurrently
+        """
+        a = np.arange(30).reshape(5, 2, 3)
+        b = np.arange(30, 60).reshape(5, 2, 3)
+        aiter = iter(a)
+        biter = iter(b)
+        daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
+        daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
+        builder = GroupBuilder("root")
+        builder.add_dataset('test_dataset1', daiter1, attributes={})
+        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        self.io.write_builder(builder)
+        dset1 = self.f['test_dataset1']
+        self.assertListEqual(dset1[:].tolist(), a.tolist())
+        dset2 = self.f['test_dataset2']
+        self.assertListEqual(dset2[:].tolist(), b.tolist())
 
     def test_write_dataset_iterable_multidimensional_array_compression(self):
         a = np.arange(30).reshape(5, 2, 3)
@@ -411,18 +479,65 @@ class H5IOTest(unittest.TestCase):
                             compression='gzip')
             self.assertEqual(len(w), 0)
             self.assertEqual(dset.io_settings['compression'], 'gzip')
-        # Make sure no warning is issued when using szip
-        with warnings.catch_warnings(record=True) as w:
-            dset = H5DataIO(np.arange(30),
-                            compression='szip')
-            self.assertEqual(len(w), 1)
-            self.assertEqual(dset.io_settings['compression'], 'szip')
-        # Make sure no warning is issued when using lzf
+        # Make sure a warning is issued when using szip (even if installed)
+        if "szip" in h5py_filters.encode:
+            with warnings.catch_warnings(record=True) as w:
+                dset = H5DataIO(np.arange(30),
+                                compression='szip',
+                                compression_opts=('ec', 16))
+                self.assertEqual(len(w), 1)
+                self.assertEqual(dset.io_settings['compression'], 'szip')
+        else:
+            with self.assertRaises(ValueError):
+                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+        # Make sure a warning is issued when using lzf compression
         with warnings.catch_warnings(record=True) as w:
             dset = H5DataIO(np.arange(30),
                             compression='lzf')
             self.assertEqual(len(w), 1)
             self.assertEqual(dset.io_settings['compression'], 'lzf')
+
+    def test_error_on_unsupported_compression_filter(self):
+        # Make sure gzip does not raise an error
+        try:
+            H5DataIO(np.arange(30), compression='gzip', compression_opts=5)
+        except ValueError:
+            self.fail("Using gzip compression raised a ValueError when it should not")
+        # Make sure szip raises an error if not installed (or does not raise an error if installed)
+        if "szip" not in h5py_filters.encode:
+            with self.assertRaises(ValueError):
+                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+        else:
+            try:
+                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+            except ValueError:
+                self.fail("SZIP is installed but H5DataIO still raises an error")
+        # Test error on illegal (i.e., a made-up compressor)
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression="my_compressor_that_h5py_doesnt_know")
+
+    def test_value_error_on_incompatible_compression_opts(self):
+        # Make sure we warn when gzip with szip compression options is used
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='gzip', compression_opts=('ec', 16))
+        # Make sure we warn if gzip with a too high agression is used
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='gzip', compression_opts=100)
+        # Make sure we warn if lzf with gzip compression option is used
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='lzf', compression_opts=5)
+        # Make sure we warn if lzf with szip compression option is used
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='lzf', compression_opts=('ec', 16))
+        # Make sure we warn if szip with gzip compression option is used
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='szip', compression_opts=4)
+        # Make sure szip raises a ValueError if bad options are used (odd compression option)
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 3))
+        # Make sure szip raises a ValueError if bad options are used (bad methos)
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression='szip', compression_opts=('bad_method', 16))
 
     def test_warning_on_linking_of_regular_array(self):
         with warnings.catch_warnings(record=True) as w:
