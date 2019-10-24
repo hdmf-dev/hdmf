@@ -145,7 +145,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
 
     def __getitem__(self, arg):
         rows = copy(super(AbstractH5TableDataset, self).__getitem__(arg))
-        if isinstance(arg, int):
+        if np.issubdtype(type(arg), np.integer):
             self.__swap_refs(rows)
         else:
             for row in rows:

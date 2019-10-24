@@ -446,8 +446,11 @@ class DynamicTable(Container):
             elif isinstance(arg, (int, np.int8, np.int16, np.int32, np.int64)):
                 # index by int, return row
                 ret = tuple(col[arg] for col in self.__df_cols)
-            elif isinstance(arg, (tuple, list)):
+            elif isinstance(arg, (tuple, list, np.ndarray)):
                 # index by a list of ints, return multiple rows
+                if isinstance(arg, np.ndarray):
+                    if len(arg.shape) != 1:
+                        raise ValueError("cannot index DynamicTable with multiple dimensions")
                 ret = list()
                 for i in arg:
                     ret.append(tuple(col[i] for col in self.__df_cols))
