@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
+from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..container import Container, Data
 
 from . import register_class
@@ -131,7 +132,7 @@ class DynamicTable(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},    # noqa: C901
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
-            {'name': 'id', 'type': ('array_data', ElementIdentifiers), 'doc': 'the identifiers for this table',
+            {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data', 'doc': 'the names of the columns in this table',
@@ -160,11 +161,16 @@ class DynamicTable(Container):
                 colset = {c.name: c for c in columns}
                 for c in columns:
                     if isinstance(c, VectorIndex):
-                        colset.pop(c.target.name)
+                        colset.pop(c.target.name, None)
+                    _data = c.data
+                    if isinstance(_data, DataIO):
+                        _data = _data.data
+                    if isinstance(_data, AbstractDataChunkIterator):
+                        colset.pop(c.name, None)
                 lens = [len(c) for c in colset.values()]
                 if not all(i == lens[0] for i in lens):
                     raise ValueError("columns must be the same length")
-                if lens[0] != len(id):
+                if len(lens) > 0 and lens[0] != len(id):
                     if len(id) > 0:
                         raise ValueError("must provide same number of ids as length of columns")
                     else:
