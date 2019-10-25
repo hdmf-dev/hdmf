@@ -258,3 +258,43 @@ class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
                 'b': ['4', '5', '6']
             }), 'test_table', table_description='the expected table', column_descriptions=coldesc)
         self.assertContainerEqual(expected, received)
+
+
+class TestElementIdentifiers(unittest.TestCase):
+
+    def test_identifier_search_single_list(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [1])
+        np.testing.assert_array_equal(a, [1])
+
+    def test_identifier_search_single_int(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == 2)
+        np.testing.assert_array_equal(a, [2])
+
+    def test_identifier_search_single_list_not_found(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [10])
+        np.testing.assert_array_equal(a, [])
+
+    def test_identifier_search_single_int_not_found(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == 10)
+        np.testing.assert_array_equal(a, [])
+
+    def test_identifier_search_single_list_all_match(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [1, 2, 3])
+        np.testing.assert_array_equal(a, [1, 2, 3])
+
+    def test_identifier_search_single_list_partial_match(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [1, 2, 10])
+        np.testing.assert_array_equal(a, [1, 2])
+        a = (e == [-1, 2, 10])
+        np.testing.assert_array_equal(a, [2, ])
+
+    def test_identifier_search_with_element_identifier(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == ElementIdentifiers('ids', [1, 2, 10]))
+        np.testing.assert_array_equal(a, [1, 2])
