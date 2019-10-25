@@ -99,7 +99,7 @@ class ElementIdentifiers(Data):
         Given a list of ids return the indices in the ElementIdentifiers array where the
         indices are found.
         """
-        # Determin the ids we want to find
+        # Determine the ids we want to find
         search_ids = other if not isinstance(other, Data) else other.data
         if isinstance(search_ids, int):
             search_ids = [search_ids]

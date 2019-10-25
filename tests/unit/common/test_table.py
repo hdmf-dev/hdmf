@@ -198,6 +198,13 @@ class TestDynamicTable(unittest.TestCase):
         except ValueError as e:
             self.fail("add row with non unique id raised error %s" % str(e))
 
+    def test_bad_id_type_error(self):
+        table = self.with_spec()
+        with self.assertRaises(TypeError):
+            table.add_row(id=10.1, data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=True)
+        with self.assertRaises(TypeError):
+            table.add_row(id='str', data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=True)
+
     def test_extra_columns(self):
         table = self.with_spec()
 
