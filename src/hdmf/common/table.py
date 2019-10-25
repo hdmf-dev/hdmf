@@ -618,13 +618,15 @@ class DynamicTableRegion(VectorData):
     def __getitem__(self, key):
         # treat the list of indices as data that can be indexed. then pass the
         # result to the table to get the data
+        re = None
         if isinstance(key, tuple):
             arg1 = key[0]
             arg2 = key[1]
-            return self.table[self.data[arg1], arg2]
+            re = self.table[self.data[arg1], arg2]
         elif isinstance(key, (int, slice)):
             if isinstance(key, int) and key >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(key, len(self.data)))
-            return self.table[self.data[key]]
+            re = self.table[self.data[key]]
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
+        return {self.table.name: re}
