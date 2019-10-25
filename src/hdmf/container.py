@@ -409,9 +409,12 @@ class Data(AbstractContainer):
         self.__data = dataio
 
     def __bool__(self):
-        if self.data:
-            return True
-        return len(self.data) != 0
+        if self.data is not None:
+            if isinstance(self.data, (np.ndarray, tuple, list)):
+                return len(self.data) != 0
+            if self.data:
+                return True
+        return False
 
     def __len__(self):
         return len(self.__data)
