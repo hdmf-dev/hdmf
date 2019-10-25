@@ -226,6 +226,20 @@ class TestDynamicTable(unittest.TestCase):
                            index=pd.Index(name='id', data=[0, 1, 2]))
         pd.testing.assert_frame_equal(df, df2)
 
+    def test_id_search(self):
+        table = self.with_spec()
+        data = [{'foo': 1, 'bar': 10.0, 'baz': 'cat'},
+                {'foo': 2, 'bar': 20.0, 'baz': 'dog'},
+                {'foo': 3, 'bar': 30.0, 'baz': 'bird'},
+                {'foo': 4, 'bar': 40.0, 'baz': 'fish'},
+                {'foo': 5, 'bar': 50.0, 'baz': 'lizard'}]
+        for i in data:
+            table.add_row(i)
+        res = table[table.id == [2, 4]]
+        self.assertEqual(len(res), 2)
+        self.assertTupleEqual(res[0], (2, 3, 30.0, 'bird'))
+        self.assertTupleEqual(res[1], (4, 5, 50.0, 'lizard'))
+
 
 class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
 
