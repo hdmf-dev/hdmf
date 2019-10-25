@@ -319,3 +319,10 @@ class TestElementIdentifiers(unittest.TestCase):
         e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
         a = (e == ElementIdentifiers('ids', [1, 2, 10]))
         np.testing.assert_array_equal(a, [1, 2])
+
+    def test_identifier_search_with_bad_ids(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        with self.assertRaises(TypeError):
+            _ = (e == 0.1)
+        with self.assertRaises(TypeError):
+            _ = (e == 'test')
