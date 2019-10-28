@@ -178,7 +178,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__maxshape = get_data_shape(self.data, strict_no_data_load=True)
 
         # If we have a data iterator, then read the first chunk
-        if self.__data_iter is not None:  # and(self.__maxshape is None or self.__dtype is None):
+        if self.__data_iter is not None and (self.__maxshape is None or self.__dtype is None):
             self._read_next_chunk()
 
         # If we still don't know the shape then try to determine the shape from the first chunk
