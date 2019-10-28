@@ -136,7 +136,11 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
     @docval(*__docval_init)
     def __init__(self, **kwargs):
-        """Initialize the DataChunkIterator"""
+        """Initialize the DataChunkIterator.
+        If 'data' is an iterator and either 'maxshape' is not specified, 'maxshape' cannot be determined, or 'dtype' is
+        not specified, then next is called on the iterator on initialization in order to determine the maxshape and
+        dtype of the data.
+        """
         # Get the user parameters
         self.data, self.__maxshape, self.__dtype, self.buffer_size, self.iter_axis = getargs('data',
                                                                                              'maxshape',
@@ -285,6 +289,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         Internal helper function used to determine the maxshape to be used from
         the self.__next_chunk object. The function initializes self.__maxshape.
         """
+        assert(self.__maxshape is None and self.__next_chunk.data is not None)
         data_shape = get_data_shape(self.__next_chunk.data)
         self.__maxshape = list(data_shape)
         try:
