@@ -282,7 +282,7 @@ try:
 except ImportError:
     import ConfigParser as configparser
 import errno
-import fnmatch  # PYNWB
+import fnmatch  # HDMF
 import json
 import os
 import re
@@ -432,7 +432,7 @@ LONG_VERSION_PY['git'] = '''
 """Git implementation of _version.py."""
 
 import errno
-import fnmatch  # PYNWB
+import fnmatch  # HDMF
 import os
 import re
 import subprocess
@@ -619,7 +619,7 @@ def git_versions_from_keywords(keywords, tag_prefix, verbose):
         print("likely tags: %%s" %% ",".join(sorted(tags)))
     for ref in sorted(tags):
         # sorting will prefer e.g. "2.0" over "2.0rc1"
-        # PYNWB: Support tag_prefix specified as a glob pattern
+        # HDMF: Support tag_prefix specified as a glob pattern
         tag_is_glob_pattern = "*" in tag_prefix
         if tag_is_glob_pattern:
             if fnmatch.fnmatch(ref, tag_prefix):
@@ -666,7 +666,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
             print("Directory %%s not under git control" %% root)
         raise NotThisMethod("'git rev-parse --git-dir' returned error")
 
-    # PYNWB: Support tag_prefix specified as a glob pattern
+    # HDMF: Support tag_prefix specified as a glob pattern
     tag_is_glob_pattern = "*" in tag_prefix
     match_argument = tag_prefix
     if not tag_is_glob_pattern:
@@ -676,7 +676,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
     # if there isn't one, this yields HEX[-dirty] (no NUM)
     describe_out, rc = run_command(GITS, ["describe", "--tags", "--dirty",
                                           "--always", "--long",
-                                          "--match", "%%s" %% match_argument],
+                                          "--match", "%s" % match_argument],
                                    cwd=root)
     # --long was added in git-1.5.5
     if describe_out is None:
@@ -715,7 +715,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
 
         # tag
         full_tag = mo.group(1)
-        # PYNWB: Support tag_prefix specified as a glob pattern
+        # HDMF: Support tag_prefix specified as a glob pattern
         if tag_is_glob_pattern:
             if not fnmatch.fnmatch(full_tag, tag_prefix):
                 if verbose:
@@ -1040,7 +1040,7 @@ def git_versions_from_keywords(keywords, tag_prefix, verbose):
         print("likely tags: %s" % ",".join(sorted(tags)))
     for ref in sorted(tags):
         # sorting will prefer e.g. "2.0" over "2.0rc1"
-        # PYNWB: Support tag_prefix specified as a glob pattern
+        # HDMF: Support tag_prefix specified as a glob pattern
         tag_is_glob_pattern = "*" in tag_prefix
         if tag_is_glob_pattern:
             if fnmatch.fnmatch(ref, tag_prefix):
@@ -1087,11 +1087,12 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
             print("Directory %s not under git control" % root)
         raise NotThisMethod("'git rev-parse --git-dir' returned error")
 
-    # PYNWB: Support tag_prefix specified as a glob pattern
+    # HDMF: Support tag_prefix specified as a glob pattern
     tag_is_glob_pattern = "*" in tag_prefix
     match_argument = tag_prefix
     if not tag_is_glob_pattern:
         match_argument = tag_prefix + "*"
+
     # if there is a tag matching tag_prefix, this yields TAG-NUM-gHEX[-dirty]
     # if there isn't one, this yields HEX[-dirty] (no NUM)
     describe_out, rc = run_command(GITS, ["describe", "--tags", "--dirty",
@@ -1135,7 +1136,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
 
         # tag
         full_tag = mo.group(1)
-        # PYNWB: Support tag_prefix specified as a glob pattern
+        # HDMF: Support tag_prefix specified as a glob pattern
         if tag_is_glob_pattern:
             if not fnmatch.fnmatch(full_tag, tag_prefix):
                 if verbose:
