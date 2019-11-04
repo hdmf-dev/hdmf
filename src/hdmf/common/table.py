@@ -85,6 +85,27 @@ class ElementIdentifiers(Data):
     def __init__(self, **kwargs):
         call_docval_func(super(ElementIdentifiers, self).__init__, kwargs)
 
+    @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
+             'doc': 'List of ids to search for in this ElementIdentifer object'},
+            rtype=np.ndarray,
+            returns='Array with the list of indices where the elements in the list where found.'
+                    'Note, the elements in the returned list are ordered in increasing index'
+                    'of the found elements, rather than in the order in which the elements'
+                    'where given for the search. Also the length of the result may be different from the length'
+                    'of the input array. E.g., if our ids are [1,2,3] and we are search for [3,1,5] the '
+                    'result would be [0,2] and NOT [2,0,None]')
+    def __eq__(self, other):
+        """
+        Given a list of ids return the indices in the ElementIdentifiers array where the
+        indices are found.
+        """
+        # Determine the ids we want to find
+        search_ids = other if not isinstance(other, Data) else other.data
+        if isinstance(search_ids, int):
+            search_ids = [search_ids]
+        # Find all matching locations
+        return np.in1d(self.data, search_ids).nonzero()[0]
+
 
 @register_class('DynamicTable')
 class DynamicTable(Container):
@@ -298,12 +319,14 @@ class DynamicTable(Container):
 
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
+            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
+             'default': False},
             allow_extra=True)
     def add_row(self, **kwargs):
         '''
         Add a row to the table. If *id* is not provided, it will auto-increment.
         '''
-        data, row_id = popargs('data', 'id', kwargs)
+        data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
@@ -327,11 +350,13 @@ class DynamicTable(Container):
                     'and were missing {} keys: {}'.format(len(missing_columns), missing_columns)
                 ])
             )
-
         if row_id is None:
             row_id = data.pop('id', None)
         if row_id is None:
             row_id = len(self)
+        if enforce_unique_id:
+            if row_id in self.id:
+                raise ValueError("id %i already in the table" % row_id)
         self.id.append(row_id)
 
         for colname, colnum in self.__colids.items():
@@ -443,11 +468,14 @@ class DynamicTable(Container):
                     return self.__indices[arg]
                 else:
                     raise KeyError(arg)
-            elif isinstance(arg, (int, np.int8, np.int16, np.int32, np.int64)):
+            elif np.issubdtype(type(arg), np.integer):
                 # index by int, return row
                 ret = tuple(col[arg] for col in self.__df_cols)
-            elif isinstance(arg, (tuple, list)):
+            elif isinstance(arg, (tuple, list, np.ndarray)):
                 # index by a list of ints, return multiple rows
+                if isinstance(arg, np.ndarray):
+                    if len(arg.shape) != 1:
+                        raise ValueError("cannot index DynamicTable with multiple dimensions")
                 ret = list()
                 for i in arg:
                     ret.append(tuple(col[i] for col in self.__df_cols))
