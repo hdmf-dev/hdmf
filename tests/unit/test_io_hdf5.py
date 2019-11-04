@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 import os
 from h5py import File, Dataset, Reference
 from six import text_type
@@ -179,7 +179,7 @@ class TestHDF5Writer(GroupBuilderTestCase):
             os.remove(self.path)
 
     def check_fields(self):
-        f = File(self.path)
+        f = File(self.path, 'r')
         self.assertIn('test_bucket', f)
         bucket = f.get('test_bucket')
         self.assertIn('foo_holder', bucket)

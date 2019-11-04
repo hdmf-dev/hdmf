@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY

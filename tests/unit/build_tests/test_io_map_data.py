@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf.spec import AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
