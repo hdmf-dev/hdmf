@@ -85,6 +85,27 @@ class ElementIdentifiers(Data):
     def __init__(self, **kwargs):
         call_docval_func(super(ElementIdentifiers, self).__init__, kwargs)
 
+    @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
+             'doc': 'List of ids to search for in this ElementIdentifer object'},
+            rtype=np.ndarray,
+            returns='Array with the list of indices where the elements in the list where found.'
+                    'Note, the elements in the returned list are ordered in increasing index'
+                    'of the found elements, rather than in the order in which the elements'
+                    'where given for the search. Also the length of the result may be different from the length'
+                    'of the input array. E.g., if our ids are [1,2,3] and we are search for [3,1,5] the '
+                    'result would be [0,2] and NOT [2,0,None]')
+    def __eq__(self, other):
+        """
+        Given a list of ids return the indices in the ElementIdentifiers array where the
+        indices are found.
+        """
+        # Determine the ids we want to find
+        search_ids = other if not isinstance(other, Data) else other.data
+        if isinstance(search_ids, int):
+            search_ids = [search_ids]
+        # Find all matching locations
+        return np.in1d(self.data, search_ids).nonzero()[0]
+
 
 @register_class('DynamicTable')
 class DynamicTable(Container):

@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
 
@@ -198,6 +198,13 @@ class TestDynamicTable(unittest.TestCase):
         except ValueError as e:
             self.fail("add row with non unique id raised error %s" % str(e))
 
+    def test_bad_id_type_error(self):
+        table = self.with_spec()
+        with self.assertRaises(TypeError):
+            table.add_row(id=10.1, data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=True)
+        with self.assertRaises(TypeError):
+            table.add_row(id='str', data={'foo': 1, 'bar': 10.0, 'baz': 'cat'}, enforce_unique_id=True)
+
     def test_extra_columns(self):
         table = self.with_spec()
 
@@ -225,6 +232,20 @@ class TestDynamicTable(unittest.TestCase):
         df2 = pd.DataFrame({'name': [x for x in data]},
                            index=pd.Index(name='id', data=[0, 1, 2]))
         pd.testing.assert_frame_equal(df, df2)
+
+    def test_id_search(self):
+        table = self.with_spec()
+        data = [{'foo': 1, 'bar': 10.0, 'baz': 'cat'},
+                {'foo': 2, 'bar': 20.0, 'baz': 'dog'},
+                {'foo': 3, 'bar': 30.0, 'baz': 'bird'},
+                {'foo': 4, 'bar': 40.0, 'baz': 'fish'},
+                {'foo': 5, 'bar': 50.0, 'baz': 'lizard'}]
+        for i in data:
+            table.add_row(i)
+        res = table[table.id == [2, 4]]
+        self.assertEqual(len(res), 2)
+        self.assertTupleEqual(res[0], (2, 3, 30.0, 'bird'))
+        self.assertTupleEqual(res[1], (4, 5, 50.0, 'lizard'))
 
 
 class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
@@ -258,3 +279,50 @@ class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
                 'b': ['4', '5', '6']
             }), 'test_table', table_description='the expected table', column_descriptions=coldesc)
         self.assertContainerEqual(expected, received)
+
+
+class TestElementIdentifiers(unittest.TestCase):
+
+    def test_identifier_search_single_list(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [1])
+        np.testing.assert_array_equal(a, [1])
+
+    def test_identifier_search_single_int(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == 2)
+        np.testing.assert_array_equal(a, [2])
+
+    def test_identifier_search_single_list_not_found(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [10])
+        np.testing.assert_array_equal(a, [])
+
+    def test_identifier_search_single_int_not_found(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == 10)
+        np.testing.assert_array_equal(a, [])
+
+    def test_identifier_search_single_list_all_match(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [1, 2, 3])
+        np.testing.assert_array_equal(a, [1, 2, 3])
+
+    def test_identifier_search_single_list_partial_match(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == [1, 2, 10])
+        np.testing.assert_array_equal(a, [1, 2])
+        a = (e == [-1, 2, 10])
+        np.testing.assert_array_equal(a, [2, ])
+
+    def test_identifier_search_with_element_identifier(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        a = (e == ElementIdentifiers('ids', [1, 2, 10]))
+        np.testing.assert_array_equal(a, [1, 2])
+
+    def test_identifier_search_with_bad_ids(self):
+        e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])
+        with self.assertRaises(TypeError):
+            _ = (e == 0.1)
+        with self.assertRaises(TypeError):
+            _ = (e == 'test')

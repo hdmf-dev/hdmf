@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf.data_utils import DataChunk
 import numpy as np

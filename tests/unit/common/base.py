@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 import os
 import numpy as np
 import h5py
