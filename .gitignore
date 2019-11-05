@@ -38,8 +38,8 @@ docs/source/pynwb.*.rst
 
 
 # setuptools
-build/
-dist/
+/build/
+/dist/
 *.egg-info
 
 # Jupyter Notebook
