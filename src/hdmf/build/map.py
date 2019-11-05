@@ -1433,23 +1433,29 @@ class TypeMap(object):
 
         for f, field_spec in addl_fields.items():
             if not f == 'help':
+                # build docval arguments for generated constructor
                 dtype = self.__get_type(field_spec)
                 if dtype is None:
-                    raise(ValueError("Got \"None\" for field specification: {}".format(field_spec)))
+                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec)))
 
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
                 if hasattr(field_spec, 'shape') and field_spec.shape is not None:
                     docval_arg.update(shape=field_spec.shape)
+                    # docval_arg['shape'] = field_spec.shape
                 if not field_spec.required:
                     docval_arg['default'] = getattr(field_spec, 'default_value', None)
                 docval_args.append(docval_arg)
+
+                # auto-initialize arguments not found in superclass
                 if f not in existing_args:
                     new_args.append(f)
+                # add arguments not found in superclass to fields for getter/setter generation
                 if self.__ischild(dtype):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
         if name is not None:
+            # raise Exception()
             docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         @docval(*docval_args)
