@@ -290,6 +290,55 @@ _attrbl_args = [
 ]
 
 
+_dim_args = [
+        {'name': 'label', 'type': str, 'doc': 'The label of this dimension'},
+        {'name': 'coord', 'type': str, 'doc': 'The name of the dataset of this dimension'},
+        {'name': 'dimtype', 'type': str, 'doc': 'The type of this dimension'},
+        {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec'}
+]
+
+
+class DimSpec(ConstructableDict):
+    ''' Specification for dimensions
+    '''
+
+    @docval(*_attr_args)
+    def __init__(self, **kwargs):
+        label, coord, dimtype, parent = getargs('label', 'coord', 'dimtype', 'parent', kwargs)
+        super(DimSpec, self).__init__()
+        self['label'] = label
+        self['coord'] = coord
+        self['dimtype'] = dimtype
+        self._parent = parent
+
+    @property
+    def label(self):
+        ''' The label of this dimension '''
+        return self.get('label', None)
+
+    @property
+    def coord(self):
+        ''' The name of the dataset of this dimension '''
+        return self.get('coord', None)
+
+    @property
+    def dimtype(self):
+        ''' The type of this dimension '''
+        return self.get('dimtype', None)
+
+    @property
+    def parent(self):
+        ''' The parent specification of this specification '''
+        return self._parent
+
+    @parent.setter
+    def parent(self, spec):
+        ''' Set the parent of this specification '''
+        if self._parent is not None:
+            raise Exception('Cannot re-assign parent')
+        self._parent = spec
+
+
 class BaseStorageSpec(Spec):
     ''' A specification for any object that can hold attributes. '''
 
