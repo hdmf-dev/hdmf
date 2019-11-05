@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import re
 import numpy as np
 import warnings
@@ -9,7 +8,7 @@ from six import with_metaclass, raise_from, text_type, binary_type, integer_type
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, call_docval_func
 from ..container import AbstractContainer, Container, Data, DataRegion
-from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec,
+from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec, \
                    SpecReader, DimSpec
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
@@ -1415,6 +1414,12 @@ class TypeMap(object):
         return new_docval_args
 
     def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
+        """
+        Get __init__ and fields of new class.
+
+        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
+        :param default_name: Default name of instances of this class, or None if not specified
+        """
         # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
@@ -1422,21 +1427,25 @@ class TypeMap(object):
         docval_args = list()
         new_args = list()
         fields = list()
+
+        # copy docval args from superclass
         for arg in deepcopy(get_docval(base.__init__)):
             existing_args.add(arg['name'])
             if arg['name'] in addl_fields:
                 continue
             docval_args.append(arg)
 
+        # set default name if provided
         if default_name is not None:
             docval_args = self.__set_default_name(docval_args, default_name)
 
+        # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
-            if not f == 'help':
+            if not f == 'help':  # (legacy) do not all help to any part of class object
                 # build docval arguments for generated constructor
                 dtype = self.__get_type(field_spec)
                 if dtype is None:
-                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec)))
+                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec))
 
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
                 if hasattr(field_spec, 'shape') and field_spec.shape is not None:
@@ -1449,19 +1458,22 @@ class TypeMap(object):
                 # auto-initialize arguments not found in superclass
                 if f not in existing_args:
                     new_args.append(f)
+
                 # add arguments not found in superclass to fields for getter/setter generation
                 if self.__ischild(dtype):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
+
+        # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
+        # be passed for a name positional or keyword arg
         if name is not None:
-            # raise Exception()
-            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
+            docval_args = list(filter(lambda x: x['name'] != 'name', docval_args))
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
             pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            if name is not None:
+            if name is not None:  # fixed name is provided by spec
                 pkwargs.update(name=name)
             base.__init__(self, *pargs, **pkwargs)
             for f in new_args:

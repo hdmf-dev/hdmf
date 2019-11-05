@@ -290,6 +290,9 @@ class TestDynamicContainer(unittest.TestCase):
         with self.assertRaises(TypeError):
             inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
 
+        with self.assertRaisesRegex(TypeError, "unrecognized argument: 'name'"):
+            inst = cls([1, 2, 3, 4], 'string attribute', 1000, name='My Baz', attr3=98.6, attr4=1.0)
+
         inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'A fixed name')
         self.assertEqual(inst.data, [1, 2, 3, 4])
