@@ -117,6 +117,30 @@ class TestDynamicTable(unittest.TestCase):
         self.assertEqual(row[2], 30.0)
         self.assertEqual(row[3], 'bird')
 
+    def test_getitem_row_slice(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        rows = table[1:3]
+        self.assertEqual(len(rows), 4)
+        for i in rows:
+            self.assertEqual(len(i), 2)
+        self.assertEqual(rows[0][1], 2)
+        self.assertEqual(rows[1][1], 3)
+        self.assertEqual(rows[2][1], 30.0)
+        self.assertEqual(rows[3][1], 'bird')
+
+    def test_getitem_row_slice_with_step(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        rows = table[0:5:2]
+        self.assertEqual(len(rows), 4)
+        for i in rows:
+            self.assertEqual(len(i), 3)
+        self.assertEqual(rows[0][2], 4)
+        self.assertEqual(rows[1][2], 5)
+        self.assertEqual(rows[2][2], 50.0)
+        self.assertEqual(rows[3][2], 'lizard')
+
     def test_getitem_column(self):
         table = self.with_spec()
         self.add_rows(table)

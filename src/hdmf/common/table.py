@@ -471,6 +471,9 @@ class DynamicTable(Container):
             elif np.issubdtype(type(arg), np.integer):
                 # index by int, return row
                 ret = tuple(col[arg] for col in self.__df_cols)
+            elif isinstance(arg, slice):
+                # index with a python slice to select multiple rows
+                ret = tuple(col[arg] for col in self.__df_cols)
             elif isinstance(arg, (tuple, list, np.ndarray)):
                 # index by a list of ints, return multiple rows
                 if isinstance(arg, np.ndarray):
@@ -479,6 +482,8 @@ class DynamicTable(Container):
                 ret = list()
                 for i in arg:
                     ret.append(tuple(col[i] for col in self.__df_cols))
+            else:
+                raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
 
         return ret
 
