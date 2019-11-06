@@ -4,7 +4,7 @@ import warnings
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
-from six import with_metaclass, raise_from, text_type, binary_type, integer_types
+from six import with_metaclass, text_type, binary_type, integer_types
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 from ..container import AbstractContainer, Container, Data, DataRegion
@@ -531,8 +531,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     def build(self, **kwargs):
         ''' Convert a AbstractContainer to a Builder representation '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
-        spec_ext = getargs('spec_ext', kwargs)
-        builder = getargs('builder', kwargs)
+        spec_ext, builder = getargs('spec_ext', 'builder', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
             if builder is None:
@@ -542,8 +541,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             self.__add_links(builder, self.__spec.links, container, manager, source)
         else:
             if not isinstance(container, Data):
-                msg = "'container' must be of type Data with DatasetSpec"
-                raise ValueError(msg)
+                raise ValueError("'container' must be of type Data with DatasetSpec")
+
             spec_dtype, spec_shape, spec = self.__check_dset_spec(self.spec, spec_ext)
             if isinstance(spec_dtype, RefSpec):
                 # a dataset of references
@@ -551,9 +550,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=spec_dtype.reftype)
             elif isinstance(spec_dtype, list):
                 # a compound dataset
-                #
-                # check for any references in the compound dtype, and
-                # convert them if necessary
+                # check for any references in the compound dtype, and convert them if necessary
                 refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
                 bldr_data = copy(container.data)
                 bldr_data = list()
@@ -566,7 +563,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     bldr_data, dtype = self.convert_dtype(spec, bldr_data)
                 except Exception as ex:
                     msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                    raise_from(Exception(msg), ex)
+                    raise Exception(msg) from ex
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
             else:
                 # a regular dtype
@@ -587,7 +584,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         bldr_data, dtype = self.convert_dtype(spec, container.data)
                     except Exception as ex:
                         msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                        raise_from(Exception(msg), ex)
+                        raise Exception(msg) from ex
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
         self.__add_attributes(builder, self.__spec.attributes, container, manager, source)
         return builder
@@ -688,7 +685,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
                         msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
-                        raise_from(Exception(msg), ex)
+                        raise Exception(msg) from ex
 
             # do not write empty or null valued objects
             if attr_value is None:
@@ -722,11 +719,12 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     sub_builder = builder.datasets[spec.name]
                 else:
                     try:
+                        # convert the given data values to the spec dtype
                         data, dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
-                        msg = 'could not convert \'%s\' for %s \'%s\''
-                        msg = msg % (spec.name, type(container).__name__, container.name)
-                        raise_from(Exception(msg), ex)
+                        msg = ('could not convert \'%s\' for %s \'%s\''
+                               % (spec.name, type(container).__name__, container.name))
+                        raise Exception(msg) from ex
                     sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
             else:
@@ -966,7 +964,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
-            raise_from(Exception(msg), ex)
+            raise Exception(msg) from ex
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

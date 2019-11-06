@@ -739,13 +739,18 @@ class TypeMap:
         """ Build the GroupBuilder for the given AbstractContainer"""
         container, manager, builder = getargs('container', 'manager', 'builder', kwargs)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
-        if manager is None:
-            manager = BuildManager(self)
+
+        # get the ObjectMapper to map between Spec objects and AbstractContainer attributes
         obj_mapper = self.get_map(container)
         if obj_mapper is None:
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
-        else:
-            builder = obj_mapper.build(container, manager, builder=builder, source=source, spec_ext=spec_ext)
+
+        # convert the container to a builder using the ObjectMapper
+        if manager is None:
+            manager = BuildManager(self)
+        builder = obj_mapper.build(container, manager, builder=builder, source=source, spec_ext=spec_ext)
+
+        # add additional attributes (namespace, data_type, object_id) to builder
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
         builder.set_attribute(self.__type_key(obj_mapper.spec), data_type)
