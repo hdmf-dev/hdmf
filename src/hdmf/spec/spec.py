@@ -294,7 +294,7 @@ _dim_args = [
         {'name': 'label', 'type': str, 'doc': 'The label of this dimension'},
         {'name': 'coord', 'type': str, 'doc': 'The name of the dataset of this dimension'},
         {'name': 'dimtype', 'type': str, 'doc': 'The type of this dimension'},
-        {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec'}
+        {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None}
 ]
 
 
@@ -302,7 +302,7 @@ class DimSpec(ConstructableDict):
     ''' Specification for dimensions
     '''
 
-    @docval(*_attr_args)
+    @docval(*_dim_args)
     def __init__(self, **kwargs):
         label, coord, dimtype, parent = getargs('label', 'coord', 'dimtype', 'parent', kwargs)
         super(DimSpec, self).__init__()
