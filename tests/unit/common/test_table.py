@@ -141,6 +141,17 @@ class TestDynamicTable(unittest.TestCase):
         self.assertEqual(rows[2][2], 50.0)
         self.assertEqual(rows[3][2], 'lizard')
 
+    def test_getitem_invalid_keytype(self):
+        pass
+
+    def test_getitem_col_select_and_row_slice(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        col = table[1:3, 'bar']
+        self.assertEqual(len(col), 2)
+        self.assertEqual(col[0], 20.0)
+        self.assertEqual(col[1], 30.0)
+
     def test_getitem_column(self):
         table = self.with_spec()
         self.add_rows(table)
