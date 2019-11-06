@@ -228,6 +228,8 @@ class BuildManager:
             tmp = tmp.parent
         return ret
 
+    # *** The following methods just delegate calls to self.__type_map ***
+
     @docval({'name': 'builder', 'type': Builder, 'doc': 'the Builder to get the class object for'})
     def get_cls(self, **kwargs):
         ''' Get the class object for the given Builder '''
@@ -245,18 +247,14 @@ class BuildManager:
             {'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
              'doc': 'the builder to get the sub-specification for'})
     def get_subspec(self, **kwargs):
-        '''
-        Get the specification from this spec that corresponds to the given builder
-        '''
+        ''' Get the specification from this spec that corresponds to the given builder '''
         spec, builder = getargs('spec', 'builder', kwargs)
         return self.__type_map.get_subspec(spec, builder)
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
              'doc': 'the builder to get the sub-specification for'})
     def get_builder_ns(self, **kwargs):
-        '''
-        Get the namespace of a builder
-        '''
+        ''' Get the namespace of a builder '''
         builder = getargs('builder', kwargs)
         return self.__type_map.get_builder_ns(builder)
 
@@ -442,6 +440,8 @@ class TypeMap:
         """
         Get __init__ and fields of new class.
 
+        :param base: The base class of the new class
+        :param addl_fields: Dict of additional fields that are not in the base class
         :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
         :param default_name: Default name of instances of this class, or None if not specified
         """
@@ -605,9 +605,7 @@ class TypeMap:
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
              'doc': 'the builder to get the sub-specification for'})
     def get_builder_ns(self, **kwargs):
-        '''
-        Get the namespace of a builder
-        '''
+        ''' Get the namespace of a builder '''
         builder = getargs('builder', kwargs)
         if isinstance(builder, LinkBuilder):
             builder = builder.builder
@@ -631,9 +629,7 @@ class TypeMap:
             {'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
              'doc': 'the builder to get the sub-specification for'})
     def get_subspec(self, **kwargs):
-        '''
-        Get the specification from this spec that corresponds to the given builder
-        '''
+        ''' Get the specification from this spec that corresponds to the given builder '''
         spec, builder = getargs('spec', 'builder', kwargs)
         if isinstance(builder, LinkBuilder):
             builder_type = type(builder.builder)
@@ -745,15 +741,15 @@ class TypeMap:
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if manager is None:
             manager = BuildManager(self)
-        attr_map = self.get_map(container)
-        if attr_map is None:
+        obj_mapper = self.get_map(container)
+        if obj_mapper is None:
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
         else:
-            builder = attr_map.build(container, manager, builder=builder, source=source, spec_ext=spec_ext)
+            builder = obj_mapper.build(container, manager, builder=builder, source=source, spec_ext=spec_ext)
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)
-        builder.set_attribute(self.__type_key(attr_map.spec), data_type)
-        builder.set_attribute(attr_map.spec.id_key(), container.object_id)
+        builder.set_attribute(self.__type_key(obj_mapper.spec), data_type)
+        builder.set_attribute(obj_mapper.spec.id_key(), container.object_id)
         return builder
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
@@ -767,23 +763,23 @@ class TypeMap:
         builder, build_manager, parent = getargs('builder', 'build_manager', 'parent', kwargs)
         if build_manager is None:
             build_manager = BuildManager(self)
-        attr_map = self.get_map(builder)
-        if attr_map is None:
+        obj_mapper = self.get_map(builder)
+        if obj_mapper is None:
             dt = builder.attributes[self.namespace_catalog.group_spec_cls.type_key()]
             raise ValueError('No ObjectMapper found for builder of type %s' % dt)
         else:
-            return attr_map.construct(builder, build_manager, parent)
+            return obj_mapper.construct(builder, build_manager, parent)
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
             returns='The name a Builder should be given when building this container', rtype=str)
     def get_builder_name(self, **kwargs):
         ''' Get the name a Builder should be given '''
         container = getargs('container', kwargs)
-        attr_map = self.get_map(container)
-        if attr_map is None:
+        obj_mapper = self.get_map(container)
+        if obj_mapper is None:
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
         else:
-            return attr_map.get_builder_name(container)
+            return obj_mapper.get_builder_name(container)
 
 
 class TypeDoesNotExistError(Exception):
