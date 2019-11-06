@@ -85,6 +85,11 @@ class Builder(with_metaclass(ABCMeta, dict)):
         else:
             raise ValueError('Cannot reset parent once it is specified')
 
+    def __repr__(self):
+        dict_repr = super(Builder, self).__repr__()
+        ret = "%s %s %s" % (self.name, self.__class__.__name__, dict_repr)
+        return ret
+
 
 class BaseBuilder(Builder):
     __attribute = 'attributes'
