@@ -8,7 +8,7 @@ from six import with_metaclass, text_type, binary_type, integer_types
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 from ..container import AbstractContainer, Container, Data, DataRegion
-from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
+from ..spec import Spec, AttributeSpec, DatasetSpec, DimSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
@@ -715,6 +715,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             if isinstance(attr_value, Builder):
                 builder.set_builder(attr_value)
             elif spec.data_type_def is None and spec.data_type_inc is None:
+                # a non-Container/Data dataset, e.g. a float or nd-array
                 if spec.name in builder.datasets:
                     sub_builder = builder.datasets[spec.name]
                 else:
@@ -728,7 +729,32 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
             else:
+                # a Container/Data dataset, e.g. a VectorData
                 self.__add_containers(builder, spec, attr_value, build_manager, source, container)
+
+        # resolve dims
+        for spec in datasets:
+            if spec.name is None:
+                # TODO currently only named dataset specs can have dimensions. need to handle VectorData case where
+                # name is not known
+                continue
+
+            if spec.dims:
+                for dim in spec.dims:
+                    if isinstance(dim, DimSpec):
+                        dset_builder = builder.datasets[spec.name]  # all named dataset builders should exist now
+                        dim_dset_builder = builder.datasets.get(dim.coord, None)
+                        if dim_dset_builder is None:
+                            raise ValueError("Dimension coord '%s' for spec '%s' not found in group '%s'"
+                                             % (dim.coord, spec.name, builder.name))
+                        if dim.dimtype == 'coord':
+                            dset_builder.dims[dim.label] = dim_dset_builder
+                        else:
+                            raise Exception('TODO')
+                        print(dset_builder.dims)
+                    else:
+                        # TODO handle legacy case where dims are strings
+                        pass
 
     def __add_groups(self, builder, groups, container, build_manager, source):
         for spec in groups:
@@ -965,6 +991,8 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
             raise Exception(msg) from ex
+
+        # TODO add dimension coordinates after constructor call
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

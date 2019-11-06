@@ -73,7 +73,8 @@ class YAMLSpecWriter(SpecWriter):
         order = ['neurodata_type_def', 'neurodata_type_inc', 'data_type_def', 'data_type_inc',
                  'name', 'default_name',
                  'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
-                 'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
+                 'required', 'quantity', 'attributes', 'datasets', 'groups', 'links',
+                 'label', 'coord', 'dimtype']
         if isinstance(obj, dict):
             keys = list(obj.keys())
             for k in order[::-1]:
