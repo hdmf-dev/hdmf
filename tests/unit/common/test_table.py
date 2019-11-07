@@ -163,7 +163,7 @@ class TestDynamicTable(unittest.TestCase):
         self.add_rows(table)
         row = table[[0, 2, 4]]
         self.assertEqual(len(row), 3)
-        self.assertTupleEqual(tuple(row.loc[0]), (1, 10.0, 'cat'))
+        self.assertTupleEqual(tuple(row.iloc[0]), (1, 10.0, 'cat'))
         self.assertTupleEqual(tuple(row.iloc[1]), (3, 30.0, 'bird'))
         self.assertTupleEqual(tuple(row.iloc[2]), (5, 50.0, 'lizard'))
 
@@ -172,6 +172,12 @@ class TestDynamicTable(unittest.TestCase):
         self.add_rows(table)
         val = table[2, 'bar']
         self.assertEqual(val, 30.0)
+
+    def test_getitem_point_idx(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        row = table[2]
+        self.assertTupleEqual(tuple(row.iloc[0]), (3, 30.0, 'bird'))
 
     def test_getitem_point_idx_colidx(self):
         table = self.with_spec()

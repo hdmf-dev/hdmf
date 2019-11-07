@@ -469,22 +469,27 @@ class DynamicTable(Container):
                 raise KeyError(key)
         else:
             # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
+            # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
-            if isinstance(arg, slice) or np.issubdtype(type(arg), np.integer):
-                # index with a python slice or single integer to select one or multiple rows
+            if np.issubdtype(type(arg), np.integer):
+                arg = np.s_[arg:(arg+1)]
+            # index with a python slice (or single integer) to select one or multiple rows
+            if isinstance(arg, slice):
                 data = OrderedDict()
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
                         data[name] = [x for x in col[arg]]
                     else:
-                        data[name] = col[arg]
+                        currdata = col[arg]
+                        data[name] = currdata
                 id_index = self.id.data[arg]
                 if np.isscalar(id_index):
                     id_index = [id_index, ]
-                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index))
+                print(arg, )
+                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+            # index by a list of ints, return multiple rows
             elif isinstance(arg, (tuple, list, np.ndarray)):
-                # index by a list of ints, return multiple rows
                 if isinstance(arg, np.ndarray):
                     if len(arg.shape) != 1:
                         raise ValueError("cannot index DynamicTable with multiple dimensions")
@@ -500,7 +505,7 @@ class DynamicTable(Container):
                 id_index = (self.id.data[arg]
                             if isinstance(self.id.data, (np.ndarray, Dataset))
                             else [self.id.data[i] for i in arg])
-                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index))
+                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
             else:
                 raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
 
