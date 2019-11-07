@@ -3,7 +3,7 @@ from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
-from .data_utils import DataIO
+from .data_utils import DataIO, get_shape
 from warnings import warn
 import h5py
 
@@ -236,6 +236,13 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
 class Container(AbstractContainer):
 
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
+    def __init__(self, **kwargs):
+        call_docval_func(super(Container, self).__init__, kwargs)
+        # dict of dimension coordinates, where key is name of dataset (variable) and value is a list of label-dataset
+        # pairs
+        self.__dim_coords = dict()
+
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
     @classmethod
@@ -372,6 +379,45 @@ class Container(AbstractContainer):
             out += '\n' + indent_in + Container.__smart_str(keys[-1], num_indent + 1) + ' ' + str(type(d[keys[-1]]))
         out += '\n' + indent + right_br
         return out
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''},
+            {'name': 'axis', 'type': int, 'doc': ''},
+            {'name': 'label', 'type': str, 'doc': ''})
+    def get_dim_coord(self, **kwargs):
+        data_name, axis, label = getargs('data_name', 'axis', 'label', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
+        if data_name not in self.__dim_coords:
+            raise ValueError("Data name '%s' has no dim coords in %s" % (data_name, self.__class__.__name__))
+        if axis < 0 or axis >= len(self.__dim_coords[data_name]):
+            raise ValueError("Axis %d does not exist for dim coords of %s in %s"
+                             % (axis, data_name, self.__class__.__name__))
+        dims = self.__dim_coords[data_name][axis]
+        if label not in dims:
+            raise ValueError("Dim coord label '%s' not found in %s for '%s'"
+                             % (label, self.__class__.__name__, data_name))
+        return self.__dim_coords[data_name][axis][label]
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''},
+            {'name': 'axis', 'type': int, 'doc': ''},
+            {'name': 'label', 'type': str, 'doc': ''},
+            {'name': 'coord', 'type': str, 'doc': ''},)
+    def set_dim_coord(self, **kwargs):
+        data_name, axis, label, coord = getargs('data_name', 'axis', 'label', 'coord', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
+        if coord not in self.fields:
+            raise ValueError("Dim coord name '%s' not found in %s" % (coord, self.__class__.__name__))
+
+        data = getattr(self, data_name)
+        num_data_dims = len(get_shape(data))
+        if axis < 0 or axis >= num_data_dims:
+            raise ValueError("Axis %d does not exist for dim coords of %s in %s"
+                             % (axis, data_name, self.__class__.__name__))
+
+        if data_name not in self.__dim_coords:
+            self.__dim_coords[data_name] = [{}] * num_data_dims  # init with empty dicts for each dimension of data
+        self.__dim_coords[data_name][axis][label] = self.fields[coord]
 
 
 class Data(AbstractContainer):
