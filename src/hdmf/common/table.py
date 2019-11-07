@@ -4,6 +4,7 @@ import pandas as pd
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
+from collections import OrderedDict
 
 from . import register_class
 
@@ -471,7 +472,7 @@ class DynamicTable(Container):
             arg = key
             if isinstance(arg, slice) or np.issubdtype(type(arg), np.integer):
                 # index with a python slice or single integer to select one or multiple rows
-                data = {}
+                data =  OrderedDict()
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
@@ -487,7 +488,7 @@ class DynamicTable(Container):
                 if isinstance(arg, np.ndarray):
                     if len(arg.shape) != 1:
                         raise ValueError("cannot index DynamicTable with multiple dimensions")
-                data = {}
+                data = OrderedDict()
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
@@ -521,7 +522,7 @@ class DynamicTable(Container):
         exclude = popargs('exclude', kwargs)
         if exclude is None:
             exclude = set([])
-        data = {}
+        data =  OrderedDict()
         for name in self.colnames:
             if name in exclude:
                 continue
