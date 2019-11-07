@@ -486,7 +486,6 @@ class DynamicTable(Container):
                 id_index = self.id.data[arg]
                 if np.isscalar(id_index):
                     id_index = [id_index, ]
-                print(arg, )
                 ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
             # index by a list of ints, return multiple rows
             elif isinstance(arg, (tuple, list, np.ndarray)):
