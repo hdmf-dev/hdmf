@@ -497,12 +497,12 @@ class DynamicTable(Container):
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
                         data[name] = [x for x in col[arg]]
-                    elif isinstance(col.data, (Dataset, np.ndarray)):
+                    elif isinstance(col.data, np.ndarray):
                         data[name] = col[arg]
                     else:
                         data[name] = [col[i] for i in arg]
                 id_index = (self.id.data[arg]
-                            if isinstance(self.id.data, (np.ndarray, Dataset))
+                            if isinstance(self.id.data, np.ndarray)
                             else [self.id.data[i] for i in arg])
                 ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
             else:
