@@ -155,19 +155,19 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
         return self.__modified
 
     @docval({'name': 'modified', 'type': bool,
-             'doc': 'whether or not this Container has been modified', 'default': True})
+             'doc': 'whether or not this AbstractContainer has been modified', 'default': True})
     def set_modified(self, **kwargs):
         modified = getargs('modified', kwargs)
         self.__modified = modified
-        if modified and isinstance(self.parent, Container):
+        if modified and isinstance(self.parent, AbstractContainer):
             self.parent.set_modified()
 
     @property
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'Container',
-             'doc': 'the child Container for this Container', 'default': None})
+    @docval({'name': 'child', 'type': 'AbstractContainer',
+             'doc': 'the child AbstractContainer for this AbstractContainer', 'default': None})
     def add_child(self, **kwargs):
         warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
         child = getargs('child', kwargs)
@@ -213,7 +213,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
         if self.parent is not None:
             if isinstance(self.parent, AbstractContainer):
-                raise ValueError(('Cannot reassign parent to Container: %s. '
+                raise ValueError(('Cannot reassign parent to AbstractContainer: %s. '
                                   'Parent is already: %s.' % (repr(self), repr(self.parent))))
             else:
                 if parent_container is None:
@@ -229,7 +229,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
                     self.__parent.add_candidate(parent_container, self)
         else:
             self.__parent = parent_container
-            if isinstance(parent_container, Container):
+            if isinstance(parent_container, AbstractContainer):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
@@ -245,8 +245,7 @@ class Container(AbstractContainer):
         if isinstance(field, dict):
             for k in field.keys():
                 if k not in cls._pconf_allowed_keys:
-                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" %\
-                           (k, field['name'], cls.__name__)
+                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" % (k, field['name'], cls.__name__)
                     raise ValueError(msg)
             if field.get('required_name', None) is not None:
                 name = field['required_name']
