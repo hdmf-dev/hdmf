@@ -1454,9 +1454,9 @@ class TypeMap(object):
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
-            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
             if name is not None:
-                pkwargs.update(name=name)
+                kwargs.update(name=name)
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
             base.__init__(self, *pargs, **pkwargs)
             for f in new_args:
                 arg_val = kwargs.get(f, None)
