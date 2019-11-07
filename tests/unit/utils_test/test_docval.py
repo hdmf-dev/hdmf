@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 from six import text_type
 
 from hdmf.utils import docval, fmt_docval_args, get_docval, popargs

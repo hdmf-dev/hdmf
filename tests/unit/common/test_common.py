@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf import Data, Container
 from hdmf.common import get_type_map

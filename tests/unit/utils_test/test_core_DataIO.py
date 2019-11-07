@@ -1,4 +1,4 @@
-import unittest2 as unittest
+import unittest
 
 from hdmf.data_utils import DataIO
 from hdmf.container import Data

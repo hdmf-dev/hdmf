@@ -1,8 +1,5 @@
 from abc import ABCMeta, abstractmethod
-try:
-    from collections.abc import Iterable  # Python 3
-except ImportError:
-    from collections import Iterable  # Python 2.7
+from collections.abc import Iterable
 
 import numpy as np
 from warnings import warn
