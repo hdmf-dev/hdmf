@@ -128,6 +128,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     :param enforce_type: Boolean indicating whether the type of arguments should be enforced
     :param enforce_shape: Boolean indicating whether the dimensions of array arguments
                           should be enforced if possible.
+    :param allow_extra: Boolean indicating whether extra keyword arguments are allowed (if False and extra keyword
+                        arguments are specified, then an error is raised).
 
     :return: Dict with:
         * 'args' : Dict all arguments where keys are the names and values are the values of the arguments.
@@ -145,10 +147,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     if duplicated:
         raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
-        if allow_extra:
+        if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
+            # verify only that the number of positional args is <= number of docval specified args
             if len(args) > len(validator):
                 raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args)))
-        else:
+        else:  # verify that the number of positional args + keyword args is <= number of docval specified args
             if (len(args) + len(kwargs)) > len(validator):
                 raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args) + len(kwargs)))
 
