@@ -1032,7 +1032,7 @@ class HDF5IOReadData(unittest.TestCase):
         self.path = get_temp_filepath()
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
-        self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+        self.foofile1 = FooFile(buckets=[bucket1])
 
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as temp_io:
             temp_io.write(self.foofile1)
@@ -1067,7 +1067,7 @@ class HDF5IOWriteNoFile(unittest.TestCase):
     def setUp(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
-        self.foofile1 = FooFile('test_foofile1', buckets=[bucket1])
+        self.foofile1 = FooFile(buckets=[bucket1])
         self.path = 'test_write_nofile.h5'
 
     def tearDown(self):
