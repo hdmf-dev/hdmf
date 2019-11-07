@@ -145,22 +145,35 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     if duplicated:
         raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
+        if allow_extra:
+            if len(args) > len(validator):
+                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args)))
+        else:
+            if (len(args) + len(kwargs)) > len(validator):
+                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args) + len(kwargs)))
+
+        # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
         arg = next(it)
+
         # catch unsupported keys
         allowable_terms = ('name', 'doc', 'type', 'shape', 'default', 'help')
         unsupported_terms = set(arg.keys()) - set(allowable_terms)
         if unsupported_terms:
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
                                                                                     list(unsupported_terms)))
-        # process positional arguments
+        # process positional arguments of the docval specification (no default value)
         while True:
-            #
             if 'default' in arg:
                 break
             argname = arg['name']
             argval_set = False
             if argname in kwargs:
+                # if this positional arg is specified by a keyword arg and there are remaining positional args that
+                # have not yet been matched, then it is undetermined what those positional args match to. thus, raise
+                # an error
+                if argsi < len(args):
+                    type_errors.append("got multiple values for argument '%s'" % argname)
                 argval = kwargs.get(argname)
                 extras.pop(argname, None)
                 argval_set = True
@@ -172,7 +185,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 type_errors.append("missing argument '%s'" % argname)
             else:
                 if argname in ret:
-                    type_errors.append("'got multiple arguments for '%s" % argname)
+                    type_errors.append("got multiple values for argument '%s'" % argname)
                 else:
                     if enforce_type:
                         if not __type_okay(argval, arg['type']):
@@ -201,6 +214,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     ret[argname] = argval
             argsi += 1
             arg = next(it)
+
+        # process arguments of the docval specification with a default value
         while True:
             argname = arg['name']
             if argname in kwargs:
