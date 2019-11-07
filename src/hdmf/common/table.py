@@ -472,7 +472,7 @@ class DynamicTable(Container):
             arg = key
             if isinstance(arg, slice) or np.issubdtype(type(arg), np.integer):
                 # index with a python slice or single integer to select one or multiple rows
-                data =  OrderedDict()
+                data = OrderedDict()
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
@@ -522,7 +522,7 @@ class DynamicTable(Container):
         exclude = popargs('exclude', kwargs)
         if exclude is None:
             exclude = set([])
-        data =  OrderedDict()
+        data = OrderedDict()
         for name in self.colnames:
             if name in exclude:
                 continue

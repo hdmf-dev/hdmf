@@ -6,6 +6,7 @@ from . import base
 
 import pandas as pd
 import numpy as np
+from collections import OrderedDict
 
 
 class TestDynamicTable(unittest.TestCase):
@@ -191,13 +192,17 @@ class TestDynamicTable(unittest.TestCase):
 
     def test_to_dataframe(self):
         table = self.with_columns_and_data()
-        expected_df = pd.DataFrame({
-            'foo': [1, 2, 3, 4, 5],
-            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
-            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard']
-        })
+        data = OrderedDict()
+        for name in table.colnames:
+            if name == 'foo':
+                data[name] = [1, 2, 3, 4, 5]
+            elif name == 'bar':
+                data[name] = [10.0, 20.0, 30.0, 40.0, 50.0]
+            elif name == 'baz':
+                data[name] = ['cat', 'dog', 'bird', 'fish', 'lizard']
+        expected_df = pd.DataFrame(data)
         obtained_df = table.to_dataframe()
-        assert expected_df.equals(obtained_df)
+        self.assertTrue(expected_df.equals(obtained_df))
 
     def test_from_dataframe(self):
         df = pd.DataFrame({
