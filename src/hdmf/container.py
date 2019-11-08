@@ -226,7 +226,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
                     parent_container.__children.append(self)
                     parent_container.set_modified()
                 else:
-                    self.__parent.add_candidate(parent_container, self)
+                    self.__parent.add_candidate(parent_container)
         else:
             self.__parent = parent_container
             if isinstance(parent_container, Container):
