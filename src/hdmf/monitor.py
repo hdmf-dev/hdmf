@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import six
 
-from .utils import docval, getargs, fmt_docval_args
+from .utils import docval, getargs, call_docval_func
 from .data_utils import AbstractDataChunkIterator, DataChunkIterator, DataChunk
 
 
