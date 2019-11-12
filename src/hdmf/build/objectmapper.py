@@ -751,7 +751,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                             dset_builder.dims[dim.label] = dim_dset_builder
                         else:
                             raise Exception('TODO')
-                        print(dset_builder.dims)
                     else:
                         # TODO handle legacy case where dims are strings
                         pass
