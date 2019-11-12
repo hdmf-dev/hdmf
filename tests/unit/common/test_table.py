@@ -59,6 +59,7 @@ class TestDynamicTable(unittest.TestCase):
         self.assertEqual(table.columns[1].data, [10.0, 20.0, 30.0, 40.0, 50.0])
         self.assertEqual(table.columns[2].data, ['cat', 'dog', 'bird', 'fish', 'lizard'])
         self.assertEqual(table.id.data, [0, 1, 2, 3, 4])
+        self.assertTrue(hasattr(table, 'baz'))
 
     def test_constructor_ids_default(self):
         columns = [VectorData(name=s['name'], description=s['description'], data=d)
@@ -107,6 +108,7 @@ class TestDynamicTable(unittest.TestCase):
         table = self.with_spec()
         table.add_column(name='qux', description='qux column')
         self.assertEqual(table.colnames, ('foo', 'bar', 'baz', 'qux'))
+        self.assertTrue(hasattr(table, 'qux'))
 
     def test_getitem_row_num(self):
         table = self.with_spec()
@@ -156,8 +158,7 @@ class TestDynamicTable(unittest.TestCase):
 
         table = DynamicTable.from_dataframe(df, 'foo')
         obtained = table.to_dataframe()
-
-        assert df.equals(obtained)
+        self.assertTrue(df.equals(obtained))
 
     def test_to_dataframe(self):
         table = self.with_columns_and_data()
@@ -167,7 +168,7 @@ class TestDynamicTable(unittest.TestCase):
             'baz': ['cat', 'dog', 'bird', 'fish', 'lizard']
         })
         obtained_df = table.to_dataframe()
-        assert expected_df.equals(obtained_df)
+        self.assertTrue(expected_df.equals(obtained_df))
 
     def test_from_dataframe(self):
         df = pd.DataFrame({
@@ -178,6 +179,17 @@ class TestDynamicTable(unittest.TestCase):
 
         obtained_table = DynamicTable.from_dataframe(df, 'test')
         self.check_table(obtained_table)
+
+    def test_from_dataframe_dup_attr(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
+        }).loc[:, ('foo', 'bar', 'description')]
+
+        msg = "Column name 'description' is not allowed because it is already an attribute"
+        with self.assertRaisesRegex(ValueError, msg):
+            DynamicTable.from_dataframe(df, 'test')
 
     def test_missing_columns(self):
         table = self.with_spec()
@@ -227,9 +239,9 @@ class TestDynamicTable(unittest.TestCase):
 
     def test_nd_array_to_df(self):
         data = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
-        col = VectorData(name='name', description='desc', data=data)
+        col = VectorData(name='data', description='desc', data=data)
         df = DynamicTable('test', 'desc', np.arange(3, dtype='int'), (col, )).to_dataframe()
-        df2 = pd.DataFrame({'name': [x for x in data]},
+        df2 = pd.DataFrame({'data': [x for x in data]},
                            index=pd.Index(name='id', data=[0, 1, 2]))
         pd.testing.assert_frame_equal(df, df2)
 
