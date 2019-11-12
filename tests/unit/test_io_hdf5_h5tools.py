@@ -654,7 +654,9 @@ def _get_manager():
     class BucketMapper(ObjectMapper):
         def __init__(self, spec):
             super(BucketMapper, self).__init__(spec)
-            foo_spec = spec.get_group('foo_holder').get_data_type('Foo')
+            foo_holder_spec = spec.get_group('foo_holder')
+            self.unmap(foo_holder_spec)
+            foo_spec = foo_holder_spec.get_data_type('Foo')
             self.map_spec('foos', foo_spec)
 
     file_spec = GroupSpec("A file of Foos contained in FooBuckets",
