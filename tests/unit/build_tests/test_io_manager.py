@@ -217,6 +217,7 @@ class TestNestedContainersSubgroup(TestNestedBase):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
                 super(BucketMapper, self).__init__(spec)
+                self.unmap(spec.get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
@@ -253,6 +254,8 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
                 super(BucketMapper, self).__init__(spec)
+                self.unmap(spec.get_group('foo_holder_holder'))
+                self.unmap(spec.get_group('foo_holder_holder').get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
