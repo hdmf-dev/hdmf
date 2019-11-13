@@ -380,6 +380,10 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
+    @property
+    def dim_coords(self):
+        return self.__dim_coords
+
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
             {'name': 'axis', 'type': int, 'doc': ''},
             {'name': 'label', 'type': str, 'doc': ''})
@@ -405,6 +409,7 @@ class Container(AbstractContainer):
     def set_dim_coord(self, **kwargs):
         data_name, axis, label, coord = getargs('data_name', 'axis', 'label', 'coord', kwargs)
         if data_name not in self.fields:
+            breakpoint()
             raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
         if coord not in self.fields:
             raise ValueError("Dim coord name '%s' not found in %s" % (coord, self.__class__.__name__))

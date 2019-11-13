@@ -990,7 +990,16 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             msg = 'Could not construct %s object' % (cls.__name__,)
             raise Exception(msg) from ex
 
-        # TODO add dimension coordinates after constructor call
+        # add dimension coordinates after object construction
+        for dataset in self.__spec.datasets:
+            dims = getattr(dataset, 'dims', None)
+            if dims is not None:
+                for dim_coord in dataset.dims:
+                    # TODO axis
+                    if dim_coord.dimtype == 'coord':
+                        obj.set_dim_coord(data_name=dataset.name, axis=0, label=dim_coord.label, coord=dim_coord.coord)
+                    else:  # TODO
+                        pass
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

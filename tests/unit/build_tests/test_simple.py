@@ -9,34 +9,21 @@ from tests.unit.test_utils import CORE_NAMESPACE
 
 class Bar(Container):
 
+    __fields__ = ('data1', 'data2')
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
             {'name': 'data1', 'type': ('data', 'array_data'), 'doc': 'some data'},
             {'name': 'data2', 'type': ('data', 'array_data'), 'doc': 'more data'})
     def __init__(self, **kwargs):
         name, data1, data2 = getargs('name', 'data1', 'data2', kwargs)
         super(Bar, self).__init__(name=name)
-        self.__data1 = data1
-        self.__data2 = data2
+        self.data1 = data1
+        self.data2 = data2
 
     def __eq__(self, other):
-        attrs = ('name', 'data1', 'data2')
-        return all(getattr(self, a) == getattr(other, a) for a in attrs)
-
-    def __str__(self):
-        attrs = ('name', 'data1', 'data2')
-        return ','.join('%s=%s' % (a, getattr(self, a)) for a in attrs)
-
-    @property
-    def data_type(self):
-        return 'Bar'
-
-    @property
-    def data1(self):
-        return self.__data1
-
-    @property
-    def data2(self):
-        return self.__data2
+        return (self.name == other.name and
+                self.fields == other.fields and
+                self.dim_coords == other.dim_coords)
 
 
 class TestMapSimple(unittest.TestCase):
@@ -91,6 +78,7 @@ class TestMapSimple(unittest.TestCase):
                              datasets=[dset1_spec, dset2_spec])
         type_map = self.customSetUp(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        bar_inst.set_dim_coord('data1', 0, 'my_label', 'data2')
 
         dset_builder2 = DatasetBuilder(name='data2', data=['a', 'b', 'c', 'd'])
         dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4], dims={'my_label': dset_builder2})
@@ -103,4 +91,7 @@ class TestMapSimple(unittest.TestCase):
 
         manager = BuildManager(type_map)
         container_expected = type_map.construct(builder_expected, manager)
+
         self.assertEqual(container_expected, bar_inst)
+
+    # TODO test dynamic class generation with dim coord spec
