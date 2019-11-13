@@ -465,16 +465,15 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             return None
         attr_val = self.__get_override_attr(attr_name, container, manager)
         if attr_val is None:
-            # TODO: A message like this should be used to warn users when an expected attribute
-            # does not exist on a Container object
-            #
-            # if not hasattr(container, attr_name):
-            #     msg = "Container '%s' (%s) does not have attribute '%s'" \
-            #             % (container.name, type(container), attr_name)
-            #     #warnings.warn(msg)
-            attr_val = getattr(container, attr_name, None)
+            try:
+                attr_val = getattr(container, attr_name)
+            except AttributeError:
+                # raise error if an expected attribute (based on the spec) does not exist on a Container object
+                msg = "Container '%s' (%s) does not have attribute '%s'" % (container.name, type(container), attr_name)
+                raise Exception(msg)
             if attr_val is not None:
                 attr_val = self.__convert_value(attr_val, spec)
+            # else: attr_val is an attribute on the Container and its value is None
         return attr_val
 
     def __convert_value(self, value, spec):

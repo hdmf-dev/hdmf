@@ -150,6 +150,13 @@ class TestTypeMap(unittest.TestCase):
         self.assertIsInstance(mapper, MyMap)
 
 
+class BarMapper(ObjectMapper):
+    def __init__(self, spec):
+        super(BarMapper, self).__init__(spec)
+        data_spec = spec.get_dataset('data')
+        self.map_spec('attr2', data_spec.get_attribute('attr2'))
+
+
 class TestMapStrings(unittest.TestCase):
 
     def customSetUp(self, bar_spec):
@@ -170,7 +177,7 @@ class TestMapStrings(unittest.TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, ObjectMapper)
+        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
@@ -183,7 +190,7 @@ class TestMapStrings(unittest.TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, ObjectMapper)
+        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
@@ -196,7 +203,7 @@ class TestMapStrings(unittest.TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, ObjectMapper)
+        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertIsInstance(builder.get('data').data, H5DataIO)
