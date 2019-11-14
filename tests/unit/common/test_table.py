@@ -276,6 +276,11 @@ class TestDynamicTable(unittest.TestCase):
         for ii, item in enumerate(dynamic_table_region):
             self.assertTrue(table[ii].equals(item))
 
+    def test_dynamic_table_region_shape(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
+        self.assertTupleEqual(dynamic_table_region.shape, (5,3))
+
     def test_nd_array_to_df(self):
         data = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
         col = VectorData(name='data', description='desc', data=data)
