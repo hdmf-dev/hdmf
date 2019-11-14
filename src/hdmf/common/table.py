@@ -253,6 +253,9 @@ class DynamicTable(Container):
         col_dict = dict()
         self.__indices = dict()
         for col in self.columns:
+            if hasattr(self, col.name):
+                raise ValueError("Column name '%s' is not allowed because it is already an attribute" % col.name)
+            setattr(self, col.name, col)
             if isinstance(col, VectorData):
                 existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
@@ -273,10 +276,16 @@ class DynamicTable(Container):
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
         for col in self.__columns__:
-            if col.get('required', False) and col['name'] not in self.__colids:
-                self.add_column(col['name'], col['description'],
-                                index=col.get('index', False),
-                                table=col.get('table', False))
+            if col['name'] not in self.__colids:
+                if col.get('required', False):
+                    self.add_column(col['name'], col['description'],
+                                    index=col.get('index', False),
+                                    table=col.get('table', False))
+
+                else:  # create column name attributes (set to None) on the object even if column is not required
+                    setattr(self, col['name'], None)
+                    if col.get('index', False):
+                        setattr(self, col['name'] + '_index', None)
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -403,6 +412,7 @@ class DynamicTable(Container):
         col = cls(**ckwargs)
         col.parent = self
         columns = [col]
+        setattr(self, name, col)
 
         # Add index if it's been specified
         if index is not False:
@@ -422,6 +432,7 @@ class DynamicTable(Container):
             # else, the ObjectMapper will create a link from self (parent) to col_index (child with existing parent)
             col = col_index
             self.__indices[col_index.name] = col_index
+            setattr(self, col_index.name, col_index)
 
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
