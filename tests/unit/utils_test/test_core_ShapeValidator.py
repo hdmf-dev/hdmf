@@ -188,7 +188,7 @@ class ShapeValidatorTests(unittest.TestCase):
         # Create test DynamicTableRegion
         dtr = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=dt)
         # Confirm that the shapes match
-        res = assertEqualShape(dtr, np.arange(9).reshape(3,3))
+        res = assertEqualShape(dtr, np.arange(9).reshape(3, 3))
         self.assertTrue(res.result)
 
     def with_table_columns(self):
@@ -199,7 +199,6 @@ class ShapeValidatorTests(unittest.TestCase):
     def with_columns_and_data(self):
 
         return
-
 
 
 class ShapeValidatorResultTests(unittest.TestCase):

@@ -279,7 +279,7 @@ class TestDynamicTable(unittest.TestCase):
     def test_dynamic_table_region_shape(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
-        self.assertTupleEqual(dynamic_table_region.shape, (5,3))
+        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
 
     def test_nd_array_to_df(self):
         data = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
