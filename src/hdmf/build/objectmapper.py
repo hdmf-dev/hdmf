@@ -8,7 +8,7 @@ from six import with_metaclass, text_type, binary_type, integer_types
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 from ..container import AbstractContainer, Container, Data, DataRegion
-from ..spec import Spec, AttributeSpec, DatasetSpec, DimSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
+from ..spec import Spec, AttributeSpec, CoordSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
@@ -738,21 +738,19 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 # name is not known
                 continue
 
-            if spec.dims:
-                for dim in spec.dims:
-                    if isinstance(dim, DimSpec):
-                        dset_builder = builder.datasets[spec.name]  # all named dataset builders should exist now
-                        dim_dset_builder = builder.datasets.get(dim.coord, None)
-                        if dim_dset_builder is None:
-                            raise ValueError("Dimension coord '%s' for spec '%s' not found in group '%s'"
-                                             % (dim.coord, spec.name, builder.name))
-                        if dim.dimtype == 'coord':
-                            dset_builder.dims[dim.label] = dim_dset_builder
-                        else:
-                            raise Exception('TODO')
+            if spec.coords:
+                for coord_spec in spec.coords:
+                    dset_builder = builder.datasets[spec.name]  # all named dataset builders should exist now
+                    # TODO revise me
+                    dim_dset_builder = builder.datasets.get(coord_spec.coord, None)
+                    if dim_dset_builder is None:
+                        raise ValueError("Coordinate '%s' for spec '%s' not found in group '%s'"
+                                         % (coord_spec.coord, spec.name, builder.name))
+                    if coord_spec.type == 'coord':
+                        dset_builder.coords[coord_spec.label] = dim_dset_builder
                     else:
-                        # TODO handle legacy case where dims are strings
-                        pass
+                        raise Exception('TODO')
+
 
     def __add_groups(self, builder, groups, container, build_manager, source):
         for spec in groups:

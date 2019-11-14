@@ -1,4 +1,5 @@
 import unittest
+import numpy as np
 
 from hdmf.container import AbstractContainer, Container, Data
 
@@ -128,59 +129,152 @@ class TestContainer(unittest.TestCase):
         self.assertRegex(str(parent_obj), r"obj1 hdmf.container.Container at 0x%d" % id(parent_obj))
 
 
-class TestContainerDimCoords(unittest.TestCase):
+class TestContainerDims(unittest.TestCase):
 
-    def test_set_get_dim_coord(self):
+    def test_get_dims(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        self.assertDictEqual(obj1.dims, {})
+
+    def test_set_dim_axis0(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        self.assertDictEqual(obj1.dims, {'data1': ['numbers']})
+
+    def test_set_dim_axis1(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
+        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'dim_2']})
+        obj1.set_dim(data_name='data2', axis=2, dim='more numbers')
+        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'more numbers']})
+        obj1.set_dim(data_name='data2', axis=1, dim='awesome numbers')
+        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'awesome numbers', 'more numbers']})
+
+    def test_set_dim_dataio(self):
+        # TODO
+        raise unittest.SkipTest('TODO')
+
+    def test_set_dim_dci(self):
+        # TODO
+        raise unittest.SkipTest('TODO')
+
+    def test_set_dim_h5dataset(self):
+        # TODO
+        raise unittest.SkipTest('TODO')
+
+    def test_set_dim_empty_dim(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data1', axis=0, dim='')
+        self.assertDictEqual(obj1.dims, {'data1': ['']})
+
+    def test_set_dim_unknown_name(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Subcontainer\."):
+            obj1.set_dim(data_name='data4', axis=0, dim='numbers')
+
+    def test_set_dim_axis_non_array(self):
+        obj1 = Subcontainer('obj1', data1='hello', data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"Cannot determine shape of field 'data1' in Subcontainer\."):
+            obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+
+    def test_set_dim_axis_negative(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"Axis -1 does not exist for field 'data1' in Subcontainer\."):
+            obj1.set_dim(data_name='data1', axis=-1, dim='numbers')
+
+    def test_set_dim_axis_over_bounds(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"Axis 1 does not exist for field 'data1' in Subcontainer\."):
+            obj1.set_dim(data_name='data1', axis=1, dim='numbers')
+
+    def test_set_dim_dup_name(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
+        with self.assertRaisesRegex(ValueError, (r"Cannot set dim 'numbers' for axis 2 of field data2 in Subcontainer\."
+                                                 r" Dim 'numbers' is already used for axis 1\.")):
+            obj1.set_dim(data_name='data2', axis=2, dim='numbers')
+
+    def test_set_dim_dup_name_ok(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
+        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
+        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'dim_2']})
+
+    def test_get_dim_axis(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
+        ax = obj1._get_dim_axis(data_name='data2', dim='numbers')
+        self.assertEqual(ax, 1)
+
+    def test_get_dim_axis_unknown_name(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Subcontainer\."):
+            obj1._get_dim_axis(data_name='data4', dim='numbers')
+
+    def test_get_dim_axis_no_dims(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        ax = obj1._get_dim_axis(data_name='data2', dim='numbers')
+        self.assertIsNone(ax)
+
+    def test_get_dim_axis_unknown_dim(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
+        with self.assertRaisesRegex(ValueError, r"Dim name 'letters' not found for field 'data2' of Subcontainer\."):
+            obj1._get_dim_axis(data_name='data2', dim='letters')
+
+
+class TestContainerCoords(unittest.TestCase):
+
+    def test_set_get_coord(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim_coord('data1', 0, 'letters', 'data2')
-        self.assertEqual(obj1.get_dim_coord('data1', 0, 'letters'), obj1.data2)
+        obj1.set_coord('data1', 0, 'letters', 'data2')
+        self.assertEqual(obj1.get_coord('data1', 0, 'letters'), obj1.data2)
 
-    def test_set_dim_coord_data_not_found(self):
+    def test_set_coord_data_not_found(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         with self.assertRaisesRegex(ValueError, "Field name 'data0' not found in Subcontainer"):
-            obj1.set_dim_coord('data0', 0, 'letters', 'data2')
+            obj1.set_coord('data0', 0, 'letters', 'data2')
 
-    def test_set_dim_coord_coord_not_found(self):
+    def test_set_coord_coord_not_found(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        with self.assertRaisesRegex(ValueError, "Dim coord name 'data3' not found in Subcontainer"):
-            obj1.set_dim_coord('data1', 0, 'letters', 'data3')
+        with self.assertRaisesRegex(ValueError, "Coord name 'data3' not found in Subcontainer"):
+            obj1.set_coord('data1', 0, 'letters', 'data3')
 
-    def test_set_dim_coord_out_bounds(self):
+    def test_set_coord_out_bounds(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        with self.assertRaisesRegex(ValueError, 'Axis 1 does not exist for dim coords of data1 in Subcontainer'):
-            obj1.set_dim_coord('data1', 1, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, 'Axis -1 does not exist for dim coords of data1 in Subcontainer'):
-            obj1.set_dim_coord('data1', -1, 'letters', 'data2')
+        with self.assertRaisesRegex(ValueError, 'Axis 1 does not exist for coords of data1 in Subcontainer'):
+            obj1.set_coord('data1', 1, 'letters', 'data2')
+        with self.assertRaisesRegex(ValueError, 'Axis -1 does not exist for coords of data1 in Subcontainer'):
+            obj1.set_coord('data1', -1, 'letters', 'data2')
 
-    def test_set_dim_coord_exists(self):
+    def test_set_coord_exists(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'], data3=['A', 'B', 'C'])
-        obj1.set_dim_coord('data1', 0, 'letters', 'data2')
-        obj1.set_dim_coord('data1', 0, 'letters', 'data3')
-        self.assertEqual(obj1.get_dim_coord('data1', 0, 'letters'), obj1.data3)
+        obj1.set_coord('data1', 0, 'letters', 'data2')
+        obj1.set_coord('data1', 0, 'letters', 'data3')
+        self.assertEqual(obj1.get_coord('data1', 0, 'letters'), obj1.data3)
 
-    def test_get_dim_coord_data_not_found(self):
+    def test_get_coord_data_not_found(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim_coord('data1', 0, 'letters', 'data2')
+        obj1.set_coord('data1', 0, 'letters', 'data2')
         with self.assertRaisesRegex(ValueError, "Field name 'data0' not found in Subcontainer"):
-            obj1.get_dim_coord('data0', 0, 'letters')
+            obj1.get_coord('data0', 0, 'letters')
 
-    def test_get_dim_coord_coord_not_found(self):
+    def test_get_coord_coord_not_found(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim_coord('data1', 0, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, "Dim coord label 'symbols' not found in Subcontainer"):
-            obj1.get_dim_coord('data1', 0, 'symbols')
+        obj1.set_coord('data1', 0, 'letters', 'data2')
+        with self.assertRaisesRegex(ValueError, "Coord label 'symbols' not found in Subcontainer"):
+            obj1.get_coord('data1', 0, 'symbols')
 
-    def test_get_dim_coord_out_bounds(self):
+    def test_get_coord_out_bounds(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim_coord('data1', 0, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, 'Axis 1 does not exist for dim coords of data1 in Subcontainer'):
-            obj1.get_dim_coord('data1', 1, 'letters')
-        with self.assertRaisesRegex(ValueError, 'Axis -1 does not exist for dim coords of data1 in Subcontainer'):
-            obj1.get_dim_coord('data1', -1, 'letters')
+        obj1.set_coord('data1', 0, 'letters', 'data2')
+        with self.assertRaisesRegex(ValueError, 'Axis 1 does not exist for coords of data1 in Subcontainer'):
+            obj1.get_coord('data1', 1, 'letters')
+        with self.assertRaisesRegex(ValueError, 'Axis -1 does not exist for coords of data1 in Subcontainer'):
+            obj1.get_coord('data1', -1, 'letters')
 
     def test_test(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim_coord('data1', 0, 'letters', 'data2', '234324', 345)  # TODO should trigger extra argument error?
+        obj1.set_coord('data1', 0, 'letters', 'data2', '234324', 345)  # TODO should trigger extra argument error?
 
 
 class TestData(unittest.TestCase):

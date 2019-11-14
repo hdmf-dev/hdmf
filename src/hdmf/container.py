@@ -2,9 +2,10 @@ import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
-from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
-from .data_utils import DataIO, get_shape
+from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
+from .data_utils import DataIO
 from warnings import warn
+import xarray as xr
 import h5py
 
 
@@ -241,7 +242,8 @@ class Container(AbstractContainer):
         call_docval_func(super(Container, self).__init__, kwargs)
         # dict of dimension coordinates, where key is name of dataset (variable) and value is a list of label-dataset
         # pairs
-        self.__dim_coords = dict()
+        self.__coords = dict()
+        self.__dims = dict()
 
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
@@ -381,48 +383,151 @@ class Container(AbstractContainer):
         return out
 
     @property
-    def dim_coords(self):
-        return self.__dim_coords
+    def dims(self):
+        '''
+        Return a dictionary of dimension names, indexed by array name, for this Container. Each value is a list of
+        names, one for each dimension of the array.
+        '''
+        return self.__dims
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''},
+            {'name': 'dim', 'type': str, 'doc': ''})
+    def _get_dim_axis(self, **kwargs):
+        '''
+        Returns the axis corresponding to the given dimension of the given array.
+        '''
+        data_name, dim = getargs('data_name', 'dim', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+        if data_name not in self.dims:
+            return None  # TODO should this return None or raise an error?
+        try:
+            axis = self.dims[data_name].index(dim)
+        except ValueError:
+            raise ValueError("Dim name '%s' not found for field '%s' of %s."
+                             % (dim, data_name, self.__class__.__name__))
+        return axis
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''},
+            {'name': 'axis', 'type': int, 'doc': ''},
+            {'name': 'dim', 'type': str, 'doc': ''})
+    def set_dim(self, **kwargs):
+        data_name, axis, dim = getargs('data_name', 'axis', 'dim', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+        data = getattr(self, data_name)
+        data_shape = get_data_shape(data)
+        if data_shape is None:
+            raise ValueError("Cannot determine shape of field '%s' in %s." % (data_name, self.__class__.__name__))
+        num_data_dims = len(data_shape)
+        if axis < 0 or axis >= num_data_dims:
+            raise ValueError("Axis %d does not exist for field '%s' in %s."
+                             % (axis, data_name, self.__class__.__name__))
+        if data_name not in self.dims:
+            self.dims[data_name] = [None] * num_data_dims
+            for di in range(num_data_dims):
+                self.dims[data_name][di] = 'dim_%d' % di  # default initialization for other fields
+        if dim in self.dims[data_name] and self.dims[data_name].index(dim) != axis:
+            raise ValueError("Cannot set dim '%s' for axis %d of field %s in %s. Dim '%s' is already used for axis %d."
+                             % (dim, axis, data_name, self.__class__.__name__, dim, self.dims[data_name].index(dim)))
+        self.dims[data_name][axis] = dim
+
+    @property
+    def coords(self):
+        '''
+        Return a dictionary of coordinates, indexed by array name, for this Container. Each value is a dictionary of
+        coordinates, indexed by label, where the value is a tuple: (tuple of dimension names, the coordinate array).
+        '''
+        return self.__coords
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
             {'name': 'axis', 'type': int, 'doc': ''},
             {'name': 'label', 'type': str, 'doc': ''})
-    def get_dim_coord(self, **kwargs):
+    def get_coord(self, **kwargs):
         data_name, axis, label = getargs('data_name', 'axis', 'label', kwargs)
         if data_name not in self.fields:
             raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
-        if data_name not in self.__dim_coords:
-            raise ValueError("Data name '%s' has no dim coords in %s" % (data_name, self.__class__.__name__))
-        if axis < 0 or axis >= len(self.__dim_coords[data_name]):
-            raise ValueError("Axis %d does not exist for dim coords of %s in %s"
+        if data_name not in self.coords:
+            raise ValueError("Data name '%s' has no coords in %s" % (data_name, self.__class__.__name__))
+        if axis < 0 or axis >= len(self.coords[data_name]):
+            raise ValueError("Axis %d does not exist for coords of %s in %s"
                              % (axis, data_name, self.__class__.__name__))
-        dims = self.__dim_coords[data_name][axis]
-        if label not in dims:
-            raise ValueError("Dim coord label '%s' not found in %s for '%s'"
+        coords = self.coords[data_name][axis]
+        if label not in coords:
+            raise ValueError("Coord label '%s' not found in %s for '%s'"
                              % (label, self.__class__.__name__, data_name))
-        return self.__dim_coords[data_name][axis][label]
+        return self.coords[data_name][label]  # TODO
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
-            {'name': 'axis', 'type': int, 'doc': ''},
             {'name': 'label', 'type': str, 'doc': ''},
-            {'name': 'coord', 'type': str, 'doc': ''},)
-    def set_dim_coord(self, **kwargs):
-        data_name, axis, label, coord = getargs('data_name', 'axis', 'label', 'coord', kwargs)
+            {'name': 'coord', 'type': str, 'doc': ''},
+            {'name': 'dims', 'type': (str, list, tuple), 'doc': '', 'default': None})
+    def set_coord(self, **kwargs):
+        '''
+        Sets a coordinate and coordinate label for a given data array in this Container.
+        Usage examples:
+        Field 'data' has dim 'time' for axis 0, 'electrodes' for axis 1.
+        Field 'timestamps' has cooordinates for axis 0 of data and length equal to data.shape[0].
+        set_coord(data_name='data', label='my_time', coord='timestamps', dim='time')
+        will result in
+        self.coords['data']['my_time'] == ('time', self.timestamps)
+        Field 'data' has dim 'frame' for axis 0, 'y' for axis 1, and 'x' for axis 2.
+        Field 'dorsal_ventral' has coordinate for axes 1 and 2 of data and shape equal to (data.shape[1], data.shape[2])
+        set_coord(data_name='data', label='dv', coord='dorsal-ventral', dim=('y', 'x'))
+        will result in
+        self.coords['data']['dv'] == (('y', 'x'), self.dorsal_ventral)
+        '''
+        data_name, label, coord, dims = getargs('data_name', 'label', 'coord', 'dims', kwargs)
+        if dims is None:  # if dim is not provided, the dimension is the same as the label
+            dims = (label, )
         if data_name not in self.fields:
-            breakpoint()
             raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
+        if data_name not in self.dims:
+            raise ValueError("Field name '%s' not found in dims of %s" % (data_name, self.__class__.__name__))
+        if isinstance(dims, str):
+            dims = (dims, )
+        elif isinstance(dims, list):
+            dims = tuple(dims)
+        for d in dims:
+            if d not in self.dims[data_name]:
+                raise ValueError("Dimension '%s' not found in dims of %s for field '%s'"
+                                 % (d, self.__class__.__name__, data_name))
         if coord not in self.fields:
-            raise ValueError("Dim coord name '%s' not found in %s" % (coord, self.__class__.__name__))
+            raise ValueError("Coord name '%s' not found in %s" % (coord, self.__class__.__name__))
+        if data_name == coord:
+            raise ValueError("Cannot set coord '%s' to itself in %s" % (coord, self.__class__.__name__))
 
+        # TODO check that dimensions of coord are aligned with dimensions of data_name on axis
         data = getattr(self, data_name)
-        num_data_dims = len(get_shape(data))
-        if axis < 0 or axis >= num_data_dims:
-            raise ValueError("Axis %d does not exist for dim coords of %s in %s"
-                             % (axis, data_name, self.__class__.__name__))
+        data_shape = get_shape(data)
+        coord_data = getattr(self, coord)
+        coord_shape = get_shape(coord_data)
 
-        if data_name not in self.__dim_coords:
-            self.__dim_coords[data_name] = [{}] * num_data_dims  # init with empty dicts for each dimension of data
-        self.__dim_coords[data_name][axis][label] = self.fields[coord]
+        for d, di in enumerate(dims):
+            axis = self._get_dim_axis(data_name=data_name, dim=d)
+            if data_shape[axis] != coord_shape[di]:
+                raise ValueError(("Dimension '%s' of field' '%s' does not have the same length as axis '%d' of "
+                                  "field '%s' in %s") % (d, data_name, di, coord, self.__class__.__name__))
+
+        self.coords[data_name][label] = (dims, coord_data)
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''})
+    def to_xarray_dataarray(self, **kwargs):
+        '''
+        Returns an xarray.DataArray for the given multidimensional array in this Container, with dims and coords set.
+        '''
+        data_name = getargs('data_name', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
+        arr = xr.DataArray(getattr(self, data_name),  # TODO getattr or self.fields?
+                           dims=self.dims[data_name],
+                           coords=self.coords[data_name])
+        return arr
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''})
+    def to_xarray_dataset(self, **kwargs):
+        '''Returns an xarray.Dataset of all of the labeled multidimensional arrays in this Container.'''
+        pass
 
 
 class Data(AbstractContainer):

@@ -290,25 +290,27 @@ _attrbl_args = [
 ]
 
 
-_dim_args = [
+_coord_args = [
         {'name': 'label', 'type': str, 'doc': 'The label of this dimension'},
-        {'name': 'coord', 'type': str, 'doc': 'The name of the dataset of this dimension'},
-        {'name': 'dimtype', 'type': str, 'doc': 'The type of this dimension'},
+        {'name': 'dim', 'type': str, 'doc': 'The name of the dimension that this coordinate acts on'},
+        {'name': 'coord', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+        {'name': 'type', 'type': str, 'doc': 'The type of this coordinate'},
         {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None}
 ]
 
 
-class DimSpec(ConstructableDict):
-    ''' Specification for dimensions
+class CoordSpec(ConstructableDict):
+    ''' Specification for dimension coordinates
     '''
 
-    @docval(*_dim_args)
+    @docval(*_coord_args)
     def __init__(self, **kwargs):
-        label, coord, dimtype, parent = getargs('label', 'coord', 'dimtype', 'parent', kwargs)
-        super(DimSpec, self).__init__()
+        label, dim, coord, type, parent = getargs('label', 'dim', 'coord', 'type', 'parent', kwargs)
+        super(CoordSpec, self).__init__()
         self['label'] = label
+        self['dim'] = dim
         self['coord'] = coord
-        self['dimtype'] = dimtype
+        self['type'] = type
         self._parent = parent
 
     @property
@@ -317,14 +319,19 @@ class DimSpec(ConstructableDict):
         return self.get('label', None)
 
     @property
+    def dim(self):
+        ''' The name of the dimension of this coordinate '''
+        return self.get('label', None)
+
+    @property
     def coord(self):
-        ''' The name of the dataset of this dimension '''
+        ''' The name of the dataset of this coordinate '''
         return self.get('coord', None)
 
     @property
-    def dimtype(self):
-        ''' The type of this dimension '''
-        return self.get('dimtype', None)
+    def type(self):
+        ''' The type of this coordinate '''
+        return self.get('type', None)
 
     @property
     def parent(self):
@@ -652,6 +659,7 @@ _dataset_args = [
         {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
         {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
         {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+        {'name': 'coords', 'type': (list, tuple), 'doc': 'the coordinates of this dataset', 'default': None},
         {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
@@ -668,9 +676,10 @@ class DatasetSpec(BaseStorageSpec):
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*deepcopy(_dataset_args))  # noqa: C901
     def __init__(self, **kwargs):
-        doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
+        doc, shape, dims, coords, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value',
+                                                                 kwargs)
         if shape is not None:
             self['shape'] = shape
         if dims is not None:
@@ -680,6 +689,15 @@ class DatasetSpec(BaseStorageSpec):
         if self.shape is not None and self.dims is not None:
             if len(self['dims']) != len(self['shape']):
                 raise ValueError("'dims' and 'shape' must be the same length")
+        if coords is not None:
+            for _i, coord in enumerate(coords):
+                if not isinstance(coord, CoordSpec):
+                    msg = 'Must use CoordSpec to define coordinate - found %s at element %d' % (type(coord), _i)
+                    raise ValueError(msg)
+            self['coords'] = coords
+        if self.coords is not None and self.dims is not None:
+            if len(self['dims']) != len(self['coords']):
+                raise ValueError("'dims' and 'coords' must be the same length")
         if dtype is not None:
             if isinstance(dtype, list):  # Dtype is a compound data type
                 for _i, col in enumerate(dtype):
@@ -760,6 +778,11 @@ class DatasetSpec(BaseStorageSpec):
         return self.get('dims', None)
 
     @property
+    def coords(self):
+        ''' The coordinates of this Dataset '''
+        return self.get('coords', None)
+
+    @property
     def dtype(self):
         ''' The data type of the Dataset '''
         return self.get('dtype', None)
@@ -776,6 +799,7 @@ class DatasetSpec(BaseStorageSpec):
 
     @classmethod
     def __check_dim(cls, dim, data):
+        # TODO
         return True
 
     @classmethod
