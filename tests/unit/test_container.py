@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import xarray as xr
 
 from hdmf.container import AbstractContainer, Container, Data
 
@@ -224,57 +225,115 @@ class TestContainerDims(unittest.TestCase):
 
 class TestContainerCoords(unittest.TestCase):
 
-    def test_set_get_coord(self):
+    def test_get_coord_none(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_coord('data1', 0, 'letters', 'data2')
-        self.assertEqual(obj1.get_coord('data1', 0, 'letters'), obj1.data2)
+        self.assertDictEqual(obj1.coords, {})
 
-    def test_set_coord_data_not_found(self):
+    def test_set_coord(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        with self.assertRaisesRegex(ValueError, "Field name 'data0' not found in Subcontainer"):
-            obj1.set_coord('data0', 0, 'letters', 'data2')
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
+        self.assertDictEqual(obj1.coords, {'data1': {'letters': (('numbers', ), ['a', 'b', 'c'])}})
+
+    def test_set_coord_no_dim(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        obj1.set_coord(data_name='data1', label='numbers', coord='data2')
+        self.assertDictEqual(obj1.coords, {'data1': {'numbers': (('numbers', ), ['a', 'b', 'c'])}})
+
+    def test_set_coord_two_dims(self):
+        obj1 = Subcontainer('obj1',
+                            data1=np.arange(20).reshape((2, 5, 2)),
+                            data2=np.arange(10).reshape(5, 2))
+        obj1.set_dim(data_name='data1', axis=1, dim='y')
+        obj1.set_dim(data_name='data1', axis=2, dim='x')
+        obj1.set_coord(data_name='data1', label='dv', coord='data2', dims=('y', 'x'))
+        self.assertTupleEqual(obj1.coords['data1']['dv'][0], ('y', 'x'))
+        np.testing.assert_array_equal(obj1.coords['data1']['dv'][1], np.arange(10).reshape(5, 2))
+
+    def test_set_coord_field_not_found(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        msg = r"No dimensions have been specified for 'data1' in Subcontainer\."
+        with self.assertRaisesRegex(ValueError, msg):
+            obj1.set_coord(data_name='data1', label='letters', coord='data2')
+
+    def test_set_coord_dim_not_found(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        msg = r"Dimension 'letters' not found in dimensions for field 'data1' in Subcontainer\."
+        with self.assertRaisesRegex(ValueError, msg):
+            obj1.set_coord(data_name='data1', label='letters', coord='data2')
 
     def test_set_coord_coord_not_found(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        with self.assertRaisesRegex(ValueError, "Coord name 'data3' not found in Subcontainer"):
-            obj1.set_coord('data1', 0, 'letters', 'data3')
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        with self.assertRaisesRegex(ValueError, r"Coord name 'data3' not found in Subcontainer\."):
+            obj1.set_coord(data_name='data1', label='letters', coord='data3', dims='numbers')
 
-    def test_set_coord_out_bounds(self):
+    def test_set_coord_coord_same(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        with self.assertRaisesRegex(ValueError, 'Axis 1 does not exist for coords of data1 in Subcontainer'):
-            obj1.set_coord('data1', 1, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, 'Axis -1 does not exist for coords of data1 in Subcontainer'):
-            obj1.set_coord('data1', -1, 'letters', 'data2')
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        with self.assertRaisesRegex(ValueError, r"Cannot set coord 'data1' to itself in Subcontainer\."):
+            obj1.set_coord(data_name='data1', label='letters', coord='data1', dims='numbers')
 
-    def test_set_coord_exists(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'], data3=['A', 'B', 'C'])
-        obj1.set_coord('data1', 0, 'letters', 'data2')
-        obj1.set_coord('data1', 0, 'letters', 'data3')
-        self.assertEqual(obj1.get_coord('data1', 0, 'letters'), obj1.data3)
+    def test_set_coord_unequal_len(self):
+        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b'])
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        msg = (r"Dimension 'numbers' of field 'data1' must have the same length as axis 0 of field 'data2' in "
+               r"Subcontainer \(3 != 2\)\.")
+        with self.assertRaisesRegex(ValueError, msg):
+            obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
 
-    def test_get_coord_data_not_found(self):
+    def test_set_coord_unequal_len_two_axes(self):
+        obj1 = Subcontainer('obj1',
+                            data1=np.arange(20).reshape((2, 5, 2)),
+                            data2=np.arange(15).reshape(5, 3))
+        obj1.set_dim(data_name='data1', axis=1, dim='y')
+        obj1.set_dim(data_name='data1', axis=2, dim='x')
+        msg = (r"Dimension 'x' of field 'data1' must have the same length as axis 1 of field 'data2' in "
+               r"Subcontainer \(2 != 3\)\.")
+        with self.assertRaisesRegex(ValueError, msg):
+            obj1.set_coord(data_name='data1', label='dv', coord='data2', dims=('y', 'x'))
+
+    def test_set_coord_dataio(self):
+        # TODO
+        raise unittest.SkipTest('TODO')
+
+    def test_set_coord_dci(self):
+        # TODO
+        raise unittest.SkipTest('TODO')
+
+    def test_set_coord_h5dataset(self):
+        # TODO
+        raise unittest.SkipTest('TODO')
+
+    def test_to_xarray_dataarray(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_coord('data1', 0, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, "Field name 'data0' not found in Subcontainer"):
-            obj1.get_coord('data0', 0, 'letters')
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
+        arr = obj1.to_xarray_dataarray(data_name='data1')
+        expected = xr.DataArray([1, 2, 3], dims=['numbers', ], coords={'letters': (('numbers', ), ['a', 'b', 'c'])})
+        xr.testing.assert_equal(arr, expected)
 
-    def test_get_coord_coord_not_found(self):
+    def test_to_xarray_dataarray_unknown_name(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_coord('data1', 0, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, "Coord label 'symbols' not found in Subcontainer"):
-            obj1.get_coord('data1', 0, 'symbols')
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
+        with self.assertRaisesRegex(ValueError, r"Field name 'data3' not found in Subcontainer\."):
+            obj1.to_xarray_dataarray(data_name='data3')
 
-    def test_get_coord_out_bounds(self):
+    def test_to_xarray_dataarray_no_coord(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_coord('data1', 0, 'letters', 'data2')
-        with self.assertRaisesRegex(ValueError, 'Axis 1 does not exist for coords of data1 in Subcontainer'):
-            obj1.get_coord('data1', 1, 'letters')
-        with self.assertRaisesRegex(ValueError, 'Axis -1 does not exist for coords of data1 in Subcontainer'):
-            obj1.get_coord('data1', -1, 'letters')
+        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        arr = obj1.to_xarray_dataarray(data_name='data1')
+        expected = xr.DataArray([1, 2, 3], dims=['numbers', ])
+        xr.testing.assert_equal(arr, expected)
 
-    def test_test(self):
+    def test_to_xarray_dataarray_no_dim(self):
         obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_coord('data1', 0, 'letters', 'data2', '234324', 345)  # TODO should trigger extra argument error?
+        arr = obj1.to_xarray_dataarray(data_name='data1')
+        expected = xr.DataArray([1, 2, 3])
+        xr.testing.assert_equal(arr, expected)
 
 
 class TestData(unittest.TestCase):

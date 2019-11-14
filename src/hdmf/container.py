@@ -441,24 +441,6 @@ class Container(AbstractContainer):
         return self.__coords
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
-            {'name': 'axis', 'type': int, 'doc': ''},
-            {'name': 'label', 'type': str, 'doc': ''})
-    def get_coord(self, **kwargs):
-        data_name, axis, label = getargs('data_name', 'axis', 'label', kwargs)
-        if data_name not in self.fields:
-            raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
-        if data_name not in self.coords:
-            raise ValueError("Data name '%s' has no coords in %s" % (data_name, self.__class__.__name__))
-        if axis < 0 or axis >= len(self.coords[data_name]):
-            raise ValueError("Axis %d does not exist for coords of %s in %s"
-                             % (axis, data_name, self.__class__.__name__))
-        coords = self.coords[data_name][axis]
-        if label not in coords:
-            raise ValueError("Coord label '%s' not found in %s for '%s'"
-                             % (label, self.__class__.__name__, data_name))
-        return self.coords[data_name][label]  # TODO
-
-    @docval({'name': 'data_name', 'type': str, 'doc': ''},
             {'name': 'label', 'type': str, 'doc': ''},
             {'name': 'coord', 'type': str, 'doc': ''},
             {'name': 'dims', 'type': (str, list, tuple), 'doc': '', 'default': None})
@@ -481,33 +463,37 @@ class Container(AbstractContainer):
         if dims is None:  # if dim is not provided, the dimension is the same as the label
             dims = (label, )
         if data_name not in self.fields:
-            raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
+            raise ValueError("Field name '%s' not found in %s." % (data_name, self.__class__.__name__))
         if data_name not in self.dims:
-            raise ValueError("Field name '%s' not found in dims of %s" % (data_name, self.__class__.__name__))
+            raise ValueError("No dimensions have been specified for '%s' in %s." % (data_name, self.__class__.__name__))
         if isinstance(dims, str):
             dims = (dims, )
-        elif isinstance(dims, list):
-            dims = tuple(dims)
+        dims = tuple(dims)
         for d in dims:
             if d not in self.dims[data_name]:
-                raise ValueError("Dimension '%s' not found in dims of %s for field '%s'"
-                                 % (d, self.__class__.__name__, data_name))
+                raise ValueError("Dimension '%s' not found in dimensions for field '%s' in %s."
+                                 % (d, data_name, self.__class__.__name__))
         if coord not in self.fields:
-            raise ValueError("Coord name '%s' not found in %s" % (coord, self.__class__.__name__))
+            raise ValueError("Coord name '%s' not found in %s." % (coord, self.__class__.__name__))
         if data_name == coord:
-            raise ValueError("Cannot set coord '%s' to itself in %s" % (coord, self.__class__.__name__))
+            raise ValueError("Cannot set coord '%s' to itself in %s." % (coord, self.__class__.__name__))
 
         # TODO check that dimensions of coord are aligned with dimensions of data_name on axis
         data = getattr(self, data_name)
-        data_shape = get_shape(data)
+        data_shape = get_data_shape(data)
         coord_data = getattr(self, coord)
-        coord_shape = get_shape(coord_data)
+        coord_shape = get_data_shape(coord_data)
 
-        for d, di in enumerate(dims):
+        for di, d in enumerate(dims):
             axis = self._get_dim_axis(data_name=data_name, dim=d)
             if data_shape[axis] != coord_shape[di]:
-                raise ValueError(("Dimension '%s' of field' '%s' does not have the same length as axis '%d' of "
-                                  "field '%s' in %s") % (d, data_name, di, coord, self.__class__.__name__))
+                raise ValueError(("Dimension '%s' of field '%s' must have the same length as axis %d of "
+                                  "field '%s' in %s (%d != %d).")
+                                 % (d, data_name, di, coord, self.__class__.__name__,
+                                    data_shape[axis], coord_shape[di]))
+
+        if data_name not in self.coords:
+            self.coords[data_name] = dict()
 
         self.coords[data_name][label] = (dims, coord_data)
 
@@ -518,10 +504,13 @@ class Container(AbstractContainer):
         '''
         data_name = getargs('data_name', kwargs)
         if data_name not in self.fields:
-            raise ValueError("Field name '%s' not found in %s" % (data_name, self.__class__.__name__))
-        arr = xr.DataArray(getattr(self, data_name),  # TODO getattr or self.fields?
-                           dims=self.dims[data_name],
-                           coords=self.coords[data_name])
+            raise ValueError("Field name '%s' not found in %s." % (data_name, self.__class__.__name__))
+        kwargs = dict()
+        if data_name in self.dims:
+            kwargs['dims'] = self.dims[data_name]
+        if data_name in self.coords:
+            kwargs['coords'] = self.coords[data_name]
+        arr = xr.DataArray(getattr(self, data_name), **kwargs)
         return arr
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''})
