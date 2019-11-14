@@ -112,12 +112,12 @@ class TestAbstractContainer(unittest.TestCase):
         self.assertEqual(AbstractContainer.type_hierarchy(), (AbstractContainer, object))
 
 
-class Subcontainer(Container):
+class Bar(Container):
 
     __fields__ = ('data1', 'data2', 'data3')
 
     def __init__(self, name, data1, data2, data3=None):
-        super(Subcontainer, self).__init__(name=name)
+        super(Bar, self).__init__(name=name)
         self.data1 = data1
         self.data2 = data2
         self.data3 = data3
@@ -133,16 +133,16 @@ class TestContainer(unittest.TestCase):
 class TestContainerDims(unittest.TestCase):
 
     def test_get_dims(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         self.assertDictEqual(obj1.dims, {})
 
     def test_set_dim_axis0(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         self.assertDictEqual(obj1.dims, {'data1': ['numbers']})
 
     def test_set_dim_axis1(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
         self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'dim_2']})
         obj1.set_dim(data_name='data2', axis=2, dim='more numbers')
@@ -163,88 +163,86 @@ class TestContainerDims(unittest.TestCase):
         raise unittest.SkipTest('TODO')
 
     def test_set_dim_empty_dim(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data1', axis=0, dim='')
         self.assertDictEqual(obj1.dims, {'data1': ['']})
 
     def test_set_dim_unknown_name(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Subcontainer\."):
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Bar\."):
             obj1.set_dim(data_name='data4', axis=0, dim='numbers')
 
     def test_set_dim_axis_non_array(self):
-        obj1 = Subcontainer('obj1', data1='hello', data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"Cannot determine shape of field 'data1' in Subcontainer\."):
+        obj1 = Bar('obj1', data1='hello', data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"Cannot determine shape of field 'data1' in Bar\."):
             obj1.set_dim(data_name='data1', axis=0, dim='numbers')
 
     def test_set_dim_axis_negative(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"Axis -1 does not exist for field 'data1' in Subcontainer\."):
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"Axis -1 does not exist for field 'data1' in Bar\."):
             obj1.set_dim(data_name='data1', axis=-1, dim='numbers')
 
     def test_set_dim_axis_over_bounds(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"Axis 1 does not exist for field 'data1' in Subcontainer\."):
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"Axis 1 does not exist for field 'data1' in Bar\."):
             obj1.set_dim(data_name='data1', axis=1, dim='numbers')
 
     def test_set_dim_dup_name(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        with self.assertRaisesRegex(ValueError, (r"Cannot set dim 'numbers' for axis 2 of field data2 in Subcontainer\."
+        with self.assertRaisesRegex(ValueError, (r"Cannot set dim 'numbers' for axis 2 of field data2 in Bar\."
                                                  r" Dim 'numbers' is already used for axis 1\.")):
             obj1.set_dim(data_name='data2', axis=2, dim='numbers')
 
     def test_set_dim_dup_name_ok(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
         self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'dim_2']})
 
     def test_get_dim_axis(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
         ax = obj1._get_dim_axis(data_name='data2', dim='numbers')
         self.assertEqual(ax, 1)
 
     def test_get_dim_axis_unknown_name(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Subcontainer\."):
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Bar\."):
             obj1._get_dim_axis(data_name='data4', dim='numbers')
 
     def test_get_dim_axis_no_dims(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         ax = obj1._get_dim_axis(data_name='data2', dim='numbers')
         self.assertIsNone(ax)
 
     def test_get_dim_axis_unknown_dim(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        with self.assertRaisesRegex(ValueError, r"Dim name 'letters' not found for field 'data2' of Subcontainer\."):
+        with self.assertRaisesRegex(ValueError, r"Dim name 'letters' not found for field 'data2' of Bar\."):
             obj1._get_dim_axis(data_name='data2', dim='letters')
 
 
 class TestContainerCoords(unittest.TestCase):
 
     def test_get_coord_none(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         self.assertDictEqual(obj1.coords, {})
 
     def test_set_coord(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
         self.assertDictEqual(obj1.coords, {'data1': {'letters': (('numbers', ), ['a', 'b', 'c'])}})
 
     def test_set_coord_no_dim(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         obj1.set_coord(data_name='data1', label='numbers', coord='data2')
         self.assertDictEqual(obj1.coords, {'data1': {'numbers': (('numbers', ), ['a', 'b', 'c'])}})
 
     def test_set_coord_two_dims(self):
-        obj1 = Subcontainer('obj1',
-                            data1=np.arange(20).reshape((2, 5, 2)),
-                            data2=np.arange(10).reshape(5, 2))
+        obj1 = Bar('obj1', data1=np.arange(20).reshape((2, 5, 2)), data2=np.arange(10).reshape(5, 2))
         obj1.set_dim(data_name='data1', axis=1, dim='y')
         obj1.set_dim(data_name='data1', axis=2, dim='x')
         obj1.set_coord(data_name='data1', label='dv', coord='data2', dims=('y', 'x'))
@@ -252,46 +250,44 @@ class TestContainerCoords(unittest.TestCase):
         np.testing.assert_array_equal(obj1.coords['data1']['dv'][1], np.arange(10).reshape(5, 2))
 
     def test_set_coord_field_not_found(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        msg = r"No dimensions have been specified for 'data1' in Subcontainer\."
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        msg = r"No dimensions have been specified for 'data1' in Bar\."
         with self.assertRaisesRegex(ValueError, msg):
             obj1.set_coord(data_name='data1', label='letters', coord='data2')
 
     def test_set_coord_dim_not_found(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        msg = r"Dimension 'letters' not found in dimensions for field 'data1' in Subcontainer\."
+        msg = r"Dimension 'letters' not found in dimensions for field 'data1' in Bar\."
         with self.assertRaisesRegex(ValueError, msg):
             obj1.set_coord(data_name='data1', label='letters', coord='data2')
 
     def test_set_coord_coord_not_found(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        with self.assertRaisesRegex(ValueError, r"Coord name 'data3' not found in Subcontainer\."):
+        with self.assertRaisesRegex(ValueError, r"Coord name 'data3' not found in Bar\."):
             obj1.set_coord(data_name='data1', label='letters', coord='data3', dims='numbers')
 
     def test_set_coord_coord_same(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        with self.assertRaisesRegex(ValueError, r"Cannot set coord 'data1' to itself in Subcontainer\."):
+        with self.assertRaisesRegex(ValueError, r"Cannot set coord 'data1' to itself in Bar\."):
             obj1.set_coord(data_name='data1', label='letters', coord='data1', dims='numbers')
 
     def test_set_coord_unequal_len(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         msg = (r"Dimension 'numbers' of field 'data1' must have the same length as axis 0 of field 'data2' in "
-               r"Subcontainer \(3 != 2\)\.")
+               r"Bar \(3 != 2\)\.")
         with self.assertRaisesRegex(ValueError, msg):
             obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
 
     def test_set_coord_unequal_len_two_axes(self):
-        obj1 = Subcontainer('obj1',
-                            data1=np.arange(20).reshape((2, 5, 2)),
-                            data2=np.arange(15).reshape(5, 3))
+        obj1 = Bar('obj1', data1=np.arange(20).reshape((2, 5, 2)), data2=np.arange(15).reshape(5, 3))
         obj1.set_dim(data_name='data1', axis=1, dim='y')
         obj1.set_dim(data_name='data1', axis=2, dim='x')
         msg = (r"Dimension 'x' of field 'data1' must have the same length as axis 1 of field 'data2' in "
-               r"Subcontainer \(2 != 3\)\.")
+               r"Bar \(2 != 3\)\.")
         with self.assertRaisesRegex(ValueError, msg):
             obj1.set_coord(data_name='data1', label='dv', coord='data2', dims=('y', 'x'))
 
@@ -308,7 +304,7 @@ class TestContainerCoords(unittest.TestCase):
         raise unittest.SkipTest('TODO')
 
     def test_to_xarray_dataarray(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
         arr = obj1.to_xarray_dataarray(data_name='data1')
@@ -316,21 +312,21 @@ class TestContainerCoords(unittest.TestCase):
         xr.testing.assert_equal(arr, expected)
 
     def test_to_xarray_dataarray_unknown_name(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
-        with self.assertRaisesRegex(ValueError, r"Field name 'data3' not found in Subcontainer\."):
+        with self.assertRaisesRegex(ValueError, r"Field name 'data3' not found in Bar\."):
             obj1.to_xarray_dataarray(data_name='data3')
 
     def test_to_xarray_dataarray_no_coord(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dim(data_name='data1', axis=0, dim='numbers')
         arr = obj1.to_xarray_dataarray(data_name='data1')
         expected = xr.DataArray([1, 2, 3], dims=['numbers', ])
         xr.testing.assert_equal(arr, expected)
 
     def test_to_xarray_dataarray_no_dim(self):
-        obj1 = Subcontainer('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         arr = obj1.to_xarray_dataarray(data_name='data1')
         expected = xr.DataArray([1, 2, 3])
         xr.testing.assert_equal(arr, expected)
