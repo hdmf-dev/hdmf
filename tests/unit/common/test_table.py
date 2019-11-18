@@ -6,6 +6,7 @@ from . import base
 
 import pandas as pd
 import numpy as np
+from collections import OrderedDict
 
 
 class TestDynamicTable(unittest.TestCase):
@@ -114,10 +115,40 @@ class TestDynamicTable(unittest.TestCase):
         table = self.with_spec()
         self.add_rows(table)
         row = table[2]
-        self.assertEqual(row[0], 2)
-        self.assertEqual(row[1], 3)
-        self.assertEqual(row[2], 30.0)
-        self.assertEqual(row[3], 'bird')
+        self.assertTupleEqual(row.shape, (1, 3))
+        self.assertTupleEqual(tuple(row.iloc[0]), (3, 30.0, 'bird'))
+
+    def test_getitem_row_slice(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        rows = table[1:3]
+        self.assertIsInstance(rows, pd.DataFrame)
+        self.assertTupleEqual(rows.shape, (2, 3))
+        self.assertTupleEqual(tuple(rows.iloc[1]), (3, 30.0, 'bird'))
+
+    def test_getitem_row_slice_with_step(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        rows = table[0:5:2]
+        self.assertIsInstance(rows, pd.DataFrame)
+        self.assertTupleEqual(rows.shape, (3, 3))
+        self.assertEqual(rows.iloc[2][0], 5)
+        self.assertEqual(rows.iloc[2][1], 50.0)
+        self.assertEqual(rows.iloc[2][2], 'lizard')
+
+    def test_getitem_invalid_keytype(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        with self.assertRaises(KeyError):
+            _ = table[0.1]
+
+    def test_getitem_col_select_and_row_slice(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        col = table[1:3, 'bar']
+        self.assertEqual(len(col), 2)
+        self.assertEqual(col[0], 20.0)
+        self.assertEqual(col[1], 30.0)
 
     def test_getitem_column(self):
         table = self.with_spec()
@@ -134,15 +165,21 @@ class TestDynamicTable(unittest.TestCase):
         self.add_rows(table)
         row = table[[0, 2, 4]]
         self.assertEqual(len(row), 3)
-        self.assertEqual(row[0], (0, 1, 10.0, 'cat'))
-        self.assertEqual(row[1], (2, 3, 30.0, 'bird'))
-        self.assertEqual(row[2], (4, 5, 50.0, 'lizard'))
+        self.assertTupleEqual(tuple(row.iloc[0]), (1, 10.0, 'cat'))
+        self.assertTupleEqual(tuple(row.iloc[1]), (3, 30.0, 'bird'))
+        self.assertTupleEqual(tuple(row.iloc[2]), (5, 50.0, 'lizard'))
 
     def test_getitem_point_idx_colname(self):
         table = self.with_spec()
         self.add_rows(table)
         val = table[2, 'bar']
         self.assertEqual(val, 30.0)
+
+    def test_getitem_point_idx(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        row = table[2]
+        self.assertTupleEqual(tuple(row.iloc[0]), (3, 30.0, 'bird'))
 
     def test_getitem_point_idx_colidx(self):
         table = self.with_spec()
@@ -162,11 +199,15 @@ class TestDynamicTable(unittest.TestCase):
 
     def test_to_dataframe(self):
         table = self.with_columns_and_data()
-        expected_df = pd.DataFrame({
-            'foo': [1, 2, 3, 4, 5],
-            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
-            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard']
-        })
+        data = OrderedDict()
+        for name in table.colnames:
+            if name == 'foo':
+                data[name] = [1, 2, 3, 4, 5]
+            elif name == 'bar':
+                data[name] = [10.0, 20.0, 30.0, 40.0, 50.0]
+            elif name == 'baz':
+                data[name] = ['cat', 'dog', 'bird', 'fish', 'lizard']
+        expected_df = pd.DataFrame(data)
         obtained_df = table.to_dataframe()
         self.assertTrue(expected_df.equals(obtained_df))
 
@@ -225,17 +266,20 @@ class TestDynamicTable(unittest.TestCase):
 
     def test_indexed_dynamic_table_region(self):
         table = self.with_columns_and_data()
-
-        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 1], 'desc', table=table)
-        fetch_ids = [x[1] for x in dynamic_table_region[:3]]
-        self.assertEqual(fetch_ids, [1, 2, 2])
+        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
+        fetch_ids = dynamic_table_region[:3].index.values
+        self.assertListEqual(fetch_ids.tolist(), [1, 2, 2])
 
     def test_dynamic_table_iteration(self):
         table = self.with_columns_and_data()
-
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
         for ii, item in enumerate(dynamic_table_region):
-            self.assertEqual(table[ii], item)
+            self.assertTrue(table[ii].equals(item))
+
+    def test_dynamic_table_region_shape(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
+        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
 
     def test_nd_array_to_df(self):
         data = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
@@ -249,15 +293,16 @@ class TestDynamicTable(unittest.TestCase):
         table = self.with_spec()
         data = [{'foo': 1, 'bar': 10.0, 'baz': 'cat'},
                 {'foo': 2, 'bar': 20.0, 'baz': 'dog'},
-                {'foo': 3, 'bar': 30.0, 'baz': 'bird'},
+                {'foo': 3, 'bar': 30.0, 'baz': 'bird'},    # id=2
                 {'foo': 4, 'bar': 40.0, 'baz': 'fish'},
-                {'foo': 5, 'bar': 50.0, 'baz': 'lizard'}]
+                {'foo': 5, 'bar': 50.0, 'baz': 'lizard'}   # id=4
+                ]
         for i in data:
             table.add_row(i)
         res = table[table.id == [2, 4]]
         self.assertEqual(len(res), 2)
-        self.assertTupleEqual(res[0], (2, 3, 30.0, 'bird'))
-        self.assertTupleEqual(res[1], (4, 5, 50.0, 'lizard'))
+        self.assertTupleEqual(tuple(res.iloc[0]), (3, 30.0, 'bird'))
+        self.assertTupleEqual(tuple(res.iloc[1]), (5, 50.0, 'lizard'))
 
 
 class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
