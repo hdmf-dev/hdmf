@@ -725,7 +725,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         msg = ('could not convert \'%s\' for %s \'%s\''
                                % (spec.name, type(container).__name__, container.name))
                         raise Exception(msg) from ex
-                    sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
+                    sub_builder = builder.add_dataset(spec.name, data, dtype=dtype, dims=spec.dims, coords=spec.coords)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
             else:
                 # a Container/Data dataset, e.g. a VectorData
@@ -989,15 +989,18 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             raise Exception(msg) from ex
 
         # add dimension coordinates after object construction
-        for dataset in self.__spec.datasets:
-            dims = getattr(dataset, 'dims', None)
-            if dims is not None:
-                for dim_coord in dataset.dims:
-                    # TODO axis
-                    if dim_coord.dimtype == 'coord':
-                        obj.set_dim_coord(data_name=dataset.name, axis=0, label=dim_coord.label, coord=dim_coord.coord)
-                    else:  # TODO
-                        pass
+        datasets = getattr(self.__spec, 'datasets', None)
+        if datasets is not None:
+            for dataset in datasets:
+                dims = getattr(dataset, 'dims', None)
+                if dims is not None:
+                    for dim_coord in dataset.dims:
+                        # TODO axis
+                        if dim_coord.type == 'coord':
+                            obj.set_dim_coord(data_name=dataset.name, axis=0, label=dim_coord.label,
+                                              coord=dim_coord.coord)
+                        else:  # TODO
+                            pass
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

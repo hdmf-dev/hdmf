@@ -1,24 +1,21 @@
 import unittest
 
-from hdmf.spec import GroupSpec, DatasetSpec, DimSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.spec import GroupSpec, DatasetSpec, CoordSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import ObjectMapper, TypeMap, GroupBuilder, DatasetBuilder, BuildManager
-from hdmf import Container, docval, getargs
+from hdmf import Container
 
 from tests.unit.test_utils import CORE_NAMESPACE
 
 
 class Bar(Container):
 
-    __fields__ = ('data1', 'data2')
+    __fields__ = ('data1', 'data2', 'data3')
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
-            {'name': 'data1', 'type': ('data', 'array_data'), 'doc': 'some data'},
-            {'name': 'data2', 'type': ('data', 'array_data'), 'doc': 'more data'})
-    def __init__(self, **kwargs):
-        name, data1, data2 = getargs('name', 'data1', 'data2', kwargs)
+    def __init__(self, name, data1, data2, data3=None):
         super(Bar, self).__init__(name=name)
         self.data1 = data1
         self.data2 = data2
+        self.data3 = data3
 
     def __eq__(self, other):
         return (self.name == other.name and
@@ -39,12 +36,65 @@ class TestMapSimple(unittest.TestCase):
         type_map.register_map(Bar, ObjectMapper)
         return type_map
 
-    def test_build_dims(self):
+    def test_build_dims_1d(self):
         """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
-        of the AbstractContainer, with dimension coordinates
+        of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
         """
-        dimspec = DimSpec(label='my_label', coord='data2', dimtype='coord')
-        dset1_spec = DatasetSpec('an example dataset1', 'int', name='data1', shape=(None,), dims=(dimspec,))
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=(None,), dims=('x',))
+        dset2_spec = DatasetSpec(doc='an example dataset2', dtype='text', name='data2', shape=(None,))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = self.customSetUp(bar_spec)
+        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        builder = type_map.build(bar_inst)
+
+        self.assertTupleEqual(builder.get('data1').dims, ('x', ))
+
+    def test_build_dims_2d(self):
+        """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
+        of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
+        """
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=(None, None),
+                                 dims=('x', 'y'))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = self.customSetUp(bar_spec)
+        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        builder = type_map.build(bar_inst)
+
+        self.assertTupleEqual(builder.get('data1').dims, ('x', 'y'))
+
+    def test_build_dims_1d_and_2d(self):
+        """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
+        of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
+        """
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=((None, ), (None, None)),
+                                 dims=(('x', ), ('x', 'y')))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = self.customSetUp(bar_spec)
+        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        builder = type_map.build(bar_inst)
+
+        self.assertTupleEqual(builder.get('data1').dims, ('x', 'y'))
+
+
+class TestMapSimpleOld(unittest.TestCase):
+
+    def test_build_coords(self):
+        """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
+        of the AbstractContainer, with dimensions and coordinates. Start with the simple use case of specs for 1-D
+        arrays.
+        """
+        # TODO handle multiple dims, shapes, and coords
+        coord_spec = CoordSpec(label='my_label', dims='x', coord='data2', type='coord')
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=(None,), dims=('x',),
+                                 coords=(coord_spec,))
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
@@ -57,7 +107,7 @@ class TestMapSimple(unittest.TestCase):
         self.assertEqual(builder.get('data2').dims, dict())
 
     def test_build_dims_unknown_name(self):
-        dimspec = DimSpec(label='my_label', coord='data3', dimtype='coord')
+        dimspec = CoordSpec(label='my_label', coord='data3', type='coord')
         dset1_spec = DatasetSpec('an example dataset1', 'int', name='data1', shape=(None,), dims=(dimspec,))
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
         bar_spec = GroupSpec('A test group specification with a data type',
@@ -70,7 +120,7 @@ class TestMapSimple(unittest.TestCase):
             type_map.build(bar_inst)
 
     def test_construct_dims(self):
-        dimspec = DimSpec(label='my_label', coord='data2', dimtype='coord')
+        dimspec = CoordSpec(label='my_label', coord='data2', type='coord')
         dset1_spec = DatasetSpec('an example dataset1', 'int', name='data1', shape=(None,), dims=(dimspec,))
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
         bar_spec = GroupSpec('A test group specification with a data type',

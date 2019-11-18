@@ -74,7 +74,7 @@ class YAMLSpecWriter(SpecWriter):
                  'name', 'default_name',
                  'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
                  'required', 'quantity', 'attributes', 'datasets', 'groups', 'links',
-                 'label', 'coord', 'dimtype']
+                 'label', 'target_dims', 'dataset', 'type']
         if isinstance(obj, dict):
             keys = list(obj.keys())
             for k in order[::-1]:

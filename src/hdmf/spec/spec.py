@@ -290,26 +290,22 @@ _attrbl_args = [
 ]
 
 
-_coord_args = [
-        {'name': 'label', 'type': str, 'doc': 'The label of this dimension'},
-        {'name': 'dim', 'type': str, 'doc': 'The name of the dimension that this coordinate acts on'},
-        {'name': 'coord', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
-        {'name': 'type', 'type': str, 'doc': 'The type of this coordinate'},
-        {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None}
-]
-
-
 class CoordSpec(ConstructableDict):
     ''' Specification for dimension coordinates
     '''
 
-    @docval(*_coord_args)
+    @docval({'name': 'label', 'type': str, 'doc': 'The label of this coordinate'},
+            {'name': 'target_dims', 'type': str, 'doc': 'The names of the dimensions that this coordinate acts on'},
+            {'name': 'dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+            {'name': 'type', 'type': str, 'doc': 'The type of this coordinate'},
+            {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
     def __init__(self, **kwargs):
-        label, dim, coord, type, parent = getargs('label', 'dim', 'coord', 'type', 'parent', kwargs)
+        label, target_dims, dataset, type, parent = getargs('label', 'target_dims', 'dataset', 'type', 'parent',
+                                                            kwargs)
         super(CoordSpec, self).__init__()
         self['label'] = label
-        self['dim'] = dim
-        self['coord'] = coord
+        self['target_dims'] = target_dims
+        self['dataset'] = dataset
         self['type'] = type
         self._parent = parent
 
@@ -319,14 +315,14 @@ class CoordSpec(ConstructableDict):
         return self.get('label', None)
 
     @property
-    def dim(self):
-        ''' The name of the dimension of this coordinate '''
-        return self.get('label', None)
+    def target_dims(self):
+        ''' The names of the dimensions of this coordinate '''
+        return self.get('target_dims', None)
 
     @property
-    def coord(self):
+    def dataset(self):
         ''' The name of the dataset of this coordinate '''
-        return self.get('coord', None)
+        return self.get('dataset', None)
 
     @property
     def type(self):
@@ -678,8 +674,8 @@ class DatasetSpec(BaseStorageSpec):
 
     @docval(*deepcopy(_dataset_args))  # noqa: C901
     def __init__(self, **kwargs):
-        doc, shape, dims, coords, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value',
-                                                                 kwargs)
+        doc, shape, dims, coords, dtype, default_value = popargs('doc', 'shape', 'dims', 'coords', 'dtype',
+                                                                 'default_value', kwargs)
         if shape is not None:
             self['shape'] = shape
         if dims is not None:
@@ -687,17 +683,31 @@ class DatasetSpec(BaseStorageSpec):
             if 'shape' not in self:
                 self['shape'] = tuple([None] * len(dims))
         if self.shape is not None and self.dims is not None:
-            if len(self['dims']) != len(self['shape']):
-                raise ValueError("'dims' and 'shape' must be the same length")
+            if len(self.dims) != len(self.shape):
+                raise ValueError("'dims' and 'shape' must be the same length.")
+            # TODO: check that if dims is a list of lists, then shape is also a list of lists
+            # TODO: check that if dims is a list of lists, then each element has the same length as the corresponding
+            # element in shape
+            if isinstance(self.dims[0], (list, tuple)) != isinstance(self.shape[0], (list, tuple)):
+                raise ValueError("'dims' and 'shape' must both be list/tuple if one is a list/tuple.")
         if coords is not None:
             for _i, coord in enumerate(coords):
                 if not isinstance(coord, CoordSpec):
                     msg = 'Must use CoordSpec to define coordinate - found %s at element %d' % (type(coord), _i)
                     raise ValueError(msg)
             self['coords'] = coords
-        if self.coords is not None and self.dims is not None:
-            if len(self['dims']) != len(self['coords']):
-                raise ValueError("'dims' and 'coords' must be the same length")
+            if self.dims is not None:
+                if len(self.dims) != len(self.coords):
+                    raise ValueError("'dims' and 'coords' must be the same length.")
+                # TODO: check that if dims is a list of lists, then coords is also a list of lists
+                # TODO: check that if dims is a list of lists, then each element has the same length as the
+                # corresponding element in shape
+                if isinstance(self.dims, (list, tuple)) != isinstance(self.coords, (list, tuple)):
+                    raise ValueError("'dims' and 'coords' must both be list/tuple if one is a list/tuple.")
+            else:
+                raise ValueError("'dims' must be defined with 'coords'.")
+        else:
+            self['coords'] = dict()
         if dtype is not None:
             if isinstance(dtype, list):  # Dtype is a compound data type
                 for _i, col in enumerate(dtype):

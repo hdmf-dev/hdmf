@@ -274,6 +274,8 @@ class GroupBuilder(BaseBuilder):
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
+            {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+            {'name': 'coords', 'type': dict, 'doc': 'a dictionary of coordinates of this dataset', 'default': dict()},
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group '''
@@ -448,14 +450,16 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
             {'name': 'parent', 'type': GroupBuilder, 'doc': 'the parent builder of this Builder', 'default': None},
             {'name': 'source', 'type': str, 'doc': 'the source of the data in this builder', 'default': None},
+            {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
             {'name': 'coords', 'type': dict, 'doc': 'a dictionary of coordinates of this dataset', 'default': dict()})
     def __init__(self, **kwargs):
         ''' Create a Builder object for a dataset '''
-        name, data, dtype, attributes, maxshape, chunks, parent, source, coords = getargs(
-            'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', 'coords', kwargs)
+        name, data, dtype, attributes, maxshape, chunks, parent, source, dims, coords = getargs(
+            'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', 'dims', 'coords', kwargs)
         super(DatasetBuilder, self).__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
+        self['dims'] = _copy.copy(dims)
         self['coords'] = _copy.copy(coords)
         self.__chunks = chunks
         self.__maxshape = maxshape
@@ -477,13 +481,25 @@ class DatasetBuilder(BaseBuilder):
         self['data'] = val
 
     @property
+    def dims(self):
+        ''' The dimensions of the dataset represented by this builder '''
+        return self['dims']
+
+    @dims.setter
+    def dims(self, val):
+        # TODO: should you be able to change dims of DatasetBuilder?
+        if self['dims'] is not None:
+            raise AttributeError("'dims' already set")
+        self['dims'] = val
+
+    @property
     def coords(self):
         ''' The coordinates of the dataset represented by this builder '''
         return self['coords']
 
     @coords.setter
     def coords(self, val):
-        # TODO: should you be able to change dims of DatasetBuilder?
+        # TODO: should you be able to change coords of DatasetBuilder?
         if self['coords'] is not None:
             raise AttributeError("'coords' already set")
         self['coords'] = val
