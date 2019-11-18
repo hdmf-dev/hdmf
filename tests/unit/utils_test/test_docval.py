@@ -31,6 +31,13 @@ class MyTestClass(object):
     def basic_only_kw(self, **kwargs):
         return kwargs
 
+    @docval({'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'},
+            {'name': 'arg2', 'type': 'int', 'doc': 'argument2 is a int'},
+            {'name': 'arg3', 'type': bool, 'doc': 'argument3 is a bool. it defaults to False', 'default': False},
+            allow_extra=True)
+    def basic_add2_kw_allow_extra(self, **kwargs):
+        return kwargs
+
 
 class MyTestSubclass(MyTestClass):
 
@@ -349,6 +356,57 @@ class TestDocValidator(unittest.TestCase):
         """
         with self.assertRaises(TypeError):
             self.test_obj.basic_add2_kw('a string', 100, bar=1000)
+
+    def test_extra_args_pos_only(self):
+        """Test that docval raises an error if too many positional
+           arguments are specified
+        """
+        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+            self.test_obj.basic_add2_kw('a string', 100, True, 'extra')
+
+    def test_extra_args_pos_kw(self):
+        """Test that docval raises an error if too many positional
+           arguments are specified and a keyword arg is specified
+        """
+        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+            self.test_obj.basic_add2_kw('a string', 'extra', 100, arg3=True)
+
+    def test_extra_kwargs_pos_kw(self):
+        """Test that docval raises an error if extra keyword
+           arguments are specified
+        """
+        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+            self.test_obj.basic_add2_kw('a string', 100, extra='extra', arg3=True)
+
+    def test_extra_args_pos_only_ok(self):
+        """Test that docval raises an error if too many positional
+           arguments are specified even if allow_extra is True
+        """
+        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+            self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, 'extra', extra='extra')
+
+    def test_extra_args_pos_kw_ok(self):
+        """Test that docval does not raise an error if too many
+           keyword arguments are specified and allow_extra is True
+        """
+        kwargs = self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, extra='extra')
+        self.assertDictEqual(kwargs, {'arg1': 'a string', 'arg2': 100, 'arg3': True, 'extra': 'extra'})
+
+    def test_dup_kw(self):
+        """Test that docval raises an error if a keyword argument
+           captures a positional argument before all positional
+           arguments have been resolved
+        """
+        with self.assertRaisesRegex(TypeError, r"got multiple values for argument 'arg1'"):
+            self.test_obj.basic_add2_kw('a string', 100, arg1='extra')
+
+    def test_extra_args_dup_kw(self):
+        """Test that docval raises an error if a keyword argument
+           captures a positional argument before all positional
+           arguments have been resolved and allow_extra is True
+        """
+        with self.assertRaisesRegex(TypeError, r"got multiple values for argument 'arg1'"):
+            self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, arg1='extra')
 
     def test_unsupported_docval_term(self):
         """Test that docval does not allow setting of arguments

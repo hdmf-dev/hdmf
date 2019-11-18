@@ -272,9 +272,9 @@ class GroupBuilder(BaseBuilder):
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group '''
+        kwargs['parent'] = self
+        kwargs['source'] = self.source
         pargs, pkwargs = fmt_docval_args(DatasetBuilder.__init__, kwargs)
-        pkwargs['parent'] = self
-        pkwargs['source'] = self.source
         builder = DatasetBuilder(*pargs, **pkwargs)
         self.set_dataset(builder)
         return builder

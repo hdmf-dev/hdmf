@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import six
 
-from .utils import docval, getargs, fmt_docval_args
+from .utils import docval, getargs, call_docval_func
 from .data_utils import AbstractDataChunkIterator, DataChunkIterator, DataChunk
 
 
@@ -62,8 +62,7 @@ class DataChunkProcessor(AbstractDataChunkIterator):
 class NumSampleCounter(DataChunkProcessor):
 
     def __init__(self, **kwargs):
-        args, kwargs = fmt_docval_args(DataChunkProcessor.__init__, kwargs)
-        super(NumSampleCounter, self).__init__(*args, **kwargs)
+        call_docval_func(super(NumSampleCounter, self).__init__, kwargs)
         self.__sample_count = 0
 
     @docval({'name': 'data_chunk', 'type': DataChunk, 'doc': 'a chunk to process'})
