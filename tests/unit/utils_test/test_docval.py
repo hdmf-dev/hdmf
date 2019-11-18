@@ -1,5 +1,6 @@
 import unittest
 from six import text_type
+import numpy as np
 
 from hdmf.utils import docval, fmt_docval_args, get_docval, popargs
 
@@ -477,6 +478,19 @@ class TestDocValidator(unittest.TestCase):
         """
         with self.assertRaisesRegex(ValueError, r'Function __init__ has no docval arguments'):
             get_docval(self.test_obj.__init__, 'arg3')
+
+    def test_bool_type(self):
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool'})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        res = method(self, arg1=True)
+        self.assertEqual(res, True)
+        self.assertIsInstance(res, bool)
+
+        res = method(self, arg1=np.bool_(True))
+        self.assertEqual(res, np.bool_(True))
+        self.assertIsInstance(res, np.bool_)
 
 
 class TestDocValidatorChain(unittest.TestCase):
