@@ -701,6 +701,22 @@ class TestConvertDtype(unittest.TestCase):
         self.assertTupleEqual(ret, match)
         self.assertIs(ret[0].dtype.type, match[1])
 
+    def test_bool_spec(self):
+        spec_type = 'bool'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = np.bool_(True)
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.bool_)
+        self.assertTupleEqual(ret, match)
+        self.assertIs(type(ret[0]), match[1])
+
+        value = True
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.bool_)
+        self.assertTupleEqual(ret, match)
+        self.assertIs(type(ret[0]), match[1])
+
 
 if __name__ == '__main__':
     unittest.main()
