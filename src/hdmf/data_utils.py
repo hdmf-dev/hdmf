@@ -3,37 +3,10 @@ from collections.abc import Iterable
 
 import numpy as np
 from warnings import warn
-from six import with_metaclass, text_type, binary_type
+from six import with_metaclass
 import copy
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
-
-
-def __get_shape_helper(data):
-    """Helper function used by get_shape"""
-    shape = list()
-    if hasattr(data, '__len__'):
-        shape.append(len(data))
-        if len(data) and not isinstance(data[0], (text_type, binary_type)):
-            shape.extend(__get_shape_helper(data[0]))
-    return tuple(shape)
-
-
-def get_shape(data):
-    """
-    Determine the data shape for the given data
-    :param data: Array for which the data should be determined
-    :type data: list, ndarray, dict
-    :return: None in case shape is unknown and shape tuple otherwise
-    """
-    if isinstance(data, dict):
-        return None
-    elif hasattr(data, 'shape'):
-        return data.shape
-    elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
-        return __get_shape_helper(data)
-    else:
-        return None
 
 
 @docval_macro('array_data')
