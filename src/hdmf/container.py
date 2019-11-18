@@ -3,7 +3,7 @@ from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
-from .data_utils import DataIO
+from .data_utils import DataIO, get_shape
 from warnings import warn
 import h5py
 
@@ -389,6 +389,15 @@ class Data(AbstractContainer):
     @property
     def data(self):
         return self.__data
+
+    @property
+    def shape(self):
+        """
+        Get the shape of the data represented by this container
+        :return: Shape tuple
+        :rtype: tuple of ints
+        """
+        return get_shape(self.__data)
 
     @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
     def set_dataio(self, **kwargs):
