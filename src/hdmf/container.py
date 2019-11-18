@@ -2,8 +2,8 @@ import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
-from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
-from .data_utils import DataIO, get_shape
+from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
+from .data_utils import DataIO
 from warnings import warn
 import h5py
 
@@ -397,7 +397,7 @@ class Data(AbstractContainer):
         :return: Shape tuple
         :rtype: tuple of ints
         """
-        return get_shape(self.__data)
+        return get_data_shape(self.__data)
 
     @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
     def set_dataio(self, **kwargs):

@@ -5,7 +5,7 @@ from six import text_type
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
-from hdmf.data_utils import get_shape
+from hdmf.utils import get_data_shape
 
 from numbers import Number
 
@@ -239,5 +239,5 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io.write_builder(self.builder)
         builder = io.read_builder()
         dset = builder['test_bucket']['foo_holder']['foo1']['my_data'].data
-        self.assertEqual(get_shape(dset), (10,))
+        self.assertEqual(get_data_shape(dset), (10,))
         io.close()
