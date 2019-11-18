@@ -51,6 +51,8 @@ def __type_okay(value, argtype, allow_none=False):
             return __is_int(value)
         elif argtype == 'float':
             return __is_float(value)
+        elif argtype == 'bool':
+            return __is_bool(value)
         return argtype in [cls.__name__ for cls in value.__class__.__mro__]
     elif isinstance(argtype, type):
         if argtype == six.text_type:
@@ -61,6 +63,8 @@ def __type_okay(value, argtype, allow_none=False):
             return __is_int(value)
         elif argtype is float:
             return __is_float(value)
+        elif argtype is bool:
+            return __is_bool(value)
         return isinstance(value, argtype)
     elif isinstance(argtype, tuple) or isinstance(argtype, list):
         return any(__type_okay(value, i) for i in argtype)
@@ -98,6 +102,10 @@ def __is_float(value):
         # non-deterministically. a future version of h5py will fix this. see #112
         SUPPORTED_FLOAT_TYPES.append(np.longdouble)
     return any(isinstance(value, i) for i in SUPPORTED_FLOAT_TYPES)
+
+
+def __is_bool(value):
+    return isinstance(value, bool) or isinstance(value, np.bool_)
 
 
 def __format_type(argtype):
