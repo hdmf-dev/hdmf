@@ -1,6 +1,7 @@
 import unittest
 
 from hdmf.container import AbstractContainer, Container, Data
+import numpy as np
 
 
 class Subcontainer(Container):
@@ -132,6 +133,20 @@ class TestData(unittest.TestCase):
         """
         data_obj = Data('my_data', [])
         self.assertFalse(data_obj)
+
+    def test_shape_nparray(self):
+        """
+        Test that shape works for np.array
+        """
+        data_obj = Data('my_data', np.arange(10).reshape(2, 5))
+        self.assertTupleEqual(data_obj.shape, (2, 5))
+
+    def test_shape_list(self):
+        """
+        Test that shape works for np.array
+        """
+        data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
+        self.assertTupleEqual(data_obj.shape, (2, 5))
 
 
 if __name__ == '__main__':
