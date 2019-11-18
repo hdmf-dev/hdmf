@@ -648,9 +648,11 @@ def get_data_shape(data, strict_no_data_load=False):
         return tuple(shape)
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    if hasattr(data, 'shape'):
+    elif hasattr(data, 'shape'):
         return data.shape
-    if hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
+    elif isinstance(data, dict):
+        return None
+    elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
         if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
             return __get_shape_helper(data)
         else:
