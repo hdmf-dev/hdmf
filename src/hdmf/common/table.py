@@ -4,6 +4,7 @@ import pandas as pd
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
+from collections import OrderedDict
 
 from . import register_class
 
@@ -463,33 +464,60 @@ class DynamicTable(Container):
     def __getitem__(self, key):
         ret = None
         if isinstance(key, tuple):
-            # index by row and column, return specific cell
+            # index by row and column --> return specific cell
             arg1 = key[0]
             arg2 = key[1]
             if isinstance(arg2, str):
                 arg2 = self.__colids[arg2]
             ret = self.__df_cols[arg2][arg1]
+        elif isinstance(key, str):
+            # index by one string --> return column
+            if key in self.__colids:
+                ret = self.__df_cols[self.__colids[key]]
+            elif key in self.__indices:
+                return self.__indices[key]
+            else:
+                raise KeyError(key)
         else:
+            # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
+            # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
-            if isinstance(arg, str):
-                # index by one string, return column
-                if arg in self.__colids:
-                    ret = self.__df_cols[self.__colids[arg]]
-                elif arg in self.__indices:
-                    return self.__indices[arg]
-                else:
-                    raise KeyError(arg)
-            elif np.issubdtype(type(arg), np.integer):
-                # index by int, return row
-                ret = tuple(col[arg] for col in self.__df_cols)
+            if np.issubdtype(type(arg), np.integer):
+                arg = np.s_[arg:(arg+1)]
+            # index with a python slice (or single integer) to select one or multiple rows
+            if isinstance(arg, slice):
+                data = OrderedDict()
+                for name in self.colnames:
+                    col = self.__df_cols[self.__colids[name]]
+                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                        data[name] = [x for x in col[arg]]
+                    else:
+                        currdata = col[arg]
+                        data[name] = currdata
+                id_index = self.id.data[arg]
+                if np.isscalar(id_index):
+                    id_index = [id_index, ]
+                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+            # index by a list of ints, return multiple rows
             elif isinstance(arg, (tuple, list, np.ndarray)):
-                # index by a list of ints, return multiple rows
                 if isinstance(arg, np.ndarray):
                     if len(arg.shape) != 1:
                         raise ValueError("cannot index DynamicTable with multiple dimensions")
-                ret = list()
-                for i in arg:
-                    ret.append(tuple(col[i] for col in self.__df_cols))
+                data = OrderedDict()
+                for name in self.colnames:
+                    col = self.__df_cols[self.__colids[name]]
+                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                        data[name] = [x for x in col[arg]]
+                    elif isinstance(col.data, np.ndarray):
+                        data[name] = col[arg]
+                    else:
+                        data[name] = [col[i] for i in arg]
+                id_index = (self.id.data[arg]
+                            if isinstance(self.id.data, np.ndarray)
+                            else [self.id.data[i] for i in arg])
+                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+            else:
+                raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
 
         return ret
 
@@ -501,11 +529,15 @@ class DynamicTable(Container):
             return self[key]
         return default
 
-    def to_dataframe(self, exclude=set([])):
-        '''Produce a pandas DataFrame containing this table's data.
-        '''
-
-        data = {}
+    @docval({'name': 'exclude', 'type': set, 'doc': ' List of columns to exclude from the dataframe', 'default': None})
+    def to_dataframe(self, **kwargs):
+        """
+        Produce a pandas DataFrame containing this table's data.
+        """
+        exclude = popargs('exclude', kwargs)
+        if exclude is None:
+            exclude = set([])
+        data = OrderedDict()
         for name in self.colnames:
             if name in exclude:
                 continue
@@ -660,3 +692,11 @@ class DynamicTableRegion(VectorData):
             return self.table[self.data[key]]
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
+
+    @property
+    def shape(self):
+        """
+        Define the shape, i.e., (num_rows, num_columns) of the selected table region
+        :return: Shape tuple with two integers indicating the number of rows and number of columns
+        """
+        return (len(self.data), len(self.table.columns))
