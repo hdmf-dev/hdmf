@@ -7,7 +7,7 @@ from copy import copy, deepcopy
 from datetime import datetime
 from six import with_metaclass, raise_from, text_type, binary_type, integer_types
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, call_docval_func
+from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec,\
                    SpecReader
@@ -1448,15 +1448,17 @@ class TypeMap(object):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
-        if name is not None:
+
+        if name is not None:  # fixed name is specified in spec, remove it from docval args
             docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
-            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
             if name is not None:
-                pkwargs.update(name=name)
-            base.__init__(self, *pargs, **pkwargs)
+                kwargs.update(name=name)
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+
             for f in new_args:
                 arg_val = kwargs.get(f, None)
                 if arg_val is not None:
