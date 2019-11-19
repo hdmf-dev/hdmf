@@ -635,11 +635,15 @@ class DynamicTableRegion(VectorData):
         if 'table' in self.fields:
             msg = "can't set attribute 'table' -- already set"
             raise AttributeError(msg)
-        for idx in self.data:
-            if idx < 0 or idx >= len(val):
-                raise IndexError('The index ' + str(idx) +
-                                 ' is out of range for this DynamicTable of length '
-                                 + str(len(val)))
+        dat = self.data
+        if isinstance(dat, DataIO):
+            dat = dat.data
+        if not isinstance(dat, AbstractDataChunkIterator):
+            for idx in self.data:
+                if idx < 0 or idx >= len(val):
+                    raise IndexError('The index ' + str(idx) +
+                                     ' is out of range for this DynamicTable of length '
+                                     + str(len(val)))
         self.fields['table'] = val
 
     def __getitem__(self, key):
