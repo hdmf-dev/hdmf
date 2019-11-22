@@ -12,7 +12,7 @@ from abc import ABCMeta
 from six import with_metaclass
 import numpy as np
 
-from tests.unit.test_utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE
 
 
 class Bar(Container):

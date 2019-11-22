@@ -4,7 +4,7 @@ import os
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from tests.unit.test_io_hdf5_h5tools import _get_manager
-from tests.unit.test_utils import Foo, FooBucket
+from tests.unit.utils import Foo, FooBucket
 
 
 class Test1_1_0(unittest.TestCase):

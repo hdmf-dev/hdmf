@@ -12,7 +12,7 @@ from numbers import Number
 import json
 import numpy as np
 
-from tests.unit.test_utils import Foo
+from tests.unit.utils import Foo
 from tests.unit.test_io_hdf5_h5tools import _get_manager
 
 

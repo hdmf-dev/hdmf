@@ -8,7 +8,7 @@ from hdmf.build import ObjectMapper, BuildManager, TypeMap
 from abc import ABCMeta
 from six import with_metaclass
 
-from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 
 
 class FooMapper(ObjectMapper):

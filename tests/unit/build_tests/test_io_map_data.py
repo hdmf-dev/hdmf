@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 import os
 
-from tests.unit.test_utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE
 
 
 class Baz(Data):
