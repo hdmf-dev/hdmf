@@ -470,8 +470,8 @@ class H5DataIO(DataIO):
                                          " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
             # Warn if compressor other than gzip is being used
             if self.__iosettings['compression'] != 'gzip':
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available"
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of"
+                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
+                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
                               "the generated HDF5 files.")
 
     @staticmethod

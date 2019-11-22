@@ -154,10 +154,13 @@ class H5IOTest(unittest.TestCase):
     @unittest.skipIf("lzf" not in h5py_filters.encode,
                      "LZF compression not supported in this h5py library install")
     def test_write_dataset_list_compress_lzf(self):
-        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
-                     compression='lzf',
-                     shuffle=True,
-                     fletcher32=True)
+        warn_msg = (r"lzf compression may not be available on all installations of HDF5\. Use of gzip is "
+                    r"recommended to ensure portability of the generated HDF5 files\.")
+        with self.assertWarnsRegex(UserWarning, warn_msg):
+            a = H5DataIO(np.arange(30).reshape(5, 2, 3),
+                         compression='lzf',
+                         shuffle=True,
+                         fletcher32=True)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a.data))
@@ -168,11 +171,14 @@ class H5IOTest(unittest.TestCase):
     @unittest.skipIf("szip" not in h5py_filters.encode,
                      "SZIP compression not supported in this h5py library install")
     def test_write_dataset_list_compress_szip(self):
-        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
-                     compression='szip',
-                     compression_opts=('ec', 16),
-                     shuffle=True,
-                     fletcher32=True)
+        warn_msg = (r"szip compression may not be available on all installations of HDF5\. Use of gzip is "
+                    r"recommended to ensure portability of the generated HDF5 files\.")
+        with self.assertWarnsRegex(UserWarning, warn_msg):
+            a = H5DataIO(np.arange(30).reshape(5, 2, 3),
+                         compression='szip',
+                         compression_opts=('ec', 16),
+                         shuffle=True,
+                         fletcher32=True)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a.data))
@@ -504,17 +510,23 @@ class H5IOTest(unittest.TestCase):
         except ValueError:
             self.fail("Using gzip compression raised a ValueError when it should not")
         # Make sure szip raises an error if not installed (or does not raise an error if installed)
+        warn_msg = (r"szip compression may not be available on all installations of HDF5\. Use of gzip is "
+                    r"recommended to ensure portability of the generated HDF5 files\.")
         if "szip" not in h5py_filters.encode:
             with self.assertRaises(ValueError):
                 H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
         else:
             try:
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with self.assertWarnsRegex(UserWarning, warn_msg):
+                    H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
             except ValueError:
                 self.fail("SZIP is installed but H5DataIO still raises an error")
         # Test error on illegal (i.e., a made-up compressor)
         with self.assertRaises(ValueError):
-            H5DataIO(np.arange(30), compression="my_compressor_that_h5py_doesnt_know")
+            warn_msg = (r"unknown compression may not be available on all installations of HDF5\. Use of gzip is "
+                        r"recommended to ensure portability of the generated HDF5 files\.")
+            with self.assertWarnsRegex(UserWarning, warn_msg):
+                H5DataIO(np.arange(30), compression="unknown")
 
     def test_value_error_on_incompatible_compression_opts(self):
         # Make sure we warn when gzip with szip compression options is used
