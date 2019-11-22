@@ -5,8 +5,6 @@ import collections
 
 import h5py
 import numpy as np
-import six
-from six import raise_from, text_type, binary_type
 
 
 __macros = {
@@ -55,11 +53,7 @@ def __type_okay(value, argtype, allow_none=False):
             return __is_bool(value)
         return argtype in [cls.__name__ for cls in value.__class__.__mro__]
     elif isinstance(argtype, type):
-        if argtype == six.text_type:
-            return isinstance(value, six.text_type) or isinstance(value, six.string_types)
-        elif argtype == str:
-            return isinstance(value, six.string_types)
-        elif argtype is int:
+        if argtype is int:
             return __is_int(value)
         elif argtype is float:
             return __is_float(value)
@@ -456,7 +450,7 @@ def docval(*validator, **options):
                     parse_err = parsed.get(error_type)
                     if parse_err:
                         msg = ', '.join(parse_err)
-                        raise_from(ExceptionType(msg), None)
+                        raise ExceptionType(msg)
 
                 return func(self, **parsed['args'])
         else:
@@ -471,7 +465,7 @@ def docval(*validator, **options):
                     parse_err = parsed.get(error_type)
                     if parse_err:
                         msg = ', '.join(parse_err)
-                        raise_from(ExceptionType(msg), None)
+                        raise ExceptionType(msg)
 
                 return func(**parsed['args'])
         _rtype = rtype
@@ -639,7 +633,7 @@ def get_data_shape(data, strict_no_data_load=False):
         shape = list()
         if hasattr(local_data, '__len__'):
             shape.append(len(local_data))
-            if len(local_data) and not isinstance(local_data[0], (text_type, binary_type)):
+            if len(local_data) and not isinstance(local_data[0], (str, bytes)):
                 shape.extend(__get_shape_helper(local_data[0]))
         return tuple(shape)
     if hasattr(data, 'maxshape'):
@@ -648,7 +642,7 @@ def get_data_shape(data, strict_no_data_load=False):
         return data.shape
     elif isinstance(data, dict):
         return None
-    elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
+    elif hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
         if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
             return __get_shape_helper(data)
         else:
@@ -659,11 +653,9 @@ def get_data_shape(data, strict_no_data_load=False):
 
 def pystr(s):
     """
-    Cross-version support for converting a string of characters to Python str object
+    Convert a string of characters to Python str object
     """
-    if six.PY2 and isinstance(s, six.text_type):
-        return s.encode('ascii', 'ignore')
-    elif six.PY3 and isinstance(s, six.binary_type):
+    if isinstance(s, bytes):
         return s.decode('utf-8')
     else:
         return s
