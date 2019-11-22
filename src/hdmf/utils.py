@@ -561,8 +561,6 @@ def getargs(*argnames):
     if not isinstance(argnames[-1], dict):
         raise ValueError('last argument must be dict')
     kwargs = argnames[-1]
-    if not argnames:
-        raise ValueError('must provide keyword to get')
     if len(argnames) == 2:
         return kwargs.get(argnames[0])
     return [kwargs.get(arg) for arg in argnames[:-1]]
@@ -577,8 +575,6 @@ def popargs(*argnames):
     if not isinstance(argnames[-1], dict):
         raise ValueError('last argument must be dict')
     kwargs = argnames[-1]
-    if not argnames:
-        raise ValueError('must provide keyword to pop')
     if len(argnames) == 2:
         return kwargs.pop(argnames[0])
     return [kwargs.pop(arg) for arg in argnames[:-1]]
