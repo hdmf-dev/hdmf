@@ -150,6 +150,29 @@ class TestDocValidator(unittest.TestCase):
         exp_kwargs = {'arg3': True}
         self.assertDictEqual(rec_kwargs, exp_kwargs)
 
+    def test_fmt_docval_args_no_docval(self):
+        """ Test that fmt_docval_args raises an error when run on function without docval """
+        def method1(self, **kwargs):
+            pass
+
+        with self.assertRaisesRegex(ValueError, r"no docval found on .*method1.*"):
+            fmt_docval_args(method1, {})
+
+    def test_fmt_docval_args_allow_extra(self):
+        """ Test that fmt_docval_args works """
+        test_kwargs = {
+            'arg1': 'a string',
+            'arg2': 1,
+            'arg3': True,
+            'hello': 'abc',
+            'list': ['abc', 1, 2, 3]
+        }
+        rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw_allow_extra, test_kwargs)
+        exp_args = ['a string', 1]
+        self.assertListEqual(rec_args, exp_args)
+        exp_kwargs = {'arg3': True, 'hello': 'abc', 'list': ['abc', 1, 2, 3]}
+        self.assertDictEqual(rec_kwargs, exp_kwargs)
+
     def test_docval_add(self):
         """Test that docval works with a single positional
            argument
