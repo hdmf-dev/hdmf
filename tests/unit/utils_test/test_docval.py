@@ -1,5 +1,4 @@
 import unittest
-from six import text_type
 import numpy as np
 
 from hdmf.utils import docval, fmt_docval_args, get_docval, popargs
@@ -14,11 +13,6 @@ class MyTestClass(object):
     @docval({'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'},
             {'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'})
     def basic_add2(self, **kwargs):
-        return kwargs
-
-    @docval({'name': 'arg1', 'type': text_type, 'doc': 'argument1 is a str'},
-            {'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'})
-    def basic_add2_text_type(self, **kwargs):
         return kwargs
 
     @docval({'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'},
@@ -184,18 +178,11 @@ class TestDocValidator(unittest.TestCase):
         kwargs = self.test_obj.basic_add2('a string', 100)
         self.assertDictEqual(kwargs, {'arg1': 'a string', 'arg2': 100})
 
-    def test_docval_add2_text_type_w_str(self):
+    def test_docval_add2_w_unicode(self):
         """Test that docval works with two positional
            arguments
         """
-        kwargs = self.test_obj.basic_add2_text_type('a string', 100)
-        self.assertDictEqual(kwargs, {'arg1': 'a string', 'arg2': 100})
-
-    def test_docval_add2_text_type_w_unicode(self):
-        """Test that docval works with two positional
-           arguments
-        """
-        kwargs = self.test_obj.basic_add2_text_type(u'a string', 100)
+        kwargs = self.test_obj.basic_add2(u'a string', 100)
         self.assertDictEqual(kwargs, {'arg1': u'a string', 'arg2': 100})
 
     def test_docval_add2_kw_default(self):
