@@ -1,4 +1,5 @@
 import numpy as np
+from collections import OrderedDict
 from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
@@ -240,10 +241,10 @@ class Container(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         call_docval_func(super(Container, self).__init__, kwargs)
-        # dict of dimension coordinates, where key is name of dataset (variable) and value is a list of label-dataset
-        # pairs
-        self.__coords = dict()
+        # dict of dimension names, where key is name of data array and value is a list of names, one per axis
         self.__dims = dict()
+        # dict of dimension coordinates, where key is name of data array and value is a list of label-dataset pairs
+        self.__coords = dict()
 
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
@@ -385,7 +386,7 @@ class Container(AbstractContainer):
     @property
     def dims(self):
         '''
-        Return a dictionary of dimension names, indexed by array name, for this Container. Each value is a list of
+        Return a dict of dimension names, indexed by data array name, for this Container. Each value is a list of
         names, one for each dimension of the array.
         '''
         return self.__dims
@@ -441,9 +442,9 @@ class Container(AbstractContainer):
         return self.__coords
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
-            {'name': 'label', 'type': str, 'doc': ''},
-            {'name': 'coord', 'type': str, 'doc': ''},
-            {'name': 'dims', 'type': (str, list, tuple), 'doc': '', 'default': None})
+            {'name': 'name', 'type': str, 'doc': ''},
+            {'name': 'coord_data_name', 'type': str, 'doc': ''},
+            {'name': 'axes', 'type': (str, list, tuple), 'doc': '', 'default': None})
     def set_coord(self, **kwargs):
         '''
         Sets a coordinate and coordinate label for a given data array in this Container.

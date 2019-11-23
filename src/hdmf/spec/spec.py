@@ -152,17 +152,13 @@ class Spec(ConstructableDict):
 
 _target_type_key = 'target_type'
 
-_ref_args = [
-    {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'reftype', 'type': str, 'doc': 'the type of references this is i.e. region or object'},
-]
-
 
 class RefSpec(ConstructableDict):
 
     __allowable_types = ('object', 'region')
 
-    @docval(*_ref_args)
+    @docval({'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
+            {'name': 'reftype', 'type': str, 'doc': 'the type of references this is i.e. region or object'})
     def __init__(self, **kwargs):
         target_type, reftype = getargs(_target_type_key, 'reftype', kwargs)
         self[_target_type_key] = target_type
@@ -275,6 +271,115 @@ class AttributeSpec(Spec):
         return ret
 
 
+class DimSpec(ConstructableDict):
+    """Specification for dimensions"""
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this dimension'},
+            {'name': 'required', 'type': bool, 'doc': 'Whether this dimension is required'},
+            {'name': 'length', 'type': int, 'doc': 'The length of this dimension'},
+            {'name': 'doc', 'type': str, 'doc': 'Documentation for this dimension', 'default': None},
+            {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
+    def __init__(self, **kwargs):
+        name, required, length, doc, parent = getargs('name', 'required', 'length', 'doc', 'parent', kwargs)
+        super(DimSpec, self).__init__()
+        self['name'] = name
+        self['required'] = required
+        self['length'] = length
+        if doc is not None:
+            self['doc'] = doc
+        self._parent = parent
+
+    @property
+    def name(self):
+        """The name of this dimension"""
+        return self.get('name', None)
+
+    @property
+    def required(self):
+        """Whether this dimension is required"""
+        return self.get('required', None)
+
+    @property
+    def length(self):
+        """The length of this dimension"""
+        return self.get('length', None)
+
+    @property
+    def doc(self):
+        """Documentation for this dimension"""
+        return self.get('doc', None)
+
+    @property
+    def parent(self):
+        """The parent specification of this specification"""
+        return self._parent
+
+    @parent.setter
+    def parent(self, spec):
+        """Set the parent of this specification"""
+        if self._parent is not None:
+            raise Exception('Cannot re-assign parent')
+        self._parent = spec
+
+
+class CoordSpec(ConstructableDict):
+    """Specification for dimension coordinates"""
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
+            {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+            {'name': 'coord_axes', 'type': str, 'doc': 'The axes of the dataset of this coordinate'},
+            {'name': 'axes', 'type': (list, tuple), 'doc': 'The axes of the dataset that this coordinate acts on'},
+            {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'},
+            {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
+    def __init__(self, **kwargs):
+        name, coord_dataset, coord_axes, axes, coord_type, parent = getargs('name', 'coord_dataset', 'coord_axes',
+                                                                            'axes', 'coord_type', 'parent', kwargs)
+        super(CoordSpec, self).__init__()
+        self['name'] = name
+        self['coord_dataset'] = coord_dataset
+        self['coord_axes'] = coord_axes
+        self['axes'] = axes
+        self['coord_type'] = coord_type
+        self._parent = parent
+
+    @property
+    def name(self):
+        """The name of this coordinate"""
+        return self.get('name', None)
+
+    @property
+    def coord_dataset(self):
+        """The name of the dataset of this coordinate"""
+        return self.get('coord_dataset', None)
+
+    @property
+    def coord_axes(self):
+        """The axes of the dataset of this coordinate"""
+        return self.get('coord_axes', None)
+
+    @property
+    def axes(self):
+        """The axes of the dataset that this coordinate acts on"""
+        return self.get('axes', None)
+
+    @property
+    def coord_type(self):
+        """The type of this coordinate"""
+        return self.get('coord_type', None)
+
+    @property
+    def parent(self):
+        """ The parent specification of this specification """
+        return self._parent
+
+    @parent.setter
+    def parent(self, spec):
+        """ Set the parent of this specification """
+        if self._parent is not None:
+            raise Exception('Cannot re-assign parent')
+        self._parent = spec
+
+
 _attrbl_args = [
         {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
         {'name': 'name', 'type': str, 'doc': 'the name of this base storage container, '
@@ -288,58 +393,6 @@ _attrbl_args = [
         {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
          'doc': 'the data type this specification extends', 'default': None},
 ]
-
-
-class CoordSpec(ConstructableDict):
-    ''' Specification for dimension coordinates
-    '''
-
-    @docval({'name': 'label', 'type': str, 'doc': 'The label of this coordinate'},
-            {'name': 'target_dims', 'type': str, 'doc': 'The names of the dimensions that this coordinate acts on'},
-            {'name': 'dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
-            {'name': 'type', 'type': str, 'doc': 'The type of this coordinate'},
-            {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
-    def __init__(self, **kwargs):
-        label, target_dims, dataset, type, parent = getargs('label', 'target_dims', 'dataset', 'type', 'parent',
-                                                            kwargs)
-        super(CoordSpec, self).__init__()
-        self['label'] = label
-        self['target_dims'] = target_dims
-        self['dataset'] = dataset
-        self['type'] = type
-        self._parent = parent
-
-    @property
-    def label(self):
-        ''' The label of this dimension '''
-        return self.get('label', None)
-
-    @property
-    def target_dims(self):
-        ''' The names of the dimensions of this coordinate '''
-        return self.get('target_dims', None)
-
-    @property
-    def dataset(self):
-        ''' The name of the dataset of this coordinate '''
-        return self.get('dataset', None)
-
-    @property
-    def type(self):
-        ''' The type of this coordinate '''
-        return self.get('type', None)
-
-    @property
-    def parent(self):
-        ''' The parent specification of this specification '''
-        return self._parent
-
-    @parent.setter
-    def parent(self, spec):
-        ''' Set the parent of this specification '''
-        if self._parent is not None:
-            raise Exception('Cannot re-assign parent')
-        self._parent = spec
 
 
 class BaseStorageSpec(Spec):
@@ -696,9 +749,8 @@ class DatasetSpec(BaseStorageSpec):
                     msg = 'Must use CoordSpec to define coordinate - found %s at element %d' % (type(coord), _i)
                     raise ValueError(msg)
             self['coords'] = coords
+            # TODO build dimspec and coordspec
             if self.dims is not None:
-                if len(self.dims) != len(self.coords):
-                    raise ValueError("'dims' and 'coords' must be the same length.")
                 # TODO: check that if dims is a list of lists, then coords is also a list of lists
                 # TODO: check that if dims is a list of lists, then each element has the same length as the
                 # corresponding element in shape
