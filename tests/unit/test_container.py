@@ -4,6 +4,7 @@ import xarray as xr
 
 from hdmf.container import AbstractContainer, Container, Data
 
+import hdmf.testing
 
 class TestAbstractContainer(unittest.TestCase):
 
@@ -130,7 +131,7 @@ class TestContainer(unittest.TestCase):
         self.assertRegex(str(parent_obj), r"obj1 hdmf.container.Container at 0x%d" % id(parent_obj))
 
 
-class TestContainerDims(unittest.TestCase):
+class TestContainerDims(hdmf.testing.TestCase):
 
     def test_get_dims(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
@@ -174,24 +175,24 @@ class TestContainerDims(unittest.TestCase):
 
     def test_set_dim_axis_non_array(self):
         obj1 = Bar('obj1', data1='hello', data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"Cannot determine shape of field 'data1' in Bar\."):
+        with self.assertRaisesWith(ValueError, "Cannot determine shape of field 'data1' in Bar."):
             obj1.set_dim(data_name='data1', axis=0, dim='numbers')
 
     def test_set_dim_axis_negative(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"Axis -1 does not exist for field 'data1' in Bar\."):
+        with self.assertRaisesWith(ValueError, "Axis -1 does not exist for field 'data1' in Bar."):
             obj1.set_dim(data_name='data1', axis=-1, dim='numbers')
 
     def test_set_dim_axis_over_bounds(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"Axis 1 does not exist for field 'data1' in Bar\."):
+        with self.assertRaisesWith(ValueError, "Axis 1 does not exist for field 'data1' in Bar."):
             obj1.set_dim(data_name='data1', axis=1, dim='numbers')
 
     def test_set_dim_dup_name(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        with self.assertRaisesRegex(ValueError, (r"Cannot set dim 'numbers' for axis 2 of field data2 in Bar\."
-                                                 r" Dim 'numbers' is already used for axis 1\.")):
+        with self.assertRaisesWith(ValueError, ("Cannot set dim 'numbers' for axis 2 of field data2 in Bar."
+                                                " Dim 'numbers' is already used for axis 1.")):
             obj1.set_dim(data_name='data2', axis=2, dim='numbers')
 
     def test_set_dim_dup_name_ok(self):
@@ -219,7 +220,7 @@ class TestContainerDims(unittest.TestCase):
     def test_get_dim_axis_unknown_dim(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        with self.assertRaisesRegex(ValueError, r"Dim name 'letters' not found for field 'data2' of Bar\."):
+        with self.assertRaisesWith(ValueError, r"Dim name 'letters' not found for field 'data2' of Bar."):
             obj1._get_dim_axis(data_name='data2', dim='letters')
 
 
