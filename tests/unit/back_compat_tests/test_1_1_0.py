@@ -1,13 +1,13 @@
-import unittest
 from shutil import copyfile
 import os
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from tests.unit.test_io_hdf5_h5tools import _get_manager
 from tests.unit.utils import Foo, FooBucket
+from hdmf.testing import TestCase
 
 
-class Test1_1_0(unittest.TestCase):
+class Test1_1_0(TestCase):
 
     def setUp(self):
         # created using manager in test_io_hdf5_h5tools

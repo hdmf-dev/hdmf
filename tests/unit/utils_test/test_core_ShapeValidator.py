@@ -1,11 +1,11 @@
-import unittest
+import numpy as np
 
 from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorData
-import numpy as np
+from hdmf.testing import TestCase
 
 
-class ShapeValidatorTests(unittest.TestCase):
+class ShapeValidatorTests(TestCase):
 
     def setUp(self):
         pass
@@ -201,7 +201,7 @@ class ShapeValidatorTests(unittest.TestCase):
         return
 
 
-class ShapeValidatorResultTests(unittest.TestCase):
+class ShapeValidatorResultTests(TestCase):
 
     def setUp(self):
         pass
@@ -226,7 +226,3 @@ class ShapeValidatorResultTests(unittest.TestCase):
         for var in temp_cases:
             setattr(temp, var, temp_d)
             self.assertIsInstance(getattr(temp, var), tuple,  var)
-
-
-if __name__ == '__main__':
-    unittest.main()

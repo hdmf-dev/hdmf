@@ -1,10 +1,10 @@
-import unittest
 import json
 
 from hdmf.spec import AttributeSpec
+from hdmf.testing import TestCase
 
 
-class AttributeSpecTests(unittest.TestCase):
+class AttributeSpecTests(TestCase):
 
     def test_constructor(self):
         spec = AttributeSpec('attribute1',
