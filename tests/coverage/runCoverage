@@ -7,7 +7,7 @@ cd ../..
 
 echo ""
 echo "Running Tests with Coverage:"
-${COV} run --source=. --omit src/hdmf/testing/* test.py
+${COV} run --source=. test.py
 
 echo ""
 echo "Creating HTML output:"
