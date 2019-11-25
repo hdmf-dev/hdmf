@@ -1,9 +1,9 @@
-import unittest
-
 from hdmf.spec import AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Data
 from hdmf.utils import docval, getargs
+from hdmf.testing import TestCase
+
 import h5py
 import numpy as np
 import os
@@ -26,7 +26,7 @@ class Baz(Data):
         return self.__baz_attr
 
 
-class TestDataMap(unittest.TestCase):
+class TestDataMap(TestCase):
 
     def setUp(self):
         self.setUpBazSpec()

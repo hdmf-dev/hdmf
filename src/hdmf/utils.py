@@ -735,9 +735,9 @@ class LabelledDict(dict):
             key = key.strip()
             val = val.strip()  # val is a string
             if not key:
-                raise KeyError("An attribute name is required before '=='.")
+                raise ValueError("An attribute name is required before '=='.")
             if not val:
-                raise KeyError("A value is required after '=='.")
+                raise ValueError("A value is required after '=='.")
             if key != self.key_attr:
                 ret = set()
                 for item in self.values():

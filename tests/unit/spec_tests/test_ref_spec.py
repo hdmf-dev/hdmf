@@ -1,10 +1,10 @@
-import unittest
 import json
 
 from hdmf.spec import RefSpec
+from hdmf.testing import TestCase
 
 
-class RefSpecTests(unittest.TestCase):
+class RefSpecTests(TestCase):
 
     def test_constructor(self):
         spec = RefSpec('TimeSeries', 'object')

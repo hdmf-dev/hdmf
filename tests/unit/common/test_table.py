@@ -1,15 +1,12 @@
-import unittest
-
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
-
-from . import base
+from hdmf.testing import TestCase, TestMapH5RoundTrip
 
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
 
 
-class TestDynamicTable(unittest.TestCase):
+class TestDynamicTable(TestCase):
 
     def setUp(self):
         self.spec = [
@@ -85,7 +82,7 @@ class TestDynamicTable(unittest.TestCase):
         columns = [VectorData(name=s['name'], description=s['description'], data=d)
                    for s, d in zip(self.spec, self.data)]
         msg = "must provide same number of ids as length of columns"
-        with self.assertRaisesRegex(ValueError, msg):
+        with self.assertRaisesWith(ValueError, msg):
             DynamicTable("with_columns", 'a test table', id=[0, 1], columns=columns)
 
     def add_rows(self, table):
@@ -229,7 +226,7 @@ class TestDynamicTable(unittest.TestCase):
         }).loc[:, ('foo', 'bar', 'description')]
 
         msg = "Column name 'description' is not allowed because it is already an attribute"
-        with self.assertRaisesRegex(ValueError, msg):
+        with self.assertRaisesWith(ValueError, msg):
             DynamicTable.from_dataframe(df, 'test')
 
     def test_missing_columns(self):
@@ -305,7 +302,7 @@ class TestDynamicTable(unittest.TestCase):
         self.assertTupleEqual(tuple(res.iloc[1]), (5, 50.0, 'lizard'))
 
 
-class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
+class TestDynamicTableRoundTrip(TestMapH5RoundTrip):
 
     def setUpContainer(self):
         # this will get ignored
@@ -338,7 +335,7 @@ class TestDynamicTableRoundTrip(base.TestMapRoundTrip):
         self.assertContainerEqual(expected, received)
 
 
-class TestElementIdentifiers(unittest.TestCase):
+class TestElementIdentifiers(TestCase):
 
     def test_identifier_search_single_list(self):
         e = ElementIdentifiers('ids', [0, 1, 2, 3, 4])

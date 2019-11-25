@@ -1,12 +1,12 @@
-import unittest
-
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.testing import TestCase
 
 from abc import ABCMeta
 from six import with_metaclass
+import unittest
 
 from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
 
@@ -21,7 +21,7 @@ class FooMapper(ObjectMapper):
         self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
 
 
-class TestBase(unittest.TestCase):
+class TestBase(TestCase):
 
     def setUp(self):
         self.foo_spec = GroupSpec('A test group specification with a data type',
@@ -280,9 +280,5 @@ class TestTypeMap(TestBase):
 
 
 # TODO:
-class TestWildCardNamedSpecs(unittest.TestCase):
+class TestWildCardNamedSpecs(TestCase):
     pass
-
-
-if __name__ == '__main__':
-    unittest.main()
