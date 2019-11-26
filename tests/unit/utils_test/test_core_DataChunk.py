@@ -1,11 +1,11 @@
-import unittest
-
-from hdmf.data_utils import DataChunk
 import numpy as np
 from copy import copy, deepcopy
 
+from hdmf.data_utils import DataChunk
+from hdmf.testing import TestCase
 
-class DataChunkTests(unittest.TestCase):
+
+class DataChunkTests(TestCase):
 
     def setUp(self):
         pass
@@ -33,7 +33,3 @@ class DataChunkTests(unittest.TestCase):
         obj_astype = obj.astype(newtype)
         self.assertNotEqual(id(obj), id(obj_astype))
         self.assertEqual(obj_astype.dtype, np.dtype(newtype))
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -1,12 +1,11 @@
 from hdmf.common import CSRMatrix
-
-from . import base
+from hdmf.testing import TestMapH5RoundTrip
 
 import scipy.sparse as sps
 import numpy as np
 
 
-class TestCSRMatrix(base.TestMapRoundTrip):
+class TestCSRMatrix(TestMapH5RoundTrip):
 
     def setUp(self):
         self.data = np.array([1, 2, 3, 4, 5, 6])

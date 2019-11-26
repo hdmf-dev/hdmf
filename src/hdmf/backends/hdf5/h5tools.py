@@ -18,6 +18,7 @@ from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, Builder
                       H5DataIO, H5SpecReader, H5SpecWriter
 
 from ..io import HDMFIO, UnsupportedOperation
+from ..warnings import BrokenLinkWarning
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -396,7 +397,7 @@ class HDF5IO(HDMFIO):
                         self.__set_built(sub_h5obj.file.filename, sub_h5obj.name, builder)
                     obj_type[builder.name] = builder
             else:
-                warnings.warn('Broken Link: %s' % os.path.join(h5obj.name, k))
+                warnings.warn(os.path.join(h5obj.name, k), BrokenLinkWarning)
                 kwargs['datasets'][k] = None
                 continue
         kwargs['source'] = h5obj.file.filename

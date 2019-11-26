@@ -1,8 +1,7 @@
-import unittest
-from six import text_type
 import numpy as np
 
 from hdmf.utils import docval, fmt_docval_args, get_docval, popargs
+from hdmf.testing import TestCase
 
 
 class MyTestClass(object):
@@ -14,11 +13,6 @@ class MyTestClass(object):
     @docval({'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'},
             {'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'})
     def basic_add2(self, **kwargs):
-        return kwargs
-
-    @docval({'name': 'arg1', 'type': text_type, 'doc': 'argument1 is a str'},
-            {'name': 'arg2', 'type': int, 'doc': 'argument2 is a int'})
-    def basic_add2_text_type(self, **kwargs):
         return kwargs
 
     @docval({'name': 'arg1', 'type': str, 'doc': 'argument1 is a str'},
@@ -106,15 +100,15 @@ class MyChainClass(MyTestClass):
         self._arg4 = val
 
 
-class TestDocValidator(unittest.TestCase):
+class TestDocValidator(TestCase):
 
     def setUp(self):
         self.test_obj = MyTestClass()
         self.test_obj_sub = MyTestSubclass()
 
     def test_bad_type(self):
-        exp_msg = ("error parsing 'arg1' argument' : argtype must be a type, "
-                   "a str, a list, a tuple, or None - got <class|type 'dict'>")
+        exp_msg = (r"error parsing 'arg1' argument' : argtype must be a type, "
+                   r"a str, a list, a tuple, or None - got <class|type 'dict'>")
         with self.assertRaisesRegex(Exception, exp_msg):
             @docval({'name': 'arg1', 'type': {'a': 1}, 'doc': 'this is a bad type'})
             def method(self, **kwargs):
@@ -156,6 +150,29 @@ class TestDocValidator(unittest.TestCase):
         exp_kwargs = {'arg3': True}
         self.assertDictEqual(rec_kwargs, exp_kwargs)
 
+    def test_fmt_docval_args_no_docval(self):
+        """ Test that fmt_docval_args raises an error when run on function without docval """
+        def method1(self, **kwargs):
+            pass
+
+        with self.assertRaisesRegex(ValueError, r"no docval found on .*method1.*"):
+            fmt_docval_args(method1, {})
+
+    def test_fmt_docval_args_allow_extra(self):
+        """ Test that fmt_docval_args works """
+        test_kwargs = {
+            'arg1': 'a string',
+            'arg2': 1,
+            'arg3': True,
+            'hello': 'abc',
+            'list': ['abc', 1, 2, 3]
+        }
+        rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw_allow_extra, test_kwargs)
+        exp_args = ['a string', 1]
+        self.assertListEqual(rec_args, exp_args)
+        exp_kwargs = {'arg3': True, 'hello': 'abc', 'list': ['abc', 1, 2, 3]}
+        self.assertDictEqual(rec_kwargs, exp_kwargs)
+
     def test_docval_add(self):
         """Test that docval works with a single positional
            argument
@@ -174,7 +191,7 @@ class TestDocValidator(unittest.TestCase):
         """Test that docval catches missing argument
            with a single positional argument
         """
-        with self.assertRaisesRegex(TypeError, "missing argument 'arg1'"):
+        with self.assertRaisesWith(TypeError, "missing argument 'arg1'"):
             self.test_obj.basic_add()
 
     def test_docval_add2(self):
@@ -184,18 +201,11 @@ class TestDocValidator(unittest.TestCase):
         kwargs = self.test_obj.basic_add2('a string', 100)
         self.assertDictEqual(kwargs, {'arg1': 'a string', 'arg2': 100})
 
-    def test_docval_add2_text_type_w_str(self):
+    def test_docval_add2_w_unicode(self):
         """Test that docval works with two positional
            arguments
         """
-        kwargs = self.test_obj.basic_add2_text_type('a string', 100)
-        self.assertDictEqual(kwargs, {'arg1': 'a string', 'arg2': 100})
-
-    def test_docval_add2_text_type_w_unicode(self):
-        """Test that docval works with two positional
-           arguments
-        """
-        kwargs = self.test_obj.basic_add2_text_type(u'a string', 100)
+        kwargs = self.test_obj.basic_add2(u'a string', 100)
         self.assertDictEqual(kwargs, {'arg1': u'a string', 'arg2': 100})
 
     def test_docval_add2_kw_default(self):
@@ -244,7 +254,7 @@ class TestDocValidator(unittest.TestCase):
            arguments and a keyword argument when specifying
            keyword argument value with positional syntax
         """
-        with self.assertRaisesRegex(TypeError, r"incorrect type for 'arg2' \(got 'str', expected 'int'\)"):
+        with self.assertRaisesWith(TypeError, "incorrect type for 'arg2' (got 'str', expected 'int')"):
             self.test_obj.basic_add2_kw('a string', 'bad string')
 
     def test_docval_add_sub(self):
@@ -272,7 +282,7 @@ class TestDocValidator(unittest.TestCase):
            argument is specified in both the parent and sublcass implementations,
            when using default values for keyword arguments
         """
-        with self.assertRaisesRegex(TypeError, "missing argument 'arg5'"):
+        with self.assertRaisesWith(TypeError, "missing argument 'arg5'"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string')
 
     def test_docval_add2_kw_kwsyntax_sub(self):
@@ -292,7 +302,7 @@ class TestDocValidator(unittest.TestCase):
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaisesRegex(TypeError, "missing argument 'arg5'"):
+        with self.assertRaisesWith(TypeError, "missing argument 'arg5'"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)
 
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
@@ -300,7 +310,7 @@ class TestDocValidator(unittest.TestCase):
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaisesRegex(TypeError, r"None is not allowed for 'arg5' \(expected 'float', not None\)"):
+        with self.assertRaisesWith(TypeError, "None is not allowed for 'arg5' (expected 'float', not None)"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)
 
     def test_only_kw_no_args(self):
@@ -362,28 +372,28 @@ class TestDocValidator(unittest.TestCase):
         """Test that docval raises an error if too many positional
            arguments are specified
         """
-        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
             self.test_obj.basic_add2_kw('a string', 100, True, 'extra')
 
     def test_extra_args_pos_kw(self):
         """Test that docval raises an error if too many positional
            arguments are specified and a keyword arg is specified
         """
-        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
             self.test_obj.basic_add2_kw('a string', 'extra', 100, arg3=True)
 
     def test_extra_kwargs_pos_kw(self):
         """Test that docval raises an error if extra keyword
            arguments are specified
         """
-        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
             self.test_obj.basic_add2_kw('a string', 100, extra='extra', arg3=True)
 
     def test_extra_args_pos_only_ok(self):
         """Test that docval raises an error if too many positional
            arguments are specified even if allow_extra is True
         """
-        with self.assertRaisesRegex(TypeError, r'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
             self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, 'extra', extra='extra')
 
     def test_extra_args_pos_kw_ok(self):
@@ -398,7 +408,7 @@ class TestDocValidator(unittest.TestCase):
            captures a positional argument before all positional
            arguments have been resolved
         """
-        with self.assertRaisesRegex(TypeError, r"got multiple values for argument 'arg1'"):
+        with self.assertRaisesWith(TypeError, "got multiple values for argument 'arg1'"):
             self.test_obj.basic_add2_kw('a string', 100, arg1='extra')
 
     def test_extra_args_dup_kw(self):
@@ -406,7 +416,7 @@ class TestDocValidator(unittest.TestCase):
            captures a positional argument before all positional
            arguments have been resolved and allow_extra is True
         """
-        with self.assertRaisesRegex(TypeError, r"got multiple values for argument 'arg1'"):
+        with self.assertRaisesWith(TypeError, "got multiple values for argument 'arg1'"):
             self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, arg1='extra')
 
     def test_unsupported_docval_term(self):
@@ -426,7 +436,7 @@ class TestDocValidator(unittest.TestCase):
                 {'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape2'})
         def method(self, **kwargs):
             pass
-        with self.assertRaisesRegex(ValueError, r"The following names are duplicated: \['arg1'\]"):
+        with self.assertRaisesWith(ValueError, "The following names are duplicated: ['arg1']"):
             method(self, arg1=[1])
 
     def test_get_docval_all(self):
@@ -452,19 +462,19 @@ class TestDocValidator(unittest.TestCase):
     def test_get_docval_missing_arg(self):
         """Test that get_docval throws error if the matching docval argument is not found
         """
-        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
+        with self.assertRaisesWith(ValueError, "Function basic_add2 does not have docval argument 'arg3'"):
             get_docval(self.test_obj.basic_add2, 'arg3')
 
     def test_get_docval_missing_args(self):
         """Test that get_docval throws error if the matching docval arguments is not found
         """
-        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
+        with self.assertRaisesWith(ValueError, "Function basic_add2 does not have docval argument 'arg3'"):
             get_docval(self.test_obj.basic_add2, 'arg3', 'arg4')
 
     def test_get_docval_missing_arg_of_many_ok(self):
         """Test that get_docval throws error if the matching docval arguments is not found
         """
-        with self.assertRaisesRegex(ValueError, r"Function basic_add2 does not have docval argument 'arg3'"):
+        with self.assertRaisesWith(ValueError, "Function basic_add2 does not have docval argument 'arg3'"):
             get_docval(self.test_obj.basic_add2, 'arg2', 'arg3')
 
     def test_get_docval_none(self):
@@ -476,7 +486,7 @@ class TestDocValidator(unittest.TestCase):
     def test_get_docval_none_arg(self):
         """Test that get_docval throws error if there is no docval and an argument name is passed
         """
-        with self.assertRaisesRegex(ValueError, r'Function __init__ has no docval arguments'):
+        with self.assertRaisesWith(ValueError, 'Function __init__ has no docval arguments'):
             get_docval(self.test_obj.__init__, 'arg3')
 
     def test_bool_type(self):
@@ -492,8 +502,21 @@ class TestDocValidator(unittest.TestCase):
         self.assertEqual(res, np.bool_(True))
         self.assertIsInstance(res, np.bool_)
 
+    def test_bool_string_type(self):
+        @docval({'name': 'arg1', 'type': 'bool', 'doc': 'this is a bool'})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
 
-class TestDocValidatorChain(unittest.TestCase):
+        res = method(self, arg1=True)
+        self.assertEqual(res, True)
+        self.assertIsInstance(res, bool)
+
+        res = method(self, arg1=np.bool_(True))
+        self.assertEqual(res, np.bool_(True))
+        self.assertIsInstance(res, np.bool_)
+
+
+class TestDocValidatorChain(TestCase):
 
     def setUp(self):
         self.obj1 = MyChainClass('base', [[1, 2], [3, 4], [5, 6]], [[10, 20]])
@@ -506,8 +529,8 @@ class TestDocValidatorChain(unittest.TestCase):
 
     def test_type_arg_wrong_type(self):
         """Test that passing an object for an argument that does not match a specific type raises an error"""
-        err_msg = r"incorrect type for 'arg1' \(got 'object', expected 'str or MyChainClass'\)"
-        with self.assertRaisesRegex(TypeError, err_msg):
+        err_msg = "incorrect type for 'arg1' (got 'object', expected 'str or MyChainClass')"
+        with self.assertRaisesWith(TypeError, err_msg):
             MyChainClass(object(), [[10, 20], [30, 40], [50, 60]], [[10, 20]])
 
     def test_shape_valid_unpack(self):
@@ -524,8 +547,8 @@ class TestDocValidatorChain(unittest.TestCase):
         # shape after an object is initialized
         obj2.arg3 = [10, 20, 30]
 
-        err_msg = r"incorrect shape for 'arg3' \(got '\(3,\)', expected '\(None, 2\)'\)"
-        with self.assertRaisesRegex(ValueError, err_msg):
+        err_msg = "incorrect shape for 'arg3' (got '(3,)', expected '(None, 2)')"
+        with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, obj2, [[100, 200]])
 
     def test_shape_none_unpack(self):
@@ -541,8 +564,8 @@ class TestDocValidatorChain(unittest.TestCase):
         obj2 = MyChainClass(self.obj1, [[10, 20], [30, 40], [50, 60]], [[10, 20]])
         obj2.arg3 = object()
 
-        err_msg = r"cannot check shape of object '<object object at .*>' for argument 'arg3' " \
-                  r"\(expected shape '\(None, 2\)'\)"
+        err_msg = (r"cannot check shape of object '<object object at .*>' for argument 'arg3' "
+                   r"\(expected shape '\(None, 2\)'\)")
         with self.assertRaisesRegex(ValueError, err_msg):
             MyChainClass(self.obj1, obj2, [[100, 200]])
 
@@ -561,8 +584,8 @@ class TestDocValidatorChain(unittest.TestCase):
         # shape after an object is initialized
         obj2.arg4 = [10, 20, 30]
 
-        err_msg = r"incorrect shape for 'arg4' \(got '\(3,\)', expected '\(None, 2\)'\)"
-        with self.assertRaisesRegex(ValueError, err_msg):
+        err_msg = "incorrect shape for 'arg4' (got '(3,)', expected '(None, 2)')"
+        with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
 
     def test_shape_none_unpack_default(self):
@@ -583,11 +606,7 @@ class TestDocValidatorChain(unittest.TestCase):
         # shape after an object is initialized
         obj2.arg4 = object()
 
-        err_msg = r"cannot check shape of object '<object object at .*>' for argument 'arg4' " \
-                  r"\(expected shape '\(None, 2\)'\)"
+        err_msg = (r"cannot check shape of object '<object object at .*>' for argument 'arg4' "
+                   r"\(expected shape '\(None, 2\)'\)")
         with self.assertRaisesRegex(ValueError, err_msg):
             MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
-
-
-if __name__ == '__main__':
-    unittest.main()

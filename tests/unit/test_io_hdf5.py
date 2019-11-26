@@ -1,4 +1,3 @@
-import unittest
 import os
 from h5py import File, Dataset, Reference
 from six import text_type
@@ -6,13 +5,14 @@ from six import text_type
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.utils import get_data_shape
+from hdmf.testing import TestCase
 
 from numbers import Number
 
 import json
 import numpy as np
 
-from tests.unit.test_utils import Foo
+from tests.unit.utils import Foo
 from tests.unit.test_io_hdf5_h5tools import _get_manager
 
 
@@ -37,7 +37,7 @@ class HDF5Encoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class GroupBuilderTestCase(unittest.TestCase):
+class GroupBuilderTestCase(TestCase):
     '''
     A TestCase class for comparing GroupBuilders.
     '''
@@ -229,7 +229,7 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io = HDF5IO(self.path, manager=self.manager, mode='a')
         io.write_builder(self.builder)
         builder = io.read_builder()
-        with self.assertRaisesRegex(ValueError, "cannot change written to not written"):
+        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
             builder.written = False
         io.close()
 

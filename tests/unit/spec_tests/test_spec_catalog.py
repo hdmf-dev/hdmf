@@ -1,10 +1,10 @@
-import unittest
-
-from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, SpecCatalog
 import copy
 
+from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, SpecCatalog
+from hdmf.testing import TestCase
 
-class SpecCatalogTest(unittest.TestCase):
+
+class SpecCatalogTest(TestCase):
 
     def setUp(self):
         self.catalog = SpecCatalog()
@@ -180,7 +180,3 @@ class SpecCatalogTest(unittest.TestCase):
         re = copy.deepcopy(self.catalog)
         self.assertTupleEqual(self.catalog.get_registered_types(),
                               re.get_registered_types())
-
-
-if __name__ == '__main__':
-    unittest.main()
