@@ -1,11 +1,11 @@
 from abc import ABCMeta, abstractmethod
+
 from ..build import BuildManager, GroupBuilder
 from ..utils import docval, getargs, popargs
 from ..container import Container
-from six import with_metaclass
 
 
-class HDMFIO(with_metaclass(ABCMeta, object)):
+class HDMFIO(object, metaclass=ABCMeta):
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": str,

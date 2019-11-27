@@ -5,7 +5,6 @@ from hdmf.build import ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
 from abc import ABCMeta
-from six import with_metaclass
 import unittest
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
@@ -112,7 +111,7 @@ class TestBuildManager(TestBase):
         self.assertIs(container1, container2)
 
 
-class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
+class TestNestedBase(TestBase, metaclass=ABCMeta):
 
     def setUp(self):
         super(TestNestedBase, self).setUp()

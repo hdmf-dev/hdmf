@@ -1,8 +1,8 @@
 from collections import OrderedDict
+import copy
 
 from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
-import copy
 
 
 class SpecCatalog(object):

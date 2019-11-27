@@ -1,16 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-
 import numpy as np
 from warnings import warn
-from six import with_metaclass
 import copy
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
 @docval_macro('array_data')
-class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
+class AbstractDataChunkIterator(metaclass=ABCMeta):
     """
     Abstract iterator class used to iterate over DataChunks.
 

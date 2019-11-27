@@ -9,10 +9,9 @@ from collections.abc import Iterable
 from datetime import datetime
 
 from ..utils import docval, getargs, popargs, call_docval_func, fmt_docval_args
-from six import with_metaclass
 
 
-class Builder(with_metaclass(ABCMeta, dict)):
+class Builder(dict, metaclass=ABCMeta):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
             {'name': 'parent', 'type': 'Builder', 'doc': 'the parent builder of this Builder', 'default': None},
@@ -84,6 +83,10 @@ class Builder(with_metaclass(ABCMeta, dict)):
                 self.source = p.source
         else:
             raise ValueError('Cannot reset parent once it is specified')
+
+    def __repr__(self):
+        ret = "%s %s %s" % (self.path, self.__class__.__name__, super(Builder, self).__repr__())
+        return ret
 
 
 class BaseBuilder(Builder):

@@ -9,7 +9,6 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
 
 from abc import ABCMeta
-from six import with_metaclass
 import numpy as np
 
 from tests.unit.utils import CORE_NAMESPACE
@@ -365,7 +364,7 @@ class TestDynamicContainer(TestCase):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
 
-class TestObjectMapper(with_metaclass(ABCMeta, TestCase)):
+class TestObjectMapper(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         self.setUpBarSpec()

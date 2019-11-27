@@ -1,9 +1,8 @@
-import abc
+from abc import ABCMeta
 from copy import deepcopy
 from collections import OrderedDict
 import re
 from warnings import warn
-from six import with_metaclass
 
 from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
 
@@ -68,7 +67,7 @@ class DtypeHelper():
         return ret
 
 
-class ConstructableDict(with_metaclass(abc.ABCMeta, dict)):
+class ConstructableDict(dict, metaclass=ABCMeta):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''

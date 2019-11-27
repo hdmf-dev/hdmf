@@ -1,14 +1,13 @@
 import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
-from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
 from .data_utils import DataIO
 from warnings import warn
 import h5py
 
 
-class AbstractContainer(with_metaclass(ExtenderMeta, object)):
+class AbstractContainer(metaclass=ExtenderMeta):
 
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure

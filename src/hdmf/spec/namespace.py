@@ -7,8 +7,6 @@ import string
 from warnings import warn
 from itertools import chain
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, raise_from
-
 
 from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 from .catalog import SpecCatalog
@@ -162,7 +160,7 @@ class SpecNamespace(dict):
         return cls(*args, **kwargs)
 
 
-class SpecReader(with_metaclass(ABCMeta, object)):
+class SpecReader(object, metaclass=ABCMeta):
 
     @docval({'name': 'source', 'type': str, 'doc': 'the source from which this reader reads from'})
     def __init__(self, **kwargs):
@@ -408,7 +406,7 @@ class NamespaceCatalog(object):
                 try:
                     inc_ns = self.get_namespace(s['namespace'])
                 except KeyError as e:
-                    raise_from(ValueError("Could not load namespace '%s'" % s['namespace']), e)
+                    raise ValueError("Could not load namespace '%s'" % s['namespace']) from e
                 if types_key in s:
                     types = s[types_key]
                 else:

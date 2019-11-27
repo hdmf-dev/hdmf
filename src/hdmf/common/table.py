@@ -1,10 +1,10 @@
 from h5py import Dataset
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
-from collections import OrderedDict
 
 from . import register_class
 
