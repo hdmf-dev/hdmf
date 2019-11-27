@@ -1,6 +1,6 @@
 import unittest
 
-from hdmf.spec import GroupSpec, DatasetSpec, CoordSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.spec import GroupSpec, DatasetSpec, CoordSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, DimSpec
 from hdmf.build import ObjectMapper, TypeMap, GroupBuilder, DatasetBuilder, BuildManager
 from hdmf import Container
 
@@ -40,8 +40,9 @@ class TestMapSimple(unittest.TestCase):
         """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
         of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
         """
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=(None,), dims=('x',))
-        dset2_spec = DatasetSpec(doc='an example dataset2', dtype='text', name='data2', shape=(None,))
+        dim_spec = DimSpec(name='x', required=True)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
+        dset2_spec = DatasetSpec(doc='an example dataset2', dtype='text', name='data2')
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[dset1_spec, dset2_spec])
@@ -49,15 +50,18 @@ class TestMapSimple(unittest.TestCase):
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         builder = type_map.build(bar_inst)
 
-        self.assertTupleEqual(builder.get('data1').dims, ('x', ))
+        self.assertTupleEqual(builder.get('data1').dims,
+                              ({'name': 'x', 'required': True, 'length': None, 'doc': None}, ))
+        self.assertTupleEqual(builder.get('data1').shape, (None, ))
 
     def test_build_dims_2d(self):
         """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
-        of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
+        of the AbstractContainer, with dimensions.
         """
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=(None, None),
-                                 dims=('x', 'y'))
-        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
+        x_spec = DimSpec(name='x', required=True, length=3)
+        y_spec = DimSpec(name='y', required=True, doc='test_doc')
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2')
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[dset1_spec, dset2_spec])
@@ -65,23 +69,11 @@ class TestMapSimple(unittest.TestCase):
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         builder = type_map.build(bar_inst)
 
-        self.assertTupleEqual(builder.get('data1').dims, ('x', 'y'))
+        self.assertTupleEqual(builder.get('data1').dims,
+                              ({'name': 'x', 'required': True, 'length': 3, 'doc': None},
+                               {'name': 'y', 'required': True, 'length': None, 'doc': 'test_doc'}))
+        self.assertTupleEqual(builder.get('data1').shape, (3, None))
 
-    def test_build_dims_1d_and_2d(self):
-        """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
-        of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
-        """
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=((None, ), (None, None)),
-                                 dims=(('x', ), ('x', 'y')))
-        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
-        bar_spec = GroupSpec('A test group specification with a data type',
-                             data_type_def='Bar',
-                             datasets=[dset1_spec, dset2_spec])
-        type_map = self.customSetUp(bar_spec)
-        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
-        builder = type_map.build(bar_inst)
-
-        self.assertTupleEqual(builder.get('data1').dims, ('x', 'y'))
 
 
 class TestMapSimpleOld(unittest.TestCase):

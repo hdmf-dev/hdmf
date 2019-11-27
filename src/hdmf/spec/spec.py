@@ -276,7 +276,7 @@ class DimSpec(ConstructableDict):
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this dimension'},
             {'name': 'required', 'type': bool, 'doc': 'Whether this dimension is required'},
-            {'name': 'length', 'type': int, 'doc': 'The length of this dimension'},
+            {'name': 'length', 'type': int, 'doc': 'The length of this dimension', 'default': None},
             {'name': 'doc', 'type': str, 'doc': 'Documentation for this dimension', 'default': None},
             {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
     def __init__(self, **kwargs):
@@ -285,8 +285,7 @@ class DimSpec(ConstructableDict):
         self['name'] = name
         self['required'] = required
         self['length'] = length
-        if doc is not None:
-            self['doc'] = doc
+        self['doc'] = doc
         self._parent = parent
 
     @property
@@ -328,17 +327,18 @@ class CoordSpec(ConstructableDict):
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
             {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
             {'name': 'coord_axes', 'type': str, 'doc': 'The axes of the dataset of this coordinate'},
-            {'name': 'axes', 'type': (list, tuple), 'doc': 'The axes of the dataset that this coordinate acts on'},
+            {'name': 'dims', 'type': (list, tuple),
+             'doc': 'The dims (axes indices) of the dataset that this coordinate acts on'},
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'},
             {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
     def __init__(self, **kwargs):
-        name, coord_dataset, coord_axes, axes, coord_type, parent = getargs('name', 'coord_dataset', 'coord_axes',
-                                                                            'axes', 'coord_type', 'parent', kwargs)
+        name, coord_dataset, coord_axes, dims, coord_type, parent = getargs('name', 'coord_dataset', 'coord_axes',
+                                                                            'dims', 'coord_type', 'parent', kwargs)
         super(CoordSpec, self).__init__()
         self['name'] = name
         self['coord_dataset'] = coord_dataset
         self['coord_axes'] = coord_axes
-        self['axes'] = axes
+        self['dims'] = dims
         self['coord_type'] = coord_type
         self._parent = parent
 
@@ -358,9 +358,9 @@ class CoordSpec(ConstructableDict):
         return self.get('coord_axes', None)
 
     @property
-    def axes(self):
-        """The axes of the dataset that this coordinate acts on"""
-        return self.get('axes', None)
+    def dims(self):
+        """The dims (axes indices) of the dataset that this coordinate acts on"""
+        return self.get('dims', None)
 
     @property
     def coord_type(self):
@@ -729,6 +729,18 @@ class DatasetSpec(BaseStorageSpec):
     def __init__(self, **kwargs):
         doc, shape, dims, coords, dtype, default_value = popargs('doc', 'shape', 'dims', 'coords', 'dtype',
                                                                  'default_value', kwargs)
+        if dims and isinstance(dims[0], dict):
+            if shape is not None:
+                msg = 'Cannot specify dictionary dims with shape'
+                raise ValueError(msg)
+            shape = [None] * len(dims)
+            for _i, dim in enumerate(dims):
+                if isinstance(dim, DimSpec):
+                    shape[_i] = dim.length  # TODO is this needed?
+                else:
+                    msg = 'Must use DimSpec if defining dictionary dims - found %s at element %d' % (type(dim), _i)
+                    raise ValueError(msg)
+
         if shape is not None:
             self['shape'] = shape
         if dims is not None:

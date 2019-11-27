@@ -749,7 +749,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     else:
                         raise Exception('TODO')
 
-
     def __add_groups(self, builder, groups, container, build_manager, source):
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:

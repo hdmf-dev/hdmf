@@ -2,6 +2,7 @@ from .spec import NAME_WILDCARD
 from .spec import Spec
 from .spec import AttributeSpec
 from .spec import CoordSpec
+from .spec import DimSpec
 from .spec import DtypeSpec
 from .spec import DtypeHelper
 from .spec import RefSpec
