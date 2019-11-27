@@ -544,11 +544,11 @@ class ShapeValidatorResult:
                 raise ValueError("Illegal error type. Error must be one of ShapeValidatorResult.SHAPE_ERROR: %s"
                                  % str(self.SHAPE_ERROR))
             else:
-                super(ShapeValidatorResult, self).__setattr__(key, value)
+                super().__setattr__(key, value)
         elif key in ['shape1', 'shape2', 'axes1', 'axes2', 'ignored', 'unmatched']:  # Make sure we sore tuples
-            super(ShapeValidatorResult, self).__setattr__(key, tuple(value))
+            super().__setattr__(key, tuple(value))
         else:
-            super(ShapeValidatorResult, self).__setattr__(key, value)
+            super().__setattr__(key, value)
 
     def __getattr__(self, item):
         """

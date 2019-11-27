@@ -735,7 +735,7 @@ class LabelledDict(dict):
                     raise KeyError(val)
             # if key == self.key_attr, then call __getitem__ normally on val
             key = val
-        return super(LabelledDict, self).__getitem__(key)
+        return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         """Set a value in the LabelledDict with the given key. The key must equal value.key_attr.
@@ -745,7 +745,7 @@ class LabelledDict(dict):
         self.__check_value(value)
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
-        super(LabelledDict, self).__setitem__(key, value)
+        super().__setitem__(key, value)
 
     def add(self, value):
         """Add a value to the dict with the key value.key_attr.

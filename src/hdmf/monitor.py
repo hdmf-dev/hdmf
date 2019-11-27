@@ -60,7 +60,7 @@ class DataChunkProcessor(AbstractDataChunkIterator, metaclass=ABCMeta):
 class NumSampleCounter(DataChunkProcessor):
 
     def __init__(self, **kwargs):
-        call_docval_func(super(NumSampleCounter, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__sample_count = 0
 
     @docval({'name': 'data_chunk', 'type': DataChunk, 'doc': 'a chunk to process'})

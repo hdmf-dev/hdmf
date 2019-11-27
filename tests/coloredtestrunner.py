@@ -204,7 +204,7 @@ class ColoredTestResult(unittest.TextTestResult):
     stderr_redirector = OutputRedirector(sys.stderr)
 
     def __init__(self, stream, descriptions, verbosity=1):
-        super(ColoredTestResult, self).__init__(stream, descriptions, verbosity)
+        super().__init__(stream, descriptions, verbosity)
         self.stdout0 = None
         self.stderr0 = None
         self.success_count = 0
@@ -226,7 +226,7 @@ class ColoredTestResult(unittest.TextTestResult):
         self.result = []
 
     def startTest(self, test):
-        super(ColoredTestResult, self).startTest(test)
+        super().startTest(test)
         # just one buffer for both stdout and stderr
         self.outputBuffer = StringIO()
         self.stdout_redirector.fp = self.outputBuffer
@@ -256,7 +256,7 @@ class ColoredTestResult(unittest.TextTestResult):
 
     def addSuccess(self, test):
         self.success_count += 1
-        super(ColoredTestResult, self).addSuccess(test)
+        super().addSuccess(test)
         output = self.complete_output()
         self.result.append((0, test, output, ''))
         sys.stdout.write('.')
@@ -269,7 +269,7 @@ class ColoredTestResult(unittest.TextTestResult):
 
     def addError(self, test, err):
         self.error_count += 1
-        super(ColoredTestResult, self).addError(test, err)
+        super().addError(test, err)
         output = self.complete_output()
         _, _exc_str = self.errors[-1]
         self.result.append((2, test, output, _exc_str))
@@ -278,7 +278,7 @@ class ColoredTestResult(unittest.TextTestResult):
 
     def addFailure(self, test, err):
         self.failure_count += 1
-        super(ColoredTestResult, self).addFailure(test, err)
+        super().addFailure(test, err)
         output = self.complete_output()
         _, _exc_str = self.failures[-1]
         self.result.append((1, test, output, _exc_str))
@@ -294,7 +294,7 @@ class ColoredTestResult(unittest.TextTestResult):
 
     def addSkip(self, test, reason):
         self.skip_count += 1
-        super(ColoredTestResult, self).addSkip(test, reason)
+        super().addSkip(test, reason)
         self.complete_output()
         sys.stdout.write('s')
         sys.stdout.flush()

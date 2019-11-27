@@ -40,7 +40,7 @@ class SpecNamespace(dict):
     def __init__(self, **kwargs):
         doc, full_name, name, version, date, author, contact, schema, catalog = \
             popargs('doc', 'full_name', 'name', 'version', 'date', 'author', 'contact', 'schema', 'catalog', kwargs)
-        super(SpecNamespace, self).__init__()
+        super().__init__()
         self['doc'] = doc
         self['schema'] = schema
         if any(c in string.whitespace for c in name):
@@ -184,7 +184,7 @@ class YAMLSpecReader(SpecReader):
     @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
     def __init__(self, **kwargs):
         super_kwargs = {'source': kwargs['indir']}
-        call_docval_func(super(YAMLSpecReader, self).__init__, super_kwargs)
+        call_docval_func(super().__init__, super_kwargs)
 
     def read_namespace(self, namespace_path):
         namespaces = None

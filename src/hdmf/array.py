@@ -166,7 +166,7 @@ class SortedArray(AbstractSortedArray):
     '''
 
     def __init__(self, array):
-        super(SortedArray, self).__init__(array)
+        super().__init__(array)
 
     def find_point(self, val):
         return np.searchsorted(self.data, val)

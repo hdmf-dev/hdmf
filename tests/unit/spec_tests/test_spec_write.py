@@ -70,7 +70,7 @@ class TestNamespaceBuilder(TestSpec):
     NS_NAME = 'test_ns'
 
     def setUp(self):
-        super(TestNamespaceBuilder, self).setUp()
+        super().setUp()
         for data_type in self.data_types:
             self.ns_builder.add_spec(source=self.ext_source_path, spec=data_type)
         self.ns_builder.add_source(source=self.ext_source_path,
@@ -141,7 +141,7 @@ class TestNamespaceBuilder(TestSpec):
 class TestYAMLSpecWrite(TestSpec):
 
     def setUp(self):
-        super(TestYAMLSpecWrite, self).setUp()
+        super().setUp()
         for data_type in self.data_types:
             self.ns_builder.add_spec(source=self.ext_source_path, spec=data_type)
         self.ns_builder.add_source(source=self.ext_source_path,

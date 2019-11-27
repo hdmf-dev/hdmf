@@ -102,7 +102,7 @@ class Spec(ConstructableDict):
             {'name': 'parent', 'type': 'Spec', 'doc': 'the parent of this spec', 'default': None})
     def __init__(self, **kwargs):
         name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
-        super(Spec, self).__init__()
+        super().__init__()
         if name is not None:
             self['name'] = name
         if doc is not None:
@@ -207,7 +207,7 @@ class AttributeSpec(Spec):
     def __init__(self, **kwargs):
         name, dtype, doc, dims, shape, required, parent, value, default_value = getargs(
             'name', 'dtype', 'doc', 'dims', 'shape', 'required', 'parent', 'value', 'default_value', kwargs)
-        super(AttributeSpec, self).__init__(doc, name=name, required=required, parent=parent)
+        super().__init__(doc, name=name, required=required, parent=parent)
         if isinstance(dtype, RefSpec):
             self['dtype'] = dtype
         else:
@@ -305,7 +305,7 @@ class BaseStorageSpec(Spec):
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with wildcard name "
                              "without specifying 'data_type_def' and/or 'data_type_inc'")
-        super(BaseStorageSpec, self).__init__(doc, name=name, parent=parent)
+        super().__init__(doc, name=name, parent=parent)
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
@@ -645,7 +645,7 @@ class DatasetSpec(BaseStorageSpec):
                 if self['dtype'] not in DtypeHelper.valid_primary_dtypes:
                     raise ValueError('dtype %s not a valid primary data type %s' %
                                      (self['dtype'], str(DtypeHelper.valid_primary_dtypes)))
-        super(DatasetSpec, self).__init__(doc, **kwargs)
+        super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value
         if self.name is not None:
@@ -702,7 +702,7 @@ class DatasetSpec(BaseStorageSpec):
                         raise ValueError(msg)
                 order[name] = dt
             self['dtype'] = list(order.values())
-        super(DatasetSpec, self).resolve_spec(inc_spec)
+        super().resolve_spec(inc_spec)
 
     @property
     def dims(self):
@@ -762,7 +762,7 @@ class LinkSpec(Spec):
     @docval(*_link_args)
     def __init__(self, **kwargs):
         doc, target_type, name, quantity = popargs('doc', _target_type_key, 'name', 'quantity', kwargs)
-        super(LinkSpec, self).__init__(doc, name, **kwargs)
+        super().__init__(doc, name, **kwargs)
         self[_target_type_key] = target_type
         if quantity != 1:
             self['quantity'] = quantity
@@ -831,7 +831,7 @@ class GroupSpec(BaseStorageSpec):
         self.__overridden_links = set()
         self.__new_groups = set(self.__groups.keys())
         self.__overridden_groups = set()
-        super(GroupSpec, self).__init__(doc, **kwargs)
+        super().__init__(doc, **kwargs)
 
     @docval({'name': 'inc_spec', 'type': 'GroupSpec', 'doc': 'the data type this specification represents'})
     def resolve_spec(self, **kwargs):
@@ -889,7 +889,7 @@ class GroupSpec(BaseStorageSpec):
                     self.set_group(dt_spec)
                 else:
                     self.set_link(dt_spec)
-        super(GroupSpec, self).resolve_spec(inc_spec)
+        super().resolve_spec(inc_spec)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
             raises="ValueError, if 'name' is not part of this spec")
@@ -967,7 +967,7 @@ class GroupSpec(BaseStorageSpec):
         elif spec in self.__data_types:
             return self.is_inherited_type(spec)
         else:
-            if super(GroupSpec, self).is_inherited_spec(spec):
+            if super().is_inherited_spec(spec):
                 return True
             else:
                 for s in self.__datasets:
@@ -1004,7 +1004,7 @@ class GroupSpec(BaseStorageSpec):
         elif spec in self.__data_types:
             return self.is_overridden_type(spec)
         else:
-            if super(GroupSpec, self).is_overridden_spec(spec):  # check if overridden attribute
+            if super().is_overridden_spec(spec):  # check if overridden attribute
                 return True
             else:
                 for s in self.__datasets:

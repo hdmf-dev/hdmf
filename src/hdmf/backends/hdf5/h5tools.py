@@ -65,7 +65,7 @@ class HDF5IO(HDMFIO):
         self.__mode = mode
         self.__path = path
         self.__file = file_obj
-        super(HDF5IO, self).__init__(manager, source=path)
+        super().__init__(manager, source=path)
         self.__built = dict()       # keep track of which files have been read
         self.__read = dict()        # keep track of each builder for each dataset/group/link
         self.__ref_queue = deque()  # a queue of the references that need to be added
@@ -266,7 +266,7 @@ class HDF5IO(HDMFIO):
                                        % (self.__path, self.__mode))
 
         cache_spec = popargs('cache_spec', kwargs)
-        call_docval_func(super(HDF5IO, self).write, kwargs)
+        call_docval_func(super().write, kwargs)
         if cache_spec:
             ref = self.__file.attrs.get(SPEC_LOC_ATTR)
             spec_group = None
@@ -293,7 +293,7 @@ class HDF5IO(HDMFIO):
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
                                        % (self.__path, self.__mode))
         try:
-            return call_docval_func(super(HDF5IO, self).read, kwargs)
+            return call_docval_func(super().read, kwargs)
         except UnsupportedOperation as e:
             if str(e) == 'Cannot build data. There are no values.':
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."

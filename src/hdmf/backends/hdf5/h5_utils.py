@@ -21,7 +21,7 @@ class H5Dataset(HDMFDataset):
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         self.__io = popargs('io', kwargs)
-        call_docval_func(super(H5Dataset, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
     @property
     def io(self):
@@ -102,7 +102,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         types = popargs('types', kwargs)
-        call_docval_func(super(AbstractH5TableDataset, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is RegionReference:
@@ -139,7 +139,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
         return self.__dtype
 
     def __getitem__(self, arg):
-        rows = copy(super(AbstractH5TableDataset, self).__getitem__(arg))
+        rows = copy(super().__getitem__(arg))
         if np.issubdtype(type(arg), np.integer):
             self.__swap_refs(rows)
         else:
@@ -166,7 +166,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
 class AbstractH5ReferenceDataset(DatasetOfReferences):
 
     def __getitem__(self, arg):
-        ref = super(AbstractH5ReferenceDataset, self).__getitem__(arg)
+        ref = super().__getitem__(arg)
         if isinstance(ref, np.ndarray):
             return [self.get_object(self.dataset.file[x]) for x in ref]
         else:
@@ -180,7 +180,7 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
 class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
 
     def __getitem__(self, arg):
-        obj = super(AbstractH5RegionDataset, self).__getitem__(arg)
+        obj = super().__getitem__(arg)
         ref = self.dataset[arg]
         return obj[ref]
 
@@ -289,7 +289,7 @@ class H5SpecReader(SpecReader):
     def __init__(self, **kwargs):
         self.__group = getargs('group', kwargs)
         super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
-        call_docval_func(super(H5SpecReader, self).__init__, super_kwargs)
+        call_docval_func(super().__init__, super_kwargs)
         self.__cache = None
 
     def __read(self, path):
@@ -395,7 +395,7 @@ class H5DataIO(DataIO):
             self.__link_data = False
             warnings.warn('link_data parameter in H5DataIO will be ignored')
         # Call the super constructor and consume the data parameter
-        call_docval_func(super(H5DataIO, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
         self.__iosettings = {k: v for k, v in zip(ioarg_names, ioarg_values) if v is not None}
         # Set io_properties for DataChunkIterators
@@ -497,4 +497,4 @@ class H5DataIO(DataIO):
     def valid(self):
         if isinstance(self.data, Dataset) and not self.data.id.valid:
             return False
-        return super(H5DataIO, self).valid
+        return super().valid
