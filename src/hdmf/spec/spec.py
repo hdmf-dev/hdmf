@@ -136,7 +136,7 @@ class Spec(ConstructableDict):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(Spec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'doc' not in ret:
             msg = "'doc' missing: %s" % str(spec_dict)
             raise ValueError(msg)
@@ -267,7 +267,7 @@ class AttributeSpec(Spec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(AttributeSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'dtype' in ret:
             if isinstance(ret['dtype'], dict):
                 ret['dtype'] = RefSpec.build_spec(ret['dtype'])
@@ -516,7 +516,7 @@ class BaseStorageSpec(Spec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(BaseStorageSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'attributes' in ret:
             ret['attributes'] = [AttributeSpec.build_spec(sub_spec) for sub_spec in ret['attributes']]
         return ret
@@ -585,7 +585,7 @@ class DtypeSpec(ConstructableDict):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(DtypeSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if isinstance(ret['dtype'], list):
             ret['dtype'] = list(map(cls.build_const_args, ret['dtype']))
         elif isinstance(ret['dtype'], dict):
@@ -740,7 +740,7 @@ class DatasetSpec(BaseStorageSpec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(DatasetSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'dtype' in ret:
             if isinstance(ret['dtype'], list):
                 ret['dtype'] = list(map(cls.dtype_spec_cls().build_spec, ret['dtype']))
@@ -1210,7 +1210,7 @@ class GroupSpec(BaseStorageSpec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(GroupSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'datasets' in ret:
             ret['datasets'] = list(map(cls.dataset_spec_cls().build_spec, ret['datasets']))
         if 'groups' in ret:
