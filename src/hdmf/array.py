@@ -2,7 +2,7 @@ import numpy as np
 from abc import abstractmethod, ABCMeta
 
 
-class Array(object):
+class Array:
 
     def __init__(self, data):
         self.__data = data

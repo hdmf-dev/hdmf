@@ -5,7 +5,7 @@ from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
 
 
-class SpecCatalog(object):
+class SpecCatalog:
 
     def __init__(self):
         '''

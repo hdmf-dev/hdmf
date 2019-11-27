@@ -160,7 +160,7 @@ class SpecNamespace(dict):
         return cls(*args, **kwargs)
 
 
-class SpecReader(object, metaclass=ABCMeta):
+class SpecReader(metaclass=ABCMeta):
 
     @docval({'name': 'source', 'type': str, 'doc': 'the source from which this reader reads from'})
     def __init__(self, **kwargs):
@@ -209,7 +209,7 @@ class YAMLSpecReader(SpecReader):
         return os.path.join(self.source, spec_path)
 
 
-class NamespaceCatalog(object):
+class NamespaceCatalog:
 
     @docval({'name': 'group_spec_cls', 'type': type,
              'doc': 'the class to use for group specifications', 'default': GroupSpec},

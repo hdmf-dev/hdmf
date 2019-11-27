@@ -16,7 +16,7 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, Refere
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
 
 
-class Proxy(object):
+class Proxy:
     """
     A temporary object to represent a Container. This gets used when resolving the true location of a
     Container's parent.
@@ -87,7 +87,7 @@ class Proxy(object):
         return str(ret)
 
 
-class BuildManager(object):
+class BuildManager:
     """
     A class for managing builds of AbstractContainers
     """
@@ -343,7 +343,7 @@ def _ascii(s):
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
-class ObjectMapper(object, metaclass=ExtenderMeta):
+class ObjectMapper(metaclass=ExtenderMeta):
     '''A class for mapping between Spec objects and AbstractContainer attributes
 
     '''
@@ -1245,7 +1245,7 @@ class ObjectMapper(object, metaclass=ExtenderMeta):
         return ret
 
 
-class TypeSource(object):
+class TypeSource:
     '''A class to indicate the source of a data_type in a namespace.
 
     This class should only be used by TypeMap
@@ -1267,7 +1267,7 @@ class TypeSource(object):
         return self.__data_type
 
 
-class TypeMap(object):
+class TypeMap:
     ''' A class to maintain the map between ObjectMappers and AbstractContainer classes
     '''
 

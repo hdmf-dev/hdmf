@@ -141,7 +141,7 @@ def check_shape(expected, received):
     return ret
 
 
-class ValidatorMap(object):
+class ValidatorMap:
     """A class for keeping track of Validator objects for all data types in a namespace"""
 
     @docval({'name': 'namespace', 'type': SpecNamespace, 'doc': 'the namespace to builder map for'})
@@ -234,7 +234,7 @@ class ValidatorMap(object):
         return validator.validate(builder)
 
 
-class Validator(object, metaclass=ABCMeta):
+class Validator(metaclass=ABCMeta):
     '''A base class for classes that will be used to validate against Spec subclasses'''
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to use to validate'},

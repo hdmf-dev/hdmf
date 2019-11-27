@@ -5,7 +5,7 @@ from ..utils import docval, getargs, popargs
 from ..container import Container
 
 
-class HDMFIO(object, metaclass=ABCMeta):
+class HDMFIO(metaclass=ABCMeta):
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": str,
