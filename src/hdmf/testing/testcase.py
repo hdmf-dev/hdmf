@@ -58,6 +58,8 @@ class TestCase(unittest.TestCase):
             self.assertContainerEqual(f1, f2)
         elif isinstance(f1, Data):
             self._assert_data_equal(f1, f2)
+        elif isinstance(f1, (float, np.floating)):
+            np.testing.assert_equal(f1, f2)
         else:
             self.assertEqual(f1, f2)
 
@@ -72,7 +74,10 @@ class TestCase(unittest.TestCase):
         if isinstance(arr2, (h5py.Dataset, HDMFDataset)):
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
-            self.assertEqual(arr1, arr2)  # scalar
+            if isinstance(arr1, (float, np.floating)):
+                np.testing.assert_equal(arr1, arr2)
+            else:
+                self.assertEqual(arr1, arr2)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2))
             if isinstance(arr1, np.ndarray) and len(arr1.dtype) > 1:  # compound type
