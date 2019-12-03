@@ -232,7 +232,8 @@ class ValidatorMap(object):
         builder = getargs('builder', kwargs)
         dt = builder.attributes.get(self.__type_key)
         if dt is None:
-            msg = "builder must have data type defined with attribute '%s'" % self.__type_key
+            msg = ("builder (name: '%s') must have data type defined with attribute '%s'"
+                   % (builder.name, self.__type_key))
             raise ValueError(msg)
         validator = self.get_validator(dt)
         return validator.validate(builder)
