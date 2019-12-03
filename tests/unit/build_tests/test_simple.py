@@ -37,8 +37,9 @@ class TestMapSimple(unittest.TestCase):
         return type_map
 
     def test_build_dims_1d(self):
-        """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
-        of the AbstractContainer, with dimensions. Start with the simple use case of specs for 1-D arrays.
+        """
+        Test that given a Spec for an AbstractContainer class (Bar) that includes a DimSpec, the type map can create
+        a builder from an instance of the AbstractContainer, with dimensions. Start with the simple case of 1-D arrays.
         """
         dim_spec = DimSpec(name='x', required=True)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
@@ -55,8 +56,9 @@ class TestMapSimple(unittest.TestCase):
         self.assertTupleEqual(builder.get('data1').shape, (None, ))
 
     def test_build_dims_2d(self):
-        """Test that given a Spec for an AbstractContainer class, the type map can create a builder from an instance
-        of the AbstractContainer, with dimensions.
+        """
+        Test that given a Spec for an AbstractContainer class (Bar) that includes two DimSpecs, the type map can create
+        a builder from an instance of the AbstractContainer, with dimensions. Here, with a 2-D dataset with dimensions.
         """
         x_spec = DimSpec(name='x', required=True, length=3)
         y_spec = DimSpec(name='y', required=True, doc='test_doc')
