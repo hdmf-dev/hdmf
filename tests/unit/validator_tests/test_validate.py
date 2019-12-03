@@ -1,4 +1,3 @@
-import unittest
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from six import text_type as text
@@ -9,11 +8,12 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNa
 from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import *  # noqa: F403
+from hdmf.testing import TestCase
 
 CORE_NAMESPACE = 'test_core'
 
 
-class ValidatorTestBase(with_metaclass(ABCMeta, unittest.TestCase)):
+class ValidatorTestBase(with_metaclass(ABCMeta, TestCase)):
 
     def setUp(self):
         spec_catalog = SpecCatalog()
@@ -41,7 +41,7 @@ class TestEmptySpec(ValidatorTestBase):
 
     def test_invalid_missing_req_type(self):
         builder = GroupBuilder('my_bar')
-        err_msg = "builder must have data type defined with attribute '[A-Za-z_]+'"
+        err_msg = r"builder must have data type defined with attribute '[A-Za-z_]+'"
         with self.assertRaisesRegex(ValueError, err_msg):
             self.vmap.validate(builder)
 

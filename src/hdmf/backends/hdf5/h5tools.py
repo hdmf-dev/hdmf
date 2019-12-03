@@ -7,8 +7,8 @@ from six import raise_from, text_type, string_types, binary_type
 import warnings
 from ...container import Container
 
-from ...utils import docval, getargs, popargs, call_docval_func
-from ...data_utils import AbstractDataChunkIterator, get_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec
@@ -18,6 +18,7 @@ from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, Builder
                       H5DataIO, H5SpecReader, H5SpecWriter
 
 from ..io import HDMFIO, UnsupportedOperation
+from ..warnings import BrokenLinkWarning
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -396,7 +397,7 @@ class HDF5IO(HDMFIO):
                         self.__set_built(sub_h5obj.file.filename, sub_h5obj.name, builder)
                     obj_type[builder.name] = builder
             else:
-                warnings.warn('Broken Link: %s' % os.path.join(h5obj.name, k))
+                warnings.warn(os.path.join(h5obj.name, k), BrokenLinkWarning)
                 kwargs['datasets'][k] = None
                 continue
         kwargs['source'] = h5obj.file.filename
@@ -1028,7 +1029,7 @@ class HDF5IO(HDMFIO):
         elif isinstance(dtype, np.dtype):
             data_shape = (len(data),)
         else:
-            data_shape = get_shape(data)
+            data_shape = get_data_shape(data)
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)

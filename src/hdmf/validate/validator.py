@@ -4,8 +4,7 @@ from copy import copy
 import re
 from itertools import chain
 
-from ..utils import docval, getargs, call_docval_func, pystr
-from ..data_utils import get_shape
+from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec
 from ..spec.spec import BaseStorageSpec, DtypeHelper
@@ -319,7 +318,7 @@ class AttributeValidator(Validator):
                 dtype = get_type(value)
                 if not check_type(spec.dtype, dtype):
                     ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
-            shape = get_shape(value)
+            shape = get_data_shape(value)
             if not check_shape(spec.shape, shape):
                 ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
         return ret
@@ -375,7 +374,7 @@ class DatasetValidator(BaseStorageValidator):
             if not check_type(self.spec.dtype, dtype):
                 ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
                                       location=self.get_builder_loc(builder)))
-        shape = get_shape(data)
+        shape = get_data_shape(data)
         if not check_shape(self.spec.shape, shape):
             if shape is None:
                 ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(data),

@@ -347,4 +347,6 @@ workflows:
             branches:
               ignore: /.*/
       - pynwb-dev-python37:
-          <<: *no_filters
+          filters:
+            branches:
+              ignore: dev

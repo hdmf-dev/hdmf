@@ -405,7 +405,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def get_carg_spec(self, **kwargs):
         """ Return the Spec for a given constructor argument """
         carg_name = getargs('carg_name', kwargs)
-        return self.__attr2spec.get(carg_name)
+        return self.__carg2spec.get(carg_name)
 
     @docval({"name": "const_arg", "type": str, "doc": "the name of the constructor argument to map"},
             {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})

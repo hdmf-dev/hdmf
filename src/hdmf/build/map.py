@@ -3,7 +3,7 @@ from collections import OrderedDict
 from copy import copy, deepcopy
 from datetime import datetime
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, call_docval_func
+from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
 from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader
 from ..spec.spec import BaseStorageSpec
@@ -492,15 +492,16 @@ class TypeMap:
 
         # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
         # be passed for a name positional or keyword arg
-        if name is not None:
-            docval_args = list(filter(lambda x: x['name'] != 'name', docval_args))
+        if name is not None:  # fixed name is specified in spec, remove it from docval args
+            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
+            if name is not None:
+                kwargs.update(name=name)
             pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            if name is not None:  # fixed name is provided by spec
-                pkwargs.update(name=name)
-            base.__init__(self, *pargs, **pkwargs)
+            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+
             for f in new_args:
                 arg_val = kwargs.get(f, None)
                 if arg_val is not None:
