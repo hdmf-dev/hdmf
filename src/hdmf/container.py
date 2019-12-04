@@ -240,7 +240,7 @@ class Container(AbstractContainer):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
-        call_docval_func(super(Container, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         # dict of dimension names, where key is name of data array and value is a list of names, one per axis
         self.__dims = dict()
         # dict of dimension coordinates, where key is name of data array and value is a list of label-dataset pairs
@@ -528,7 +528,7 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
-        call_docval_func(super(Data, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__data = getargs('data', kwargs)
 
     @property

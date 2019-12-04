@@ -68,7 +68,7 @@ class DtypeError(Error):
             expected = DtypeHelper.simplify_cpd_type(expected)
         reason = "incorrect type - expected '%s', got '%s'" % (expected, received)
         loc = getargs('location', kwargs)
-        super(DtypeError, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)
 
 
 class MissingError(Error):
@@ -78,7 +78,7 @@ class MissingError(Error):
         name = getargs('name', kwargs)
         reason = "argument missing"
         loc = getargs('location', kwargs)
-        super(MissingError, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)
 
 
 class MissingDataType(Error):
@@ -90,7 +90,7 @@ class MissingDataType(Error):
         self.__data_type = data_type
         reason = "missing data type %s" % self.__data_type
         loc = getargs('location', kwargs)
-        super(MissingDataType, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)
 
     @property
     def data_type(self):
@@ -109,7 +109,7 @@ class ExpectedArrayError(Error):
         received = getargs('received', kwargs)
         reason = "incorrect shape - expected an array of shape '%s', got non-array data '%s'" % (expected, received)
         loc = getargs('location', kwargs)
-        super(ExpectedArrayError, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)
 
 
 class ShapeError(Error):
@@ -124,7 +124,7 @@ class ShapeError(Error):
         received = getargs('received', kwargs)
         reason = "incorrect shape - expected '%s', got '%s'" % (expected, received)
         loc = getargs('location', kwargs)
-        super(ShapeError, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)
 
 
 class IllegalLinkError(Error):
@@ -139,7 +139,7 @@ class IllegalLinkError(Error):
         name = getargs('name', kwargs)
         reason = "illegal use of link"
         loc = getargs('location', kwargs)
-        super(IllegalLinkError, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)
 
 
 class IncorrectDataType(Error):
@@ -157,4 +157,4 @@ class IncorrectDataType(Error):
         received = getargs('received', kwargs)
         reason = "incorrect data_type - expected '%s', got '%s'" % (expected, received)
         loc = getargs('location', kwargs)
-        super(DtypeError, self).__init__(name, reason, location=loc)
+        super().__init__(name, reason, location=loc)

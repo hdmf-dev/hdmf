@@ -139,7 +139,7 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'})
     def __init__(self, **kwargs):
-        super(HDMFDataset, self).__init__()
+        super().__init__()
         self.__dataset = getargs('dataset', kwargs)
 
     @property

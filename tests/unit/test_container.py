@@ -126,7 +126,7 @@ class Bar(Container):
     __fields__ = ('data1', 'data2', 'data3')
 
     def __init__(self, name, data1, data2, data3=None):
-        super(Bar, self).__init__(name=name)
+        super().__init__(name=name)
         self.data1 = data1
         self.data2 = data2
         self.data3 = data3
@@ -134,7 +134,7 @@ class Bar(Container):
 
 class TestContainerDims(TestCase):
 
-    def test_get_dims(self):
+    def test_get_no_dims(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         self.assertDictEqual(obj1.dims, {})
 

@@ -14,7 +14,7 @@ class Foo(Container):
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14})
     def __init__(self, **kwargs):
         name, my_data, attr1, attr2, attr3 = getargs('name', 'my_data', 'attr1', 'attr2', 'attr3', kwargs)
-        super(Foo, self).__init__(name=name)
+        super().__init__(name=name)
         self.__data = my_data
         self.__attr1 = attr1
         self.__attr2 = attr2
@@ -54,7 +54,7 @@ class FooBucket(Container):
             {'name': 'foos', 'type': list, 'doc': 'the Foo objects in this bucket', 'default': list()})
     def __init__(self, **kwargs):
         name, foos = getargs('name', 'foos', kwargs)
-        super(FooBucket, self).__init__(name=name)
+        super().__init__(name=name)
         self.__foos = foos
         for f in self.__foos:
             f.parent = self

@@ -58,7 +58,7 @@ class ListSlicer(RegionSlicer):
             {'name': 'region', 'type': (list, tuple, slice), 'doc': 'the region reference to use to slice'})
     def __init__(self, **kwargs):
         self.__dataset, self.__region = getargs('dataset', 'region', kwargs)
-        super(ListSlicer, self).__init__(self.__dataset, self.__region)
+        super().__init__(self.__dataset, self.__region)
         if isinstance(self.__region, slice):
             self.__getter = itemgetter(self.__region)
             self.__len = len(range(*self.__region.indices(len(self.__dataset))))

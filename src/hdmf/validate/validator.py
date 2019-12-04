@@ -291,7 +291,7 @@ class AttributeValidator(Validator):
     @docval({'name': 'spec', 'type': AttributeSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super(AttributeValidator, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
     @docval({'name': 'value', 'type': None, 'doc': 'the value to validate'},
             returns='a list of Errors', rtype=list)
@@ -330,7 +330,7 @@ class BaseStorageValidator(Validator):
     @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super(BaseStorageValidator, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__attribute_validators = dict()
         for attr in self.spec.attributes:
             self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
@@ -361,13 +361,13 @@ class DatasetValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': DatasetSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super(DatasetValidator, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
-        ret = super(DatasetValidator, self).validate(builder)
+        ret = super().validate(builder)
         data = builder.data
         if self.spec.dtype is not None:
             dtype = get_type(data)
@@ -391,7 +391,7 @@ class GroupValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': GroupSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super(GroupValidator, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__include_dts = dict()
         self.__dataset_validators = dict()
         self.__group_validators = dict()
@@ -412,7 +412,7 @@ class GroupValidator(BaseStorageValidator):
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
-        ret = super(GroupValidator, self).validate(builder)
+        ret = super().validate(builder)
         # get the data_types
         data_types = dict()
         for key, value in builder.items():
