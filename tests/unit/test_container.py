@@ -127,6 +127,12 @@ class TestData(TestCase):
         data_obj = Data('my_data', 'foobar')
         self.assertEqual(data_obj.data, 'foobar')
 
+    def test_constructor_scalar(self):
+        """Test that __bool__ method works correctly on data with len
+        """
+        data_obj = Data('my_data', 'foobar')
+        self.assertEqual(data_obj.data, 'foobar')
+
     def test_bool_true(self):
         """Test that __bool__ method works correctly on data with len
         """
