@@ -215,8 +215,8 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
 
         if self.parent is not None:
             if isinstance(self.parent, AbstractContainer):
-                raise ValueError(('Cannot reassign parent to AbstractContainer: %s. '
-                                  'Parent is already: %s.' % (repr(self), repr(self.parent))))
+                raise ValueError(('Cannot reassign parent to: %s. Parent is already: %s.'
+                                  % (repr(self), repr(self.parent))))
             else:
                 if parent_container is None:
                     raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))

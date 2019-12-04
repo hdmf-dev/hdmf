@@ -48,7 +48,7 @@ class TestContainer(TestCase):
 
         another_obj = Container('obj3')
         with self.assertRaisesWith(ValueError,
-                                   'Cannot reassign parent to Container: %s. Parent is already: %s.'
+                                   'Cannot reassign parent to: %s. Parent is already: %s.'
                                    % (repr(child_obj), repr(child_obj.parent))):
             child_obj.parent = another_obj
         self.assertIs(child_obj.parent, parent_obj)
