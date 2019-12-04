@@ -381,7 +381,7 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
         call_docval_func(super(Data, self).__init__, kwargs)
         self.__data = getargs('data', kwargs)
