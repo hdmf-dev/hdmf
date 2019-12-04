@@ -694,14 +694,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
             builder.set_attribute(spec.name, attr_value)
 
-    def __add_links(self, builder, links, container, build_manager, source):
+    def __add_links(self, group_builder, links, container, build_manager, source):
         for spec in links:
             attr_value = self.get_attr_value(spec, container, build_manager)
             if not attr_value:
                 continue
-            self.__add_containers(builder, spec, attr_value, build_manager, source, container)
+            self.__add_containers(group_builder, spec, attr_value, build_manager, source, container)
 
-    def __add_datasets(self, builder, datasets, container, build_manager, source):
+    def __add_datasets(self, group_builder, datasets, container, build_manager, source):
         for spec in datasets:
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
@@ -710,11 +710,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if isinstance(attr_value, DataIO) and attr_value.data is None:
                 continue
             if isinstance(attr_value, Builder):
-                builder.set_builder(attr_value)
+                group_builder.set_builder(attr_value)
             elif spec.data_type_def is None and spec.data_type_inc is None:
                 # a non-Container/Data dataset, e.g. a float or nd-array
-                if spec.name in builder.datasets:
-                    sub_builder = builder.datasets[spec.name]
+                if spec.name in group_builder.datasets:
+                    dataset_builder = group_builder.datasets[spec.name]
                 else:
                     try:
                         # convert the given data values to the spec dtype
@@ -723,11 +723,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = ('could not convert \'%s\' for %s \'%s\''
                                % (spec.name, type(container).__name__, container.name))
                         raise Exception(msg) from ex
-                    sub_builder = builder.add_dataset(spec.name, data, dtype=dtype, dims=spec.dims, coords=spec.coords)
-                self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
+                    dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype, dims=spec.dims,
+                                                                coords=spec.coords)
+                self.__add_attributes(dataset_builder, spec.attributes, container, build_manager, source)
             else:
                 # a Container/Data dataset, e.g. a VectorData
-                self.__add_containers(builder, spec, attr_value, build_manager, source, container)
+                self.__add_containers(group_builder, spec, attr_value, build_manager, source, container)
 
         # resolve dims
         for spec in datasets:
@@ -738,27 +739,27 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
             if spec.coords:
                 for coord_spec in spec.coords:
-                    dset_builder = builder.datasets[spec.name]  # all named dataset builders should exist now
+                    dataset_builder = group_builder.datasets[spec.name]  # all named dataset builders should exist now
                     # TODO revise me
-                    dim_dset_builder = builder.datasets.get(coord_spec.coord, None)
-                    if dim_dset_builder is None:
+                    dim_dataset_builder = group_builder.datasets.get(coord_spec.coord, None)
+                    if dim_dataset_builder is None:
                         raise ValueError("Coordinate '%s' for spec '%s' not found in group '%s'"
-                                         % (coord_spec.coord, spec.name, builder.name))
+                                         % (coord_spec.coord, spec.name, group_builder.name))
                     if coord_spec.type == 'coord':
-                        dset_builder.coords[coord_spec.label] = dim_dset_builder
+                        dataset_builder.coords[coord_spec.label] = dim_dataset_builder
                     else:
                         raise Exception('TODO')
 
-    def __add_groups(self, builder, groups, container, build_manager, source):
+    def __add_groups(self, group_builder, groups, container, build_manager, source):
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:
                 # we don't need to get attr_name since any named
                 # group does not have the concept of value
-                sub_builder = builder.groups.get(spec.name)
-                if sub_builder is None:
-                    sub_builder = GroupBuilder(spec.name, source=source)
-                self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
-                self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
+                subgroup_builder = group_builder.groups.get(spec.name)
+                if subgroup_builder is None:
+                    subgroup_builder = GroupBuilder(spec.name, source=source)
+                self.__add_attributes(subgroup_builder, spec.attributes, container, build_manager, source)
+                self.__add_datasets(subgroup_builder, spec.datasets, container, build_manager, source)
 
                 # handle subgroups that are not Containers
                 attr_name = self.get_attribute(spec)
@@ -770,31 +771,31 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             it = iter(attr_value.values())
                         for item in it:
                             if isinstance(item, Container):
-                                self.__add_containers(sub_builder, spec, item, build_manager, source, container)
-                self.__add_groups(sub_builder, spec.groups, container, build_manager, source)
-                empty = sub_builder.is_empty()
+                                self.__add_containers(subgroup_builder, spec, item, build_manager, source, container)
+                self.__add_groups(subgroup_builder, spec.groups, container, build_manager, source)
+                empty = subgroup_builder.is_empty()
                 if not empty or (empty and isinstance(spec.quantity, int)):
-                    if sub_builder.name not in builder.groups:
-                        builder.set_group(sub_builder)
+                    if subgroup_builder.name not in group_builder.groups:
+                        group_builder.set_group(subgroup_builder)
             else:
                 if spec.data_type_def is not None:
                     attr_name = self.get_attribute(spec)
                     if attr_name is not None:
                         attr_value = getattr(container, attr_name, None)
                         if attr_value is not None:
-                            self.__add_containers(builder, spec, attr_value, build_manager, source, container)
+                            self.__add_containers(group_builder, spec, attr_value, build_manager, source, container)
                 else:
                     attr_name = self.get_attribute(spec)
                     attr_value = self.get_attr_value(spec, container, build_manager)
                     if attr_value is not None:
-                        self.__add_containers(builder, spec, attr_value, build_manager, source, container)
+                        self.__add_containers(group_builder, spec, attr_value, build_manager, source, container)
 
-    def __add_containers(self, builder, spec, value, build_manager, source, parent_container):
+    def __add_containers(self, group_builder, spec, value, build_manager, source, parent_container):
         if isinstance(value, AbstractContainer):
             if value.parent is None:
                 msg = "'%s' (%s) for '%s' (%s)"\
                               % (value.name, getattr(value, self.spec.type_key()),
-                                 builder.name, self.spec.data_type_def)
+                                 group_builder.name, self.spec.data_type_def)
                 warnings.warn(msg, OrphanContainerWarning)
             if value.modified:                   # writing a new container
                 if isinstance(spec, BaseStorageSpec):
@@ -805,14 +806,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
                     name = spec.name
-                    builder.set_link(LinkBuilder(rendered_obj, name, builder))
+                    group_builder.set_link(LinkBuilder(rendered_obj, name, group_builder))
                 elif isinstance(spec, DatasetSpec):
                     if rendered_obj.dtype is None and spec.dtype is not None:
                         val, dtype = self.convert_dtype(spec, rendered_obj.data)
                         rendered_obj.dtype = dtype
-                    builder.set_dataset(rendered_obj)
+                    group_builder.set_dataset(rendered_obj)
                 else:
-                    builder.set_group(rendered_obj)
+                    group_builder.set_group(rendered_obj)
             elif value.container_source:        # make a link to an existing container
                 if value.container_source != parent_container.container_source or\
                    value.parent is not parent_container:
@@ -820,7 +821,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                     else:
                         rendered_obj = build_manager.build(value, source=source)
-                    builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
+                    group_builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=group_builder))
             else:
                 raise ValueError("Found unmodified AbstractContainer with no source - '%s' with parent '%s'" %
                                  (value.name, parent_container.name))
@@ -836,7 +837,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 raise ValueError(msg % value.__class__.__name__)
             for container in values:
                 if container:
-                    self.__add_containers(builder, spec, container, build_manager, source, parent_container)
+                    self.__add_containers(group_builder, spec, container, build_manager, source, parent_container)
 
     def __get_subspec_values(self, builder, spec, manager):
         ret = dict()
