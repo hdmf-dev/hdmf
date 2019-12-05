@@ -125,6 +125,8 @@ def check_shape(expected, received):
         ret = True
     else:
         if isinstance(expected, (list, tuple)):
+            if len(expected) == 0:
+                return received is None
             if isinstance(expected[0], (list, tuple)):
                 for sub in expected:
                     if check_shape(sub, received):

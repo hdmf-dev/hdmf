@@ -267,8 +267,9 @@ class GroupBuilder(BaseBuilder):
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
-            {'name': 'dims', 'type': list, 'doc': 'a list of dimensions of this dataset', 'default': list()},
-            {'name': 'coords', 'type': list, 'doc': 'a dictionary of coordinates of this dataset', 'default': list()},
+            {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': list()},
+            {'name': 'coords', 'type': (list, tuple), 'doc': 'a dictionary of coordinates of this dataset',
+             'default': list()},
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group, setting parent and source '''
@@ -439,8 +440,9 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
-            {'name': 'dims', 'type': list, 'doc': 'a list of dimensions of this dataset', 'default': list()},
-            {'name': 'coords', 'type': list, 'doc': 'a dictionary of coordinates of this dataset', 'default': list()},
+            {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': None},
+            {'name': 'coords', 'type': (list, tuple), 'doc': 'a dictionary of coordinates of this dataset',
+             'default': None},
             *get_docval(BaseBuilder.__init__, 'parent', 'source'))
     def __init__(self, **kwargs):
         ''' Create a Builder object for a dataset '''
@@ -479,6 +481,12 @@ class DatasetBuilder(BaseBuilder):
     def coords(self):
         ''' The coordinates of the dataset represented by this builder '''
         return self['coords']
+
+    @coords.setter
+    def coords(self, val):
+        if self['coords'] is not None:
+            raise AttributeError('Cannot reset coords once it is specified')
+        self['coords'] = val
 
     @property
     def chunks(self):
@@ -559,3 +567,36 @@ class RegionBuilder(ReferenceBuilder):
     def region(self):
         ''' The target builder object '''
         return self['region']
+
+
+class CoordBuilder:
+    '''
+    A simple, immutable object that represents a coordinate.
+
+    # use dot notation to access fields
+    dataset = cb.coord_dataset
+    # fields are printed as a dictionary
+    print(cb)
+    '''
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
+            {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+            {'name': 'coord_axes', 'type': (int, list, tuple), 'doc': 'The axes of the dataset of this coordinate'},
+            {'name': 'dims', 'type': (int, list, tuple),
+             'doc': 'The dims (axes indices) of the dataset that this coordinate acts on'},
+            {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'})
+    def __init__(self, **kwargs):
+        # use composition instead of inheritance purposefully to restrict user's ability to use arbitrary dict methods
+        super().__setattr__('data_dict', kwargs)  # store all given docval args. avoid local __setattr__
+
+    def __getattr__(self, key):
+        try:
+            return self.data_dict[key]
+        except KeyError:
+            raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        raise AttributeError('CoordBuilder is immutable')
+
+    def __repr__(self):
+        return self.data_dict.__repr__()

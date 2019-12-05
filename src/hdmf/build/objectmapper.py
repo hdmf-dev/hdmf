@@ -5,13 +5,13 @@ from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape
 from ..container import AbstractContainer, Container, Data, DataRegion
 from ..spec import Spec, AttributeSpec, CoordSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
-from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder
+from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, CoordBuilder
 from .map import Proxy, BuildManager
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
 
@@ -720,35 +720,70 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         # convert the given data values to the spec dtype
                         data, dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
-                        msg = ('could not convert \'%s\' for %s \'%s\''
+                        msg = ("Could not convert '%s' for %s '%s'"
                                % (spec.name, type(container).__name__, container.name))
-                        raise Exception(msg) from ex
-                    dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype, dims=spec.dims,
-                                                                coords=spec.coords)
+                        raise BuildException(msg) from ex
+                    dims = self.__check_dims(spec, data, container)
+                    dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype, dims=dims)
                 self.__add_attributes(dataset_builder, spec.attributes, container, build_manager, source)
             else:
                 # a Container/Data dataset, e.g. a VectorData
                 self.__add_containers(group_builder, spec, attr_value, build_manager, source, container)
 
-        # resolve dims
+        # set dataset coords after all dataset builders have been created
         for spec in datasets:
             if spec.name is None:
-                # TODO currently only named dataset specs can have dimensions. need to handle VectorData case where
-                # name is not known
+                # TODO handle VectorData case where # name is not known
                 continue
-
             if spec.coords:
-                for coord_spec in spec.coords:
-                    dataset_builder = group_builder.datasets[spec.name]  # all named dataset builders should exist now
-                    # TODO revise me
-                    dim_dataset_builder = group_builder.datasets.get(coord_spec.coord, None)
-                    if dim_dataset_builder is None:
-                        raise ValueError("Coordinate '%s' for spec '%s' not found in group '%s'"
-                                         % (coord_spec.coord, spec.name, group_builder.name))
-                    if coord_spec.type == 'coord':
-                        dataset_builder.coords[coord_spec.label] = dim_dataset_builder
-                    else:
-                        raise Exception('TODO')
+                coords = self.__get_used_coords(spec.coords, dataset_builder.dims, group_builder)
+                dataset_builder.set_coords(coords)
+
+    def __check_dims(self, dataset_spec, data, container):
+        data_shape = get_data_shape(data)
+        if not dataset_spec.dims:
+            if not data_shape:  # scalar
+                return None
+            else:
+                msg = ("Could not convert '%s' for %s '%s'. Data must be a scalar but has shape %s."
+                       % (dataset_spec.name, type(container).__name__, container.name, data_shape))
+                raise BuildException(msg)
+
+        # check required dims
+        if len(data_shape) < dataset_spec.min_num_dims:
+            msg = ("Could not convert '%s' for %s '%s'. Data must have at least %d dimensions but has %d."
+                   % (dataset_spec.name, type(container).__name__, container.name, dataset_spec.min_num_dims,
+                      len(data_shape)))
+            raise BuildException(msg)
+
+        if len(data_shape) > len(dataset_spec.dims):
+            msg = ("Could not convert '%s' for %s '%s'. Data must have at most %d dimensions but has %d."
+                   % (dataset_spec.name, type(container).__name__, container.name, len(dataset_spec.dims),
+                      len(data_shape)))
+            raise BuildException(msg)
+
+        used_dim_names = []
+        for s in range(len(data_shape)):
+            # check dimension length
+            if dataset_spec.dims[s].length is not None:
+                if dataset_spec.dims[s].length != data_shape[s]:
+                    msg = ("Could not convert '%s' for %s '%s'. Data dimension '%s' (axis %d) must have length %d but "
+                           "has length %d."
+                           % (dataset_spec.name, type(container).__name__, container.name, dataset_spec.dims[s].name,
+                              s, dataset_spec.dims[s].length, data_shape[s]))
+                    raise BuildException(msg)
+            used_dim_names.append(dataset_spec.dims[s].name)
+        return tuple(used_dim_names)
+
+    def __get_used_coords(self, coords, used_dims, group_builder):
+        used_coords = []
+        for c in coords:
+            if c.dims < len(used_dims):  # check the dimension exists on the dataset
+                coord_dataset_builder = group_builder.datasets.get(c.coord_dataset, None)
+                if coord_dataset_builder is not None:  # check the coord dataset exists in the group
+                    coord_builder = CoordBuilder(*c)  # copy key-value pairs from CoordSpec to CoordBuilder
+                    used_coords.append(coord_builder)
+        return tuple(used_coords)
 
     def __add_groups(self, group_builder, groups, container, build_manager, source):
         for spec in groups:
@@ -1018,3 +1053,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             else:
                 ret = container.name
         return ret
+
+
+class BuildException(Exception):
+    pass
