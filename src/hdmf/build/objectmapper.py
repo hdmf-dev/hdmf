@@ -731,15 +731,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.__add_containers(group_builder, spec, attr_value, build_manager, source, container)
 
         # set dataset coords after all dataset builders have been created
-        for spec in datasets:
-            if spec.name is None:
-                # TODO handle VectorData case where # name is not known
-                continue
-            if spec.coords:
-                coords = self.__get_used_coords(spec.coords, dataset_builder.dims, group_builder)
-                dataset_builder.set_coords(coords)
+        for dataset_spec in datasets:
+            self.__add_coords(dataset_spec, group_builder, container)
 
     def __check_dims(self, dataset_spec, data, container):
+        """
+        Validate that the dimensions (number of dims, length of each dim) of data are allowed based on the spec.
+        Returns tuple of dimension names corresponding to the dimensions used.
+        """
         data_shape = get_data_shape(data)
         if not dataset_spec.dims:
             if not data_shape:  # scalar
@@ -775,15 +774,30 @@ class ObjectMapper(metaclass=ExtenderMeta):
             used_dim_names.append(dataset_spec.dims[s].name)
         return tuple(used_dim_names)
 
-    def __get_used_coords(self, coords, used_dims, group_builder):
+    def __add_coords(self, dataset_spec, group_builder, container):
+        """
+        Returns tuple of CoordBuilders corresponding to the dimensions used.
+        """
+        if dataset_spec.name is None or dataset_spec.coords is None:
+            # TODO handle VectorData case where name is not known
+            return
+        dataset_builder = group_builder.datasets[dataset_spec.name]
+
         used_coords = []
-        for c in coords:
-            if c.dims < len(used_dims):  # check the dimension exists on the dataset
-                coord_dataset_builder = group_builder.datasets.get(c.coord_dataset, None)
-                if coord_dataset_builder is not None:  # check the coord dataset exists in the group
-                    coord_builder = CoordBuilder(*c)  # copy key-value pairs from CoordSpec to CoordBuilder
-                    used_coords.append(coord_builder)
-        return tuple(used_coords)
+        for c in dataset_spec.coords:
+            for dim_index in c.dims:
+                if dim_index < len(dataset_builder.dims):  # check the dimension exists on the dataset
+                    coord_dataset_builder = group_builder.datasets.get(c.coord_dataset, None)
+                    if coord_dataset_builder is not None:  # check the coord dataset exists in the group
+                        # TODO check the axis exists on the coord dataset
+                        # TODO check the coord_type is appropriate
+                        coord_builder = CoordBuilder(**c)  # copy key-value pairs from CoordSpec to CoordBuilder
+                        used_coords.append(coord_builder)
+                    else:
+                        msg = ("Could not convert '%s' for %s '%s'. Coord dataset '%s' of coord '%s' does not exist."
+                               % (dataset_spec.name, type(container).__name__, container.name, c.coord_dataset, c.name))
+                        raise BuildException(msg)
+        dataset_builder.coords = tuple(used_coords)
 
     def __add_groups(self, group_builder, groups, container, build_manager, source):
         for spec in groups:
@@ -981,6 +995,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
              'doc': 'the parent AbstractContainer/Proxy for the AbstractContainer being built', 'default': None})
     def construct(self, **kwargs):
         ''' Construct an AbstractContainer from the given Builder '''
+        # NOTE: the construct method requires docval on the __init__ method of the AbstractContainer
         builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
         cls = manager.get_cls(builder)
         # gather all subspecs
@@ -1019,21 +1034,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
             obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object' % (cls.__name__,)
-            raise Exception(msg) from ex
+            raise ConstructException(msg) from ex
 
-        # add dimension coordinates after object construction
-        datasets = getattr(self.__spec, 'datasets', None)
-        if datasets is not None:
-            for dataset in datasets:
-                dims = getattr(dataset, 'dims', None)
-                if dims is not None:
-                    for dim_coord in dataset.dims:
-                        # TODO axis
-                        if dim_coord.type == 'coord':
-                            obj.set_dim_coord(data_name=dataset.name, axis=0, label=dim_coord.label,
-                                              coord=dim_coord.coord)
-                        else:  # TODO
-                            pass
+        # add dimensions and coordinates after object construction
+        if isinstance(builder, GroupBuilder):
+            for dataset_builder in builder.datasets.values():
+                if dataset_builder.dims is not None:
+                    obj.set_dims(data_name=dataset_builder.name, dims=dataset_builder.dims)
+                    # for _i, dim in enumerate(dataset_builder.dims):
+                    #     obj.set_dim(data_name=dataset_builder.name, axis=_i, dim=dim)
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,
@@ -1056,4 +1065,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
 
 class BuildException(Exception):
+    pass
+
+
+class ConstructException(Exception):
     pass

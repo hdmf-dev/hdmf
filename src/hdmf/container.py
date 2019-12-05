@@ -241,7 +241,7 @@ class Container(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        # dict of dimension names, where key is name of data array and value is a list of names, one per axis
+        # dict of active dimension names, where key is name of data array and value is a list of names, one per axis
         self.__dims = dict()
         # dict of dimension coordinates, where key is name of data array and value is a list of label-dataset pairs
         self.__coords = dict()
@@ -389,6 +389,7 @@ class Container(AbstractContainer):
         Return a dict of dimension names, indexed by data array name, for this Container. Each value is a list of
         names, one for each dimension of the array.
         '''
+        # TODO: decide whether to return only active dims
         return self.__dims
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
@@ -410,12 +411,35 @@ class Container(AbstractContainer):
         return axis
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
+            {'name': 'dims', 'type': tuple, 'doc': ''})
+    def set_dims(self, **kwargs):
+        data_name, dims = getargs('data_name', 'dims', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+        if data_name in self.dims:
+            raise ValueError("Cannot reset dims for field %s in %s. Dims are already %s."
+                             % (data_name, self.__class__.__name__, self.dims[data_name]))
+        if not Container.__all_unique(dims):
+            raise ValueError("Cannot set dims for field %s in %s. Dims must be unique."
+                             % (data_name, self.__class__.__name__))
+        self.dims[data_name] = dims
+
+    @staticmethod
+    def __all_unique(x):
+        seen = set()
+        return not any(i in seen or seen.add(i) for i in x)
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''},
             {'name': 'axis', 'type': int, 'doc': ''},
             {'name': 'dim', 'type': str, 'doc': ''})
     def set_dim(self, **kwargs):
+        # TODO dims should really not be mutable after first setting it. BUT what happens if data changes?
         data_name, axis, dim = getargs('data_name', 'axis', 'dim', kwargs)
         if data_name not in self.fields:
             raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+        if data_name in self.dims and self.dims[data_name][axis] is not None:
+            raise ValueError("Cannot reset dims for axis %d of field %s in %s. Dim is already %s."
+                             % (axis, data_name, self.__class__.__name__, self.dims[data_name][axis]))
         data = getattr(self, data_name)
         data_shape = get_data_shape(data)
         if data_shape is None:

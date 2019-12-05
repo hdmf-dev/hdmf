@@ -267,9 +267,9 @@ class GroupBuilder(BaseBuilder):
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
-            {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': list()},
+            {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': None},
             {'name': 'coords', 'type': (list, tuple), 'doc': 'a dictionary of coordinates of this dataset',
-             'default': list()},
+             'default': None},
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group, setting parent and source '''
@@ -600,3 +600,6 @@ class CoordBuilder:
 
     def __repr__(self):
         return self.data_dict.__repr__()
+
+    def __eq__(self, obj):
+        return self.data_dict == obj.data_dict

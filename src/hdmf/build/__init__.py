@@ -8,5 +8,6 @@ from .builders import CoordBuilder
 
 from .objectmapper import ObjectMapper
 from .objectmapper import BuildException
+from .objectmapper import ConstructException
 from .map import BuildManager
 from .map import TypeMap
