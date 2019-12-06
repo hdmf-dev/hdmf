@@ -32,10 +32,21 @@ class TestCase(unittest.TestCase):
 
         return self.assertWarnsRegex(warn_type, '^%s$' % re.escape(exc_msg), *args, **kwargs)
 
-    def assertContainerEqual(self, container1, container2):
+    def assertContainerEqual(self, container1, container2, ignore_name=False):
         type1 = type(container1)
         type2 = type(container2)
         self.assertEqual(type1, type2)
+        if not ignore_name:
+            self.assertEqual(container1.name, container2.name)
+        self.assertEqual(container1.container_source, container2.container_source)
+        self.assertEqual(container1.parent, container2.parent)
+        self.assertEqual(len(container1.children), len(container2.children))
+        for c1, c2 in zip(container1.children, container2.children):
+            self.assertEqual(type(c1), type(c2))
+            # do not actually check the values here. all children *should* also be fields, which is checked below.
+            # this is just in case extra children get added
+
+        # NOTE: do not test for equal object ID
         for field in getattr(container1, type1._fieldsname):
             with self.subTest(nwbfield=field, container_type=type1.__name__):
                 f1 = getattr(container1, field)
@@ -136,7 +147,8 @@ class TestMapH5RoundTrip(TestCase):
         self.assertIsNotNone(str(self.container))  # added as a test to make sure printing works
         self.assertIsNotNone(str(self.read_container))
         self.assertNotEqual(id(self.container), id(self.read_container))
-        self.assertContainerEqual(self.read_container, self.container)
+        # ignore name in container check because name of container will always be read as 'root'
+        self.assertContainerEqual(self.read_container, self.container, ignore_name=True)
         self.reader.close()
         self.validate()
 
