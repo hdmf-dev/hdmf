@@ -8,7 +8,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 import numpy as np
 
@@ -365,7 +365,7 @@ class TestDynamicContainer(TestCase):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
 
-class TestObjectMapper(with_metaclass(ABCMeta, TestCase)):
+class TestObjectMapperMixin(metaclass=ABCMeta):
 
     def setUp(self):
         self.setUpBarSpec()
@@ -381,8 +381,9 @@ class TestObjectMapper(with_metaclass(ABCMeta, TestCase)):
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
+    @abstractmethod
     def setUpBarSpec(self):
-        raise unittest.SkipTest('setUpBarSpec not implemented')
+        raise NotImplementedError('Cannot run test unless setUpBarSpec is implemented')
 
     def test_default_mapping(self):
         attr_map = self.mapper.get_attr_names(self.bar_spec)
@@ -393,7 +394,7 @@ class TestObjectMapper(with_metaclass(ABCMeta, TestCase)):
                 self.assertIs(attr_map[key], self.mapper.get_carg_spec(key))
 
 
-class TestObjectMapperNested(TestObjectMapper):
+class TestObjectMapperNested(TestObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
@@ -444,7 +445,7 @@ class TestObjectMapperNested(TestObjectMapper):
         self.mapper.map_spec('attr2', data_spec.get_attribute('attr2'))
 
 
-class TestObjectMapperNoNesting(TestObjectMapper):
+class TestObjectMapperNoNesting(TestObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
@@ -484,7 +485,7 @@ class TestObjectMapperNoNesting(TestObjectMapper):
         self.assertSetEqual(keys, expected)
 
 
-class TestObjectMapperContainer(TestObjectMapper):
+class TestObjectMapperContainer(TestObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
