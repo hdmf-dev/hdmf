@@ -90,7 +90,6 @@ class TestCase(unittest.TestCase):
         if isinstance(arr1, (h5py.Dataset, HDMFDataset)):
             arr1 = arr1[()]
         if isinstance(arr2, (h5py.Dataset, HDMFDataset)):
-            print(type(arr2))
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
             if isinstance(arr1, (float, np.floating)):
