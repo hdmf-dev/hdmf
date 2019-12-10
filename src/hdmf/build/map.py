@@ -984,7 +984,6 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     try:
                         data, dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
-                        breakpoint()
                         msg = 'could not convert \'%s\' for %s \'%s\''
                         msg = msg % (spec.name, type(container).__name__, container.name)
                         raise_from(Exception(msg), ex)
