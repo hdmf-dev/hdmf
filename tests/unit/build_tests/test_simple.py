@@ -1,6 +1,6 @@
 from hdmf.spec import GroupSpec, DatasetSpec, CoordSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, DimSpec
-from hdmf.build import ObjectMapper, TypeMap, GroupBuilder, DatasetBuilder, BuildManager, BuildException, CoordBuilder
-from hdmf.build import ConstructException
+from hdmf.build import ObjectMapper, TypeMap, GroupBuilder, DatasetBuilder, BuildManager, BuildError, CoordBuilder
+from hdmf.build import ConstructError, ConvertError
 from hdmf import Container
 from hdmf.utils import docval
 from hdmf.testing import TestCase
@@ -15,7 +15,7 @@ class Bar(Container):
     @docval({'name': 'name', 'type': str, 'doc': 'bar name'},
             {'name': 'data1', 'type': 'array_data', 'doc': 'bar data1'},
             {'name': 'data2', 'type': 'array_data', 'doc': 'bar data2', 'default': None},
-            {'name': 'data3', 'type': 'array_data', 'doc': 'bar data3', 'default': None})
+            {'name': 'data3', 'type': ('scalar_data', 'array_data'), 'doc': 'bar data3', 'default': None})
     def __init__(self, **kwargs):
         super().__init__(name=kwargs['name'])
         self.data1 = kwargs['data1']
@@ -38,20 +38,6 @@ def _create_typemap(bar_spec):
 class TestBuildDims(TestCase):
 
     # TODO legacy tests
-
-    def test_build_no_dims(self):
-        """
-        Test that given a Spec for an Container class (Bar) with no DimSpec, the DatasetBuilder dims is None.
-        """
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
-        bar_spec = GroupSpec('A test group specification with a data type',
-                             data_type_def='Bar',
-                             datasets=[dset1_spec])
-        type_map = _create_typemap(bar_spec)
-        bar_inst = Bar('my_bar', [1, 2, 3, 4])
-        with self.assertRaisesWith(BuildException, ("Could not convert 'data1' for Bar 'my_bar'. Data must be a scalar"
-                                                    " but has shape (4,).")):
-            type_map.build(bar_inst)
 
     def test_build_dims_1d(self):
         """
@@ -97,9 +83,10 @@ class TestBuildDims(TestCase):
                              datasets=[dset1_spec])
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4])
-        with self.assertRaisesWith(BuildException, ("Could not convert 'data1' for Bar 'my_bar'. Data dimension 'x' "
-                                                    "(axis 0) must have length 3 but has length 4.")):
-            type_map.build(bar_inst)
+
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
+            with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
+                type_map.build(bar_inst)
 
     def test_build_dims_1d_opt_wrong_length(self):
         """
@@ -114,9 +101,10 @@ class TestBuildDims(TestCase):
                              datasets=[dset1_spec])
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4])
-        with self.assertRaisesWith(BuildException, ("Could not convert 'data1' for Bar 'my_bar'. Data dimension 'x' "
-                                                    "(axis 0) must have length 3 but has length 4.")):
-            type_map.build(bar_inst)
+
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
+            with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
+                type_map.build(bar_inst)
 
     def test_build_dims_2d(self):
         """
@@ -150,9 +138,9 @@ class TestBuildDims(TestCase):
                              datasets=[dset1_spec])
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [[1, 2], [3, 4], [5, 6], [7, 8]])
-        with self.assertRaisesWith(BuildException, ("Could not convert 'data1' for Bar 'my_bar'. Data dimension 'y' "
-                                                    "(axis 1) must have length 3 but has length 4.")):
-            type_map.build(bar_inst)
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
+            with self.assertRaisesWith(ConvertError, "Data dimension 'y' must have length 3 but has length 4."):
+                type_map.build(bar_inst)
 
     def test_build_dims_1d_with_2d_dims(self):
         """
@@ -186,9 +174,10 @@ class TestBuildDims(TestCase):
                              datasets=[dset1_spec])
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4])
-        with self.assertRaisesWith(BuildException, ("Could not convert 'data1' for Bar 'my_bar'. Data must have at "
-                                                    "least 2 dimensions but has 1.")):
-            type_map.build(bar_inst)
+
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
+            with self.assertRaisesWith(ConvertError, "Data must have at least 2 dimensions but has 1."):
+                type_map.build(bar_inst)
 
 
 class TestBuildCoords(TestCase):
@@ -212,8 +201,8 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        expected = (CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
-                                 coord_type='aligned'), )
+        expected = {'letters': CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+                                            coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
     def test_build_coords_2d(self):
@@ -262,9 +251,9 @@ class TestBuildCoords(TestCase):
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
 
-        msg = "Could not convert 'data1' for Bar 'my_bar'. Coord dataset 'data3' of coord 'letters' does not exist."
-        with self.assertRaisesWith(BuildException, msg):
-            type_map.build(bar_inst)
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
+            with self.assertRaisesWith(ConvertError, "Coord dataset 'data3' of coord 'letters' does not exist."):
+                type_map.build(bar_inst)
 
 
 class TestConstructDims(TestCase):
@@ -285,7 +274,7 @@ class TestConstructDims(TestCase):
         type_map = _create_typemap(bar_spec)
         manager = BuildManager(type_map)
 
-        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4], dims=('x', ))
+        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
         datasets = [dset_builder1, ]
         attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
@@ -295,6 +284,52 @@ class TestConstructDims(TestCase):
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4])
         self.assertContainerEqual(constructed_bar, expected_bar)
+
+    def test_construct_dims_1d_length_none(self):
+        """
+        Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
+        a builder from an instance of the Container, with dimensions. Start with the simple case of a 1-D array.
+        """
+        dim_spec = DimSpec(name='x', required=True, length=None)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
+        datasets = [dset_builder1, ]
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        constructed_bar = type_map.construct(group_builder, manager)
+        self.assertEqual(constructed_bar.dims, {'data1': ('x', )})
+
+        expected_bar = Bar('my_bar', [1, 2, 3, 4])
+        self.assertContainerEqual(constructed_bar, expected_bar)
+
+    def test_construct_dims_1d_wrong_length(self):
+        """
+        Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
+        a builder from an instance of the Container, with dimensions. Start with the simple case of a 1-D array.
+        """
+        dim_spec = DimSpec(name='x', required=True, length=3)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
+        datasets = [dset_builder1, ]
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        with self.assertRaisesWith(ConstructError, "Could not construct 'data1' for Bar 'my_bar'."):
+            with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
+                type_map.construct(group_builder, manager)
 
     def test_construct_dims_2d(self):
         """
@@ -310,7 +345,7 @@ class TestConstructDims(TestCase):
         type_map = _create_typemap(bar_spec)
         manager = BuildManager(type_map)
 
-        dset_builder1 = DatasetBuilder(name='data1', data=[[1, 2, 3, 4], [5, 6, 7, 8]], dims=('x', 'y'))
+        dset_builder1 = DatasetBuilder(name='data1', data=[[1, 2, 3, 4], [5, 6, 7, 8]])
         datasets = [dset_builder1, ]
         attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
@@ -361,7 +396,7 @@ class TestConstructCoords(TestCase):
                                coord_type='aligned')
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(frame_spec, x1_spec, y1_spec), coords=(coord_spec, ))
-        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(x2_spec, y2_spec))
+        dset2_spec = DatasetSpec('an example dataset2', 'int', name='data2', dims=(x2_spec, y2_spec))
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[dset1_spec, dset2_spec])
@@ -389,73 +424,67 @@ class TestConstructCoords(TestCase):
                            [[-1, -2, -3, -4], [-5, -6, -7, -8]])
         self.assertContainerEqual(constructed_bar, expected_bar)
 
-    # TODO test dynamic class generation with dim coord spec
+# TODO test dynamic class generation with dim coord spec
 
 
 class TestConstructCheckType(TestCase):
 
-    def test_construct_string_for_int(self):
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
+    def _test_construct_helper(self, spec_dtype, builder_data):
+        dim_spec = DimSpec(name='x', required=True)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))  # not used
+        dset3_spec = DatasetSpec(doc='an example dataset3', dtype=spec_dtype, name='data3')
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
-                             datasets=[dset1_spec])
+                             datasets=[dset1_spec, dset3_spec])
         type_map = _create_typemap(bar_spec)
         manager = BuildManager(type_map)
 
-        dset_builder1 = DatasetBuilder(name='data1', data='some text')
-        datasets = {'data1': dset_builder1}
+        dset_builder1 = DatasetBuilder(name='data1', data=[10])  # not used
+        dset_builder3 = DatasetBuilder(name='data3', data=builder_data)
+        datasets = {'data1': dset_builder1, 'data3': dset_builder3}
         attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
-        with self.assertRaisesWith(ConstructException, "Could not convert data to appropriate dtype for 'data1'"):
-            type_map.construct(group_builder, manager)
+        return type_map, group_builder, manager
+
+    def test_construct_int(self):
+        type_map, group_builder, manager = self._test_construct_helper('int', 10)
+        type_map.construct(group_builder, manager)
+
+    def test_construct_intstring_for_int(self):
+        type_map, group_builder, manager = self._test_construct_helper('int', '10')
+        bar = type_map.construct(group_builder, manager)
+        self.assertEqual(bar.data3, 10)
+
+    def test_construct_floatstring_for_int(self):
+        type_map, group_builder, manager = self._test_construct_helper('int', '10.5')
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
+            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'int' in spec."):
+                type_map.construct(group_builder, manager)
 
     def test_construct_float_for_int(self):
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
-        bar_spec = GroupSpec('A test group specification with a data type',
-                             data_type_def='Bar',
-                             datasets=[dset1_spec])
-        type_map = _create_typemap(bar_spec)
-        manager = BuildManager(type_map)
+        type_map, group_builder, manager = self._test_construct_helper('int', 10.5)
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
+            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'int' in spec."):
+                type_map.construct(group_builder, manager)
 
-        dset_builder1 = DatasetBuilder(name='data1', data=5.2)
-        datasets = {'data1': dset_builder1}
-        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
-        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+    def test_construct_int_list_for_int(self):
+        type_map, group_builder, manager = self._test_construct_helper('int', [10])
+        bar = type_map.construct(group_builder, manager)
+        self.assertEqual(bar.data3, [10])
 
-        with self.assertRaisesWith(ConstructException, "Could not convert data to appropriate dtype for 'data1'"):
-            type_map.construct(group_builder, manager)
+    def test_construct_text(self):
+        type_map, group_builder, manager = self._test_construct_helper('text', '10')
+        type_map.construct(group_builder, manager)
 
-    # TODO this should actually not throw an exception...
-    def test_construct_text_scalar(self):
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='text', name='data1')
-        bar_spec = GroupSpec('A test group specification with a data type',
-                             data_type_def='Bar',
-                             datasets=[dset1_spec])
-        type_map = _create_typemap(bar_spec)
-        manager = BuildManager(type_map)
-
-        dset_builder1 = DatasetBuilder(name='data1', data='10')
-        datasets = {'data1': dset_builder1}
-        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
-        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
-
-        with self.assertRaisesWith(ConstructException, "Could not construct Bar object"):
-            type_map.construct(group_builder, manager)
+    def test_construct_int_for_text(self):
+        type_map, group_builder, manager = self._test_construct_helper('text', 10)
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
+            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'text' in spec."):
+                type_map.construct(group_builder, manager)
 
     def test_construct_int_list_for_text(self):
-        dim_spec = DimSpec(name='x', required=False)
-        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='text', name='data1', dims=(dim_spec, ))
-        bar_spec = GroupSpec('A test group specification with a data type',
-                             data_type_def='Bar',
-                             datasets=[dset1_spec])
-        type_map = _create_typemap(bar_spec)
-        manager = BuildManager(type_map)
-
-        dset_builder1 = DatasetBuilder(name='data1', data=[10])
-        datasets = {'data1': dset_builder1}
-        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
-        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
-
-        with self.assertRaisesWith(ConstructException, "Could not convert data to appropriate dtype for 'data1'"):
-            type_map.construct(group_builder, manager)
+        type_map, group_builder, manager = self._test_construct_helper('text', [10])
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
+            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'text' in spec."):
+                type_map.construct(group_builder, manager)

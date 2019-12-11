@@ -7,7 +7,8 @@ from .builders import LinkBuilder
 from .builders import CoordBuilder
 
 from .objectmapper import ObjectMapper
-from .objectmapper import BuildException
-from .objectmapper import ConstructException
+from .objectmapper import BuildError
+from .objectmapper import ConstructError
+from .objectmapper import ConvertError
 from .map import BuildManager
 from .map import TypeMap

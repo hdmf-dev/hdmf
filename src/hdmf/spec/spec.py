@@ -714,9 +714,9 @@ _dataset_args = [
          'default': None},
         {'name': 'name', 'type': str, 'doc': 'The name of this dataset', 'default': None},
         {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
-        {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': list()},
-        {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': list()},
-        {'name': 'coords', 'type': (list, tuple), 'doc': 'the coordinates of this dataset', 'default': list()},
+        {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
+        {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+        {'name': 'coords', 'type': (list, tuple), 'doc': 'the coordinates of this dataset', 'default': None},
         {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
@@ -744,7 +744,7 @@ class DatasetSpec(BaseStorageSpec):
             if shape:
                 msg = 'Cannot specify dictionary dims with shape'
                 raise ValueError(msg)
-            shape = [None] * len(dims)  # for backwards compatibility
+            shape = [None] * len(dims)
             for _i, dim in enumerate(dims):
                 if isinstance(dim, DimSpec):
                     shape[_i] = dim.length  # for backwards compatibility TODO is this needed?
@@ -758,16 +758,30 @@ class DatasetSpec(BaseStorageSpec):
                     msg = ('Dims must consist of DimSpec objects if using new-style dims - found %s at element %d'
                            % (type(dim), _i))
                     raise ValueError(msg)
-
-        if shape is not None:
             self['shape'] = tuple(shape)
-        if dims is not None:
             self['dims'] = tuple(dims)
-            if 'shape' not in self:
-                self['shape'] = tuple([None] * len(dims))
-        if self.shape and self.dims:
-            if len(self.dims) != len(self.shape):
-                raise ValueError("'dims' and 'shape' must be the same length.")
+        elif shape is not None:
+            if shape and dims:
+                if len(dims) != len(shape):
+                    raise ValueError("'dims' and 'shape' must be the same length.")
+
+            # construct new style DimSpec based on old style shape and dims specification
+            # NOTE: when given a list of shape/dim options, the options must be compatible with each other
+            # if no shape is provided, then the dataset can be ANY shape
+            new_dims = list()
+            if isinstance(shape[0], (list, tuple)):  # shape is a list of shape configurations
+                for j, shape_config in enumerate(shape):
+                    for i, length in enumerate(shape_config):
+                        if i >= len(new_dims):
+                            dim_name = dims[j][i] if dims and dims[j][i] else 'dim' + str(i)
+                            required = j == 0  # first list contains required dimensions
+                            new_dims.append(DimSpec(name=dim_name, required=required, length=length))
+            else:  # only one shape configuration is specified
+                for i, length in enumerate(shape):
+                    dim_name = dims[i] if dims and dims[i] else 'dim' + str(i)
+                    new_dims.append(DimSpec(name=dim_name, required=True, length=length))
+            self['shape'] = tuple(shape)
+            self['dims'] = tuple(new_dims)
 
         if coords is not None:
             for _i, coord in enumerate(coords):

@@ -68,7 +68,7 @@ def _unicode(s):
     elif isinstance(s, bytes):
         return s.decode('utf-8')
     else:
-        raise ValueError("Expected unicode or ascii string, got %s" % type(s))
+        raise ConvertError("Expected unicode or ascii string, got %s" % type(s))
 
 
 def _ascii(s):
@@ -80,7 +80,7 @@ def _ascii(s):
     elif isinstance(s, bytes):
         return s
     else:
-        raise ValueError("Expected unicode or ascii string, got %s" % type(s))
+        raise ConvertError("Expected unicode or ascii string, got %s" % type(s))
 
 
 class ObjectMapper(metaclass=ExtenderMeta):
@@ -134,7 +134,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = "expected %s, received %s - must supply %s or higher precision" % (s.name, g.name, s.name)
                 else:
                     msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
-                raise ValueError(msg)
+                raise ConvertError(msg)
             else:
                 return g.type
 
@@ -156,43 +156,47 @@ class ObjectMapper(metaclass=ExtenderMeta):
                  The value is returned as the function may convert the input value to comply
                  with the dtype specified in the schema.
         """
-        ret, ret_dtype = cls.__check_edgecases(spec, value)
-        if ret is not None or ret_dtype is not None:
-            return ret, ret_dtype
-        spec_dtype = cls.__dtypes[spec.dtype]
-        if isinstance(value, np.ndarray):
-            if spec_dtype is _unicode:
-                ret = value.astype('U')
-                ret_dtype = "utf8"
-            elif spec_dtype is _ascii:
-                ret = value.astype('S')
-                ret_dtype = "ascii"
+        try:
+            ret, ret_dtype = cls.__check_edgecases(spec, value)
+            if ret is not None or ret_dtype is not None:
+                return ret, ret_dtype
+            spec_dtype = cls.__dtypes[spec.dtype]
+            if isinstance(value, np.ndarray):
+                if spec_dtype is _unicode:
+                    ret = value.astype('U')
+                    ret_dtype = "utf8"
+                elif spec_dtype is _ascii:
+                    ret = value.astype('S')
+                    ret_dtype = "ascii"
+                else:
+                    dtype_func = cls.__resolve_dtype(value.dtype, spec_dtype)
+                    ret = np.asarray(value).astype(dtype_func)
+                    ret_dtype = ret.dtype.type
+            elif isinstance(value, (tuple, list)):
+                if len(value) == 0:
+                    return value, spec_dtype
+                ret = list()
+                for elem in value:
+                    tmp, tmp_dtype = cls.convert_dtype(spec, elem)
+                    ret.append(tmp)
+                ret = type(value)(ret)
+                ret_dtype = tmp_dtype
+            elif isinstance(value, AbstractDataChunkIterator):
+                ret = value
+                ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
             else:
-                dtype_func = cls.__resolve_dtype(value.dtype, spec_dtype)
-                ret = np.asarray(value).astype(dtype_func)
-                ret_dtype = ret.dtype.type
-        elif isinstance(value, (tuple, list)):
-            if len(value) == 0:
-                return value, spec_dtype
-            ret = list()
-            for elem in value:
-                tmp, tmp_dtype = cls.convert_dtype(spec, elem)
-                ret.append(tmp)
-            ret = type(value)(ret)
-            ret_dtype = tmp_dtype
-        elif isinstance(value, AbstractDataChunkIterator):
-            ret = value
-            ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
-        else:
-            if spec_dtype in (_unicode, _ascii):
-                ret_dtype = 'ascii'
-                if spec_dtype == _unicode:
-                    ret_dtype = 'utf8'
-                ret = spec_dtype(value)
-            else:
-                dtype_func = cls.__resolve_dtype(type(value), spec_dtype)
-                ret = dtype_func(value)
-                ret_dtype = type(ret)
+                if spec_dtype in (_unicode, _ascii):
+                    ret_dtype = 'ascii'
+                    if spec_dtype == _unicode:
+                        ret_dtype = 'utf8'
+                    ret = spec_dtype(value)
+                else:
+                    dtype_func = cls.__resolve_dtype(type(value), spec_dtype)
+                    ret = dtype_func(value)
+                    ret_dtype = type(ret)
+        except ValueError as e:
+            msg = "Cannot convert to dtype '%s': %s." % (spec.dtype, value)
+            raise ConvertError(msg) from e
         return ret, ret_dtype
 
     @classmethod
@@ -218,7 +222,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
                     msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
-                    raise ValueError(msg)
+                    raise ConvertError(msg)
                 return value, cls.__check_edgecases(spec, value[0])[1]  # infer dtype from first element
             ret_dtype = type(value)
             if ret_dtype is str:
@@ -229,11 +233,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if isinstance(spec.dtype, RefSpec):
             if not isinstance(value, ReferenceBuilder):
                 msg = "got RefSpec for value of type %s" % type(value)
-                raise ValueError(msg)
+                raise ConvertError(msg)
             return value, spec.dtype
         if spec.dtype is not None and spec.dtype not in cls.__dtypes:
             msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
-            raise ValueError(msg)
+            raise ConvertError(msg)
         return None, None
 
     _const_arg = '__constructor_arg'
@@ -559,9 +563,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     bldr_data.append(tuple(tmp))
                 try:
                     bldr_data, dtype = self.convert_dtype(spec, bldr_data)
-                except Exception as ex:
+                except ConvertError as ex:
                     msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                    raise Exception(msg) from ex
+                    raise BuildError(msg) from ex
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
             else:
                 # a regular dtype
@@ -580,9 +584,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # the convert_dtype method
                     try:
                         bldr_data, dtype = self.convert_dtype(spec, container.data)
-                    except Exception as ex:
+                    except ConvertError as ex:
                         msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                        raise Exception(msg) from ex
+                        raise BuildError(msg) from ex
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
         self.__add_attributes(builder, self.__spec.attributes, container, manager, source)
         return builder
@@ -680,9 +684,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if attr_value is not None:
                     try:
                         attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
-                    except Exception as ex:
-                        msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
-                        raise Exception(msg) from ex
+                    except ConvertError as ex:
+                        msg = ("Could not build %s for %s '%s'."
+                               % (spec.name, type(container).__name__, container.name))
+                        raise BuildError(msg) from ex
 
             # do not write empty or null valued objects
             if attr_value is None:
@@ -719,11 +724,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         # convert the given data values to the spec dtype
                         data, dtype = self.convert_dtype(spec, attr_value)
-                    except Exception as ex:
-                        msg = ("Could not convert '%s' for %s '%s'"
+                        dims = self.__check_dims(spec, data)
+                    except ConvertError as ex:
+                        msg = ("Could not build '%s' for %s '%s'."
                                % (spec.name, type(container).__name__, container.name))
-                        raise BuildException(msg) from ex
-                    dims = self.__check_dims(spec, data, container)
+                        raise BuildError(msg) from ex
                     dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype, dims=dims)
                 self.__add_attributes(dataset_builder, spec.attributes, container, build_manager, source)
             else:
@@ -736,67 +741,61 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # TODO handle VectorData case where name is not known
                 return
             dataset_builder = group_builder.datasets[dataset_spec.name]
-            dataset_builder.coords = self.__check_coords(dataset_spec, group_builder, dataset_builder, container)
+            try:
+                dataset_builder.coords = self.__check_coords(dataset_spec, group_builder, dataset_builder)
+            except ConvertError as ex:
+                msg = ("Could not build '%s' for %s '%s'."
+                       % (dataset_spec.name, type(container).__name__, container.name))
+                raise BuildError(msg) from ex
 
-    def __check_dims(self, dataset_spec, data, container):
+    def __check_dims(self, dataset_spec, data):
         """
         Validate that the dimensions (number of dims, length of each dim) of data are allowed based on the spec.
         Returns tuple of dimension names corresponding to the dimensions used.
         """
         data_shape = get_data_shape(data)
-        if not dataset_spec.dims:
-            if not data_shape:  # scalar
-                return None
-            else:
-                msg = ("Could not convert '%s' for %s '%s'. Data must be a scalar but has shape %s."
-                       % (dataset_spec.name, type(container).__name__, container.name, data_shape))
-                raise BuildException(msg)
+        if not dataset_spec.dims:  # dims not specified
+            return None
 
         # check required dims
         if len(data_shape) < dataset_spec.min_num_dims:
-            msg = ("Could not convert '%s' for %s '%s'. Data must have at least %d dimensions but has %d."
-                   % (dataset_spec.name, type(container).__name__, container.name, dataset_spec.min_num_dims,
-                      len(data_shape)))
-            raise BuildException(msg)
+            msg = "Data must have at least %d dimensions but has %d." % (dataset_spec.min_num_dims, len(data_shape))
+            raise ConvertError(msg)
 
         if len(data_shape) > len(dataset_spec.dims):
-            msg = ("Could not convert '%s' for %s '%s'. Data must have at most %d dimensions but has %d."
-                   % (dataset_spec.name, type(container).__name__, container.name, len(dataset_spec.dims),
-                      len(data_shape)))
-            raise BuildException(msg)
+            msg = "Data must have at most %d dimensions but has %d." % (len(dataset_spec.dims), len(data_shape))
+            raise ConvertError(msg)
 
         used_dim_names = []
         for s in range(len(data_shape)):
             # check dimension length
             if dataset_spec.dims[s].length is not None:
                 if dataset_spec.dims[s].length != data_shape[s]:
-                    msg = ("Could not convert '%s' for %s '%s'. Data dimension '%s' (axis %d) must have length %d but "
-                           "has length %d."
-                           % (dataset_spec.name, type(container).__name__, container.name, dataset_spec.dims[s].name,
-                              s, dataset_spec.dims[s].length, data_shape[s]))
-                    raise BuildException(msg)
+                    msg = ("Data dimension '%s' (axis %d) must have length %d but has length %d."
+                           % (dataset_spec.dims[s].name, s, dataset_spec.dims[s].length, data_shape[s]))
+                    raise ConvertError(msg)
             used_dim_names.append(dataset_spec.dims[s].name)
         return tuple(used_dim_names)
 
-    def __check_coords(self, dataset_spec, group_builder, dataset_builder, container):
+    def __check_coords(self, dataset_spec, group_builder, dataset_builder):
         """
         Returns dict of CoordBuilders corresponding to the dimensions used.
         """
         used_coords = dict()
-        for c in dataset_spec.coords:
-            for dim_index in c.dims:
-                if dim_index < len(dataset_builder.dims):  # check the dimension exists on the dataset
-                    coord_dataset_builder = group_builder.datasets.get(c.coord_dataset, None)
-                    if coord_dataset_builder is not None:  # check the coord dataset exists in the group
-                        # TODO check the axis exists on the coord dataset
-                        # TODO check the coord_type is appropriate
-                        # TODO check that coord name is not already in used_coords
-                        coord_builder = CoordBuilder(**c)  # copy key-value pairs from CoordSpec to CoordBuilder
-                        used_coords[c.name] = coord_builder
-                    else:
-                        msg = ("Could not convert '%s' for %s '%s'. Coord dataset '%s' of coord '%s' does not exist."
-                               % (dataset_spec.name, type(container).__name__, container.name, c.coord_dataset, c.name))
-                        raise BuildException(msg)
+        if dataset_spec.coords:
+            for c in dataset_spec.coords:
+                for dim_index in c.dims:
+                    if dim_index < len(dataset_builder.dims):  # check the dimension exists on the dataset
+                        coord_dataset_builder = group_builder.datasets.get(c.coord_dataset, None)
+                        if coord_dataset_builder is not None:  # check the coord dataset exists in the group
+                            # TODO check the axis exists on the coord dataset
+                            # TODO check the coord_type is appropriate
+                            # TODO check that coord name is not already in used_coords
+                            coord_builder = CoordBuilder(**c)  # copy key-value pairs from CoordSpec to CoordBuilder
+                            used_coords[c.name] = coord_builder
+                        else:
+                            msg = "Coord dataset '%s' of coord '%s' does not exist." % (c.coord_dataset, c.name)
+                            raise ConvertError(msg)
         return used_coords
 
     def __add_groups(self, group_builder, groups, container, build_manager, source):
@@ -937,7 +936,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
             data = self.__check_ref_resolver(builder.data)
-            ret[spec] = self.convert_dtype_construct(spec, data, builder.name)
+            converted_data, _ = self.convert_dtype(spec, data)
+            ret[spec] = converted_data
         return ret
 
     @staticmethod
@@ -1000,7 +1000,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
         builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
         cls = manager.get_cls(builder)
         # gather all subspecs
-        subspecs = self.__get_subspec_values(builder, self.spec, manager)
+        try:
+            subspecs = self.__get_subspec_values(builder, self.spec, manager)
+        except ConvertError as ex:
+            msg = "Could not construct %s object." % cls.__name__
+            raise ConstructError(msg) from ex
         # get the constructor argument that each specification corresponds to
         const_args = dict()
         # For Data container classes, we need to populate the data constructor argument since
@@ -1009,7 +1013,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
             data = self.__check_ref_resolver(builder.data)
-            const_args['data'] = self.convert_dtype_construct(self.spec, data, builder.name)
+            try:
+                converted_data, _ = self.convert_dtype(self.spec, data)
+            except ConvertError as ex:
+                msg = "Could not construct %s object." % cls.__name__
+                raise ConstructError(msg) from ex
+            const_args['data'] = converted_data
+
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
@@ -1035,44 +1045,52 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
         except Exception as ex:
-            msg = 'Could not construct %s object' % (cls.__name__,)
-            raise ConstructException(msg) from ex
+            msg = 'Could not construct %s object.' % cls.__name__
+            raise ConstructError(msg) from ex
 
         # add dimensions and coordinates to both the dataset builder and the new container
         if isinstance(builder, GroupBuilder):
             for subspec, value in subspecs.items():
                 if isinstance(subspec, DatasetSpec):
                     # get the corresponding DatasetBuilder
+                    if subspec.name is None:
+                        # TODO handle case where subspec name is None, e.g. for DynamicTable columns
+                        continue
                     dataset_builder = builder.datasets[subspec.name]
                     # verify that the dims are valid and return only the active dims
-                    dims = self.__check_dims(subspec, dataset_builder.data, obj)
-                    # since dataset_builder is cached in the manager, need to set its dims
-                    dataset_builder.dims = dims
-                    # set dims on the new Container object
-                    obj.set_dims(data_name=dataset_builder.name, dims=dims)
+                    try:
+                        dims = self.__check_dims(subspec, dataset_builder.data)
+                    except ConvertError as ex:
+                        msg = ("Could not construct '%s' for %s '%s'."
+                               % (subspec.name, cls.__name__, obj.name))
+                        raise ConstructError(msg) from ex
+
+                    if dims is not None:
+                        # since dataset_builder is cached in the manager, need to set its dims
+                        dataset_builder.dims = dims
+                        # set dims on the new Container object
+                        obj.set_dims(data_name=dataset_builder.name, dims=dims)
 
                     # verify that the coords are valid and return only the active coords
-                    coords = self.__check_coords(subspec, builder, dataset_builder, obj)
-                    # since dataset_builder is cached in the manager, need to set its coords
-                    dataset_builder.coords = coords  # this is a dictionary of coord name : CoordBuilder
-                    # unpack the CoordBuilder and set coords on the new Container object
-                    for coord in coords.values():
-                        obj.set_coord(data_name=dataset_builder.name,
-                                      name=coord.name,
-                                      coord_dataset=coord.coord_dataset,
-                                      coord_axes=coord.coord_axes,
-                                      dims=coord.dims,
-                                      coord_type=coord.coord_type)
-        return obj
+                    try:
+                        coords = self.__check_coords(subspec, builder, dataset_builder)
+                    except ConvertError as ex:
+                        msg = ("Could not construct '%s' for %s '%s'."
+                               % (subspec.name, cls.__name__, obj.name))
+                        raise ConstructError(msg) from ex
 
-    @classmethod
-    def convert_dtype_construct(self, spec, data, data_name):
-        try:
-            bldr_data, _ = self.convert_dtype(spec, data)
-        except Exception as ex:
-            msg = "Could not convert data to appropriate dtype for '%s'" % data_name
-            raise ConstructException(msg) from ex
-        return bldr_data
+                    if coords is not None:
+                        # since dataset_builder is cached in the manager, need to set its coords
+                        dataset_builder.coords = coords  # this is a dictionary of coord name : CoordBuilder
+                        # unpack the CoordBuilder and set coords on the new Container object
+                        for coord in coords.values():
+                            obj.set_coord(data_name=dataset_builder.name,
+                                          name=coord.name,
+                                          coord_dataset=coord.coord_dataset,
+                                          coord_axes=coord.coord_axes,
+                                          dims=coord.dims,
+                                          coord_type=coord.coord_type)
+        return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,
              'doc': 'the AbstractContainer to get the Builder name for'})
@@ -1093,9 +1111,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret
 
 
-class BuildException(Exception):
+class BuildError(Exception):
     pass
 
 
-class ConstructException(Exception):
+class ConvertError(Exception):
+    pass
+
+
+class ConstructError(Exception):
     pass
