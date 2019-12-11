@@ -936,7 +936,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
-            ret[spec] = self.__check_ref_resolver(builder.data)
+            data = self.__check_ref_resolver(builder.data)
+            ret[spec] = self.convert_dtype_construct(spec, data, builder.name)
         return ret
 
     @staticmethod
@@ -988,7 +989,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             tmp = tmp[0]
         return tmp
 
-    @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
+    @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),  # noqa: C901
              'doc': 'the builder to construct the AbstractContainer from'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'},
             {'name': 'parent', 'type': (Proxy, AbstractContainer),
@@ -1007,7 +1008,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
-            const_args['data'] = self.__check_ref_resolver(builder.data)
+            data = self.__check_ref_resolver(builder.data)
+            const_args['data'] = self.convert_dtype_construct(self.spec, data, builder.name)
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
@@ -1062,6 +1064,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                       dims=coord.dims,
                                       coord_type=coord.coord_type)
         return obj
+
+    @classmethod
+    def convert_dtype_construct(self, spec, data, data_name):
+        try:
+            bldr_data, _ = self.convert_dtype(spec, data)
+        except Exception as ex:
+            msg = "Could not convert data to appropriate dtype for '%s'" % data_name
+            raise ConstructException(msg) from ex
+        return bldr_data
 
     @docval({'name': 'container', 'type': AbstractContainer,
              'doc': 'the AbstractContainer to get the Builder name for'})

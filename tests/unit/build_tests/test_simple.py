@@ -390,3 +390,72 @@ class TestConstructCoords(TestCase):
         self.assertContainerEqual(constructed_bar, expected_bar)
 
     # TODO test dynamic class generation with dim coord spec
+
+
+class TestConstructCheckType(TestCase):
+
+    def test_construct_string_for_int(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data='some text')
+        datasets = {'data1': dset_builder1}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        with self.assertRaisesWith(ConstructException, "Could not convert data to appropriate dtype for 'data1'"):
+            type_map.construct(group_builder, manager)
+
+    def test_construct_float_for_int(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data=5.2)
+        datasets = {'data1': dset_builder1}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        with self.assertRaisesWith(ConstructException, "Could not convert data to appropriate dtype for 'data1'"):
+            type_map.construct(group_builder, manager)
+
+    # TODO this should actually not throw an exception...
+    def test_construct_text_scalar(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='text', name='data1')
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data='10')
+        datasets = {'data1': dset_builder1}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        with self.assertRaisesWith(ConstructException, "Could not construct Bar object"):
+            type_map.construct(group_builder, manager)
+
+    def test_construct_int_list_for_text(self):
+        dim_spec = DimSpec(name='x', required=False)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='text', name='data1', dims=(dim_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data=[10])
+        datasets = {'data1': dset_builder1}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        with self.assertRaisesWith(ConstructException, "Could not convert data to appropriate dtype for 'data1'"):
+            type_map.construct(group_builder, manager)
