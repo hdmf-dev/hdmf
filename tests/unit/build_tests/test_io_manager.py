@@ -4,7 +4,7 @@ from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.build import ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 import unittest
 
@@ -112,7 +112,7 @@ class TestBuildManager(TestBase):
         self.assertIs(container1, container2)
 
 
-class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
+class TestNestedBaseMixin(metaclass=ABCMeta):
 
     def setUp(self):
         super().setUp()
@@ -143,14 +143,17 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
         self.type_map.register_map(FooBucket, self.setUpBucketMapper())
         self.manager = BuildManager(self.type_map)
 
+    @abstractmethod
     def setUpBucketBuilder(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketBuilder is implemented')
 
+    @abstractmethod
     def setUpBucketSpec(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketSpec is implemented')
 
+    @abstractmethod
     def setUpBucketMapper(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketMapper is implemented')
 
     def test_build(self):
         ''' Test default mapping for an Container that has an Container as an attribute value '''
@@ -162,7 +165,7 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
         self.assertEqual(container, self.foo_bucket)
 
 
-class TestNestedContainersNoSubgroups(TestNestedBase):
+class TestNestedContainersNoSubgroups(TestNestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers, but does not keep them in
@@ -188,7 +191,7 @@ class TestNestedContainersNoSubgroups(TestNestedBase):
         return ObjectMapper
 
 
-class TestNestedContainersSubgroup(TestNestedBase):
+class TestNestedContainersSubgroup(TestNestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup
@@ -223,7 +226,7 @@ class TestNestedContainersSubgroup(TestNestedBase):
         return BucketMapper
 
 
-class TestNestedContainersSubgroupSubgroup(TestNestedBase):
+class TestNestedContainersSubgroupSubgroup(TestNestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup

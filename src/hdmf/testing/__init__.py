@@ -1,1 +1,1 @@
-from .testcase import TestCase, TestMapH5RoundTrip  # noqa: F401
+from .testcase import TestCase, TestH5RoundTripMixin  # noqa: F401
