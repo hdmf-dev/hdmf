@@ -732,7 +732,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
         # set dataset coords after all dataset builders have been created
         for dataset_spec in datasets:
-            self.__add_coords(dataset_spec, group_builder, container)
+            if dataset_spec.name is None or dataset_spec.coords is None:
+                # TODO handle VectorData case where name is not known
+                return
+            dataset_builder = group_builder.datasets[dataset_spec.name]
+            dataset_builder.coords = self.__check_coords(dataset_spec, group_builder, dataset_builder, container)
 
     def __check_dims(self, dataset_spec, data, container):
         """
@@ -774,16 +778,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             used_dim_names.append(dataset_spec.dims[s].name)
         return tuple(used_dim_names)
 
-    def __add_coords(self, dataset_spec, group_builder, container):
+    def __check_coords(self, dataset_spec, group_builder, dataset_builder, container):
         """
-        Returns tuple of CoordBuilders corresponding to the dimensions used.
+        Returns dict of CoordBuilders corresponding to the dimensions used.
         """
-        if dataset_spec.name is None or dataset_spec.coords is None:
-            # TODO handle VectorData case where name is not known
-            return
-        dataset_builder = group_builder.datasets[dataset_spec.name]
-
-        used_coords = []
+        used_coords = dict()
         for c in dataset_spec.coords:
             for dim_index in c.dims:
                 if dim_index < len(dataset_builder.dims):  # check the dimension exists on the dataset
@@ -791,13 +790,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     if coord_dataset_builder is not None:  # check the coord dataset exists in the group
                         # TODO check the axis exists on the coord dataset
                         # TODO check the coord_type is appropriate
+                        # TODO check that coord name is not already in used_coords
                         coord_builder = CoordBuilder(**c)  # copy key-value pairs from CoordSpec to CoordBuilder
-                        used_coords.append(coord_builder)
+                        used_coords[c.name] = coord_builder
                     else:
                         msg = ("Could not convert '%s' for %s '%s'. Coord dataset '%s' of coord '%s' does not exist."
                                % (dataset_spec.name, type(container).__name__, container.name, c.coord_dataset, c.name))
                         raise BuildException(msg)
-        dataset_builder.coords = tuple(used_coords)
+        return used_coords
 
     def __add_groups(self, group_builder, groups, container, build_manager, source):
         for spec in groups:
@@ -1036,13 +1036,31 @@ class ObjectMapper(metaclass=ExtenderMeta):
             msg = 'Could not construct %s object' % (cls.__name__,)
             raise ConstructException(msg) from ex
 
-        # add dimensions and coordinates after object construction
+        # add dimensions and coordinates to both the dataset builder and the new container
         if isinstance(builder, GroupBuilder):
-            for dataset_builder in builder.datasets.values():
-                if dataset_builder.dims is not None:
-                    obj.set_dims(data_name=dataset_builder.name, dims=dataset_builder.dims)
-                    # for _i, dim in enumerate(dataset_builder.dims):
-                    #     obj.set_dim(data_name=dataset_builder.name, axis=_i, dim=dim)
+            for subspec, value in subspecs.items():
+                if isinstance(subspec, DatasetSpec):
+                    # get the corresponding DatasetBuilder
+                    dataset_builder = builder.datasets[subspec.name]
+                    # verify that the dims are valid and return only the active dims
+                    dims = self.__check_dims(subspec, dataset_builder.data, obj)
+                    # since dataset_builder is cached in the manager, need to set its dims
+                    dataset_builder.dims = dims
+                    # set dims on the new Container object
+                    obj.set_dims(data_name=dataset_builder.name, dims=dims)
+
+                    # verify that the coords are valid and return only the active coords
+                    coords = self.__check_coords(subspec, builder, dataset_builder, obj)
+                    # since dataset_builder is cached in the manager, need to set its coords
+                    dataset_builder.coords = coords  # this is a dictionary of coord name : CoordBuilder
+                    # unpack the CoordBuilder and set coords on the new Container object
+                    for coord in coords.values():
+                        obj.set_coord(data_name=dataset_builder.name,
+                                      name=coord.name,
+                                      coord_dataset=coord.coord_dataset,
+                                      coord_axes=coord.coord_axes,
+                                      dims=coord.dims,
+                                      coord_type=coord.coord_type)
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

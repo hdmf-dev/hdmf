@@ -37,6 +37,8 @@ def _create_typemap(bar_spec):
 
 class TestBuildDims(TestCase):
 
+    # TODO legacy tests
+
     def test_build_no_dims(self):
         """
         Test that given a Spec for an Container class (Bar) with no DimSpec, the DatasetBuilder dims is None.
@@ -69,8 +71,8 @@ class TestBuildDims(TestCase):
 
     def test_build_dims_1d_length_none(self):
         """
-        Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
-        a builder from an instance of the Container, with dimensions. Start with the simple case of a 1-D array.
+        Test that given a Spec for an Container class (Bar) that includes a DimSpec with length none, the type map can
+        create a builder from an instance of the Container, with dimensions.
         """
         dim_spec = DimSpec(name='x', required=True, length=None)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
@@ -85,8 +87,8 @@ class TestBuildDims(TestCase):
 
     def test_build_dims_1d_wrong_length(self):
         """
-        Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
-        a builder from an instance of the Container, with dimensions. Start with the simple case of a 1-D array.
+        Test that given a Spec for an Container class (Bar) that includes a DimSpec with a length, when the type map
+        tries to create a builder from an instance of the Container with a different length, an error is raised.
         """
         dim_spec = DimSpec(name='x', required=True, length=3)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
@@ -101,8 +103,9 @@ class TestBuildDims(TestCase):
 
     def test_build_dims_1d_opt_wrong_length(self):
         """
-        Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
-        a builder from an instance of the Container, with dimensions. Start with the simple case of a 1-D array.
+        Test that given a Spec for an Container class (Bar) that includes an optional DimSpec with a length, when the
+        type map tries to create a builder from an instance of the Container with a different length, an error is
+        raised.
         """
         dim_spec = DimSpec(name='x', required=False, length=3)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
@@ -133,6 +136,24 @@ class TestBuildDims(TestCase):
 
         self.assertEqual(group_builder.get('data1').dims, ('x', 'y'))
 
+    def test_build_dims_2d_wrong_length(self):
+        """
+        Test that given a Spec for an Container class (Bar) that includes two DimSpecs, the type map can create
+        a builder from an instance of the Container, with dimensions. Here, with a 2-D dataset with dimensions
+        with a length and doc.
+        """
+        x_spec = DimSpec(name='x', required=True, length=4)
+        y_spec = DimSpec(name='y', required=False, doc='test_doc', length=3)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        bar_inst = Bar('my_bar', [[1, 2], [3, 4], [5, 6], [7, 8]])
+        with self.assertRaisesWith(BuildException, ("Could not convert 'data1' for Bar 'my_bar'. Data dimension 'y' "
+                                                    "(axis 1) must have length 3 but has length 4.")):
+            type_map.build(bar_inst)
+
     def test_build_dims_1d_with_2d_dims(self):
         """
         Test that given a Spec for an Container class (Bar) that includes two DimSpecs, the type map can create
@@ -140,7 +161,7 @@ class TestBuildDims(TestCase):
         with a length and doc.
         """
         x_spec = DimSpec(name='x', required=True, length=4)
-        y_spec = DimSpec(name='y', required=False, doc='test_doc')
+        y_spec = DimSpec(name='y', required=False, doc='test_doc', length=3)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
@@ -158,7 +179,7 @@ class TestBuildDims(TestCase):
         with a length and doc.
         """
         x_spec = DimSpec(name='x', required=True, length=4)
-        y_spec = DimSpec(name='y', required=True, doc='test_doc')
+        y_spec = DimSpec(name='y', required=True, doc='test_doc', length=3)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
@@ -203,9 +224,9 @@ class TestBuildCoords(TestCase):
         x_spec = DimSpec(name='x', required=True, length=4)
         y_spec = DimSpec(name='y', required=False, doc='test_doc')
         dim2_spec = DimSpec(name='chars', required=True)
-        x_coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+        x_coord_spec = CoordSpec(name='xletters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
                                  coord_type='aligned')
-        y_coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(1, ),
+        y_coord_spec = CoordSpec(name='yletters', coord_dataset='data2', coord_axes=(0, ), dims=(1, ),
                                  coord_type='aligned')
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(x_spec, y_spec), coords=(x_coord_spec, y_coord_spec))
@@ -217,13 +238,13 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [[1, 2], [3, 4], [5, 6], [7, 8]], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        expected = (CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
-                                 coord_type='aligned'),
-                    CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(1, ),
-                                 coord_type='aligned'))
+        expected = {'xletters': CoordBuilder(name='xletters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+                                             coord_type='aligned'),
+                    'yletters': CoordBuilder(name='yletters', coord_dataset='data2', coord_axes=(0, ), dims=(1, ),
+                                             coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
-    def test_build_dims_unknown_name(self):
+    def test_build_coords_unknown_name(self):
         """
         Test that given a DimSpec and CoordSpec for an Container class, the type map raises an error when the CoordSpec
         references an invalid coord_dataset.
@@ -248,7 +269,10 @@ class TestBuildCoords(TestCase):
 
 class TestConstructDims(TestCase):
 
-    def test_construct_dims(self):
+    # NOTE: if a DatasetBuilder does not match its DatasetSpec in dtype or dims/shape, the object can still be
+    # constructed
+
+    def test_construct_dims_1d(self):
         """
         Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
         a builder from an instance of the Container, with dimensions. Start with the simple case of a 1-D array.
@@ -259,45 +283,110 @@ class TestConstructDims(TestCase):
                              data_type_def='Bar',
                              datasets=[dset1_spec])
         type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
 
         dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4], dims=('x', ))
         datasets = [dset_builder1, ]
         attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
-        manager = BuildManager(type_map)
         constructed_bar = type_map.construct(group_builder, manager)
         self.assertEqual(constructed_bar.dims, {'data1': ('x', )})
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4])
         self.assertContainerEqual(constructed_bar, expected_bar)
 
+    def test_construct_dims_2d(self):
+        """
+        Test that given a Spec for an Container class (Bar) that includes a DimSpec, the type map can create
+        a builder from an instance of the Container, with dimensions for a 2-D array.
+        """
+        x_spec = DimSpec(name='x', required=True)
+        y_spec = DimSpec(name='y', required=True)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        dset_builder1 = DatasetBuilder(name='data1', data=[[1, 2, 3, 4], [5, 6, 7, 8]], dims=('x', 'y'))
+        datasets = [dset_builder1, ]
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        constructed_bar = type_map.construct(group_builder, manager)
+        self.assertEqual(constructed_bar.dims, {'data1': ('x', 'y')})
+
+        expected_bar = Bar('my_bar', [[1, 2, 3, 4], [5, 6, 7, 8]])
+        self.assertContainerEqual(constructed_bar, expected_bar)
+
 
 class TestConstructCoords(TestCase):
 
-    def test_construct_dims(self):
-        dimspec = CoordSpec(label='my_label', coord='data2', type='coord')
-        dset1_spec = DatasetSpec('an example dataset1', 'int', name='data1', shape=(None,), dims=(dimspec,))
-        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', shape=(None,))
+    def test_construct_coords_1d(self):
+        x_spec = DimSpec(name='x', required=True)
+        char_spec = DimSpec(name='chars', required=True)
+        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+                               coord_type='aligned')
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
+                                 dims=(x_spec, ), coords=(coord_spec, ))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(char_spec, ))
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[dset1_spec, dset2_spec])
         type_map = _create_typemap(bar_spec)
-        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
-        bar_inst.set_dim_coord('data1', 0, 'my_label', 'data2')
-
-        dset_builder2 = DatasetBuilder(name='data2', data=['a', 'b', 'c', 'd'])
-        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4], dims={'my_label': dset_builder2})
-        datasets = {'data1': dset_builder1, 'data2': dset_builder2}
-        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': bar_inst.object_id}
-        builder_expected = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
-
-        # builder = type_map.build(bar_inst)
-        # self.assertEqual(builder, builder_expected)
-
         manager = BuildManager(type_map)
-        container_expected = type_map.construct(builder_expected, manager)
 
-        self.assertEqual(container_expected, bar_inst)
+        # on read, the dataset builders will not have dims or coords. these need to be added in construct
+        dset_builder2 = DatasetBuilder(name='data2', data=['a', 'b', 'c', 'd'])
+        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
+        datasets = {'data1': dset_builder1, 'data2': dset_builder2}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        constructed_bar = type_map.construct(group_builder, manager)
+        self.assertEqual(constructed_bar.coords, {'data1': {'letters': (('x', ), ['a', 'b', 'c', 'd'])}})
+
+        expected_bar = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        self.assertContainerEqual(constructed_bar, expected_bar)
+
+    def test_construct_coords_2d(self):
+        frame_spec = DimSpec(name='frame', required=True)
+        x1_spec = DimSpec(name='x1', required=True, length=2)
+        y1_spec = DimSpec(name='y1', required=True, length=4)
+        x2_spec = DimSpec(name='x1', required=False)
+        y2_spec = DimSpec(name='y1', required=False)
+        coord_spec = CoordSpec(name='dorsal-ventral', coord_dataset='data2', coord_axes=(0, 1), dims=(1, 2),
+                               coord_type='aligned')
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
+                                 dims=(frame_spec, x1_spec, y1_spec), coords=(coord_spec, ))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(x2_spec, y2_spec))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        # on read, the dataset builders will not have dims or coords. these need to be added in construct
+        dset_builder2 = DatasetBuilder(name='data2', data=[[-1, -2, -3, -4], [-5, -6, -7, -8]])
+        dset_builder1 = DatasetBuilder(name='data1', data=[[[1, 2, 3, 4], [5, 6, 7, 8]],
+                                                           [[1, 2, 3, 4], [5, 6, 7, 8]],
+                                                           [[1, 2, 3, 4], [5, 6, 7, 8]]])
+        datasets = {'data1': dset_builder1, 'data2': dset_builder2}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        constructed_bar = type_map.construct(group_builder, manager)
+        self.assertEqual(constructed_bar.coords,
+                         {'data1': {'dorsal-ventral': (('x1', 'y1'),
+                                                       [[-1, -2, -3, -4], [-5, -6, -7, -8]])}})
+
+        expected_bar = Bar('my_bar',
+                           [[[1, 2, 3, 4], [5, 6, 7, 8]],
+                            [[1, 2, 3, 4], [5, 6, 7, 8]],
+                            [[1, 2, 3, 4], [5, 6, 7, 8]]],
+                           [[-1, -2, -3, -4], [-5, -6, -7, -8]])
+        self.assertContainerEqual(constructed_bar, expected_bar)
 
     # TODO test dynamic class generation with dim coord spec

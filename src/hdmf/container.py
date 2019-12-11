@@ -420,7 +420,7 @@ class Container(AbstractContainer):
             raise ValueError("Cannot reset dims for field %s in %s. Dims are already %s."
                              % (data_name, self.__class__.__name__, self.dims[data_name]))
         if not Container.__all_unique(dims):
-            raise ValueError("Cannot set dims for field %s in %s. Dims must be unique."
+            raise ValueError("Cannot set dims for field %s in %s. Dim names must be unique."
                              % (data_name, self.__class__.__name__))
         self.dims[data_name] = dims
 
@@ -429,33 +429,33 @@ class Container(AbstractContainer):
         seen = set()
         return not any(i in seen or seen.add(i) for i in x)
 
-    @docval({'name': 'data_name', 'type': str, 'doc': ''},
-            {'name': 'axis', 'type': int, 'doc': ''},
-            {'name': 'dim', 'type': str, 'doc': ''})
-    def set_dim(self, **kwargs):
-        # TODO dims should really not be mutable after first setting it. BUT what happens if data changes?
-        data_name, axis, dim = getargs('data_name', 'axis', 'dim', kwargs)
-        if data_name not in self.fields:
-            raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
-        if data_name in self.dims and self.dims[data_name][axis] is not None:
-            raise ValueError("Cannot reset dims for axis %d of field %s in %s. Dim is already %s."
-                             % (axis, data_name, self.__class__.__name__, self.dims[data_name][axis]))
-        data = getattr(self, data_name)
-        data_shape = get_data_shape(data)
-        if data_shape is None:
-            raise ValueError("Cannot determine shape of field '%s' in %s." % (data_name, self.__class__.__name__))
-        num_data_dims = len(data_shape)
-        if axis < 0 or axis >= num_data_dims:
-            raise ValueError("Axis %d does not exist for field '%s' in %s."
-                             % (axis, data_name, self.__class__.__name__))
-        if data_name not in self.dims:
-            self.dims[data_name] = [None] * num_data_dims
-            for di in range(num_data_dims):
-                self.dims[data_name][di] = 'dim_%d' % di  # default initialization for other fields
-        if dim in self.dims[data_name] and self.dims[data_name].index(dim) != axis:
-            raise ValueError("Cannot set dim '%s' for axis %d of field %s in %s. Dim '%s' is already used for axis %d."
-                             % (dim, axis, data_name, self.__class__.__name__, dim, self.dims[data_name].index(dim)))
-        self.dims[data_name][axis] = dim
+    # @docval({'name': 'data_name', 'type': str, 'doc': ''},
+    #         {'name': 'axis', 'type': int, 'doc': ''},
+    #         {'name': 'dim', 'type': str, 'doc': ''})
+    # def set_dim(self, **kwargs):
+    #     # TODO dims should really not be mutable after first setting it. BUT what happens if data changes?
+    #     data_name, axis, dim = getargs('data_name', 'axis', 'dim', kwargs)
+    #     if data_name not in self.fields:
+    #         raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+    #     if data_name in self.dims and self.dims[data_name][axis] is not None:
+    #         raise ValueError("Cannot reset dims for axis %d of field %s in %s. Dim is already %s."
+    #                          % (axis, data_name, self.__class__.__name__, self.dims[data_name][axis]))
+    #     data = getattr(self, data_name)
+    #     data_shape = get_data_shape(data)
+    #     if data_shape is None:
+    #         raise ValueError("Cannot determine shape of field '%s' in %s." % (data_name, self.__class__.__name__))
+    #     num_data_dims = len(data_shape)
+    #     if axis < 0 or axis >= num_data_dims:
+    #         raise ValueError("Axis %d does not exist for field '%s' in %s."
+    #                          % (axis, data_name, self.__class__.__name__))
+    #     if data_name not in self.dims:
+    #         self.dims[data_name] = [None] * num_data_dims
+    #         for di in range(num_data_dims):
+    #             self.dims[data_name][di] = 'dim_%d' % di  # default initialization for other fields
+    #     if dim in self.dims[data_name] and self.dims[data_name].index(dim) != axis:
+    #         raise ValueError("Cannot set dim '%s' for axis %d of field %s in %s. Dim '%s' is already used for axis %d."
+    #                          % (dim, axis, data_name, self.__class__.__name__, dim, self.dims[data_name].index(dim)))
+    #     self.dims[data_name][axis] = dim
 
     @property
     def coords(self):
@@ -465,62 +465,76 @@ class Container(AbstractContainer):
         '''
         return self.__coords
 
+    # @docval({'name': 'data_name', 'type': str, 'doc': ''},
+    #         {'name': 'coords', 'type': dict, 'doc': ''})
+    # def set_coords(self, **kwargs):
+    #     data_name, coords = getargs('data_name', 'coords', kwargs)
+    #     if data_name not in self.fields:
+    #         raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+    #     if data_name in self.coords:
+    #         raise ValueError("Cannot reset coords for field %s in %s. Coords are already %s."
+    #                          % (data_name, self.__class__.__name__, self.dims[data_name]))
+    #     self.coords[data_name] = coords
+
     @docval({'name': 'data_name', 'type': str, 'doc': ''},
             {'name': 'name', 'type': str, 'doc': ''},
-            {'name': 'coord_data_name', 'type': str, 'doc': ''},
-            {'name': 'axes', 'type': (str, list, tuple), 'doc': '', 'default': None})
+            {'name': 'coord_dataset', 'type': str, 'doc': ''},
+            {'name': 'coord_axes', 'type': tuple, 'doc': ''},
+            {'name': 'dims', 'type': tuple, 'doc': ''},
+            {'name': 'coord_type', 'type': str, 'doc': ''})
     def set_coord(self, **kwargs):
         '''
-        Sets a coordinate and coordinate label for a given data array in this Container.
+        Sets a coordinate for a given data array in this Container.
+
         Usage examples:
         Field 'data' has dim 'time' for axis 0, 'electrodes' for axis 1.
         Field 'timestamps' has cooordinates for axis 0 of data and length equal to data.shape[0].
-        set_coord(data_name='data', label='my_time', coord='timestamps', dim='time')
+        set_coord(data_name='data', name='my_time', coord_dataset='timestamps', coord_axes=(0, ), dim=(0, ))
         will result in
         self.coords['data']['my_time'] == ('time', self.timestamps)
-        Field 'data' has dim 'frame' for axis 0, 'y' for axis 1, and 'x' for axis 2.
+
+        Field 'data' has dim 'frame' for axis 0, 'x' for axis 1, and 'y' for axis 2.
         Field 'dorsal_ventral' has coordinate for axes 1 and 2 of data and shape equal to (data.shape[1], data.shape[2])
-        set_coord(data_name='data', label='dv', coord='dorsal-ventral', dim=('y', 'x'))
+        set_coord(data_name='data', name='dv', coord_dataset='dorsal-ventral', coord_axes=(0, 1), dim=(1, 2))
         will result in
-        self.coords['data']['dv'] == (('y', 'x'), self.dorsal_ventral)
+        self.coords['data']['dv'] == (('x', 'y'), self.dorsal_ventral)
         '''
-        data_name, label, coord, dims = getargs('data_name', 'label', 'coord', 'dims', kwargs)
-        if dims is None:  # if dim is not provided, the dimension is the same as the label
-            dims = (label, )
+        data_name, name, coord_dataset, coord_axes, dims, coord_type = getargs('data_name', 'name', 'coord_dataset',
+                                                                               'coord_axes', 'dims', 'coord_type',
+                                                                               kwargs)
         if data_name not in self.fields:
-            raise ValueError("Field name '%s' not found in %s." % (data_name, self.__class__.__name__))
+            raise ValueError("Cannot set coord. Field name '%s' not found in %s."
+                             % (data_name, self.__class__.__name__))
         if data_name not in self.dims:
-            raise ValueError("No dimensions have been specified for '%s' in %s." % (data_name, self.__class__.__name__))
-        if isinstance(dims, str):
-            dims = (dims, )
-        dims = tuple(dims)
-        for d in dims:
-            if d not in self.dims[data_name]:
-                raise ValueError("Dimension '%s' not found in dimensions for field '%s' in %s."
-                                 % (d, data_name, self.__class__.__name__))
-        if coord not in self.fields:
-            raise ValueError("Coord name '%s' not found in %s." % (coord, self.__class__.__name__))
-        if data_name == coord:
-            raise ValueError("Cannot set coord '%s' to itself in %s." % (coord, self.__class__.__name__))
+            raise ValueError("Cannot set coord. No dimensions have been specified for '%s' in %s."
+                             % (data_name, self.__class__.__name__))
+        if coord_dataset not in self.fields:
+            raise ValueError("Cannot set coord. Coord name '%s' not found in %s."
+                             % (coord_dataset, self.__class__.__name__))
+        if data_name == coord_dataset:
+            raise ValueError("Cannot set coord '%s' to itself in %s." % (coord_dataset, self.__class__.__name__))
 
         # TODO check that dimensions of coord are aligned with dimensions of data_name on axis
         data = getattr(self, data_name)
         data_shape = get_data_shape(data)
-        coord_data = getattr(self, coord)
+        coord_data = getattr(self, coord_dataset)
         coord_shape = get_data_shape(coord_data)
 
-        for di, d in enumerate(dims):
-            axis = self._get_dim_axis(data_name=data_name, dim=d)
-            if data_shape[axis] != coord_shape[di]:
-                raise ValueError(("Dimension '%s' of field '%s' must have the same length as axis %d of "
-                                  "field '%s' in %s (%d != %d).")
-                                 % (d, data_name, di, coord, self.__class__.__name__,
-                                    data_shape[axis], coord_shape[di]))
+        if coord_type == 'aligned':
+            for daxis, caxis in zip(dims, coord_axes):
+                if data_shape[daxis] != coord_shape[caxis]:
+                    raise ValueError(("Dimension %d of field '%s' must have the same length as axis %d of "
+                                      "field '%s' in %s (%d != %d).")
+                                     % (daxis, data_name, caxis, coord_data, self.__class__.__name__,
+                                        data_shape[daxis], coord_shape[caxis]))
 
         if data_name not in self.coords:
             self.coords[data_name] = dict()
 
-        self.coords[data_name][label] = (dims, coord_data)
+        dim_names = list()
+        for dim in dims:
+            dim_names.append(self.dims[data_name][dim])
+        self.coords[data_name][name] = (tuple(dim_names), coord_data)
 
     @docval({'name': 'data_name', 'type': str, 'doc': ''})
     def to_xarray_dataarray(self, **kwargs):

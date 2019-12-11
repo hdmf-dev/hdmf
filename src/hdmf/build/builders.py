@@ -268,7 +268,7 @@ class GroupBuilder(BaseBuilder):
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
             {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': None},
-            {'name': 'coords', 'type': (list, tuple), 'doc': 'a dictionary of coordinates of this dataset',
+            {'name': 'coords', 'type': dict, 'doc': 'a dictionary of coordinates of this dataset',
              'default': None},
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
@@ -441,7 +441,7 @@ class DatasetBuilder(BaseBuilder):
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
             {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': None},
-            {'name': 'coords', 'type': (list, tuple), 'doc': 'a dictionary of coordinates of this dataset',
+            {'name': 'coords', 'type': dict, 'doc': 'a dictionary of coordinates of this dataset',
              'default': None},
             *get_docval(BaseBuilder.__init__, 'parent', 'source'))
     def __init__(self, **kwargs):
@@ -476,6 +476,12 @@ class DatasetBuilder(BaseBuilder):
     def dims(self):
         ''' The dimensions of the dataset represented by this builder '''
         return self['dims']
+
+    @dims.setter
+    def dims(self, val):
+        if self['dims'] is not None:
+            raise AttributeError('Cannot reset dims once it is specified')
+        self['dims'] = val
 
     @property
     def coords(self):
@@ -587,6 +593,11 @@ class CoordBuilder:
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'})
     def __init__(self, **kwargs):
         # use composition instead of inheritance purposefully to restrict user's ability to use arbitrary dict methods
+        # cast ints to tuples
+        if type(kwargs['coord_axes']) == int:
+            kwargs['coord_axes'] = (kwargs['coord_axes'], )
+        if type(kwargs['dims']) == int:
+            kwargs['dims'] = (kwargs['dims'], )
         super().__setattr__('data_dict', kwargs)  # store all given docval args. avoid local __setattr__
 
     def __getattr__(self, key):
