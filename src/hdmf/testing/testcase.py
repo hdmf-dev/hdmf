@@ -4,6 +4,7 @@ import h5py
 import numpy as np
 import os
 from abc import ABCMeta, abstractmethod
+import scipy.sparse
 
 from ..container import Container, Data
 from ..query import HDMFDataset
@@ -78,6 +79,8 @@ class TestCase(unittest.TestCase):
             self._assert_data_equal(f1, f2, ignore_hdmf_attrs)
         elif isinstance(f1, (float, np.floating)):
             np.testing.assert_equal(f1, f2)
+        elif isinstance(f1, scipy.sparse.csr_matrix):
+            self.assertEqual((f1 != f2).nnz, 0)
         else:
             self.assertEqual(f1, f2)
 
