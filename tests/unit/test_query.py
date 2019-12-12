@@ -1,4 +1,3 @@
-import unittest
 import os
 from h5py import File
 import numpy as np

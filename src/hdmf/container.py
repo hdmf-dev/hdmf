@@ -1,5 +1,4 @@
 import numpy as np
-from collections import OrderedDict
 from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass

@@ -7,7 +7,7 @@ from datetime import datetime
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape
 from ..container import AbstractContainer, Container, Data, DataRegion
-from ..spec import Spec, AttributeSpec, CoordSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
+from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec

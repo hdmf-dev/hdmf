@@ -5,8 +5,6 @@ from hdmf.build import ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-import unittest
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 

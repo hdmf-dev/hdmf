@@ -1,5 +1,3 @@
-import unittest
-
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
 from hdmf import Container
@@ -9,7 +7,6 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 import numpy as np
 
 from tests.unit.utils import CORE_NAMESPACE
