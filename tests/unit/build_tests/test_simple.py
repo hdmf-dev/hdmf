@@ -283,7 +283,7 @@ class TestConstructDims(TestCase):
         self.assertEqual(constructed_bar.dims, {'data1': ('x', )})
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4])
-        self.assertContainerEqual(constructed_bar, expected_bar)
+        self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
     def test_construct_dims_1d_length_none(self):
         """
@@ -307,7 +307,7 @@ class TestConstructDims(TestCase):
         self.assertEqual(constructed_bar.dims, {'data1': ('x', )})
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4])
-        self.assertContainerEqual(constructed_bar, expected_bar)
+        self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
     def test_construct_dims_1d_wrong_length(self):
         """
@@ -354,7 +354,7 @@ class TestConstructDims(TestCase):
         self.assertEqual(constructed_bar.dims, {'data1': ('x', 'y')})
 
         expected_bar = Bar('my_bar', [[1, 2, 3, 4], [5, 6, 7, 8]])
-        self.assertContainerEqual(constructed_bar, expected_bar)
+        self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
 
 class TestConstructCoords(TestCase):
@@ -384,7 +384,7 @@ class TestConstructCoords(TestCase):
         self.assertEqual(constructed_bar.coords, {'data1': {'letters': (('x', ), ['a', 'b', 'c', 'd'])}})
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
-        self.assertContainerEqual(constructed_bar, expected_bar)
+        self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
     def test_construct_coords_2d(self):
         frame_spec = DimSpec(name='frame', required=True)
@@ -422,7 +422,7 @@ class TestConstructCoords(TestCase):
                             [[1, 2, 3, 4], [5, 6, 7, 8]],
                             [[1, 2, 3, 4], [5, 6, 7, 8]]],
                            [[-1, -2, -3, -4], [-5, -6, -7, -8]])
-        self.assertContainerEqual(constructed_bar, expected_bar)
+        self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
 # TODO test dynamic class generation with dim coord spec
 
