@@ -548,7 +548,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             spec_dtype, spec_shape, spec = self.__check_dset_spec(self.spec, spec_ext)
             if isinstance(spec_dtype, RefSpec):
                 # a dataset of references
-                bldr_data = self.__get_ref_builder(spec_dtype, spec_shape, container, manager)
+                bldr_data = self.__get_ref_builder(spec_dtype, spec_shape, container, manager, source=source)
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=spec_dtype.reftype)
             elif isinstance(spec_dtype, list):
                 # a compound dataset
@@ -559,7 +559,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 for i, row in enumerate(container.data):
                     tmp = list(row)
                     for j, subt in refs:
-                        tmp[j] = self.__get_ref_builder(subt.dtype, None, row[j], manager)
+                        tmp[j] = self.__get_ref_builder(subt.dtype, None, row[j], manager, source=source)
                     bldr_data.append(tuple(tmp))
                 try:
                     bldr_data, dtype = self.convert_dtype(spec, bldr_data)
@@ -576,7 +576,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         if d is None:
                             bldr_data.append(None)
                         else:
-                            bldr_data.append(ReferenceBuilder(manager.build(d)))
+                            bldr_data.append(ReferenceBuilder(manager.build(d, source=source)))
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
                                              dtype='object')
                 else:
@@ -629,26 +629,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
         else:
             return False
 
-    def __get_ref_builder(self, dtype, shape, container, manager):
+    def __get_ref_builder(self, dtype, shape, container, manager, source):
         bldr_data = None
         if dtype.is_region():
             if shape is None:
                 if not isinstance(container, DataRegion):
                     msg = "'container' must be of type DataRegion if spec represents region reference"
                     raise ValueError(msg)
-                bldr_data = RegionBuilder(container.region, manager.build(container.data))
+                bldr_data = RegionBuilder(container.region, manager.build(container.data, source=source))
             else:
                 bldr_data = list()
                 for d in container.data:
-                    bldr_data.append(RegionBuilder(d.slice, manager.build(d.target)))
+                    bldr_data.append(RegionBuilder(d.slice, manager.build(d.target, source=source)))
         else:
             if isinstance(container, Data):
                 bldr_data = list()
                 if self.__is_reftype(container.data):
                     for d in container.data:
-                        bldr_data.append(ReferenceBuilder(manager.build(d)))
+                        bldr_data.append(ReferenceBuilder(manager.build(d, source=source)))
             else:
-                bldr_data = ReferenceBuilder(manager.build(container))
+                bldr_data = ReferenceBuilder(manager.build(container, source=source))
         return bldr_data
 
     def __is_null(self, item):
