@@ -1,12 +1,12 @@
-import unittest2 as unittest
 import ruamel.yaml as yaml
 import json
 import os
 
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog
+from hdmf.testing import TestCase
 
 
-class TestSpecLoad(unittest.TestCase):
+class TestSpecLoad(TestCase):
     NS_NAME = 'test_ns'
 
     def setUp(self):

@@ -2,7 +2,7 @@ import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
 from six import with_metaclass
-from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
+from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
 from .data_utils import DataIO
 from warnings import warn
 import h5py
@@ -226,7 +226,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
                     parent_container.__children.append(self)
                     parent_container.set_modified()
                 else:
-                    self.__parent.add_candidate(parent_container, self)
+                    self.__parent.add_candidate(parent_container)
         else:
             self.__parent = parent_container
             if isinstance(parent_container, Container):
@@ -389,6 +389,15 @@ class Data(AbstractContainer):
     @property
     def data(self):
         return self.__data
+
+    @property
+    def shape(self):
+        """
+        Get the shape of the data represented by this container
+        :return: Shape tuple
+        :rtype: tuple of ints
+        """
+        return get_data_shape(self.__data)
 
     @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
     def set_dataio(self, **kwargs):

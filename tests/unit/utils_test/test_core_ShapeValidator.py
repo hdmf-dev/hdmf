@@ -1,10 +1,11 @@
-import unittest2 as unittest
-
-from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 import numpy as np
 
+from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
+from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorData
+from hdmf.testing import TestCase
 
-class ShapeValidatorTests(unittest.TestCase):
+
+class ShapeValidatorTests(TestCase):
 
     def setUp(self):
         pass
@@ -166,8 +167,41 @@ class ShapeValidatorTests(unittest.TestCase):
         self.assertTupleEqual(res.axes1, (0, 1))
         self.assertTupleEqual(res.axes2, (0, 1))
 
+    def test_DynamicTableRegion_shape_validation(self):
+        # Create a test DynamicTable
+        dt_spec = [
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
+        ]
+        dt_data = [
+            [1, 2, 3, 4, 5],
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
+        ]
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(dt_spec, dt_data)
+        ]
+        dt = DynamicTable("with_columns_and_data",
+                          "a test table", columns=columns)
+        # Create test DynamicTableRegion
+        dtr = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=dt)
+        # Confirm that the shapes match
+        res = assertEqualShape(dtr, np.arange(9).reshape(3, 3))
+        self.assertTrue(res.result)
 
-class ShapeValidatorResultTests(unittest.TestCase):
+    def with_table_columns(self):
+        cols = [VectorData(**d) for d in self.spec]
+        table = DynamicTable("with_table_columns", 'a test table', columns=cols)
+        return table
+
+    def with_columns_and_data(self):
+
+        return
+
+
+class ShapeValidatorResultTests(TestCase):
 
     def setUp(self):
         pass
@@ -192,7 +226,3 @@ class ShapeValidatorResultTests(unittest.TestCase):
         for var in temp_cases:
             setattr(temp, var, temp_d)
             self.assertIsInstance(getattr(temp, var), tuple,  var)
-
-
-if __name__ == '__main__':
-    unittest.main()

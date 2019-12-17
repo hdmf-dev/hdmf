@@ -1,10 +1,10 @@
-import unittest2 as unittest
 import json
 
 from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec
+from hdmf.testing import TestCase
 
 
-class GroupSpecTests(unittest.TestCase):
+class GroupSpecTests(TestCase):
     def setUp(self):
         self.attributes = [
             AttributeSpec('attribute1', 'my first attribute', 'text'),

@@ -1,12 +1,12 @@
-import unittest2 as unittest
-
-from hdmf.data_utils import DataIO
-from hdmf.container import Data
 import numpy as np
 from copy import copy, deepcopy
 
+from hdmf.data_utils import DataIO
+from hdmf.container import Data
+from hdmf.testing import TestCase
 
-class DataIOTests(unittest.TestCase):
+
+class DataIOTests(TestCase):
 
     def setUp(self):
         pass
@@ -53,9 +53,5 @@ class DataIOTests(unittest.TestCase):
         dataio = DataIO(data=np.arange(30).reshape(5, 2, 3))
         data = np.arange(30).reshape(5, 2, 3)
         container = Data('wrapped_data', data)
-        with self.assertRaisesRegex(ValueError, "cannot overwrite 'data' on DataIO"):
+        with self.assertRaisesWith(ValueError, "cannot overwrite 'data' on DataIO"):
             container.set_dataio(dataio)
-
-
-if __name__ == '__main__':
-    unittest.main()

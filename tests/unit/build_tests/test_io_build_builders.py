@@ -1,9 +1,8 @@
-import unittest2 as unittest
-
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
+from hdmf.testing import TestCase
 
 
-class GroupBuilderSetterTests(unittest.TestCase):
+class GroupBuilderSetterTests(TestCase):
     """Tests for setter functions in GroupBuilder class"""
 
     def setUp(self):
@@ -60,7 +59,7 @@ class GroupBuilderSetterTests(unittest.TestCase):
         self.assertIs(self.gb2.parent, self.gb)
 
 
-class GroupBuilderGetterTests(unittest.TestCase):
+class GroupBuilderGetterTests(TestCase):
 
     def setUp(self):
         self.subgroup1 = GroupBuilder('subgroup1')
@@ -191,7 +190,7 @@ class GroupBuilderGetterTests(unittest.TestCase):
             self.assertItemsEqual(values, self.gb.values())
 
 
-class GroupBuilderIsEmptyTests(unittest.TestCase):
+class GroupBuilderIsEmptyTests(TestCase):
 
     def test_is_empty_true(self):
         """Test empty when group has nothing in it"""
@@ -229,7 +228,7 @@ class GroupBuilderIsEmptyTests(unittest.TestCase):
         self.assertEqual(gb.is_empty(), False)
 
 
-class GroupBuilderDeepUpdateTests(unittest.TestCase):
+class GroupBuilderDeepUpdateTests(TestCase):
 
     def test_mutually_exclusive_subgroups(self):
         gb1 = GroupBuilder('gb1', {'subgroup1': GroupBuilder('subgroup1')})
@@ -293,7 +292,7 @@ class GroupBuilderDeepUpdateTests(unittest.TestCase):
         self.assertEqual(gb1['link2'], gb2['link2'])
 
 
-class DatasetBuilderDeepUpdateTests(unittest.TestCase):
+class DatasetBuilderDeepUpdateTests(TestCase):
 
     def test_overwrite(self):
         db1 = DatasetBuilder('db1', [1, 2, 3])
@@ -307,7 +306,3 @@ class DatasetBuilderDeepUpdateTests(unittest.TestCase):
         db1.deep_update(db2)
         self.assertListEqual(db1.data, db2.data)
         self.assertIn('attr1', db1.attributes)
-
-
-if __name__ == '__main__':
-    unittest.main()

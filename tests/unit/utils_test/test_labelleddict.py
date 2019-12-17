@@ -1,5 +1,5 @@
-import unittest2 as unittest
 from hdmf.utils import LabelledDict
+from hdmf.testing import TestCase
 
 
 class MyTestClass:
@@ -17,7 +17,7 @@ class MyTestClass:
         return self._prop2
 
 
-class TestLabelledDict(unittest.TestCase):
+class TestLabelledDict(TestCase):
 
     def test_constructor(self):
         """Test that constructor sets arguments properly"""
@@ -33,43 +33,43 @@ class TestLabelledDict(unittest.TestCase):
     def test_set_key_attr(self):
         """Test that the key attribute cannot be set after initialization"""
         ld = LabelledDict(label='all_objects')
-        with self.assertRaisesRegex(AttributeError, "can't set attribute"):
+        with self.assertRaisesWith(AttributeError, "can't set attribute"):
             ld.key_attr = 'another_name'
 
     def test_getitem_unknown_val(self):
         """Test that dict[val] raises an error if there are no matches for val"""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesRegex(KeyError, 'unknown_val'):
+        with self.assertRaisesWith(KeyError, "'unknown_val'"):
             ld['unknown_val']
 
     def test_getitem_eqeq_unknown_val(self):
         """Test that dict[key_attr == val] raises an error if there are no matches for val"""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesRegex(KeyError, 'unknown_val'):
+        with self.assertRaisesWith(KeyError, "'unknown_val'"):
             ld['prop1 == unknown_val']
 
     def test_getitem_eqeq_other_key_attr(self):
         """Test that dict[key_attr == val] raises an error if there are no matches for other_attr == val"""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesRegex(KeyError, "unknown_val"):
+        with self.assertRaisesWith(KeyError, "'unknown_val'"):
             ld['other_attr == unknown_val']
 
     def test_getitem_eqeq_no_key_attr(self):
         """Test that dict[key_attr == val] raises an error if key_attr is not given"""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesRegex(KeyError, r"An attribute name is required before '=='\."):
+        with self.assertRaisesWith(ValueError, "An attribute name is required before '=='."):
             ld[' == unknown_key']
 
     def test_getitem_eqeq_no_val(self):
         """Test that dict[key_attr == val] raises an error if val is not given"""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesRegex(KeyError, r"A value is required after '=='\."):
+        with self.assertRaisesWith(ValueError, "A value is required after '=='."):
             ld['prop1 == ']
 
     def test_getitem_eqeq_no_key_attr_no_val(self):
         """Test that dict[key_attr == val] raises an error if key_attr is not given and val is not given"""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesRegex(KeyError, r"An attribute name is required before '=='\."):
+        with self.assertRaisesWith(ValueError, "An attribute name is required before '=='."):
             ld[' == ']
 
     def test_add_basic(self):
@@ -127,7 +127,7 @@ class TestLabelledDict(unittest.TestCase):
         ld = LabelledDict(label='all_objects', key_attr='prop1')
         obj1 = MyTestClass('a', 'b')
         ld.add(obj1)
-        with self.assertRaisesRegex(KeyError, "unknown_val"):
+        with self.assertRaisesWith(KeyError, "'unknown_val'"):
             ld['prop1 == unknown_val']
 
     def test_addval_getitem_eqeq_unknown_key_val(self):
@@ -135,7 +135,7 @@ class TestLabelledDict(unittest.TestCase):
         ld = LabelledDict(label='all_objects', key_attr='prop1')
         obj1 = MyTestClass('a', 'b')
         ld['a'] = obj1
-        with self.assertRaisesRegex(KeyError, "unknown_val"):
+        with self.assertRaisesWith(KeyError, "'unknown_val'"):
             ld['prop3 == unknown_val']
 
     def test_addval_getitem_other_key(self):
@@ -166,5 +166,5 @@ class TestLabelledDict(unittest.TestCase):
         ld.add(obj1)
         ld.add(obj2)
         ld.add(obj3)
-        with self.assertRaisesRegex(KeyError, 'c'):
+        with self.assertRaisesWith(KeyError, "'c'"):
             ld['prop2 == c']

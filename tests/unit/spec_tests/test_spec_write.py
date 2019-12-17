@@ -1,13 +1,13 @@
-import unittest2 as unittest
 import os
 import datetime
 
 from hdmf.spec.write import NamespaceBuilder, YAMLSpecWriter, export_spec
 from hdmf.spec.namespace import SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import GroupSpec
+from hdmf.testing import TestCase
 
 
-class TestSpec(unittest.TestCase):
+class TestSpec(TestCase):
 
     def setUp(self):
         # create a builder for the namespace
@@ -218,10 +218,10 @@ class TestExportSpec(TestSpec):
             self.assertEqual(nsstr, match_str)
 
     def test_missing_data_types(self):
-        with self.assertWarnsRegex(UserWarning, 'No data types specified. Exiting.'):
+        with self.assertWarnsWith(UserWarning, 'No data types specified. Exiting.'):
             export_spec(self.ns_builder, [], '.')
 
     def test_missing_name(self):
         self.ns_builder._NamespaceBuilder__ns_args['name'] = None
-        with self.assertRaisesRegex(RuntimeError, 'Namespace name is required to export specs'):
+        with self.assertRaisesWith(RuntimeError, 'Namespace name is required to export specs'):
             export_spec(self.ns_builder, self.data_types, '.')

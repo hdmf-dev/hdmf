@@ -4,6 +4,7 @@ import pandas as pd
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
+from collections import OrderedDict
 
 from . import register_class
 
@@ -84,6 +85,27 @@ class ElementIdentifiers(Data):
              'default': list()})
     def __init__(self, **kwargs):
         call_docval_func(super(ElementIdentifiers, self).__init__, kwargs)
+
+    @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
+             'doc': 'List of ids to search for in this ElementIdentifer object'},
+            rtype=np.ndarray,
+            returns='Array with the list of indices where the elements in the list where found.'
+                    'Note, the elements in the returned list are ordered in increasing index'
+                    'of the found elements, rather than in the order in which the elements'
+                    'where given for the search. Also the length of the result may be different from the length'
+                    'of the input array. E.g., if our ids are [1,2,3] and we are search for [3,1,5] the '
+                    'result would be [0,2] and NOT [2,0,None]')
+    def __eq__(self, other):
+        """
+        Given a list of ids return the indices in the ElementIdentifiers array where the
+        indices are found.
+        """
+        # Determine the ids we want to find
+        search_ids = other if not isinstance(other, Data) else other.data
+        if isinstance(search_ids, int):
+            search_ids = [search_ids]
+        # Find all matching locations
+        return np.in1d(self.data, search_ids).nonzero()[0]
 
 
 @register_class('DynamicTable')
@@ -231,6 +253,9 @@ class DynamicTable(Container):
         col_dict = dict()
         self.__indices = dict()
         for col in self.columns:
+            if hasattr(self, col.name):
+                raise ValueError("Column name '%s' is not allowed because it is already an attribute" % col.name)
+            setattr(self, col.name, col)
             if isinstance(col, VectorData):
                 existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
@@ -251,10 +276,16 @@ class DynamicTable(Container):
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
         for col in self.__columns__:
-            if col.get('required', False) and col['name'] not in self.__colids:
-                self.add_column(col['name'], col['description'],
-                                index=col.get('index', False),
-                                table=col.get('table', False))
+            if col['name'] not in self.__colids:
+                if col.get('required', False):
+                    self.add_column(col['name'], col['description'],
+                                    index=col.get('index', False),
+                                    table=col.get('table', False))
+
+                else:  # create column name attributes (set to None) on the object even if column is not required
+                    setattr(self, col['name'], None)
+                    if col.get('index', False):
+                        setattr(self, col['name'] + '_index', None)
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -298,12 +329,14 @@ class DynamicTable(Container):
 
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
+            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
+             'default': False},
             allow_extra=True)
     def add_row(self, **kwargs):
         '''
         Add a row to the table. If *id* is not provided, it will auto-increment.
         '''
-        data, row_id = popargs('data', 'id', kwargs)
+        data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
@@ -327,11 +360,13 @@ class DynamicTable(Container):
                     'and were missing {} keys: {}'.format(len(missing_columns), missing_columns)
                 ])
             )
-
         if row_id is None:
             row_id = data.pop('id', None)
         if row_id is None:
             row_id = len(self)
+        if enforce_unique_id:
+            if row_id in self.id:
+                raise ValueError("id %i already in the table" % row_id)
         self.id.append(row_id)
 
         for colname, colnum in self.__colids.items():
@@ -377,6 +412,7 @@ class DynamicTable(Container):
         col = cls(**ckwargs)
         col.parent = self
         columns = [col]
+        setattr(self, name, col)
 
         # Add index if it's been specified
         if index is not False:
@@ -396,6 +432,7 @@ class DynamicTable(Container):
             # else, the ObjectMapper will create a link from self (parent) to col_index (child with existing parent)
             col = col_index
             self.__indices[col_index.name] = col_index
+            setattr(self, col_index.name, col_index)
 
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
@@ -427,30 +464,60 @@ class DynamicTable(Container):
     def __getitem__(self, key):
         ret = None
         if isinstance(key, tuple):
-            # index by row and column, return specific cell
+            # index by row and column --> return specific cell
             arg1 = key[0]
             arg2 = key[1]
             if isinstance(arg2, str):
                 arg2 = self.__colids[arg2]
             ret = self.__df_cols[arg2][arg1]
+        elif isinstance(key, str):
+            # index by one string --> return column
+            if key in self.__colids:
+                ret = self.__df_cols[self.__colids[key]]
+            elif key in self.__indices:
+                return self.__indices[key]
+            else:
+                raise KeyError(key)
         else:
+            # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
+            # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
-            if isinstance(arg, str):
-                # index by one string, return column
-                if arg in self.__colids:
-                    ret = self.__df_cols[self.__colids[arg]]
-                elif arg in self.__indices:
-                    return self.__indices[arg]
-                else:
-                    raise KeyError(arg)
-            elif isinstance(arg, (int, np.int8, np.int16, np.int32, np.int64)):
-                # index by int, return row
-                ret = tuple(col[arg] for col in self.__df_cols)
-            elif isinstance(arg, (tuple, list)):
-                # index by a list of ints, return multiple rows
-                ret = list()
-                for i in arg:
-                    ret.append(tuple(col[i] for col in self.__df_cols))
+            if np.issubdtype(type(arg), np.integer):
+                arg = np.s_[arg:(arg+1)]
+            # index with a python slice (or single integer) to select one or multiple rows
+            if isinstance(arg, slice):
+                data = OrderedDict()
+                for name in self.colnames:
+                    col = self.__df_cols[self.__colids[name]]
+                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                        data[name] = [x for x in col[arg]]
+                    else:
+                        currdata = col[arg]
+                        data[name] = currdata
+                id_index = self.id.data[arg]
+                if np.isscalar(id_index):
+                    id_index = [id_index, ]
+                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+            # index by a list of ints, return multiple rows
+            elif isinstance(arg, (tuple, list, np.ndarray)):
+                if isinstance(arg, np.ndarray):
+                    if len(arg.shape) != 1:
+                        raise ValueError("cannot index DynamicTable with multiple dimensions")
+                data = OrderedDict()
+                for name in self.colnames:
+                    col = self.__df_cols[self.__colids[name]]
+                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                        data[name] = [x for x in col[arg]]
+                    elif isinstance(col.data, np.ndarray):
+                        data[name] = col[arg]
+                    else:
+                        data[name] = [col[i] for i in arg]
+                id_index = (self.id.data[arg]
+                            if isinstance(self.id.data, np.ndarray)
+                            else [self.id.data[i] for i in arg])
+                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+            else:
+                raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
 
         return ret
 
@@ -462,11 +529,15 @@ class DynamicTable(Container):
             return self[key]
         return default
 
-    def to_dataframe(self, exclude=set([])):
-        '''Produce a pandas DataFrame containing this table's data.
-        '''
-
-        data = {}
+    @docval({'name': 'exclude', 'type': set, 'doc': ' List of columns to exclude from the dataframe', 'default': None})
+    def to_dataframe(self, **kwargs):
+        """
+        Produce a pandas DataFrame containing this table's data.
+        """
+        exclude = popargs('exclude', kwargs)
+        if exclude is None:
+            exclude = set([])
+        data = OrderedDict()
         for name in self.colnames:
             if name in exclude:
                 continue
@@ -621,3 +692,11 @@ class DynamicTableRegion(VectorData):
             return self.table[self.data[key]]
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
+
+    @property
+    def shape(self):
+        """
+        Define the shape, i.e., (num_rows, num_columns) of the selected table region
+        :return: Shape tuple with two integers indicating the number of rows and number of columns
+        """
+        return (len(self.data), len(self.table.columns))

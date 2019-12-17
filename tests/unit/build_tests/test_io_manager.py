@@ -1,14 +1,14 @@
-import unittest2 as unittest
-
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.testing import TestCase
 
 from abc import ABCMeta
 from six import with_metaclass
+import unittest
 
-from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 
 
 class FooMapper(ObjectMapper):
@@ -21,7 +21,7 @@ class FooMapper(ObjectMapper):
         self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
 
 
-class TestBase(unittest.TestCase):
+class TestBase(TestCase):
 
     def setUp(self):
         self.foo_spec = GroupSpec('A test group specification with a data type',
@@ -217,6 +217,7 @@ class TestNestedContainersSubgroup(TestNestedBase):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
                 super(BucketMapper, self).__init__(spec)
+                self.unmap(spec.get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
@@ -253,6 +254,8 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
                 super(BucketMapper, self).__init__(spec)
+                self.unmap(spec.get_group('foo_holder_holder'))
+                self.unmap(spec.get_group('foo_holder_holder').get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
@@ -277,9 +280,5 @@ class TestTypeMap(TestBase):
 
 
 # TODO:
-class TestWildCardNamedSpecs(unittest.TestCase):
+class TestWildCardNamedSpecs(TestCase):
     pass
-
-
-if __name__ == '__main__':
-    unittest.main()

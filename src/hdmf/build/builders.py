@@ -5,10 +5,7 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 import warnings
-try:
-    from collections.abc import Iterable  # Python 3
-except ImportError:
-    from collections import Iterable  # Python 2.7
+from collections.abc import Iterable
 from datetime import datetime
 
 from ..utils import docval, getargs, popargs, call_docval_func, fmt_docval_args
@@ -275,9 +272,9 @@ class GroupBuilder(BaseBuilder):
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group '''
+        kwargs['parent'] = self
+        kwargs['source'] = self.source
         pargs, pkwargs = fmt_docval_args(DatasetBuilder.__init__, kwargs)
-        pkwargs['parent'] = self
-        pkwargs['source'] = self.source
         builder = DatasetBuilder(*pargs, **pkwargs)
         self.set_dataset(builder)
         return builder

@@ -1,8 +1,5 @@
 from copy import copy
-try:
-    from collections.abc import Iterable  # Python 3
-except ImportError:
-    from collections import Iterable  # Python 2.7
+from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
 from six import binary_type, text_type, with_metaclass
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
@@ -145,7 +142,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
 
     def __getitem__(self, arg):
         rows = copy(super(AbstractH5TableDataset, self).__getitem__(arg))
-        if isinstance(arg, int):
+        if np.issubdtype(type(arg), np.integer):
             self.__swap_refs(rows)
         else:
             for row in rows:
@@ -473,8 +470,8 @@ class H5DataIO(DataIO):
                                          " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
             # Warn if compressor other than gzip is being used
             if self.__iosettings['compression'] != 'gzip':
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available"
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of"
+                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
+                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
                               "the generated HDF5 files.")
 
     @staticmethod

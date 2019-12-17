@@ -1,42 +1,12 @@
 from abc import ABCMeta, abstractmethod
-try:
-    from collections.abc import Iterable  # Python 3
-except ImportError:
-    from collections import Iterable  # Python 2.7
+from collections.abc import Iterable
 
 import numpy as np
 from warnings import warn
-from six import with_metaclass, text_type, binary_type
+from six import with_metaclass
 import copy
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
-
-
-def __get_shape_helper(data):
-    """Helper function used by get_shape"""
-    shape = list()
-    if hasattr(data, '__len__'):
-        shape.append(len(data))
-        if len(data) and not isinstance(data[0], (text_type, binary_type)):
-            shape.extend(__get_shape_helper(data[0]))
-    return tuple(shape)
-
-
-def get_shape(data):
-    """
-    Determine the data shape for the given data
-    :param data: Array for which the data should be determined
-    :type data: list, ndarray, dict
-    :return: None in case shape is unknown and shape tuple otherwise
-    """
-    if isinstance(data, dict):
-        return None
-    elif hasattr(data, 'shape'):
-        return data.shape
-    elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
-        return __get_shape_helper(data)
-    else:
-        return None
 
 
 @docval_macro('array_data')
@@ -136,7 +106,10 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
     @docval(*__docval_init)
     def __init__(self, **kwargs):
-        """Initialize the DataChunkIterator"""
+        """Initialize the DataChunkIterator.
+        If 'data' is an iterator and 'dtype' is not specified, then next is called on the iterator in order to determine
+        the dtype of the data.
+        """
         # Get the user parameters
         self.data, self.__maxshape, self.__dtype, self.buffer_size, self.iter_axis = getargs('data',
                                                                                              'maxshape',
@@ -177,13 +150,9 @@ class DataChunkIterator(AbstractDataChunkIterator):
             elif isinstance(self.data, list) or isinstance(self.data, tuple):
                 self.__maxshape = get_data_shape(self.data, strict_no_data_load=True)
 
-        # If we have a data iterator, then read the first chunk
-        if self.__data_iter is not None:  # and(self.__maxshape is None or self.__dtype is None):
+        # If we have a data iterator and do not know the dtype, then read the first chunk
+        if self.__data_iter is not None and self.__dtype is None:
             self._read_next_chunk()
-
-        # If we still don't know the shape then try to determine the shape from the first chunk
-        if self.__maxshape is None and self.__next_chunk.data is not None:
-            self._set_maxshape_from_next_chunk()
 
         # Determine the type of the data if possible
         if self.__next_chunk.data is not None:
@@ -218,7 +187,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 if stop_index > iter_data_bounds:
                     stop_index = iter_data_bounds
 
-                selection = [slice(None)] * len(self.__maxshape)
+                selection = [slice(None)] * len(self.maxshape)
                 selection[self.iter_axis] = slice(start_index, stop_index)
                 selection = tuple(selection)
                 self.__next_chunk.data = self.data[selection]
@@ -261,10 +230,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__next_chunk.data = np.empty(next_chunk_shape, dtype=iter_pieces[0].dtype)
                 self.__next_chunk.data = np.stack(iter_pieces, axis=self.iter_axis)
 
-                if self.__maxshape is None:
-                    self._set_maxshape_from_next_chunk()
-
-                selection = [slice(None)] * len(self.__maxshape)
+                selection = [slice(None)] * len(self.maxshape)
                 selection[self.iter_axis] = slice(self.__next_chunk_start + curr_chunk_offset,
                                                   self.__next_chunk_start + curr_chunk_offset + next_chunk_size)
                 self.__next_chunk.selection = tuple(selection)
@@ -279,26 +245,6 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
         self.chunk_index += 1
         return self.__next_chunk
-
-    def _set_maxshape_from_next_chunk(self):
-        """
-        Internal helper function used to determine the maxshape to be used from
-        the self.__next_chunk object. The function initializes self.__maxshape.
-        """
-        data_shape = get_data_shape(self.__next_chunk.data)
-        self.__maxshape = list(data_shape)
-        try:
-            # Size of self.__next_chunk.data along self.iter_axis is not accurate for maxshape because it is just a
-            # chunk. So try to set maxshape along the dimension self.iter_axis based on the shape of self.data if
-            # possible. Otherwise, use None to represent an unlimited size
-            if hasattr(self.data, '__len__') and self.iter_axis == 0:
-                # special case of 1-D array
-                self.__maxshape[0] = len(self.data)
-            else:
-                self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
-        except AttributeError:  # from self.data.shape
-            self.__maxshape[self.iter_axis] = None
-        self.__maxshape = tuple(self.__maxshape)
 
     def __next__(self):
         r"""Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
@@ -347,18 +293,43 @@ class DataChunkIterator(AbstractDataChunkIterator):
     def recommended_data_shape(self):
         """Recommend an initial shape of the data. This is useful when progressively writing data and
         we want to recommend an initial size for the dataset"""
-        if self.__maxshape is not None:
-            if np.all([i is not None for i in self.__maxshape]):
-                return self.__maxshape
+        if self.maxshape is not None:
+            if np.all([i is not None for i in self.maxshape]):
+                return self.maxshape
         return self.__first_chunk_shape
 
     @property
     def maxshape(self):
         """
-        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator.
+        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator. If an iterator
+        is provided and no data has been read yet, then the first chunk will be read (i.e., next will be called on the
+        iterator) in order to determine the maxshape.
 
         :return: Shape tuple. None is used for dimenwions where the maximum shape is not known or unlimited.
         """
+        if self.__maxshape is None:
+            # If no data has been read from the iterator yet, read the first chunk and use it to determine the maxshape
+            if self.__data_iter is not None and self.__next_chunk.data is None:
+                self._read_next_chunk()
+
+            # Determine maxshape from self.__next_chunk
+            if self.__next_chunk.data is None:
+                return None
+            data_shape = get_data_shape(self.__next_chunk.data)
+            self.__maxshape = list(data_shape)
+            try:
+                # Size of self.__next_chunk.data along self.iter_axis is not accurate for maxshape because it is just a
+                # chunk. So try to set maxshape along the dimension self.iter_axis based on the shape of self.data if
+                # possible. Otherwise, use None to represent an unlimited size
+                if hasattr(self.data, '__len__') and self.iter_axis == 0:
+                    # special case of 1-D array
+                    self.__maxshape[0] = len(self.data)
+                else:
+                    self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
+            except AttributeError:  # from self.data.shape
+                self.__maxshape[self.iter_axis] = None
+            self.__maxshape = tuple(self.__maxshape)
+
         return self.__maxshape
 
     @property

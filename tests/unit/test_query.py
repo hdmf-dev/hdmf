@@ -1,16 +1,17 @@
-import unittest2 as unittest
+import unittest
 import os
 from h5py import File
 import numpy as np
 
 from hdmf.query import HDMFDataset, Query
 from hdmf.array import SortedArray, LinSpace
+from hdmf.testing import TestCase
 
 from six import with_metaclass
 from abc import ABCMeta
 
 
-class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
+class AbstractQueryTest(with_metaclass(ABCMeta, TestCase)):
 
     def getDataset(self):
         raise unittest.SkipTest('getDataset must be implemented')
@@ -137,7 +138,7 @@ class LinspaceQueryTest(AbstractQueryTest):
         return LinSpace(0, 10, 1)
 
 
-class CompoundQueryTest(unittest.TestCase):
+class CompoundQueryTest(TestCase):
 
     def getM(self):
         return SortedArray(np.arange(10, 20, 1))

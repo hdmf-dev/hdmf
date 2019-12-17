@@ -1,9 +1,8 @@
-import unittest2 as unittest
-
 from hdmf.spec import DtypeSpec, DtypeHelper, RefSpec
+from hdmf.testing import TestCase
 
 
-class DtypeSpecHelper(unittest.TestCase):
+class DtypeSpecHelper(TestCase):
     def setUp(self):
         pass
 
@@ -24,7 +23,7 @@ class DtypeSpecHelper(unittest.TestCase):
         self.assertListEqual(result, expected_result)
 
 
-class DtypeSpecTests(unittest.TestCase):
+class DtypeSpecTests(TestCase):
     def setUp(self):
         pass
 

@@ -1,10 +1,10 @@
-import unittest2 as unittest
-
-from hdmf.data_utils import DataChunkIterator, DataChunk
 import numpy as np
 
+from hdmf.data_utils import DataChunkIterator, DataChunk
+from hdmf.testing import TestCase
 
-class DataChunkIteratorTests(unittest.TestCase):
+
+class DataChunkIteratorTests(TestCase):
 
     def setUp(self):
         pass
@@ -31,8 +31,8 @@ class DataChunkIteratorTests(unittest.TestCase):
         """Test that DataChunkIterator has no dtype or chunks when given a list of None.
         """
         a = [None, None, None]
-        with self.assertRaisesRegex(Exception, 'Data type could not be determined. Please specify dtype in '
-                                    'DataChunkIterator init.'):
+        with self.assertRaisesWith(Exception, 'Data type could not be determined. Please specify dtype in '
+                                              'DataChunkIterator init.'):
             DataChunkIterator(a)
 
     def test_list_none_dtype(self):
@@ -200,10 +200,10 @@ class DataChunkIteratorTests(unittest.TestCase):
         """Test DataChunkIterator with multidimensional list data, no buffering, and iterating on a middle dimension.
         """
         a = np.arange(30).reshape(5, 2, 3).tolist()
-        warn_msg = 'Iterating over an axis other than the first dimension of list or tuple data ' \
-                   'involves converting the data object to a numpy ndarray, which may incur a computational ' \
-                   'cost.'
-        with self.assertWarnsRegex(UserWarning, warn_msg):
+        warn_msg = ('Iterating over an axis other than the first dimension of list or tuple data '
+                    'involves converting the data object to a numpy ndarray, which may incur a computational '
+                    'cost.')
+        with self.assertWarnsWith(UserWarning, warn_msg):
             dci = DataChunkIterator(a, iter_axis=1)
         self.assertTupleEqual(dci.maxshape, (5, 2, 3))
         self.assertEqual(dci.dtype, np.dtype(int))
@@ -219,10 +219,10 @@ class DataChunkIteratorTests(unittest.TestCase):
         """Test DataChunkIterator with multidimensional list data, no buffering, and iterating on the last dimension.
         """
         a = np.arange(30).reshape(5, 2, 3).tolist()
-        warn_msg = 'Iterating over an axis other than the first dimension of list or tuple data ' \
-                   'involves converting the data object to a numpy ndarray, which may incur a computational ' \
-                   'cost.'
-        with self.assertWarnsRegex(UserWarning, warn_msg):
+        warn_msg = ('Iterating over an axis other than the first dimension of list or tuple data '
+                    'involves converting the data object to a numpy ndarray, which may incur a computational '
+                    'cost.')
+        with self.assertWarnsWith(UserWarning, warn_msg):
             dci = DataChunkIterator(a, iter_axis=2)
         self.assertTupleEqual(dci.maxshape, (5, 2, 3))
         self.assertEqual(dci.dtype, np.dtype(int))
@@ -432,7 +432,7 @@ class DataChunkIteratorTests(unittest.TestCase):
         self.assertIsNone(dci.recommended_chunk_shape())
 
 
-class DataChunkTests(unittest.TestCase):
+class DataChunkTests(TestCase):
 
     def setUp(self):
         pass
@@ -457,7 +457,3 @@ class DataChunkTests(unittest.TestCase):
         temp1 = DataChunk(np.arange(10).reshape(5, 2))
         temp2 = temp1.astype('float32')
         self.assertEqual(temp2.dtype, np.dtype('float32'))
-
-
-if __name__ == '__main__':
-    unittest.main()

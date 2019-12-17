@@ -1,5 +1,4 @@
-import unittest2 as unittest
-import re
+import unittest
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
@@ -7,12 +6,13 @@ from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5 import H5DataIO
+from hdmf.testing import TestCase
 
 from abc import ABCMeta
 from six import with_metaclass
 import numpy as np
 
-from tests.unit.test_utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE
 
 
 class Bar(Container):
@@ -74,7 +74,7 @@ class Foo(Container):
         return 'Foo'
 
 
-class TestGetSubSpec(unittest.TestCase):
+class TestGetSubSpec(TestCase):
 
     def setUp(self):
         self.bar_spec = GroupSpec('A test group specification with a data type', data_type_def='Bar')
@@ -104,7 +104,7 @@ class TestGetSubSpec(unittest.TestCase):
         self.assertIs(result, child_spec)
 
 
-class TestTypeMap(unittest.TestCase):
+class TestTypeMap(TestCase):
 
     def setUp(self):
         self.bar_spec = GroupSpec('A test group specification with a data type', data_type_def='Bar')
@@ -150,7 +150,14 @@ class TestTypeMap(unittest.TestCase):
         self.assertIsInstance(mapper, MyMap)
 
 
-class TestMapStrings(unittest.TestCase):
+class BarMapper(ObjectMapper):
+    def __init__(self, spec):
+        super(BarMapper, self).__init__(spec)
+        data_spec = spec.get_dataset('data')
+        self.map_spec('attr2', data_spec.get_attribute('attr2'))
+
+
+class TestMapStrings(TestCase):
 
     def customSetUp(self, bar_spec):
         spec_catalog = SpecCatalog()
@@ -170,7 +177,7 @@ class TestMapStrings(unittest.TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, ObjectMapper)
+        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
@@ -183,7 +190,7 @@ class TestMapStrings(unittest.TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, ObjectMapper)
+        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
@@ -196,13 +203,13 @@ class TestMapStrings(unittest.TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, ObjectMapper)
+        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertIsInstance(builder.get('data').data, H5DataIO)
 
 
-class TestDynamicContainer(unittest.TestCase):
+class TestDynamicContainer(TestCase):
 
     def setUp(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
@@ -354,11 +361,11 @@ class TestDynamicContainer(unittest.TestCase):
         # Setup all the data we need
         msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
                "Please define that type before defining 'Baz1'.")
-        with self.assertRaisesRegex(ValueError, re.escape(msg)):
+        with self.assertRaisesWith(ValueError, msg):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
 
-class TestObjectMapper(with_metaclass(ABCMeta, unittest.TestCase)):
+class TestObjectMapper(with_metaclass(ABCMeta, TestCase)):
 
     def setUp(self):
         self.setUpBarSpec()
@@ -493,7 +500,7 @@ class TestObjectMapperContainer(TestObjectMapper):
         self.assertSetEqual(keys, expected)
 
 
-class TestLinkedContainer(unittest.TestCase):
+class TestLinkedContainer(TestCase):
 
     def setUp(self):
         self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
@@ -551,7 +558,7 @@ class TestLinkedContainer(unittest.TestCase):
         self.assertDictEqual(bar2_builder, bar2_expected)
 
 
-class TestConvertDtype(unittest.TestCase):
+class TestConvertDtype(TestCase):
 
     def test_value_none(self):
         spec = DatasetSpec('an example dataset', 'int', name='data')
@@ -694,6 +701,18 @@ class TestConvertDtype(unittest.TestCase):
         self.assertTupleEqual(ret, match)
         self.assertIs(ret[0].dtype.type, match[1])
 
+    def test_bool_spec(self):
+        spec_type = 'bool'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
 
-if __name__ == '__main__':
-    unittest.main()
+        value = np.bool_(True)
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.bool_)
+        self.assertTupleEqual(ret, match)
+        self.assertIs(type(ret[0]), match[1])
+
+        value = True
+        ret = ObjectMapper.convert_dtype(spec, value)
+        match = (value, np.bool_)
+        self.assertTupleEqual(ret, match)
+        self.assertIs(type(ret[0]), match[1])

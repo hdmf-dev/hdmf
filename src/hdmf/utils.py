@@ -5,8 +5,6 @@ import collections
 
 import h5py
 import numpy as np
-import six
-from six import raise_from, text_type, binary_type
 
 
 __macros = {
@@ -51,16 +49,16 @@ def __type_okay(value, argtype, allow_none=False):
             return __is_int(value)
         elif argtype == 'float':
             return __is_float(value)
+        elif argtype == 'bool':
+            return __is_bool(value)
         return argtype in [cls.__name__ for cls in value.__class__.__mro__]
     elif isinstance(argtype, type):
-        if argtype == six.text_type:
-            return isinstance(value, six.text_type) or isinstance(value, six.string_types)
-        elif argtype == str:
-            return isinstance(value, six.string_types)
-        elif argtype is int:
+        if argtype is int:
             return __is_int(value)
         elif argtype is float:
             return __is_float(value)
+        elif argtype is bool:
+            return __is_bool(value)
         return isinstance(value, argtype)
     elif isinstance(argtype, tuple) or isinstance(argtype, list):
         return any(__type_okay(value, i) for i in argtype)
@@ -100,6 +98,10 @@ def __is_float(value):
     return any(isinstance(value, i) for i in SUPPORTED_FLOAT_TYPES)
 
 
+def __is_bool(value):
+    return isinstance(value, bool) or isinstance(value, np.bool_)
+
+
 def __format_type(argtype):
     if isinstance(argtype, str):
         return argtype
@@ -128,6 +130,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     :param enforce_type: Boolean indicating whether the type of arguments should be enforced
     :param enforce_shape: Boolean indicating whether the dimensions of array arguments
                           should be enforced if possible.
+    :param allow_extra: Boolean indicating whether extra keyword arguments are allowed (if False and extra keyword
+                        arguments are specified, then an error is raised).
 
     :return: Dict with:
         * 'args' : Dict all arguments where keys are the names and values are the values of the arguments.
@@ -145,22 +149,36 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     if duplicated:
         raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
+        if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
+            # verify only that the number of positional args is <= number of docval specified args
+            if len(args) > len(validator):
+                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args)))
+        else:  # verify that the number of positional args + keyword args is <= number of docval specified args
+            if (len(args) + len(kwargs)) > len(validator):
+                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args) + len(kwargs)))
+
+        # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
         arg = next(it)
+
         # catch unsupported keys
         allowable_terms = ('name', 'doc', 'type', 'shape', 'default', 'help')
         unsupported_terms = set(arg.keys()) - set(allowable_terms)
         if unsupported_terms:
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
                                                                                     list(unsupported_terms)))
-        # process positional arguments
+        # process positional arguments of the docval specification (no default value)
         while True:
-            #
             if 'default' in arg:
                 break
             argname = arg['name']
             argval_set = False
             if argname in kwargs:
+                # if this positional arg is specified by a keyword arg and there are remaining positional args that
+                # have not yet been matched, then it is undetermined what those positional args match to. thus, raise
+                # an error
+                if argsi < len(args):
+                    type_errors.append("got multiple values for argument '%s'" % argname)
                 argval = kwargs.get(argname)
                 extras.pop(argname, None)
                 argval_set = True
@@ -171,36 +189,35 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             if not argval_set:
                 type_errors.append("missing argument '%s'" % argname)
             else:
-                if argname in ret:
-                    type_errors.append("'got multiple arguments for '%s" % argname)
-                else:
-                    if enforce_type:
-                        if not __type_okay(argval, arg['type']):
-                            if argval is None:
-                                fmt_val = (argname, __format_type(arg['type']))
-                                type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
-                            else:
-                                fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
-                                type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
-                    if enforce_shape and 'shape' in arg:
+                if enforce_type:
+                    if not __type_okay(argval, arg['type']):
+                        if argval is None:
+                            fmt_val = (argname, __format_type(arg['type']))
+                            type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
+                        else:
+                            fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                            type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
+                if enforce_shape and 'shape' in arg:
+                    valshape = get_data_shape(argval)
+                    while valshape is None:
+                        if argval is None:
+                            break
+                        if not hasattr(argval, argname):
+                            fmt_val = (argval, argname, arg['shape'])
+                            value_errors.append("cannot check shape of object '%s' for argument '%s' "
+                                                "(expected shape '%s')" % fmt_val)
+                            break
+                        # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
+                        argval = getattr(argval, argname)
                         valshape = get_data_shape(argval)
-                        while valshape is None:
-                            if argval is None:
-                                break
-                            if not hasattr(argval, argname):
-                                fmt_val = (argval, argname, arg['shape'])
-                                value_errors.append("cannot check shape of object '%s' for argument '%s' "
-                                                    "(expected shape '%s')" % fmt_val)
-                                break
-                            # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
-                            argval = getattr(argval, argname)
-                            valshape = get_data_shape(argval)
-                        if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                            fmt_val = (argname, valshape, arg['shape'])
-                            value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
-                    ret[argname] = argval
+                    if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
+                        fmt_val = (argname, valshape, arg['shape'])
+                        value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                ret[argname] = argval
             argsi += 1
             arg = next(it)
+
+        # process arguments of the docval specification with a default value
         while True:
             argname = arg['name']
             if argname in kwargs:
@@ -433,7 +450,7 @@ def docval(*validator, **options):
                     parse_err = parsed.get(error_type)
                     if parse_err:
                         msg = ', '.join(parse_err)
-                        raise_from(ExceptionType(msg), None)
+                        raise ExceptionType(msg)
 
                 return func(self, **parsed['args'])
         else:
@@ -448,7 +465,7 @@ def docval(*validator, **options):
                     parse_err = parsed.get(error_type)
                     if parse_err:
                         msg = ', '.join(parse_err)
-                        raise_from(ExceptionType(msg), None)
+                        raise ExceptionType(msg)
 
                 return func(**parsed['args'])
         _rtype = rtype
@@ -538,8 +555,6 @@ def getargs(*argnames):
     if not isinstance(argnames[-1], dict):
         raise ValueError('last argument must be dict')
     kwargs = argnames[-1]
-    if not argnames:
-        raise ValueError('must provide keyword to get')
     if len(argnames) == 2:
         return kwargs.get(argnames[0])
     return [kwargs.get(arg) for arg in argnames[:-1]]
@@ -554,8 +569,6 @@ def popargs(*argnames):
     if not isinstance(argnames[-1], dict):
         raise ValueError('last argument must be dict')
     kwargs = argnames[-1]
-    if not argnames:
-        raise ValueError('must provide keyword to pop')
     if len(argnames) == 2:
         return kwargs.pop(argnames[0])
     return [kwargs.pop(arg) for arg in argnames[:-1]]
@@ -620,14 +633,16 @@ def get_data_shape(data, strict_no_data_load=False):
         shape = list()
         if hasattr(local_data, '__len__'):
             shape.append(len(local_data))
-            if len(local_data) and not isinstance(local_data[0], (text_type, binary_type)):
+            if len(local_data) and not isinstance(local_data[0], (str, bytes)):
                 shape.extend(__get_shape_helper(local_data[0]))
         return tuple(shape)
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    if hasattr(data, 'shape'):
+    elif hasattr(data, 'shape'):
         return data.shape
-    if hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
+    elif isinstance(data, dict):
+        return None
+    elif hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
         if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
             return __get_shape_helper(data)
         else:
@@ -638,11 +653,9 @@ def get_data_shape(data, strict_no_data_load=False):
 
 def pystr(s):
     """
-    Cross-version support for converting a string of characters to Python str object
+    Convert a string of characters to Python str object
     """
-    if six.PY2 and isinstance(s, six.text_type):
-        return s.encode('ascii', 'ignore')
-    elif six.PY3 and isinstance(s, six.binary_type):
+    if isinstance(s, bytes):
         return s.decode('utf-8')
     else:
         return s
@@ -710,9 +723,9 @@ class LabelledDict(dict):
             key = key.strip()
             val = val.strip()  # val is a string
             if not key:
-                raise KeyError("An attribute name is required before '=='.")
+                raise ValueError("An attribute name is required before '=='.")
             if not val:
-                raise KeyError("A value is required after '=='.")
+                raise ValueError("A value is required after '=='.")
             if key != self.key_attr:
                 ret = set()
                 for item in self.values():

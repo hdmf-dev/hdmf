@@ -7,7 +7,7 @@ from copy import copy, deepcopy
 from datetime import datetime
 from six import with_metaclass, raise_from, text_type, binary_type, integer_types
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, call_docval_func
+from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, NamespaceCatalog, RefSpec,\
                    SpecReader
@@ -667,7 +667,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
     def get_carg_spec(self, **kwargs):
         """ Return the Spec for a given constructor argument """
         carg_name = getargs('carg_name', kwargs)
-        return self.__attr2spec.get(carg_name)
+        return self.__carg2spec.get(carg_name)
 
     @docval({"name": "const_arg", "type": str, "doc": "the name of the constructor argument to map"},
             {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
@@ -726,16 +726,15 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             return None
         attr_val = self.__get_override_attr(attr_name, container, manager)
         if attr_val is None:
-            # TODO: A message like this should be used to warn users when an expected attribute
-            # does not exist on a Container object
-            #
-            # if not hasattr(container, attr_name):
-            #     msg = "Container '%s' (%s) does not have attribute '%s'" \
-            #             % (container.name, type(container), attr_name)
-            #     #warnings.warn(msg)
-            attr_val = getattr(container, attr_name, None)
+            try:
+                attr_val = getattr(container, attr_name)
+            except AttributeError:
+                # raise error if an expected attribute (based on the spec) does not exist on a Container object
+                msg = "Container '%s' (%s) does not have attribute '%s'" % (container.name, type(container), attr_name)
+                raise Exception(msg)
             if attr_val is not None:
                 attr_val = self.__convert_value(attr_val, spec)
+            # else: attr_val is an attribute on the Container and its value is None
         return attr_val
 
     def __convert_value(self, value, spec):
@@ -1226,7 +1225,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                               object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
         except Exception as ex:
-            msg = 'Could not construct %s object' % (cls.__name__,)
+            msg = 'Could not construct %s object due to %s' % (cls.__name__, ex)
             raise_from(Exception(msg), ex)
         return obj
 
@@ -1449,15 +1448,17 @@ class TypeMap(object):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
-        if name is not None:
+
+        if name is not None:  # fixed name is specified in spec, remove it from docval args
             docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
-            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
             if name is not None:
-                pkwargs.update(name=name)
-            base.__init__(self, *pargs, **pkwargs)
+                kwargs.update(name=name)
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+
             for f in new_args:
                 arg_val = kwargs.get(f, None)
                 if arg_val is not None:
