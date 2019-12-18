@@ -786,20 +786,25 @@ class ObjectMapper(metaclass=ExtenderMeta):
         used_coords = dict()
         if dataset_spec.coords:
             for coord_spec in dataset_spec.coords:
-                for dim_index in coord_spec.axes:
+                for dim_index in coord_spec.dims_index:
                     if dim_index < len(dataset_builder.dims):  # check the dimension exists on the dataset
-                        coord_dataset_builder = group_builder.datasets.get(coord_spec.coord_dataset, None)
+                        coord_dataset_builder = group_builder.datasets.get(coord_spec.coord.dataset_name, None)
                         if coord_dataset_builder is not None:  # check the coord dataset exists in the group
                             # TODO store coord_dataset_builder in CoordBuilder
                             # TODO check the axis exists on the coord dataset
                             # TODO check the coord_type is appropriate
                             # TODO check that coord name is not already in used_coords
                             # copy key-value pairs from CoordSpec to CoordBuilder
-                            coord_builder = CoordBuilder(**coord_spec)
+                            coord_builder = CoordBuilder(name=coord_spec.name,
+                                                         axes=coord_spec.dims_index,
+                                                         coord_dataset_name=coord_spec.coord.dataset_name,
+                                                         coord_axes=coord_spec.coord.dims_index,
+                                                         coord_type=coord_spec.coord.type
+                                                         )
                             used_coords[coord_spec.name] = coord_builder
                         else:
                             msg = ("Coord dataset '%s' of coord '%s' does not exist."
-                                   % (coord_spec.coord_dataset, coord_spec.name))
+                                   % (coord_spec.coord.dataset_name, coord_spec.name))
                             raise ConvertError(msg)
         return used_coords
 
@@ -1092,7 +1097,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             obj.set_coord(array_name=dataset_builder.name,
                                           name=coord.name,
                                           axes=coord.axes,
-                                          coord_array_name=coord.coord_dataset,
+                                          coord_array_name=coord.coord_dataset_name,
                                           coord_array_axes=coord.coord_axes,
                                           coord_type=coord.coord_type)
         return obj

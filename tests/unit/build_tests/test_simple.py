@@ -1,4 +1,5 @@
-from hdmf.spec import GroupSpec, DatasetSpec, CoordSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, DimSpec
+from hdmf.spec import GroupSpec, DatasetSpec, InnerCoordSpec, CoordSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.spec import DimSpec
 from hdmf.build import ObjectMapper, TypeMap, GroupBuilder, DatasetBuilder, BuildManager, BuildError, CoordBuilder
 from hdmf.build import ConstructError, ConvertError
 from hdmf import Container
@@ -194,8 +195,8 @@ class TestBuildCoords(TestCase):
         """
         dim1_spec = DimSpec(name='x', required=True)
         dim2_spec = DimSpec(name='chars', required=True)
-        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
-                               coord_type='aligned')
+        icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, ), type='aligned')
+        coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
         # TODO datasetspec add_dim(...)
         # TODO datasetspec add_coord(...)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
@@ -208,7 +209,7 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        expected = {'letters': CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
+        expected = {'letters': CoordBuilder(name='letters', coord_dataset_name='data2', coord_axes=(0, ), axes=(0, ),
                                             coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
@@ -220,10 +221,9 @@ class TestBuildCoords(TestCase):
         x_spec = DimSpec(name='x', required=True, length=4)
         y_spec = DimSpec(name='y', required=False, doc='test_doc')
         dim2_spec = DimSpec(name='chars', required=True)
-        x_coord_spec = CoordSpec(name='xletters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
-                                 coord_type='aligned')
-        y_coord_spec = CoordSpec(name='yletters', coord_dataset='data2', coord_axes=(0, ), axes=(1, ),
-                                 coord_type='aligned')
+        icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, ), type='aligned')
+        x_coord_spec = CoordSpec(name='xletters', dims_index=(0, ), coord=icoord_spec)
+        y_coord_spec = CoordSpec(name='yletters', dims_index=(1, ), coord=icoord_spec)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(x_spec, y_spec), coords=(x_coord_spec, y_coord_spec))
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(dim2_spec, ))
@@ -234,9 +234,9 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [[1, 2], [3, 4], [5, 6], [7, 8]], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        expected = {'xletters': CoordBuilder(name='xletters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
+        expected = {'xletters': CoordBuilder(name='xletters', coord_dataset_name='data2', coord_axes=(0, ), axes=(0, ),
                                              coord_type='aligned'),
-                    'yletters': CoordBuilder(name='yletters', coord_dataset='data2', coord_axes=(0, ), axes=(1, ),
+                    'yletters': CoordBuilder(name='yletters', coord_dataset_name='data2', coord_axes=(0, ), axes=(1, ),
                                              coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
@@ -248,8 +248,8 @@ class TestBuildCoords(TestCase):
         dim1_spec = DimSpec(name='x', required=True)
         dim2_spec = DimSpec(name='chars', required=True)
         # TODO require coord_dataset to be a datasetspec, validate axes
-        coord_spec = CoordSpec(name='letters', coord_dataset='data4', coord_axes=(0, ), axes=(0, ),
-                               coord_type='aligned')
+        icoord_spec = InnerCoordSpec(dataset_name='data4', dims_index=(0, ), type='aligned')
+        coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
         # TODO validate coord type is an allowed value
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(dim1_spec, ), coords=(coord_spec, ))
@@ -374,8 +374,8 @@ class TestConstructCoords(TestCase):
     def test_construct_coords_1d(self):
         x_spec = DimSpec(name='x', required=True)
         char_spec = DimSpec(name='chars', required=True)
-        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
-                               coord_type='aligned')
+        icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, ), type='aligned')
+        coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(x_spec, ), coords=(coord_spec, ))
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(char_spec, ))
@@ -410,8 +410,8 @@ class TestConstructCoords(TestCase):
         y1_spec = DimSpec(name='y1', required=True, length=4)
         x2_spec = DimSpec(name='x2', required=False)
         y2_spec = DimSpec(name='y2', required=False)
-        coord_spec = CoordSpec(name='dorsal-ventral', coord_dataset='data2', coord_axes=(0, 1), axes=(1, 2),
-                               coord_type='aligned')
+        icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, 1), type='aligned')
+        coord_spec = CoordSpec(name='dorsal-ventral', dims_index=(1, 2), coord=icoord_spec)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(frame_spec, x1_spec, y1_spec), coords=(coord_spec, ))
         dset2_spec = DatasetSpec('an example dataset2', 'int', name='data2', dims=(x2_spec, y2_spec))

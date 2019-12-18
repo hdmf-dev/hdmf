@@ -1,6 +1,6 @@
 import abc
 from copy import deepcopy
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 import re
 from warnings import warn
 from six import with_metaclass
@@ -323,32 +323,47 @@ class DimSpec(ConstructableDict):
         self._parent = spec
 
 
+class InnerCoordSpec(namedtuple('InnerCoordSpec', 'dataset_name dims_index type')):
+    """Specification for the 'coord' key of a dimension coordinate"""
+
+    @docval({'name': 'dataset_name', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+            {'name': 'dims_index', 'type': (int, list, tuple),
+             'doc': 'The dimension indices (0-indexed) of the dataset of this coordinate'},
+            {'name': 'type', 'type': str, 'doc': 'The type of this coordinate'})
+    def __new__(cls, **kwargs):
+        # initialize a new InnerCoordSpec with argument documentation and validation
+        # to override initialization of a namedtuple, need to override __new__, not __init__
+
+        # cast int, list to tuple
+        dims_index = kwargs['dims_index']
+        if type(dims_index) == int:
+            kwargs['dims_index'] = (dims_index, )
+        elif isinstance(dims_index, list):
+            kwargs['dims_index'] = tuple(dims_index)
+        return super().__new__(cls, **kwargs)
+
+
 class CoordSpec(ConstructableDict):
-    """Specification for dimension coordinates"""
+    """Specification for a dimension coordinate"""
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
-            {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
-            {'name': 'coord_axes', 'type': (int, list, tuple), 'doc': 'The axes of the dataset of this coordinate'},
-            {'name': 'axes', 'type': (int, list, tuple),
-             'doc': 'The axes of the dataset that this coordinate acts on'},
-            {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'},
+            {'name': 'dims_index', 'type': (int, list, tuple),
+             'doc': 'The dimension indices (0-indexed) of the dataset that this coordinate acts on'},
+            {'name': 'coord', 'type': InnerCoordSpec,
+             'doc': ('Specification of the coordinate dataset, dimension indices, and type. Keys dataset_name, '
+                     'dims_index, and type are required.')},
             {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
     def __init__(self, **kwargs):
-        name, coord_dataset, coord_axes, axes, coord_type, parent = getargs('name', 'coord_dataset', 'coord_axes',
-                                                                            'axes', 'coord_type', 'parent', kwargs)
         super().__init__()
+        name, dims_index, coord, parent = getargs('name', 'dims_index', 'coord', 'parent', kwargs)
         self['name'] = name
-        self['coord_dataset'] = coord_dataset
-        self['coord_type'] = coord_type
+        self['coord'] = coord
         self._parent = parent
 
-        if type(coord_axes) == int:
-            coord_axes = (coord_axes, )
-        if type(axes) == int:
-            axes = (axes, )
-        # cast list to tuple
-        self['coord_axes'] = tuple(coord_axes)
-        self['axes'] = tuple(axes)
+        # cast int, list to tuple
+        if type(dims_index) == int:
+            self['dims_index'] = (dims_index, )
+        self['dims_index'] = tuple(dims_index)
 
     @property
     def name(self):
@@ -356,24 +371,14 @@ class CoordSpec(ConstructableDict):
         return self.get('name', None)
 
     @property
-    def coord_dataset(self):
-        """The name of the dataset of this coordinate"""
-        return self.get('coord_dataset', None)
+    def dims_index(self):
+        """The dimension indices (0-indexed) of the dataset that this coordinate acts on"""
+        return self.get('dims_index', None)
 
     @property
-    def coord_axes(self):
-        """The axes of the dataset of this coordinate"""
-        return self.get('coord_axes', None)
-
-    @property
-    def axes(self):
-        """The axes of the dataset that this coordinate acts on"""
-        return self.get('axes', None)
-
-    @property
-    def coord_type(self):
-        """The type of this coordinate"""
-        return self.get('coord_type', None)
+    def coord(self):
+        """Specification of the coordinate dataset, dimension indices, and type"""
+        return self.get('coord', None)
 
     @property
     def parent(self):

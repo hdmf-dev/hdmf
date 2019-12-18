@@ -576,7 +576,7 @@ class RegionBuilder(ReferenceBuilder):
         return self['region']
 
 
-class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset coord_axes coord_type')):
+class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset_name coord_axes coord_type')):
     '''
     An immutable object that represents a coordinate with fields name, axes, coord_dataset, coord_axes, coord_type.
     '''
@@ -584,7 +584,7 @@ class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset coord_axe
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
             {'name': 'axes', 'type': (int, list, tuple),
              'doc': 'The axes (0-indexed) of the dataset that this coordinate acts on'},
-            {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+            {'name': 'coord_dataset_name', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
             {'name': 'coord_axes', 'type': (int, list, tuple),
              'doc': 'The axes (0-indexed) of the dataset of this coordinate'},
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'})
