@@ -43,11 +43,9 @@ class GroupBuilderSetterTests(TestCase):
         self.assertIs(self.gb, el.parent)
         self.assertIs(self.gb2, gp.parent)
 
-    # @unittest.expectedFailure
     def test_set_attribute(self):
         self.gb.set_attribute('key', 'value')
         self.assertIn('key', self.gb.obj_type)
-        # self.assertEqual(dict.__getitem__(self.gb, 'attributes')['key'], 'value')
         self.assertEqual(self.gb['key'], 'value')
 
     def test_parent_constructor(self):
@@ -244,7 +242,6 @@ class GroupBuilderDeepUpdateTests(TestCase):
         gb2 = GroupBuilder('gb2', datasets={'dataset2': DatasetBuilder('dataset2', [4, 5, 6])})
         gb1.deep_update(gb2)
         self.assertIn('dataset2', gb1)
-        # self.assertIs(gb1['dataset2'], gb2['dataset2'])
         self.assertListEqual(gb1['dataset2'].data, gb2['dataset2'].data)
 
     def test_mutually_exclusive_attributes(self):

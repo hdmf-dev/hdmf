@@ -454,9 +454,9 @@ class Container(AbstractContainer):
 
     @docval({'name': 'array_name', 'type': str, 'doc': ''},
             {'name': 'name', 'type': str, 'doc': ''},
-            {'name': 'axes', 'type': tuple, 'doc': ''},
+            {'name': 'dims_index', 'type': tuple, 'doc': ''},
             {'name': 'coord_array_name', 'type': str, 'doc': ''},
-            {'name': 'coord_array_axes', 'type': tuple, 'doc': ''},
+            {'name': 'coord_array_dims_index', 'type': tuple, 'doc': ''},
             {'name': 'coord_type', 'type': str, 'doc': ''})
     def set_coord(self, **kwargs):
         """
@@ -467,26 +467,25 @@ class Container(AbstractContainer):
         Usage examples:
         Field 'data' has dim 'time' for axis 0, 'electrodes' for axis 1.
         Field 'timestamps' has cooordinates for axis 0 of data and length equal to data.shape[0].
-        set_coord(array_name='data', name='my_time', axes=(0, ), coord_array_name='timestamps', coord_array_axes=(0, ),
-                  coord_type='aligned')
+        set_coord(array_name='data', name='my_time', dims_index=(0, ), coord_array_name='timestamps',
+                  coord_array_dims_index=(0, ), coord_type='aligned')
         will result in:
         self.coords['data']['my_time'] == Coordinates.Coord(name='my_time', dims=('time', ),
-                                                            coord_array_name='timestamps', coord_array_axes=(0, ),
+                                                            coord_array_name='timestamps', coord_array_dims_index=(0, ),
                                                             coord_type='aligned')
 
         Field 'data' has dim 'frame' for axis 0, 'x' for axis 1, and 'y' for axis 2.
         Field 'dorsal_ventral' is a coordinate for axes 1 and 2 of data.
-        set_coord(array_name='data', name='dv', axes=(1, 2), coord_array_name='dorsal_ventral', coord_array_axes=(0, 1),
-                  coord_type='aligned')
+        set_coord(array_name='data', name='dv', dims_index=(1, 2), coord_array_name='dorsal_ventral',
+                  coord_array_dims_index=(0, 1), coord_type='aligned')
         will result in:
         self.coords['data']['dv'] == Coordinates.Coord(name='dv', dims=('x', 'y'),
-                                                       coord_array_name='dorsal_ventral', coord_array_axes=(0, 1),
+                                                       coord_array_name='dorsal_ventral', coord_array_dims_index=(0, 1),
                                                        coord_type='aligned')
         """
-        array_name, name, axes, coord_array_name, coord_array_axes, coord_type = getargs('array_name', 'name', 'axes',
-                                                                                         'coord_array_name',
-                                                                                         'coord_array_axes',
-                                                                                         'coord_type', kwargs)
+        array_name, name, dims_index, = getargs('array_name', 'name', 'dims_index', kwargs)
+        coord_array_name, coord_array_dims_index, coord_type = getargs('coord_array_name', 'coord_array_dims_index',
+                                                                       'coord_type', kwargs)
         if array_name not in self.fields:
             raise ValueError("Cannot set coord '%s'. Field name '%s' not found in %s '%s'."
                              % (name, array_name, self.__class__.__name__, self.name))
@@ -498,9 +497,10 @@ class Container(AbstractContainer):
                              % (name, coord_array_name, self.__class__.__name__, self.name))
         if array_name == coord_array_name:
             raise ValueError("Cannot set coord '%s' to itself: %s" % (name, array_name))
-        if len(axes) != len(coord_array_axes):
-            raise ValueError("Cannot set coord '%s'. Number of specified axes must equal number of specified coord "
-                             "axes (%d != %d)." % (name, len(axes), len(coord_array_axes)))
+        if len(dims_index) != len(coord_array_dims_index):
+            raise ValueError("Cannot set coord '%s'. Number of specified dimension indices must equal number of "
+                             "specified coord array dimension indices (%d != %d)."
+                             % (name, len(dims_index), len(coord_array_dims_index)))
 
         data = getattr(self, array_name)
         data_shape = get_data_shape(data)
@@ -508,10 +508,10 @@ class Container(AbstractContainer):
         coord_shape = get_data_shape(coord_data)
 
         if coord_type == 'aligned':
-            for daxis, caxis in zip(axes, coord_array_axes):
+            for daxis, caxis in zip(dims_index, coord_array_dims_index):
                 if data_shape[daxis] != coord_shape[caxis]:
-                    raise ValueError(("Cannot set coord '%s'. Axis %d of array '%s' must have the same length as "
-                                      "axis %d of array '%s' in %s '%s' (%d != %d).")
+                    raise ValueError(("Cannot set coord '%s'. Dimension index %d of array '%s' must have the same "
+                                      "length as dimension index %d of array '%s' in %s '%s' (%d != %d).")
                                      % (name, daxis, array_name, caxis, coord_data, self.__class__.__name__, self.name,
                                         data_shape[daxis], coord_shape[caxis]))
         else:
@@ -521,11 +521,11 @@ class Container(AbstractContainer):
             self.coords[array_name] = Coordinates(parent=self)  # initialize for this array
 
         dims = list()
-        for axis in axes:
-            dims.append(self.dims[array_name][axis])  # get dim names
+        for dims_ind in dims_index:
+            dims.append(self.dims[array_name][dims_ind])  # get dim names
 
         self.coords[array_name].add(name=name, dims=tuple(dims), coord_array=coord_data,
-                                    coord_array_axes=coord_array_axes, coord_type=coord_type)
+                                    coord_array_dims_index=coord_array_dims_index, coord_type=coord_type)
 
     @docval({'name': 'array_name', 'type': str, 'doc': ''})
     def to_xarray_dataarray(self, **kwargs):
@@ -546,7 +546,7 @@ class Container(AbstractContainer):
                 coord_array_shape = get_data_shape(coord_array)
                 if len(coord.dims) != len(coord_array_shape):
                     raise ValueError("Cannot convert the array '%s' to an xarray.DataArray. All coordinate arrays "
-                                     "must map all of their axes to a set of axes on '%s'."
+                                     "must map all of their dimensions to a set of dimensions on '%s'."
                                      % (array_name, array_name))
                 xr_coords[coord.name] = (coord.dims, coord_array)
             xr_kwargs['coords'] = xr_coords
@@ -653,11 +653,11 @@ class DataRegion(Data):
 
 
 class Coordinates:
-    """A dictionary-like object that holds coordinate data (value) by name (key)."""
+    """A dictionary-like object that holds coordinate data (Coord namedtuple value) by name (string key)."""
     # use composition of a dict instead of inheritance to restrict user's ability to use arbitrary dict methods
     # values in this dict cannot be changed once set
 
-    Coord = namedtuple('Coord', ['name', 'dims', 'coord_array', 'coord_array_axes', 'coord_type'])
+    Coord = namedtuple('Coord', ['name', 'dims', 'coord_array', 'coord_array_dims_index', 'coord_type'])
 
     @docval({'name': 'parent', 'type': Container, 'doc': 'parent container of the coordinate'})
     def __init__(self, **kwargs):
@@ -667,7 +667,8 @@ class Coordinates:
     @docval({'name': 'name', 'type': str, 'doc': 'coordinate name'},
             {'name': 'dims', 'type': tuple, 'doc': 'tuple of dimension names to which the coordinate applies'},
             {'name': 'coord_array', 'type': ('data', 'array_data'), 'doc': 'coordinate data array'},
-            {'name': 'coord_array_axes', 'type': tuple, 'doc': 'tuple of axes of coordinate data array'},
+            {'name': 'coord_array_dims_index', 'type': tuple,
+             'doc': 'tuple of dimension indices (0-indexed) of coordinate data array'},
             {'name': 'coord_type', 'type': str, 'doc': 'coordinate type'})
     def add(self, **kwargs):
         name = kwargs['name']

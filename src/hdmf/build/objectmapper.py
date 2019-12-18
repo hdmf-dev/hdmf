@@ -1096,9 +1096,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         for coord in coords.values():
                             obj.set_coord(array_name=dataset_builder.name,
                                           name=coord.name,
-                                          axes=coord.axes,
+                                          dims_index=coord.axes,
                                           coord_array_name=coord.coord_dataset_name,
-                                          coord_array_axes=coord.coord_axes,
+                                          coord_array_dims_index=coord.coord_axes,
                                           coord_type=coord.coord_type)
         return obj
 

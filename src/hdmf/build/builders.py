@@ -579,6 +579,8 @@ class RegionBuilder(ReferenceBuilder):
 class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset_name coord_axes coord_type')):
     '''
     An immutable object that represents a coordinate with fields name, axes, coord_dataset, coord_axes, coord_type.
+
+    NOTE: 'axes' = 'dims_index'
     '''
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},

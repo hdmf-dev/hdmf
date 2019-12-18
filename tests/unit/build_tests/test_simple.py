@@ -397,8 +397,8 @@ class TestConstructCoords(TestCase):
         constructed_bar = type_map.construct(group_builder, manager)
 
         expected_coords = Coordinates(constructed_bar)
-        expected_coords.add(name='letters', dims=('x', ), coord_array=constructed_bar.data2, coord_array_axes=(0, ),
-                            coord_type='aligned')
+        expected_coords.add(name='letters', dims=('x', ), coord_array=constructed_bar.data2,
+                            coord_array_dims_index=(0, ), coord_type='aligned')
         self.assertEqual(constructed_bar.coords, {'data1': expected_coords})
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
@@ -434,7 +434,7 @@ class TestConstructCoords(TestCase):
 
         expected_coords = Coordinates(constructed_bar)
         expected_coords.add(name='dorsal-ventral', dims=('x1', 'y1'), coord_array=constructed_bar.data2,
-                            coord_array_axes=(0, 1), coord_type='aligned')
+                            coord_array_dims_index=(0, 1), coord_type='aligned')
         self.assertEqual(constructed_bar.coords, {'data1': expected_coords})
 
         expected_bar = Bar('my_bar',

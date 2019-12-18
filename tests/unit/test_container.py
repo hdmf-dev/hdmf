@@ -214,8 +214,8 @@ class TestContainerCoords(TestCase):
     def test_set_coord(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dims(array_name='data1', dims=('x', ))
-        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
-                       coord_array_axes=(0, ), coord_type='aligned')
+        obj1.set_coord(array_name='data1', name='letters', dims_index=(0, ), coord_array_name='data2',
+                       coord_array_dims_index=(0, ), coord_type='aligned')
 
         self.assertEqual(len(obj1.coords), 1)
         received_coords = obj1.coords['data1']
@@ -223,7 +223,8 @@ class TestContainerCoords(TestCase):
         self.assertIs(received_coords.parent, obj1)
         self.assertEqual(received_coords['letters'], Coordinates.Coord(name='letters', dims=('x', ),
                                                                        coord_array=obj1.data2,
-                                                                       coord_array_axes=(0, ), coord_type='aligned'))
+                                                                       coord_array_dims_index=(0, ),
+                                                                       coord_type='aligned'))
 
     def test_set_coord_dataio(self):
         # TODO
@@ -242,8 +243,8 @@ class TestContainerCoords(TestCase):
     def test_to_xarray_dataarray(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dims(array_name='data1', dims=('x', ))
-        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
-                       coord_array_axes=(0, ), coord_type='aligned')
+        obj1.set_coord(array_name='data1', name='letters', dims_index=(0, ), coord_array_name='data2',
+                       coord_array_dims_index=(0, ), coord_type='aligned')
 
         arr = obj1.to_xarray_dataarray(array_name='data1')
         expected = xr.DataArray([1, 2, 3], dims=('x', ), coords={'letters': (('x', ), ['a', 'b', 'c'])})
@@ -252,18 +253,18 @@ class TestContainerCoords(TestCase):
     def test_to_xarray_dataarray_unknown_name(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
         obj1.set_dims(array_name='data1', dims=('x', ))
-        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
-                       coord_array_axes=(0, ), coord_type='aligned')
+        obj1.set_coord(array_name='data1', name='letters', dims_index=(0, ), coord_array_name='data2',
+                       coord_array_dims_index=(0, ), coord_type='aligned')
         with self.assertRaisesWith(ValueError, "Field name 'data3' not found in Bar 'obj1'."):
             obj1.to_xarray_dataarray(array_name='data3')
 
     def test_to_xarray_dataarray_coord_not_all_axes(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=[['a', 'b'], ['c', 'd'], ['e', 'f']])
         obj1.set_dims(array_name='data1', dims=('x', ))
-        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
-                       coord_array_axes=(0, ), coord_type='aligned')
+        obj1.set_coord(array_name='data1', name='letters', dims_index=(0, ), coord_array_name='data2',
+                       coord_array_dims_index=(0, ), coord_type='aligned')
         msg = ("Cannot convert the array 'data1' to an xarray.DataArray. All coordinate arrays must map all of their "
-               "axes to a set of axes on 'data1'.")
+               "dimensions to a set of dimensions on 'data1'.")
         with self.assertRaisesWith(ValueError, msg):
             obj1.to_xarray_dataarray(array_name='data1')
 
@@ -323,34 +324,34 @@ class TestCoordinates(TestCase):
         """Test that adding a coord to Coordinates and accessing it works"""
         obj = Container('obj1')
         coords = Coordinates(obj)
-        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                    coord_type='aligned')
 
-        expected = Coordinates.Coord(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
-                                     coord_type='aligned')
+        expected = Coordinates.Coord(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4],
+                                     coord_array_dims_index=(0, ), coord_type='aligned')
         self.assertEqual(coords['my_coord'], expected)
 
     def test_add_dup(self):
         """Test that adding a coord whose name is already in Coordinates raises an error"""
         obj = Container('obj1')
         coords = Coordinates(obj)
-        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                    coord_type='aligned')
 
         msg = "Coordinate 'my_coord' already exists. Cannot overwrite values in Coordinates."
         with self.assertRaisesWith(ValueError, msg):
-            coords.add(name='my_coord', dims=('y', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+            coords.add(name='my_coord', dims=('y', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                        coord_type='aligned')
 
     def test_eq(self):
         """Test equality of Coordinates"""
         obj = Container('obj1')
         coords = Coordinates(obj)
-        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                    coord_type='aligned')
 
         coords2 = Coordinates(obj)
-        coords2.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords2.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                     coord_type='aligned')
         self.assertEqual(coords, coords2)
 
@@ -358,11 +359,11 @@ class TestCoordinates(TestCase):
         """Test correct failure of equality of Coordinates"""
         obj = Container('obj1')
         coords = Coordinates(obj)
-        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                    coord_type='aligned')
 
         coords2 = Coordinates(obj)
-        coords2.add(name='my_coord', dims=('y', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords2.add(name='my_coord', dims=('y', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                     coord_type='aligned')
         self.assertNotEqual(coords, coords2)
 
@@ -370,11 +371,11 @@ class TestCoordinates(TestCase):
         """Test a variety of dictionary methods on Coordinates"""
         obj = Container('obj1')
         coords = Coordinates(obj)
-        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_dims_index=(0, ),
                    coord_type='aligned')
 
         expected_coord = Coordinates.Coord(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4],
-                                           coord_array_axes=(0, ), coord_type='aligned')
+                                           coord_array_dims_index=(0, ), coord_type='aligned')
 
         for k, v in coords.items():
             self.assertEqual(k, 'my_coord')
@@ -382,7 +383,7 @@ class TestCoordinates(TestCase):
 
         self.assertEqual(len(coords), 1)
         self.assertEqual(str(coords), "{'my_coord': Coord(name='my_coord', dims=('x',), coord_array=[0, 1, 2, 3, 4], "
-                                      "coord_array_axes=(0,), coord_type='aligned')}")
+                                      "coord_array_dims_index=(0,), coord_type='aligned')}")
         self.assertEqual(list(coords.keys()), ['my_coord'])
         self.assertEqual(list(coords.values()), [expected_coord])
         self.assertEqual(list(iter(coords)), ['my_coord'])
