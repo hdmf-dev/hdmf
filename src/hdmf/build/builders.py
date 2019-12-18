@@ -579,8 +579,6 @@ class RegionBuilder(ReferenceBuilder):
 class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset coord_axes coord_type')):
     '''
     An immutable object that represents a coordinate with fields name, axes, coord_dataset, coord_axes, coord_type.
-
-    The axes and coord_axes are automatically converted to tuples if they are not specified as tuples.
     '''
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
@@ -591,15 +589,6 @@ class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset coord_axe
              'doc': 'The axes (0-indexed) of the dataset of this coordinate'},
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'})
     def __new__(cls, **kwargs):
+        # initialize a new CoordBuilder with argument documentation and validation
         # to override initialization of a namedtuple, need to override __new__, not __init__
-        # cast ints to tuples
-        if type(kwargs['axes']) == int:
-            kwargs['axes'] = (kwargs['axes'], )
-        if type(kwargs['coord_axes']) == int:
-            kwargs['coord_axes'] = (kwargs['coord_axes'], )
-
-        # cast lists to tuple
-        kwargs['axes'] = tuple(kwargs['axes'])
-        kwargs['coord_axes'] = tuple(kwargs['coord_axes'])
-
         return super().__new__(cls, **kwargs)

@@ -310,7 +310,7 @@ class DatasetBuilderDeepUpdateTests(TestCase):
 
 class TestCoordBuilder(TestCase):
 
-    def test_get_attr(self):
+    def test_init_get_attr(self):
         cb = CoordBuilder(name='letters', axes=(0, ), coord_dataset='data2', coord_axes=(0, ), coord_type='aligned')
         self.assertEqual(cb.coord_dataset, 'data2')
 
