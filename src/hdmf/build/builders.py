@@ -454,7 +454,7 @@ class DatasetBuilder(BaseBuilder):
             'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', 'dims', 'coords', kwargs)
         super().__init__(name, attributes, parent, source)
         self['attributes'] = _copy.copy(attributes)  # TODO: is this necessary? it is set (but not copied) earlier
-        self.data = data
+        self['data'] = data
         self.dims = dims
         self.coords = coords
         self.__chunks = chunks
@@ -483,7 +483,7 @@ class DatasetBuilder(BaseBuilder):
 
     @dims.setter
     def dims(self, val):
-        if self['dims'] is not None:
+        if 'dims' in self and self['dims'] is not None:
             raise AttributeError('Cannot reset dims once it is specified')
         self['dims'] = val
         self.set_attribute(self.DIMS_ATTR, str(val))
@@ -495,7 +495,7 @@ class DatasetBuilder(BaseBuilder):
 
     @coords.setter
     def coords(self, val):
-        if self['coords'] is not None:
+        if 'coords' in self and self['coords'] is not None:
             raise AttributeError('Cannot reset coords once it is specified')
         self['coords'] = val
         self.set_attribute(self.COORDS_ATTR, str(val))
