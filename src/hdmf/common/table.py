@@ -1,10 +1,10 @@
 from h5py import Dataset
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
-from collections import OrderedDict
 
 from . import register_class
 
@@ -20,7 +20,7 @@ class Index(Data):
             {'name': 'target', 'type': Data,
              'doc': 'the target dataset that this index applies to'})
     def __init__(self, **kwargs):
-        call_docval_func(super(Index, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
 
 @register_class('VectorData')
@@ -33,7 +33,7 @@ class VectorData(Data):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()})
     def __init__(self, **kwargs):
-        call_docval_func(super(VectorData, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.description = getargs('description', kwargs)
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
@@ -51,7 +51,7 @@ class VectorIndex(Index):
             {'name': 'target', 'type': VectorData,
              'doc': 'the target dataset that this index applies to'})
     def __init__(self, **kwargs):
-        call_docval_func(super(VectorIndex, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.target = getargs('target', kwargs)
 
     def add_vector(self, arg):
@@ -84,7 +84,7 @@ class ElementIdentifiers(Data):
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
              'default': list()})
     def __init__(self, **kwargs):
-        call_docval_func(super(ElementIdentifiers, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
     @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
              'doc': 'List of ids to search for in this ElementIdentifer object'},
@@ -160,7 +160,7 @@ class DynamicTable(Container):
              'default': None})
     def __init__(self, **kwargs):
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
-        call_docval_func(super(DynamicTable, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.description = desc
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
@@ -658,7 +658,7 @@ class DynamicTableRegion(VectorData):
              'doc': 'the DynamicTable this region applies to', 'default': None})
     def __init__(self, **kwargs):
         t = popargs('table', kwargs)
-        call_docval_func(super(DynamicTableRegion, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.table = t
 
     @property

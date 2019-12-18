@@ -28,9 +28,9 @@ This will automatically install the following required dependencies:
 
  #. h5py
  #. numpy
- #. requests
+ #. scipy
+ #. pandas
  #. ruamel.yaml
- #. six
  #. chardet
 
 Install release from Conda-forge
