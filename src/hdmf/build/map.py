@@ -14,9 +14,7 @@ class Proxy:
     """
     A temporary object to represent a Container. This gets used when resolving the true location of a
     Container's parent.
-
     Proxy objects allow simple bookkeeping of all potential parents a Container may have.
-
     This object is used by providing all the necessary information for describing the object. This object
     gets passed around and candidates are accumulated. Upon calling resolve, all saved candidates are matched
     against the information (provided to the constructor). The candidate that has an exact match is returned.
@@ -270,7 +268,6 @@ class BuildManager:
 
 class TypeSource:
     '''A class to indicate the source of a data_type in a namespace.
-
     This class should only be used by TypeMap
     '''
 
@@ -355,7 +352,6 @@ class TypeMap:
             returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
-
         This method will call load_namespaces on the NamespaceCatalog used to construct this TypeMap. Additionally,
         it will process the return value to keep track of what types were included in the loaded namespaces. Calling
         load_namespaces here has the advantage of being able to keep track of type dependencies across namespaces.
@@ -514,7 +510,6 @@ class TypeMap:
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
         '''Get the container class from data type specification
-
         If no class has been associated with the ``data_type`` from ``namespace``,
         a class will be dynamically created and returned.
         '''
@@ -575,7 +570,6 @@ class TypeMap:
     def __type_key(self, obj):
         """
         A wrapper function to simplify the process of getting a type_key for an object.
-
         The type_key is used to get the data_type from a Builder's attributes.
         """
         if isinstance(obj, LinkBuilder):
