@@ -739,7 +739,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         for dataset_spec in datasets:
             if dataset_spec.name is None or dataset_spec.coords is None:
                 # TODO handle VectorData case where name is not known
-                return
+                continue
             dataset_builder = group_builder.datasets[dataset_spec.name]
             try:
                 dataset_builder.coords = self.__check_coords(dataset_spec, group_builder, dataset_builder)
@@ -748,7 +748,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                        % (dataset_spec.name, type(container).__name__, container.name))
                 raise BuildError(msg) from ex
 
-    def __check_dims(self, dataset_spec, data):
+    @classmethod
+    def __check_dims(cls, dataset_spec, data):
         """
         Validate that the dimensions (number of dims, length of each dim) of data are allowed based on the spec.
         Returns tuple of dimension names corresponding to the dimensions used.
@@ -777,24 +778,28 @@ class ObjectMapper(metaclass=ExtenderMeta):
             used_dim_names.append(dataset_spec.dims[s].name)
         return tuple(used_dim_names)
 
-    def __check_coords(self, dataset_spec, group_builder, dataset_builder):
+    @classmethod
+    def __check_coords(cls, dataset_spec, group_builder, dataset_builder):
         """
         Returns dict of CoordBuilders corresponding to the dimensions used.
         """
         used_coords = dict()
         if dataset_spec.coords:
-            for c in dataset_spec.coords:
-                for dim_index in c.dims:
+            for coord_spec in dataset_spec.coords:
+                for dim_index in coord_spec.axes:
                     if dim_index < len(dataset_builder.dims):  # check the dimension exists on the dataset
-                        coord_dataset_builder = group_builder.datasets.get(c.coord_dataset, None)
+                        coord_dataset_builder = group_builder.datasets.get(coord_spec.coord_dataset, None)
                         if coord_dataset_builder is not None:  # check the coord dataset exists in the group
+                            # TODO store coord_dataset_builder in CoordBuilder
                             # TODO check the axis exists on the coord dataset
                             # TODO check the coord_type is appropriate
                             # TODO check that coord name is not already in used_coords
-                            coord_builder = CoordBuilder(**c)  # copy key-value pairs from CoordSpec to CoordBuilder
-                            used_coords[c.name] = coord_builder
+                            # copy key-value pairs from CoordSpec to CoordBuilder
+                            coord_builder = CoordBuilder(**coord_spec)
+                            used_coords[coord_spec.name] = coord_builder
                         else:
-                            msg = "Coord dataset '%s' of coord '%s' does not exist." % (c.coord_dataset, c.name)
+                            msg = ("Coord dataset '%s' of coord '%s' does not exist."
+                                   % (coord_spec.coord_dataset, coord_spec.name))
                             raise ConvertError(msg)
         return used_coords
 
@@ -1069,7 +1074,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         # since dataset_builder is cached in the manager, need to set its dims
                         dataset_builder.dims = dims
                         # set dims on the new Container object
-                        obj.set_dims(data_name=dataset_builder.name, dims=dims)
+                        obj.set_dims(array_name=dataset_builder.name, dims=dims)
 
                     # verify that the coords are valid and return only the active coords
                     try:
@@ -1084,11 +1089,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         dataset_builder.coords = coords  # this is a dictionary of coord name : CoordBuilder
                         # unpack the CoordBuilder and set coords on the new Container object
                         for coord in coords.values():
-                            obj.set_coord(data_name=dataset_builder.name,
+                            obj.set_coord(array_name=dataset_builder.name,
                                           name=coord.name,
-                                          coord_dataset=coord.coord_dataset,
-                                          coord_axes=coord.coord_axes,
-                                          dims=coord.dims,
+                                          axes=coord.axes,
+                                          coord_array_name=coord.coord_dataset,
+                                          coord_array_axes=coord.coord_axes,
                                           coord_type=coord.coord_type)
         return obj
 

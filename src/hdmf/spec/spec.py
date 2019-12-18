@@ -329,26 +329,26 @@ class CoordSpec(ConstructableDict):
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
             {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
             {'name': 'coord_axes', 'type': (int, list, tuple), 'doc': 'The axes of the dataset of this coordinate'},
-            {'name': 'dims', 'type': (int, list, tuple),
-             'doc': 'The dims (axes indices) of the dataset that this coordinate acts on'},
+            {'name': 'axes', 'type': (int, list, tuple),
+             'doc': 'The axes of the dataset that this coordinate acts on'},
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'},
             {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
     def __init__(self, **kwargs):
-        name, coord_dataset, coord_axes, dims, coord_type, parent = getargs('name', 'coord_dataset', 'coord_axes',
-                                                                            'dims', 'coord_type', 'parent', kwargs)
+        name, coord_dataset, coord_axes, axes, coord_type, parent = getargs('name', 'coord_dataset', 'coord_axes',
+                                                                            'axes', 'coord_type', 'parent', kwargs)
         super().__init__()
         self['name'] = name
         self['coord_dataset'] = coord_dataset
-        self['coord_axes'] = coord_axes
-        self['dims'] = dims
         self['coord_type'] = coord_type
         self._parent = parent
 
-        if type(self.coord_axes) == int:
-            self.coord_axes = (self.coord_axes, )
-
-        if type(self.dims) == int:
-            self.dims = (self.dims, )
+        if type(coord_axes) == int:
+            coord_axes = (coord_axes, )
+        if type(axes) == int:
+            axes = (axes, )
+        # cast list to tuple
+        self['coord_axes'] = tuple(coord_axes)
+        self['axes'] = tuple(axes)
 
     @property
     def name(self):
@@ -366,9 +366,9 @@ class CoordSpec(ConstructableDict):
         return self.get('coord_axes', None)
 
     @property
-    def dims(self):
-        """The dims (axes indices) of the dataset that this coordinate acts on"""
-        return self.get('dims', None)
+    def axes(self):
+        """The axes of the dataset that this coordinate acts on"""
+        return self.get('axes', None)
 
     @property
     def coord_type(self):

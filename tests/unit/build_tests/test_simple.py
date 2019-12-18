@@ -2,6 +2,7 @@ from hdmf.spec import GroupSpec, DatasetSpec, CoordSpec, SpecCatalog, SpecNamesp
 from hdmf.build import ObjectMapper, TypeMap, GroupBuilder, DatasetBuilder, BuildManager, BuildError, CoordBuilder
 from hdmf.build import ConstructError, ConvertError
 from hdmf import Container
+from hdmf.container import Coordinates
 from hdmf.utils import docval
 from hdmf.testing import TestCase
 
@@ -38,6 +39,10 @@ def _create_typemap(bar_spec):
 class TestBuildDims(TestCase):
 
     # TODO legacy tests
+
+    # TODO make hdf5 back end write dims and coords and read dims and coords
+    # TODO update documentation
+    # TODO do not write new attributes if dims and coords do not exist
 
     def test_build_dims_1d(self):
         """
@@ -189,8 +194,10 @@ class TestBuildCoords(TestCase):
         """
         dim1_spec = DimSpec(name='x', required=True)
         dim2_spec = DimSpec(name='chars', required=True)
-        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
                                coord_type='aligned')
+        # TODO datasetspec add_dim(...)
+        # TODO datasetspec add_coord(...)
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(dim1_spec, ), coords=(coord_spec, ))
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(dim2_spec, ))
@@ -201,7 +208,7 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        expected = {'letters': CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+        expected = {'letters': CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
                                             coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
@@ -213,9 +220,9 @@ class TestBuildCoords(TestCase):
         x_spec = DimSpec(name='x', required=True, length=4)
         y_spec = DimSpec(name='y', required=False, doc='test_doc')
         dim2_spec = DimSpec(name='chars', required=True)
-        x_coord_spec = CoordSpec(name='xletters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+        x_coord_spec = CoordSpec(name='xletters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
                                  coord_type='aligned')
-        y_coord_spec = CoordSpec(name='yletters', coord_dataset='data2', coord_axes=(0, ), dims=(1, ),
+        y_coord_spec = CoordSpec(name='yletters', coord_dataset='data2', coord_axes=(0, ), axes=(1, ),
                                  coord_type='aligned')
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(x_spec, y_spec), coords=(x_coord_spec, y_coord_spec))
@@ -227,9 +234,9 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [[1, 2], [3, 4], [5, 6], [7, 8]], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        expected = {'xletters': CoordBuilder(name='xletters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+        expected = {'xletters': CoordBuilder(name='xletters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
                                              coord_type='aligned'),
-                    'yletters': CoordBuilder(name='yletters', coord_dataset='data2', coord_axes=(0, ), dims=(1, ),
+                    'yletters': CoordBuilder(name='yletters', coord_dataset='data2', coord_axes=(0, ), axes=(1, ),
                                              coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
@@ -240,19 +247,23 @@ class TestBuildCoords(TestCase):
         """
         dim1_spec = DimSpec(name='x', required=True)
         dim2_spec = DimSpec(name='chars', required=True)
-        coord_spec = CoordSpec(name='letters', coord_dataset='data3', coord_axes=(0, ), dims=(0, ),
+        # TODO require coord_dataset to be a datasetspec, validate axes
+        coord_spec = CoordSpec(name='letters', coord_dataset='data4', coord_axes=(0, ), axes=(0, ),
                                coord_type='aligned')
+        # TODO validate coord type is an allowed value
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(dim1_spec, ), coords=(coord_spec, ))
+        # TODO constructor, and add coords validate axes.
         dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(dim2_spec, ))
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[dset1_spec, dset2_spec])
+        # TODO on write to yaml, validate that coord references exist.
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
 
         with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Coord dataset 'data3' of coord 'letters' does not exist."):
+            with self.assertRaisesWith(ConvertError, "Coord dataset 'data4' of coord 'letters' does not exist."):
                 type_map.build(bar_inst)
 
 
@@ -327,6 +338,7 @@ class TestConstructDims(TestCase):
         attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
+        # on read - warnings instead of errors, same for dtype
         with self.assertRaisesWith(ConstructError, "Could not construct 'data1' for Bar 'my_bar'."):
             with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
                 type_map.construct(group_builder, manager)
@@ -362,7 +374,7 @@ class TestConstructCoords(TestCase):
     def test_construct_coords_1d(self):
         x_spec = DimSpec(name='x', required=True)
         char_spec = DimSpec(name='chars', required=True)
-        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ),
+        coord_spec = CoordSpec(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ),
                                coord_type='aligned')
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(x_spec, ), coords=(coord_spec, ))
@@ -374,6 +386,8 @@ class TestConstructCoords(TestCase):
         manager = BuildManager(type_map)
 
         # on read, the dataset builders will not have dims or coords. these need to be added in construct
+        # TODO builder SHOULD know dims and coords from the backend
+        # warning on read if dims and coords do not match spec
         dset_builder2 = DatasetBuilder(name='data2', data=['a', 'b', 'c', 'd'])
         dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
         datasets = {'data1': dset_builder1, 'data2': dset_builder2}
@@ -381,7 +395,11 @@ class TestConstructCoords(TestCase):
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
         constructed_bar = type_map.construct(group_builder, manager)
-        self.assertEqual(constructed_bar.coords, {'data1': {'letters': (('x', ), ['a', 'b', 'c', 'd'])}})
+
+        expected_coords = Coordinates(constructed_bar)
+        expected_coords.add(name='letters', dims=('x', ), coord_array=constructed_bar.data2, coord_array_axes=(0, ),
+                            coord_type='aligned')
+        self.assertEqual(constructed_bar.coords, {'data1': expected_coords})
 
         expected_bar = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
@@ -390,9 +408,9 @@ class TestConstructCoords(TestCase):
         frame_spec = DimSpec(name='frame', required=True)
         x1_spec = DimSpec(name='x1', required=True, length=2)
         y1_spec = DimSpec(name='y1', required=True, length=4)
-        x2_spec = DimSpec(name='x1', required=False)
-        y2_spec = DimSpec(name='y1', required=False)
-        coord_spec = CoordSpec(name='dorsal-ventral', coord_dataset='data2', coord_axes=(0, 1), dims=(1, 2),
+        x2_spec = DimSpec(name='x2', required=False)
+        y2_spec = DimSpec(name='y2', required=False)
+        coord_spec = CoordSpec(name='dorsal-ventral', coord_dataset='data2', coord_axes=(0, 1), axes=(1, 2),
                                coord_type='aligned')
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
                                  dims=(frame_spec, x1_spec, y1_spec), coords=(coord_spec, ))
@@ -413,9 +431,11 @@ class TestConstructCoords(TestCase):
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
         constructed_bar = type_map.construct(group_builder, manager)
-        self.assertEqual(constructed_bar.coords,
-                         {'data1': {'dorsal-ventral': (('x1', 'y1'),
-                                                       [[-1, -2, -3, -4], [-5, -6, -7, -8]])}})
+
+        expected_coords = Coordinates(constructed_bar)
+        expected_coords.add(name='dorsal-ventral', dims=('x1', 'y1'), coord_array=constructed_bar.data2,
+                            coord_array_axes=(0, 1), coord_type='aligned')
+        self.assertEqual(constructed_bar.coords, {'data1': expected_coords})
 
         expected_bar = Bar('my_bar',
                            [[[1, 2, 3, 4], [5, 6, 7, 8]],

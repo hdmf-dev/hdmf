@@ -311,20 +311,20 @@ class DatasetBuilderDeepUpdateTests(TestCase):
 class TestCoordBuilder(TestCase):
 
     def test_get_attr(self):
-        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ), coord_type='aligned')
+        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ), coord_type='aligned')
         self.assertEqual(cb.coord_dataset, 'data2')
 
     def test_get_attr_not_found(self):
-        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ), coord_type='aligned')
+        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ), coord_type='aligned')
         with self.assertRaisesWith(AttributeError, 'bad_key'):
             cb.bad_key
 
     def test_set_attr(self):
-        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ), coord_type='aligned')
+        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ), coord_type='aligned')
         with self.assertRaisesWith(AttributeError, 'CoordBuilder is immutable'):
             cb.name = 'new_name'
 
     def test_repr(self):
-        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), dims=(0, ), coord_type='aligned')
-        self.assertEqual(str(cb), ("{'name': 'letters', 'coord_dataset': 'data2', 'coord_axes': (0,), 'dims': (0,), "
+        cb = CoordBuilder(name='letters', coord_dataset='data2', coord_axes=(0, ), axes=(0, ), coord_type='aligned')
+        self.assertEqual(str(cb), ("{'name': 'letters', 'coord_dataset': 'data2', 'coord_axes': (0,), 'axes': (0,), "
                                    "'coord_type': 'aligned'}"))

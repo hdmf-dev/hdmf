@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import unittest
 
-from hdmf.container import AbstractContainer, Container, Data
+from hdmf.container import AbstractContainer, Container, Data, Coordinates
 from hdmf.testing import TestCase
 
 
@@ -138,94 +138,74 @@ class TestContainerDims(TestCase):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
         self.assertDictEqual(obj1.dims, {})
 
-    def test_set_dim_axis0(self):
+    def test_set_dims_1d(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        self.assertDictEqual(obj1.dims, {'data1': ['numbers']})
+        obj1.set_dims(array_name='data1', dims=('numbers', ))
+        self.assertDictEqual(obj1.dims, {'data1': ('numbers', )})
 
-    def test_set_dim_axis1(self):
+    def test_set_dims_3d(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'dim_2']})
-        obj1.set_dim(data_name='data2', axis=2, dim='more numbers')
-        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'more numbers']})
-        obj1.set_dim(data_name='data2', axis=1, dim='awesome numbers')
-        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'awesome numbers', 'more numbers']})
+        obj1.set_dims(array_name='data2', dims=('x', 'y', 'z'))
+        self.assertDictEqual(obj1.dims, {'data2': ('x', 'y', 'z')})
 
-    def test_set_dim_dataio(self):
+    def test_set_dims_dataio(self):
         # TODO
         raise unittest.SkipTest('TODO')
 
-    def test_set_dim_dci(self):
+    def test_set_dims_dci(self):
         # TODO
         raise unittest.SkipTest('TODO')
 
-    def test_set_dim_h5dataset(self):
+    def test_set_dims_h5dataset(self):
         # TODO
         raise unittest.SkipTest('TODO')
 
-    def test_set_dim_empty_dim(self):
+    def test_set_dims_empty(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data1', axis=0, dim='')
-        self.assertDictEqual(obj1.dims, {'data1': ['']})
+        msg = "Number of dims must equal number of axes for field 'data1' in Bar 'obj1' (0 != 1)."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data1', dims=tuple())
 
-    def test_set_dim_unknown_name(self):
+    def test_set_dims_too_many(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Bar\."):
-            obj1.set_dim(data_name='data4', axis=0, dim='numbers')
+        msg = "Number of dims must equal number of axes for field 'data1' in Bar 'obj1' (2 != 1)."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data1', dims=('numbers', 'dup'))
+
+    def test_set_dims_unknown_name(self):
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        msg = "Field named 'data4' not found in Bar 'obj1'."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data4', dims=('numbers', ))
+
+    def test_set_dims_array_none(self):
+        """Test that set_dims raises an error if given an array name that is defined on the class but not set."""
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
+        msg = "Field named 'data3' not found in Bar 'obj1'."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data3', dims=('numbers', ))
 
     def test_set_dim_axis_non_array(self):
         obj1 = Bar('obj1', data1='hello', data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesWith(ValueError, "Cannot determine shape of field 'data1' in Bar."):
-            obj1.set_dim(data_name='data1', axis=0, dim='numbers')
+        msg = "Cannot determine shape of field 'data1' in Bar 'obj1'."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data1', dims=('numbers', ))
 
-    def test_set_dim_axis_negative(self):
+    def test_set_dims_dup_name(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesWith(ValueError, "Axis -1 does not exist for field 'data1' in Bar."):
-            obj1.set_dim(data_name='data1', axis=-1, dim='numbers')
+        obj1.set_dims(array_name='data1', dims=('numbers', ))
+        msg = "Cannot reset dims for field 'data1' in Bar 'obj1'. Dims is already ('numbers',)."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data1', dims=('numbers', ))
 
-    def test_set_dim_axis_over_bounds(self):
+    def test_set_dims_dup_dim_name(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesWith(ValueError, "Axis 1 does not exist for field 'data1' in Bar."):
-            obj1.set_dim(data_name='data1', axis=1, dim='numbers')
-
-    def test_set_dim_dup_name(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        with self.assertRaisesWith(ValueError, ("Cannot set dim 'numbers' for axis 2 of field data2 in Bar."
-                                                " Dim 'numbers' is already used for axis 1.")):
-            obj1.set_dim(data_name='data2', axis=2, dim='numbers')
-
-    def test_set_dim_dup_name_ok(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        self.assertDictEqual(obj1.dims, {'data2': ['dim_0', 'numbers', 'dim_2']})
-
-    def test_get_dim_axis(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        ax = obj1._get_dim_axis(data_name='data2', dim='numbers')
-        self.assertEqual(ax, 1)
-
-    def test_get_dim_axis_unknown_name(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        with self.assertRaisesRegex(ValueError, r"No field named 'data4' in Bar\."):
-            obj1._get_dim_axis(data_name='data4', dim='numbers')
-
-    def test_get_dim_axis_no_dims(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        ax = obj1._get_dim_axis(data_name='data2', dim='numbers')
-        self.assertIsNone(ax)
-
-    def test_get_dim_axis_unknown_dim(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=np.arange(20).reshape((2, 5, 2)))
-        obj1.set_dim(data_name='data2', axis=1, dim='numbers')
-        with self.assertRaisesWith(ValueError, r"Dim name 'letters' not found for field 'data2' of Bar."):
-            obj1._get_dim_axis(data_name='data2', dim='letters')
+        msg = "Cannot set dims for field 'data1' in Bar 'obj1'. Dim names must be unique."
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.set_dims(array_name='data1', dims=('numbers', 'numbers'))
 
 
-class TestContainerCoords(unittest.TestCase):
+class TestContainerCoords(TestCase):
 
     def test_get_coord_none(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
@@ -233,65 +213,17 @@ class TestContainerCoords(unittest.TestCase):
 
     def test_set_coord(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
-        self.assertDictEqual(obj1.coords, {'data1': {'letters': (('numbers', ), ['a', 'b', 'c'])}})
+        obj1.set_dims(array_name='data1', dims=('x', ))
+        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
+                       coord_array_axes=(0, ), coord_type='aligned')
 
-    def test_set_coord_no_dim(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        obj1.set_coord(data_name='data1', label='numbers', coord='data2')
-        self.assertDictEqual(obj1.coords, {'data1': {'numbers': (('numbers', ), ['a', 'b', 'c'])}})
-
-    def test_set_coord_two_dims(self):
-        obj1 = Bar('obj1', data1=np.arange(20).reshape((2, 5, 2)), data2=np.arange(10).reshape(5, 2))
-        obj1.set_dim(data_name='data1', axis=1, dim='y')
-        obj1.set_dim(data_name='data1', axis=2, dim='x')
-        obj1.set_coord(data_name='data1', label='dv', coord='data2', dims=('y', 'x'))
-        self.assertTupleEqual(obj1.coords['data1']['dv'][0], ('y', 'x'))
-        np.testing.assert_array_equal(obj1.coords['data1']['dv'][1], np.arange(10).reshape(5, 2))
-
-    def test_set_coord_field_not_found(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        msg = r"No dimensions have been specified for 'data1' in Bar\."
-        with self.assertRaisesRegex(ValueError, msg):
-            obj1.set_coord(data_name='data1', label='letters', coord='data2')
-
-    def test_set_coord_dim_not_found(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        msg = r"Dimension 'letters' not found in dimensions for field 'data1' in Bar\."
-        with self.assertRaisesRegex(ValueError, msg):
-            obj1.set_coord(data_name='data1', label='letters', coord='data2')
-
-    def test_set_coord_coord_not_found(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        with self.assertRaisesRegex(ValueError, r"Coord name 'data3' not found in Bar\."):
-            obj1.set_coord(data_name='data1', label='letters', coord='data3', dims='numbers')
-
-    def test_set_coord_coord_same(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        with self.assertRaisesRegex(ValueError, r"Cannot set coord 'data1' to itself in Bar\."):
-            obj1.set_coord(data_name='data1', label='letters', coord='data1', dims='numbers')
-
-    def test_set_coord_unequal_len(self):
-        obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        msg = (r"Dimension 'numbers' of field 'data1' must have the same length as axis 0 of field 'data2' in "
-               r"Bar \(3 != 2\)\.")
-        with self.assertRaisesRegex(ValueError, msg):
-            obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
-
-    def test_set_coord_unequal_len_two_axes(self):
-        obj1 = Bar('obj1', data1=np.arange(20).reshape((2, 5, 2)), data2=np.arange(15).reshape(5, 3))
-        obj1.set_dim(data_name='data1', axis=1, dim='y')
-        obj1.set_dim(data_name='data1', axis=2, dim='x')
-        msg = (r"Dimension 'x' of field 'data1' must have the same length as axis 1 of field 'data2' in "
-               r"Bar \(2 != 3\)\.")
-        with self.assertRaisesRegex(ValueError, msg):
-            obj1.set_coord(data_name='data1', label='dv', coord='data2', dims=('y', 'x'))
+        self.assertEqual(len(obj1.coords), 1)
+        received_coords = obj1.coords['data1']
+        self.assertIsInstance(received_coords, Coordinates)
+        self.assertIs(received_coords.parent, obj1)
+        self.assertEqual(received_coords['letters'], Coordinates.Coord(name='letters', dims=('x', ),
+                                                                       coord_array=obj1.data2,
+                                                                       coord_array_axes=(0, ), coord_type='aligned'))
 
     def test_set_coord_dataio(self):
         # TODO
@@ -305,31 +237,46 @@ class TestContainerCoords(unittest.TestCase):
         # TODO
         raise unittest.SkipTest('TODO')
 
+    # TODO catch all the ValueErrors from set_coord
+
     def test_to_xarray_dataarray(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
-        arr = obj1.to_xarray_dataarray(data_name='data1')
-        expected = xr.DataArray([1, 2, 3], dims=['numbers', ], coords={'letters': (('numbers', ), ['a', 'b', 'c'])})
+        obj1.set_dims(array_name='data1', dims=('x', ))
+        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
+                       coord_array_axes=(0, ), coord_type='aligned')
+
+        arr = obj1.to_xarray_dataarray(array_name='data1')
+        expected = xr.DataArray([1, 2, 3], dims=('x', ), coords={'letters': (('x', ), ['a', 'b', 'c'])})
         xr.testing.assert_equal(arr, expected)
 
     def test_to_xarray_dataarray_unknown_name(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        obj1.set_coord(data_name='data1', label='letters', coord='data2', dims='numbers')
-        with self.assertRaisesRegex(ValueError, r"Field name 'data3' not found in Bar\."):
-            obj1.to_xarray_dataarray(data_name='data3')
+        obj1.set_dims(array_name='data1', dims=('x', ))
+        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
+                       coord_array_axes=(0, ), coord_type='aligned')
+        with self.assertRaisesWith(ValueError, "Field name 'data3' not found in Bar 'obj1'."):
+            obj1.to_xarray_dataarray(array_name='data3')
+
+    def test_to_xarray_dataarray_coord_not_all_axes(self):
+        obj1 = Bar('obj1', data1=[1, 2, 3], data2=[['a', 'b'], ['c', 'd'], ['e', 'f']])
+        obj1.set_dims(array_name='data1', dims=('x', ))
+        obj1.set_coord(array_name='data1', name='letters', axes=(0, ), coord_array_name='data2',
+                       coord_array_axes=(0, ), coord_type='aligned')
+        msg = ("Cannot convert the array 'data1' to an xarray.DataArray. All coordinate arrays must map all of their "
+               "axes to a set of axes on 'data1'.")
+        with self.assertRaisesWith(ValueError, msg):
+            obj1.to_xarray_dataarray(array_name='data1')
 
     def test_to_xarray_dataarray_no_coord(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        obj1.set_dim(data_name='data1', axis=0, dim='numbers')
-        arr = obj1.to_xarray_dataarray(data_name='data1')
-        expected = xr.DataArray([1, 2, 3], dims=['numbers', ])
+        obj1.set_dims(array_name='data1', dims=('x', ))
+        arr = obj1.to_xarray_dataarray(array_name='data1')
+        expected = xr.DataArray([1, 2, 3], dims=('x', ))
         xr.testing.assert_equal(arr, expected)
 
     def test_to_xarray_dataarray_no_dim(self):
         obj1 = Bar('obj1', data1=[1, 2, 3], data2=['a', 'b', 'c'])
-        arr = obj1.to_xarray_dataarray(data_name='data1')
+        arr = obj1.to_xarray_dataarray(array_name='data1')
         expected = xr.DataArray([1, 2, 3])
         xr.testing.assert_equal(arr, expected)
 
@@ -361,3 +308,81 @@ class TestData(TestCase):
         """
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
+
+
+class TestCoordinates(TestCase):
+
+    def test_constructor(self):
+        """Test that the Coordinates constructor sets values correctly"""
+        obj = Container('obj1')
+        coords = Coordinates(obj)
+        self.assertIs(coords.parent, obj)
+        self.assertEqual(list(coords.values()), [])
+
+    def test_add_getitem(self):
+        """Test that adding a coord to Coordinates and accessing it works"""
+        obj = Container('obj1')
+        coords = Coordinates(obj)
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                   coord_type='aligned')
+
+        expected = Coordinates.Coord(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                                     coord_type='aligned')
+        self.assertEqual(coords['my_coord'], expected)
+
+    def test_add_dup(self):
+        """Test that adding a coord whose name is already in Coordinates raises an error"""
+        obj = Container('obj1')
+        coords = Coordinates(obj)
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                   coord_type='aligned')
+
+        msg = "Coordinate 'my_coord' already exists. Cannot overwrite values in Coordinates."
+        with self.assertRaisesWith(ValueError, msg):
+            coords.add(name='my_coord', dims=('y', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                       coord_type='aligned')
+
+    def test_eq(self):
+        """Test equality of Coordinates"""
+        obj = Container('obj1')
+        coords = Coordinates(obj)
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                   coord_type='aligned')
+
+        coords2 = Coordinates(obj)
+        coords2.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                    coord_type='aligned')
+        self.assertEqual(coords, coords2)
+
+    def test_not_eq(self):
+        """Test correct failure of equality of Coordinates"""
+        obj = Container('obj1')
+        coords = Coordinates(obj)
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                   coord_type='aligned')
+
+        coords2 = Coordinates(obj)
+        coords2.add(name='my_coord', dims=('y', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                    coord_type='aligned')
+        self.assertNotEqual(coords, coords2)
+
+    def test_dict(self):
+        """Test a variety of dictionary methods on Coordinates"""
+        obj = Container('obj1')
+        coords = Coordinates(obj)
+        coords.add(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4], coord_array_axes=(0, ),
+                   coord_type='aligned')
+
+        expected_coord = Coordinates.Coord(name='my_coord', dims=('x', ), coord_array=[0, 1, 2, 3, 4],
+                                           coord_array_axes=(0, ), coord_type='aligned')
+
+        for k, v in coords.items():
+            self.assertEqual(k, 'my_coord')
+            self.assertEqual(v, expected_coord)
+
+        self.assertEqual(len(coords), 1)
+        self.assertEqual(str(coords), "{'my_coord': Coord(name='my_coord', dims=('x',), coord_array=[0, 1, 2, 3, 4], "
+                                      "coord_array_axes=(0,), coord_type='aligned')}")
+        self.assertEqual(list(coords.keys()), ['my_coord'])
+        self.assertEqual(list(coords.values()), [expected_coord])
+        self.assertEqual(list(iter(coords)), ['my_coord'])

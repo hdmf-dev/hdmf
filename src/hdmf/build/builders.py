@@ -587,17 +587,21 @@ class CoordBuilder:
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
             {'name': 'coord_dataset', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
-            {'name': 'coord_axes', 'type': (int, list, tuple), 'doc': 'The axes of the dataset of this coordinate'},
-            {'name': 'dims', 'type': (int, list, tuple),
-             'doc': 'The dims (axes indices) of the dataset that this coordinate acts on'},
+            {'name': 'coord_axes', 'type': (int, list, tuple),
+             'doc': 'The axes (0-indexed) of the dataset of this coordinate'},
+            {'name': 'axes', 'type': (int, list, tuple),
+             'doc': 'The axes (0-indexed) of the dataset that this coordinate acts on'},
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'})
     def __init__(self, **kwargs):
         # use composition instead of inheritance purposefully to restrict user's ability to use arbitrary dict methods
         # cast ints to tuples
         if type(kwargs['coord_axes']) == int:
             kwargs['coord_axes'] = (kwargs['coord_axes'], )
-        if type(kwargs['dims']) == int:
-            kwargs['dims'] = (kwargs['dims'], )
+        if type(kwargs['axes']) == int:
+            kwargs['axes'] = (kwargs['axes'], )
+        # cast list to tuple
+        kwargs['coord_axes'] = tuple(kwargs['coord_axes'])
+        kwargs['axes'] = tuple(kwargs['axes'])
         super().__setattr__('data_dict', kwargs)  # store all given docval args. avoid local __setattr__
 
     def __getattr__(self, key):
