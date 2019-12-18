@@ -1071,8 +1071,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         dims = self.__check_dims(subspec, dataset_builder.data)
                     except ConvertError as ex:
-                        msg = ("Could not construct '%s' for %s '%s' due to %s."
-                               % (subspec.name, cls.__name__, obj.name, ex))
+                        msg = ("Could not construct '%s' for %s '%s'."
+                               % (subspec.name, cls.__name__, obj.name))
                         raise ConstructError(msg) from ex
 
                     if dims is not None:
