@@ -434,6 +434,9 @@ class DatasetBuilder(BaseBuilder):
     OBJECT_REF_TYPE = 'object'
     REGION_REF_TYPE = 'region'
 
+    DIMS_ATTR = 'dims'
+    COORDS_ATTR = 'coords'
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
             {'name': 'data',
              'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime),
@@ -455,9 +458,9 @@ class DatasetBuilder(BaseBuilder):
             'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', 'dims', 'coords', kwargs)
         super().__init__(name, attributes, parent, source)
         self['attributes'] = _copy.copy(attributes)  # TODO: is this necessary? it is set (but not copied) earlier
-        self['data'] = data
-        self['dims'] = dims
-        self['coords'] = coords
+        self.data = data
+        self.dims = dims
+        self.coords = coords
         self.__chunks = chunks
         self.__maxshape = maxshape
 
@@ -487,6 +490,7 @@ class DatasetBuilder(BaseBuilder):
         if self['dims'] is not None:
             raise AttributeError('Cannot reset dims once it is specified')
         self['dims'] = val
+        self.set_attribute(self.DIMS_ATTR, str(val))
 
     @property
     def coords(self):
@@ -498,6 +502,7 @@ class DatasetBuilder(BaseBuilder):
         if self['coords'] is not None:
             raise AttributeError('Cannot reset coords once it is specified')
         self['coords'] = val
+        self.set_attribute(self.COORDS_ATTR, str(val))
 
     @property
     def chunks(self):
