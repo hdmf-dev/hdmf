@@ -1,11 +1,9 @@
-from __future__ import absolute_import
 import re
 import numpy as np
 import warnings
 from collections import OrderedDict
 from copy import copy, deepcopy
 from datetime import datetime
-from six import with_metaclass, raise_from, text_type, binary_type, integer_types
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
@@ -18,7 +16,7 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, Refere
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
 
 
-class Proxy(object):
+class Proxy:
     """
     A temporary object to represent a Container. This gets used when resolving the true location of a
     Container's parent.
@@ -89,7 +87,7 @@ class Proxy(object):
         return str(ret)
 
 
-class BuildManager(object):
+class BuildManager:
     """
     A class for managing builds of AbstractContainers
     """
@@ -325,9 +323,9 @@ def _unicode(s):
     """
     A helper function for converting to Unicode
     """
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         return s
-    elif isinstance(s, binary_type):
+    elif isinstance(s, bytes):
         return s.decode('utf-8')
     else:
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
@@ -337,15 +335,15 @@ def _ascii(s):
     """
     A helper function for converting to ASCII
     """
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         return s.encode('ascii', 'backslashreplace')
-    elif isinstance(s, binary_type):
+    elif isinstance(s, bytes):
         return s
     else:
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
-class ObjectMapper(with_metaclass(ExtenderMeta, object)):
+class ObjectMapper(metaclass=ExtenderMeta):
     '''A class for mapping between Spec objects and AbstractContainer attributes
 
     '''
@@ -745,9 +743,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
                 if spec.shape is not None or spec.dims is not None:
-                    ret = list(map(text_type, value))
+                    ret = list(map(str, value))
                 else:
-                    ret = text_type(value)
+                    ret = str(value)
         elif isinstance(spec, DatasetSpec):
             # TODO: make sure we can handle specs with data_type_inc set
             if spec.data_type_inc is not None:
@@ -756,9 +754,9 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                 if spec.dtype is not None:
                     string_type = None
                     if 'text' in spec.dtype:
-                        string_type = text_type
+                        string_type = str
                     elif 'ascii' in spec.dtype:
-                        string_type = binary_type
+                        string_type = bytes
                     elif 'isodatetime' in spec.dtype:
                         string_type = datetime.isoformat
                     if string_type is not None:
@@ -826,7 +824,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     bldr_data, dtype = self.convert_dtype(spec, bldr_data)
                 except Exception as ex:
                     msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                    raise_from(Exception(msg), ex)
+                    raise Exception(msg) from ex
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
             else:
                 # a regular dtype
@@ -847,7 +845,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         bldr_data, dtype = self.convert_dtype(spec, container.data)
                     except Exception as ex:
                         msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                        raise_from(Exception(msg), ex)
+                        raise Exception(msg) from ex
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
         self.__add_attributes(builder, self.__spec.attributes, container, manager, source)
         return builder
@@ -869,14 +867,13 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
 
     def __is_reftype(self, data):
         tmp = data
-        while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, text_type, binary_type)):
+        while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, str, bytes)):
             tmptmp = None
             for t in tmp:
                 # In case of a numeric array stop the iteration at the first element to avoid long-running loop
-                if isinstance(t, (integer_types, float, complex, bool)):
+                if isinstance(t, (int, float, complex, bool)):
                     break
-                if hasattr(t, '__len__') and len(t) > 0 and \
-                   not isinstance(t, (AbstractContainer, text_type, binary_type)):
+                if hasattr(t, '__len__') and len(t) > 0 and not isinstance(t, (AbstractContainer, str, bytes)):
                     tmptmp = tmp[0]
                     break
             if tmptmp is not None:
@@ -948,7 +945,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                         attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
                         msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
-                        raise_from(Exception(msg), ex)
+                        raise Exception(msg) from ex
 
             # do not write empty or null valued objects
             if attr_value is None:
@@ -986,7 +983,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
                     except Exception as ex:
                         msg = 'could not convert \'%s\' for %s \'%s\''
                         msg = msg % (spec.name, type(container).__name__, container.name)
-                        raise_from(Exception(msg), ex)
+                        raise Exception(msg) from ex
                     sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
             else:
@@ -1226,7 +1223,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
             obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object due to %s' % (cls.__name__, ex)
-            raise_from(Exception(msg), ex)
+            raise Exception(msg) from ex
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,
@@ -1248,7 +1245,7 @@ class ObjectMapper(with_metaclass(ExtenderMeta, object)):
         return ret
 
 
-class TypeSource(object):
+class TypeSource:
     '''A class to indicate the source of a data_type in a namespace.
 
     This class should only be used by TypeMap
@@ -1270,7 +1267,7 @@ class TypeSource(object):
         return self.__data_type
 
 
-class TypeMap(object):
+class TypeMap:
     ''' A class to maintain the map between ObjectMappers and AbstractContainer classes
     '''
 

@@ -2,16 +2,14 @@ import unittest
 import os
 from h5py import File
 import numpy as np
+from abc import ABCMeta
 
 from hdmf.query import HDMFDataset, Query
 from hdmf.array import SortedArray, LinSpace
 from hdmf.testing import TestCase
 
-from six import with_metaclass
-from abc import ABCMeta
 
-
-class AbstractQueryTest(with_metaclass(ABCMeta, TestCase)):
+class AbstractQueryTest(TestCase, metaclass=ABCMeta):
 
     def getDataset(self):
         raise unittest.SkipTest('getDataset must be implemented')

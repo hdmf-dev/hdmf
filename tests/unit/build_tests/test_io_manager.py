@@ -5,7 +5,6 @@ from hdmf.build import ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
 from abc import ABCMeta
-from six import with_metaclass
 import unittest
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
@@ -16,7 +15,7 @@ class FooMapper(ObjectMapper):
     """
 
     def __init__(self, spec):
-        super(FooMapper, self).__init__(spec)
+        super().__init__(spec)
         my_data_spec = spec.get_dataset('my_data')
         self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
 
@@ -112,10 +111,10 @@ class TestBuildManager(TestBase):
         self.assertIs(container1, container2)
 
 
-class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
+class TestNestedBase(TestBase, metaclass=ABCMeta):
 
     def setUp(self):
-        super(TestNestedBase, self).setUp()
+        super().setUp()
         self.foo_bucket = FooBucket('test_foo_bucket', [
                             Foo('my_foo1', list(range(10)), 'value1', 10),
                             Foo('my_foo2', list(range(10, 20)), 'value2', 20)])
@@ -216,7 +215,7 @@ class TestNestedContainersSubgroup(TestNestedBase):
     def setUpBucketMapper(self):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
-                super(BucketMapper, self).__init__(spec)
+                super().__init__(spec)
                 self.unmap(spec.get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Foo'))
 
@@ -253,7 +252,7 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
     def setUpBucketMapper(self):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
-                super(BucketMapper, self).__init__(spec)
+                super().__init__(spec)
                 self.unmap(spec.get_group('foo_holder_holder'))
                 self.unmap(spec.get_group('foo_holder_holder').get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
