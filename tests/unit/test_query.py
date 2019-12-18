@@ -1,13 +1,11 @@
-import unittest
 import os
 from h5py import File
 import numpy as np
+from abc import ABCMeta, abstractmethod
 
 from hdmf.query import HDMFDataset, Query
 from hdmf.array import SortedArray, LinSpace
 from hdmf.testing import TestCase
-
-from abc import ABCMeta, abstractmethod
 
 
 class TestAbstractQueryMixin(metaclass=ABCMeta):

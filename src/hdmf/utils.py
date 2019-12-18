@@ -2,10 +2,8 @@ import copy as _copy
 import itertools as _itertools
 from abc import ABCMeta
 import collections
-
 import h5py
 import numpy as np
-
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
@@ -607,7 +605,7 @@ class ExtenderMeta(ABCMeta):
         it = (a for a in it if hasattr(a, cls.__preinit))
         for func in it:
             func(name, bases, classdict)
-        super(ExtenderMeta, cls).__init__(name, bases, classdict)
+        super().__init__(name, bases, classdict)
         it = (getattr(cls, n) for n in dir(cls))
         it = (a for a in it if hasattr(a, cls.__postinit))
         for func in it:
@@ -737,7 +735,7 @@ class LabelledDict(dict):
                     raise KeyError(val)
             # if key == self.key_attr, then call __getitem__ normally on val
             key = val
-        return super(LabelledDict, self).__getitem__(key)
+        return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         """Set a value in the LabelledDict with the given key. The key must equal value.key_attr.
@@ -747,7 +745,7 @@ class LabelledDict(dict):
         self.__check_value(value)
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
-        super(LabelledDict, self).__setitem__(key, value)
+        super().__setitem__(key, value)
 
     def add(self, value):
         """Add a value to the dict with the key value.key_attr.

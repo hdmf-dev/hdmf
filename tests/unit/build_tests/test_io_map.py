@@ -1,5 +1,3 @@
-import unittest
-
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
 from hdmf import Container
@@ -9,7 +7,6 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 import numpy as np
 
 from tests.unit.utils import CORE_NAMESPACE
@@ -25,7 +22,7 @@ class Bar(Container):
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
     def __init__(self, **kwargs):
         name, data, attr1, attr2, attr3, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'foo', kwargs)
-        super(Bar, self).__init__(name=name)
+        super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
         self.__attr2 = attr2
@@ -152,7 +149,7 @@ class TestTypeMap(TestCase):
 
 class BarMapper(ObjectMapper):
     def __init__(self, spec):
-        super(BarMapper, self).__init__(spec)
+        super().__init__(spec)
         data_spec = spec.get_dataset('data')
         self.map_spec('attr2', data_spec.get_attribute('attr2'))
 
