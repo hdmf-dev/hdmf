@@ -3,10 +3,9 @@ import numpy as np
 import os.path
 from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
-from six import raise_from, text_type, string_types, binary_type
 import warnings
-from ...container import Container
 
+from ...container import Container
 from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
@@ -22,8 +21,8 @@ from ..warnings import BrokenLinkWarning
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
-H5_TEXT = special_dtype(vlen=text_type)
-H5_BINARY = special_dtype(vlen=binary_type)
+H5_TEXT = special_dtype(vlen=str)
+H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
@@ -439,7 +438,7 @@ class HDF5IO(HDMFIO):
             d = None
             if h5obj.dtype.kind == 'O':
                 elem1 = h5obj[0]
-                if isinstance(elem1, (text_type, binary_type)):
+                if isinstance(elem1, (str, bytes)):
                     d = h5obj
                 elif isinstance(elem1, RegionReference):  # read list of references
                     d = BuilderH5RegionDataset(h5obj, self)
@@ -545,7 +544,7 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def get_type(cls, data):
-        if isinstance(data, (text_type, string_types)):
+        if isinstance(data, str):
             return H5_TEXT
         elif isinstance(data, Container):
             return H5_REF
@@ -619,9 +618,9 @@ class HDF5IO(HDMFIO):
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
                 if len(tmp) > 0:
-                    if isinstance(tmp[0], text_type):
+                    if isinstance(tmp[0], str):
                         value = [np.unicode_(s) for s in tmp]
-                    elif isinstance(tmp[0], binary_type):
+                    elif isinstance(tmp[0], bytes):
                         value = [np.string_(s) for s in tmp]
                     elif isinstance(tmp[0], Container):  # a list of references
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
@@ -782,7 +781,7 @@ class HDF5IO(HDMFIO):
                     _dtype = self.__resolve_dtype__(options['dtype'], data)
                 except Exception as exc:
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
-                    raise_from(Exception(msg), exc)
+                    raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 builder.written = True
 
@@ -859,7 +858,7 @@ class HDF5IO(HDMFIO):
         # write a "regular" dataset
         else:
             # Write a scalar dataset containing a single string
-            if isinstance(data, (text_type, binary_type)):
+            if isinstance(data, (str, bytes)):
                 dset = self.__scalar_fill__(parent, name, data, options)
             # Iterative write of a data chunk iterator
             elif isinstance(data, AbstractDataChunkIterator):
@@ -906,12 +905,12 @@ class HDF5IO(HDMFIO):
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
-                raise_from(Exception(msg), exc)
+                raise Exception(msg) from exc
         try:
             dset = parent.create_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
         except Exception as exc:
             msg = "Could not create scalar dataset %s in %s" % (name, parent.name)
-            raise_from(Exception(msg), exc)
+            raise Exception(msg) from exc
         return dset
 
     @classmethod
@@ -951,7 +950,7 @@ class HDF5IO(HDMFIO):
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
-            raise_from(Exception("Could not create dataset %s in %s" % (name, parent.name)), exc)
+            raise Exception("Could not create dataset %s in %s" % (name, parent.name)) from exc
         return dset
 
     @classmethod
@@ -1020,7 +1019,7 @@ class HDF5IO(HDMFIO):
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
-                raise_from(Exception(msg), exc)
+                raise Exception(msg) from exc
         # define the data shape
         if 'shape' in io_settings:
             data_shape = io_settings.pop('shape')
@@ -1036,7 +1035,7 @@ class HDF5IO(HDMFIO):
         except Exception as exc:
             msg = "Could not create dataset %s in %s with shape %s, dtype %s, and iosettings %s. %s" % \
                   (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))
-            raise_from(Exception(msg), exc)
+            raise Exception(msg) from exc
         # Write the data
         if len(data) > dset.shape[0]:
             new_shape = list(dset.shape)

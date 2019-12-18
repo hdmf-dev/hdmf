@@ -1,6 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-from six import text_type as text
 from datetime import datetime
 from dateutil.tz import tzlocal
 
@@ -13,7 +11,7 @@ from hdmf.testing import TestCase
 CORE_NAMESPACE = 'test_core'
 
 
-class ValidatorTestBase(with_metaclass(ABCMeta, TestCase)):
+class ValidatorTestBase(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         spec_catalog = SpecCatalog()
@@ -88,7 +86,7 @@ class TestBasicSpec(ValidatorTestBase):
 
     def test_valid(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
@@ -111,7 +109,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
 
     def test_valid_isodatetime(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
                                          DatasetBuilder('time',
                                                         datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
@@ -123,7 +121,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
 
     def test_invalid_isodatetime(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
                                          DatasetBuilder('time', 100),
                                          DatasetBuilder('time_array',
@@ -136,7 +134,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
 
     def test_invalid_isodatetime_array(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
                                          DatasetBuilder('time',
                                                         datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
@@ -157,7 +155,7 @@ class TestNestedTypes(ValidatorTestBase):
                         datasets=[DatasetSpec('an example dataset', 'int', name='data',
                                               attributes=[AttributeSpec('attr2', 'an example integer attribute',
                                                                         'int')])],
-                        attributes=[AttributeSpec('attr1', text('an example string attribute'), 'text')])
+                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         foo = GroupSpec('A test group that contains a data type',
                         data_type_def='Foo',
                         groups=[GroupSpec('A Bar group for Foos', name='my_bar', data_type_inc='Bar')],
@@ -166,9 +164,9 @@ class TestNestedTypes(ValidatorTestBase):
 
         return (bar, foo)
 
-    def test_invalid_missing_req_type(self):
+    def test_invalid_missing_req_group(self):
         foo_builder = GroupBuilder('my_foo', attributes={'data_type': 'Foo',
-                                                         'foo_attr': text('example Foo object')})
+                                                         'foo_attr': 'example Foo object'})
         results = self.vmap.validate(foo_builder)
         self.assertIsInstance(results[0], MissingDataType)  # noqa: F405
         self.assertEqual(results[0].name, 'Foo')
@@ -180,7 +178,7 @@ class TestNestedTypes(ValidatorTestBase):
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
 
         foo_builder = GroupBuilder('my_foo',
-                                   attributes={'data_type': 'Foo', 'foo_attr': text('example Foo object')},
+                                   attributes={'data_type': 'Foo', 'foo_attr': 'example Foo object'},
                                    groups=[bar_builder])
 
         results = self.vmap.validate(foo_builder)
@@ -190,11 +188,11 @@ class TestNestedTypes(ValidatorTestBase):
 
     def test_valid(self):
         bar_builder = GroupBuilder('my_bar',
-                                   attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
 
         foo_builder = GroupBuilder('my_foo',
-                                   attributes={'data_type': 'Foo', 'foo_attr': text('example Foo object')},
+                                   attributes={'data_type': 'Foo', 'foo_attr': 'example Foo object'},
                                    groups=[bar_builder])
 
         results = self.vmap.validate(foo_builder)
@@ -202,7 +200,7 @@ class TestNestedTypes(ValidatorTestBase):
 
     def test_valid_wo_opt_attr(self):
         bar_builder = GroupBuilder('my_bar',
-                                   attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
         foo_builder = GroupBuilder('my_foo',
                                    attributes={'data_type': 'Foo'},

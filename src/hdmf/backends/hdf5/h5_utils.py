@@ -1,7 +1,6 @@
 from copy import copy
 from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
-from six import binary_type, text_type, with_metaclass
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
@@ -14,7 +13,6 @@ from ...array import Array
 from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...region import RegionSlicer
-
 from ...spec import SpecWriter, SpecReader
 
 
@@ -42,7 +40,7 @@ class H5Dataset(HDMFDataset):
         return self.dataset.shape
 
 
-class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver)):
+class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
     """
     An extension of the base ReferenceResolver class to add more abstract methods for
     subclasses that will read HDF5 references
@@ -118,9 +116,9 @@ class AbstractH5TableDataset(DatasetOfReferences):
             if sub.metadata:
                 if 'vlen' in sub.metadata:
                     t = sub.metadata['vlen']
-                    if t is text_type:
+                    if t is str:
                         tmp.append('utf')
-                    elif t is binary_type:
+                    elif t is bytes:
                         tmp.append('ascii')
                 elif 'ref' in sub.metadata:
                     t = sub.metadata['ref']
@@ -259,7 +257,7 @@ class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
 
 class H5SpecWriter(SpecWriter):
 
-    __str_type = special_dtype(vlen=text_type)
+    __str_type = special_dtype(vlen=str)
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to write specs to'})
     def __init__(self, **kwargs):

@@ -1,9 +1,8 @@
 import numpy as np
 from abc import abstractmethod, ABCMeta
-from six import with_metaclass
 
 
-class Array(object):
+class Array:
 
     def __init__(self, data):
         self.__data = data
@@ -48,7 +47,7 @@ class Array(object):
             return self.__getidx__(arg)
 
 
-class AbstractSortedArray(with_metaclass(ABCMeta, Array)):
+class AbstractSortedArray(Array, metaclass=ABCMeta):
     '''
     An abstract class for representing sorted array
     '''

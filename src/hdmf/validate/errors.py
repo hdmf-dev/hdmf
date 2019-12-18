@@ -1,8 +1,7 @@
+from numpy import dtype
 
 from ..utils import docval, getargs
 from ..spec.spec import DtypeHelper
-from numpy import dtype
-
 
 __all__ = [
     "Error",
@@ -16,7 +15,7 @@ __all__ = [
 ]
 
 
-class Error(object):
+class Error:
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},

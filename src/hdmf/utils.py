@@ -2,10 +2,8 @@ import copy as _copy
 import itertools as _itertools
 from abc import ABCMeta
 import collections
-
 import h5py
 import numpy as np
-
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],

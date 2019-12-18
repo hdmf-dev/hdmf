@@ -87,6 +87,10 @@ class Builder(dict, metaclass=ABCMeta):
         ret = "%s %s %s" % (self.name, self.__class__.__name__, dict_repr)
         return ret
 
+    def __repr__(self):
+        ret = "%s %s %s" % (self.path, self.__class__.__name__, super().__repr__())
+        return ret
+
 
 class BaseBuilder(Builder):
     ''' A builder that contains a location and a dictionary of attributes '''

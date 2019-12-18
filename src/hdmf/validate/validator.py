@@ -16,9 +16,6 @@ from ..build.builders import BaseBuilder
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
 from .errors import ExpectedArrayError
 
-from six import with_metaclass, raise_from, text_type, binary_type
-
-
 __synonyms = DtypeHelper.primary_dtype_synonyms
 
 __additional = {
@@ -62,7 +59,7 @@ def check_type(expected, received):
                     received = received.metadata['vlen']
                 else:
                     raise ValueError("Unrecognized type: '%s'" % received)
-                received = 'utf' if received is text_type else 'ascii'
+                received = 'utf' if received is str else 'ascii'
             elif received.char == 'U':
                 received = 'utf'
             elif received.char == 'S':
@@ -97,9 +94,9 @@ def _check_isodatetime(s, default=None):
 
 
 def get_type(data):
-    if isinstance(data, text_type):
+    if isinstance(data, str):
         return _check_isodatetime(data, 'utf')
-    elif isinstance(data, binary_type):
+    elif isinstance(data, bytes):
         return _check_isodatetime(data, 'ascii')
     elif isinstance(data, RegionBuilder):
         return 'region'
@@ -146,7 +143,7 @@ def check_shape(expected, received):
     return ret
 
 
-class ValidatorMap(object):
+class ValidatorMap:
     """A class for keeping track of Validator objects for all data types in a namespace"""
 
     @docval({'name': 'namespace', 'type': SpecNamespace, 'doc': 'the namespace to builder map for'})
@@ -203,7 +200,7 @@ class ValidatorMap(object):
         try:
             return self.__valid_types[spec]
         except KeyError:
-            raise_from(ValueError("no children for '%s'" % spec), None)
+            raise ValueError("no children for '%s'" % spec)
 
     @docval({'name': 'data_type', 'type': (BaseStorageSpec, str),
              'doc': 'the data type to get the validator for'},
@@ -220,7 +217,7 @@ class ValidatorMap(object):
             return self.__validators[dt]
         except KeyError:
             msg = "data type '%s' not found in namespace %s" % (dt, self.__ns.name)
-            raise_from(ValueError(msg), None)
+            raise ValueError(msg)
 
     @docval({'name': 'builder', 'type': BaseBuilder, 'doc': 'the builder to validate'},
             returns="a list of errors found", rtype=list)
@@ -240,7 +237,7 @@ class ValidatorMap(object):
         return validator.validate(builder)
 
 
-class Validator(with_metaclass(ABCMeta, object)):
+class Validator(metaclass=ABCMeta):
     '''A base class for classes that will be used to validate against Spec subclasses'''
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to use to validate'},

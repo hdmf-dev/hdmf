@@ -1,12 +1,11 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+from operator import itemgetter
+
 from .container import Data, DataRegion
 from .utils import docval, getargs
 
-from operator import itemgetter
 
-
-class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):
+class RegionSlicer(DataRegion, metaclass=ABCMeta):
     '''
     A abstract base class to control getting using a region
 
