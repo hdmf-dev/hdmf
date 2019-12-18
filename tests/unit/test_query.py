@@ -1,18 +1,18 @@
-import unittest
 import os
 from h5py import File
 import numpy as np
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
 from hdmf.query import HDMFDataset, Query
 from hdmf.array import SortedArray, LinSpace
 from hdmf.testing import TestCase
 
 
-class AbstractQueryTest(TestCase, metaclass=ABCMeta):
+class TestAbstractQueryMixin(metaclass=ABCMeta):
 
+    @abstractmethod
     def getDataset(self):
-        raise unittest.SkipTest('getDataset must be implemented')
+        raise NotImplementedError('Cannot run test unless getDataset is implemented')
 
     def setUp(self):
         self.dset = self.getDataset()
@@ -112,7 +112,7 @@ class AbstractQueryTest(TestCase, metaclass=ABCMeta):
         self.assertTrue(np.array_equal(result, expected))
 
 
-class SortedQueryTest(AbstractQueryTest):
+class SortedQueryTest(TestAbstractQueryMixin, TestCase):
 
     path = 'SortedQueryTest.h5'
 
@@ -128,7 +128,7 @@ class SortedQueryTest(AbstractQueryTest):
             os.remove(self.path)
 
 
-class LinspaceQueryTest(AbstractQueryTest):
+class LinspaceQueryTest(TestAbstractQueryMixin, TestCase):
 
     path = 'LinspaceQueryTest.h5'
 
@@ -148,14 +148,14 @@ class CompoundQueryTest(TestCase):
         self.m = HDMFDataset(self.getM())
         self.n = HDMFDataset(self.getN())
 
-    @unittest.skip('not implemented')
-    def test_map(self):
-        q = self.m == (12, 16)                # IN operation
-        q.evaluate()                          # [2,3,4,5]
-        q.evaluate(False)                     # RangeResult(2,6)
-        r = self.m[q]                         # noqa: F841
-        r = self.m[q.evaluate()]              # noqa: F841
-        r = self.m[q.evaluate(False)]         # noqa: F841
+    # TODO: test not completed
+    # def test_map(self):
+    #     q = self.m == (12, 16)                # IN operation
+    #     q.evaluate()                          # [2,3,4,5]
+    #     q.evaluate(False)                     # RangeResult(2,6)
+    #     r = self.m[q]                         # noqa: F841
+    #     r = self.m[q.evaluate()]              # noqa: F841
+    #     r = self.m[q.evaluate(False)]         # noqa: F841
 
     def tearDown(self):
         pass
