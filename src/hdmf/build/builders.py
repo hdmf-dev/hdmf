@@ -6,6 +6,7 @@ import posixpath as _posixpath
 from abc import ABCMeta
 import warnings
 from collections.abc import Iterable
+from collections import namedtuple
 from datetime import datetime
 
 from ..utils import docval, getargs, popargs, fmt_docval_args, get_docval
@@ -575,7 +576,7 @@ class RegionBuilder(ReferenceBuilder):
         return self['region']
 
 
-class CoordBuilder:
+class CoordBuilder(namedtuple('CoordBuilder', 'name axes coord_dataset coord_axes coord_type')):
     '''
     A simple, immutable object that represents a coordinate.
 
@@ -592,29 +593,13 @@ class CoordBuilder:
             {'name': 'axes', 'type': (int, list, tuple),
              'doc': 'The axes (0-indexed) of the dataset that this coordinate acts on'},
             {'name': 'coord_type', 'type': str, 'doc': 'The type of this coordinate'})
-    def __init__(self, **kwargs):
-        # use composition instead of inheritance purposefully to restrict user's ability to use arbitrary dict methods
+    def __new__(cls, **kwargs):
         # cast ints to tuples
         if type(kwargs['coord_axes']) == int:
             kwargs['coord_axes'] = (kwargs['coord_axes'], )
         if type(kwargs['axes']) == int:
             kwargs['axes'] = (kwargs['axes'], )
-        # cast list to tuple
+        # cast lists to tuple
         kwargs['coord_axes'] = tuple(kwargs['coord_axes'])
         kwargs['axes'] = tuple(kwargs['axes'])
-        super().__setattr__('data_dict', kwargs)  # store all given docval args. avoid local __setattr__
-
-    def __getattr__(self, key):
-        try:
-            return self.data_dict[key]
-        except KeyError:
-            raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        raise AttributeError('CoordBuilder is immutable')
-
-    def __repr__(self):
-        return self.data_dict.__repr__()
-
-    def __eq__(self, obj):
-        return self.data_dict == obj.data_dict
+        return super().__new__(cls, **kwargs)
