@@ -108,7 +108,7 @@ class TestDocValidator(TestCase):
 
     def test_bad_type(self):
         exp_msg = ("error parsing 'arg1' argument' : argtype must be a type, "
-                   "a str, a list, a tuple, or None - got <class|type 'dict'>")
+                   "a str, a list, a tuple, or None - got <class 'dict'>")
         with self.assertRaisesWith(Exception, exp_msg):
             @docval({'name': 'arg1', 'type': {'a': 1}, 'doc': 'this is a bad type'})
             def method(self, **kwargs):
