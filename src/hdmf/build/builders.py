@@ -486,7 +486,8 @@ class DatasetBuilder(BaseBuilder):
         if 'dims' in self and self['dims'] is not None:
             raise AttributeError('Cannot reset dims once it is specified')
         self['dims'] = val
-        self.set_attribute(self.DIMS_ATTR, str(val))
+        if val is not None:
+            self.set_attribute(self.DIMS_ATTR, str(val))
 
     @property
     def coords(self):
@@ -498,7 +499,8 @@ class DatasetBuilder(BaseBuilder):
         if 'coords' in self and self['coords'] is not None:
             raise AttributeError('Cannot reset coords once it is specified')
         self['coords'] = val
-        self.set_attribute(self.COORDS_ATTR, str(val))
+        if val is not None:
+            self.set_attribute(self.COORDS_ATTR, str(val))
 
     @property
     def chunks(self):
