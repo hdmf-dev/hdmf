@@ -272,7 +272,7 @@ class TestBuildCoords(TestCase):
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         group_builder = type_map.build(bar_inst)
 
-        self.assertEqual(group_builder.get('data1').coords, {})
+        self.assertIsNone(group_builder.get('data1').coords)
 
 
 class TestConstructDims(TestCase):
@@ -629,7 +629,6 @@ class TestHDF5IOCoords(TestCase):
         with h5py.File(self.path, mode='r') as file:
             self.assertEqual(len(file['data1'].attrs.keys()), 1)
             self.assertEqual(file['data1'].attrs['dims'], '["x"]')
-
 
 
 class TestConstructCheckType(TestCase):

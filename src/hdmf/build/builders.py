@@ -269,9 +269,6 @@ class GroupBuilder(BaseBuilder):
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
-            {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': None},
-            {'name': 'coords', 'type': dict, 'doc': 'a dictionary of coordinates of this dataset',
-             'default': None},
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group, setting parent and source '''
@@ -445,9 +442,6 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
-            {'name': 'dims', 'type': (list, tuple), 'doc': 'a list of dimensions of this dataset', 'default': None},
-            {'name': 'coords', 'type': dict, 'doc': 'a dictionary of coordinates of this dataset',
-             'default': None},
             *get_docval(BaseBuilder.__init__, 'parent', 'source'))
     def __init__(self, **kwargs):
         ''' Create a Builder object for a dataset '''
@@ -456,10 +450,15 @@ class DatasetBuilder(BaseBuilder):
         super().__init__(name, attributes, parent, source)
         self['attributes'] = _copy.copy(attributes)  # TODO: is this necessary? it is set (but not copied) earlier
         self['data'] = data
-        self.dims = dims
-        self.coords = coords
         self.__chunks = chunks
         self.__maxshape = maxshape
+
+        self['dims'] = None
+        self['coords'] = None
+        if self.DIMS_ATTR in self.attributes:
+            self.dims = tuple(json.loads(self.attributes[self.DIMS_ATTR]))
+        if self.COORDS_ATTR in self.attributes:
+            self.coords = json.loads(self.attributes[self.COORDS_ATTR])
 
         # if data is a group/dataset/link builder and dtype is not provided, set dtype to represent an object reference
         if isinstance(data, BaseBuilder) and dtype is None:
@@ -484,10 +483,14 @@ class DatasetBuilder(BaseBuilder):
 
     @dims.setter
     def dims(self, val):
-        if 'dims' in self and self['dims'] is not None:
-            raise AttributeError('Cannot reset dims once it is specified')
-        self['dims'] = val
+        '''
+        Set the dimensions of this DatasetBuilder. Raises error if dims are already set AND differ from the new value.
+        '''
+        if self.dims is not None and self.dims != val:
+            raise AttributeError('Cannot reset dims once it is specified. Old value: %s, new value: %s'
+                                 % (self.dims, val))
         if val:
+            self['dims'] = val
             self.set_attribute(self.DIMS_ATTR, json.dumps(val))
 
     @property
@@ -497,10 +500,11 @@ class DatasetBuilder(BaseBuilder):
 
     @coords.setter
     def coords(self, val):
-        if 'coords' in self and self['coords'] is not None:
-            raise AttributeError('Cannot reset coords once it is specified')
-        self['coords'] = val
+        if self['coords'] is not None and self.coords != val:
+            raise AttributeError('Cannot reset coords once it is specified. Old value: %s, new value: %s'
+                                 % (self.coords, val))
         if val:
+            self['coords'] = val
             self.set_attribute(self.COORDS_ATTR, json.dumps(val))
 
     @property

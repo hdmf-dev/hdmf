@@ -731,7 +731,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = ("Could not build '%s' for %s '%s' due to: %s"
                                % (spec.name, type(container).__name__, container.name, ex))
                         raise BuildError(msg) from ex
-                    dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype, dims=dims)
+                    dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype)
+                    dataset_builder.dims = dims
                 self.__add_attributes(dataset_builder, spec.attributes, container, build_manager, source)
             else:
                 # a Container/Data dataset, e.g. a VectorData
