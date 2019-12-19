@@ -8,6 +8,7 @@ import warnings
 from collections.abc import Iterable
 from collections import namedtuple
 from datetime import datetime
+import json
 
 from ..utils import docval, getargs, popargs, fmt_docval_args, get_docval
 
@@ -486,8 +487,8 @@ class DatasetBuilder(BaseBuilder):
         if 'dims' in self and self['dims'] is not None:
             raise AttributeError('Cannot reset dims once it is specified')
         self['dims'] = val
-        if val is not None:
-            self.set_attribute(self.DIMS_ATTR, str(val))
+        if val:
+            self.set_attribute(self.DIMS_ATTR, json.dumps(val))
 
     @property
     def coords(self):
@@ -499,8 +500,8 @@ class DatasetBuilder(BaseBuilder):
         if 'coords' in self and self['coords'] is not None:
             raise AttributeError('Cannot reset coords once it is specified')
         self['coords'] = val
-        if val is not None:
-            self.set_attribute(self.COORDS_ATTR, str(val))
+        if val:
+            self.set_attribute(self.COORDS_ATTR, json.dumps(val))
 
     @property
     def chunks(self):

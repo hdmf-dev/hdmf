@@ -804,10 +804,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                                          coord_type=coord_spec.coord.type
                                                          )
                             used_coords[coord_spec.name] = coord_builder
-                        else:
-                            msg = ("Coord dataset '%s' of coord '%s' does not exist."
-                                   % (coord_spec.coord.dataset_name, coord_spec.name))
-                            raise ConvertError(msg)
+                        # else:
+                        #     # TODO this should be OK
+                        #     msg = ("Coord dataset '%s' of coord '%s' does not exist."
+                        #            % (coord_spec.coord.dataset_name, coord_spec.name))
+                        #     raise ConvertError(msg)
         return used_coords
 
     def __add_groups(self, group_builder, groups, container, build_manager, source):

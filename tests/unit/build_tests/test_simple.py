@@ -6,8 +6,12 @@ from hdmf import Container
 from hdmf.container import Coordinates
 from hdmf.utils import docval
 from hdmf.testing import TestCase
+from hdmf.backends.hdf5 import HDF5IO
 
 from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.test_io_hdf5_h5tools import get_temp_filepath
+import os
+import h5py
 
 
 class Bar(Container):
@@ -245,15 +249,15 @@ class TestBuildCoords(TestCase):
                                              coord_type='aligned')}
         self.assertEqual(group_builder.get('data1').coords, expected)
 
-    def test_build_coords_unknown_name(self):
+    def test_build_coords_missing_dset(self):
         """
         Test that given a DimSpec and CoordSpec for an Container class, the type map raises an error when the CoordSpec
         references an invalid coord_dataset.
         """
         dim1_spec = DimSpec(name='x', required=True)
         dim2_spec = DimSpec(name='chars', required=True)
-        # TODO require coord_dataset to be a datasetspec, validate axes
-        icoord_spec = InnerCoordSpec(dataset_name='data4', dims_index=(0, ), type='aligned')
+        # TODO require coord_dataset to be a datasetspec, validate axes, name
+        icoord_spec = InnerCoordSpec(dataset_name='data3', dims_index=(0, ), type='aligned')
         coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
         # TODO validate coord type is an allowed value
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
@@ -266,11 +270,9 @@ class TestBuildCoords(TestCase):
         # TODO on write to yaml, validate that coord references exist.
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        group_builder = type_map.build(bar_inst)
 
-        msg = "Coord dataset 'data4' of coord 'letters' does not exist."
-        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar' due to: %s" % msg):
-            with self.assertRaisesWith(ConvertError, msg):
-                type_map.build(bar_inst)
+        self.assertEqual(group_builder.get('data1').coords, {})
 
 
 class TestConstructDims(TestCase):
@@ -452,6 +454,182 @@ class TestConstructCoords(TestCase):
         self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
 # TODO test dynamic class generation with dim coord spec
+
+
+class TestHDF5IODims(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_write_dims_none(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 0)
+
+    def test_write_dims(self):
+        dim_spec = DimSpec(name='x', required=True)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 1)
+            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+
+    def test_write_1d_for_2d_dims(self):
+        x_spec = DimSpec(name='x', required=True, length=4)
+        y_spec = DimSpec(name='y', required=False, doc='test_doc', length=3)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 1)
+            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+
+    def test_read_dims_none(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with HDF5IO(self.path, manager=manager, mode='r') as io:
+            read_bar = io.read()
+            self.assertEqual(read_bar.dims, {})
+
+    def test_read_dims(self):
+        dim_spec = DimSpec(name='x', required=True)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(dim_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with HDF5IO(self.path, manager=manager, mode='r') as io:
+            read_bar = io.read()
+            self.assertEqual(read_bar.dims, {'data1': ('x', )})
+
+    def test_read_1d_for_2d_dims(self):
+        x_spec = DimSpec(name='x', required=True, length=4)
+        y_spec = DimSpec(name='y', required=False, doc='test_doc', length=3)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=(x_spec, y_spec))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with HDF5IO(self.path, manager=manager, mode='r') as io:
+            read_bar = io.read()
+            self.assertEqual(read_bar.dims, {'data1': ('x', )})
+
+
+class TestHDF5IOCoords(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_write_coords(self):
+        dim1_spec = DimSpec(name='x', required=True)
+        dim2_spec = DimSpec(name='chars', required=True)
+        icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, ), type='aligned')
+        coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
+                                 dims=(dim1_spec, ), coords=(coord_spec, ))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(dim2_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 2)
+            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+            self.assertEqual(file['data1'].attrs['coords'], '{"letters": ["letters", [0], "data2", [0], "aligned"]}')
+            # TODO the latter should be a dict. keys are needed
+
+    def test_write_unused_coords(self):
+        dim1_spec = DimSpec(name='x', required=True)
+        dim2_spec = DimSpec(name='chars', required=True)
+        icoord_spec = InnerCoordSpec(dataset_name='data3', dims_index=(0, ), type='aligned')
+        coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
+                                 dims=(dim1_spec, ), coords=(coord_spec, ))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(dim2_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 1)
+            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+
 
 
 class TestConstructCheckType(TestCase):

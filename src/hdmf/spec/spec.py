@@ -745,13 +745,10 @@ class DatasetSpec(BaseStorageSpec):
         # parse dims, shape, and coords. convert all to tuples for consistency.
         if dims and isinstance(dims[0], DimSpec):
             optional_dims = False
-            if shape:
-                msg = 'Cannot specify dictionary dims with shape'
-                raise ValueError(msg)
-            shape = [None] * len(dims)
+            new_shape = [None] * len(dims)
             for _i, dim in enumerate(dims):
                 if isinstance(dim, DimSpec):
-                    shape[_i] = dim.length  # for backwards compatibility TODO is this needed?
+                    new_shape[_i] = dim.length
                     if not dim.required:
                         optional_dims = True
                     if dim.required and optional_dims:
@@ -762,7 +759,10 @@ class DatasetSpec(BaseStorageSpec):
                     msg = ('Dims must consist of DimSpec objects if using new-style dims - found %s at element %d'
                            % (type(dim), _i))
                     raise ValueError(msg)
-            self['shape'] = tuple(shape)
+            if shape is not None and tuple(shape) != tuple(new_shape):
+                msg = 'Specified shape does not match computed shape from dims dictionary.'
+                raise ValueError(msg)
+            self['shape'] = tuple(new_shape)
             self['dims'] = tuple(dims)
         elif shape is not None:
             if shape and dims:
