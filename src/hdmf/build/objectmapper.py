@@ -131,9 +131,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         else:
             if g.name[:3] != s.name[:3]:    # different types
                 if s.itemsize < 8:
-                    msg = "expected %s, received %s - must supply %s or higher precision" % (s.name, g.name, s.name)
+                    msg = "Expected %s, received %s - must supply %s or higher precision" % (s.name, g.name, s.name)
                 else:
-                    msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
+                    msg = "Expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
                 raise ConvertError(msg)
             else:
                 return g.type
@@ -195,7 +195,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     ret = dtype_func(value)
                     ret_dtype = type(ret)
         except ValueError as e:
-            msg = "Cannot convert to dtype '%s': %s." % (spec.dtype, value)
+            msg = "Could not convert data '%s' to dtype '%s': %s" % (spec.name, spec.dtype, value)
             raise ConvertError(msg) from e
         return ret, ret_dtype
 
@@ -221,7 +221,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 return value, value.dtype.type
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
-                    msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
+                    msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
                     raise ConvertError(msg)
                 return value, cls.__check_edgecases(spec, value[0])[1]  # infer dtype from first element
             ret_dtype = type(value)
@@ -232,11 +232,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return value, ret_dtype
         if isinstance(spec.dtype, RefSpec):
             if not isinstance(value, ReferenceBuilder):
-                msg = "got RefSpec for value of type %s" % type(value)
+                msg = "Got RefSpec for value of type %s" % type(value)
                 raise ConvertError(msg)
             return value, spec.dtype
         if spec.dtype is not None and spec.dtype not in cls.__dtypes:
-            msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
+            msg = "Unrecognized dtype for spec '%s': %s" % (spec.name, spec.dtype)
             raise ConvertError(msg)
         return None, None
 
@@ -564,7 +564,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 try:
                     bldr_data, dtype = self.convert_dtype(spec, bldr_data)
                 except ConvertError as ex:
-                    msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
+                    msg = ("Could not build %s for %s '%s' due to: %s"
+                           % (spec.name, type(container).__name__, container.name, ex))
                     raise BuildError(msg) from ex
                 builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
             else:
@@ -585,7 +586,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         bldr_data, dtype = self.convert_dtype(spec, container.data)
                     except ConvertError as ex:
-                        msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
+                        msg = ("Could not build %s for %s '%s' due to: %s"
+                               % (spec.name, type(container).__name__, container.name, ex))
                         raise BuildError(msg) from ex
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
         self.__add_attributes(builder, self.__spec.attributes, container, manager, source)
@@ -685,8 +687,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                     except ConvertError as ex:
-                        msg = ("Could not build %s for %s '%s'."
-                               % (spec.name, type(container).__name__, container.name))
+                        msg = ("Could not build %s for %s '%s' due to: %s"
+                               % (spec.name, type(container).__name__, container.name, ex))
                         raise BuildError(msg) from ex
 
             # do not write empty or null valued objects
@@ -726,8 +728,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         data, dtype = self.convert_dtype(spec, attr_value)
                         dims = self.__check_dims(spec, data)
                     except ConvertError as ex:
-                        msg = ("Could not build '%s' for %s '%s'."
-                               % (spec.name, type(container).__name__, container.name))
+                        msg = ("Could not build '%s' for %s '%s' due to: %s"
+                               % (spec.name, type(container).__name__, container.name, ex))
                         raise BuildError(msg) from ex
                     dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype, dims=dims)
                 self.__add_attributes(dataset_builder, spec.attributes, container, build_manager, source)
@@ -744,8 +746,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             try:
                 dataset_builder.coords = self.__check_coords(dataset_spec, group_builder, dataset_builder)
             except ConvertError as ex:
-                msg = ("Could not build '%s' for %s '%s'."
-                       % (dataset_spec.name, type(container).__name__, container.name))
+                msg = ("Could not build '%s' for %s '%s' due to: %s"
+                       % (dataset_spec.name, type(container).__name__, container.name, ex))
                 raise BuildError(msg) from ex
 
     @classmethod
@@ -1013,7 +1015,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         try:
             subspecs = self.__get_subspec_values(builder, self.spec, manager)
         except ConvertError as ex:
-            msg = "Could not construct %s object." % cls.__name__
+            msg = "Could not construct %s object due to: %s" % (cls.__name__, ex)
             raise ConstructError(msg) from ex
         # get the constructor argument that each specification corresponds to
         const_args = dict()
@@ -1026,7 +1028,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             try:
                 converted_data, _ = self.convert_dtype(self.spec, data)
             except ConvertError as ex:
-                msg = "Could not construct %s object." % cls.__name__
+                msg = "Could not construct %s object due to: %s" % (cls.__name__, ex)
                 raise ConstructError(msg) from ex
             const_args['data'] = converted_data
 
@@ -1055,7 +1057,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
         except Exception as ex:
-            msg = 'Could not construct %s object.' % cls.__name__
+            msg = 'Could not construct %s object due to: %s' % (cls.__name__, ex)
             raise ConstructError(msg) from ex
 
         # add dimensions and coordinates to both the dataset builder and the new container
@@ -1071,8 +1073,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         dims = self.__check_dims(subspec, dataset_builder.data)
                     except ConvertError as ex:
-                        msg = ("Could not construct '%s' for %s '%s'."
-                               % (subspec.name, cls.__name__, obj.name))
+                        msg = ("Could not construct '%s' for %s '%s' due to: %s"
+                               % (subspec.name, cls.__name__, obj.name, ex))
                         raise ConstructError(msg) from ex
 
                     if dims is not None:
@@ -1085,8 +1087,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         coords = self.__check_coords(subspec, builder, dataset_builder)
                     except ConvertError as ex:
-                        msg = ("Could not construct '%s' for %s '%s'."
-                               % (subspec.name, cls.__name__, obj.name))
+                        msg = ("Could not construct '%s' for %s '%s' due to: %s"
+                               % (subspec.name, cls.__name__, obj.name, ex))
                         raise ConstructError(msg) from ex
 
                     if coords is not None:

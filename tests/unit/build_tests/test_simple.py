@@ -90,8 +90,9 @@ class TestBuildDims(TestCase):
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4])
 
-        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
+        msg = "Data dimension 'x' (axis 0) must have length 3 but has length 4."
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar' due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.build(bar_inst)
 
     def test_build_dims_1d_opt_wrong_length(self):
@@ -108,8 +109,9 @@ class TestBuildDims(TestCase):
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4])
 
-        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
+        msg = "Data dimension 'x' (axis 0) must have length 3 but has length 4."
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar' due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.build(bar_inst)
 
     def test_build_dims_2d(self):
@@ -144,8 +146,10 @@ class TestBuildDims(TestCase):
                              datasets=[dset1_spec])
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [[1, 2], [3, 4], [5, 6], [7, 8]])
-        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Data dimension 'y' must have length 3 but has length 4."):
+
+        msg = "Data dimension 'y' (axis 1) must have length 3 but has length 2."
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar' due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.build(bar_inst)
 
     def test_build_dims_1d_with_2d_dims(self):
@@ -181,8 +185,9 @@ class TestBuildDims(TestCase):
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4])
 
-        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Data must have at least 2 dimensions but has 1."):
+        msg = "Data must have at least 2 dimensions but has 1."
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar' due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.build(bar_inst)
 
 
@@ -262,8 +267,9 @@ class TestBuildCoords(TestCase):
         type_map = _create_typemap(bar_spec)
         bar_inst = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
 
-        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Coord dataset 'data4' of coord 'letters' does not exist."):
+        msg = "Coord dataset 'data4' of coord 'letters' does not exist."
+        with self.assertRaisesWith(BuildError, "Could not build 'data1' for Bar 'my_bar' due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.build(bar_inst)
 
 
@@ -339,8 +345,9 @@ class TestConstructDims(TestCase):
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
         # on read - warnings instead of errors, same for dtype
-        with self.assertRaisesWith(ConstructError, "Could not construct 'data1' for Bar 'my_bar'."):
-            with self.assertRaisesWith(ConvertError, "Data dimension 'x' must have length 3 but has length 4."):
+        msg = "Data dimension 'x' (axis 0) must have length 3 but has length 4."
+        with self.assertRaisesWith(ConstructError, "Could not construct 'data1' for Bar 'my_bar' due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.construct(group_builder, manager)
 
     def test_construct_dims_2d(self):
@@ -478,14 +485,18 @@ class TestConstructCheckType(TestCase):
 
     def test_construct_floatstring_for_int(self):
         type_map, group_builder, manager = self._test_construct_helper('int', '10.5')
-        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
-            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'int' in spec."):
+
+        msg = "Could not convert data 'data3' to dtype 'int': 10.5"
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.construct(group_builder, manager)
 
     def test_construct_float_for_int(self):
         type_map, group_builder, manager = self._test_construct_helper('int', 10.5)
-        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
-            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'int' in spec."):
+
+        msg = "Expected int32, received float64 - must supply int32 or higher precision"
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.construct(group_builder, manager)
 
     def test_construct_int_list_for_int(self):
@@ -499,12 +510,16 @@ class TestConstructCheckType(TestCase):
 
     def test_construct_int_for_text(self):
         type_map, group_builder, manager = self._test_construct_helper('text', 10)
-        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
-            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'text' in spec."):
+
+        msg = "Expected unicode or ascii string, got <class 'int'>"
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.construct(group_builder, manager)
 
     def test_construct_int_list_for_text(self):
         type_map, group_builder, manager = self._test_construct_helper('text', [10])
-        with self.assertRaisesWith(ConstructError, "Could not construct Bar object."):
-            with self.assertRaisesWith(ConvertError, "Could not convert data 'data3' to dtype 'text' in spec."):
+
+        msg = "Expected unicode or ascii string, got <class 'int'>"
+        with self.assertRaisesWith(ConstructError, "Could not construct Bar object due to: %s" % msg):
+            with self.assertRaisesWith(ConvertError, msg):
                 type_map.construct(group_builder, manager)
