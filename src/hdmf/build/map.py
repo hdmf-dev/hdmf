@@ -462,7 +462,7 @@ class TypeMap:
 
         # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
-            if not f == 'help':  # (legacy) do not all help to any part of class object
+            if not f == 'help':  # (legacy) do not add help to any part of class object
                 # build docval arguments for generated constructor
                 dtype = self.__get_type(field_spec)
                 if dtype is None:
@@ -471,7 +471,6 @@ class TypeMap:
                 docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
                 if hasattr(field_spec, 'shape') and field_spec.shape is not None:
                     docval_arg.update(shape=field_spec.shape)
-                    # docval_arg['shape'] = field_spec.shape
                 if not field_spec.required:
                     docval_arg['default'] = getattr(field_spec, 'default_value', None)
                 docval_args.append(docval_arg)
