@@ -8,7 +8,6 @@ import warnings
 from collections.abc import Iterable
 from collections import namedtuple
 from datetime import datetime
-import json
 
 from ..utils import docval, getargs, popargs, fmt_docval_args, get_docval
 
