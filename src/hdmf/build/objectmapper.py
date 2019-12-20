@@ -732,7 +732,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                % (spec.name, type(container).__name__, container.name, ex))
                         raise BuildError(msg) from ex
                     dataset_builder = group_builder.add_dataset(spec.name, data, dtype=dtype)
-                    dataset_builder.dims = dims
+                    if dims:
+                        dataset_builder.dims = dims
                 self.__add_attributes(dataset_builder, spec.attributes, container, build_manager, source)
             else:
                 # a Container/Data dataset, e.g. a VectorData
@@ -745,7 +746,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             dataset_builder = group_builder.datasets[dataset_spec.name]
             try:
-                dataset_builder.coords = self.__check_coords(dataset_spec, group_builder, dataset_builder)
+                coords = self.__check_coords(dataset_spec, group_builder, dataset_builder)
+                if coords:
+                    dataset_builder.coords = coords
             except ConvertError as ex:
                 msg = ("Could not build '%s' for %s '%s' due to: %s"
                        % (dataset_spec.name, type(container).__name__, container.name, ex))
@@ -1079,7 +1082,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                % (subspec.name, cls.__name__, obj.name, ex))
                         raise ConstructError(msg) from ex
 
-                    if dims is not None:
+                    if dims:
                         # since dataset_builder is cached in the manager, need to set its dims
                         dataset_builder.dims = dims
                         # set dims on the new Container object
@@ -1093,7 +1096,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                % (subspec.name, cls.__name__, obj.name, ex))
                         raise ConstructError(msg) from ex
 
-                    if coords is not None:
+                    if coords:
                         # since dataset_builder is cached in the manager, need to set its coords
                         dataset_builder.coords = coords  # this is a dictionary of coord name : CoordBuilder
                         # unpack the CoordBuilder and set coords on the new Container object

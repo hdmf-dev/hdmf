@@ -380,7 +380,7 @@ class TestConstructDims(TestCase):
 
 class TestConstructCoords(TestCase):
 
-    def test_construct_coords_1d(self):
+    def test_construct_coords_1d_not_in_bldr(self):
         x_spec = DimSpec(name='x', required=True)
         char_spec = DimSpec(name='chars', required=True)
         icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, ), type='aligned')
@@ -394,9 +394,8 @@ class TestConstructCoords(TestCase):
         type_map = _create_typemap(bar_spec)
         manager = BuildManager(type_map)
 
-        # on read, the dataset builders will not have dims or coords. these need to be added in construct
-        # TODO builder SHOULD know dims and coords from the backend
-        # warning on read if dims and coords do not match spec
+        # on read, the dataset builders MAY not have dims or coords. these would be added in construct
+        # TODO warning on read if dims and coords do not match spec
         dset_builder2 = DatasetBuilder(name='data2', data=['a', 'b', 'c', 'd'])
         dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
         datasets = {'data1': dset_builder1, 'data2': dset_builder2}
@@ -413,7 +412,44 @@ class TestConstructCoords(TestCase):
         expected_bar = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
         self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
 
-    def test_construct_coords_2d(self):
+    def test_construct_coords_1d_in_bldr(self):
+        x_spec = DimSpec(name='x', required=True)
+        char_spec = DimSpec(name='chars', required=True)
+        icoord_spec = InnerCoordSpec(dataset_name='data2', dims_index=(0, ), type='aligned')
+        coord_spec = CoordSpec(name='letters', dims_index=(0, ), coord=icoord_spec)
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1',
+                                 dims=(x_spec, ), coords=(coord_spec, ))
+        dset2_spec = DatasetSpec('an example dataset2', 'text', name='data2', dims=(char_spec, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec, dset2_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        # on read, the dataset builders MAY not have dims or coords. these would be added in construct
+        # TODO warning on read if dims and coords do not match spec
+        coord_builder = CoordBuilder(name='letters', axes=(0, ), coord_dataset_name='data2', coord_axes=(0, ),
+                                     coord_type='aligned')
+        dset_builder2 = DatasetBuilder(name='data2', data=['a', 'b', 'c', 'd'])
+        dset_builder1 = DatasetBuilder(name='data1', data=[1, 2, 3, 4])
+        dset_builder1.dims = ('x',)
+        dset_builder1.coords = {'letters': coord_builder}
+        datasets = {'data1': dset_builder1, 'data2': dset_builder2}
+        attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
+        group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
+
+        constructed_bar = type_map.construct(group_builder, manager)
+
+        expected_coords = Coordinates(constructed_bar)
+        expected_coords.add(name='letters', dims=('x', ), coord_array=constructed_bar.data2,
+                            coord_array_dims_index=(0, ), coord_type='aligned')
+        self.assertEqual(constructed_bar.coords, {'data1': expected_coords})
+
+        expected_bar = Bar('my_bar', [1, 2, 3, 4], ['a', 'b', 'c', 'd'])
+        self.assertContainerEqual(constructed_bar, expected_bar, ignore_hdmf_attrs=True)
+
+    def test_construct_coords_2d_not_in_bldr(self):
+        # here, the dataset builders do not have dims or coords. they are added in construct
         frame_spec = DimSpec(name='frame', required=True)
         x1_spec = DimSpec(name='x1', required=True, length=2)
         y1_spec = DimSpec(name='y1', required=True, length=4)
@@ -430,7 +466,6 @@ class TestConstructCoords(TestCase):
         type_map = _create_typemap(bar_spec)
         manager = BuildManager(type_map)
 
-        # on read, the dataset builders will not have dims or coords. these need to be added in construct
         dset_builder2 = DatasetBuilder(name='data2', data=[[-1, -2, -3, -4], [-5, -6, -7, -8]])
         dset_builder1 = DatasetBuilder(name='data1', data=[[[1, 2, 3, 4], [5, 6, 7, 8]],
                                                            [[1, 2, 3, 4], [5, 6, 7, 8]],
@@ -497,7 +532,7 @@ class TestHDF5IODims(TestCase):
 
         with h5py.File(self.path, mode='r') as file:
             self.assertEqual(len(file['data1'].attrs.keys()), 1)
-            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+            self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
 
     def test_write_1d_for_2d_dims(self):
         x_spec = DimSpec(name='x', required=True, length=4)
@@ -516,7 +551,7 @@ class TestHDF5IODims(TestCase):
 
         with h5py.File(self.path, mode='r') as file:
             self.assertEqual(len(file['data1'].attrs.keys()), 1)
-            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+            self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
 
     def test_read_dims_none(self):
         dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1')
@@ -603,8 +638,9 @@ class TestHDF5IOCoords(TestCase):
 
         with h5py.File(self.path, mode='r') as file:
             self.assertEqual(len(file['data1'].attrs.keys()), 2)
-            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
-            self.assertEqual(file['data1'].attrs['coords'], '{"letters": ["letters", [0], "data2", [0], "aligned"]}')
+            self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
+            self.assertEqual(file['data1'].attrs['coordinates'],
+                             '{"letters": ["letters", [0], "data2", [0], "aligned"]}')
             # TODO the latter should be a dict. keys are needed
 
     def test_write_unused_coords(self):
@@ -628,7 +664,7 @@ class TestHDF5IOCoords(TestCase):
 
         with h5py.File(self.path, mode='r') as file:
             self.assertEqual(len(file['data1'].attrs.keys()), 1)
-            self.assertEqual(file['data1'].attrs['dims'], '["x"]')
+            self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
 
 
 class TestConstructCheckType(TestCase):
