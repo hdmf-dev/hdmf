@@ -647,8 +647,8 @@ class DynamicTableRegion(VectorData):
             arg1 = key[0]
             arg2 = key[1]
             return self.table[self.data[arg1], arg2]
-        elif isinstance(key, (int, slice)):
-            if isinstance(key, int) and key >= len(self.data):
+        elif isinstance(key, slice) or np.issubdtype(type(key), np.integer):
+            if np.issubdtype(type(key), np.integer) and key >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(key, len(self.data)))
             return self.table[self.data[key]]
         else:
