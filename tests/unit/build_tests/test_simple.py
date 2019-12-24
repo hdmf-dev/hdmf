@@ -533,6 +533,57 @@ class TestHDF5IODims(TestCase):
             self.assertEqual(len(file['data1'].attrs.keys()), 1)
             self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
 
+    def test_write_dims_only_legacy(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=('x', ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 1)
+            self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
+
+    def test_write_shape_only_legacy(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', shape=(None, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 1)
+            self.assertEqual(file['data1'].attrs['dimensions'], '["dim0"]')
+
+    def test_write_dims_shape_legacy(self):
+        dset1_spec = DatasetSpec(doc='an example dataset1', dtype='int', name='data1', dims=('x', ), shape=(None, ))
+        bar_spec = GroupSpec('A test group specification with a data type',
+                             data_type_def='Bar',
+                             datasets=[dset1_spec])
+        type_map = _create_typemap(bar_spec)
+        manager = BuildManager(type_map)
+
+        bar_inst = Bar('my_bar', [1, 2, 3, 4])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(bar_inst)
+
+        with h5py.File(self.path, mode='r') as file:
+            self.assertEqual(len(file['data1'].attrs.keys()), 1)
+            self.assertEqual(file['data1'].attrs['dimensions'], '["x"]')
+
     def test_write_1d_for_2d_dims(self):
         x_spec = DimSpec(name='x', required=True, length=4)
         y_spec = DimSpec(name='y', required=False, doc='test_doc', length=3)

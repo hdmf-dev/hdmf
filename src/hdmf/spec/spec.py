@@ -743,10 +743,14 @@ class DatasetSpec(BaseStorageSpec):
                                                                  'default_value', kwargs)
 
         # parse dims, shape, and coords. convert all to tuples for consistency.
-        if dims and isinstance(dims[0], DimSpec):
+        if dims and isinstance(dims[0], (DimSpec, dict)):
+            if isinstance(dims[0], dict):  # dims read from yaml as list/tuple of dicts
+                new_dims = list(map(DimSpec.build_spec, dims))
+            else:
+                new_dims = dims
             optional_dims = False
-            new_shape = [None] * len(dims)
-            for _i, dim in enumerate(dims):
+            new_shape = [None] * len(new_dims)
+            for _i, dim in enumerate(new_dims):
                 if isinstance(dim, DimSpec):
                     new_shape[_i] = dim.length
                     if not dim.required:
@@ -763,15 +767,14 @@ class DatasetSpec(BaseStorageSpec):
                 msg = 'Specified shape does not match computed shape from dims dictionary.'
                 raise ValueError(msg)
             self['shape'] = tuple(new_shape)
-            self['dims'] = tuple(dims)
-        elif shape is not None:
+            self['dims'] = tuple(new_dims)
+        elif shape is not None:  # legacy shape
             if shape and dims:
                 if len(dims) != len(shape):
                     raise ValueError("'dims' and 'shape' must be the same length.")
 
             # construct new style DimSpec based on old style shape and dims specification
-            # NOTE: when given a list of shape/dim options, the options must be compatible with each other
-            # if no shape is provided, then the dataset can be ANY shape
+            # NOTE: when given a list of shape and dim options, the options must be compatible with each other
             new_dims = list()
             if isinstance(shape[0], (list, tuple)):  # shape is a list of shape configurations
                 for j, shape_config in enumerate(shape):
@@ -783,13 +786,29 @@ class DatasetSpec(BaseStorageSpec):
             else:  # only one shape configuration is specified
                 for i, length in enumerate(shape):
                     dim_name = dims[i] if dims and dims[i] else 'dim' + str(i)
+                    if isinstance(dim_name, dict):
+                        breakpoint()
                     new_dims.append(DimSpec(name=dim_name, required=True, length=length))
             self['shape'] = tuple(shape)
+            self['dims'] = tuple(new_dims)
+        elif dims is not None:  # legacy dims (list of strings) and no shape
+            # construct new style DimSpec based on old style shape and dims specification
+            # NOTE: legacy code did not allow list of list of strings without shape. when dims was provided without
+            # shape, shape was set to tuple([None] * len(dims))
+            new_dims = list()
+            for i in range(len(dims)):
+                dim_name = dims[i] if dims[i] else 'dim' + str(i)
+                new_dims.append(DimSpec(name=dim_name, required=True, length=None))
+            self['shape'] = tuple([None] * len(dims))
             self['dims'] = tuple(new_dims)
 
         if coords is not None:
             for _i, coord in enumerate(coords):
-                if not isinstance(coord, CoordSpec):
+                if isinstance(coord, CoordSpec):
+                    pass  # TODO
+                elif isinstance(coord, dict):
+                    pass  # TODO
+                else:
                     msg = 'Must use CoordSpec to define coordinate - found %s at element %d' % (type(coord), _i)
                     raise ValueError(msg)
             self['coords'] = tuple(coords)
