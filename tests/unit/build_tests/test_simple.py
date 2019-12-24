@@ -346,11 +346,10 @@ class TestConstructDims(TestCase):
         attributes = {'data_type': 'Bar', 'namespace': CORE_NAMESPACE, 'object_id': "doesn't matter"}
         group_builder = GroupBuilder('my_bar', datasets=datasets, attributes=attributes)
 
-        # on read - warnings instead of errors, same for dtype
-        msg = "Data dimension 'x' (axis 0) must have length 3 but has length 4."
-        with self.assertRaisesWith(ConstructError, "Could not construct 'data1' for Bar 'my_bar' due to: %s" % msg):
-            with self.assertRaisesWith(ConvertError, msg):
-                type_map.construct(group_builder, manager)
+        msg = ("Could not construct dims for dataset 'data1' for Bar 'my_bar' due to: Data dimension 'x' (axis 0) must "
+               "have length 3 but has length 4.")
+        with self.assertWarnsWith(UserWarning, msg):
+            type_map.construct(group_builder, manager)
 
     def test_construct_dims_2d(self):
         """

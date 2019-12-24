@@ -1075,12 +1075,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         continue
                     dataset_builder = builder.datasets[subspec.name]
                     # verify that the dims are valid and return only the active dims
+                    dims = None
                     try:
                         dims = self.__check_dims(subspec, dataset_builder.data)
                     except ConvertError as ex:
-                        msg = ("Could not construct '%s' for %s '%s' due to: %s"
+                        msg = ("Could not construct dims for dataset '%s' for %s '%s' due to: %s"
                                % (subspec.name, cls.__name__, obj.name, ex))
-                        raise ConstructError(msg) from ex
+                        warnings.warn(msg)
 
                     if dims:
                         # since dataset_builder is cached in the manager, need to set its dims
@@ -1089,12 +1090,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         obj.set_dims(array_name=dataset_builder.name, dims=dims)
 
                     # verify that the coords are valid and return only the active coords
+                    coords = None
                     try:
                         coords = self.__check_coords(subspec, builder, dataset_builder)
                     except ConvertError as ex:
-                        msg = ("Could not construct '%s' for %s '%s' due to: %s"
+                        msg = ("Could not construct coords for dataset '%s' for %s '%s' due to: %s"
                                % (subspec.name, cls.__name__, obj.name, ex))
-                        raise ConstructError(msg) from ex
+                        warnings.warn(msg)
 
                     if coords:
                         # since dataset_builder is cached in the manager, need to set its coords
