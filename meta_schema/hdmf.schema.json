@@ -7,7 +7,7 @@
   "properties": {
     "groups": {"$ref": "#/definitions/groups"},
     "attributes": {"$ref": "#attributes"},
-    "datasets": {"$ref": "#datasets"},
+    "datasets": {"$ref": "#/definitions/datasets"},
     "links": {"$ref": "#links"}
   },
   "definitions": {
@@ -100,8 +100,8 @@
       }
     },
     "object": {
-      "$id": "#object",
-      "required": ["name", "doc"],
+      "$id": "#obj",
+      "required": ["doc"],
       "properties": {
         "name": {"type": "string"},
         "doc": {"type": "string"}
@@ -135,7 +135,7 @@
         "group": {
           "type": "object",
           "allOf": [
-            {"$ref": "#object"},
+            {"$ref": "#obj"},
             {"$ref": "#inheritable"}
           ],
           "properties": {
@@ -145,58 +145,66 @@
           }
         }
       }
-    }
-  },
-  "attributes": {
-    "$id": "attributes",
-    "type": "array",
-    "items": {
-      "attribute": {
-        "type": "object",
-        "allOf": [
-          {"$ref": "#object"},
-          {"$ref": "#data"},
-          {
-            "properties": {
-              "required": {"type": "boolean"},
-              "value": {"description": "Optional constant, fixed value for the attribute."},
-              "default_value": {
-                "description": "Optional default value for variable-valued attributes. Only one of value or default_value should be set."
+    },
+    "attributes": {
+      "$id": "attributes",
+      "type": "array",
+      "items": {
+        "attribute": {
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#obj"
+            },
+            {
+              "$ref": "#data"
+            },
+            {
+              "properties": {
+                "required": {
+                  "type": "boolean"
+                },
+                "value": {
+                  "description": "Optional constant, fixed value for the attribute."
+                },
+                "default_value": {
+                  "description": "Optional default value for variable-valued attributes. Only one of value or default_value should be set."
+                }
               }
             }
-          }
-        ]
-
+          ]
+        }
       }
-    }
-  },
-  "links": {
-    "$id": "#links",
-    "type": "array",
-    "items": {
-      "link": {
-        "type": "object",
-        "allOf": [
-          {"$ref": "#object"},
-          {
-            "required": ["target_type"],
-            "properties": {"target_type": {"type": "string"}}
-          }
-        ]
+    },
+    "links": {
+      "$id": "#links",
+      "type": "array",
+      "items": {
+        "link": {
+          "type": "object",
+          "allOf": [
+            {"$ref": "#obj"},
+            {
+              "required": ["target_type"],
+              "properties": {"target_type": {"type": "string"}}
+            }
+          ]
+        }
       }
-    }
-  },
-  "datasets": {
-    "$id": "#datasets",
-    "type": "array",
-    "items": {
-      "dataset": {
-        "type": "object",
-        "allOf": [
-          {"$ref": "#object"},
-          {"$ref": "#data"},
-          {"$ref": "#inheritable"}
-        ]
+    },
+    "datasets": {
+      "$id": "#datasets",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "dataset": {
+          "type": "object",
+          "allOf": [
+            {"$ref": "#/definitions/obj"},
+            {"$ref": "#data"},
+            {"$ref": "#inheritable"}
+          ]
+        }
       }
     }
   }
