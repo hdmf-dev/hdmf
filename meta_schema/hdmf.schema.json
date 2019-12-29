@@ -1,18 +1,17 @@
 {
-  "$schema": "http://json-schema.org/draft-00/schema#",
+  "$schema": "http://json-schema.org/draft-00/schema#/definitions/",
   "$id": "hdmf.schema.json",
   "title": "HDMF schema",
   "description": "A schema for validating HDMF YAML files",
   "type": "object",
   "properties": {
     "groups": {"$ref": "#/definitions/groups"},
-    "attributes": {"$ref": "#attributes"},
+    "attributes": {"$ref": "#/definitions/attributes"},
     "datasets": {"$ref": "#/definitions/datasets"},
-    "links": {"$ref": "#links"}
+    "links": {"$ref": "#/definitions/links"}
   },
   "definitions": {
     "quantity": {
-      "$id": "#quantity",
       "description": "Quantity marker",
       "anyOf": [
         {
@@ -33,7 +32,6 @@
       ]
     },
     "dtype": {
-      "$id": "#dtype",
       "description": "Required string describing the data type of the attribute",
       "anyOf": [
         {
@@ -63,30 +61,49 @@
           ]
         },
         {
-          "$ref": "#ref_dtype"
+          "$ref": "#/definitions/ref_dtype"
         }
       ]
     },
     "dims": {
-      "$id": "#dims",
       "description": "Optional list describing the names of the dimensions of the data array stored by the attribute (default=None)",
       "type": "array",
       "items": {
-        "type": "string"
+        "anyOf": [
+          {"type": "string"},
+          {
+            "type":  "array",
+            "items": {"type":  "string"}
+          }
+        ]
       }
     },
     "shape": {
-      "$id": "#shape",
       "description": "Optional list describing the allowed shape(s) of the data array stored by the attribute (default=None)",
+      "anyOf": [
+        {"$ref": "#/definitions/shape_spec"},
+        {
+          "type": "array",
+          "items": {"$ref": "#/definitions/shape_spec"}
+        }
+      ]
+    },
+    "shape_spec": {
       "type": "array",
       "items": {
-        "type": "integer",
-        "minimum": 1
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 1
+          },
+          {
+            "value": null
+          }
+        ]
       }
     },
     "ref_dtype": {
-      "$id": "#ref_dtype",
-      "requires": ["target_type", "reftype"],
+      "required": ["target_type", "reftype"],
       "properties": {
         "target_type": {
           "description": "Describes the neurodata_type of the target that the reference points to",
@@ -100,111 +117,92 @@
       }
     },
     "object": {
-      "$id": "#obj",
       "required": ["doc"],
       "properties": {
         "name": {"type": "string"},
         "doc": {"type": "string"}
-      }
+      },
+      "additionalProperties": false
     },
     "data": {
-      "$id": "#data",
-      "required": ["dtype"],
+      "required": [],
       "properties": {
-        "dtype": {"$ref": "#dtype"},
-        "dims": {"$ref": "#dims"},
-        "shape": {"$ref": "#shape"}
+        "dtype": {"$ref": "#/definitions/dtype"},
+        "dims": {"$ref": "#/definitions/dims"},
+        "shape": {"$ref": "#/definitions/shape"}
       }
     },
     "inheritable": {
-      "$id": "#inheritable",
       "properties": {
         "neurodata_type_def": {"type": "string"},
         "neurodata_type_inc": {"type": "string"},
         "default_name": {"type": "string"},
-        "quantity": {"$ref":  "#quantity"},
+        "quantity": {"$ref":  "#/definitions/quantity"},
         "linkable": {"type": "boolean"},
-        "attributes": {"$ref": "#attibutes"}
+        "attributes": {"$ref": "#/definitions/attributes"}
       }
     },
     "groups": {
-      "$id": "#groups",
       "description": "list of groups",
       "type": "array",
       "items": {
-        "group": {
-          "type": "object",
-          "allOf": [
-            {"$ref": "#obj"},
-            {"$ref": "#inheritable"}
-          ],
-          "properties": {
-            "datasets": {"$ref": "#datasets"},
-            "links": {"$ref": "#links"},
-            "groups": {"$ref": "#groups"}
+        "type": "object",
+        "allOf": [
+          {"$ref": "#/definitions/object"},
+          {"$ref": "#/definitions/inheritable"},
+          {"properties": {
+            "datasets": {"$ref": "#/definitions/datasets"},
+            "links": {"$ref": "#/definitions/links"},
+            "groups": {"$ref": "#/definitions/groups"}
           }
-        }
+          }
+        ]
       }
     },
     "attributes": {
-      "$id": "attributes",
       "type": "array",
       "items": {
-        "attribute": {
-          "type": "object",
-          "allOf": [
-            {
-              "$ref": "#obj"
-            },
-            {
-              "$ref": "#data"
-            },
-            {
-              "properties": {
-                "required": {
-                  "type": "boolean"
-                },
-                "value": {
-                  "description": "Optional constant, fixed value for the attribute."
-                },
-                "default_value": {
-                  "description": "Optional default value for variable-valued attributes. Only one of value or default_value should be set."
-                }
+        "type": "object",
+        "allOf": [
+          {"$ref": "#/definitions/object"},
+          {"$ref": "#/definitions/data"},
+          {
+            "properties": {
+              "required": {"type": "boolean"},
+              "value": {
+                "description": "Optional constant, fixed value for the attribute."
+              },
+              "default_value": {
+                "description": "Optional default value for variable-valued attributes. Only one of value or default_value should be set."
               }
             }
-          ]
-        }
+          }
+        ]
       }
     },
     "links": {
-      "$id": "#links",
       "type": "array",
       "items": {
-        "link": {
-          "type": "object",
-          "allOf": [
-            {"$ref": "#obj"},
-            {
-              "required": ["target_type"],
-              "properties": {"target_type": {"type": "string"}}
-            }
-          ]
-        }
+        "type": "object",
+        "allOf": [
+          {"$ref": "#/definitions/object"},
+          {
+            "required": ["target_type"],
+            "properties": {"target_type": {"type": "string"}}
+          }
+        ]
       }
     },
     "datasets": {
-      "$id": "#datasets",
       "type": "array",
       "minItems": 1,
       "items": {
-        "dataset": {
-          "type": "object",
-          "allOf": [
-            {"$ref": "#/definitions/obj"},
-            {"$ref": "#data"},
-            {"$ref": "#inheritable"}
-          ]
-        }
+        "type": "object",
+        "allOf": [
+          {"$ref": "#/definitions/object"},
+          {"$ref": "#/definitions/data"},
+          {"$ref": "#/definitions/inheritable"}
+        ]
       }
     }
   }
