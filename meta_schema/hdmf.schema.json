@@ -5,12 +5,128 @@
   "description": "A schema for validating HDMF YAML files",
   "type": "object",
   "properties": {
-    "$ref": "#groups",
-    "$ref": "#attributes",
-    "$ref": "#datasets",
-    "$ref": "#links"
+    "groups": {"$ref": "#/definitions/groups"},
+    "attributes": {"$ref": "#attributes"},
+    "datasets": {"$ref": "#datasets"},
+    "links": {"$ref": "#links"}
   },
   "definitions": {
+    "quantity": {
+      "$id": "#quantity",
+      "description": "Quantity marker",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "string",
+          "enum": [
+            "*",
+            "?",
+            "+",
+            "zero_or_many",
+            "one_or_many",
+            "zero_or_one"
+          ]
+        }
+      ]
+    },
+    "dtype": {
+      "$id": "#dtype",
+      "description": "Required string describing the data type of the attribute",
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "float",
+            "float32",
+            "double",
+            "float64",
+            "long",
+            "int64",
+            "int",
+            "int32",
+            "int16",
+            "int8",
+            "uint32",
+            "uint16",
+            "uint8",
+            "numeric",
+            "text",
+            "utf",
+            "utf8",
+            "unt-8",
+            "ascii",
+            "bool",
+            "isodatetime"
+          ]
+        },
+        {
+          "$ref": "#ref_dtype"
+        }
+      ]
+    },
+    "dims": {
+      "$id": "#dims",
+      "description": "Optional list describing the names of the dimensions of the data array stored by the attribute (default=None)",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "shape": {
+      "$id": "#shape",
+      "description": "Optional list describing the allowed shape(s) of the data array stored by the attribute (default=None)",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "ref_dtype": {
+      "$id": "#ref_dtype",
+      "requires": ["target_type", "reftype"],
+      "properties": {
+        "target_type": {
+          "description": "Describes the neurodata_type of the target that the reference points to",
+          "type": "string"
+        },
+        "reftype": {
+          "description": "describes the kind of reference",
+          "type": "string",
+          "enum": ["ref", "reference", "object", "region"]
+        }
+      }
+    },
+    "object": {
+      "$id": "#object",
+      "required": ["name", "doc"],
+      "properties": {
+        "name": {"type": "string"},
+        "doc": {"type": "string"}
+      }
+    },
+    "data": {
+      "$id": "#data",
+      "required": ["dtype"],
+      "properties": {
+        "dtype": {"$ref": "#dtype"},
+        "dims": {"$ref": "#dims"},
+        "shape": {"$ref": "#shape"}
+      }
+    },
+    "inheritable": {
+      "$id": "#inheritable",
+      "properties": {
+        "neurodata_type_def": {"type": "string"},
+        "neurodata_type_inc": {"type": "string"},
+        "default_name": {"type": "string"},
+        "quantity": {"$ref":  "#quantity"},
+        "linkable": {"type": "boolean"},
+        "attributes": {"$ref": "#attibutes"}
+      }
+    },
     "groups": {
       "$id": "#groups",
       "description": "list of groups",
@@ -18,47 +134,39 @@
       "items": {
         "group": {
           "type": "object",
-          "required": ["doc"],
+          "allOf": [
+            {"$ref": "#object"},
+            {"$ref": "#inheritable"}
+          ],
           "properties": {
-            "$ref": "#name",
-            "$ref": "#default_name",
-            "$ref": "#doc",
-            "$ref": "#neurodata_type_def",
-            "$ref": "#neurodata_type_def",
-            "$ref": "#linkable",
-            "$ref": "#attributes",
-            "$ref": "#datasets",
-            "$ref": "#links",
-            "$ref": "#groups"
+            "datasets": {"$ref": "#datasets"},
+            "links": {"$ref": "#links"},
+            "groups": {"$ref": "#groups"}
           }
         }
       }
     }
   },
   "attributes": {
-    "$id": "#attributes",
+    "$id": "attributes",
     "type": "array",
     "items": {
       "attribute": {
         "type": "object",
-        "required": ["name", "doc", "dtype"],
-        "properties": {
-          "$ref": "#name",
-          "$ref": "#doc",
-          "$ref": "#dtype",
-          "$ref": "#dims",
-          "$ref": "#shape",
-          "required": {
-            "description": "Optional boolean indicating whether the attribute is required (default=True)",
-            "type": "boolean"
-          },
-          "value": {
-            "description": "Optional constant, fixed value for the attribute."
-          },
-          "default_value": {
-            "description": "Optional default value for variable-valued attributes. Only one of value or default_value should be set."
+        "allOf": [
+          {"$ref": "#object"},
+          {"$ref": "#data"},
+          {
+            "properties": {
+              "required": {"type": "boolean"},
+              "value": {"description": "Optional constant, fixed value for the attribute."},
+              "default_value": {
+                "description": "Optional default value for variable-valued attributes. Only one of value or default_value should be set."
+              }
+            }
           }
-        }
+        ]
+
       }
     }
   },
@@ -68,15 +176,13 @@
     "items": {
       "link": {
         "type": "object",
-        "required": ["name", "doc", "target_type"],
-        "properties": {
-          "$ref": "#name",
-          "$ref": "#/definitions/doc",
-          "target_type": {
-            "description": "type of target",
-            "type": "string"
+        "allOf": [
+          {"$ref": "#object"},
+          {
+            "required": ["target_type"],
+            "properties": {"target_type": {"type": "string"}}
           }
-        }
+        ]
       }
     }
   },
@@ -86,132 +192,11 @@
     "items": {
       "dataset": {
         "type": "object",
-        "required": ["doc"],
-        "properties": {
-          "$ref": "#name",
-          "$ref": "#default_name",
-          "$ref": "#doc",
-          "$ref": "#neurodata_type_def",
-          "$ref": "#neurodata_type_def",
-          "$ref": "#quantity",
-          "$ref": "#linkable",
-          "$ref": "#dtype",
-          "$ref": "#dims",
-          "$ref": "#shape",
-          "$ref": "#attibutes"
-        }
-      }
-    }
-  },
-  "quantity": {
-    "$id": "#quantity",
-    "description": "Quantity marker",
-    "anyOf": [
-      {
-        "type": "integer",
-        "minimum": 1
-      },
-      "*",
-      "?",
-      "+",
-      "zero_or_many",
-      "one_or_many",
-      "zero_or_one"
-      ]
-  },
-  "name": {
-    "$id": "#name",
-    "description": "fixed name for the group. A group must either have a unique neurodata_type or a unique, fixed name.",
-    "type": "string"
-  },
-  "default_name": {
-    "$id": "#default_name",
-    "description": "default name",
-    "type": "string"
-  },
-  "doc": {
-    "$id": "#doc",
-    "description": "Required description of the group",
-    "type": "string"
-  },
-  "neurodata_type_def": {
-    "$id": "#neurodata_type_def",
-    "description": "Optional new neurodata_type for the group",
-    "type": "string"
-  },
-  "neurodata_type_inc": {
-    "$id": "#neurodata_type_inc",
-    "description": "Optional neurodata_type the group should inherit from",
-    "type": "string"
-  },
-  "linkable": {
-    "$id": "#linkable",
-    "description": "Boolean indicating whether the group is linkable (default=True)",
-    "type": "boolean"
-  },
-  "dtype": {
-    "$id": "#dtype",
-    "description": "Required string describing the data type of the attribute",
-    "anyOf": [
-      {
-        "type": "string",
-        "enum": [
-          "float",
-          "float32",
-          "double",
-          "float64",
-          "long",
-          "int64",
-          "int",
-          "int32",
-          "int16",
-          "int8",
-          "uint32",
-          "uint16",
-          "uint8",
-          "numeric",
-          "text",
-          "utf",
-          "utf8",
-          "unt-8",
-          "ascii",
-          "bool",
-          "isodatetime"
+        "allOf": [
+          {"$ref": "#object"},
+          {"$ref": "#data"},
+          {"$ref": "#inheritable"}
         ]
-      },
-      {
-        "$ref": "#/definitions/ref_dtype"
-      }
-    ]
-  },
-  "dims": {
-    "$id": "#dims",
-    "description": "Optional list describing the names of the dimensions of the data array stored by the attribute (default=None)",
-    "type": "array",
-    "items": {
-      "type": "integer",
-      "minimum": 1}
-    },
-  "shape": {
-    "$id": "#shape",
-    "description": "Optional list describing the allowed shape(s) of the data array stored by the attribute (default=None)",
-    "type": "array",
-    "items": {
-      "type": "integer",
-      "minimum": 1
-    }
-  },
-  "ref_dtype": {
-    "requires": ["target_type", "reftype"],
-    "properties": {
-      "target_type": {
-        "description": "Describes the neurodata_type of the target that the reference points to",
-        "type": "string"
-      },
-      "reftype": {
-        "description": "describes the kind of reference",
-        "type": "string",
-        "enum": ["ref", "reference", "object", "region"]
       }
     }
   }
