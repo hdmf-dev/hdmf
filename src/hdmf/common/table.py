@@ -56,7 +56,7 @@ class VectorData(Data):
 @register_class('VectorIndex')
 class VectorIndex(Index):
     """
-    When paired with a VecotData, this allows for storing arrays of varying
+    When paired with a VectorData, this allows for storing arrays of varying
     length in a single cell of the DynamicTable by indexing into this VectorData.
     The first vector is at VectorData[0:VectorIndex(0)+1]. The second vector is at
     VectorData[VectorIndex(0)+1:VectorIndex(1)+1], and so on.
