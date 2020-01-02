@@ -659,7 +659,13 @@ class DynamicTable(Container):
 @register_class('DynamicTableRegion')
 class DynamicTableRegion(VectorData):
     """
-    An object for easily slicing into a DynamicTable
+    DynamicTableRegion provides a link from one table to an index or region of another. The `table`
+    attribute is another `DynamicTable`, indicating which table is referenced. The data is int(s)
+    indicating the row(s) (0-indexed) of the target array. `DynamicTableRegion`s can be used to
+    associate multiple rows with the same meta-data without data duplication. They can also be used to
+    create hierarchical relationships between multiple `DynamicTable`s. `DynamicTableRegion` objects
+    may be paired with a `VectorIndex` object to create ragged references, so a single cell of a
+    `DynamicTable` can reference many rows of another `DynamicTable`.
     """
 
     __fields__ = (
