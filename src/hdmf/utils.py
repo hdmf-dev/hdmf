@@ -634,19 +634,19 @@ def get_data_shape(data, strict_no_data_load=False):
             if len(local_data) and not isinstance(local_data[0], (str, bytes)):
                 shape.extend(__get_shape_helper(local_data[0]))
         return tuple(shape)
+
+    shape = np.shape(data)
+    if shape:
+        return shape
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    elif hasattr(data, 'shape'):
+    if hasattr(data, 'shape'):
         return data.shape
-    elif isinstance(data, dict):
-        return None
-    elif hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
+    if isinstance(data, dict):
+        return
+    if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
         if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
             return __get_shape_helper(data)
-        else:
-            return None
-    else:
-        return None
 
 
 def pystr(s):
