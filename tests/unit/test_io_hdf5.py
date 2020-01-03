@@ -1,16 +1,13 @@
 import os
 from h5py import File, Dataset, Reference
-from six import text_type
+from numbers import Number
+import json
+import numpy as np
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.utils import get_data_shape
 from hdmf.testing import TestCase
-
-from numbers import Number
-
-import json
-import numpy as np
 
 from tests.unit.utils import Foo
 from tests.unit.test_io_hdf5_h5tools import _get_manager
@@ -46,7 +43,7 @@ class GroupBuilderTestCase(TestCase):
         if hasattr(obj, 'shape'):
             return len(obj.shape) == 0
         else:
-            if any(isinstance(obj, t) for t in (int, str, float, bytes, text_type)):
+            if any(isinstance(obj, t) for t in (int, str, float, bytes, str)):
                 return True
         return False
 

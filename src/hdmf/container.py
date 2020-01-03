@@ -1,14 +1,13 @@
 import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
-from six import with_metaclass
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
 from .data_utils import DataIO
 from warnings import warn
 import h5py
 
 
-class AbstractContainer(with_metaclass(ExtenderMeta, object)):
+class AbstractContainer(metaclass=ExtenderMeta):
 
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
@@ -383,7 +382,7 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
-        call_docval_func(super(Data, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__data = getargs('data', kwargs)
 
     @property

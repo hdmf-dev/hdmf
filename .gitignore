@@ -5,15 +5,12 @@
 !.vscode/extensions.json
 .history
 
-### PyNWB###
-
-docs/notebooks/boc/
+### HDMF ###
 
 # Auto-generated apidocs RST files
-docs/source/pynwb*.rst
-docs/source/modules.rst
-docs/source/gen_modules/
-docs/source/modules/generated
+/docs/source/modules.rst
+/docs/source/gen_modules/
+/docs/source/modules/generated
 
 # Auto-generated files after running tutorials
 *_example.nwb
@@ -23,7 +20,7 @@ mylab.*.yaml
 manifest.json
 
 # Auto-generated tutorials
-docs/source/tutorials/
+/docs/source/tutorials/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -32,14 +29,14 @@ __pycache__/
 *$py.class
 
 # Sphinx documentation
-docs/_build/
-docs/build/
-docs/source/pynwb.*.rst
+/docs/_build/
+/docs/build/
+/docs/source/pynwb.*.rst
 
 
 # setuptools
-build/
-dist/
+/build/
+/dist/
 *.egg-info
 
 # Jupyter Notebook
@@ -51,11 +48,11 @@ dist/
 # shell scripts (e.g. used with fswatch)
 *.sh
 
-docs/tmpl.conf.py
-docs/tmpl.index.rst
+/docs/tmpl.conf.py
+/docs/tmpl.index.rst
 
 # coverage output
-tests/coverage/htmlcov
+/tests/coverage/htmlcov
 .coverage
 
 # tox
