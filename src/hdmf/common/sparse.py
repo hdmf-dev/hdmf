@@ -11,6 +11,11 @@ from . import register_class
 @register_class('CSRMatrix')
 class CSRMatrix(Container):
 
+    __fields__ = ({'name': 'data', 'settable': False},
+                  {'name': 'indices', 'settable': False},
+                  {'name': 'indptr', 'settable': False},
+                  {'name': 'shape', 'settable': False})
+
     @docval({'name': 'data', 'type': (sps.csr_matrix, np.ndarray, h5py.Dataset),
              'doc': 'the data to use for this CSRMatrix or CSR data array.'
                     'If passing CSR data array, *indices*, *indptr*, and *shape* must also be provided'},
@@ -35,20 +40,33 @@ class CSRMatrix(Container):
                 data = sps.csr_matrix((data, indices, indptr), shape=shape)
             else:
                 raise ValueError("cannot use ndarray of dimensionality > 2")
-        self.__data = data
-        self.__shape = data.shape
+        self.fields['data'] = data
+        self.fields['indices'] = data.indices
+        self.fields['indptr'] = data.indptr
+        self.fields['shape'] = data.shape
 
     @staticmethod
     def __check_ind(ar, arg):
         if not (ar.ndim == 1 or np.issubdtype(ar.dtype, int)):
             raise ValueError('%s must be a 1D array of integers' % arg)
 
-    def __getattr__(self, val):
-        return getattr(self.__data, val)
-
     @property
-    def shape(self):
-        return self.__shape
+    def data(self):
+        # override auto-generated getter
+        return self.fields['data'].data
 
     def to_spmat(self):
-        return self.__data
+        return self.fields['data']
+
+    def __repr__(self):
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d" % (self.name, cls.__module__, cls.__name__, id(self))
+        if len(self.fields):
+            template += "\nFields:\n"
+        for k in sorted(self.fields):  # sorted to enable tests
+            v = self.fields[k]
+            if k == 'data':
+                template += "  {}:\n{}\n".format(k, v)
+            else:
+                template += "  {}: {}\n".format(k, v)
+        return template

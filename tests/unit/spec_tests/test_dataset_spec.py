@@ -1,6 +1,6 @@
 import json
 
-from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, DtypeSpec, RefSpec
+from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, DtypeSpec, RefSpec, DimSpec
 from hdmf.testing import TestCase
 
 
@@ -49,8 +49,8 @@ class DatasetSpecTests(TestCase):
                            name='dataset1',
                            shape=shape,
                            attributes=self.attributes)
-        self.assertEqual(spec['shape'], shape)
-        self.assertEqual(spec.shape, shape)
+        self.assertEqual(spec['shape'], (None, 2))
+        self.assertEqual(spec.shape, (None, 2))
 
     def test_constructor_invalidate_dtype(self):
         with self.assertRaises(ValueError):
@@ -230,3 +230,61 @@ class DatasetSpecTests(TestCase):
                         [dtype3],
                         data_type_inc=base,
                         data_type_def='ExtendedTable')
+
+
+class TestDatasetOldStyleDims(TestCase):
+
+    def test_none(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1')
+        self.assertIsNone(spec.shape)
+        self.assertIsNone(spec.dims)
+        self.assertIsNone(spec.coords)
+
+    def test_1d(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=(2, ))
+        self.assertEqual(spec.shape, (2, ))
+        self.assertEqual(spec.dims, (DimSpec(name='dim0', required=True, length=2), ))
+
+    def test_1d_none(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=(None, ))
+        self.assertEqual(spec.shape, (None, ))
+        self.assertEqual(spec.dims, (DimSpec(name='dim0', required=True, length=None), ))
+
+    def test_1d_dims(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=(2, ), dims=('x', ))
+        self.assertEqual(spec.dims, (DimSpec(name='x', required=True, length=2), ))
+
+    def test_2d(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=(2, None))
+        self.assertEqual(spec.shape, (2, None))
+        self.assertEqual(spec.dims, (DimSpec(name='dim0', required=True, length=2),
+                                     DimSpec(name='dim1', required=True, length=None)))
+
+    def test_2d_none(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=(None, None))
+        self.assertEqual(spec.shape, (None, None))
+        self.assertEqual(spec.dims, (DimSpec(name='dim0', required=True, length=None),
+                                     DimSpec(name='dim1', required=True, length=None)))
+
+    def test_2d_dims(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=(2, None), dims=('x', 'y'))
+        self.assertEqual(spec.dims, (DimSpec(name='x', required=True, length=2),
+                                     DimSpec(name='y', required=True, length=None)))
+
+    def test_1d_2d(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=((2, ), (2, None)))
+        self.assertEqual(spec.shape, ((2, ), (2, None)))
+        self.assertEqual(spec.dims, (DimSpec(name='dim0', required=True, length=2),
+                                     DimSpec(name='dim1', required=False, length=None)))
+
+    def test_1d_2d_none(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=((None, ), (None, None)))
+        self.assertEqual(spec.shape, ((None, ), (None, None)))
+        self.assertEqual(spec.dims, (DimSpec(name='dim0', required=True, length=None),
+                                     DimSpec(name='dim1', required=False, length=None)))
+
+    def test_1d_2d_dims(self):
+        spec = DatasetSpec('my first dataset', 'int', name='dataset1', shape=((2, ), (2, None)),
+                           dims=(('x', ), ('x', 'y')))
+        self.assertEqual(spec.dims, (DimSpec(name='x', required=True, length=2),
+                                     DimSpec(name='y', required=False, length=None)))

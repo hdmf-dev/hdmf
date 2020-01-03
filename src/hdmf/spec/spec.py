@@ -1,6 +1,6 @@
 from abc import ABCMeta
 from copy import deepcopy
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 import re
 from warnings import warn
 
@@ -151,17 +151,13 @@ class Spec(ConstructableDict):
 
 _target_type_key = 'target_type'
 
-_ref_args = [
-    {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'reftype', 'type': str, 'doc': 'the type of references this is i.e. region or object'},
-]
-
 
 class RefSpec(ConstructableDict):
 
     __allowable_types = ('object', 'region')
 
-    @docval(*_ref_args)
+    @docval({'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
+            {'name': 'reftype', 'type': str, 'doc': 'the type of references this is i.e. region or object'})
     def __init__(self, **kwargs):
         target_type, reftype = getargs(_target_type_key, 'reftype', kwargs)
         self[_target_type_key] = target_type
@@ -272,6 +268,128 @@ class AttributeSpec(Spec):
             if isinstance(ret['dtype'], dict):
                 ret['dtype'] = RefSpec.build_spec(ret['dtype'])
         return ret
+
+
+class DimSpec(ConstructableDict):
+    """Specification for dimensions"""
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this dimension'},
+            {'name': 'required', 'type': bool, 'doc': 'Whether this dimension is required'},
+            {'name': 'length', 'type': int, 'doc': 'The length of this dimension', 'default': None},
+            {'name': 'doc', 'type': str, 'doc': 'Documentation for this dimension', 'default': None},
+            {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
+    def __init__(self, **kwargs):
+        name, required, length, doc, parent = getargs('name', 'required', 'length', 'doc', 'parent', kwargs)
+        super().__init__()
+        self['name'] = name
+        self['required'] = required
+        if length is not None and length <= 0:
+            raise ValueError('DimSpec length must be a positive number of None')
+        self['length'] = length
+        self['doc'] = doc
+        self._parent = parent
+
+    @property
+    def name(self):
+        """The name of this dimension"""
+        return self.get('name', None)
+
+    @property
+    def required(self):
+        """Whether this dimension is required"""
+        return self.get('required', None)
+
+    @property
+    def length(self):
+        """The length of this dimension"""
+        return self.get('length', None)
+
+    @property
+    def doc(self):
+        """Documentation for this dimension"""
+        return self.get('doc', None)
+
+    @property
+    def parent(self):
+        """The parent specification of this specification"""
+        return self._parent
+
+    @parent.setter
+    def parent(self, spec):
+        """Set the parent of this specification"""
+        if self._parent is not None:
+            raise Exception('Cannot re-assign parent')
+        self._parent = spec
+
+
+class InnerCoordSpec(namedtuple('InnerCoordSpec', 'dataset_name dims_index type')):
+    """Specification for the 'coord' key of a dimension coordinate"""
+
+    @docval({'name': 'dataset_name', 'type': str, 'doc': 'The name of the dataset of this coordinate'},
+            {'name': 'dims_index', 'type': (int, list, tuple),
+             'doc': 'The dimension indices (0-indexed) of the dataset of this coordinate'},
+            {'name': 'type', 'type': str, 'doc': 'The type of this coordinate'})
+    def __new__(cls, **kwargs):
+        # initialize a new InnerCoordSpec with argument documentation and validation
+        # to override initialization of a namedtuple, need to override __new__, not __init__
+
+        # cast int, list to tuple
+        dims_index = kwargs['dims_index']
+        if type(dims_index) == int:
+            kwargs['dims_index'] = (dims_index, )
+        elif isinstance(dims_index, list):
+            kwargs['dims_index'] = tuple(dims_index)
+        return super().__new__(cls, **kwargs)
+
+
+class CoordSpec(ConstructableDict):
+    """Specification for a dimension coordinate"""
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this coordinate'},
+            {'name': 'dims_index', 'type': (int, list, tuple),
+             'doc': 'The dimension indices (0-indexed) of the dataset that this coordinate acts on'},
+            {'name': 'coord', 'type': InnerCoordSpec,
+             'doc': ('Specification of the coordinate dataset, dimension indices, and type. Keys dataset_name, '
+                     'dims_index, and type are required.')},
+            {'name': 'parent', 'type': 'DatasetSpec', 'doc': 'The parent dataset spec of this spec', 'default': None})
+    def __init__(self, **kwargs):
+        super().__init__()
+        name, dims_index, coord, parent = getargs('name', 'dims_index', 'coord', 'parent', kwargs)
+        self['name'] = name
+        self['coord'] = coord
+        self._parent = parent
+
+        # cast int, list to tuple
+        if type(dims_index) == int:
+            self['dims_index'] = (dims_index, )
+        self['dims_index'] = tuple(dims_index)
+
+    @property
+    def name(self):
+        """The name of this coordinate"""
+        return self.get('name', None)
+
+    @property
+    def dims_index(self):
+        """The dimension indices (0-indexed) of the dataset that this coordinate acts on"""
+        return self.get('dims_index', None)
+
+    @property
+    def coord(self):
+        """Specification of the coordinate dataset, dimension indices, and type"""
+        return self.get('coord', None)
+
+    @property
+    def parent(self):
+        """ The parent specification of this specification """
+        return self._parent
+
+    @parent.setter
+    def parent(self, spec):
+        """ Set the parent of this specification """
+        if self._parent is not None:
+            raise Exception('Cannot re-assign parent')
+        self._parent = spec
 
 
 _attrbl_args = [
@@ -602,6 +720,7 @@ _dataset_args = [
         {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
         {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
         {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+        {'name': 'coords', 'type': (list, tuple), 'doc': 'the coordinates of this dataset', 'default': None},
         {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
         {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
         {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
@@ -618,18 +737,84 @@ class DatasetSpec(BaseStorageSpec):
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*deepcopy(_dataset_args))  # noqa: C901
     def __init__(self, **kwargs):
-        doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
-        if shape is not None:
-            self['shape'] = shape
-        if dims is not None:
-            self['dims'] = dims
-            if 'shape' not in self:
-                self['shape'] = tuple([None] * len(dims))
-        if self.shape is not None and self.dims is not None:
-            if len(self['dims']) != len(self['shape']):
-                raise ValueError("'dims' and 'shape' must be the same length")
+        doc, shape, dims, coords, dtype, default_value = popargs('doc', 'shape', 'dims', 'coords', 'dtype',
+                                                                 'default_value', kwargs)
+
+        # parse dims, shape, and coords. convert all to tuples for consistency.
+        if dims and isinstance(dims[0], (DimSpec, dict)):
+            if isinstance(dims[0], dict):  # dims read from yaml as list/tuple of dicts
+                new_dims = list(map(DimSpec.build_spec, dims))
+            else:
+                new_dims = dims
+            optional_dims = False
+            new_shape = [None] * len(new_dims)
+            for _i, dim in enumerate(new_dims):
+                if isinstance(dim, DimSpec):
+                    new_shape[_i] = dim.length
+                    if not dim.required:
+                        optional_dims = True
+                    if dim.required and optional_dims:
+                        msg = ('Required dims cannot follow optional dims - found required dim %s at element %d'
+                               % (dim.name, _i))
+                        raise ValueError(msg)
+                else:
+                    msg = ('Dims must consist of DimSpec objects if using new-style dims - found %s at element %d'
+                           % (type(dim), _i))
+                    raise ValueError(msg)
+            if shape is not None and tuple(shape) != tuple(new_shape):
+                msg = 'Specified shape does not match computed shape from dims dictionary.'
+                raise ValueError(msg)
+            self['shape'] = tuple(new_shape)
+            self['dims'] = tuple(new_dims)
+        elif shape is not None:  # legacy shape
+            if shape and dims:
+                if len(dims) != len(shape):
+                    raise ValueError("'dims' and 'shape' must be the same length.")
+
+            # construct new style DimSpec based on old style shape and dims specification
+            # NOTE: when given a list of shape and dim options, the options must be compatible with each other
+            new_dims = list()
+            if isinstance(shape[0], (list, tuple)):  # shape is a list of shape configurations
+                for j, shape_config in enumerate(shape):
+                    for i, length in enumerate(shape_config):
+                        if i >= len(new_dims):
+                            dim_name = dims[j][i] if dims and dims[j][i] else 'dim' + str(i)
+                            required = j == 0  # first list contains required dimensions
+                            new_dims.append(DimSpec(name=dim_name, required=required, length=length))
+            else:  # only one shape configuration is specified
+                for i, length in enumerate(shape):
+                    dim_name = dims[i] if dims and dims[i] else 'dim' + str(i)
+                    if isinstance(dim_name, dict):
+                        breakpoint()
+                    new_dims.append(DimSpec(name=dim_name, required=True, length=length))
+            self['shape'] = tuple(shape)
+            self['dims'] = tuple(new_dims)
+        elif dims is not None:  # legacy dims (list of strings) and no shape
+            # construct new style DimSpec based on old style shape and dims specification
+            # NOTE: legacy code did not allow list of list of strings without shape. when dims was provided without
+            # shape, shape was set to tuple([None] * len(dims))
+            new_dims = list()
+            for i in range(len(dims)):
+                dim_name = dims[i] if dims[i] else 'dim' + str(i)
+                new_dims.append(DimSpec(name=dim_name, required=True, length=None))
+            self['shape'] = tuple([None] * len(dims))
+            self['dims'] = tuple(new_dims)
+
+        if coords is not None:
+            for _i, coord in enumerate(coords):
+                if isinstance(coord, CoordSpec):
+                    pass  # TODO
+                elif isinstance(coord, dict):
+                    pass  # TODO
+                else:
+                    msg = 'Must use CoordSpec to define coordinate - found %s at element %d' % (type(coord), _i)
+                    raise ValueError(msg)
+            self['coords'] = tuple(coords)
+            if self.dims is None:
+                raise ValueError("'dims' must be defined with 'coords'.")
+
         if dtype is not None:
             if isinstance(dtype, list):  # Dtype is a compound data type
                 for _i, col in enumerate(dtype):
@@ -710,6 +895,19 @@ class DatasetSpec(BaseStorageSpec):
         return self.get('dims', None)
 
     @property
+    def min_num_dims(self):
+        ''' The minimum number of dimensions of this Dataset '''
+        for _i, d in enumerate(self.dims):
+            if not d.required:
+                return _i
+        return len(self.dims)
+
+    @property
+    def coords(self):
+        ''' The coordinates of this Dataset '''
+        return self.get('coords', None)
+
+    @property
     def dtype(self):
         ''' The data type of the Dataset '''
         return self.get('dtype', None)
@@ -726,6 +924,7 @@ class DatasetSpec(BaseStorageSpec):
 
     @classmethod
     def __check_dim(cls, dim, data):
+        # TODO
         return True
 
     @classmethod

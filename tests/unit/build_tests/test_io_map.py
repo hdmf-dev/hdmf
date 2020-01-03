@@ -14,6 +14,8 @@ from tests.unit.utils import CORE_NAMESPACE
 
 class Bar(Container):
 
+    __fields__ = ('data', 'attr1', 'attr2', 'attr3', {'name': 'foo', 'child': True})
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
             {'name': 'data', 'type': ('data', 'array_data'), 'doc': 'some data'},
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
@@ -23,13 +25,11 @@ class Bar(Container):
     def __init__(self, **kwargs):
         name, data, attr1, attr2, attr3, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'foo', kwargs)
         super().__init__(name=name)
-        self.__data = data
-        self.__attr1 = attr1
-        self.__attr2 = attr2
-        self.__attr3 = attr3
-        self.__foo = foo
-        if self.__foo is not None and self.__foo.parent is None:
-            self.__foo.parent = self
+        self.data = data
+        self.attr1 = attr1
+        self.attr2 = attr2
+        self.attr3 = attr3
+        self.foo = foo
 
     def __eq__(self, other):
         attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
@@ -42,26 +42,6 @@ class Bar(Container):
     @property
     def data_type(self):
         return 'Bar'
-
-    @property
-    def data(self):
-        return self.__data
-
-    @property
-    def attr1(self):
-        return self.__attr1
-
-    @property
-    def attr2(self):
-        return self.__attr2
-
-    @property
-    def attr3(self):
-        return self.__attr3
-
-    @property
-    def foo(self):
-        return self.__foo
 
 
 class Foo(Container):
@@ -294,6 +274,9 @@ class TestDynamicContainer(TestCase):
         with self.assertRaises(TypeError):
             inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
 
+        with self.assertRaisesWith(TypeError, "unrecognized argument: 'name'"):
+            inst = cls([1, 2, 3, 4], 'string attribute', 1000, name='My Baz', attr3=98.6, attr4=1.0)
+
         inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'A fixed name')
         self.assertEqual(inst.data, [1, 2, 3, 4])
@@ -394,19 +377,21 @@ class TestObjectMapperMixin(metaclass=ABCMeta):
 class TestObjectMapperNested(TestObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
+        attr2_spec = AttributeSpec('attr2', 'an example integer attribute', 'int')
+        attr1_spec = AttributeSpec('attr1', 'an example string attribute', 'text')
+        dset_spec = DatasetSpec('an example dataset', 'int', name='data', attributes=[attr2_spec])
         self.bar_spec = GroupSpec('A test group specification with a data type',
                                   data_type_def='Bar',
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data',
-                                                        attributes=[AttributeSpec(
-                                                            'attr2', 'an example integer attribute', 'int')])],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+                                  datasets=[dset_spec],
+                                  attributes=[attr1_spec])
 
     def test_build(self):
-        ''' Test default mapping functionality when object attributes map to an  attribute deeper
+        ''' Test default mapping functionality when object attributes map to an attribute deeper
         than top-level Builder '''
         container_inst = Bar('my_bar', list(range(10)), 'value1', 10)
-        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
-            'data', list(range(10)), attributes={'attr2': 10})},
+        dataset_bldr = DatasetBuilder('data', list(range(10)), attributes={'attr2': 10})
+        expected = GroupBuilder('my_bar',
+                                datasets={'data': dataset_bldr},
                                 attributes={'attr1': 'value1'})
         self._remap_nested_attr()
         builder = self.mapper.build(container_inst, self.manager)
@@ -416,9 +401,12 @@ class TestObjectMapperNested(TestObjectMapperMixin, TestCase):
         ''' Test default mapping functionality when object attributes map to an attribute
         deeper than top-level Builder '''
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
-        builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
-            'data', list(range(10)), attributes={'attr2': 10})},
-                               attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
+        dataset_bldr = DatasetBuilder('data', list(range(10)), attributes={'attr2': 10})
+        builder = GroupBuilder('my_bar',
+                               datasets={'data': dataset_bldr},
+                               attributes={'attr1': 'value1',
+                                           'data_type': 'Bar',
+                                           'namespace': CORE_NAMESPACE,
                                            'object_id': expected.object_id})
         self._remap_nested_attr()
         container = self.mapper.construct(builder, self.manager)
@@ -445,17 +433,21 @@ class TestObjectMapperNested(TestObjectMapperMixin, TestCase):
 class TestObjectMapperNoNesting(TestObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
+        attr2_spec = AttributeSpec('attr2', 'an example integer attribute', 'int')
+        attr1_spec = AttributeSpec('attr1', 'an example string attribute', 'text')
+        dset_spec = DatasetSpec('an example dataset', 'int', name='data',)
         self.bar_spec = GroupSpec('A test group specification with a data type',
                                   data_type_def='Bar',
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                              AttributeSpec('attr2', 'an example integer attribute', 'int')])
+                                  datasets=[dset_spec],
+                                  attributes=[attr1_spec, attr2_spec])
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
         container = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = self.mapper.build(container, self.manager)
-        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
+        dataset_bldr = DatasetBuilder('data', list(range(10)))
+        expected = GroupBuilder('my_bar',
+                                datasets={'data': dataset_bldr},
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
 
@@ -463,13 +455,17 @@ class TestObjectMapperNoNesting(TestObjectMapperMixin, TestCase):
         ''' Test default mapping functionality when no attributes are nested '''
         container = Bar('my_bar', [], 'value1', 10)
         builder = self.mapper.build(container, self.manager)
-        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
+        dataset_bldr = DatasetBuilder('data', [])
+        expected = GroupBuilder('my_bar',
+                                datasets={'data': dataset_bldr},
                                 attributes={'attr1': 'value1', 'attr2': 10})
         self.assertDictEqual(builder, expected)
 
     def test_construct(self):
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
-        builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
+        dataset_bldr = DatasetBuilder('data', list(range(10)))
+        builder = GroupBuilder('my_bar',
+                               datasets={'data': dataset_bldr},
                                attributes={'attr1': 'value1', 'attr2': 10, 'data_type': 'Bar',
                                            'namespace': CORE_NAMESPACE, 'object_id': expected.object_id})
         container = self.mapper.construct(builder, self.manager)

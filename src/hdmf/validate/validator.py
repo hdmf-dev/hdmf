@@ -122,6 +122,8 @@ def check_shape(expected, received):
         ret = True
     else:
         if isinstance(expected, (list, tuple)):
+            if len(expected) == 0:
+                return received is None
             if isinstance(expected[0], (list, tuple)):
                 for sub in expected:
                     if check_shape(sub, received):
@@ -228,7 +230,8 @@ class ValidatorMap:
         builder = getargs('builder', kwargs)
         dt = builder.attributes.get(self.__type_key)
         if dt is None:
-            msg = "builder must have data type defined with attribute '%s'" % self.__type_key
+            msg = ("builder (name: '%s') must have data type defined with attribute '%s'"
+                   % (builder.name, self.__type_key))
             raise ValueError(msg)
         validator = self.get_validator(dt)
         return validator.validate(builder)

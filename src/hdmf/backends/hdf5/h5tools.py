@@ -4,6 +4,7 @@ import os.path
 from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import warnings
+import json
 
 from ...container import Container
 from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
@@ -25,6 +26,9 @@ H5_TEXT = special_dtype(vlen=str)
 H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
+
+DIMS_ATTR = 'dimensions'
+COORDS_ATTR = 'coordinates'
 
 
 class HDF5IO(HDMFIO):
@@ -404,12 +408,20 @@ class HDF5IO(HDMFIO):
         ret.written = True
         return ret
 
-    def __read_dataset(self, h5obj, name=None):
+    def __read_dataset(self, h5obj, name=None):  # noqa: C901
         kwargs = {
             "attributes": self.__read_attrs(h5obj),
             "dtype": h5obj.dtype,
             "maxshape": h5obj.maxshape
         }
+        if DIMS_ATTR in kwargs['attributes']:
+            dims = tuple(json.loads(kwargs['attributes'].pop(DIMS_ATTR)))
+            if dims:
+                kwargs['dims'] = dims
+        if COORDS_ATTR in kwargs['attributes']:
+            coords = json.loads(kwargs['attributes'].pop(COORDS_ATTR))
+            if coords:
+                kwargs['coords'] = coords
         for key, val in kwargs['attributes'].items():
             if isinstance(val, bytes):
                 kwargs['attributes'][key] = val.decode('UTF-8')
@@ -743,6 +755,10 @@ class HDF5IO(HDMFIO):
         else:
             options['io_settings'] = {}
         attributes = builder.attributes
+        if builder.dims:
+            attributes[DIMS_ATTR] = json.dumps(builder.dims)
+        if builder.coords:
+            attributes[COORDS_ATTR] = json.dumps(builder.coords)
         options['dtype'] = builder.dtype
         dset = None
         link = None

@@ -39,7 +39,7 @@ class TestEmptySpec(ValidatorTestBase):
 
     def test_invalid_missing_req_type(self):
         builder = GroupBuilder('my_bar')
-        err_msg = r"builder must have data type defined with attribute '[A-Za-z_]+'"
+        err_msg = r"builder \(name: 'my_bar'\) must have data type defined with attribute '[A-Za-z_]+'"
         with self.assertRaisesRegex(ValueError, err_msg):
             self.vmap.validate(builder)
 

@@ -3,7 +3,9 @@ from abc import abstractmethod
 from uuid import uuid4
 from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
 from .data_utils import DataIO
+from collections import namedtuple
 from warnings import warn
+import xarray as xr
 import h5py
 
 
@@ -154,19 +156,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         return self.__modified
 
     @docval({'name': 'modified', 'type': bool,
-             'doc': 'whether or not this Container has been modified', 'default': True})
+             'doc': 'whether or not this AbstractContainer has been modified', 'default': True})
     def set_modified(self, **kwargs):
         modified = getargs('modified', kwargs)
         self.__modified = modified
-        if modified and isinstance(self.parent, Container):
+        if modified and isinstance(self.parent, AbstractContainer):
             self.parent.set_modified()
 
     @property
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'Container',
-             'doc': 'the child Container for this Container', 'default': None})
+    @docval({'name': 'child', 'type': 'AbstractContainer',
+             'doc': 'the child AbstractContainer for this AbstractContainer', 'default': None})
     def add_child(self, **kwargs):
         warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
         child = getargs('child', kwargs)
@@ -212,8 +214,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
         if self.parent is not None:
             if isinstance(self.parent, AbstractContainer):
-                raise ValueError(('Cannot reassign parent to Container: %s. '
-                                  'Parent is already: %s.' % (repr(self), repr(self.parent))))
+                raise ValueError(('Cannot reassign parent to: %s. Parent is already: %s.'
+                                  % (repr(self), repr(self.parent))))
             else:
                 if parent_container is None:
                     raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))
@@ -228,12 +230,20 @@ class AbstractContainer(metaclass=ExtenderMeta):
                     self.__parent.add_candidate(parent_container)
         else:
             self.__parent = parent_container
-            if isinstance(parent_container, Container):
+            if isinstance(parent_container, AbstractContainer):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
 
 class Container(AbstractContainer):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
+    def __init__(self, **kwargs):
+        call_docval_func(super().__init__, kwargs)
+        # dict of active dimension names, where key is name of data array and value is a list of names, one per axis
+        self.__dims = dict()
+        # dict of dimension coordinates, where key is name of data array and value is a list of label-dataset pairs
+        self.__coords = dict()
 
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
@@ -244,8 +254,7 @@ class Container(AbstractContainer):
         if isinstance(field, dict):
             for k in field.keys():
                 if k not in cls._pconf_allowed_keys:
-                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" %\
-                           (k, field['name'], cls.__name__)
+                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" % (k, field['name'], cls.__name__)
                     raise ValueError(msg)
             if field.get('required_name', None) is not None:
                 name = field['required_name']
@@ -373,6 +382,182 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
+    @property
+    def dims(self):
+        '''
+        Return a dict of dimension names, indexed by data array name, for this Container. Each value is a list of
+        names, one for each dimension of the array.
+        '''
+        return self.__dims
+
+    @docval({'name': 'data_name', 'type': str, 'doc': ''},
+            {'name': 'dim', 'type': str, 'doc': ''})
+    def _get_dim_axis(self, **kwargs):
+        """Return the axis corresponding to the given dimension of the given array."""
+        # TODO updateme
+        data_name, dim = getargs('data_name', 'dim', kwargs)
+        if data_name not in self.fields:
+            raise ValueError("No field named '%s' in %s." % (data_name, self.__class__.__name__))
+        if data_name not in self.dims:
+            return None  # TODO should this return None or raise an error?
+        try:
+            axis = self.dims[data_name].index(dim)
+        except ValueError:
+            raise ValueError("Dim name '%s' not found for field '%s' of %s."
+                             % (dim, data_name, self.__class__.__name__))
+        return axis
+
+    @docval({'name': 'array_name', 'type': str, 'doc': ''},
+            {'name': 'dims', 'type': tuple, 'doc': ''})
+    def set_dims(self, **kwargs):
+        """
+        Set a coordinate between an axis/axes of a given array and an axis/axes of another array in this Container.
+
+        This should be used only internally within PyNWB. User-defined dimensions will not be saved.
+        """
+        array_name, dims = getargs('array_name', 'dims', kwargs)
+        if array_name not in self.fields:
+            raise ValueError("Field named '%s' not found in %s '%s'."
+                             % (array_name, self.__class__.__name__, self.name))
+        if array_name in self.dims:
+            raise ValueError("Cannot reset dims for field '%s' in %s '%s'. Dims is already %s."
+                             % (array_name, self.__class__.__name__, self.name, self.dims[array_name]))
+        if not Container.__all_unique(dims):
+            raise ValueError("Cannot set dims for field '%s' in %s '%s'. Dim names must be unique."
+                             % (array_name, self.__class__.__name__, self.name))
+
+        data = getattr(self, array_name)
+        data_shape = get_data_shape(data)
+        if data_shape is None:
+            raise ValueError("Cannot determine shape of field '%s' in %s '%s'."
+                             % (array_name, self.__class__.__name__, self.name))
+        if len(data_shape) != len(dims):
+            raise ValueError("Number of dims must equal number of axes for field '%s' in %s '%s' (%d != %d)."
+                             % (array_name, self.__class__.__name__, self.name, len(dims), len(data_shape)))
+
+        self.dims[array_name] = dims
+
+    @staticmethod
+    def __all_unique(x):
+        """Return whether all elements in the given iterable are unique."""
+        seen = set()
+        return not any(i in seen or seen.add(i) for i in x)
+
+    @property
+    def coords(self):
+        """
+        Return a dictionary of coordinates, indexed by array name, for this Container. Each value is a dictionary of
+        coordinates, indexed by label, where the value is a tuple: (tuple of dimension names, the coordinate array).
+        """
+        return self.__coords
+
+    @docval({'name': 'array_name', 'type': str, 'doc': ''},
+            {'name': 'name', 'type': str, 'doc': ''},
+            {'name': 'dims_index', 'type': tuple, 'doc': ''},
+            {'name': 'coord_array_name', 'type': str, 'doc': ''},
+            {'name': 'coord_array_dims_index', 'type': tuple, 'doc': ''},
+            {'name': 'coord_type', 'type': str, 'doc': ''})
+    def set_coord(self, **kwargs):
+        """
+        Set a coordinate between an axis/axes of a given array and an axis/axes of another array in this Container.
+
+        This should be used only internally within PyNWB. User-defined coordinates will not be saved.
+
+        Usage examples:
+        Field 'data' has dim 'time' for axis 0, 'electrodes' for axis 1.
+        Field 'timestamps' has cooordinates for axis 0 of data and length equal to data.shape[0].
+        set_coord(array_name='data', name='my_time', dims_index=(0, ), coord_array_name='timestamps',
+                  coord_array_dims_index=(0, ), coord_type='aligned')
+        will result in:
+        self.coords['data']['my_time'] == Coordinates.Coord(name='my_time', dims=('time', ),
+                                                            coord_array_name='timestamps', coord_array_dims_index=(0, ),
+                                                            coord_type='aligned')
+
+        Field 'data' has dim 'frame' for axis 0, 'x' for axis 1, and 'y' for axis 2.
+        Field 'dorsal_ventral' is a coordinate for axes 1 and 2 of data.
+        set_coord(array_name='data', name='dv', dims_index=(1, 2), coord_array_name='dorsal_ventral',
+                  coord_array_dims_index=(0, 1), coord_type='aligned')
+        will result in:
+        self.coords['data']['dv'] == Coordinates.Coord(name='dv', dims=('x', 'y'),
+                                                       coord_array_name='dorsal_ventral', coord_array_dims_index=(0, 1),
+                                                       coord_type='aligned')
+        """
+        array_name, name, dims_index, = getargs('array_name', 'name', 'dims_index', kwargs)
+        coord_array_name, coord_array_dims_index, coord_type = getargs('coord_array_name', 'coord_array_dims_index',
+                                                                       'coord_type', kwargs)
+        if array_name not in self.fields:
+            raise ValueError("Cannot set coord '%s'. Field name '%s' not found in %s '%s'."
+                             % (name, array_name, self.__class__.__name__, self.name))
+        if array_name not in self.dims:
+            raise ValueError("Cannot set coord '%s'. No dimensions have been specified for '%s' in %s '%s'."
+                             % (name, array_name, self.__class__.__name__, self.name))
+        if coord_array_name not in self.fields:
+            raise ValueError("Cannot set coord '%s'. Field name '%s' not found in %s '%s'."
+                             % (name, coord_array_name, self.__class__.__name__, self.name))
+        if array_name == coord_array_name:
+            raise ValueError("Cannot set coord '%s' to itself: %s" % (name, array_name))
+        if len(dims_index) != len(coord_array_dims_index):
+            raise ValueError("Cannot set coord '%s'. Number of specified dimension indices must equal number of "
+                             "specified coord array dimension indices (%d != %d)."
+                             % (name, len(dims_index), len(coord_array_dims_index)))
+
+        data = getattr(self, array_name)
+        data_shape = get_data_shape(data)
+        coord_data = getattr(self, coord_array_name)
+        coord_shape = get_data_shape(coord_data)
+
+        if coord_type == 'aligned':
+            for daxis, caxis in zip(dims_index, coord_array_dims_index):
+                if data_shape[daxis] != coord_shape[caxis]:
+                    raise ValueError(("Cannot set coord '%s'. Dimension index %d of array '%s' must have the same "
+                                      "length as dimension index %d of array '%s' in %s '%s' (%d != %d).")
+                                     % (name, daxis, array_name, caxis, coord_data, self.__class__.__name__, self.name,
+                                        data_shape[daxis], coord_shape[caxis]))
+        else:
+            raise ValueError("Cannot set coord '%s'. Unknown coord type: %s" % (name, coord_type))
+
+        if array_name not in self.coords:
+            self.coords[array_name] = Coordinates(parent=self)  # initialize for this array
+
+        dims = list()
+        for dims_ind in dims_index:
+            dims.append(self.dims[array_name][dims_ind])  # get dim names
+
+        self.coords[array_name].add(name=name, dims=tuple(dims), coord_array=coord_data,
+                                    coord_array_dims_index=coord_array_dims_index, coord_type=coord_type)
+
+    @docval({'name': 'array_name', 'type': str, 'doc': ''})
+    def to_xarray_dataarray(self, **kwargs):
+        """Return an xarray.DataArray for the given array in this Container, with dims and coords set."""
+        array_name = getargs('array_name', kwargs)
+        if array_name not in self.fields:
+            raise ValueError("Field name '%s' not found in %s '%s'." % (array_name, self.__class__.__name__, self.name))
+
+        xr_kwargs = dict()
+        if array_name in self.dims:
+            xr_kwargs['dims'] = self.dims[array_name]
+
+        if array_name in self.coords:
+            # convert the Coordinates dictionary of Coordinate.Coord objs into an xarray coords dictionary of tuples
+            xr_coords = dict()
+            for coord in self.coords[array_name].values():
+                coord_array = coord.coord_array
+                coord_array_shape = get_data_shape(coord_array)
+                if len(coord.dims) != len(coord_array_shape):
+                    raise ValueError("Cannot convert the array '%s' to an xarray.DataArray. All coordinate arrays "
+                                     "must map all of their dimensions to a set of dimensions on '%s'."
+                                     % (array_name, array_name))
+                xr_coords[coord.name] = (coord.dims, coord_array)
+            xr_kwargs['coords'] = xr_coords
+
+        arr = xr.DataArray(getattr(self, array_name), **xr_kwargs)
+        return arr
+
+    @docval({'name': 'array_name', 'type': str, 'doc': ''})
+    def to_xarray_dataset(self, **kwargs):
+        """Return an xarray.Dataset of all of the labeled arrays in this Container."""
+        raise NotImplementedError()
+
 
 class Data(AbstractContainer):
     """
@@ -464,3 +649,60 @@ class DataRegion(Data):
         The region that indexes into data e.g. slice or list of indices
         '''
         pass
+
+
+class Coordinates:
+    """A dictionary-like object that holds coordinate data (Coord namedtuple value) by name (string key)."""
+    # use composition of a dict instead of inheritance to restrict user's ability to use arbitrary dict methods
+    # values in this dict cannot be changed once set
+
+    Coord = namedtuple('Coord', ['name', 'dims', 'coord_array', 'coord_array_dims_index', 'coord_type'])
+
+    @docval({'name': 'parent', 'type': Container, 'doc': 'parent container of the coordinate'})
+    def __init__(self, **kwargs):
+        self.__parent = kwargs['parent']
+        self.__dict = dict()
+
+    @docval({'name': 'name', 'type': str, 'doc': 'coordinate name'},
+            {'name': 'dims', 'type': tuple, 'doc': 'tuple of dimension names to which the coordinate applies'},
+            {'name': 'coord_array', 'type': ('data', 'array_data'), 'doc': 'coordinate data array'},
+            {'name': 'coord_array_dims_index', 'type': tuple,
+             'doc': 'tuple of dimension indices (0-indexed) of coordinate data array'},
+            {'name': 'coord_type', 'type': str, 'doc': 'coordinate type'})
+    def add(self, **kwargs):
+        name = kwargs['name']
+        if name in self.__dict:
+            msg = "Coordinate '%s' already exists. Cannot overwrite values in %s." % (name, self.__class__.__name__)
+            raise ValueError(msg)
+        self.__dict[name] = Coordinates.Coord(**kwargs)
+
+    def __getitem__(self, key):
+        return self.__dict[key]
+
+    def __repr__(self):
+        return repr(self.__dict)
+
+    def __len__(self):
+        return len(self.__dict)
+
+    def __contains__(self, item):
+        return item in self.__dict
+
+    def __iter__(self):
+        return iter(self.__dict)
+
+    def keys(self):
+        return self.__dict.keys()
+
+    def values(self):
+        return self.__dict.values()
+
+    def items(self):
+        return self.__dict.items()
+
+    def __eq__(self, other):
+        return self.__dict == other.__dict and self.__parent == other.__parent
+
+    @property
+    def parent(self):
+        return self.__parent

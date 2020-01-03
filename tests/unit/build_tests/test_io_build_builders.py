@@ -1,4 +1,4 @@
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, CoordBuilder
 from hdmf.testing import TestCase
 
 
@@ -43,11 +43,9 @@ class GroupBuilderSetterTests(TestCase):
         self.assertIs(self.gb, el.parent)
         self.assertIs(self.gb2, gp.parent)
 
-    # @unittest.expectedFailure
     def test_set_attribute(self):
         self.gb.set_attribute('key', 'value')
         self.assertIn('key', self.gb.obj_type)
-        # self.assertEqual(dict.__getitem__(self.gb, 'attributes')['key'], 'value')
         self.assertEqual(self.gb['key'], 'value')
 
     def test_parent_constructor(self):
@@ -244,7 +242,6 @@ class GroupBuilderDeepUpdateTests(TestCase):
         gb2 = GroupBuilder('gb2', datasets={'dataset2': DatasetBuilder('dataset2', [4, 5, 6])})
         gb1.deep_update(gb2)
         self.assertIn('dataset2', gb1)
-        # self.assertIs(gb1['dataset2'], gb2['dataset2'])
         self.assertListEqual(gb1['dataset2'].data, gb2['dataset2'].data)
 
     def test_mutually_exclusive_attributes(self):
@@ -306,3 +303,29 @@ class DatasetBuilderDeepUpdateTests(TestCase):
         db1.deep_update(db2)
         self.assertListEqual(db1.data, db2.data)
         self.assertIn('attr1', db1.attributes)
+
+
+class TestCoordBuilder(TestCase):
+
+    def test_init_get_attr(self):
+        cb = CoordBuilder(name='letters', axes=(0, ), coord_dataset_name='data2', coord_axes=(0, ),
+                          coord_type='aligned')
+        self.assertEqual(cb.coord_dataset_name, 'data2')
+
+    def test_get_attr_not_found(self):
+        cb = CoordBuilder(name='letters', axes=(0, ), coord_dataset_name='data2', coord_axes=(0, ),
+                          coord_type='aligned')
+        with self.assertRaisesWith(AttributeError, "'CoordBuilder' object has no attribute 'bad_key'"):
+            cb.bad_key
+
+    def test_set_attr(self):
+        cb = CoordBuilder(name='letters', axes=(0, ), coord_dataset_name='data2', coord_axes=(0, ),
+                          coord_type='aligned')
+        with self.assertRaisesWith(AttributeError, "can't set attribute"):
+            cb.name = 'new_name'
+
+    def test_repr(self):
+        cb = CoordBuilder(name='letters', axes=(0, ), coord_dataset_name='data2', coord_axes=(0, ),
+                          coord_type='aligned')
+        self.assertEqual(str(cb), ("CoordBuilder(name='letters', axes=(0,), coord_dataset_name='data2', "
+                                   "coord_axes=(0,), coord_type='aligned')"))

@@ -226,7 +226,7 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io = HDF5IO(self.path, manager=self.manager, mode='a')
         io.write_builder(self.builder)
         builder = io.read_builder()
-        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
+        with self.assertRaisesWith(AttributeError, "Cannot change written to not written"):
             builder.written = False
         io.close()
 
