@@ -37,7 +37,7 @@ class DtypeHelper():
             'object': ['object'],
             'region': ['region'],
             'numeric': ['numeric'],
-            'isodatetime': ["isodatetime", "datetime", "datetime64"]
+            'isodatetime': ["isodatetime", "datetime"]
         }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
