@@ -4,9 +4,7 @@ from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.build import ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
-from abc import ABCMeta
-from six import with_metaclass
-import unittest
+from abc import ABCMeta, abstractmethod
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 
@@ -16,7 +14,7 @@ class FooMapper(ObjectMapper):
     """
 
     def __init__(self, spec):
-        super(FooMapper, self).__init__(spec)
+        super().__init__(spec)
         my_data_spec = spec.get_dataset('my_data')
         self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
 
@@ -112,10 +110,10 @@ class TestBuildManager(TestBase):
         self.assertIs(container1, container2)
 
 
-class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
+class TestNestedBaseMixin(metaclass=ABCMeta):
 
     def setUp(self):
-        super(TestNestedBase, self).setUp()
+        super().setUp()
         self.foo_bucket = FooBucket('test_foo_bucket', [
                             Foo('my_foo1', list(range(10)), 'value1', 10),
                             Foo('my_foo2', list(range(10, 20)), 'value2', 20)])
@@ -143,14 +141,17 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
         self.type_map.register_map(FooBucket, self.setUpBucketMapper())
         self.manager = BuildManager(self.type_map)
 
+    @abstractmethod
     def setUpBucketBuilder(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketBuilder is implemented')
 
+    @abstractmethod
     def setUpBucketSpec(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketSpec is implemented')
 
+    @abstractmethod
     def setUpBucketMapper(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketMapper is implemented')
 
     def test_build(self):
         ''' Test default mapping for an Container that has an Container as an attribute value '''
@@ -162,7 +163,7 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
         self.assertEqual(container, self.foo_bucket)
 
 
-class TestNestedContainersNoSubgroups(TestNestedBase):
+class TestNestedContainersNoSubgroups(TestNestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers, but does not keep them in
@@ -188,7 +189,7 @@ class TestNestedContainersNoSubgroups(TestNestedBase):
         return ObjectMapper
 
 
-class TestNestedContainersSubgroup(TestNestedBase):
+class TestNestedContainersSubgroup(TestNestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup
@@ -216,14 +217,14 @@ class TestNestedContainersSubgroup(TestNestedBase):
     def setUpBucketMapper(self):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
-                super(BucketMapper, self).__init__(spec)
+                super().__init__(spec)
                 self.unmap(spec.get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
 
 
-class TestNestedContainersSubgroupSubgroup(TestNestedBase):
+class TestNestedContainersSubgroupSubgroup(TestNestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup
@@ -253,7 +254,7 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
     def setUpBucketMapper(self):
         class BucketMapper(ObjectMapper):
             def __init__(self, spec):
-                super(BucketMapper, self).__init__(spec)
+                super().__init__(spec)
                 self.unmap(spec.get_group('foo_holder_holder'))
                 self.unmap(spec.get_group('foo_holder_holder').get_group('foo_holder'))
                 self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))

@@ -5,6 +5,7 @@ from .builders import ReferenceBuilder
 from .builders import RegionBuilder
 from .builders import LinkBuilder
 
-from .map import ObjectMapper
+from .objectmapper import ObjectMapper
+
 from .map import BuildManager
 from .map import TypeMap
