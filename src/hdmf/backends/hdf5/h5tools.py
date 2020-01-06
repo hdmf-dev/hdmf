@@ -176,14 +176,10 @@ class HDF5IO(HDMFIO):
                     spec = ns_catalog.get_spec(namespace, dt)
                     if spec.parent is not None:
                         continue
-                    h5_source = cls.__get_name(source)
+                    h5_source = os.path.splitext(source)[0]
                     spec = cls.__copy_spec(spec)
                     builder.add_spec(h5_source, spec)
         return builder
-
-    @classmethod
-    def __get_name(cls, path):
-        return os.path.splitext(path)[0]
 
     @classmethod
     def __copy_spec(cls, spec):
