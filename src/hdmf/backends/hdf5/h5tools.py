@@ -66,10 +66,10 @@ class HDF5IO(HDMFIO):
         self.__path = path
         self.__file = file_obj
         super().__init__(manager, source=path)
-        self.__built = dict()       # keep track of which files have been read
-        self.__read = dict()        # keep track of each builder for each dataset/group/link
+        self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
+        self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
-        self.__dci_queue = deque()       # a queue of DataChunkIterators that need to be exhausted
+        self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
 
     @property
