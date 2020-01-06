@@ -74,6 +74,7 @@ class HDF5IO(HDMFIO):
 
     @property
     def comm(self):
+        """the MPI communicator to use for parallel I/O"""
         return self.__comm
 
     @property
@@ -160,6 +161,7 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __convert_namespace(cls, ns_catalog, namespace):
+        """Convert a namespace to a builder for caching the schema"""
         ns = ns_catalog.get_namespace(namespace)
         builder = NamespaceBuilder(ns.doc, ns.name,
                                    full_name=ns.full_name,
