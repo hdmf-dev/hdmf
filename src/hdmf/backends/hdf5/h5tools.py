@@ -313,9 +313,29 @@ class HDF5IO(HDMFIO):
         return f_builder
 
     def __set_built(self, fpath, id, builder):
+        """
+        Update self.__built to cache the given builder for the given file and id.
+
+        :param fpath: Path to the HDF5 file containing the object
+        :type fpath: str
+        :param id: ID of the HDF5 object in the path
+        :type id: h5py GroupID object
+        :param builder: The builder to be cached
+        """
         self.__built.setdefault(fpath, dict()).setdefault(id, builder)
 
     def __get_built(self, fpath, id):
+        """
+        Look up a builder for the given file and id in self.__built cache
+
+        :param fpath: Path to the HDF5 file containing the object
+        :type fpath: str
+        :param id: ID of the HDF5 object in the path
+        :type id: h5py GroupID object
+
+        :return: Builder in the self.__built cache or None
+        """
+
         fdict = self.__built.get(fpath)
         if fdict:
             return fdict.get(id)
@@ -325,6 +345,11 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'h5obj', 'type': (Dataset, Group),
              'doc': 'the HDF5 object to the corresponding Builder object for'})
     def get_builder(self, **kwargs):
+        """
+        Get the builder for the corresponding h5py Group or Dataset
+
+        :raises ValueError: When no builder has been constructed yet for the given h5py object
+        """
         h5obj = getargs('h5obj', kwargs)
         fpath = h5obj.file.filename
         builder = self.__get_built(fpath, h5obj.id)
@@ -336,6 +361,11 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'h5obj', 'type': (Dataset, Group),
              'doc': 'the HDF5 object to the corresponding Container/Data object for'})
     def get_container(self, **kwargs):
+        """
+        Get the container for the corresponding h5py Group or Dataset
+
+        :raises ValueError: When no builder has been constructed yet for the given h5py object
+        """
         h5obj = getargs('h5obj', kwargs)
         builder = self.get_builder(h5obj)
         container = self.manager.construct(builder)
