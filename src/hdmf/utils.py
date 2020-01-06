@@ -225,7 +225,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 ret[argname] = args[argsi]
                 argsi += 1
             else:
-                ret[argname] = arg['default']
+                ret[argname] = _copy.copy(arg['default'])
             argval = ret[argname]
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
@@ -411,7 +411,6 @@ def docval(*validator, **options):
     rtype = options.pop('rtype', None)
     is_method = options.pop('is_method', True)
     allow_extra = options.pop('allow_extra', False)
-    val_copy = __sort_args(_copy.deepcopy(validator))
 
     def dec(func):
         _docval = _copy.copy(options)
@@ -420,7 +419,7 @@ def docval(*validator, **options):
         func.__doc__ = _docval.get('doc', func.__doc__)
         pos = list()
         kw = list()
-        for a in val_copy:
+        for a in validator:
             try:
                 a['type'] = __resolve_type(a['type'])
             except Exception as e:
@@ -436,7 +435,7 @@ def docval(*validator, **options):
             def func_call(*args, **kwargs):
                 self = args[0]
                 parsed = __parse_args(
-                            _copy.deepcopy(loc_val),
+                            loc_val,
                             args[1:],
                             kwargs,
                             enforce_type=enforce_type,
@@ -453,7 +452,7 @@ def docval(*validator, **options):
                 return func(self, **parsed['args'])
         else:
             def func_call(*args, **kwargs):
-                parsed = __parse_args(_copy.deepcopy(loc_val),
+                parsed = __parse_args(loc_val,
                                       args,
                                       kwargs,
                                       enforce_type=enforce_type,
