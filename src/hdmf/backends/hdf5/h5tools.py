@@ -312,13 +312,13 @@ class HDF5IO(HDMFIO):
             self.__read[self.__file] = f_builder
         return f_builder
 
-    def __set_built(self, fpath, path, builder):
-        self.__built.setdefault(fpath, dict()).setdefault(path, builder)
+    def __set_built(self, fpath, id, builder):
+        self.__built.setdefault(fpath, dict()).setdefault(id, builder)
 
-    def __get_built(self, fpath, path):
+    def __get_built(self, fpath, id):
         fdict = self.__built.get(fpath)
         if fdict:
-            return fdict.get(path)
+            return fdict.get(id)
         else:
             return None
 
@@ -327,10 +327,9 @@ class HDF5IO(HDMFIO):
     def get_builder(self, **kwargs):
         h5obj = getargs('h5obj', kwargs)
         fpath = h5obj.file.filename
-        path = h5obj.name
-        builder = self.__get_built(fpath, path)
+        builder = self.__get_built(fpath, h5obj.id)
         if builder is None:
-            msg = '%s:%s has not been built' % (fpath, path)
+            msg = '%s:%s has not been built' % (fpath, h5obj.name)
             raise ValueError(msg)
         return builder
 
@@ -369,20 +368,20 @@ class HDF5IO(HDMFIO):
                     builder_name = os.path.basename(target_path)
                     parent_loc = os.path.dirname(target_path)
                     # get builder if already read, else build it
-                    builder = self.__get_built(sub_h5obj.file.filename, target_path)
+                    builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.file[target_path].id)
                     if builder is None:
                         # NOTE: all links must have absolute paths
                         if isinstance(sub_h5obj, Dataset):
                             builder = self.__read_dataset(sub_h5obj, builder_name)
                         else:
                             builder = self.__read_group(sub_h5obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename, target_path, builder)
+                        self.__set_built(sub_h5obj.file.filename,  sub_h5obj.file[target_path].id, builder)
                     builder.location = parent_loc
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
                     link_builder.written = True
                     kwargs['links'][builder_name] = link_builder
                 else:
-                    builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.name)
+                    builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.id)
                     obj_type = None
                     read_method = None
                     if isinstance(sub_h5obj, Dataset):
@@ -393,7 +392,7 @@ class HDF5IO(HDMFIO):
                         obj_type = kwargs['groups']
                     if builder is None:
                         builder = read_method(sub_h5obj)
-                        self.__set_built(sub_h5obj.file.filename, sub_h5obj.name, builder)
+                        self.__set_built(sub_h5obj.file.filename, sub_h5obj.id, builder)
                     obj_type[builder.name] = builder
             else:
                 warnings.warn(os.path.join(h5obj.name, k), BrokenLinkWarning)
@@ -427,7 +426,7 @@ class HDF5IO(HDMFIO):
                 # TODO (AJTRITT):  This should call __read_ref to support Group references
                 target = h5obj.file[scalar]
                 target_builder = self.__read_dataset(target)
-                self.__set_built(target.file.filename, target.name, target_builder)
+                self.__set_built(target.file.filename, target.id, target_builder)
                 if isinstance(scalar, RegionReference):
                     kwargs['data'] = RegionBuilder(scalar, target_builder)
                 else:
@@ -472,7 +471,7 @@ class HDF5IO(HDMFIO):
 
     def __read_ref(self, h5obj):
         ret = None
-        ret = self.__get_built(h5obj.file.filename, h5obj.name)
+        ret = self.__get_built(h5obj.file.filename, h5obj.id)
         if ret is None:
             if isinstance(h5obj, Dataset):
                 ret = self.__read_dataset(h5obj)
@@ -480,7 +479,7 @@ class HDF5IO(HDMFIO):
                 ret = self.__read_group(h5obj)
             else:
                 raise ValueError("h5obj must be a Dataset or a Group - got %s" % str(h5obj))
-            self.__set_built(h5obj.file.filename, h5obj.name, ret)
+            self.__set_built(h5obj.file.filename, h5obj.id, ret)
         return ret
 
     def open(self):
