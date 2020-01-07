@@ -265,17 +265,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     return {'args': ret, 'type_errors': type_errors, 'value_errors': value_errors}
 
 
-def __sort_args(validator):
-    pos = list()
-    kw = list()
-    for arg in validator:
-        if "default" in arg:
-            kw.append(arg)
-        else:
-            pos.append(arg)
-    return list(_itertools.chain(pos, kw))
-
-
 docval_idx_name = '__dv_idx__'
 docval_attr_name = '__docval__'
 __docval_args_loc = 'args'
