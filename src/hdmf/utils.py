@@ -138,14 +138,17 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     type_errors = list()
     value_errors = list()
     argsi = 0
-    extras = dict(kwargs)
+    extras = dict()  # has to be initialized to empty dict here, to avoid spurious errors reported upon early raises
 
-    # check for duplicates in docval
-    names = [x['name'] for x in validator]
-    duplicated = [item for item, count in collections.Counter(names).items() if count > 1]
-    if duplicated:
-        raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
+        # check for duplicates in docval
+        names = [x['name'] for x in validator]
+        duplicated = [item for item, count in collections.Counter(names).items()
+                      if count > 1]
+        if duplicated:
+            raise ValueError(
+                'The following names are duplicated: {}'.format(duplicated))
+
         if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
             nargs = len(args)
         else:  # allow for keyword args
@@ -165,6 +168,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
                                                                                     list(unsupported_terms)))
         # process positional arguments of the docval specification (no default value)
+        extras = dict(kwargs)
         while True:
             if 'default' in arg:
                 break
@@ -253,6 +257,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             arg = next(it)
     except StopIteration:
         pass
+    except TypeError as e:
+        type_errors.append(str(e))
+    except ValueError as e:
+        value_errors.append(str(e))
+
     if not allow_extra:
         for key in extras.keys():
             type_errors.append("unrecognized argument: '%s'" % key)
