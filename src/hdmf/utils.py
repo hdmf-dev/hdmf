@@ -1,5 +1,4 @@
 import copy as _copy
-import itertools as _itertools
 from abc import ABCMeta
 import collections
 import h5py
