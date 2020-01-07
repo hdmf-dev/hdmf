@@ -155,7 +155,13 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             nargs = len(args) + len(kwargs)
 
         if nargs > len(validator):
-            raise TypeError('Expected at most %s arguments, got %s' % (len(validator), nargs))
+            raise TypeError(
+                'Expected at most %d arguments %r, got %d: %d positional and %s'
+                % (
+                    len(validator), names,
+                    nargs, len(args), list(kwargs)
+                )
+            )
 
         # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
