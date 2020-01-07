@@ -297,7 +297,7 @@ class BaseStorageSpec(Spec):
     __type_key = 'data_type'
     __id_key = 'object_id'
 
-    @docval(*deepcopy(_attrbl_args))
+    @docval(*_attrbl_args)
     def __init__(self, **kwargs):
         name, doc, parent, quantity, attributes, linkable, data_type_def, data_type_inc =\
              getargs('name', 'doc', 'parent', 'quantity', 'attributes',
@@ -477,7 +477,7 @@ class BaseStorageSpec(Spec):
         ''' The number of times the object being specified should be present '''
         return self.get('quantity', DEF_QUANTITY)
 
-    @docval(*deepcopy(_attr_args))
+    @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
         pargs, pkwargs = fmt_docval_args(AttributeSpec.__init__, kwargs)
@@ -618,7 +618,7 @@ class DatasetSpec(BaseStorageSpec):
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*_dataset_args)
     def __init__(self, **kwargs):
         doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
         if shape is not None:
@@ -811,7 +811,7 @@ class GroupSpec(BaseStorageSpec):
     ''' Specification for groups
     '''
 
-    @docval(*deepcopy(_group_args))
+    @docval(*_group_args)
     def __init__(self, **kwargs):
         doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
         self.__data_types = dict()
@@ -1095,7 +1095,7 @@ class GroupSpec(BaseStorageSpec):
         ''' The links specificed in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
-    @docval(*deepcopy(_group_args))
+    @docval(*_group_args)
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
         doc = kwargs.pop('doc')
@@ -1127,7 +1127,7 @@ class GroupSpec(BaseStorageSpec):
         name = getargs('name', kwargs)
         return self.__groups.get(name, self.__links.get(name))
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*_dataset_args)
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
         doc = kwargs.pop('doc')
