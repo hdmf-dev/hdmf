@@ -448,7 +448,7 @@ def docval(*validator, **options):
                                               ('value_errors', ValueError)):
                 parse_err = parsed.get(error_type)
                 if parse_err:
-                    msg = ', '.join(parse_err)
+                    msg = '%s: %s' % (func.__qualname__, ', '.join(parse_err))
                     raise ExceptionType(msg)
 
             if is_method:
