@@ -419,40 +419,28 @@ def docval(*validator, **options):
                 pos.append(a)
         loc_val = pos+kw
         _docval[__docval_args_loc] = loc_val
-        if is_method:
-            def func_call(*args, **kwargs):
-                self = args[0]
-                parsed = __parse_args(
-                            loc_val,
-                            args[1:],
-                            kwargs,
-                            enforce_type=enforce_type,
-                            enforce_shape=enforce_shape,
-                            allow_extra=allow_extra)
 
-                for error_type, ExceptionType in (('type_errors', TypeError),
-                                                  ('value_errors', ValueError)):
-                    parse_err = parsed.get(error_type)
-                    if parse_err:
-                        msg = ', '.join(parse_err)
-                        raise ExceptionType(msg)
+        def func_call(*args, **kwargs):
+            parsed = __parse_args(
+                        loc_val,
+                        args[1:] if is_method else args,
+                        kwargs,
+                        enforce_type=enforce_type,
+                        enforce_shape=enforce_shape,
+                        allow_extra=allow_extra)
 
-                return func(self, **parsed['args'])
-        else:
-            def func_call(*args, **kwargs):
-                parsed = __parse_args(loc_val,
-                                      args,
-                                      kwargs,
-                                      enforce_type=enforce_type,
-                                      allow_extra=allow_extra)
-                for error_type, ExceptionType in (('type_errors', TypeError),
-                                                  ('value_errors', ValueError)):
-                    parse_err = parsed.get(error_type)
-                    if parse_err:
-                        msg = ', '.join(parse_err)
-                        raise ExceptionType(msg)
+            for error_type, ExceptionType in (('type_errors', TypeError),
+                                              ('value_errors', ValueError)):
+                parse_err = parsed.get(error_type)
+                if parse_err:
+                    msg = ', '.join(parse_err)
+                    raise ExceptionType(msg)
 
+            if is_method:
+                return func(args[0], **parsed['args'])
+            else:
                 return func(**parsed['args'])
+
         _rtype = rtype
         if isinstance(rtype, type):
             _rtype = rtype.__name__
