@@ -147,12 +147,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
         if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
-            # verify only that the number of positional args is <= number of docval specified args
-            if len(args) > len(validator):
-                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args)))
-        else:  # verify that the number of positional args + keyword args is <= number of docval specified args
-            if (len(args) + len(kwargs)) > len(validator):
-                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args) + len(kwargs)))
+            nargs = len(args)
+        else:  # allow for keyword args
+            nargs = len(args) + len(kwargs)
+
+        if nargs > len(validator):
+            raise TypeError('Expected at most %s arguments, got %s' % (len(validator), nargs))
 
         # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
