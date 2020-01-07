@@ -1,6 +1,6 @@
 import numpy as np
 from collections import OrderedDict
-from copy import copy, deepcopy
+from copy import copy
 from datetime import datetime
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
@@ -449,7 +449,7 @@ class TypeMap:
         fields = list()
 
         # copy docval args from superclass
-        for arg in deepcopy(get_docval(base.__init__)):
+        for arg in get_docval(base.__init__):
             existing_args.add(arg['name'])
             if arg['name'] in addl_fields:
                 continue
