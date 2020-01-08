@@ -255,6 +255,24 @@ jobs:
               create $CIRCLE_TAG --name $CIRCLE_TAG \
               --publish ./dist/*
 
+  test-deploy:
+    docker:
+      - image: circleci/python:3.7.0-stretch
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Deploy release
+          command: |
+            echo "Deploy release"
+            python -m venv ../venv
+            . ../venv/bin/activate
+            pip install twine
+            ls dist
+            tar -xzvf dist/hdmf-1.5.0.tar.gz
+            more dist/hdmf-1.5.0/src/hdmf/common/hdmf-common-schema/common/namespace.yaml
+
+
   pynwb-dev-python37:
     docker:
       - image: circleci/python:3.7.0-stretch
