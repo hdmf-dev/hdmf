@@ -191,7 +191,7 @@ class TestDocValidator(TestCase):
         """Test that docval catches missing argument
            with a single positional argument
         """
-        with self.assertRaisesWith(TypeError, "missing argument 'arg1'"):
+        with self.assertRaisesWith(TypeError, "MyTestClass.basic_add: missing argument 'arg1'"):
             self.test_obj.basic_add()
 
     def test_docval_add2(self):
@@ -254,7 +254,7 @@ class TestDocValidator(TestCase):
            arguments and a keyword argument when specifying
            keyword argument value with positional syntax
         """
-        with self.assertRaisesWith(TypeError, "incorrect type for 'arg2' (got 'str', expected 'int')"):
+        with self.assertRaisesWith(TypeError, "MyTestClass.basic_add2_kw: incorrect type for 'arg2' (got 'str', expected 'int')"):
             self.test_obj.basic_add2_kw('a string', 'bad string')
 
     def test_docval_add_sub(self):
@@ -282,7 +282,7 @@ class TestDocValidator(TestCase):
            argument is specified in both the parent and sublcass implementations,
            when using default values for keyword arguments
         """
-        with self.assertRaisesWith(TypeError, "missing argument 'arg5'"):
+        with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: missing argument 'arg5'"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string')
 
     def test_docval_add2_kw_kwsyntax_sub(self):
@@ -302,7 +302,7 @@ class TestDocValidator(TestCase):
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaisesWith(TypeError, "missing argument 'arg5'"):
+        with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: missing argument 'arg5'"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)
 
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
@@ -310,7 +310,7 @@ class TestDocValidator(TestCase):
            arguments and two keyword arguments, where two positional and one keyword
            argument is specified in both the parent and sublcass implementations
         """
-        with self.assertRaisesWith(TypeError, "None is not allowed for 'arg5' (expected 'float', not None)"):
+        with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: None is not allowed for 'arg5' (expected 'float', not None)"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)
 
     def test_only_kw_no_args(self):
@@ -372,28 +372,28 @@ class TestDocValidator(TestCase):
         """Test that docval raises an error if too many positional
            arguments are specified
         """
-        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesRegex(TypeError, r"MyTestClass\.basic_add2_kw: Expected at most 3 arguments \[.arg1., .arg2., .arg3.\], got 4: 4 positional and \[\]"):
             self.test_obj.basic_add2_kw('a string', 100, True, 'extra')
 
     def test_extra_args_pos_kw(self):
         """Test that docval raises an error if too many positional
            arguments are specified and a keyword arg is specified
         """
-        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesRegex(TypeError, r"MyTestClass\.basic_add2_kw: Expected at most 3 arguments \[.arg1., .arg2., .arg3.\], got 4: 3 positional and \[.arg3.\]"):
             self.test_obj.basic_add2_kw('a string', 'extra', 100, arg3=True)
 
     def test_extra_kwargs_pos_kw(self):
         """Test that docval raises an error if extra keyword
            arguments are specified
         """
-        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesRegex(TypeError, r"MyTestClass\.basic_add2_kw: Expected at most 3 arguments \[.arg1., .arg2., .arg3.\], got 4: 2 positional and \[.extra., .arg3.\]"):
             self.test_obj.basic_add2_kw('a string', 100, extra='extra', arg3=True)
 
     def test_extra_args_pos_only_ok(self):
         """Test that docval raises an error if too many positional
            arguments are specified even if allow_extra is True
         """
-        with self.assertRaisesWith(TypeError, 'Expected at most 3 arguments, got 4'):
+        with self.assertRaisesRegex(TypeError, r"MyTestClass\.basic_add2_kw_allow_extra: Expected at most 3 arguments \[.arg1., .arg2., .arg3.\], got 4: 4 positional and \[.extra.\]"):
             self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, 'extra', extra='extra')
 
     def test_extra_args_pos_kw_ok(self):
@@ -408,7 +408,7 @@ class TestDocValidator(TestCase):
            captures a positional argument before all positional
            arguments have been resolved
         """
-        with self.assertRaisesWith(TypeError, "got multiple values for argument 'arg1'"):
+        with self.assertRaisesWith(TypeError, "MyTestClass.basic_add2_kw: got multiple values for argument 'arg1'"):
             self.test_obj.basic_add2_kw('a string', 100, arg1='extra')
 
     def test_extra_args_dup_kw(self):
@@ -416,7 +416,7 @@ class TestDocValidator(TestCase):
            captures a positional argument before all positional
            arguments have been resolved and allow_extra is True
         """
-        with self.assertRaisesWith(TypeError, "got multiple values for argument 'arg1'"):
+        with self.assertRaisesWith(TypeError, "MyTestClass.basic_add2_kw_allow_extra: got multiple values for argument 'arg1'"):
             self.test_obj.basic_add2_kw_allow_extra('a string', 100, True, arg1='extra')
 
     def test_unsupported_docval_term(self):
@@ -436,7 +436,7 @@ class TestDocValidator(TestCase):
                 {'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape2'})
         def method(self, **kwargs):
             pass
-        with self.assertRaisesWith(ValueError, "The following names are duplicated: ['arg1']"):
+        with self.assertRaisesWith(ValueError, "TestDocValidator.test_catch_duplicate_names.<locals>.method: The following names are duplicated: ['arg1']"):
             method(self, arg1=[1])
 
     def test_get_docval_all(self):
@@ -529,7 +529,7 @@ class TestDocValidatorChain(TestCase):
 
     def test_type_arg_wrong_type(self):
         """Test that passing an object for an argument that does not match a specific type raises an error"""
-        err_msg = "incorrect type for 'arg1' (got 'object', expected 'str or MyChainClass')"
+        err_msg = "MyChainClass.__init__: incorrect type for 'arg1' (got 'object', expected 'str or MyChainClass')"
         with self.assertRaisesWith(TypeError, err_msg):
             MyChainClass(object(), [[10, 20], [30, 40], [50, 60]], [[10, 20]])
 
@@ -547,7 +547,7 @@ class TestDocValidatorChain(TestCase):
         # shape after an object is initialized
         obj2.arg3 = [10, 20, 30]
 
-        err_msg = "incorrect shape for 'arg3' (got '(3,)', expected '(None, 2)')"
+        err_msg = "MyChainClass.__init__: incorrect shape for 'arg3' (got '(3,)', expected '(None, 2)')"
         with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, obj2, [[100, 200]])
 
@@ -584,7 +584,7 @@ class TestDocValidatorChain(TestCase):
         # shape after an object is initialized
         obj2.arg4 = [10, 20, 30]
 
-        err_msg = "incorrect shape for 'arg4' (got '(3,)', expected '(None, 2)')"
+        err_msg = "MyChainClass.__init__: incorrect shape for 'arg4' (got '(3,)', expected '(None, 2)')"
         with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
 
