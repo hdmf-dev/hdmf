@@ -213,9 +213,8 @@ jobs:
     docker:
       - image: circleci/python:3.7.0-stretch
     steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
+      - attach_workspace:
+          at: ./
       - run:
           name: Publish wheel and source distribution as a GitHub pre-release
           command: |
@@ -235,9 +234,8 @@ jobs:
     docker:
       - image: circleci/python:3.7.0-stretch
     steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
+      - attach_workspace:
+          at: ./
       - run:
           name: Deploy release
           command: |
