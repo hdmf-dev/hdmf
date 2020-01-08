@@ -1,11 +1,8 @@
 import copy as _copy
-import itertools as _itertools
 from abc import ABCMeta
 import collections
-
 import h5py
 import numpy as np
-
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
@@ -227,7 +224,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 ret[argname] = args[argsi]
                 argsi += 1
             else:
-                ret[argname] = arg['default']
+                ret[argname] = _copy.deepcopy(arg['default'])
             argval = ret[argname]
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
@@ -265,17 +262,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         for key in extras.keys():
             ret[key] = extras[key]
     return {'args': ret, 'type_errors': type_errors, 'value_errors': value_errors}
-
-
-def __sort_args(validator):
-    pos = list()
-    kw = list()
-    for arg in validator:
-        if "default" in arg:
-            kw.append(arg)
-        else:
-            pos.append(arg)
-    return list(_itertools.chain(pos, kw))
 
 
 docval_idx_name = '__dv_idx__'
@@ -413,7 +399,6 @@ def docval(*validator, **options):
     rtype = options.pop('rtype', None)
     is_method = options.pop('is_method', True)
     allow_extra = options.pop('allow_extra', False)
-    val_copy = __sort_args(_copy.deepcopy(validator))
 
     def dec(func):
         _docval = _copy.copy(options)
@@ -422,7 +407,7 @@ def docval(*validator, **options):
         func.__doc__ = _docval.get('doc', func.__doc__)
         pos = list()
         kw = list()
-        for a in val_copy:
+        for a in validator:
             try:
                 a['type'] = __resolve_type(a['type'])
             except Exception as e:
@@ -438,7 +423,7 @@ def docval(*validator, **options):
             def func_call(*args, **kwargs):
                 self = args[0]
                 parsed = __parse_args(
-                            _copy.deepcopy(loc_val),
+                            loc_val,
                             args[1:],
                             kwargs,
                             enforce_type=enforce_type,
@@ -455,7 +440,7 @@ def docval(*validator, **options):
                 return func(self, **parsed['args'])
         else:
             def func_call(*args, **kwargs):
-                parsed = __parse_args(_copy.deepcopy(loc_val),
+                parsed = __parse_args(loc_val,
                                       args,
                                       kwargs,
                                       enforce_type=enforce_type,
@@ -607,7 +592,7 @@ class ExtenderMeta(ABCMeta):
         it = (a for a in it if hasattr(a, cls.__preinit))
         for func in it:
             func(name, bases, classdict)
-        super(ExtenderMeta, cls).__init__(name, bases, classdict)
+        super().__init__(name, bases, classdict)
         it = (getattr(cls, n) for n in dir(cls))
         it = (a for a in it if hasattr(a, cls.__postinit))
         for func in it:
@@ -737,7 +722,7 @@ class LabelledDict(dict):
                     raise KeyError(val)
             # if key == self.key_attr, then call __getitem__ normally on val
             key = val
-        return super(LabelledDict, self).__getitem__(key)
+        return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         """Set a value in the LabelledDict with the given key. The key must equal value.key_attr.
@@ -747,7 +732,7 @@ class LabelledDict(dict):
         self.__check_value(value)
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
-        super(LabelledDict, self).__setitem__(key, value)
+        super().__setitem__(key, value)
 
     def add(self, value):
         """Add a value to the dict with the key value.key_attr.

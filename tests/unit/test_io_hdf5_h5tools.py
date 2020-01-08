@@ -28,7 +28,7 @@ class FooFile(Container):
     @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
     def __init__(self, **kwargs):
         buckets = getargs('buckets', kwargs)
-        super(FooFile, self).__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
+        super().__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             f.parent = self
@@ -684,13 +684,13 @@ def _get_manager():
 
     class FooMapper(ObjectMapper):
         def __init__(self, spec):
-            super(FooMapper, self).__init__(spec)
+            super().__init__(spec)
             my_data_spec = spec.get_dataset('my_data')
             self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
 
     class BucketMapper(ObjectMapper):
         def __init__(self, spec):
-            super(BucketMapper, self).__init__(spec)
+            super().__init__(spec)
             foo_holder_spec = spec.get_group('foo_holder')
             self.unmap(foo_holder_spec)
             foo_spec = foo_holder_spec.get_data_type('Foo')
@@ -706,7 +706,7 @@ def _get_manager():
 
     class FileMapper(ObjectMapper):
         def __init__(self, spec):
-            super(FileMapper, self).__init__(spec)
+            super().__init__(spec)
             bucket_spec = spec.get_group('buckets').get_data_type('FooBucket')
             self.map_spec('buckets', bucket_spec)
 

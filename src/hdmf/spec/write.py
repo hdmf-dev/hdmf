@@ -4,7 +4,6 @@ import ruamel.yaml as yaml
 import os.path
 import warnings
 from collections import OrderedDict
-from six import with_metaclass
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
 
@@ -15,7 +14,7 @@ from .catalog import SpecCatalog
 from ..utils import docval, getargs, popargs
 
 
-class SpecWriter(with_metaclass(ABCMeta, object)):
+class SpecWriter(metaclass=ABCMeta):
 
     @abstractmethod
     def write_spec(self, spec_file_dict, path):
@@ -94,7 +93,7 @@ class YAMLSpecWriter(SpecWriter):
             return obj
 
 
-class NamespaceBuilder(object):
+class NamespaceBuilder:
     ''' A class for building namespace and spec files '''
 
     @docval({'name': 'doc', 'type': str, 'doc': 'Description about what the namespace represents'},

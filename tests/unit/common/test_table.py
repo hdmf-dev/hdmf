@@ -1,5 +1,5 @@
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
-from hdmf.testing import TestCase, TestMapH5RoundTrip
+from hdmf.testing import TestCase, TestH5RoundTripMixin
 
 import pandas as pd
 import numpy as np
@@ -218,6 +218,27 @@ class TestDynamicTable(TestCase):
         obtained_table = DynamicTable.from_dataframe(df, 'test')
         self.check_table(obtained_table)
 
+    def test_from_dataframe_eq(self):
+        expected = DynamicTable('test_table', 'the expected table')
+        expected.add_column('a', '2d column')
+        expected.add_column('b', '1d column')
+        expected.add_row(a=[1, 2, 3], b='4')
+        expected.add_row(a=[1, 2, 3], b='5')
+        expected.add_row(a=[1, 2, 3], b='6')
+
+        df = pd.DataFrame({
+            'a': [[1, 2, 3],
+                  [1, 2, 3],
+                  [1, 2, 3]],
+            'b': ['4', '5', '6']
+        })
+        coldesc = {'a': '2d column', 'b': '1d column'}
+        received = DynamicTable.from_dataframe(df,
+                                               'test_table',
+                                               table_description='the expected table',
+                                               column_descriptions=coldesc)
+        self.assertContainerEqual(expected, received, ignore_hdmf_attrs=True)
+
     def test_from_dataframe_dup_attr(self):
         df = pd.DataFrame({
             'foo': [1, 2, 3, 4, 5],
@@ -302,10 +323,9 @@ class TestDynamicTable(TestCase):
         self.assertTupleEqual(tuple(res.iloc[1]), (5, 50.0, 'lizard'))
 
 
-class TestDynamicTableRoundTrip(TestMapH5RoundTrip):
+class TestDynamicTableRoundTrip(TestH5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
-        # this will get ignored
         table = DynamicTable('table0', 'an example table')
         table.add_column('foo', 'an int column')
         table.add_column('bar', 'a float column')
@@ -314,25 +334,6 @@ class TestDynamicTableRoundTrip(TestMapH5RoundTrip):
         table.add_row(foo=27, bar=28.0, baz="cat", qux=True)
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False)
         return table
-
-    def test_from_dataframe(self):
-        # this will get ignored
-        expected = DynamicTable('test_table', 'the expected table')
-        expected.add_column('a', '2d column')
-        expected.add_column('b', '1d column')
-        expected.add_row(a=[1, 2, 3], b='4')
-        expected.add_row(a=[1, 2, 3], b='5')
-        expected.add_row(a=[1, 2, 3], b='6')
-
-        coldesc = {'a': '2d column', 'b': '1d column'}
-
-        received = DynamicTable.from_dataframe(pd.DataFrame({
-                'a': [[1, 2, 3],
-                      [1, 2, 3],
-                      [1, 2, 3]],
-                'b': ['4', '5', '6']
-            }), 'test_table', table_description='the expected table', column_descriptions=coldesc)
-        self.assertContainerEqual(expected, received)
 
 
 class TestElementIdentifiers(TestCase):
