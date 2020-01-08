@@ -269,8 +269,8 @@ jobs:
             . ../venv/bin/activate
             pip install twine
             ls dist
-            tar -xzvf dist/hdmf-1.5.0.post0.dev7.tar.gz
-            more dist/hdmf-1.5.0.post0.dev7/src/hdmf/common/hdmf-common-schema/common/namespace.yaml
+            tar -xzvf dist/hdmf-1.5.0.post0.dev8.tar.gz
+            more hdmf-1.5.0.post0.dev8/src/hdmf/common/hdmf-common-schema/common/namespace.yaml
 
   pynwb-dev-python37:
     docker:
