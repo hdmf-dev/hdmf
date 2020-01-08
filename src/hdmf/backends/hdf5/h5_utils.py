@@ -357,7 +357,7 @@ class H5DataIO(DataIO):
              'doc': 'Chunk shape or True to enable auto-chunking',
              'default': None},
             {'name': 'compression',
-             'type': (str, bool),
+             'type': (str, bool, int),
              'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default.' +
                     'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
              'default': None},
@@ -381,15 +381,21 @@ class H5DataIO(DataIO):
              'type': bool,
              'doc': 'If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is only ' +
                     'allowed if data is an h5py.Dataset',
+             'default': False},
+            {'name': 'allow_plugin_filters',
+             'type': bool,
+             'doc': 'Enable passing dynamically loaded filters as compression parameter',
              'default': False}
             )
     def __init__(self, **kwargs):
         # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in['data', 'link_data']]
+        ioarg_names = [name for name in kwargs.keys() if name not in['data', 'link_data', 'allow_plugin_filters']]
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
         self.__link_data = popargs('link_data', kwargs)
+        # Consume allow_plugin_filters parameter
+        self.__allow_plugin_filters = popargs('allow_plugin_filters', kwargs)
         # Check for possible collision with other parameters
         if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
             self.__link_data = False
@@ -419,7 +425,8 @@ class H5DataIO(DataIO):
         # Validate the compression options used
         self._check_compression_options()
         # Confirm that the compressor is supported by h5py
-        if not self.filter_available(self.__iosettings.get('compression', None)):
+        if not self.filter_available(self.__iosettings.get('compression', None),
+                                     self.__allow_plugin_filters):
             raise ValueError("%s compression not support by this version of h5py." %
                              str(self.__iosettings['compression']))
         # Check possible parameter collisions
@@ -467,21 +474,32 @@ class H5DataIO(DataIO):
                         raise ValueError("SZIP compression filter compression_opts"
                                          " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
             # Warn if compressor other than gzip is being used
-            if self.__iosettings['compression'] != 'gzip':
+            if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
                 warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
                               "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
                               "the generated HDF5 files.")
 
     @staticmethod
-    def filter_available(filter):
+    def filter_available(filter, allow_plugin_filters):
         """
         Check if a given I/O filter is available
         :param filter: String with the name of the filter, e.g., gzip, szip etc.
-        :type filter: String
+                       int with the registered filter ID, e.g. 307
+        :type filter: String, int
+        :param allow_plugin_filters: bool indicating whether the given filter can be dynamically loaded
         :return: bool indicating wether the given filter is available
         """
         if filter is not None:
-            return filter in h5py_filters.encode
+            if filter in h5py_filters.encode:
+                return True
+            elif allow_plugin_filters is True:
+                if type(filter) == int:
+                    if h5py_filters.h5z.filter_avail(filter):
+                        filter_info = h5py_filters.h5z.get_filter_info(filter)
+                        if filter_info == (h5py_filters.h5z.FILTER_CONFIG_DECODE_ENABLED +
+                                           h5py_filters.h5z.FILTER_CONFIG_ENCODE_ENABLED):
+                            return True
+            return False
         else:
             return True
 
