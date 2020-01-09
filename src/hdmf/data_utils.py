@@ -626,6 +626,8 @@ class DataIO:
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
+        if attr == '__array_struct__':  # np.array() checks __array__ or __array_struct__ attribute dep. on version
+            raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
         if not self.valid:
             raise InvalidDataIOError("Cannot get attribute '%s' of data. Data is not valid." % attr)
         return getattr(self.data, attr)
