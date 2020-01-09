@@ -170,7 +170,7 @@ jobs:
 
   miniconda35:
     docker:
-      - image: continuumio/miniconda3:4.7.12
+      - image: continuumio/miniconda3:4.3.27p0
     environment:
       - CONDA_PYTHON_VER: "3.5"
       - TEST_TOX_ENV: "py35"
