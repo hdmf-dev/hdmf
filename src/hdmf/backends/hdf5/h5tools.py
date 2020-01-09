@@ -746,14 +746,14 @@ class HDF5IO(HDMFIO):
         builder.written = True
         return link_obj
 
-    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},  # noqa: C901
+    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
             returns='the Dataset that was created', rtype=Dataset)
-    def write_dataset(self, **kwargs):
+    def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
 
         The function uses other dataset-dependent write functions, e.g,
