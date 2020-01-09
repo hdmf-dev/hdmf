@@ -283,7 +283,7 @@ jobs:
               create $CIRCLE_TAG --name $CIRCLE_TAG \
               --publish ./dist/*
 
-  pynwb-dev-python3:
+  pynwb-dev-python38:
     docker:
       - image: circleci/python:3.8.1-buster
     steps:
@@ -385,7 +385,7 @@ workflows:
               only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
             branches:
               ignore: /.*/
-      - pynwb-dev-python3:
+      - pynwb-dev-python38:
           filters:
             branches:
               ignore: dev
