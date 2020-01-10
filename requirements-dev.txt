@@ -1,6 +1,6 @@
 codecov==2.0.15
-coverage==4.5.4
-flake8==3.7.8
-python-dateutil==2.8.0
-tox==3.14.0
+coverage==5.0.2
+flake8==3.7.9
+python-dateutil==2.8.1
+tox==3.14.3
 -r requirements.txt
