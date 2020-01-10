@@ -393,7 +393,7 @@ class TestDocValidator(TestCase):
            arguments are specified
         """
         msg = ("MyTestClass.basic_add2_kw: Expected at most 3 arguments ['arg1', 'arg2', 'arg3'], got 4: 2 positional "
-               "and 2 keyword ['extra', 'arg3']")
+               "and 2 keyword ['arg3', 'extra']")
         with self.assertRaisesWith(TypeError, msg):
             self.test_obj.basic_add2_kw('a string', 100, extra='extra', arg3=True)
 

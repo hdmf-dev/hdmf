@@ -1,7 +1,6 @@
 import copy as _copy
 from abc import ABCMeta
 import collections
-from collections import OrderedDict
 import h5py
 import numpy as np
 
@@ -139,7 +138,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     type_errors = list()
     value_errors = list()
     argsi = 0
-    extras = OrderedDict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
+    extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
 
     try:
         # check for duplicates in docval
@@ -159,7 +158,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             if len(args) + len(kwargs) > len(validator):
                 raise TypeError(
                     'Expected at most %d arguments %r, got %d: %d positional and %d keyword %s'
-                    % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), list(kwargs))
+                    % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
                 )
 
         # iterate through the docval specification and find a matching value in args / kwargs
@@ -171,7 +170,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         unsupported_terms = set(arg.keys()) - set(allowable_terms)
         if unsupported_terms:
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
-                                                                                    list(unsupported_terms)))
+                                                                                    sorted(unsupported_terms)))
         # process positional arguments of the docval specification (no default value)
         extras = dict(kwargs)
         while True:
