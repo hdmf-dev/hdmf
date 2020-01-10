@@ -187,6 +187,19 @@ class H5IOTest(TestCase):
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
 
+    def test_write_dataset_list_compress_available_int_filters(self):
+        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
+                     compression=1,
+                     shuffle=True,
+                     fletcher32=True,
+                     allow_plugin_filters=True)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertEqual(dset.compression, 'gzip')
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
     def test_write_dataset_list_enable_default_compress(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
                      compression=True)
@@ -528,6 +541,17 @@ class H5IOTest(TestCase):
                         "recommended to ensure portability of the generated HDF5 files.")
             with self.assertWarnsWith(UserWarning, warn_msg):
                 H5DataIO(np.arange(30), compression="unknown")
+        # Make sure passing int compression filter raise an error if not installed
+        if not h5py_filters.h5z.filter_avail(h5py_filters.h5z.FILTER_MAX):
+            with self.assertRaises(ValueError):
+                warn_msg = ("%i compression may not be available on all installations of HDF5. Use of gzip is "
+                            "recommended to ensure portability of the generated HDF5 files."
+                            % h5py_filters.h5z.FILTER_MAX)
+                with self.assertWarnsWith(UserWarning, warn_msg):
+                    H5DataIO(np.arange(30), compression=h5py_filters.h5z.FILTER_MAX, allow_plugin_filters=True)
+        # Make sure available int compression filters raise an error without passing allow_plugin_filters=True
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression=h5py_filters.h5z.FILTER_DEFLATE)
 
     def test_value_error_on_incompatible_compression_opts(self):
         # Make sure we warn when gzip with szip compression options is used
