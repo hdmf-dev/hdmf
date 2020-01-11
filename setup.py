@@ -13,12 +13,6 @@ print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
 
-reqs_re = re.compile("[<=>]+")
-with open('requirements.txt', 'r') as fp:
-    reqs = [reqs_re.split(x.strip())[0] for x in fp.readlines()]
-
-print(reqs)
-
 setup_args = {
     'name': 'hdmf',
     'version': versioneer.get_version(),
@@ -30,7 +24,14 @@ setup_args = {
     'author_email': 'ajtritt@lbl.gov',
     'url': 'https://github.com/hdmf-dev/hdmf',
     'license': "BSD",
-    'install_requires': reqs,
+    'install_requires': [
+        'chardet>=3.0',
+        'h5py>=2.9',
+        'numpy>=1.16',
+        'scipy>=1.2',
+        'pandas>=0.24',
+        'ruamel.yaml>=0.15'
+    ],
     'packages': pkgs,
     'package_dir': {'': 'src'},
     'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
