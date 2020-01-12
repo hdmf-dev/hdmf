@@ -12,6 +12,13 @@ print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
 
+with open('requirements-min.txt', 'r') as fp:
+    # replace == with >= and remove trailing comments and spaces
+    reqs = [x.replace('==', '>=').split('#')[0].strip() for x in fp]
+    reqs = [x for x in reqs if x]  # remove empty strings
+
+print(reqs)
+
 setup_args = {
     'name': 'hdmf',
     'version': versioneer.get_version(),
@@ -23,14 +30,7 @@ setup_args = {
     'author_email': 'ajtritt@lbl.gov',
     'url': 'https://github.com/hdmf-dev/hdmf',
     'license': "BSD",
-    'install_requires': [
-        'chardet>=3.0',
-        'h5py>=2.9',
-        'numpy>=1.16',
-        'scipy>=1.2',
-        'pandas>=0.24',
-        'ruamel.yaml>=0.15'
-    ],
+    'install_requires': reqs,
     'packages': pkgs,
     'package_dir': {'': 'src'},
     'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
