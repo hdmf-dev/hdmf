@@ -174,7 +174,7 @@ html_favicon = 'hdmf_logo-180x180.png'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -309,7 +309,7 @@ def run_apidoc(_):
     out_dir = os.path.dirname(__file__)
     src_dir = os.path.join(out_dir, '../../src')
     sys.path.append(src_dir)
-    apidoc_main(['-f', '-e', '-o', out_dir, src_dir])
+    apidoc_main(['-f', '-e', '--no-toc', '-o', out_dir, src_dir])
 
 
 from abc import abstractmethod, abstractproperty

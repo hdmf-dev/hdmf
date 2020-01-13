@@ -37,6 +37,7 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
     @abstractmethod
     def recommended_chunk_shape(self):
         """
+        Recommend the chunk shape for the data array.
 
         :return: NumPy-style shape tuple describing the recommended shape for the chunks of the target
                  array or None. This may or may not be the same as the shape of the chunks returned in the
@@ -342,10 +343,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
 class DataChunk:
     """
-    Class used to describe a data chunk. Used in DataChunkIterator to describe
-
-    :ivar data: Numpy ndarray with the data value(s) of the chunk
-    :ivar selection: Numpy index tuple describing the location of the chunk
+    Class used to describe a data chunk. Used in DataChunkIterator.
     """
     @docval({'name': 'data', 'type': np.ndarray,
              'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},

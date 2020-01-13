@@ -17,6 +17,7 @@ API Documentation
    Development utilities <hdmf.utils>
    Validation utilities <hdmf.validate>
    Testing utilities <hdmf.testing>
+   Full list of HDMF package contents <hdmf>
 
 
 :ref:`modindex`
