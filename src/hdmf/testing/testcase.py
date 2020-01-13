@@ -121,10 +121,11 @@ class TestH5RoundTripMixin(metaclass=ABCMeta):
 
     The abstract method setUpContainer needs to be implemented by classes that include this mixin.
 
-    Example:
-    class TestMyContainerRoundTrip(TestH5RoundTripMixin, TestCase):
-        def setUpContainer(self):
-            # return the Container to read/write
+    Example::
+
+        class TestMyContainerRoundTrip(TestH5RoundTripMixin, TestCase):
+            def setUpContainer(self):
+                # return the Container to read/write
 
     NOTE: This class is a mix-in and not a subclass of TestCase so that unittest does not discover it, try to run it,
     and skip it.
