@@ -6,7 +6,7 @@ Dependencies
 
 HDMF has the following minimum requirements, which must be installed before you can get started using HDMF.
 
-#. Python 3.5, 3.6, or 3.7
+#. Python 3.5, 3.6, 3.7, or 3.8
 #. pip
 
 ------------

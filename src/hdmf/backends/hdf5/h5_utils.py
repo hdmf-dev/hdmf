@@ -483,6 +483,7 @@ class H5DataIO(DataIO):
     def filter_available(filter, allow_plugin_filters):
         """
         Check if a given I/O filter is available
+
         :param filter: String with the name of the filter, e.g., gzip, szip etc.
                        int with the registered filter ID, e.g. 307
         :type filter: String, int

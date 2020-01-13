@@ -5,11 +5,6 @@ Extending standards
 
 The following page will discuss how to extend a standard using HDMF.
 
-.. note::
-
-    A simple example demonstrating the creation and use of a custom extension is available as part of the
-    tutorial :ref:`tutorial-extending-standard`.
-
 .. _creating-extensions:
 
 Creating new Extensions
