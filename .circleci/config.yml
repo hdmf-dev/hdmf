@@ -365,6 +365,8 @@ workflows:
           <<: *no_filters
       - gallery38:
           <<: *no_filters
+      - gallery35-min-req:
+          <<: *no_filters
       - deploy-dev:
           requires:
             - flake8
