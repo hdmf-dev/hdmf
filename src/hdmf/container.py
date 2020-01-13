@@ -6,6 +6,7 @@ from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
 from .data_utils import DataIO
 from warnings import warn
 import h5py
+import types
 
 
 class AbstractContainer(with_metaclass(ExtenderMeta, object)):
@@ -398,6 +399,17 @@ class Data(AbstractContainer):
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio
+
+    @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
+    def transform(self, **kwargs):
+        """
+        Transform data from the current underlying state.
+
+        This function can be used to permanently load data from disk, or convert to a different
+        representation, such as a torch.Tensor
+        """
+        func = getargs('func', kwargs)
+        self.__data = func(self.__data)
 
     def __bool__(self):
         if self.data is not None:
