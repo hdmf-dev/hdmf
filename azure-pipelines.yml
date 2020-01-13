@@ -99,7 +99,7 @@ jobs:
       if [[ "$(coverageToxEnv)" != "" ]]; then
         tox -e $(coverageToxEnv)
       fi
-    displayName: 'Run coverage tests'
+    displayName: 'Run coverage tests if coverageToxEnv != ""'
 
   - bash: |
       tox -e $(buildToxEnv)

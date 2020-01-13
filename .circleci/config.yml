@@ -34,7 +34,7 @@ references:
           # While pip installing tox does not output by default. Circle thinks task is dead after 10 min.
           no_output_timeout: 30m
       - run:
-          name: Run coverage and submit to codecov-io
+          name: Run coverage and submit to codecov-io if COVERAGE_TOX_ENV != ""
           command: |
             . ../venv/bin/activate
             if [[ "${COVERAGE_TOX_ENV}" != "" ]]; then
