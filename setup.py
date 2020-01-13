@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
-import re
 
 import versioneer
 
@@ -13,9 +12,10 @@ print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
 
-reqs_re = re.compile("[<=>]+")
-with open('requirements.txt', 'r') as fp:
-    reqs = [reqs_re.split(x.strip())[0] for x in fp.readlines()]
+with open('requirements-min.txt', 'r') as fp:
+    # replace == with >= and remove trailing comments and spaces
+    reqs = [x.replace('==', '>=').split('#')[0].strip() for x in fp]
+    reqs = [x for x in reqs if x]  # remove empty strings
 
 print(reqs)
 
