@@ -14,7 +14,6 @@
 import sys
 import os
 import sphinx_rtd_theme
-from sphinx.domains.python import PythonDomain
 
 
 # -- Support building doc without install --------------------------------------
@@ -70,7 +69,7 @@ sphinx_gallery_conf = {
 }
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.5', None),
+    'python': ('https://docs.python.org/3.8', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'scipy': ('http://docs.scipy.org/doc/scipy/reference', None),
     'matplotlib': ('http://matplotlib.org', None),
@@ -304,22 +303,13 @@ latex_logo = 'hdmf_logo.pdf'
 #
 
 def run_apidoc(_):
-    from sphinx.apidoc import main
+    from sphinx.ext.apidoc import main as apidoc_main
     import os
     import sys
     out_dir = os.path.dirname(__file__)
     src_dir = os.path.join(out_dir, '../../src')
     sys.path.append(src_dir)
-    main(['-f', '-e', '-o', out_dir, src_dir])
-
-
-# https://github.com/sphinx-doc/sphinx/issues/3866
-class PatchedPythonDomain(PythonDomain):
-    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
-        if 'refspecific' in node:
-            del node['refspecific']
-        return super(PatchedPythonDomain, self).resolve_xref(
-            env, fromdocname, builder, typ, target, node, contnode)
+    apidoc_main(['-f', '-e', '-o', out_dir, src_dir])
 
 
 from abc import abstractmethod, abstractproperty
@@ -335,5 +325,4 @@ def skip(app, what, name, obj, skip, options):
 def setup(app):
     app.connect('builder-inited', run_apidoc)
     app.add_stylesheet("theme_overrides.css")  # overrides for wide tables in RTD theme
-    app.override_domain(PatchedPythonDomain)
     app.connect("autodoc-skip-member", skip)
