@@ -1,5 +1,4 @@
 # these minimum requirements specify '==' for testing; setup.py replaces '==' with '>='
-chardet==3.0.2
 h5py==2.9  # support for setting attrs to lists of utf-8 added in 2.9
 numpy==1.16
 scipy==1.1
