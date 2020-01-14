@@ -19,5 +19,5 @@ class RefSpecTests(TestCase):
     def test_isregion(self):
         spec = RefSpec('TimeSeries', 'object')
         self.assertFalse(spec.is_region())
-        spec = RefSpec('NWBData', 'region')
+        spec = RefSpec('Data', 'region')
         self.assertTrue(spec.is_region())
