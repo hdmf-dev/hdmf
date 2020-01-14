@@ -41,27 +41,33 @@ lines are covered by the tests.
 Requirement Specifications
 --------------------------
 
-There are 2 kinds of requirements specification in HDMF.
+There are 4 kinds of requirements specification in HDMF.
 
-Setup.py Dependencies
----------------------
+The first one is the requirements-min.txt_ file, which lists the package dependencies and their minimum versions for
+installing HDMF. These dependencies are read by setup.py_ into the `install_requires` key, with the adjustment that
+the `'=='` listed in `requirements-min.txt` are replaced with `'>='` to reflect that they are minimum versions.
 
-The first one is the dependencies_ in the `setup.py` file which lists the abstract dependencies for
-the HDMF project. Note that there should not be specific versions of packages in the `setup.py` file.
+The second one is requirements.txt_ which contain a list of pinned (concrete) dependencies to reproduce
+an entire development environment to use HDMF.
 
-Requirements.txt Dependencies
------------------------------
+The third one is requirements-dev.txt_ which contain a list of pinned (concrete) dependencies to reproduce
+an entire development environment to use HDMF, run HDMF tests, check code style, compute coverage, and create test
+environments.
 
-The second one is `requirements.txt` which contain a list of pinned (concrete) dependencies to reproduce
-an entire development environment to work with HDMF.
+The final one is requirements-doc.txt_ which contain a list of dependencies to generate the documentation for HDMF.
+Both this file and `requirements.txt` are used by ReadTheDocs_ to initialize the local environment for Sphinx to run.
 
-In order to check the status of the required packages requires.io_ is used to create a badge on the project
-README_. If all the required packages are up to date,
-a green badge appears.
+In order to check the status of the required packages, requires.io_ is used to create a badge on the project
+README_. If all the required packages are up to date, a green badge appears.
 
 If some of the packages are outdated, see :ref:`update_requirements_files`.
 
-.. _dependencies: https://github.com/hdmf-dev/hdmf/blob/dev/setup.py
+.. _requirements-min.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-min.txt
+.. _setup.py: https://github.com/hdmf-dev/hdmf/blob/dev/setup.py
+.. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
+.. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
+.. _requirements-doc.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-doc.txt
+.. _ReadTheDocs: https://readthedocs.org/projects/hdmf/
 .. _requires.io: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
 
 
