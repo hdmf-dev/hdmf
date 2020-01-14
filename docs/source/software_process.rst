@@ -8,13 +8,15 @@ Software Process
 Continuous Integration
 ----------------------
 
-HDMF is tested against Ubuntu, macOS and Windows operating systems.
+HDMF is tested against Ubuntu, macOS, and Windows operating systems.
 The project has both unit and integration tests.
 
 * CircleCI runs all HDMF tests on Ubuntu
 * Azure Pipelines runs all HDMF tests on Windows and macOS
 
-Each time a PR is published or updated, the project is built, packaged and tested on all support operating systems and python distributions. That way, as a contributor you know if you introduced regressions or coding style inconsistencies.
+Each time a PR is published or updated, the project is built, packaged, and tested on all supported operating systems
+and python distributions. That way, as a contributor, you know if you introduced regressions or coding style
+inconsistencies.
 
 There are badges in the README_ file which shows the current condition of the dev branch.
 
