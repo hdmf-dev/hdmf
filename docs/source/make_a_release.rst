@@ -21,17 +21,17 @@ Prerequisites
 * You have a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
 
 * Dependency versions in requirements.txt, requirements-dev.txt, requirements-doc.txt, requirements-min.txt are
-up-to-date.
+  up-to-date.
 
 * Legal information and copyright dates are up-to-date in Legal.txt, license.txt, README.rst, docs/source/conf.py, and
-any other files.
+  any other files.
 
 * Package information in setup.py is up-to-date.
 
 * README.rst information is up-to-date.
 
 * The hdmf-common-schema submodule is up-to-date. The version number should be checked manually in case syncing the
-git submodule does not work as expected.
+  git submodule does not work as expected.
 
 * Documentation reflects any new features and changes in HDMF functionality.
 

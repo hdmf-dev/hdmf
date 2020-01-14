@@ -8,8 +8,8 @@ The :py:mod:`hdmf.container` module defines two base classes that represent the 
 the schema. :py:class:`~hdmf.container.Data` represents datasets and :py:class:`~hdmf.container.Container`
 represents groups. See the classes in the `:py:mod:hdmf.common` package for examples.
 
-``register_class``
-------------------
+The register_class function/decorator
+-------------------------------------
 
 When defining a class that represents a *data_type* (i.e. anything that has a *data_type_def*)
 from your extension, you can tell HDMF which *data_type* it represents using the function
@@ -31,7 +31,7 @@ the :py:func:`~hdmf.common.load_namespaces` function.
     register_class(data_type='MyContainer', namespace='my_ns', container_cls=MyContainer)
 
 
-Alternatively, you can use :py:func:`~hdmf.register_class` as a decorator.
+Alternatively, you can use :py:func:`~hdmf.common.register_class` as a decorator.
 
 .. code-block:: python
 
