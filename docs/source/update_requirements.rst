@@ -67,10 +67,10 @@ the following scripts:
    rmvirtualenv hdmf-requirements
 
 
- requirements-min.txt
- ====================
+requirements-min.txt
+====================
 
- Minimum requirements should be updated manually if a new feature or bug fix is added in a dependency that is required
- for proper running of HDMF. Minimum requirements should also be updated if a user requests that HDMF be installable
- with an older version of a dependency, all tests pass using the older version, and there is no valid reason for the
- minimum version to be as high as it is.
+Minimum requirements should be updated manually if a new feature or bug fix is added in a dependency that is required
+for proper running of HDMF. Minimum requirements should also be updated if a user requests that HDMF be installable
+with an older version of a dependency, all tests pass using the older version, and there is no valid reason for the
+minimum version to be as high as it is.

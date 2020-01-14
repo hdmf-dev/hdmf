@@ -11,8 +11,8 @@ Continuous Integration
 HDMF is tested against Ubuntu, macOS, and Windows operating systems.
 The project has both unit and integration tests.
 
-* CircleCI runs all HDMF tests on Ubuntu
-* Azure Pipelines runs all HDMF tests on Windows and macOS
+* CircleCI_ runs all HDMF tests on Ubuntu
+* `Azure Pipelines`_ runs all HDMF tests on Windows and macOS
 
 Each time a PR is published or updated, the project is built, packaged, and tested on all supported operating systems
 and python distributions. That way, as a contributor, you know if you introduced regressions or coding style
@@ -20,6 +20,8 @@ inconsistencies.
 
 There are badges in the README_ file which shows the current condition of the dev branch.
 
+.. _CircleCI: https://circleci.com/gh/hdmf-dev
+.. _Azure Pipelines: https://dev.azure.com/hdmf-dev/hdmf/_build
 .. _README: https://github.com/hdmf-dev/hdmf#readme
 
 
@@ -77,7 +79,7 @@ Versioning and Releasing
 
 HDMF uses versioneer_ for versioning source and wheel distributions. Versioneer creates a semi-unique release
 name for the wheels that are created. It requires a version control system (git in HDMF's case) to generate a release
-name. After all the tests pass, CircleCI creates both a wheel (*.whl) and source distribution (*.tar.gz) for Python 3
+name. After all the tests pass, CircleCI creates both a wheel (\*.whl) and source distribution (\*.tar.gz) for Python 3
 and uploads them back to GitHub as a release_. Versioneer makes it possible to get the source distribution from GitHub
 and create wheels directly without having to use a version control system because it hardcodes versions in the source
 distribution.
