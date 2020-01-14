@@ -48,7 +48,7 @@ devtest:
 	$(PYTHON) test.py
 
 testclean:
-	rm *.npy *.nwb *.yaml
+	rm *.npy *.yaml
 
 apidoc:
 	pip install -r requirements-doc.txt
@@ -70,7 +70,7 @@ htmldoc: htmldoc-only htmldoc-open
 pdfdoc:
 	cd docs && $(MAKE) latexpdf
 	@echo ""
-	@echo "To view the PDF documentation open: docs/_build/latex/PyNWB.pdf"
+	@echo "To view the PDF documentation open: docs/_build/latex/HDMF.pdf"
 
 coverage-only:
 	tox -e localcoverage
