@@ -55,7 +55,7 @@ class TestCase(unittest.TestCase):
         # this is in case non-field children are added to one and not the other
 
         for field in getattr(container1, type1._fieldsname):
-            with self.subTest(nwbfield=field, container_type=type1.__name__):
+            with self.subTest(field=field, container_type=type1.__name__):
                 f1 = getattr(container1, field)
                 f2 = getattr(container2, field)
                 self._assert_field_equal(f1, f2, ignore_hdmf_attrs)
@@ -121,10 +121,11 @@ class TestH5RoundTripMixin(metaclass=ABCMeta):
 
     The abstract method setUpContainer needs to be implemented by classes that include this mixin.
 
-    Example:
-    class TestMyContainerRoundTrip(TestH5RoundTripMixin, TestCase):
-        def setUpContainer(self):
-            # return the Container to read/write
+    Example::
+
+        class TestMyContainerRoundTrip(TestH5RoundTripMixin, TestCase):
+            def setUpContainer(self):
+                # return the Container to read/write
 
     NOTE: This class is a mix-in and not a subclass of TestCase so that unittest does not discover it, try to run it,
     and skip it.

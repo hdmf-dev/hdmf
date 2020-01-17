@@ -13,7 +13,7 @@ from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder
-from .map import Proxy, BuildManager
+from .manager import Proxy, BuildManager
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
 
 
