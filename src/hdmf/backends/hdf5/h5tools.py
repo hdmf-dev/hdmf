@@ -447,8 +447,11 @@ class HDF5IO(HDMFIO):
             name = str(os.path.basename(h5obj.name))
         kwargs['source'] = h5obj.file.filename
         ndims = len(h5obj.shape)
-        if ndims == 0:                                       # read scalar
-            scalar = h5obj[()]
+        if ndims == 0 or h5obj.shape == (1, ):
+            if ndims == 0:  # read scalar dataspace
+                scalar = h5obj[()]
+            else:  # read shape (1, ) dataset as scalar
+                scalar = h5obj[0]
             if isinstance(scalar, bytes):
                 scalar = scalar.decode('UTF-8')
 
@@ -465,10 +468,7 @@ class HDF5IO(HDMFIO):
                 kwargs["data"] = scalar
         elif ndims == 1:
             d = None
-            if h5obj.shape == (1, ):
-                # read scalar (1-element) dataset into memory
-                d = h5obj[0]
-            elif h5obj.dtype.kind == 'O':
+            if h5obj.dtype.kind == 'O':
                 elem1 = h5obj[0]
                 if isinstance(elem1, (str, bytes)):
                     d = h5obj
