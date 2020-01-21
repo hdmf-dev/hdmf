@@ -866,6 +866,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
+            if spec.shape is None and getattr(builder.data, 'shape', None) == (1, ):
+                # if a scalar dataset is expected and a 1-element dataset is given, then read the dataset
+                builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)
         return ret
 
