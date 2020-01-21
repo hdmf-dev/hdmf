@@ -99,7 +99,7 @@ class NamespaceBuilder:
     @docval({'name': 'doc', 'type': str, 'doc': 'Description about what the namespace represents'},
             {'name': 'name', 'type': str, 'doc': 'Name of the namespace'},
             {'name': 'full_name', 'type': str, 'doc': 'Extended full name of the namespace', 'default': None},
-            {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace', 'default': None},
+            {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace'},
             {'name': 'author', 'type': (str, list), 'doc': 'Author or list of authors.', 'default': None},
             {'name': 'contact', 'type': (str, list),
              'doc': 'List of emails. Ordering should be the same as for author', 'default': None},
