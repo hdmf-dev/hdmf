@@ -197,7 +197,7 @@ results in %BUILDDIR%/doctest/output.txt.
 )
 
 if "%1" == "apidoc" (
-	%SPHINXAPIDOC% -f -e -o %RSTDIR% %SRCDIR%
+	%SPHINXAPIDOC% -f -e --no-toc -o %RSTDIR% %SRCDIR%
 	if errorlevel 1 exit /b 1
 	echo.
 	echo.Build rst docs from source code.
