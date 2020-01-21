@@ -18,7 +18,7 @@ _namespace_args = [
     {'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
     {'name': 'schema', 'type': list, 'doc': 'location of schema specification files or other Namespaces'},
     {'name': 'full_name', 'type': str, 'doc': 'extended full name of this namespace', 'default': None},
-    {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace'},
+    {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace', 'default': None},
     {'name': 'date', 'type': (datetime, str),
      'doc': "Date last modified or released. Formatting is %Y-%m-%d %H:%M:%S, e.g, 2017-04-25 17:14:13",
      'default': None},
@@ -48,8 +48,9 @@ class SpecNamespace(dict):
         self['name'] = name
         if full_name is not None:
             self['full_name'] = full_name
-        if version is not None:
-            self['version'] = version
+        if version is None:
+            raise TypeError('SpecNamespace missing arg `version`. Please specify a version for the extension.')
+        self['version'] = version
         if date is not None:
             self['date'] = date
         if author is not None:
