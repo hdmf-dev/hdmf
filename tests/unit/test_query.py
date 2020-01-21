@@ -8,7 +8,7 @@ from hdmf.array import SortedArray, LinSpace
 from hdmf.testing import TestCase
 
 
-class TestAbstractQueryMixin(metaclass=ABCMeta):
+class AbstractQueryMixin(metaclass=ABCMeta):
 
     @abstractmethod
     def getDataset(self):
@@ -112,7 +112,7 @@ class TestAbstractQueryMixin(metaclass=ABCMeta):
         self.assertTrue(np.array_equal(result, expected))
 
 
-class SortedQueryTest(TestAbstractQueryMixin, TestCase):
+class SortedQueryTest(AbstractQueryMixin, TestCase):
 
     path = 'SortedQueryTest.h5'
 
@@ -128,7 +128,7 @@ class SortedQueryTest(TestAbstractQueryMixin, TestCase):
             os.remove(self.path)
 
 
-class LinspaceQueryTest(TestAbstractQueryMixin, TestCase):
+class LinspaceQueryTest(AbstractQueryMixin, TestCase):
 
     path = 'LinspaceQueryTest.h5'
 
