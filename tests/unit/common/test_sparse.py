@@ -1,5 +1,5 @@
 from hdmf.common import CSRMatrix
-from hdmf.testing import TestCase, TestH5RoundTripMixin
+from hdmf.testing import TestCase, H5RoundTripMixin
 
 import scipy.sparse as sps
 import numpy as np
@@ -30,7 +30,7 @@ class TestCSRMatrix(TestCase):
     # TODO more unit tests are needed for CSRMatrix
 
 
-class TestCSRMatrixRoundTrip(TestH5RoundTripMixin, TestCase):
+class TestCSRMatrixRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         data = np.array([1, 2, 3, 4, 5, 6])

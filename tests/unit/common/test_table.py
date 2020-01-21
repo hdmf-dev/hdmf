@@ -1,5 +1,5 @@
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
-from hdmf.testing import TestCase, TestH5RoundTripMixin
+from hdmf.testing import TestCase, H5RoundTripMixin
 
 import pandas as pd
 import numpy as np
@@ -323,7 +323,7 @@ class TestDynamicTable(TestCase):
         self.assertTupleEqual(tuple(res.iloc[1]), (5, 50.0, 'lizard'))
 
 
-class TestDynamicTableRoundTrip(TestH5RoundTripMixin, TestCase):
+class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         table = DynamicTable('table0', 'an example table')

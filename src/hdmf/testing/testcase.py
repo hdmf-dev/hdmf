@@ -114,7 +114,7 @@ class TestCase(unittest.TestCase):
                         self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs)
 
 
-class TestH5RoundTripMixin(metaclass=ABCMeta):
+class H5RoundTripMixin(metaclass=ABCMeta):
     """
     Mixin class for methods to run a roundtrip test writing a container to and reading the container from an HDF5 file.
     The setUp, test_roundtrip, and tearDown methods will be run by unittest.
@@ -123,7 +123,7 @@ class TestH5RoundTripMixin(metaclass=ABCMeta):
 
     Example::
 
-        class TestMyContainerRoundTrip(TestH5RoundTripMixin, TestCase):
+        class TestMyContainerRoundTrip(H5RoundTripMixin, TestCase):
             def setUpContainer(self):
                 # return the Container to read/write
 
