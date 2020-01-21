@@ -18,7 +18,7 @@ class ValidatorTestBase(TestCase, metaclass=ABCMeta):
         for spec in self.getSpecs():
             spec_catalog.register_spec(spec, 'test.yaml')
         self.namespace = SpecNamespace(
-            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], catalog=spec_catalog)
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
         self.vmap = ValidatorMap(self.namespace)
 
     @abstractmethod

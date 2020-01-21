@@ -18,7 +18,7 @@ _namespace_args = [
     {'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
     {'name': 'schema', 'type': list, 'doc': 'location of schema specification files or other Namespaces'},
     {'name': 'full_name', 'type': str, 'doc': 'extended full name of this namespace', 'default': None},
-    {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace', 'default': None},
+    {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace'},
     {'name': 'date', 'type': (datetime, str),
      'doc': "Date last modified or released. Formatting is %Y-%m-%d %H:%M:%S, e.g, 2017-04-25 17:14:13",
      'default': None},

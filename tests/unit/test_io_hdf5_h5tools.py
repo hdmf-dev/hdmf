@@ -718,6 +718,7 @@ def _get_manager():
         'a test namespace',
         CORE_NAMESPACE,
         [{'source': 'test.yaml'}],
+        version='0.1.0',
         catalog=spec_catalog)
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)

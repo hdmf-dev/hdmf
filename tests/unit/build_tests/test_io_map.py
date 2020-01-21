@@ -77,7 +77,9 @@ class TestGetSubSpec(TestCase):
         self.bar_spec = GroupSpec('A test group specification with a data type', data_type_def='Bar')
         spec_catalog = SpecCatalog()
         spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], catalog=spec_catalog)
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         self.type_map = TypeMap(namespace_catalog)
@@ -110,6 +112,7 @@ class TestTypeMap(TestCase):
         self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
         self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                       version='0.1.0',
                                        catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
@@ -159,7 +162,8 @@ class TestMapStrings(TestCase):
     def customSetUp(self, bar_spec):
         spec_catalog = SpecCatalog()
         spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], catalog=spec_catalog)
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0',
+                                  catalog=spec_catalog)
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
@@ -218,7 +222,9 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog = SpecCatalog()
         self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}], catalog=self.spec_catalog)
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
@@ -369,7 +375,9 @@ class ObjectMapperMixin(metaclass=ABCMeta):
         self.spec_catalog = SpecCatalog()
         self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}], catalog=self.spec_catalog)
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
@@ -513,7 +521,9 @@ class TestLinkedContainer(TestCase):
         self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
         self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}], catalog=self.spec_catalog)
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
