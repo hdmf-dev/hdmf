@@ -25,13 +25,13 @@ Before writing tests, we also suggest you familiarize yourself with the
 :ref:`software architecture <software-architecture>` of HDMF.
 
 ------------------------
-``TestH5RoundTripMixin``
+``H5RoundTripMixin``
 ------------------------
 
 To write a roundtrip test, you will need to subclass the
-:py:class:`~hdmf.testing.testcase.TestH5RoundTripMixin` class and the
+:py:class:`~hdmf.testing.testcase.H5RoundTripMixin` class and the
 :py:class:`~hdmf.testing.testcase.TestCase` class, in that order, and override some of the instance methods of the
-:py:class:`~hdmf.testing.testcase.TestH5RoundTripMixin` class to test the process of going from in-memory Python object
+:py:class:`~hdmf.testing.testcase.H5RoundTripMixin` class to test the process of going from in-memory Python object
 to data stored on disk and back.
 
 ##################
@@ -39,7 +39,7 @@ to data stored on disk and back.
 ##################
 
 To configure the test for a particular container class, you need to override the
-:py:meth:`~hdmf.testing.testcase.TestH5RoundTripMixin.setUpContainer` method. This method should take no arguments, and
+:py:meth:`~hdmf.testing.testcase.H5RoundTripMixin.setUpContainer` method. This method should take no arguments, and
 return an instance of the container class you are testing.
 
 Here is an example using a :py:class:`~hdmf.common.sparse.CSRMatrix`:
@@ -47,10 +47,10 @@ Here is an example using a :py:class:`~hdmf.common.sparse.CSRMatrix`:
 .. code-block:: python
 
     from hdmf.common import CSRMatrix
-    from hdmf.testing import TestCase, TestH5RoundTripMixin
+    from hdmf.testing import TestCase, H5RoundTripMixin
     import numpy as np
 
-    class TestCSRMatrixRoundTrip(TestH5RoundTripMixin, TestCase):
+    class TestCSRMatrixRoundTrip(H5RoundTripMixin, TestCase):
 
         def setUpContainer(self):
             data = np.array([1, 2, 3, 4, 5, 6])

@@ -362,7 +362,7 @@ class TestDynamicContainer(TestCase):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
 
-class TestObjectMapperMixin(metaclass=ABCMeta):
+class ObjectMapperMixin(metaclass=ABCMeta):
 
     def setUp(self):
         self.setUpBarSpec()
@@ -391,7 +391,7 @@ class TestObjectMapperMixin(metaclass=ABCMeta):
                 self.assertIs(attr_map[key], self.mapper.get_carg_spec(key))
 
 
-class TestObjectMapperNested(TestObjectMapperMixin, TestCase):
+class TestObjectMapperNested(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
@@ -442,7 +442,7 @@ class TestObjectMapperNested(TestObjectMapperMixin, TestCase):
         self.mapper.map_spec('attr2', data_spec.get_attribute('attr2'))
 
 
-class TestObjectMapperNoNesting(TestObjectMapperMixin, TestCase):
+class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
@@ -482,7 +482,7 @@ class TestObjectMapperNoNesting(TestObjectMapperMixin, TestCase):
         self.assertSetEqual(keys, expected)
 
 
-class TestObjectMapperContainer(TestObjectMapperMixin, TestCase):
+class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
