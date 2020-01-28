@@ -361,36 +361,36 @@ class TestDynamicTableRegion(TestCase):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
         res = dynamic_table_region.to_dataframe()
-        self.assertListEqual(res.index.to_list(), [0, 1, 2, 2])
-        self.assertListEqual(res['foo'].to_list(), [1, 2, 3, 3])
-        self.assertListEqual(res['bar'].to_list(), [10.0, 20.0, 30.0, 30.0])
-        self.assertListEqual(res['baz'].to_list(), ['cat', 'dog', 'bird', 'bird'])
+        self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
+        self.assertListEqual(res['foo'].tolist(), [1, 2, 3, 3])
+        self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
+        self.assertListEqual(res['baz'].tolist(), ['cat', 'dog', 'bird', 'bird'])
 
     def test_dynamic_table_region_to_dataframe_exclude_cols(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
         res = dynamic_table_region.to_dataframe(exclude=set(['baz', 'foo']))
-        self.assertListEqual(res.index.to_list(), [0, 1, 2, 2])
+        self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
         self.assertEqual(len(res.columns), 1)
-        self.assertListEqual(res['bar'].to_list(), [10.0, 20.0, 30.0, 30.0])
+        self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
 
     def test_dynamic_table_region_getitem_slice(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
         res = dynamic_table_region[1:3]
-        self.assertListEqual(res.index.to_list(), [1, 2])
-        self.assertListEqual(res['foo'].to_list(), [2, 3])
-        self.assertListEqual(res['bar'].to_list(), [20.0, 30.0])
-        self.assertListEqual(res['baz'].to_list(), ['dog', 'bird'])
+        self.assertListEqual(res.index.tolist(), [1, 2])
+        self.assertListEqual(res['foo'].tolist(), [2, 3])
+        self.assertListEqual(res['bar'].tolist(), [20.0, 30.0])
+        self.assertListEqual(res['baz'].tolist(), ['dog', 'bird'])
 
     def test_dynamic_table_region_getitem_single_row_by_index(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
         res = dynamic_table_region[2]
-        self.assertListEqual(res.index.to_list(), [2, ])
-        self.assertListEqual(res['foo'].to_list(), [3, ])
-        self.assertListEqual(res['bar'].to_list(), [30.0, ])
-        self.assertListEqual(res['baz'].to_list(), ['bird', ])
+        self.assertListEqual(res.index.tolist(), [2, ])
+        self.assertListEqual(res['foo'].tolist(), [3, ])
+        self.assertListEqual(res['bar'].tolist(), [30.0, ])
+        self.assertListEqual(res['baz'].tolist(), ['bird', ])
 
     def test_dynamic_table_region_getitem_single_cell(self):
         table = self.with_columns_and_data()
