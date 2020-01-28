@@ -156,7 +156,7 @@ class BuildManager:
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
         elif container.modified or spec_ext is not None:
-            if isinstance(result, BaseBuilder) or isinstance(result, DatasetBuilder):
+            if isinstance(result, BaseBuilder):
                 result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
         return result
 
