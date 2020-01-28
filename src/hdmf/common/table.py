@@ -546,7 +546,7 @@ class DynamicTable(Container):
             return self[key]
         return default
 
-    @docval({'name': 'exclude', 'type': set, 'doc': ' List of columns to exclude from the dataframe', 'default': None})
+    @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
@@ -715,6 +715,16 @@ class DynamicTableRegion(VectorData):
             return self.table[self.data[key]]
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
+
+    def to_dataframe(self, **kwargs):
+        """
+        Convert the whole DynamicTableRegion to a pandas dataframe.
+
+        Keyword arguments are passed through to the to_dataframe method of DynamicTable that
+        is being referenced (i.e., self.table). This allows specification of the 'exclude'
+        parameter and any other parameters of DynamicTable.to_dataframe.
+        """
+        return self.table.to_dataframe(**kwargs).iloc[self.data[:]]
 
     @property
     def shape(self):

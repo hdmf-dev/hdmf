@@ -282,23 +282,6 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             table.add_row({'bar': 60.0, 'foo': 6, 'baz': 'oryx', 'qax': -1}, None)
 
-    def test_indexed_dynamic_table_region(self):
-        table = self.with_columns_and_data()
-        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
-        fetch_ids = dynamic_table_region[:3].index.values
-        self.assertListEqual(fetch_ids.tolist(), [1, 2, 2])
-
-    def test_dynamic_table_iteration(self):
-        table = self.with_columns_and_data()
-        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
-        for ii, item in enumerate(dynamic_table_region):
-            self.assertTrue(table[ii].equals(item))
-
-    def test_dynamic_table_region_shape(self):
-        table = self.with_columns_and_data()
-        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
-        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
-
     def test_nd_array_to_df(self):
         data = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
         col = VectorData(name='data', description='desc', data=data)
@@ -334,6 +317,128 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_row(foo=27, bar=28.0, baz="cat", qux=True)
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False)
         return table
+
+
+class TestDynamicTableRegion(TestCase):
+
+    def setUp(self):
+        self.spec = [
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
+        ]
+        self.data = [
+            [1, 2, 3, 4, 5],
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
+        ]
+
+    def with_columns_and_data(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        return DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+    def test_indexed_dynamic_table_region(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
+        fetch_ids = dynamic_table_region[:3].index.values
+        self.assertListEqual(fetch_ids.tolist(), [1, 2, 2])
+
+    def test_dynamic_table_region_iteration(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
+        for ii, item in enumerate(dynamic_table_region):
+            self.assertTrue(table[ii].equals(item))
+
+    def test_dynamic_table_region_shape(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
+        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
+
+    def test_dynamic_table_region_to_dataframe(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region.to_dataframe()
+        self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
+        self.assertListEqual(res['foo'].tolist(), [1, 2, 3, 3])
+        self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
+        self.assertListEqual(res['baz'].tolist(), ['cat', 'dog', 'bird', 'bird'])
+
+    def test_dynamic_table_region_to_dataframe_exclude_cols(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region.to_dataframe(exclude=set(['baz', 'foo']))
+        self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
+        self.assertEqual(len(res.columns), 1)
+        self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
+
+    def test_dynamic_table_region_getitem_slice(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[1:3]
+        self.assertListEqual(res.index.tolist(), [1, 2])
+        self.assertListEqual(res['foo'].tolist(), [2, 3])
+        self.assertListEqual(res['bar'].tolist(), [20.0, 30.0])
+        self.assertListEqual(res['baz'].tolist(), ['dog', 'bird'])
+
+    def test_dynamic_table_region_getitem_single_row_by_index(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[2]
+        self.assertListEqual(res.index.tolist(), [2, ])
+        self.assertListEqual(res['foo'].tolist(), [3, ])
+        self.assertListEqual(res['bar'].tolist(), [30.0, ])
+        self.assertListEqual(res['baz'].tolist(), ['bird', ])
+
+    def test_dynamic_table_region_getitem_single_cell(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[2, 'foo']
+        self.assertEqual(res, 3)
+        res = dynamic_table_region[1, 'baz']
+        self.assertEqual(res, 'dog')
+
+    def test_dynamic_table_region_getitem_slice_of_column(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[0:3, 'foo']
+        self.assertListEqual(res, [1, 2, 3])
+        res = dynamic_table_region[1:3, 'baz']
+        self.assertListEqual(res, ['dog', 'bird'])
+
+    def test_dynamic_table_region_getitem_bad_index(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        with self.assertRaises(ValueError):
+            _ = dynamic_table_region['bad index']
+
+    def test_dynamic_table_region_table_prop(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        self.assertEqual(table, dynamic_table_region.table)
+
+    def test_dynamic_table_region_set_table_prop(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc')
+        dynamic_table_region.table = table
+        self.assertEqual(table, dynamic_table_region.table)
+
+    def test_dynamic_table_region_set_table_prop_to_none(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        try:
+            dynamic_table_region.table = None
+        except AttributeError:
+            self.fail("DynamicTableRegion table setter raised AttributeError unexpectedly!")
+
+    def test_dynamic_table_region_set_with_bad_data(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [5, 1], 'desc')   # index 5 is out of range
+        with self.assertRaises(IndexError):
+            dynamic_table_region.table = table
+        self.assertIsNone(dynamic_table_region.table)
 
 
 class TestElementIdentifiers(TestCase):
