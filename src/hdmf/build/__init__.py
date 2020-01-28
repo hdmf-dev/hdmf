@@ -7,5 +7,5 @@ from .builders import LinkBuilder
 
 from .objectmapper import ObjectMapper
 
-from .map import BuildManager
-from .map import TypeMap
+from .manager import BuildManager
+from .manager import TypeMap

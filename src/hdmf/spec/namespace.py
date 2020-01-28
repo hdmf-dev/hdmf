@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from datetime import datetime
-from copy import deepcopy, copy
+from copy import copy
 import ruamel.yaml as yaml
 import os.path
 import string
@@ -36,7 +36,7 @@ class SpecNamespace(dict):
 
     __types_key = 'data_types'
 
-    @docval(*deepcopy(_namespace_args))
+    @docval(*_namespace_args)
     def __init__(self, **kwargs):
         doc, full_name, name, version, date, author, contact, schema, catalog = \
             popargs('doc', 'full_name', 'name', 'version', 'date', 'author', 'contact', 'schema', 'catalog', kwargs)
@@ -48,8 +48,9 @@ class SpecNamespace(dict):
         self['name'] = name
         if full_name is not None:
             self['full_name'] = full_name
-        if version is not None:
-            self['version'] = version
+        if version is None:
+            raise TypeError('SpecNamespace missing arg `version`. Please specify a version for the extension.')
+        self['version'] = version
         if date is not None:
             self['date'] = date
         if author is not None:

@@ -404,9 +404,9 @@ class GroupValidator(BaseStorageValidator):
             else:
                 self.__include_dts[spec.data_type_def] = spec
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},    # noqa: C901
+    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
+    def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
         ret = super().validate(builder)
         # get the data_types

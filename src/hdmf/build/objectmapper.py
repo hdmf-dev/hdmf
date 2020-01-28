@@ -11,8 +11,8 @@ from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_W
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
-from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder
-from .map import Proxy, BuildManager
+from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
+from .manager import Proxy, BuildManager
 from .warnings import OrphanContainerWarning, MissingRequiredWarning
 
 
@@ -527,10 +527,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
             {"name": "manager", "type": BuildManager, "doc": "the BuildManager to use for managing this build"},
-            {"name": "parent", "type": Builder, "doc": "the parent of the resulting Builder", 'default': None},
+            {"name": "parent", "type": GroupBuilder, "doc": "the parent of the resulting Builder", 'default': None},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "builder", "type": GroupBuilder, "doc": "the Builder to build on", 'default': None},
+            {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
             returns="the Builder representing the given AbstractContainer", rtype=Builder)
     def build(self, **kwargs):
@@ -546,55 +546,57 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.__add_groups(builder, self.__spec.groups, container, manager, source)
             self.__add_links(builder, self.__spec.links, container, manager, source)
         else:
-            if not isinstance(container, Data):
-                msg = "'container' must be of type Data with DatasetSpec"
-                raise ValueError(msg)
-            spec_dtype, spec_shape, spec = self.__check_dset_spec(self.spec, spec_ext)
-            if isinstance(spec_dtype, RefSpec):
-                # a dataset of references
-                bldr_data = self.__get_ref_builder(spec_dtype, spec_shape, container, manager, source=source)
-                builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=spec_dtype.reftype)
-            elif isinstance(spec_dtype, list):
-                # a compound dataset
-                #
-                # check for any references in the compound dtype, and
-                # convert them if necessary
-                refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
-                bldr_data = copy(container.data)
-                bldr_data = list()
-                for i, row in enumerate(container.data):
-                    tmp = list(row)
-                    for j, subt in refs:
-                        tmp[j] = self.__get_ref_builder(subt.dtype, None, row[j], manager, source=source)
-                    bldr_data.append(tuple(tmp))
-                try:
-                    bldr_data, dtype = self.convert_dtype(spec, bldr_data)
-                except Exception as ex:
-                    msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                    raise Exception(msg) from ex
-                builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
-            else:
-                # a regular dtype
-                if spec_dtype is None and self.__is_reftype(container.data):
-                    # an unspecified dtype and we were given references
+            if builder is None:
+                if not isinstance(container, Data):
+                    msg = "'container' must be of type Data with DatasetSpec"
+                    raise ValueError(msg)
+                spec_dtype, spec_shape, spec = self.__check_dset_spec(self.spec, spec_ext)
+                if isinstance(spec_dtype, RefSpec):
+                    # a dataset of references
+                    bldr_data = self.__get_ref_builder(spec_dtype, spec_shape, container, manager, source=source)
+                    builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=spec_dtype.reftype)
+                elif isinstance(spec_dtype, list):
+                    # a compound dataset
+                    #
+                    # check for any references in the compound dtype, and
+                    # convert them if necessary
+                    refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
+                    bldr_data = copy(container.data)
                     bldr_data = list()
-                    for d in container.data:
-                        if d is None:
-                            bldr_data.append(None)
-                        else:
-                            bldr_data.append(ReferenceBuilder(manager.build(d, source=source)))
-                    builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
-                                             dtype='object')
-                else:
-                    # a dataset that has no references, pass the donversion off to
-                    # the convert_dtype method
+                    for i, row in enumerate(container.data):
+                        tmp = list(row)
+                        for j, subt in refs:
+                            tmp[j] = self.__get_ref_builder(subt.dtype, None, row[j], manager, source=source)
+                        bldr_data.append(tuple(tmp))
                     try:
-                        bldr_data, dtype = self.convert_dtype(spec, container.data)
+                        bldr_data, dtype = self.convert_dtype(spec, bldr_data)
                     except Exception as ex:
                         msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                         raise Exception(msg) from ex
                     builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
-        self.__add_attributes(builder, self.__spec.attributes, container, manager, source)
+                else:
+                    # a regular dtype
+                    if spec_dtype is None and self.__is_reftype(container.data):
+                        # an unspecified dtype and we were given references
+                        bldr_data = list()
+                        for d in container.data:
+                            if d is None:
+                                bldr_data.append(None)
+                            else:
+                                bldr_data.append(ReferenceBuilder(manager.build(d, source=source)))
+                        builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
+                                                 dtype='object')
+                    else:
+                        # a dataset that has no references, pass the donversion off to
+                        # the convert_dtype method
+                        try:
+                            bldr_data, dtype = self.convert_dtype(spec, container.data)
+                        except Exception as ex:
+                            msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
+                            raise Exception(msg) from ex
+                        builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
+        all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
+        self.__add_attributes(builder, all_attrs, container, manager, source)
         return builder
 
     def __check_dset_spec(self, orig, ext):
@@ -873,6 +875,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
+            if spec.shape is None and getattr(builder.data, 'shape', None) == (1, ):
+                # if a scalar dataset is expected and a 1-element dataset is given, then read the dataset
+                builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)
         return ret
 

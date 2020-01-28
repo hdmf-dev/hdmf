@@ -1,7 +1,6 @@
 from ...utils import docval, getargs
 from ...build import ObjectMapper, BuildManager
 from ...spec import Spec
-from ...container import Container
 from ..table import DynamicTable, VectorIndex
 from .. import register_map
 
@@ -23,7 +22,7 @@ class DynamicTableMap(ObjectMapper):
         return container.colnames
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": Container, "doc": "the container to get the attribute value from"},
+            {"name": "container", "type": DynamicTable, "doc": "the container to get the attribute value from"},
             {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
             returns='the value of the attribute')
     def get_attr_value(self, **kwargs):
