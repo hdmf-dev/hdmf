@@ -72,7 +72,8 @@ class TestSpecLoad(TestCase):
             'name': self.NS_NAME,
             'schema': [
                 {'source': self.specs_path}
-            ]
+            ],
+            'version': '0.1.0'
         }
         self.namespace = SpecNamespace.build_namespace(**ns_dict)
         to_dump = {'namespaces': [self.namespace]}

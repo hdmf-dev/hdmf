@@ -136,10 +136,10 @@ class BuildManager:
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec that further refines the base specificatoin",
+            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec that further refines the base specification",
              'default': None})
     def build(self, **kwargs):
-        """ Build the GroupBuilder for the given AbstractContainer"""
+        """ Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container = getargs('container', kwargs)
         container_id = self.__conthash__(container)
         result = self.__builders.get(container_id)
@@ -155,10 +155,8 @@ class BuildManager:
                         raise ValueError("Can't change container_source once set")
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
-        elif container.modified:
-            if isinstance(result, GroupBuilder):
-                # TODO: if Datasets attributes are allowed to be modified, we need to
-                # figure out how to handle that starting here.
+        elif container.modified or spec_ext is not None:
+            if isinstance(result, BaseBuilder):
                 result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
         return result
 
@@ -727,10 +725,10 @@ class TypeMap:
              "doc": "the BuildManager to use for managing this build", 'default': None},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "builder", "type": GroupBuilder, "doc": "the Builder to build on", 'default': None},
+            {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None})
     def build(self, **kwargs):
-        """ Build the GroupBuilder for the given AbstractContainer"""
+        """Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container, manager, builder = getargs('container', 'manager', 'builder', kwargs)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
 

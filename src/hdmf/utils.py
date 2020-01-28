@@ -138,21 +138,28 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     type_errors = list()
     value_errors = list()
     argsi = 0
-    extras = dict(kwargs)
+    extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
 
-    # check for duplicates in docval
-    names = [x['name'] for x in validator]
-    duplicated = [item for item, count in collections.Counter(names).items() if count > 1]
-    if duplicated:
-        raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
+        # check for duplicates in docval
+        names = [x['name'] for x in validator]
+        duplicated = [item for item, count in collections.Counter(names).items()
+                      if count > 1]
+        if duplicated:
+            raise ValueError(
+                'The following names are duplicated: {}'.format(duplicated))
+
         if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
-            # verify only that the number of positional args is <= number of docval specified args
             if len(args) > len(validator):
-                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args)))
-        else:  # verify that the number of positional args + keyword args is <= number of docval specified args
-            if (len(args) + len(kwargs)) > len(validator):
-                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args) + len(kwargs)))
+                raise TypeError(
+                    'Expected at most %d arguments %r, got %d positional' % (len(validator), names, len(args))
+                )
+        else:  # allow for keyword args
+            if len(args) + len(kwargs) > len(validator):
+                raise TypeError(
+                    'Expected at most %d arguments %r, got %d: %d positional and %d keyword %s'
+                    % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
+                )
 
         # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
@@ -163,8 +170,9 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         unsupported_terms = set(arg.keys()) - set(allowable_terms)
         if unsupported_terms:
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
-                                                                                    list(unsupported_terms)))
+                                                                                    sorted(unsupported_terms)))
         # process positional arguments of the docval specification (no default value)
+        extras = dict(kwargs)
         while True:
             if 'default' in arg:
                 break
@@ -253,6 +261,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             arg = next(it)
     except StopIteration:
         pass
+    except TypeError as e:
+        type_errors.append(str(e))
+    except ValueError as e:
+        value_errors.append(str(e))
+
     if not allow_extra:
         for key in extras.keys():
             type_errors.append("unrecognized argument: '%s'" % key)
@@ -271,7 +284,7 @@ __docval_args_loc = 'args'
 
 def get_docval(func, *args):
     '''Get a copy of docval arguments for a function.
-    If args are supplied, return only docval arguments with value for 'name' key equal to *args
+    If args are supplied, return only docval arguments with value for 'name' key equal to the args
     '''
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
@@ -419,40 +432,28 @@ def docval(*validator, **options):
                 pos.append(a)
         loc_val = pos+kw
         _docval[__docval_args_loc] = loc_val
-        if is_method:
-            def func_call(*args, **kwargs):
-                self = args[0]
-                parsed = __parse_args(
-                            loc_val,
-                            args[1:],
-                            kwargs,
-                            enforce_type=enforce_type,
-                            enforce_shape=enforce_shape,
-                            allow_extra=allow_extra)
 
-                for error_type, ExceptionType in (('type_errors', TypeError),
-                                                  ('value_errors', ValueError)):
-                    parse_err = parsed.get(error_type)
-                    if parse_err:
-                        msg = ', '.join(parse_err)
-                        raise ExceptionType(msg)
+        def func_call(*args, **kwargs):
+            parsed = __parse_args(
+                        loc_val,
+                        args[1:] if is_method else args,
+                        kwargs,
+                        enforce_type=enforce_type,
+                        enforce_shape=enforce_shape,
+                        allow_extra=allow_extra)
 
-                return func(self, **parsed['args'])
-        else:
-            def func_call(*args, **kwargs):
-                parsed = __parse_args(loc_val,
-                                      args,
-                                      kwargs,
-                                      enforce_type=enforce_type,
-                                      allow_extra=allow_extra)
-                for error_type, ExceptionType in (('type_errors', TypeError),
-                                                  ('value_errors', ValueError)):
-                    parse_err = parsed.get(error_type)
-                    if parse_err:
-                        msg = ', '.join(parse_err)
-                        raise ExceptionType(msg)
+            for error_type, ExceptionType in (('type_errors', TypeError),
+                                              ('value_errors', ValueError)):
+                parse_err = parsed.get(error_type)
+                if parse_err:
+                    msg = '%s: %s' % (func.__qualname__, ', '.join(parse_err))
+                    raise ExceptionType(msg)
 
+            if is_method:
+                return func(args[0], **parsed['args'])
+            else:
                 return func(**parsed['args'])
+
         _rtype = rtype
         if isinstance(rtype, type):
             _rtype = rtype.__name__
