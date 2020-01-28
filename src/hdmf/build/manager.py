@@ -157,8 +157,6 @@ class BuildManager:
             self.prebuilt(container, result)
         elif container.modified or spec_ext is not None:
             if isinstance(result, BaseBuilder) or isinstance(result, DatasetBuilder):
-                # TODO: if Datasets attributes are allowed to be modified, we need to
-                # figure out how to handle that starting here.
                 result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
         return result
 
