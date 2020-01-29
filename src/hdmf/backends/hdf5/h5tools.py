@@ -911,18 +911,6 @@ class HDF5IO(HDMFIO):
         return
 
     @classmethod
-    def __selection_max_bounds__(cls, selection):
-        """Determine the bounds of a numpy selection index tuple"""
-        if isinstance(selection, int):
-            return selection+1
-        elif isinstance(selection, slice):
-            return selection.stop
-        elif isinstance(selection, list) or isinstance(selection, np.ndarray):
-            return np.nonzero(selection)[0][-1]+1
-        elif isinstance(selection, tuple):
-            return tuple([cls.__selection_max_bounds__(i) for i in selection])
-
-    @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):
         dtype = None
         io_settings = {}
@@ -997,21 +985,20 @@ class HDF5IO(HDMFIO):
         """
         try:
             chunk_i = next(data)
-            # Determine the minimum array dimensions to fit the chunk selection
-            max_bounds = cls.__selection_max_bounds__(chunk_i.selection)
-            if not hasattr(max_bounds, '__len__'):
-                max_bounds = (max_bounds,)
-            # Determine if we need to expand any of the data dimensions
-            expand_dims = [i for i, v in enumerate(max_bounds) if v is not None and v > dset.shape[i]]
-            # Expand the dataset if needed
-            if len(expand_dims) > 0:
-                new_shape = np.asarray(dset.shape)
-                new_shape[expand_dims] = np.asarray(max_bounds)[expand_dims]
-                dset.resize(new_shape)
-            # Process and write the data
-            dset[chunk_i.selection] = chunk_i.data
         except StopIteration:
             return False
+        try:
+            # Determine the minimum array dimensions to fit the chunk selection
+            max_shape = [x.stop or 0 for x in chunk_i.selection]
+        except AttributeError as exc:
+            msg = "Chunk selection %s is not a tuple of slices" % str(chunk_i.selection)
+            raise Exception(msg) from exc
+
+        # Expand the dataset if needed
+        dset.id.extend(tuple(max_shape))
+        # Write the data
+        dset[chunk_i.selection] = chunk_i.data
+
         return True
 
     @classmethod
