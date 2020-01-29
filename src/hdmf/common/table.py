@@ -1,10 +1,10 @@
 from h5py import Dataset
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
-from collections import OrderedDict
 
 from . import register_class
 
@@ -20,11 +20,22 @@ class Index(Data):
             {'name': 'target', 'type': Data,
              'doc': 'the target dataset that this index applies to'})
     def __init__(self, **kwargs):
-        call_docval_func(super(Index, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
 
 @register_class('VectorData')
 class VectorData(Data):
+    """
+    A n-dimensional dataset representing a column of a DynamicTable.
+    If used without an accompanying VectorIndex, first dimension is
+    along the rows of the DynamicTable and each step along the first
+    dimension is a cell of the larger table. VectorData can also be
+    used to represent a ragged array if paired with a VectorIndex.
+    This allows for storing arrays of varying length in a single cell
+    of the DynamicTable by indexing into this VectorData. The first
+    vector is at VectorData[0:VectorIndex(0)+1]. The second vector is at
+    VectorData[VectorIndex(0)+1:VectorIndex(1)+1], and so on.
+    """
 
     __fields__ = ("description",)
 
@@ -33,7 +44,7 @@ class VectorData(Data):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()})
     def __init__(self, **kwargs):
-        call_docval_func(super(VectorData, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.description = getargs('description', kwargs)
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
@@ -44,6 +55,12 @@ class VectorData(Data):
 
 @register_class('VectorIndex')
 class VectorIndex(Index):
+    """
+    When paired with a VectorData, this allows for storing arrays of varying
+    length in a single cell of the DynamicTable by indexing into this VectorData.
+    The first vector is at VectorData[0:VectorIndex(0)+1]. The second vector is at
+    VectorData[VectorIndex(0)+1:VectorIndex(1)+1], and so on.
+    """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorIndex'},
             {'name': 'data', 'type': ('array_data', 'data'),
@@ -51,7 +68,7 @@ class VectorIndex(Index):
             {'name': 'target', 'type': VectorData,
              'doc': 'the target dataset that this index applies to'})
     def __init__(self, **kwargs):
-        call_docval_func(super(VectorIndex, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.target = getargs('target', kwargs)
 
     def add_vector(self, arg):
@@ -84,7 +101,7 @@ class ElementIdentifiers(Data):
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
              'default': list()})
     def __init__(self, **kwargs):
-        call_docval_func(super(ElementIdentifiers, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
     @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
              'doc': 'List of ids to search for in this ElementIdentifer object'},
@@ -151,16 +168,16 @@ class DynamicTable(Container):
             new_columns[0:0] = bases[-1].__columns__
             cls.__columns__ = tuple(new_columns)
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},    # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
             {'name': 'id', 'type': ('array_data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data', 'doc': 'the names of the columns in this table',
              'default': None})
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
-        call_docval_func(super(DynamicTable, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.description = desc
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
@@ -529,7 +546,7 @@ class DynamicTable(Container):
             return self[key]
         return default
 
-    @docval({'name': 'exclude', 'type': set, 'doc': ' List of columns to exclude from the dataframe', 'default': None})
+    @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
@@ -642,7 +659,13 @@ class DynamicTable(Container):
 @register_class('DynamicTableRegion')
 class DynamicTableRegion(VectorData):
     """
-    An object for easily slicing into a DynamicTable
+    DynamicTableRegion provides a link from one table to an index or region of another. The `table`
+    attribute is another `DynamicTable`, indicating which table is referenced. The data is int(s)
+    indicating the row(s) (0-indexed) of the target array. `DynamicTableRegion`s can be used to
+    associate multiple rows with the same meta-data without data duplication. They can also be used to
+    create hierarchical relationships between multiple `DynamicTable`s. `DynamicTableRegion` objects
+    may be paired with a `VectorIndex` object to create ragged references, so a single cell of a
+    `DynamicTable` can reference many rows of another `DynamicTable`.
     """
 
     __fields__ = (
@@ -658,7 +681,7 @@ class DynamicTableRegion(VectorData):
              'doc': 'the DynamicTable this region applies to', 'default': None})
     def __init__(self, **kwargs):
         t = popargs('table', kwargs)
-        call_docval_func(super(DynamicTableRegion, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.table = t
 
     @property
@@ -692,6 +715,16 @@ class DynamicTableRegion(VectorData):
             return self.table[self.data[key]]
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
+
+    def to_dataframe(self, **kwargs):
+        """
+        Convert the whole DynamicTableRegion to a pandas dataframe.
+
+        Keyword arguments are passed through to the to_dataframe method of DynamicTable that
+        is being referenced (i.e., self.table). This allows specification of the 'exclude'
+        parameter and any other parameters of DynamicTable.to_dataframe.
+        """
+        return self.table.to_dataframe(**kwargs).iloc[self.data[:]]
 
     @property
     def shape(self):

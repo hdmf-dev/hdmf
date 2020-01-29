@@ -1,14 +1,12 @@
 from collections import OrderedDict
 from datetime import datetime
-from copy import deepcopy, copy
+from copy import copy
 import ruamel.yaml as yaml
 import os.path
 import string
 from warnings import warn
 from itertools import chain
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, raise_from
-
 
 from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 from .catalog import SpecCatalog
@@ -38,11 +36,11 @@ class SpecNamespace(dict):
 
     __types_key = 'data_types'
 
-    @docval(*deepcopy(_namespace_args))
+    @docval(*_namespace_args)
     def __init__(self, **kwargs):
         doc, full_name, name, version, date, author, contact, schema, catalog = \
             popargs('doc', 'full_name', 'name', 'version', 'date', 'author', 'contact', 'schema', 'catalog', kwargs)
-        super(SpecNamespace, self).__init__()
+        super().__init__()
         self['doc'] = doc
         self['schema'] = schema
         if any(c in string.whitespace for c in name):
@@ -50,8 +48,9 @@ class SpecNamespace(dict):
         self['name'] = name
         if full_name is not None:
             self['full_name'] = full_name
-        if version is not None:
-            self['version'] = version
+        if version is None:
+            raise TypeError('SpecNamespace missing arg `version`. Please specify a version for the extension.')
+        self['version'] = version
         if date is not None:
             self['date'] = date
         if author is not None:
@@ -162,7 +161,7 @@ class SpecNamespace(dict):
         return cls(*args, **kwargs)
 
 
-class SpecReader(with_metaclass(ABCMeta, object)):
+class SpecReader(metaclass=ABCMeta):
 
     @docval({'name': 'source', 'type': str, 'doc': 'the source from which this reader reads from'})
     def __init__(self, **kwargs):
@@ -186,7 +185,7 @@ class YAMLSpecReader(SpecReader):
     @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
     def __init__(self, **kwargs):
         super_kwargs = {'source': kwargs['indir']}
-        call_docval_func(super(YAMLSpecReader, self).__init__, super_kwargs)
+        call_docval_func(super().__init__, super_kwargs)
 
     def read_namespace(self, namespace_path):
         namespaces = None
@@ -211,7 +210,7 @@ class YAMLSpecReader(SpecReader):
         return os.path.join(self.source, spec_path)
 
 
-class NamespaceCatalog(object):
+class NamespaceCatalog:
 
     @docval({'name': 'group_spec_cls', 'type': type,
              'doc': 'the class to use for group specifications', 'default': GroupSpec},
@@ -408,7 +407,7 @@ class NamespaceCatalog(object):
                 try:
                     inc_ns = self.get_namespace(s['namespace'])
                 except KeyError as e:
-                    raise_from(ValueError("Could not load namespace '%s'" % s['namespace']), e)
+                    raise ValueError("Could not load namespace '%s'" % s['namespace']) from e
                 if types_key in s:
                     types = s[types_key]
                 else:
