@@ -26,8 +26,10 @@ __additional = {
     'uint8': ['uint16', 'uint32', 'uint64'],
     'uint16': ['uint32', 'uint64'],
     'uint32': ['uint64'],
+    'utf': ['ascii']
 }
 
+# if the spec dtype is a key in __allowable, then all types in __allowable[key] are valid
 __allowable = dict()
 for dt, dt_syn in __synonyms.items():
     allow = copy(dt_syn)
