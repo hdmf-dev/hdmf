@@ -351,8 +351,13 @@ class BaseStorageValidator(Validator):
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
 
-        print(type(self.spec))
-        print("type {}, remaining attributes {}, specloc {}".format(self.spec.neurodata_type_inc, list(attributes.keys()), self.get_spec_loc(self.spec)))
+        # if self.spec.type_key() == "neurodata_type":
+        #     attributes.pop("neurodata_type")
+        #     attributes.pop("namespace")
+        #     attributes.pop("object_id")
+
+        # print(type(self.spec))
+        print("type {}, remaining attributes {}, specloc {}".format(self.spec.type_key(), list(attributes.keys()), self.get_spec_loc(self.spec)))
         return ret
 
 
