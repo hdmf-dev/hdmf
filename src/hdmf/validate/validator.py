@@ -6,7 +6,7 @@ from itertools import chain
 
 from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
-from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec
+from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec.spec import BaseStorageSpec, DtypeHelper
 from ..spec import SpecNamespace
 
@@ -334,13 +334,13 @@ class BaseStorageValidator(Validator):
             self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
 
     @docval({"name": "builder", "type": BaseBuilder, "doc": "the builder to validate"},
-            returns='a list of Errors', rtype=list)
+            returns='a list of errors', rtype=list)
     def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
         attributes = builder.attributes
         ret = list()
         for attr, validator in self.__attribute_validators.items():
-            attr_val = attributes.get(attr)
+            attr_val = attributes.pop(attr, None)
             if attr_val is None:
                 if validator.spec.required:
                     ret.append(MissingError(self.get_spec_loc(validator.spec),
@@ -350,6 +350,9 @@ class BaseStorageValidator(Validator):
                 for err in errors:
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
+
+        print(type(self.spec))
+        print("type {}, remaining attributes {}, specloc {}".format(self.spec.neurodata_type_inc, list(attributes.keys()), self.get_spec_loc(self.spec)))
         return ret
 
 
@@ -406,52 +409,101 @@ class GroupValidator(BaseStorageValidator):
             else:
                 self.__include_dts[spec.data_type_def] = spec
 
+        for spec in self.spec.links:
+            self.__include_dts[spec.data_type_inc] = spec
+
+        self.include_dts = self.__include_dts
+        self.dataset_validators = self.__dataset_validators
+        self.group_validators = self.__group_validators
+
     @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
         ret = super().validate(builder)
+        # print(" groups {}, datasets {}".format(builder.groups, builder.datasets))
+
+        # print("{}: XXX datasets {}, groups {}, attributes {}".format(builder.name, " ".join(builder.datasets), " ".join(builder.groups), " ".join(builder.attributes)))
+
+        # if self.spec.neurodata_type_def == "IntracellularElectrode":
+        #     import pdb
+        #     pdb.set_trace()
+
+        visited_datasets = set(builder.datasets)
+        visited_groups = set(builder.groups)
+        visited_attributes = set(builder.attributes)
+
+        # print("beginning")
+
         # get the data_types
         data_types = dict()
+        non_data_types = dict()
         for key, value in builder.items():
+            # print("{}".format(key))
             v_builder = value
             if isinstance(v_builder, LinkBuilder):
                 v_builder = v_builder.builder
             if isinstance(v_builder, BaseBuilder):
                 dt = v_builder.attributes.get(self.spec.type_key())
                 if dt is not None:
+                    # print("match {}".format(key))
                     data_types.setdefault(dt, list()).append(value)
+                else:
+                    non_data_types[v_builder.name] = v_builder
+            # else:
+                # print("{}".format(key))
+
+            # if key == "labnotebook":
+            #     import pdb
+            #     pdb.set_trace()
+
         for dt, inc_spec in self.__include_dts.items():
+            # print("dt {}, inc_spec {}".format(dt, inc_spec))
             found = False
             inc_name = inc_spec.name
             for sub_val in self.vmap.valid_types(dt):
                 spec = sub_val.spec
+                # if spec.data_type_inc == "Device":
+                #     import pdb
+                #     pdb.set_trace()
                 sub_dt = spec.data_type_def
-                dt_builders = data_types.get(sub_dt)
+                dt_builders = data_types.pop(sub_dt, None)
                 if dt_builders is not None:
                     if inc_name is not None:
                         dt_builders = filter(lambda x: x.name == inc_name, dt_builders)
                     for bldr in dt_builders:
                         tmp = bldr
                         if isinstance(bldr, LinkBuilder):
-                            if inc_spec.linkable:
+                            if isinstance(inc_spec, LinkSpec):
                                 tmp = bldr.builder
                             else:
-                                ret.append(IllegalLinkError(self.get_spec_loc(inc_spec),
+                                if inc_spec.linkable:
+                                    tmp = bldr.builder
+                                else:
+                                    ret.append(IllegalLinkError(self.get_spec_loc(inc_spec),
                                                             location=self.get_builder_loc(tmp)))
                         ret.extend(sub_val.validate(tmp))
                         found = True
+                # else:
+                    # print("Builder {}, crap for {}".format(inc_name, sub_dt))
+
             if not found and self.__include_dts[dt].required:
                 ret.append(MissingDataType(self.get_spec_loc(self.spec), dt,
                                            location=self.get_builder_loc(builder)))
+            # if found:
+                # print("blah {}".format(builder.name))
         it = chain(self.__dataset_validators.items(),
                    self.__group_validators.items())
         for name, validator in it:
-            sub_builder = builder.get(name)
+            sub_builder = non_data_types.pop(name, None)
+
+            # print("name {}, builder type {}".format(name, type(sub_builder)))
+
             if isinstance(validator, BaseStorageSpec):
                 inc_spec = validator
                 validator = self.vmap.get_validator(inc_spec)
                 def_spec = validator.spec
+
                 if sub_builder is None:
                     if inc_spec.required:
                         ret.append(MissingDataType(self.get_spec_loc(def_spec), def_spec.data_type_def,
@@ -461,6 +513,7 @@ class GroupValidator(BaseStorageValidator):
 
             else:
                 spec = validator.spec
+                # print("spec {}, sub_builder {}".format(spec, sub_builder))
                 if isinstance(sub_builder, LinkBuilder):
                     if spec.linkable:
                         sub_builder = sub_builder.builder
@@ -473,4 +526,7 @@ class GroupValidator(BaseStorageValidator):
                 else:
                     ret.extend(validator.validate(sub_builder))
 
+        print("remaining data types {}, specloc {}".format(list(data_types.keys()), self.get_spec_loc(self.spec)))
+        print("remaining non data types {}, specloc {}".format(list(non_data_types.keys()), self.get_spec_loc(self.spec)))
+        # print("non visited: groups {}, datasets {}".format(visited_groups, visited_datasets))
         return ret
