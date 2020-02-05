@@ -351,12 +351,6 @@ class BaseStorageValidator(Validator):
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
 
-        # if self.spec.type_key() == "neurodata_type":
-        #     attributes.pop("neurodata_type")
-        #     attributes.pop("namespace")
-        #     attributes.pop("object_id")
-
-        # print(type(self.spec))
         print("type {}, remaining attributes {}, specloc {}".format(self.spec.type_key(), list(attributes.keys()), self.get_spec_loc(self.spec)))
         return ret
 
@@ -426,51 +420,26 @@ class GroupValidator(BaseStorageValidator):
     def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
         ret = super().validate(builder)
-        # print(" groups {}, datasets {}".format(builder.groups, builder.datasets))
-
-        # print("{}: XXX datasets {}, groups {}, attributes {}".format(builder.name, " ".join(builder.datasets), " ".join(builder.groups), " ".join(builder.attributes)))
-
-        # if self.spec.neurodata_type_def == "IntracellularElectrode":
-        #     import pdb
-        #     pdb.set_trace()
-
-        visited_datasets = set(builder.datasets)
-        visited_groups = set(builder.groups)
-        visited_attributes = set(builder.attributes)
-
-        # print("beginning")
 
         # get the data_types
         data_types = dict()
         non_data_types = dict()
         for key, value in builder.items():
-            # print("{}".format(key))
             v_builder = value
             if isinstance(v_builder, LinkBuilder):
                 v_builder = v_builder.builder
             if isinstance(v_builder, BaseBuilder):
                 dt = v_builder.attributes.get(self.spec.type_key())
                 if dt is not None:
-                    # print("match {}".format(key))
                     data_types.setdefault(dt, list()).append(value)
                 else:
                     non_data_types[v_builder.name] = v_builder
-            # else:
-                # print("{}".format(key))
-
-            # if key == "labnotebook":
-            #     import pdb
-            #     pdb.set_trace()
 
         for dt, inc_spec in self.__include_dts.items():
-            # print("dt {}, inc_spec {}".format(dt, inc_spec))
             found = False
             inc_name = inc_spec.name
             for sub_val in self.vmap.valid_types(dt):
                 spec = sub_val.spec
-                # if spec.data_type_inc == "Device":
-                #     import pdb
-                #     pdb.set_trace()
                 sub_dt = spec.data_type_def
                 dt_builders = data_types.pop(sub_dt, None)
                 if dt_builders is not None:
@@ -489,20 +458,14 @@ class GroupValidator(BaseStorageValidator):
                                                             location=self.get_builder_loc(tmp)))
                         ret.extend(sub_val.validate(tmp))
                         found = True
-                # else:
-                    # print("Builder {}, crap for {}".format(inc_name, sub_dt))
 
             if not found and self.__include_dts[dt].required:
                 ret.append(MissingDataType(self.get_spec_loc(self.spec), dt,
                                            location=self.get_builder_loc(builder)))
-            # if found:
-                # print("blah {}".format(builder.name))
         it = chain(self.__dataset_validators.items(),
                    self.__group_validators.items())
         for name, validator in it:
             sub_builder = non_data_types.pop(name, None)
-
-            # print("name {}, builder type {}".format(name, type(sub_builder)))
 
             if isinstance(validator, BaseStorageSpec):
                 inc_spec = validator
@@ -518,7 +481,6 @@ class GroupValidator(BaseStorageValidator):
 
             else:
                 spec = validator.spec
-                # print("spec {}, sub_builder {}".format(spec, sub_builder))
                 if isinstance(sub_builder, LinkBuilder):
                     if spec.linkable:
                         sub_builder = sub_builder.builder
@@ -533,5 +495,4 @@ class GroupValidator(BaseStorageValidator):
 
         print("remaining data types {}, specloc {}".format(list(data_types.keys()), self.get_spec_loc(self.spec)))
         print("remaining non data types {}, specloc {}".format(list(non_data_types.keys()), self.get_spec_loc(self.spec)))
-        # print("non visited: groups {}, datasets {}".format(visited_groups, visited_datasets))
         return ret
