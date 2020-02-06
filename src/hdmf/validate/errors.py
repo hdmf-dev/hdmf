@@ -19,6 +19,7 @@ class Error:
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},
+            {'name': 'severity', 'type': int, 'doc': 'severity of the error', 'default': 10},
             {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
     def __init__(self, **kwargs):
         self.__name = getargs('name', kwargs)
@@ -78,6 +79,16 @@ class MissingError(Error):
         reason = "argument missing"
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
+
+
+class SuperfluousWarning(Error):
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is superfluous'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    def __init__(self, **kwargs):
+        name = getargs('name', kwargs)
+        reason = "Encountered unexpected entity"
+        loc = getargs('location', kwargs)
+        super().__init__(name, reason, location=loc, severity=0)
 
 
 class MissingDataType(Error):

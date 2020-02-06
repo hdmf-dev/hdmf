@@ -14,7 +14,7 @@ from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder,
 from ..build.builders import BaseBuilder
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
-from .errors import ExpectedArrayError
+from .errors import ExpectedArrayError, SuperfluousWarning
 
 __synonyms = DtypeHelper.primary_dtype_synonyms
 
@@ -338,6 +338,10 @@ class BaseStorageValidator(Validator):
     def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
         attributes = builder.attributes
+        # print(attributes)
+        #
+        # if isinstance(builder, GroupBuilder):
+        #     print(builder.links)
         ret = list()
         for attr, validator in self.__attribute_validators.items():
             attr_val = attributes.pop(attr, None)
@@ -351,7 +355,9 @@ class BaseStorageValidator(Validator):
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
 
-        print("type {}, remaining attributes {}, specloc {}".format(self.spec.type_key(), list(attributes.keys()), self.get_spec_loc(self.spec)))
+        for x in attributes:
+            ret.append(SuperfluousWarning(x, location=self.get_builder_loc(builder)))
+        # print("type {}, remaining attributes {}, specloc {}".format(self.spec.type_key(), list(attributes.keys()), self.get_spec_loc(self.spec)))
         return ret
 
 
@@ -493,6 +499,12 @@ class GroupValidator(BaseStorageValidator):
                 else:
                     ret.extend(validator.validate(sub_builder))
 
-        print("remaining data types {}, specloc {}".format(list(data_types.keys()), self.get_spec_loc(self.spec)))
-        print("remaining non data types {}, specloc {}".format(list(non_data_types.keys()), self.get_spec_loc(self.spec)))
+        it = chain(data_types.items(),
+                   non_data_types.items())
+
+        for x in it:
+            ret.append(SuperfluousWarning(x, location=self.get_builder_loc(builder)))
+
+        # print("remaining data types {}, specloc {}".format(list(data_types.keys()), self.get_spec_loc(self.spec)))
+        # print("remaining non data types {}, specloc {}".format(list(non_data_types.keys()), self.get_spec_loc(self.spec)))
         return ret
