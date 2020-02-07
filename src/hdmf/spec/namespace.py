@@ -49,7 +49,9 @@ class SpecNamespace(dict):
         if full_name is not None:
             self['full_name'] = full_name
         if version is None:
-            raise TypeError('SpecNamespace missing arg `version`. Please specify a version for the extension.')
+            # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
+            # be able to read older files with extensions that are missing the version key.
+            version = 'unknown'
         self['version'] = version
         if date is not None:
             self['date'] = date
@@ -422,7 +424,10 @@ class NamespaceCatalog:
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
-        self.__namespaces[ns_name] = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        if ns.version is None:
+            warn("Loaded namespace is missing 'version'.")
+        self.__namespaces[ns_name] = ns
         return included_types
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},

@@ -46,8 +46,13 @@ class YAMLSpecWriter(SpecWriter):
 
     def write_namespace(self, namespace, path):
         with open(os.path.join(self.__outdir, path), 'w') as stream:
-            ns = namespace
+            # version is required on write as of HDMF 1.5.4. check here instead of SpecNamespace.__init__ to maintain
+            # backwards compatibility with older namespaces that are missing version
+            if namespace['version'] is None:
+                raise TypeError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+                                % namespace['name'])
             # Convert the date to a string if necessary
+            ns = namespace
             if 'date' in namespace and isinstance(namespace['date'], datetime):
                 ns = copy.copy(ns)  # copy the namespace to avoid side-effects
                 ns['date'] = ns['date'].isoformat()
