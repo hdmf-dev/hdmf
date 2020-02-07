@@ -499,11 +499,11 @@ class GroupValidator(BaseStorageValidator):
                 else:
                     ret.extend(validator.validate(sub_builder))
 
-        it = chain(data_types.items(),
-                   non_data_types.items())
+        it = chain(data_types.keys(),
+                   non_data_types.keys())
 
         for x in it:
-            ret.append(SuperfluousWarning(x, location=self.get_builder_loc(builder)))
+            ret.append(SuperfluousWarning(x, location=self.get_spec_loc(self.spec)))
 
         # print("remaining data types {}, specloc {}".format(list(data_types.keys()), self.get_spec_loc(self.spec)))
         # print("remaining non data types {}, specloc {}".format(list(non_data_types.keys()), self.get_spec_loc(self.spec)))

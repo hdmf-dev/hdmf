@@ -25,6 +25,7 @@ class Error:
         self.__name = getargs('name', kwargs)
         self.__reason = getargs('reason', kwargs)
         self.__location = getargs('location', kwargs)
+        self.__severity = getargs('severity', kwargs)
         if self.__location is not None:
             self.__str = "%s (%s): %s" % (self.__name, self.__location, self.__reason)
         else:
@@ -41,6 +42,10 @@ class Error:
     @property
     def location(self):
         return self.__location
+
+    @property
+    def severity(self):
+        return self.__severity
 
     @location.setter
     def location(self, loc):
