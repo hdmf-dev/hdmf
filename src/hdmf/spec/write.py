@@ -45,6 +45,11 @@ class YAMLSpecWriter(SpecWriter):
             yaml.dump(sorted_data, fd_write, Dumper=yaml.dumper.RoundTripDumper)
 
     def write_namespace(self, namespace, path):
+        """Write the given namespace key-value pairs as YAML to the given path.
+
+        :param namespace: SpecNamespace holding the key-value pairs that define the namespace
+        :param path: File path to write the namespace to as YAML under the key 'namespaces'
+        """
         with open(os.path.join(self.__outdir, path), 'w') as stream:
             # Convert the date to a string if necessary
             ns = namespace
@@ -55,7 +60,7 @@ class YAMLSpecWriter(SpecWriter):
 
     def reorder_yaml(self, path):
         """
-        Open a YAML file, load it as python data, sort the data, and write it back out to the
+        Open a YAML file, load it as python data, sort the data alphabetically, and write it back out to the
         same path.
         """
         with open(path, 'rb') as fd_read:
