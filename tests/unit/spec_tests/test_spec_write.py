@@ -65,6 +65,25 @@ class TestSpec(TestCase):
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 
+    def _test_namespace_file(self):
+        with open(self.namespace_path, 'r') as file:
+            match_str = \
+"""namespaces:
+- author: foo
+  contact: foo@bar.com
+  date: '%s'
+  doc: mydoc
+  full_name: My Laboratory
+  name: mylab
+  schema:
+  - doc: Extensions for my lab
+    source: mylab.extensions.yaml
+    title: Extensions for my lab
+  version: 0.0.1
+""" % self.date.isoformat()  # noqa: E128
+            nsstr = file.read()
+            self.assertEqual(nsstr, match_str)
+
 
 class TestNamespaceBuilder(TestSpec):
     NS_NAME = 'test_ns'
@@ -87,25 +106,6 @@ class TestNamespaceBuilder(TestSpec):
     def test_export_namespace(self):
         self._test_namespace_file()
         self._test_extensions_file()
-
-    def _test_namespace_file(self):
-        with open(self.namespace_path, 'r') as file:
-            match_str = \
-"""namespaces:
-- author: foo
-  contact: foo@bar.com
-  date: '%s'
-  doc: mydoc
-  full_name: My Laboratory
-  name: mylab
-  schema:
-  - doc: Extensions for my lab
-    source: mylab.extensions.yaml
-    title: Extensions for my lab
-  version: 0.0.1
-""" % self.date.isoformat()  # noqa: E128
-            nsstr = file.read()
-            self.assertEqual(nsstr, match_str)
 
     def test_read_namespace(self):
         ns_catalog = NamespaceCatalog()
@@ -137,6 +137,18 @@ class TestNamespaceBuilder(TestSpec):
                                      'source': 'mylab.extensions.yaml',
                                      'title': 'Extensions for my lab'})
 
+    def test_missing_version(self):
+        """Test that creating a namespace builder without a version raises an error."""
+        msg = "Namespace '%s' missing key 'version'. Please specify a version for the extension." % self.ns_name
+        with self.assertRaisesWith(RuntimeError, msg):
+            self.ns_builder = NamespaceBuilder(doc="mydoc",
+                                               name=self.ns_name,
+                                               full_name="My Laboratory",
+                                               author="foo",
+                                               contact="foo@bar.com",
+                                               namespace_cls=SpecNamespace,
+                                               date=self.date)
+
 
 class TestYAMLSpecWrite(TestSpec):
 
@@ -167,58 +179,11 @@ class TestYAMLSpecWrite(TestSpec):
     def test_get_name(self):
         self.assertEqual(self.ns_name, self.ns_builder.name)
 
-    def _test_namespace_file(self):
-        with open(self.namespace_path, 'r') as file:
-            match_str = \
-"""namespaces:
-- author: foo
-  contact: foo@bar.com
-  date: '%s'
-  doc: mydoc
-  full_name: My Laboratory
-  name: mylab
-  schema:
-  - doc: Extensions for my lab
-    source: mylab.extensions.yaml
-    title: Extensions for my lab
-  version: 0.0.1
-""" % self.date.isoformat()  # noqa: E128
-            nsstr = file.read()
-            self.assertEqual(nsstr, match_str)
-
-
-class TestYAMLSpecWriteVersion(TestCase):
-
-    def setUp(self):
-        # create a builder for the namespace
-        self.ns_name = "mylab"
-        self.date = datetime.datetime.now()
-
-        self.ns_builder = NamespaceBuilder(doc="mydoc",
-                                           name=self.ns_name,
-                                           full_name="My Laboratory",
-                                           # version="0.0.1",
-                                           author="foo",
-                                           contact="foo@bar.com",
-                                           namespace_cls=SpecNamespace,
-                                           date=self.date)
-
-        self.namespace_path = 'mylab.namespace.yaml'
-
-    def tearDown(self):
-        if os.path.exists(self.namespace_path):
-            os.remove(self.namespace_path)
-
-    def test_export_missing_version(self):
-        writer = YAMLSpecWriter()
-        msg = "Namespace '%s' missing key 'version'. Please specify a version for the extension." % self.ns_name
-        with self.assertRaisesWith(RuntimeError, msg):
-            self.ns_builder.export(self.namespace_path, writer=writer)
-
 
 class TestExportSpec(TestSpec):
 
     def test_export(self):
+        """Test that export_spec writes the correct files."""
         export_spec(self.ns_builder, self.data_types, '.')
         self._test_namespace_file()
         self._test_extensions_file()
@@ -230,8 +195,7 @@ class TestExportSpec(TestSpec):
             os.remove(self.namespace_path)
 
     def _test_namespace_file(self):
-        with open(self.namespace_path, 'r') as nsfile:
-            nsstr = nsfile.read()
+        with open(self.namespace_path, 'r') as file:
             match_str = \
 """namespaces:
 - author: foo
@@ -244,19 +208,16 @@ class TestExportSpec(TestSpec):
   - source: mylab.extensions.yaml
   version: 0.0.1
 """ % self.date.isoformat()  # noqa: E128
+            nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 
     def test_missing_data_types(self):
+        """Test that calling export_spec on a namespace builder without data types raises a warning."""
         with self.assertWarnsWith(UserWarning, 'No data types specified. Exiting.'):
             export_spec(self.ns_builder, [], '.')
 
     def test_missing_name(self):
+        """Test that calling export_spec on a namespace builder without a name raises an error."""
         self.ns_builder._NamespaceBuilder__ns_args['name'] = None
         with self.assertRaisesWith(RuntimeError, 'Namespace name is required to export specs'):
-            export_spec(self.ns_builder, self.data_types, '.')
-
-    def test_missing_version(self):
-        self.ns_builder._NamespaceBuilder__ns_args['version'] = None
-        msg = "Namespace '%s' missing key 'version'. Please specify a version for the extension." % self.ns_name
-        with self.assertRaisesWith(RuntimeError, msg):
             export_spec(self.ns_builder, self.data_types, '.')

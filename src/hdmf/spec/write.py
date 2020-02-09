@@ -109,6 +109,11 @@ class NamespaceBuilder:
             {'name': 'namespace_cls', 'type': type, 'doc': 'the SpecNamespace type', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         ns_cls = popargs('namespace_cls', kwargs)
+        if kwargs['version'] is None:
+            # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
+            # without a verison
+            raise RuntimeError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+                               % kwargs['name'])
         self.__ns_args = copy.deepcopy(kwargs)
         self.__namespaces = OrderedDict()
         self.__sources = OrderedDict()
@@ -202,11 +207,6 @@ class NamespaceBuilder:
             elif out:
                 writer.write_spec(out, path)
             ns_args['schema'].append(item)
-        if ns_args['version'] is None:
-            # version is required on write as of HDMF 1.5. check before building the namespace so that
-            # SpecNamespace can still be created for older namespaces that are missing version
-            raise RuntimeError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
-                               % ns_args['name'])
         namespace = SpecNamespace.build_namespace(**ns_args)
         writer.write_namespace(namespace, ns_path)
 
