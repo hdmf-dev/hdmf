@@ -187,6 +187,35 @@ class TestYAMLSpecWrite(TestSpec):
             self.assertEqual(nsstr, match_str)
 
 
+class TestYAMLSpecWriteVersion(TestCase):
+
+    def setUp(self):
+        # create a builder for the namespace
+        self.ns_name = "mylab"
+        self.date = datetime.datetime.now()
+
+        self.ns_builder = NamespaceBuilder(doc="mydoc",
+                                           name=self.ns_name,
+                                           full_name="My Laboratory",
+                                           # version="0.0.1",
+                                           author="foo",
+                                           contact="foo@bar.com",
+                                           namespace_cls=SpecNamespace,
+                                           date=self.date)
+
+        self.namespace_path = 'mylab.namespace.yaml'
+
+    def tearDown(self):
+        if os.path.exists(self.namespace_path):
+            os.remove(self.namespace_path)
+
+    def test_export_missing_version(self):
+        writer = YAMLSpecWriter()
+        msg = "Namespace '%s' missing key 'version'. Please specify a version for the extension." % self.ns_name
+        with self.assertRaisesWith(RuntimeError, msg):
+            self.ns_builder.export(self.namespace_path, writer=writer)
+
+
 class TestExportSpec(TestSpec):
 
     def test_export(self):
@@ -224,4 +253,10 @@ class TestExportSpec(TestSpec):
     def test_missing_name(self):
         self.ns_builder._NamespaceBuilder__ns_args['name'] = None
         with self.assertRaisesWith(RuntimeError, 'Namespace name is required to export specs'):
+            export_spec(self.ns_builder, self.data_types, '.')
+
+    def test_missing_version(self):
+        self.ns_builder._NamespaceBuilder__ns_args['version'] = None
+        msg = "Namespace '%s' missing key 'version'. Please specify a version for the extension." % self.ns_name
+        with self.assertRaisesWith(RuntimeError, msg):
             export_spec(self.ns_builder, self.data_types, '.')

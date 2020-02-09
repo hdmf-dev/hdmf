@@ -51,7 +51,9 @@ class SpecNamespace(dict):
         if version is None:
             # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
             # be able to read older files with extensions that are missing the version key.
-            version = 'unknown'
+            warn(("Loaded namespace '%s' is missing the required key 'version'. Version will be set to 'unversioned'. "
+                  "Please notify the extension author.") % name)
+            version = 'unversioned'
         self['version'] = version
         if date is not None:
             self['date'] = date
@@ -425,8 +427,6 @@ class NamespaceCatalog:
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
         ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
-        if ns.version is None:
-            warn("Loaded namespace is missing 'version'.")
         self.__namespaces[ns_name] = ns
         return included_types
 

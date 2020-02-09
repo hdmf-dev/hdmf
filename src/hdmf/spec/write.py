@@ -46,11 +46,6 @@ class YAMLSpecWriter(SpecWriter):
 
     def write_namespace(self, namespace, path):
         with open(os.path.join(self.__outdir, path), 'w') as stream:
-            # version is required on write as of HDMF 1.5.4. check here instead of SpecNamespace.__init__ to maintain
-            # backwards compatibility with older namespaces that are missing version
-            if namespace['version'] is None:
-                raise TypeError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
-                                % namespace['name'])
             # Convert the date to a string if necessary
             ns = namespace
             if 'date' in namespace and isinstance(namespace['date'], datetime):
@@ -207,6 +202,11 @@ class NamespaceBuilder:
             elif out:
                 writer.write_spec(out, path)
             ns_args['schema'].append(item)
+        if ns_args['version'] is None:
+            # version is required on write as of HDMF 1.5. check before building the namespace so that
+            # SpecNamespace can still be created for older namespaces that are missing version
+            raise RuntimeError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+                               % ns_args['name'])
         namespace = SpecNamespace.build_namespace(**ns_args)
         writer.write_namespace(namespace, ns_path)
 
