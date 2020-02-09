@@ -215,9 +215,3 @@ class TestExportSpec(TestSpec):
         """Test that calling export_spec on a namespace builder without data types raises a warning."""
         with self.assertWarnsWith(UserWarning, 'No data types specified. Exiting.'):
             export_spec(self.ns_builder, [], '.')
-
-    def test_missing_name(self):
-        """Test that calling export_spec on a namespace builder without a name raises an error."""
-        self.ns_builder._NamespaceBuilder__ns_args['name'] = None
-        with self.assertRaisesWith(RuntimeError, 'Namespace name is required to export specs'):
-            export_spec(self.ns_builder, self.data_types, '.')

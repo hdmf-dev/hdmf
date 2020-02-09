@@ -242,9 +242,6 @@ def export_spec(ns_builder, new_data_types, output_dir):
         warnings.warn('No data types specified. Exiting.')
         return
 
-    if not ns_builder.name:
-        raise RuntimeError('Namespace name is required to export specs')
-
     ns_path = ns_builder.name + '.namespace.yaml'
     ext_path = ns_builder.name + '.extensions.yaml'
 
