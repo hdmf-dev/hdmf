@@ -3,6 +3,7 @@ from abc import ABCMeta
 import collections
 import h5py
 import numpy as np
+import warnings
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
@@ -116,7 +117,8 @@ def __format_type(argtype):
         raise ValueError("argtype must be a type, str, list, or tuple")
 
 
-def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False):   # noqa: C901
+def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
+                 allow_positional=True):
     """
     Internal helper function used by the docval decorator to parse and validate function arguments
 
@@ -129,6 +131,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                           should be enforced if possible.
     :param allow_extra: Boolean indicating whether extra keyword arguments are allowed (if False and extra keyword
                         arguments are specified, then an error is raised).
+    :param allow_positional: Boolean indicating whether positional arguments are allowed (if False and positional
+                             arguments are speicifed, a warning is raised - this may become an error later).
 
     :return: Dict with:
         * 'args' : Dict all arguments where keys are the names and values are the values of the arguments.
@@ -137,6 +141,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     ret = dict()
     type_errors = list()
     value_errors = list()
+    my_warnings = list()
     argsi = 0
     extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
 
@@ -160,6 +165,10 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     'Expected at most %d arguments %r, got %d: %d positional and %d keyword %s'
                     % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
                 )
+
+        if args and not allow_positional:
+            msg = 'Positional arguments are discouraged and may be forbidden in a future release.'
+            my_warnings.append(FutureWarning(msg))
 
         # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
@@ -274,7 +283,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         # allow_extra needs to be tracked on a function so that fmt_docval_args doesn't strip them out
         for key in extras.keys():
             ret[key] = extras[key]
-    return {'args': ret, 'type_errors': type_errors, 'value_errors': value_errors}
+    return {'args': ret, 'warnings': my_warnings, 'type_errors': type_errors, 'value_errors': value_errors}
 
 
 docval_idx_name = '__dv_idx__'
@@ -412,10 +421,12 @@ def docval(*validator, **options):
     rtype = options.pop('rtype', None)
     is_method = options.pop('is_method', True)
     allow_extra = options.pop('allow_extra', False)
+    allow_positional = options.pop('allow_positional', True)
 
     def dec(func):
         _docval = _copy.copy(options)
         _docval['allow_extra'] = allow_extra
+        _docval['allow_positional'] = allow_positional
         func.__name__ = _docval.get('func_name', func.__name__)
         func.__doc__ = _docval.get('doc', func.__doc__)
         pos = list()
@@ -440,7 +451,13 @@ def docval(*validator, **options):
                         kwargs,
                         enforce_type=enforce_type,
                         enforce_shape=enforce_shape,
-                        allow_extra=allow_extra)
+                        allow_extra=allow_extra,
+                        allow_positional=allow_positional)
+
+            parse_warnings = parsed.get('warnings')
+            if parse_warnings:
+                msg = '%s: %s' % (func.__qualname__, ', '.join(map(str, parse_warnings)))
+                warnings.warn(msg)
 
             for error_type, ExceptionType in (('type_errors', TypeError),
                                               ('value_errors', ValueError)):
