@@ -117,7 +117,7 @@ class NamespaceBuilder:
         if kwargs['version'] is None:
             # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
             # without a verison
-            raise RuntimeError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+            raise ValueError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
                                % kwargs['name'])
         self.__ns_args = copy.deepcopy(kwargs)
         self.__namespaces = OrderedDict()
