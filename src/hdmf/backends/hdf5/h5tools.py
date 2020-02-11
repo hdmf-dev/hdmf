@@ -1127,3 +1127,10 @@ class HDF5IO(HDMFIO):
             else:
                 ret.append(elem)
         return ret
+
+    @property
+    def mode(self):
+        """
+        Return the HDF5 file mode. One of ("w", "r", "r+", "a", "w-", "x").
+        """
+        return self.__mode

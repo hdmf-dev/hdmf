@@ -45,9 +45,14 @@ class YAMLSpecWriter(SpecWriter):
             yaml.dump(sorted_data, fd_write, Dumper=yaml.dumper.RoundTripDumper)
 
     def write_namespace(self, namespace, path):
+        """Write the given namespace key-value pairs as YAML to the given path.
+
+        :param namespace: SpecNamespace holding the key-value pairs that define the namespace
+        :param path: File path to write the namespace to as YAML under the key 'namespaces'
+        """
         with open(os.path.join(self.__outdir, path), 'w') as stream:
-            ns = namespace
             # Convert the date to a string if necessary
+            ns = namespace
             if 'date' in namespace and isinstance(namespace['date'], datetime):
                 ns = copy.copy(ns)  # copy the namespace to avoid side-effects
                 ns['date'] = ns['date'].isoformat()
@@ -55,7 +60,7 @@ class YAMLSpecWriter(SpecWriter):
 
     def reorder_yaml(self, path):
         """
-        Open a YAML file, load it as python data, sort the data, and write it back out to the
+        Open a YAML file, load it as python data, sort the data alphabetically, and write it back out to the
         same path.
         """
         with open(path, 'rb') as fd_read:
@@ -109,6 +114,11 @@ class NamespaceBuilder:
             {'name': 'namespace_cls', 'type': type, 'doc': 'the SpecNamespace type', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         ns_cls = popargs('namespace_cls', kwargs)
+        if kwargs['version'] is None:
+            # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
+            # without a verison
+            raise ValueError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+                             % kwargs['name'])
         self.__ns_args = copy.deepcopy(kwargs)
         self.__namespaces = OrderedDict()
         self.__sources = OrderedDict()
@@ -236,9 +246,6 @@ def export_spec(ns_builder, new_data_types, output_dir):
     if len(new_data_types) == 0:
         warnings.warn('No data types specified. Exiting.')
         return
-
-    if not ns_builder.name:
-        raise RuntimeError('Namespace name is required to export specs')
 
     ns_path = ns_builder.name + '.namespace.yaml'
     ext_path = ns_builder.name + '.extensions.yaml'

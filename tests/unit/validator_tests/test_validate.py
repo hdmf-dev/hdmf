@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
 from dateutil.tz import tzlocal
+import numpy as np
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
 from hdmf.build import GroupBuilder, DatasetBuilder
@@ -208,3 +209,86 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 0)
+
+
+class TestDtypeValidation(TestCase):
+
+    def set_up_spec(self, dtype):
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec('an example dataset', dtype, name='data')],
+                         attributes=[AttributeSpec('attr1', 'an example attribute', dtype)])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_ascii_for_utf8(self):
+        """Test that validator allows ASCII data where UTF8 is specified."""
+        self.set_up_spec('text')
+        value = b'an ascii string'
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_utf8_for_ascii(self):
+        """Test that validator does not allow UTF8 where ASCII is specified."""
+        self.set_up_spec('bytes')
+        value = 'a utf8 string'
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'bytes', got 'utf'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'bytes', got 'utf'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_int64_for_int8(self):
+        """Test that validator allows int64 data where int8 is specified."""
+        self.set_up_spec('int8')
+        value = np.int64(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_int8_for_int64(self):
+        """Test that validator does not allow int8 data where int64 is specified."""
+        self.set_up_spec('int64')
+        value = np.int8(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'int64', got 'int8'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'int64', got 'int8'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_int64_for_numeric(self):
+        """Test that validator allows int64 data where numeric is specified."""
+        self.set_up_spec('numeric')
+        value = np.int64(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_bool_for_numeric(self):
+        """Test that validator does not allow bool data where numeric is specified."""
+        self.set_up_spec('numeric')
+        value = np.bool(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'numeric', got 'bool'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'numeric', got 'bool'"}
+        self.assertEqual(result_strings, expected_errors)
