@@ -4,11 +4,15 @@ import collections
 import h5py
 import numpy as np
 import warnings
+from enum import Enum
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float],
 }
+
+# code to signify how to handle positional arguments in docval
+AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 
 
 def docval_macro(macro):
@@ -118,7 +122,7 @@ def __format_type(argtype):
 
 
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
-                 allow_positional=True):
+                 allow_positional=AllowPositional.ALLOWED):
     """
     Internal helper function used by the docval decorator to parse and validate function arguments
 
@@ -131,17 +135,20 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                           should be enforced if possible.
     :param allow_extra: Boolean indicating whether extra keyword arguments are allowed (if False and extra keyword
                         arguments are specified, then an error is raised).
-    :param allow_positional: Boolean indicating whether positional arguments are allowed (if False and positional
-                             arguments are speicifed, a warning is raised - this may become an error later).
+    :param allow_positional: integer code indicating whether positional arguments are allowed:
+                             AllowPositional.ALLOWED: positional arguments are allowed
+                             AllowPositional.WARNING: return warning if positional arguments are supplied
+                             AllowPositional.ERROR: return error if positional arguments are supplied
 
     :return: Dict with:
         * 'args' : Dict all arguments where keys are the names and values are the values of the arguments.
         * 'errors' : List of string with error messages
     """
     ret = dict()
+    syntax_errors = list()
     type_errors = list()
     value_errors = list()
-    my_warnings = list()
+    future_warnings = list()
     argsi = 0
     extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
 
@@ -166,9 +173,13 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
                 )
 
-        if args and not allow_positional:
-            msg = 'Positional arguments are discouraged and may be forbidden in a future release.'
-            my_warnings.append(FutureWarning(msg))
+        if args:
+            if allow_positional == AllowPositional.WARNING:
+                msg = 'Positional arguments are discouraged and may be forbidden in a future release.'
+                future_warnings.append(msg)
+            elif allow_positional == AllowPositional.ERROR:
+                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.'
+                syntax_errors.append(msg)
 
         # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
@@ -283,7 +294,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         # allow_extra needs to be tracked on a function so that fmt_docval_args doesn't strip them out
         for key in extras.keys():
             ret[key] = extras[key]
-    return {'args': ret, 'warnings': my_warnings, 'type_errors': type_errors, 'value_errors': value_errors}
+    return {'args': ret, 'future_warnings': future_warnings, 'type_errors': type_errors, 'value_errors': value_errors,
+            'syntax_errors': syntax_errors}
 
 
 docval_idx_name = '__dv_idx__'
@@ -454,13 +466,14 @@ def docval(*validator, **options):
                         allow_extra=allow_extra,
                         allow_positional=allow_positional)
 
-            parse_warnings = parsed.get('warnings')
+            parse_warnings = parsed.get('future_warnings')
             if parse_warnings:
-                msg = '%s: %s' % (func.__qualname__, ', '.join(map(str, parse_warnings)))
-                warnings.warn(msg)
+                msg = '%s: %s' % (func.__qualname__, ', '.join(parse_warnings))
+                warnings.warn(msg, FutureWarning)
 
             for error_type, ExceptionType in (('type_errors', TypeError),
-                                              ('value_errors', ValueError)):
+                                              ('value_errors', ValueError),
+                                              ('syntax_errors', SyntaxError)):
                 parse_err = parsed.get(error_type)
                 if parse_err:
                     msg = '%s: %s' % (func.__qualname__, ', '.join(parse_err))

@@ -1,6 +1,6 @@
 import numpy as np
 
-from hdmf.utils import docval, fmt_docval_args, get_docval, popargs
+from hdmf.utils import docval, fmt_docval_args, get_docval, popargs, AllowPositional
 from hdmf.testing import TestCase
 
 
@@ -526,6 +526,38 @@ class TestDocValidator(TestCase):
         res = method(self, arg1=np.bool_(True))
         self.assertEqual(res, np.bool_(True))
         self.assertIsInstance(res, np.bool_)
+
+    def test_allow_positional_warn(self):
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool'}, allow_positional=AllowPositional.WARNING)
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # check that supplying a keyword arg is OK
+        res = method(self, arg1=True)
+        self.assertEqual(res, True)
+        self.assertIsInstance(res, bool)
+
+        # check that supplying a positional arg raises a warning
+        msg = ('TestDocValidator.test_allow_positional_warn.<locals>.method: '
+               'Positional arguments are discouraged and may be forbidden in a future release.')
+        with self.assertWarnsWith(FutureWarning, msg):
+            method(self, True)
+
+    def test_allow_positional_error(self):
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool'}, allow_positional=AllowPositional.ERROR)
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # check that supplying a keyword arg is OK
+        res = method(self, arg1=True)
+        self.assertEqual(res, True)
+        self.assertIsInstance(res, bool)
+
+        # check that supplying a positional arg raises an error
+        msg = ('TestDocValidator.test_allow_positional_error.<locals>.method: '
+               'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.')
+        with self.assertRaisesWith(SyntaxError, msg):
+            method(self, True)
 
 
 class TestDocValidatorChain(TestCase):
