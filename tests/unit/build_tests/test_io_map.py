@@ -577,25 +577,41 @@ class TestConvertDtype(TestCase):
 
     # do full matrix test of given value x and spec y, what does convert_dtype return?
     def test_convert_to_64bit_spec(self):
-        """Test that if given any value for a spec with a 64-bit dtype, convert_dtype will convert to the spec type."""
-        # note: convert_dtype will convert to the spec base type
-        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8',
-                       'uint64', 'uint', 'uint32', 'uint16', 'uint8']
+        """
+        Test that if given any value for a spec with a 64-bit dtype, convert_dtype will convert to the spec type.
+        Also test that if the given base type differs from the spec base type, a warning is raised.
+        """
+        spec_type = 'float64'
+        value_types = ['double', 'float64', 'float', 'float32']
+        self._test_convert_higher_precision_helper(spec_type, value_types)
 
         spec_type = 'float64'
+        value_types = ['long', 'int64', 'int', 'int32', 'int16', 'int8', 'uint64', 'uint', 'uint32', 'uint16', 'uint8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
+
+        spec_type = 'int64'
+        value_types = ['long', 'int64', 'int', 'int32', 'int16', 'int8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
         spec_type = 'int64'
+        value_types = ['double', 'float64', 'float', 'float32', 'uint64', 'uint', 'uint32', 'uint16', 'uint8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
+
+        spec_type = 'uint64'
+        value_types = ['uint64', 'uint', 'uint32', 'uint16', 'uint8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
         spec_type = 'uint64'
-        self._test_convert_higher_precision_helper(spec_type, value_types)
+        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
 
     def test_convert_to_float32_spec(self):
         """Test conversion of various types to float32.
         If given a value with precision > float32 and float base type, convert_dtype will keep the higher precision.
         If given a value with precision > float32 and different base type, convert_dtype will raise a ValueError.
-        If given a value with precision <= float32, convert_dtype will convert to float32.
+        If given a value with precision <= float32 and float base type, convert_dtype will convert to float32.
+        If given a value with precision <= float32 and different base type, convert_dtype will convert to float32 and
+        raise a warning.
         """
         spec_type = 'float32'
         value_types = ['double', 'float64']
@@ -604,14 +620,19 @@ class TestConvertDtype(TestCase):
         value_types = ['long', 'int64', 'uint64']
         self._test_convert_mismatch_helper(spec_type, value_types)
 
-        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8']
+        value_types = ['float', 'float32']
         self._test_convert_higher_precision_helper(spec_type, value_types)
+
+        value_types = ['int', 'int32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
 
     def test_convert_to_int32_spec(self):
         """Test conversion of various types to int32.
         If given a value with precision > int32 and int base type, convert_dtype will keep the higher precision.
         If given a value with precision > int32 and different base type, convert_dtype will raise a ValueError.
-        If given a value with precision <= int32, convert_dtype will convert to int32.
+        If given a value with precision <= int32 and int base type, convert_dtype will convert to int32.
+        If given a value with precision <= int32 and different base type, convert_dtype will convert to int32 and
+        raise a warning.
         """
         spec_type = 'int32'
         value_types = ['int64', 'long']
@@ -620,66 +641,82 @@ class TestConvertDtype(TestCase):
         value_types = ['double', 'float64', 'uint64']
         self._test_convert_mismatch_helper(spec_type, value_types)
 
-        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8']
+        value_types = ['int', 'int32', 'int16', 'int8', ]
         self._test_convert_higher_precision_helper(spec_type, value_types)
+
+        value_types = ['float', 'float32', 'uint', 'uint32', 'uint16', 'uint8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
 
     def test_convert_to_uint32_spec(self):
         """Test conversion of various types to uint32.
         If given a value with precision > uint32 and uint base type, convert_dtype will keep the higher precision.
-        If given a value with precision > uint32 and different base type, convert_dtype will convert to uint with half
-        the original precision.
-        If given a value with precision <= uint32, convert_dtype will convert to uint32.
+        If given a value with precision > uint32 and different base type, convert_dtype will convert to uint with the
+        original precision.
+        If given a value with precision <= uint32 and uint base type, convert_dtype will convert to uint32.
+        If given a value with precision <= uint32 and different base type, convert_dtype will convert to uint32 and
+        raise a warning.
         """
         spec_type = 'uint32'
         value_types = ['uint64']
         self._test_keep_higher_precision_helper(spec_type, value_types)
 
         value_types = ['double', 'float64', 'long', 'int64']
-        expected_types = ['uint32', 'uint32', 'uint32', 'uint32']
+        expected_types = ['uint64', 'uint64', 'uint64', 'uint64']
         self._test_convert_uint_helper(spec_type, value_types, expected_types)
 
-        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8']
+        value_types = ['uint', 'uint32', 'uint16', 'uint8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
+
+        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'int8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
 
     def test_convert_to_int16_spec(self):
         """Test conversion of various types to int16.
         If given a value with precision > int16 and int base type, convert_dtype will keep the higher precision.
         If given a value with precision > int16 and different base type, convert_dtype will raise a ValueError.
-        If given a value with precision <= int16, convert_dtype will convert to int16.
+        If given a value with precision <= int16 and int base type, convert_dtype will convert to int16.
+        If given a value with precision <= int16 and different base type, convert_dtype will convert to int16 and
+        raise a warning.
         """
         spec_type = 'int16'
         value_types = ['long', 'int64', 'int', 'int32']
         self._test_keep_higher_precision_helper(spec_type, value_types)
 
-        spec_type = 'int16'
         value_types = ['double', 'float64', 'float', 'float32', 'uint64', 'uint', 'uint32']
         self._test_convert_mismatch_helper(spec_type, value_types)
 
-        spec_type = 'int16'
-        value_types = ['int16', 'int8', 'uint16', 'uint8']
+        value_types = ['int16', 'int8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
+
+        value_types = ['uint16', 'uint8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
 
     def test_convert_to_uint16_spec(self):
         """Test conversion of various types to uint16.
         If given a value with precision > uint16 and uint base type, convert_dtype will keep the higher precision.
-        If given a value with precision > uint16 and different base type, convert_dtype will convert to uint with half
-        the original precision.
-        If given a value with precision <= uint16, convert_dtype will convert to uint16.
+        If given a value with precision > uint16 and different base type, convert_dtype will convert to uint with the
+        original precision.
+        If given a value with precision <= uint16 and uint base type, convert_dtype will convert to uint16.
+        If given a value with precision <= uint16 and different base type, convert_dtype will convert to uint16 and
+        raise a warning.
         """
         spec_type = 'uint16'
         value_types = ['uint64', 'uint', 'uint32']
         self._test_keep_higher_precision_helper(spec_type, value_types)
 
         value_types = ['double', 'float64', 'long', 'int64']
-        expected_types = ['uint32', 'uint32', 'uint32', 'uint32']
+        expected_types = ['uint64', 'uint64', 'uint64', 'uint64']
         self._test_convert_uint_helper(spec_type, value_types, expected_types)
 
         value_types = ['float', 'float32', 'int', 'int32']
-        expected_types = ['uint16', 'uint16', 'uint16', 'uint16']
+        expected_types = ['uint32', 'uint32', 'uint32', 'uint32']
         self._test_convert_uint_helper(spec_type, value_types, expected_types)
 
         value_types = ['uint16', 'uint8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
+
+        value_types = ['int16', 'int8']
+        self._test_convert_higher_precision_helper_warn(spec_type, value_types)
 
     def _get_type(self, type_str):
         return ObjectMapper._ObjectMapper__dtypes[type_str]  # apply ObjectMapper mapping string to dtype
@@ -692,6 +729,21 @@ class TestConvertDtype(TestCase):
             value = self._get_type(dtype)(data)  # convert data to given dtype
             with self.subTest(dtype=dtype):
                 ret = ObjectMapper.convert_dtype(spec, value)
+                self.assertTupleEqual(ret, match)
+                self.assertIs(ret[0].dtype.type, match[1])
+
+    def _test_convert_higher_precision_helper_warn(self, spec_type, value_types):
+        data = 2
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        match = (self._get_type(spec_type)(data), self._get_type(spec_type))
+        for dtype in value_types:
+            value = self._get_type(dtype)(data)  # convert data to given dtype
+            with self.subTest(dtype=dtype):
+                s = np.dtype(self._get_type(spec_type))
+                g = np.dtype(self._get_type(dtype))
+                msg = 'Value with data type %s is being converted to data type %s as specified.' % (g.name, s.name)
+                with self.assertWarnsWith(UserWarning, msg):
+                    ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
                 self.assertIs(ret[0].dtype.type, match[1])
 
@@ -725,7 +777,11 @@ class TestConvertDtype(TestCase):
             value = self._get_type(dtype)(data)  # convert data to given dtype
             match = (self._get_type(exp_type)(data), self._get_type(exp_type))
             with self.subTest(dtype=dtype):
-                ret = ObjectMapper.convert_dtype(spec, value)
+                s = np.dtype(self._get_type(spec_type))
+                g = np.dtype(self._get_type(dtype))
+                msg = 'Value with data type %s is being converted to data type %s as specified.' % (g.name, s.name)
+                with self.assertWarnsWith(UserWarning, msg):
+                    ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
                 self.assertIs(ret[0].dtype.type, match[1])
 
