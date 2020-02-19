@@ -147,7 +147,7 @@ class TestSpecLoadEdgeCase(TestCase):
         with self.assertWarnsWith(UserWarning, msg):
             namespace = SpecNamespace.build_namespace(**ns_dict)
 
-        self.assertEqual(namespace.version, 'unversioned')
+        self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)
 
     def test_load_namespace_missing_version(self):
         """Test that reading a namespace file without a version works but raises a warning."""
@@ -175,4 +175,4 @@ class TestSpecLoadEdgeCase(TestCase):
         with self.assertWarnsWith(UserWarning, msg):
             ns_catalog.load_namespaces(self.namespace_path)
 
-        self.assertEqual(ns_catalog.get_namespace('test_ns').version, 'unversioned')
+        self.assertEqual(ns_catalog.get_namespace('test_ns').version, SpecNamespace.UNVERSIONED)
