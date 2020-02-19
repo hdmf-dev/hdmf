@@ -577,8 +577,8 @@ class TestConvertDtype(TestCase):
 
     # do full matrix test of given value x and spec y, what does convert_dtype return?
     def test_convert_to_64bit_spec(self):
-        """Test that if given any value for a spec with a 64-bit dtype, convert_dtype will convert to the spec type"""
-        # note: convert_dtype will convert to the spec base type: given float and spec int64, value will be converted to int64
+        """Test that if given any value for a spec with a 64-bit dtype, convert_dtype will convert to the spec type."""
+        # note: convert_dtype will convert to the spec base type
         value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8',
                        'uint64', 'uint', 'uint32', 'uint16', 'uint8']
 
@@ -592,9 +592,11 @@ class TestConvertDtype(TestCase):
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_float32_spec(self):
-        """Test conversion of various types to float32
-        If given a value with precision <= float32, convert_dtype will convert to float32"""
-        # note: convert_dtype will convert to the spec base type: given float and spec int32, int32 will be returned
+        """Test conversion of various types to float32.
+        If given a value with precision > float32 and float base type, convert_dtype will keep the higher precision.
+        If given a value with precision > float32 and different base type, convert_dtype will raise a ValueError.
+        If given a value with precision <= float32, convert_dtype will convert to float32.
+        """
         spec_type = 'float32'
         value_types = ['double', 'float64']
         self._test_keep_higher_precision_helper(spec_type, value_types)
@@ -606,6 +608,11 @@ class TestConvertDtype(TestCase):
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_int32_spec(self):
+        """Test conversion of various types to int32.
+        If given a value with precision > int32 and int base type, convert_dtype will keep the higher precision.
+        If given a value with precision > int32 and different base type, convert_dtype will raise a ValueError.
+        If given a value with precision <= int32, convert_dtype will convert to int32.
+        """
         spec_type = 'int32'
         value_types = ['int64', 'long']
         self._test_keep_higher_precision_helper(spec_type, value_types)
@@ -617,6 +624,12 @@ class TestConvertDtype(TestCase):
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_uint32_spec(self):
+        """Test conversion of various types to uint32.
+        If given a value with precision > uint32 and uint base type, convert_dtype will keep the higher precision.
+        If given a value with precision > uint32 and different base type, convert_dtype will convert to uint with half
+        the original precision.
+        If given a value with precision <= uint32, convert_dtype will convert to uint32.
+        """
         spec_type = 'uint32'
         value_types = ['uint64']
         self._test_keep_higher_precision_helper(spec_type, value_types)
@@ -629,8 +642,11 @@ class TestConvertDtype(TestCase):
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_int16_spec(self):
-        """Test that if given a value with precision <= the specified 32-bit dtype, the spec dtype is returned"""
-        # note: convert_dtype will convert to the spec base type: given float and spec int32, int32 will be returned
+        """Test conversion of various types to int16.
+        If given a value with precision > int16 and int base type, convert_dtype will keep the higher precision.
+        If given a value with precision > int16 and different base type, convert_dtype will raise a ValueError.
+        If given a value with precision <= int16, convert_dtype will convert to int16.
+        """
         spec_type = 'int16'
         value_types = ['long', 'int64', 'int', 'int32']
         self._test_keep_higher_precision_helper(spec_type, value_types)
@@ -644,6 +660,12 @@ class TestConvertDtype(TestCase):
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_uint16_spec(self):
+        """Test conversion of various types to uint16.
+        If given a value with precision > uint16 and uint base type, convert_dtype will keep the higher precision.
+        If given a value with precision > uint16 and different base type, convert_dtype will convert to uint with half
+        the original precision.
+        If given a value with precision <= uint16, convert_dtype will convert to uint16.
+        """
         spec_type = 'uint16'
         value_types = ['uint64', 'uint', 'uint32']
         self._test_keep_higher_precision_helper(spec_type, value_types)
