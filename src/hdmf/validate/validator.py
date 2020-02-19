@@ -437,14 +437,11 @@ class GroupValidator(BaseStorageValidator):
                     for bldr in dt_builders:
                         tmp = bldr
                         if isinstance(bldr, LinkBuilder):
-                            if isinstance(inc_spec, LinkSpec):
+                            if isinstance(inc_spec, LinkSpec) or inc_spec.linkable:
                                 tmp = bldr.builder
                             else:
-                                if inc_spec.linkable:
-                                    tmp = bldr.builder
-                                else:
-                                    ret.append(IllegalLinkError(self.get_spec_loc(inc_spec),
-                                                                location=self.get_builder_loc(tmp)))
+                                ret.append(IllegalLinkError(self.get_spec_loc(inc_spec),
+                                                            location=self.get_builder_loc(tmp)))
                         ret.extend(sub_val.validate(tmp))
                         found = True
             if not found and self.__include_dts[dt].required:
