@@ -142,12 +142,11 @@ class TestSpecLoadEdgeCase(TestCase):
                 {'source': self.specs_path}
             ],
         }
-        msg = ("Loaded namespace 'test_ns' is missing the required key 'version'. Version will be set to "
-               "'unversioned'. Please notify the extension author.")
+        msg = "Loaded namespace 'test_ns' is missing the required key 'version'. Please notify the extension author."
         with self.assertWarnsWith(UserWarning, msg):
             namespace = SpecNamespace.build_namespace(**ns_dict)
 
-        self.assertEqual(namespace.version, 'unversioned')
+        self.assertIsNone(namespace.version)
 
     def test_load_namespace_missing_version(self):
         """Test that reading a namespace file without a version works but raises a warning."""
@@ -170,9 +169,8 @@ class TestSpecLoadEdgeCase(TestCase):
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
-        msg = ("Loaded namespace 'test_ns' is missing the required key 'version'. Version will be set to "
-               "'unversioned'. Please notify the extension author.")
+        msg = "Loaded namespace 'test_ns' is missing the required key 'version'. Please notify the extension author."
         with self.assertWarnsWith(UserWarning, msg):
             ns_catalog.load_namespaces(self.namespace_path)
 
-        self.assertEqual(ns_catalog.get_namespace('test_ns').version, 'unversioned')
+        self.assertIsNone(ns_catalog.get_namespace('test_ns').version)

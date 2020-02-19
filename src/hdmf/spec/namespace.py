@@ -51,9 +51,8 @@ class SpecNamespace(dict):
         if version is None:
             # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
             # be able to read older files with extensions that are missing the version key.
-            warn(("Loaded namespace '%s' is missing the required key 'version'. Version will be set to 'unversioned'. "
-                  "Please notify the extension author.") % name)
-            version = 'unversioned'
+            warn("Loaded namespace '%s' is missing the required key 'version'. Please notify the extension author."
+                 % name)
         self['version'] = version
         if date is not None:
             self['date'] = date
