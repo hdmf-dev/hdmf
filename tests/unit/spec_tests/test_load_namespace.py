@@ -181,3 +181,18 @@ class TestSpecLoadEdgeCase(TestCase):
         """Test that the constant variable representing a missing version has not changed."""
         self.assertEqual(SpecNamespace.UNVERSIONED, 'unversioned')
 
+    def test_get_namespace_missing_version(self):
+        """Test that SpecNamespace.version returns the constant for a missing version if version gets removed."""
+        # create namespace with version key (remove it later)
+        ns_dict = {
+            'doc': 'a test namespace',
+            'name': 'test_ns',
+            'schema': [
+                {'source': self.specs_path}
+            ],
+            'version': '0.0.1'
+        }
+        namespace = SpecNamespace.build_namespace(**ns_dict)
+        namespace['version'] = None  # work around lack of setter to remove version key
+
+        self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)

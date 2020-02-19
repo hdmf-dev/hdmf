@@ -85,13 +85,16 @@ class SpecNamespace(dict):
 
     @property
     def author(self):
-        """String or list of strings with the authors or  None"""
+        """String or list of strings with the authors or None"""
         return self.get('author', None)
 
     @property
     def version(self):
-        """String, list, or tuple with the version or None """
-        return self.get('version', None)
+        """String, list, or tuple with the version or SpecNamespace.UNVERSIONED """
+        version = self.get('version', None)
+        if version is None:
+            self['version'] = SpecNamespace.UNVERSIONED
+        return self.get('version')
 
     @property
     def date(self):
