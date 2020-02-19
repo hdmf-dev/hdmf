@@ -126,10 +126,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         g = np.dtype(given)
         s = np.dtype(specified)
-        if g.itemsize <= s.itemsize:
+        if g.itemsize <= s.itemsize:  # note: specified type is returned regardless of base dtype match
             return s.type
         else:
+            if (s.name.startswith('uint') and (g.name.startswith('int') or g.name.startswith('float'))
+                    and g.itemsize >= 2):
+                # e.g., given int64 and spec uint32, return uint32. given int64 and spec uint8, return uint32
+                # given float64 and spec uint32, return uint32.
+                return np.dtype('uint' + str(int(g.itemsize*4))).type
             if g.name[:3] != s.name[:3]:    # different types
+                # if specified int and given uint/float or if specified float and given int/uint
                 if s.itemsize < 8:
                     msg = "expected %s, received %s - must supply %s or higher precision" % (s.name, g.name, s.name)
                 else:
