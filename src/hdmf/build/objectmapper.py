@@ -129,11 +129,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
         g = np.dtype(given)
         s = np.dtype(specified)
         if g.itemsize <= s.itemsize:  # given type has precision <= precision of specified type
-            if g.name[:3] != s.name[:3]:  # warn if different base types
-                # note: this allows float32 -> int32, bool -> int8, int16 -> uint16 which may involve buffer overflows,
-                # truncated values, and other unexpected consequences.
-                warnings.warn('Value with data type %s is being converted to data type %s as specified.'
-                              % (g.name, s.name))
+            # note: this allows float32 -> int32, bool -> int8, int16 -> uint16 which may involve buffer overflows,
+            # truncated values, and other unexpected consequences.
+            warnings.warn('Value with data type %s is being converted to data type %s as specified.'
+                          % (g.name, s.name))
             return s.type
         elif g.name[:3] == s.name[:3]:
             return g.type  # same base type, use higher-precision given type
