@@ -135,6 +135,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 warnings.warn('Value with data type %s is being converted to data type %s as specified.'
                               % (g.name, s.name))
             return s.type
+        elif g.name[:3] == s.name[:3]:
+            return g.type  # same base type, use higher-precision given type
         else:
             if np.issubdtype(s, np.unsignedinteger):
                 # e.g.: given int64 and spec uint32, return uint64. given float32 and spec uint8, return uint32.
