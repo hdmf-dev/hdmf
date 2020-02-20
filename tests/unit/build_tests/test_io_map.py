@@ -579,7 +579,7 @@ class TestConvertDtype(TestCase):
     def test_convert_to_64bit_spec(self):
         """
         Test that if given any value for a spec with a 64-bit dtype, convert_dtype will convert to the spec type.
-        Also test that if the given base type differs from the spec base type, convert_dtype raises a warning.
+        Also test that if the given value is not the same as the spec, convert_dtype raises a warning.
         """
         spec_type = 'float64'
         value_types = ['double', 'float64']
@@ -612,9 +612,8 @@ class TestConvertDtype(TestCase):
         """Test conversion of various types to float32.
         If given a value with precision > float32 and float base type, convert_dtype will keep the higher precision.
         If given a value with 64-bit precision and different base type, convert_dtype will convert to float64.
-        If given a value with precision <= float32 and float base type, convert_dtype will convert to float32.
-        If given a value with precision <= float32 and different base type, convert_dtype will convert to float32 and
-        raise a warning.
+        If given a value that is float32, convert_dtype will convert to float32.
+        If given a value with precision <= float32, convert_dtype will convert to float32 and raise a warning.
         """
         spec_type = 'float32'
         value_types = ['double', 'float64']
@@ -634,9 +633,8 @@ class TestConvertDtype(TestCase):
         """Test conversion of various types to int32.
         If given a value with precision > int32 and int base type, convert_dtype will keep the higher precision.
         If given a value with 64-bit precision and different base type, convert_dtype will convert to int64.
-        If given a value with precision <= int32 and int base type, convert_dtype will convert to int32.
-        If given a value with precision <= int32 and different base type, convert_dtype will convert to int32 and
-        raise a warning.
+        If given a value that is int32, convert_dtype will convert to int32.
+        If given a value with precision <= int32, convert_dtype will convert to int32 and raise a warning.
         """
         spec_type = 'int32'
         value_types = ['int64', 'long']
@@ -656,9 +654,8 @@ class TestConvertDtype(TestCase):
         """Test conversion of various types to uint32.
         If given a value with precision > uint32 and uint base type, convert_dtype will keep the higher precision.
         If given a value with 64-bit precision and different base type, convert_dtype will convert to uint64.
-        If given a value with precision <= uint32 and uint base type, convert_dtype will convert to uint32.
-        If given a value with precision <= uint32 and different base type, convert_dtype will convert to uint32 and
-        raise a warning.
+        If given a value that is uint32, convert_dtype will convert to uint32.
+        If given a value with precision <= uint32, convert_dtype will convert to uint32 and raise a warning.
         """
         spec_type = 'uint32'
         value_types = ['uint64']
@@ -679,9 +676,8 @@ class TestConvertDtype(TestCase):
         If given a value with precision > int16 and int base type, convert_dtype will keep the higher precision.
         If given a value with 64-bit precision and different base type, convert_dtype will convert to int64.
         If given a value with 32-bit precision and different base type, convert_dtype will convert to int32.
-        If given a value with precision <= int16 and int base type, convert_dtype will convert to int16.
-        If given a value with precision <= int16 and different base type, convert_dtype will convert to int16 and
-        raise a warning.
+        If given a value that is int16, convert_dtype will convert to int16.
+        If given a value with precision <= int16, convert_dtype will convert to int16 and raise a warning.
         """
         spec_type = 'int16'
         value_types = ['long', 'int64', 'int', 'int32']
@@ -706,9 +702,8 @@ class TestConvertDtype(TestCase):
         If given a value with precision > uint16 and uint base type, convert_dtype will keep the higher precision.
         If given a value with 64-bit precision and different base type, convert_dtype will convert to uint64.
         If given a value with 32-bit precision and different base type, convert_dtype will convert to uint32.
-        If given a value with precision <= uint16 and uint base type, convert_dtype will convert to uint16.
-        If given a value with precision <= uint16 and different base type, convert_dtype will convert to uint16 and
-        raise a warning.
+        If given a value that is uint16, convert_dtype will convert to uint16.
+        If given a value with precision <= uint16, convert_dtype will convert to uint16 and raise a warning.
         """
         spec_type = 'uint16'
         value_types = ['uint64', 'uint', 'uint32']
