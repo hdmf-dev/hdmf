@@ -90,11 +90,11 @@ class SpecNamespace(dict):
 
     @property
     def version(self):
-        """String, list, or tuple with the version or SpecNamespace.UNVERSIONED """
-        version = self.get('version', None)
-        if version is None:
-            self['version'] = SpecNamespace.UNVERSIONED
-        return self.get('version')
+        """
+        String, list, or tuple with the version or SpecNamespace.UNVERSIONED 
+        if the version is missing or empty
+        """
+        return self.get('version', None) or SpecNamespace.UNVERSIONED
 
     @property
     def date(self):
