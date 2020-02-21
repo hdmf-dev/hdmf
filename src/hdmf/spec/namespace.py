@@ -36,7 +36,7 @@ class SpecNamespace(dict):
 
     __types_key = 'data_types'
 
-    UNVERSIONED = 'unversioned'  # string representing missing version
+    UNVERSIONED = None  # string representing missing version
 
     @docval(*_namespace_args)
     def __init__(self, **kwargs):
