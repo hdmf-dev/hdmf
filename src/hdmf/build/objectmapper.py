@@ -122,30 +122,46 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         Determine the dtype to use from the dtype of the given value and the specified dtype.
         This amounts to determining the greater precision of the two arguments, but also
-        checks to make sure the same base dtype is being used.
+        checks to make sure the same base dtype is being used. A warning is raised if the
+        base type of the specified dtype differs from the base type of the given dtype and
+        a conversion will result (e.g., float32 -> uint32).
         """
         g = np.dtype(given)
         s = np.dtype(specified)
-        if g.itemsize <= s.itemsize:
-            if g.name[:3] != s.name[:3]:  # different types
-                warnings.warn('Value with data type %s is being converted to data type %s as specified.'
-                              % (g.name, s.name))
+        if g is s:
             return s.type
+        if g.itemsize <= s.itemsize:  # given type has precision < precision of specified type
+            # note: this allows float32 -> int32, bool -> int8, int16 -> uint16 which may involve buffer overflows,
+            # truncated values, and other unexpected consequences.
+            warnings.warn('Value with data type %s is being converted to data type %s as specified.'
+                          % (g.name, s.name))
+            return s.type
+        elif g.name[:3] == s.name[:3]:
+            return g.type  # same base type, use higher-precision given type
         else:
-            if s.name.startswith('uint') and (g.name.startswith('int') or g.name.startswith('float')):
-                # e.g., given int64 and spec uint32, return uint64. given float32 and spec uint8, return uint32.
-                warnings.warn('Value with data type %s is being converted to data type %s as specified.'
-                              % (g.name, s.name))
-                return np.dtype('uint' + str(int(g.itemsize*8))).type
-            if g.name[:3] != s.name[:3]:  # different types
-                # if specified int and given uint/float or if specified float and given int/uint
-                if s.itemsize < 8:
-                    msg = "expected %s, received %s - must supply %s or higher precision" % (s.name, g.name, s.name)
-                else:
-                    msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
+            if np.issubdtype(s, np.unsignedinteger):
+                # e.g.: given int64 and spec uint32, return uint64. given float32 and spec uint8, return uint32.
+                ret_type = np.dtype('uint' + str(int(g.itemsize*8)))
+                warnings.warn('Value with data type %s is being converted to data type %s (min specification: %s).'
+                              % (g.name, ret_type.name, s.name))
+                return ret_type.type
+            if np.issubdtype(s, np.floating):
+                # e.g.: given int64 and spec float32, return float64. given uint64 and spec float32, return float32.
+                ret_type = np.dtype('float' + str(max(int(g.itemsize*8), 32)))
+                warnings.warn('Value with data type %s is being converted to data type %s (min specification: %s).'
+                              % (g.name, ret_type.name, s.name))
+                return ret_type.type
+            if np.issubdtype(s, np.integer):
+                # e.g.: given float64 and spec int8, return int64. given uint32 and spec int8, return int32.
+                ret_type = np.dtype('int' + str(int(g.itemsize*8)))
+                warnings.warn('Value with data type %s is being converted to data type %s (min specification: %s).'
+                              % (g.name, ret_type.name, s.name))
+                return ret_type.type
+            if s.type is np.bool_:
+                msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
                 raise ValueError(msg)
-            else:
-                return g.type
+            # all numeric types in __dtypes should be caught by the above
+            raise ValueError('Unsupported conversion to specification data type: %s' % s.name)
 
     @classmethod
     def no_convert(cls, obj_type):
