@@ -91,7 +91,7 @@ class SpecNamespace(dict):
     @property
     def version(self):
         """
-        String, list, or tuple with the version or SpecNamespace.UNVERSIONED 
+        String, list, or tuple with the version or SpecNamespace.UNVERSIONED
         if the version is missing or empty
         """
         return self.get('version', None) or SpecNamespace.UNVERSIONED
