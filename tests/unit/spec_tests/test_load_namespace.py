@@ -179,7 +179,7 @@ class TestSpecLoadEdgeCase(TestCase):
 
     def test_missing_version_string(self):
         """Test that the constant variable representing a missing version has not changed."""
-        self.assertEqual(SpecNamespace.UNVERSIONED, 'unversioned')
+        self.assertIsNone(SpecNamespace.UNVERSIONED)
 
     def test_get_namespace_missing_version(self):
         """Test that SpecNamespace.version returns the constant for a missing version if version gets removed."""
