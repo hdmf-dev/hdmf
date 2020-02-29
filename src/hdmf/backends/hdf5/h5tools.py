@@ -10,8 +10,7 @@ from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec
-from ...spec import NamespaceBuilder
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
 
 from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
@@ -109,7 +108,19 @@ class HDF5IO(HDMFIO):
             deps = dict()
             for ns in namespaces:
                 ns_group = spec_group[ns]
-                latest_version = list(ns_group.keys())[-1]
+                # NOTE: by default, objects within groups are iterated in alphanumeric order
+                version_names = list(ns_group.keys())
+                if len(version_names) > 1:
+                    # prior to HDMF 1.6.1, extensions without a version were written under the group name "unversioned"
+                    # make sure that if there is another group representing a newer version, that is read instead
+                    if 'unversioned' in version_names:
+                        version_names.remove('unversioned')
+                if len(version_names) > 1:
+                    # as of HDMF 1.6.1, extensions without a version are written under the group name "None"
+                    # make sure that if there is another group representing a newer version, that is read instead
+                    if 'None' in version_names:
+                        version_names.remove('None')
+                latest_version = version_names[-1]
                 ns_group = ns_group[latest_version]
                 reader = H5SpecReader(ns_group)
                 readers[ns] = reader
