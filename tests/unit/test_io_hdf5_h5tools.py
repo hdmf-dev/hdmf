@@ -1356,11 +1356,6 @@ class TestLoadNamespaces(TestCase):
         # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
         # and set the version key to "None"
         with h5py.File(self.path, mode='r+') as f:
-            # check that the namespace dataset is what it should be
-            old_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
-                      '"version":"0.1.0"}]}')
-            self.assertEqual(f['/specifications/' + CORE_NAMESPACE + '/0.1.0/namespace'][()], old_ns)
-
             # rename the group
             f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/None')
 
@@ -1388,11 +1383,6 @@ class TestLoadNamespaces(TestCase):
         # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
         # and remove the version key
         with h5py.File(self.path, mode='r+') as f:
-            # check that the namespace dataset is what it should be
-            old_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
-                      '"version":"0.1.0"}]}')
-            self.assertEqual(f['/specifications/' + CORE_NAMESPACE + '/0.1.0/namespace'][()], old_ns)
-
             # rename the group
             f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/unversioned')
 
