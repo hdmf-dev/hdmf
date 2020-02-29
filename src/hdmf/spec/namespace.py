@@ -36,7 +36,7 @@ class SpecNamespace(dict):
 
     __types_key = 'data_types'
 
-    UNVERSIONED = None  # string representing missing version
+    UNVERSIONED = None  # value representing missing version
 
     @docval(*_namespace_args)
     def __init__(self, **kwargs):
@@ -50,6 +50,10 @@ class SpecNamespace(dict):
         self['name'] = name
         if full_name is not None:
             self['full_name'] = full_name
+        if version == str(SpecNamespace.UNVERSIONED):
+            # the unversioned version may be written to file as a string and read from file as a string
+            warn("Loaded namespace '%s' is unversioned. Please notify the extension author." % name)
+            version = SpecNamespace.UNVERSIONED
         if version is None:
             # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
             # be able to read older files with extensions that are missing the version key.

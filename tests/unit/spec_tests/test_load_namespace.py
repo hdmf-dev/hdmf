@@ -149,7 +149,7 @@ class TestSpecLoadEdgeCase(TestCase):
 
         self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)
 
-    def test_load_namespace_missing_version(self):
+    def test_load_namespace_none_version(self):
         """Test that reading a namespace file without a version works but raises a warning."""
         # create namespace with version key (remove it later)
         ns_dict = {
@@ -172,6 +172,33 @@ class TestSpecLoadEdgeCase(TestCase):
         ns_catalog = NamespaceCatalog()
         msg = ("Loaded namespace 'test_ns' is missing the required key 'version'. Version will be set to "
                "'%s'. Please notify the extension author." % SpecNamespace.UNVERSIONED)
+        with self.assertWarnsWith(UserWarning, msg):
+            ns_catalog.load_namespaces(self.namespace_path)
+
+        self.assertEqual(ns_catalog.get_namespace('test_ns').version, SpecNamespace.UNVERSIONED)
+
+    def test_load_namespace_unversioned_version(self):
+        """Test that reading a namespace file with version=unversioned string works but raises a warning."""
+        # create namespace with version key (remove it later)
+        ns_dict = {
+            'doc': 'a test namespace',
+            'name': 'test_ns',
+            'schema': [
+                {'source': self.specs_path}
+            ],
+            'version': '0.0.1'
+        }
+        namespace = SpecNamespace.build_namespace(**ns_dict)
+        namespace['version'] = str(SpecNamespace.UNVERSIONED)  # work around lack of setter to remove version key
+
+        # write the namespace to file without version key
+        to_dump = {'namespaces': [namespace]}
+        with open(self.namespace_path, 'w') as tmp:
+            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = "Loaded namespace 'test_ns' is unversioned. Please notify the extension author."
         with self.assertWarnsWith(UserWarning, msg):
             ns_catalog.load_namespaces(self.namespace_path)
 
