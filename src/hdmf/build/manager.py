@@ -152,7 +152,9 @@ class BuildManager:
                     source = container.container_source
                 else:
                     if container.container_source != source:
-                        raise ValueError("Can't change container_source once set")
+                        raise ValueError("Cannot change container_source once set: '%s' %s.%s"
+                                         % (container.name, container.__class__.__module__,
+                                            container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
         elif container.modified or spec_ext is not None:
