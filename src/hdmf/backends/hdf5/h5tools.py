@@ -997,7 +997,7 @@ class HDF5IO(HDMFIO):
         else:
              msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
                     "and/or integers") % str(chunk_i.selection)
-             raise TypeError(msg) from exc
+             raise TypeError(msg)
 
         # Expand the dataset if needed
         dset.id.extend(max_bounds)
