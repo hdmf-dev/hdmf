@@ -143,13 +143,13 @@ class TestSpecLoadEdgeCase(TestCase):
             ],
         }
         msg = ("Loaded namespace 'test_ns' is missing the required key 'version'. Version will be set to "
-               "'unversioned'. Please notify the extension author.")
+               "'%s'. Please notify the extension author." % SpecNamespace.UNVERSIONED)
         with self.assertWarnsWith(UserWarning, msg):
             namespace = SpecNamespace.build_namespace(**ns_dict)
 
-        self.assertEqual(namespace.version, 'unversioned')
+        self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)
 
-    def test_load_namespace_missing_version(self):
+    def test_load_namespace_none_version(self):
         """Test that reading a namespace file without a version works but raises a warning."""
         # create namespace with version key (remove it later)
         ns_dict = {
@@ -161,7 +161,7 @@ class TestSpecLoadEdgeCase(TestCase):
             'version': '0.0.1'
         }
         namespace = SpecNamespace.build_namespace(**ns_dict)
-        namespace['version'] = None  # remove version key
+        namespace['version'] = None  # work around lack of setter to remove version key
 
         # write the namespace to file without version key
         to_dump = {'namespaces': [namespace]}
@@ -171,8 +171,55 @@ class TestSpecLoadEdgeCase(TestCase):
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
         msg = ("Loaded namespace 'test_ns' is missing the required key 'version'. Version will be set to "
-               "'unversioned'. Please notify the extension author.")
+               "'%s'. Please notify the extension author." % SpecNamespace.UNVERSIONED)
         with self.assertWarnsWith(UserWarning, msg):
             ns_catalog.load_namespaces(self.namespace_path)
 
-        self.assertEqual(ns_catalog.get_namespace('test_ns').version, 'unversioned')
+        self.assertEqual(ns_catalog.get_namespace('test_ns').version, SpecNamespace.UNVERSIONED)
+
+    def test_load_namespace_unversioned_version(self):
+        """Test that reading a namespace file with version=unversioned string works but raises a warning."""
+        # create namespace with version key (remove it later)
+        ns_dict = {
+            'doc': 'a test namespace',
+            'name': 'test_ns',
+            'schema': [
+                {'source': self.specs_path}
+            ],
+            'version': '0.0.1'
+        }
+        namespace = SpecNamespace.build_namespace(**ns_dict)
+        namespace['version'] = str(SpecNamespace.UNVERSIONED)  # work around lack of setter to remove version key
+
+        # write the namespace to file without version key
+        to_dump = {'namespaces': [namespace]}
+        with open(self.namespace_path, 'w') as tmp:
+            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = "Loaded namespace 'test_ns' is unversioned. Please notify the extension author."
+        with self.assertWarnsWith(UserWarning, msg):
+            ns_catalog.load_namespaces(self.namespace_path)
+
+        self.assertEqual(ns_catalog.get_namespace('test_ns').version, SpecNamespace.UNVERSIONED)
+
+    def test_missing_version_string(self):
+        """Test that the constant variable representing a missing version has not changed."""
+        self.assertIsNone(SpecNamespace.UNVERSIONED)
+
+    def test_get_namespace_missing_version(self):
+        """Test that SpecNamespace.version returns the constant for a missing version if version gets removed."""
+        # create namespace with version key (remove it later)
+        ns_dict = {
+            'doc': 'a test namespace',
+            'name': 'test_ns',
+            'schema': [
+                {'source': self.specs_path}
+            ],
+            'version': '0.0.1'
+        }
+        namespace = SpecNamespace.build_namespace(**ns_dict)
+        namespace['version'] = None  # work around lack of setter to remove version key
+
+        self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)

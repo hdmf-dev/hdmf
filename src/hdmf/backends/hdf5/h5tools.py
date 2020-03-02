@@ -10,8 +10,7 @@ from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec
-from ...spec import NamespaceBuilder
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
 
 from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
@@ -109,7 +108,19 @@ class HDF5IO(HDMFIO):
             deps = dict()
             for ns in namespaces:
                 ns_group = spec_group[ns]
-                latest_version = list(ns_group.keys())[-1]
+                # NOTE: by default, objects within groups are iterated in alphanumeric order
+                version_names = list(ns_group.keys())
+                if len(version_names) > 1:
+                    # prior to HDMF 1.6.1, extensions without a version were written under the group name "unversioned"
+                    # make sure that if there is another group representing a newer version, that is read instead
+                    if 'unversioned' in version_names:
+                        version_names.remove('unversioned')
+                if len(version_names) > 1:
+                    # as of HDMF 1.6.1, extensions without a version are written under the group name "None"
+                    # make sure that if there is another group representing a newer version, that is read instead
+                    if 'None' in version_names:
+                        version_names.remove('None')
+                latest_version = version_names[-1]
                 ns_group = ns_group[latest_version]
                 reader = H5SpecReader(ns_group)
                 readers[ns] = reader
@@ -280,10 +291,7 @@ class HDF5IO(HDMFIO):
             for ns_name in ns_catalog.namespaces:
                 ns_builder = self.__convert_namespace(ns_catalog, ns_name)
                 namespace = ns_catalog.get_namespace(ns_name)
-                if namespace.version is None:
-                    group_name = '%s/unversioned' % ns_name
-                else:
-                    group_name = '%s/%s' % (ns_name, namespace.version)
+                group_name = '%s/%s' % (ns_name, namespace.version)
                 ns_group = spec_group.require_group(group_name)
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
@@ -911,18 +919,6 @@ class HDF5IO(HDMFIO):
         return
 
     @classmethod
-    def __selection_max_bounds__(cls, selection):
-        """Determine the bounds of a numpy selection index tuple"""
-        if isinstance(selection, int):
-            return selection+1
-        elif isinstance(selection, slice):
-            return selection.stop
-        elif isinstance(selection, list) or isinstance(selection, np.ndarray):
-            return np.nonzero(selection)[0][-1]+1
-        elif isinstance(selection, tuple):
-            return tuple([cls.__selection_max_bounds__(i) for i in selection])
-
-    @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):
         dtype = None
         io_settings = {}
@@ -997,21 +993,25 @@ class HDF5IO(HDMFIO):
         """
         try:
             chunk_i = next(data)
-            # Determine the minimum array dimensions to fit the chunk selection
-            max_bounds = cls.__selection_max_bounds__(chunk_i.selection)
-            if not hasattr(max_bounds, '__len__'):
-                max_bounds = (max_bounds,)
-            # Determine if we need to expand any of the data dimensions
-            expand_dims = [i for i, v in enumerate(max_bounds) if v is not None and v > dset.shape[i]]
-            # Expand the dataset if needed
-            if len(expand_dims) > 0:
-                new_shape = np.asarray(dset.shape)
-                new_shape[expand_dims] = np.asarray(max_bounds)[expand_dims]
-                dset.resize(new_shape)
-            # Process and write the data
-            dset[chunk_i.selection] = chunk_i.data
         except StopIteration:
             return False
+        if isinstance(chunk_i.selection, tuple):
+            # Determine the minimum array dimensions to fit the chunk selection
+            max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x+1 for x in chunk_i.selection])
+        elif isinstance(chunk_i.selection, int):
+            max_bounds = (chunk_i.selection+1, )
+        elif isinstance(chunk_i.selection, slice):
+            max_bounds = (chunk_i.selection.stop or 0, )
+        else:
+            msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
+                   "and/or integers") % str(chunk_i.selection)
+            raise TypeError(msg)
+
+        # Expand the dataset if needed
+        dset.id.extend(max_bounds)
+        # Write the data
+        dset[chunk_i.selection] = chunk_i.data
+
         return True
 
     @classmethod
