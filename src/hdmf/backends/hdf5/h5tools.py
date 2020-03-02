@@ -987,17 +987,16 @@ class HDF5IO(HDMFIO):
             chunk_i = next(data)
         except StopIteration:
             return False
-        try:
+        if isinstance(chunk_i.selection, tuple):
             # Determine the minimum array dimensions to fit the chunk selection
             max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x+1 for x in chunk_i.selection])
-        except Exception as exc:
-            if isinstance(chunk_i.selection, int):
-                max_bounds = (chunk_i.selection+1, )
-            elif isinstance(chunk_i.selection, slice):
-                max_bounds = (chunk_i.selection.stop or 0, )
-            else:
-                msg = "Chunk selection %s must be a tuple of slices and/or integers" % str(chunk_i.selection)
-                raise TypeError(msg) from exc
+        elif isinstance(chunk_i.selection, int):
+             max_bounds = (chunk_i.selection+1, )
+        elif isinstance(chunk_i.selection, slice):
+              max_bounds = (chunk_i.selection.stop or 0, )
+        else:
+             msg = "Chunk selection %s must be a single int, single slice, or tuple of slices and/or integers" % str(chunk_i.selection)
+             raise TypeError(msg) from exc
 
         # Expand the dataset if needed
         dset.id.extend(max_bounds)
