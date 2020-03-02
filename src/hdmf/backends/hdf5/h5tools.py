@@ -995,9 +995,9 @@ class HDF5IO(HDMFIO):
         elif isinstance(chunk_i.selection, slice):
             max_bounds = (chunk_i.selection.stop or 0, )
         else:
-             msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
-                    "and/or integers") % str(chunk_i.selection)
-             raise TypeError(msg)
+            msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
+                   "and/or integers") % str(chunk_i.selection)
+            raise TypeError(msg)
 
         # Expand the dataset if needed
         dset.id.extend(max_bounds)
