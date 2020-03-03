@@ -345,6 +345,7 @@ class DynamicTable(Container):
         return tmp
 
     def __len__(self):
+        """Number of rows in the table"""
         return len(self.id)
 
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
@@ -353,9 +354,9 @@ class DynamicTable(Container):
              'default': False},
             allow_extra=True)
     def add_row(self, **kwargs):
-        '''
+        """
         Add a row to the table. If *id* is not provided, it will auto-increment.
-        '''
+        """
         data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
@@ -403,6 +404,18 @@ class DynamicTable(Container):
                 c.add_row(data[colname])
 
     def __eq__(self, other):
+        """
+        Compare if the two DynamicTables contain the same data
+
+        This implemented by converting the DynamicTables to a pandas dataframe and
+        comparing the equality of the two tables.
+
+        :param other: DynamicTable to compare to
+
+        :raises: An error will be raised with to_dataframe is not defined or other
+
+        :return: Bool indicating whether the two DynamicTables contain the same data
+        """
         return self.to_dataframe().equals(other.to_dataframe())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
@@ -415,8 +428,11 @@ class DynamicTable(Container):
              'doc': 'whether or not this column should be indexed', 'default': False})
     def add_column(self, **kwargs):
         """
-        Add a column to this table. If data is provided, it must
-        contain the same number of rows as the current state of the table.
+        Add a column to this table.
+
+        If data is provided, it must contain the same number of rows as the current state of the table.
+
+        :raises ValueError
         """
         name, data = getargs('name', 'data', kwargs)
         index, table = popargs('index', 'table', kwargs)
@@ -469,6 +485,12 @@ class DynamicTable(Container):
             {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the indices of the table'},
             {'name': 'description', 'type': str, 'doc': 'a brief description of what the region is'})
     def create_region(self, **kwargs):
+        """
+        Create a DynamicTableRegion selecting a region (i.e., rows) in this DynamicTable.
+
+        :raises: IndexError if the provided region contains invalid indices
+
+        """
         region = getargs('region', kwargs)
         if isinstance(region, slice):
             if (region.start is not None and region.start < 0) or (region.stop is not None and region.stop > len(self)):
@@ -486,6 +508,20 @@ class DynamicTable(Container):
         return DynamicTableRegion(name, region, desc, self)
 
     def __getitem__(self, key):
+        """
+        Select a subset from the table
+
+        :param key: Key defining which elements of the table to select. This may be one of the following:
+                    1) string with the name of the column to select,
+                    2) a tuple consisting of (int, str) where the int selects the row and the
+                       string defines the column to select.
+                    3) int, list of ints, or slice selecting a set of full rows in the table
+        :return: 1) If key is a string then return array with the data of the selected column,
+                 2) If key is a tuple of (int, str) then return the scalar value of the selected cell
+                 3) If key is an int, list or slice then return pandas Dataframe consisting of one or more rows
+
+        :raises: KeyError
+        """
         ret = None
         if isinstance(key, tuple):
             # index by row and column --> return specific cell
@@ -546,9 +582,19 @@ class DynamicTable(Container):
         return ret
 
     def __contains__(self, val):
+        """
+        Check if the give value (i.e., column) exists in this table
+        """
         return val in self.__colids or val in self.__indices
 
     def get(self, key, default=None):
+        """
+        Get the data for the column specified by key exists, else return default.
+
+        :param key: String with the name of the column
+        :param default: Default value to return if the column does not exists
+        :return: Result of self[key] (i.e., self.__getitem__(key) if key exists else return default
+        """
         if key in self:
             return self[key]
         return default
@@ -693,10 +739,19 @@ class DynamicTableRegion(VectorData):
 
     @property
     def table(self):
+        """The DynamicTable this DynamicTableRegion is pointing to"""
         return self.fields.get('table')
 
     @table.setter
     def table(self, val):
+        """
+        Set the table this DynamicTableRegion should be pointing to
+
+        :param val: The DynamicTable this DynamicTableRegion should be pointing to
+
+        :raises: AttributeError if table is already in fields
+        :raises: IndexError if the current indices are out of bounds for the new table given by val
+        """
         if val is None:
             return
         if 'table' in self.fields:
@@ -710,6 +765,14 @@ class DynamicTableRegion(VectorData):
         self.fields['table'] = val
 
     def __getitem__(self, key):
+        """
+        Subset the DynamicTableRegion
+
+        :param key: 1) tuple to select a single cell, 2) int or slice to select a subset of rows
+
+        :return: Result from self.table[....] with the approbritate selection based on the
+                 rows selected by this DynamicTableRegion
+        """
         # treat the list of indices as data that can be indexed. then pass the
         # result to the table to get the data
         if isinstance(key, tuple):
@@ -742,6 +805,9 @@ class DynamicTableRegion(VectorData):
         return (len(self.data), len(self.table.columns))
 
     def __repr__(self):
+        """
+        :return: Human-readable string representation of the DynamicTableRegion
+        """
         cls = self.__class__
         template = "%s %s.%s at 0x%d\n" % (self.name, cls.__module__, cls.__name__, id(self))
         template += "    Target table: %s %s.%s at 0x%d\n" % (self.table.name,
