@@ -181,10 +181,12 @@ class DynamicTable(Container):
 
     @ExtenderMeta.pre_init
     def __gather_columns(cls, name, bases, classdict):
-        '''
+        """
+        Gather columns from the *\_\_columns\_\_* class attribute and add them to the class.
+
         This classmethod will be called during class declaration in the metaclass to automatically
-        include all columns declared in subclasses
-        '''
+        include all columns declared in subclasses.
+        """
         if not isinstance(cls.__columns__, tuple):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
