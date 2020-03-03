@@ -56,6 +56,7 @@ class VectorData(Data):
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
+        """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
         self.append(val)
 
@@ -79,18 +80,36 @@ class VectorIndex(Index):
         self.target = getargs('target', kwargs)
 
     def add_vector(self, arg):
+        """
+        Add the given data value to the target VectorData and append the corresponding index to this VectorIndex
+        :param arg: The data value to be added to self.target
+        """
         self.target.extend(arg)
         self.append(len(self.target))
 
     def add_row(self, arg):
+        """
+        Convenience function. Same as :py:func:`add_vector`
+        """
         self.add_vector(arg)
 
     def __getitem_helper(self, arg):
+        """
+        Internal helper function used by __getitem___ to retrieve a data value from self.target
+
+        :param arg: Integer index into this VectorIndex indicating the element we want to retrieve from the target
+        """
         start = 0 if arg == 0 else self.data[arg-1]
         end = self.data[arg]
         return self.target[start:end]
 
     def __getitem__(self, arg):
+        """
+        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+
+        :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
+        :return: Scalar or list of values retrieved
+        """
         if isinstance(arg, slice):
             indices = list(range(*arg.indices(len(self.data))))
             ret = list()
