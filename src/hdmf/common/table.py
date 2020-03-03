@@ -1,3 +1,8 @@
+"""
+Collection of Container classes for interacting with data types related to
+the storage and use of dynamic data tables as part of the hdmf-common schema
+"""
+
 from h5py import Dataset
 import numpy as np
 import pandas as pd
