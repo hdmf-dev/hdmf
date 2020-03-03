@@ -122,7 +122,9 @@ class VectorIndex(Index):
 
 @register_class('ElementIdentifiers')
 class ElementIdentifiers(Data):
-
+    """
+    Data container with a list of unique identifiers for values within a dataset, e.g. rows of a DynamicTable.
+    """
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
              'default': list()})
@@ -140,8 +142,7 @@ class ElementIdentifiers(Data):
                     'result would be [0,2] and NOT [2,0,None]')
     def __eq__(self, other):
         """
-        Given a list of ids return the indices in the ElementIdentifiers array where the
-        indices are found.
+        Given a list of ids return the indices in the ElementIdentifiers array where the indices are found.
         """
         # Determine the ids we want to find
         search_ids = other if not isinstance(other, Data) else other.data
