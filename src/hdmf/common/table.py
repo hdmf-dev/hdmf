@@ -16,7 +16,9 @@ from . import register_class
 
 @register_class('Index')
 class Index(Data):
-
+    """
+    Base data type for storing pointers that index data values
+    """
     __fields__ = ("target",)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
