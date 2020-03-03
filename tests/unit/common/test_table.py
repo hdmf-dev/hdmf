@@ -305,6 +305,21 @@ class TestDynamicTable(TestCase):
         self.assertTupleEqual(tuple(res.iloc[0]), (3, 30.0, 'bird'))
         self.assertTupleEqual(tuple(res.iloc[1]), (5, 50.0, 'lizard'))
 
+    def test_repr(self):
+        table = self.with_spec()
+        expected = """with_spec hdmf.common.table.DynamicTable at 0x%d
+Fields:
+  colnames: ['foo' 'bar' 'baz']
+  columns: (
+    foo <class 'hdmf.common.table.VectorData'>,
+    bar <class 'hdmf.common.table.VectorData'>,
+    baz <class 'hdmf.common.table.VectorData'>
+  )
+  description: a test table
+"""
+        expected = expected % id(table)
+        self.assertEqual(str(table), expected)
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -439,6 +454,15 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaises(IndexError):
             dynamic_table_region.table = table
         self.assertIsNone(dynamic_table_region.table)
+
+    def test_repr(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
+        expected = """dtr hdmf.common.table.DynamicTableRegion at 0x%d
+    Target table: with_columns_and_data hdmf.common.table.DynamicTable at 0x%d
+"""
+        expected = expected % (id(dynamic_table_region), id(table))
+        self.assertEqual(str(dynamic_table_region), expected)
 
 
 class TestElementIdentifiers(TestCase):

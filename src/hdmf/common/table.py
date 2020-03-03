@@ -740,3 +740,12 @@ class DynamicTableRegion(VectorData):
         :return: Shape tuple with two integers indicating the number of rows and number of columns
         """
         return (len(self.data), len(self.table.columns))
+
+    def __repr__(self):
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d\n" % (self.name, cls.__module__, cls.__name__, id(self))
+        template += "    Target table: %s %s.%s at 0x%d\n" % (self.table.name,
+                                                              self.table.__class__.__module__,
+                                                              self.table.__class__.__name__,
+                                                              id(self.table))
+        return template

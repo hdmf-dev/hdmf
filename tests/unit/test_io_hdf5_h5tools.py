@@ -3,6 +3,7 @@ import unittest
 import tempfile
 import warnings
 import numpy as np
+import h5py
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
@@ -1330,3 +1331,68 @@ class TestReadLink(TestCase):
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
+
+
+class TestLoadNamespaces(TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_load_namespaces_none_version(self):
+        """Test that reading a file with a cached namespace and None version works but raises a warning."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
+        # and set the version key to "None"
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/None')
+
+            # replace the namespace dataset with a serialized dict without the version key
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
+                      '"version":"None"}]}')
+            f['/specifications/' + CORE_NAMESPACE + '/None/namespace'][()] = new_ns
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = "Loaded namespace '%s' is unversioned. Please notify the extension author." % CORE_NAMESPACE
+        with self.assertWarnsWith(UserWarning, msg):
+            HDF5IO.load_namespaces(ns_catalog, self.path)
+
+    def test_load_namespaces_unversioned(self):
+        """Test that reading a file with a cached, unversioned version works but raises a warning."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
+        # and remove the version key
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/unversioned')
+
+            # replace the namespace dataset with a serialized dict without the version key
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
+            f['/specifications/' + CORE_NAMESPACE + '/unversioned/namespace'][()] = new_ns
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = ("Loaded namespace '%s' is missing the required key 'version'. Version will be set to "
+               "'%s'. Please notify the extension author." % (CORE_NAMESPACE, SpecNamespace.UNVERSIONED))
+        with self.assertWarnsWith(UserWarning, msg):
+            HDF5IO.load_namespaces(ns_catalog, self.path)
