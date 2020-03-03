@@ -513,8 +513,8 @@ class DynamicTable(Container):
 
         :param key: Key defining which elements of the table to select. This may be one of the following:
                     1) string with the name of the column to select,
-                    2) a tuple consisting of (int, str) where the int selects the row and the
-                       string defines the column to select.
+                    2) a tuple consisting of (str, int) where the string defines the column to select
+                       and the int selects the row
                     3) int, list of ints, or slice selecting a set of full rows in the table
         :return: 1) If key is a string then return array with the data of the selected column,
                  2) If key is a tuple of (int, str) then return the scalar value of the selected cell
@@ -768,7 +768,8 @@ class DynamicTableRegion(VectorData):
         """
         Subset the DynamicTableRegion
 
-        :param key: 1) tuple to select a single cell, 2) int or slice to select a subset of rows
+        :param key: 1) tuple consisting of (str, int) where the string defines the column to select
+                       and the int selects the row, 2) int or slice to select a subset of rows
 
         :return: Result from self.table[....] with the approbritate selection based on the
                  rows selected by this DynamicTableRegion
