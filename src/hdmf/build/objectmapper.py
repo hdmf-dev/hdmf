@@ -613,7 +613,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                             raise Exception(msg) from ex
                         builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
+
+        # Add attributes from the specification extension to the list of attributes
         all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
+        # If the spec_ext refines an existing attribute it will now appear twice in the list. The
+        # refinement should only be relevant for validation (not for write). To avoid problems with the
+        # write we here remove duplicates and keep the original spec of the two to make write work.
+        # TODO: We should add validation in the AttributeSpec to make sure refinements are valid
+        # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
+        all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager, source)
         return builder
 

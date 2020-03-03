@@ -297,7 +297,10 @@ class DynamicTable(Container):
                 if col.get('required', False):
                     self.add_column(col['name'], col['description'],
                                     index=col.get('index', False),
-                                    table=col.get('table', False))
+                                    table=col.get('table', False),
+                                    # Pass through extra keyword arguments for add_column that subclasses may have added
+                                    **{k: col[k] for k in col.keys()
+                                       if k not in ['name', 'description', 'index', 'table', 'required']})
 
                 else:  # create column name attributes (set to None) on the object even if column is not required
                     setattr(self, col['name'], None)
@@ -366,7 +369,11 @@ class DynamicTable(Container):
                     if data[col['name']] is not None:
                         self.add_column(col['name'], col['description'],
                                         index=col.get('index', False),
-                                        table=col.get('table', False))
+                                        table=col.get('table', False),
+                                        # Pass through extra keyword arguments for add_column that
+                                        # subclasses may have added
+                                        **{k: col[k] for k in col.keys()
+                                           if k not in ['name', 'description', 'index', 'table', 'required']})
                     extra_columns.remove(col['name'])
 
         if extra_columns or missing_columns:
