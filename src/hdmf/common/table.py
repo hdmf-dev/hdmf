@@ -295,12 +295,13 @@ class DynamicTable(Container):
         for col in self.__columns__:
             if col['name'] not in self.__colids:
                 if col.get('required', False):
-                    self.add_column(col['name'], col['description'],
-                                    index=col.get('index', False),
-                                    table=col.get('table', False),
-                                    # Pass through extra keyword arguments for add_column that subclasses may have added
-                                    **{k: col[k] for k in col.keys()
-                                       if k not in ['name', 'description', 'index', 'table', 'required']})
+                    self._add_column(col['name'], col['description'],
+                                     index=col.get('index', False),
+                                     table=col.get('table', False),
+                                     # Pass through extra keyword arguments for _add_column that subclasses may have
+                                     # added
+                                     **{k: col[k] for k in col.keys()
+                                        if k not in ['name', 'description', 'index', 'table', 'required']})
 
                 else:  # create column name attributes (set to None) on the object even if column is not required
                     setattr(self, col['name'], None)
@@ -367,13 +368,13 @@ class DynamicTable(Container):
             for col in self.__columns__:
                 if col['name'] in extra_columns:
                     if data[col['name']] is not None:
-                        self.add_column(col['name'], col['description'],
-                                        index=col.get('index', False),
-                                        table=col.get('table', False),
-                                        # Pass through extra keyword arguments for add_column that
-                                        # subclasses may have added
-                                        **{k: col[k] for k in col.keys()
-                                           if k not in ['name', 'description', 'index', 'table', 'required']})
+                        self._add_column(col['name'], col['description'],
+                                         index=col.get('index', False),
+                                         table=col.get('table', False),
+                                         # Pass through extra keyword arguments for _add_column that
+                                         # subclasses may have added
+                                         **{k: col[k] for k in col.keys()
+                                            if k not in ['name', 'description', 'index', 'table', 'required']})
                     extra_columns.remove(col['name'])
 
         if extra_columns or missing_columns:
@@ -414,14 +415,32 @@ class DynamicTable(Container):
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
              'doc': 'whether or not this column should be indexed', 'default': False})
     def add_column(self, **kwargs):
+        name = getargs('name', kwargs)
+        for col in self.__columns__:
+            if col['name'] == name:  # column has not been added but is pre-specified
+                msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
+                raise ValueError(msg)
+
+        self._add_column(**kwargs)
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
+            {'name': 'description', 'type': str, 'doc': 'a description for this column'},
+            {'name': 'data', 'type': ('array_data', 'data'),
+             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            {'name': 'table', 'type': (bool, 'DynamicTable'),
+             'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
+            {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
+             'doc': 'whether or not this column should be indexed', 'default': False})
+    def _add_column(self, **kwargs):
         """
         Add a column to this table. If data is provided, it must
         contain the same number of rows as the current state of the table.
         """
         name, data = getargs('name', 'data', kwargs)
         index, table = popargs('index', 'table', kwargs)
-        if name in self.__colids:
-            msg = "column '%s' already exists in DynamicTable '%s'" % (name, self.name)
+
+        if name in self.__colids:  # column has already been added
+            msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
             raise ValueError(msg)
 
         ckwargs = dict(kwargs)
