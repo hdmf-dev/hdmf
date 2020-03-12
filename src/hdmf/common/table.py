@@ -612,7 +612,7 @@ class DynamicTable(Container):
 
     def __contains__(self, val):
         """
-        Check if the give value (i.e., column) exists in this table
+        Check if the given value (i.e., column) exists in this table
         """
         return val in self.__colids or val in self.__indices
 
