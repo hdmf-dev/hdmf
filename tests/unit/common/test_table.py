@@ -246,7 +246,8 @@ class TestDynamicTable(TestCase):
             'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
         }).loc[:, ('foo', 'bar', 'description')]
 
-        msg = "Column name 'description' is not allowed because it is already an attribute"
+        msg = ("Cannot create column with name 'description'. The attribute 'description' already exists on "
+               "DynamicTable 'test'")
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable.from_dataframe(df, 'test')
 

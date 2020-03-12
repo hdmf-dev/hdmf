@@ -271,7 +271,9 @@ class DynamicTable(Container):
         self.__indices = dict()
         for col in self.columns:
             if hasattr(self, col.name):
-                raise ValueError("Column name '%s' is not allowed because it is already an attribute" % col.name)
+                msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
+                       % (col.name, col.name, self.__class__.__name__, self.name))
+                raise ValueError(msg)
             setattr(self, col.name, col)
             if isinstance(col, VectorData):
                 existing = col_dict.get(col.name)
