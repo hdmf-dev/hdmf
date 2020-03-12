@@ -294,6 +294,7 @@ class DynamicTable(Container):
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
+        self.__uninit_cols = []  # hold column names that are defined in __columns__ but not yet initialized
         for col in self.__columns__:
             if col['name'] not in self.__colids:
                 if col.get('required', False):
@@ -305,6 +306,7 @@ class DynamicTable(Container):
                                        if k not in ['name', 'description', 'index', 'table', 'required']})
 
                 else:  # create column name attributes (set to None) on the object even if column is not required
+                    self.__uninit_cols.append(col['name'])
                     setattr(self, col['name'], None)
                     if col.get('index', False):
                         setattr(self, col['name'] + '_index', None)
@@ -366,7 +368,7 @@ class DynamicTable(Container):
 
         # check to see if any of the extra columns just need to be added
         if extra_columns:
-            for col in self.__columns__:
+            for col in self.__uninit_cols:
                 if col['name'] in extra_columns:
                     if data[col['name']] is not None:
                         self.add_column(col['name'], col['description'],
@@ -425,7 +427,8 @@ class DynamicTable(Container):
         if name in self.__colids:
             msg = "column '%s' already exists in DynamicTable '%s'" % (name, self.name)
             raise ValueError(msg)
-        if hasattr(self, name):
+        if hasattr(self, name) and name not in self.__uninit_cols:
+            # the second part of the check is b/c uninitialized columns were set as attributes with value None in init
             msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
                    % (name, name, self.__class__.__name__, self.name))
             raise ValueError(msg)
