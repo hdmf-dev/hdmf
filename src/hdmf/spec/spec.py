@@ -145,6 +145,17 @@ class Spec(ConstructableDict):
     def __hash__(self):
         return id(self)
 
+    def path_str(self):
+        """
+        Return string showing full path to this spec, with spec names separated by '/', regardless of the spec type.
+        """
+        spec_path = self.name
+        spec = self.parent
+        while spec is not None:
+            spec_path = spec.name + '/' + spec_path
+            spec = spec.parent
+        return '/' + spec_path
+
 #    def __eq__(self, other):
 #        return id(self) == id(other)
 

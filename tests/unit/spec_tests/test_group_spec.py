@@ -209,3 +209,29 @@ class GroupSpecTests(TestCase):
         res = spec.get_attribute('attribute1')
         self.assertEqual(res.value, 5)
         self.assertEqual(res.dtype, 'int')
+
+    def test_path_str(self):
+        GroupSpec('A test group',
+                  name='root_constructor',
+                  groups=self.subgroups,
+                  datasets=self.datasets,
+                  attributes=self.attributes,
+                  linkable=False)
+        self.assertEqual(self.attributes[0].path_str(), '/root_constructor/attribute1')
+        self.assertEqual(self.datasets[0].path_str(), '/root_constructor/dataset1')
+        self.assertEqual(self.subgroups[0].path_str(), '/root_constructor/subgroup1')
+
+    def test_path_str_complicated(self):
+        attribute = AttributeSpec('attribute1', 'my fifth attribute', 'text')
+        dataset = DatasetSpec('my first dataset',
+                              'int',
+                              name='dataset1',
+                              attributes=[attribute])
+        subgroup = GroupSpec('A subgroup',
+                             name='subgroup1',
+                             datasets=[dataset])
+        GroupSpec('A test group',
+                  name='root',
+                  groups=[subgroup])
+
+        self.assertEqual(attribute.path_str(), '/root/subgroup1/dataset1/attribute1')

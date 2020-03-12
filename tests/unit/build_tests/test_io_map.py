@@ -763,7 +763,8 @@ class TestConvertDtype(TestCase):
             with self.subTest(dtype=dtype):
                 s = np.dtype(self._get_type(spec_type))
                 g = np.dtype(self._get_type(dtype))
-                msg = 'Value with data type %s is being converted to data type %s as specified.' % (g.name, s.name)
+                msg = ('Spec /data: Value with data type %s is being converted to data type %s as specified.'
+                       % (g.name, s.name))
                 with self.assertWarnsWith(UserWarning, msg):
                     ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
@@ -790,7 +791,7 @@ class TestConvertDtype(TestCase):
                 s = np.dtype(self._get_type(spec_type))
                 e = np.dtype(self._get_type(exp_type))
                 g = np.dtype(self._get_type(dtype))
-                msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
+                msg = ('Spec /data: Value with data type %s is being converted to data type %s (min specification: %s).'
                        % (g.name, e.name, s.name))
                 with self.assertWarnsWith(UserWarning, msg):
                     ret = ObjectMapper.convert_dtype(spec, value)
