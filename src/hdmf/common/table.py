@@ -368,7 +368,7 @@ class DynamicTable(Container):
 
         # check to see if any of the extra columns just need to be added
         if extra_columns:
-            for col in self.__uninit_cols:
+            for col in self.__columns__:
                 if col['name'] in extra_columns:
                     if data[col['name']] is not None:
                         self.add_column(col['name'], col['description'],
