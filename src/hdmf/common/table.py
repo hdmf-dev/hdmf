@@ -423,6 +423,10 @@ class DynamicTable(Container):
         if name in self.__colids:
             msg = "column '%s' already exists in DynamicTable '%s'" % (name, self.name)
             raise ValueError(msg)
+        if hasattr(self, name):
+            msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
+                   % (name, name, self.__class__.__name__, self.name))
+            raise ValueError(msg)
 
         ckwargs = dict(kwargs)
         cls = VectorData
