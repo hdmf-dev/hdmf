@@ -95,7 +95,7 @@ class VectorIndex(Index):
 
     def __getitem_helper(self, arg):
         """
-        Internal helper function used by __getitem___ to retrieve a data value from self.target
+        Internal helper function used by __getitem__ to retrieve a data value from self.target
 
         :param arg: Integer index into this VectorIndex indicating the element we want to retrieve from the target
         """
