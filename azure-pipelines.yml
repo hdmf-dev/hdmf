@@ -1,13 +1,6 @@
 trigger:
 - dev
 
-# 2020-03-12: Azure Pipelines PR triggers not working without this
-# explicitly enable pull request builds for all branches
-pr:
-  branches:
-    include:
-    - '*'  # must quote since "*" is a YAML reserved character; we want a string
-
 jobs:
 
 - job: 'Test'
