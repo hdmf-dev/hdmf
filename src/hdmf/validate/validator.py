@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from copy import copy
 import re
 from itertools import chain
+from warnings import warn
 
 from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
@@ -14,7 +15,7 @@ from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder,
 from ..build.builders import BaseBuilder
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
-from .errors import ExpectedArrayError
+from .errors import ExpectedArrayError, ExpectedScalarError, EmptyDataNoTypeWarning, ValidatorWarning
 
 __synonyms = DtypeHelper.primary_dtype_synonyms
 
@@ -104,42 +105,41 @@ def get_type(data):
         return 'region'
     elif isinstance(data, ReferenceBuilder):
         return 'object'
-    elif isinstance(data, np.ndarray):
-        return get_type(data[0])
-    if not hasattr(data, '__len__'):
+    elif not hasattr(data, '__len__'):
         return type(data).__name__
+    # for conditions below, len(data) works
+    elif hasattr(data, 'dtype'):
+        if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
+            return get_type(data[0])
+        return data.dtype
+    elif len(data) == 0:
+        # raise ValueError('cannot determine type for empty data without dtype attribute')
+        return None
     else:
-        if hasattr(data, 'dtype'):
-            if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-                return get_type(data[0])
-            return data.dtype
-        if len(data) == 0:
-            raise ValueError('cannot determine type for empty data')
         return get_type(data[0])
 
 
 def check_shape(expected, received):
+    if expected is None:  # scalar
+        return not isinstance(received, (list, tuple, np.ndarray))
     ret = False
-    if expected is None:
-        ret = True
-    else:
-        if isinstance(expected, (list, tuple)):
-            if isinstance(expected[0], (list, tuple)):
-                for sub in expected:
-                    if check_shape(sub, received):
-                        ret = True
-                        break
-            else:
-                if len(expected) > 0 and received is None:
-                    ret = False
-                elif len(expected) == len(received):
+    if isinstance(expected, (list, tuple)):
+        if isinstance(expected[0], (list, tuple)):
+            for sub in expected:
+                if check_shape(sub, received):
                     ret = True
-                    for e, r in zip(expected, received):
-                        if not check_shape(e, r):
-                            ret = False
-                            break
-        elif isinstance(expected, int):
-            ret = expected == received
+                    break
+        else:
+            if len(expected) > 0 and received is None:
+                ret = False
+            elif len(expected) == len(received):
+                ret = True
+                for e, r in zip(expected, received):
+                    if not check_shape(e, r):
+                        ret = False
+                        break
+    elif isinstance(expected, int):
+        ret = expected == received
     return ret
 
 
@@ -282,6 +282,30 @@ class Validator(metaclass=ABCMeta):
             tmp = tmp.parent
         return "/".join(reversed(stack))
 
+    @classmethod
+    def check_data_type(cls, value, spec, spec_loc, builder_location=None):
+        dtype = get_type(value)
+        if dtype is None:
+            # dtype = 'unknown data type of empty data %s' % type(value)
+            # return DtypeError(spec_loc, spec.dtype, dtype, location=builder_location)
+            return EmptyDataNoTypeWarning(spec_loc, type(value), location=builder_location)
+        elif not check_type(spec.dtype, dtype):
+            return DtypeError(spec_loc, spec.dtype, dtype, location=builder_location)
+        return None
+
+    @classmethod
+    def check_data_shape(cls, value, spec, spec_loc, builder_location=None):
+        shape = get_data_shape(value)
+        if shape == ():
+            shape = None
+        if shape is None and spec.shape is not None:
+            return ExpectedArrayError(spec_loc, spec.shape, str(value), location=builder_location)
+        elif shape is not None and spec.shape is None:
+            return ExpectedScalarError(spec_loc, shape, location=builder_location)
+        elif not check_shape(spec.shape, shape):
+            return ShapeError(spec_loc, spec.shape, shape, location=builder_location)
+        return None
+
 
 class AttributeValidator(Validator):
     '''A class for validating values against AttributeSpecs'''
@@ -313,12 +337,13 @@ class AttributeValidator(Validator):
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
             else:
-                dtype = get_type(value)
-                if not check_type(spec.dtype, dtype):
-                    ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
-            shape = get_data_shape(value)
-            if not check_shape(spec.shape, shape):
-                ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+                dtype_err = self.check_data_type(value, spec, self.get_spec_loc(spec))
+                if dtype_err:
+                    ret.append(dtype_err)
+
+            shape_err = self.check_data_shape(value, spec, self.get_spec_loc(spec))
+            if shape_err:
+                ret.append(shape_err)
         return ret
 
 
@@ -349,7 +374,11 @@ class BaseStorageValidator(Validator):
                 errors = validator.validate(attr_val)
                 for err in errors:
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
-                ret.extend(errors)
+                    if isinstance(err, ValidatorWarning):
+                        warn(err, type(err))
+                    else:
+                        ret.append(err)  # return only errors, not warnings
+
         return ret
 
 
@@ -367,19 +396,21 @@ class DatasetValidator(BaseStorageValidator):
         builder = getargs('builder', kwargs)
         ret = super().validate(builder)
         data = builder.data
-        if self.spec.dtype is not None:
-            dtype = get_type(data)
-            if not check_type(self.spec.dtype, dtype):
-                ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
-                                      location=self.get_builder_loc(builder)))
-        shape = get_data_shape(data)
-        if not check_shape(self.spec.shape, shape):
-            if shape is None:
-                ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(data),
-                                              location=self.get_builder_loc(builder)))
-            else:
-                ret.append(ShapeError(self.get_spec_loc(self.spec), self.spec.shape, shape,
-                                      location=self.get_builder_loc(builder)))
+        spec = self.spec
+
+        if spec.dtype is not None:
+            dtype_err = self.check_data_type(data, spec, self.get_spec_loc(spec),
+                                             builder_location=self.get_builder_loc(builder))
+            if dtype_err:
+                if isinstance(dtype_err, ValidatorWarning):
+                    warn(dtype_err, type(dtype_err))
+                else:
+                    ret.append(dtype_err)  # return only errors, not warnings
+
+        shape_err = self.check_data_shape(data, spec, self.get_spec_loc(spec),
+                                          builder_location=self.get_builder_loc(builder))
+        if shape_err:
+            ret.append(shape_err)
         return ret
 
 
