@@ -220,7 +220,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret = dtype_func(value)
                 ret_dtype = type(ret)
         if warning_msg:
-            full_warning_msg = "Spec %s: %s" % (spec.path_str(), warning_msg)
+            full_warning_msg = "Spec '%s': %s" % (spec.path_str(), warning_msg)
             warnings.warn(full_warning_msg, DtypeConversionWarning)
         return ret, ret_dtype
 
