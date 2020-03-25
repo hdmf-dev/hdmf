@@ -549,7 +549,6 @@ class TypeMap:
                 name = spec.data_type_def
                 if name is None:
                     name = 'Unknown'
-                breakpoint()
                 raise ValueError("Cannot dynamically generate class for type '%s'. " % name
                                  + str(e)
                                  + " Please define that type before defining '%s'." % name)
