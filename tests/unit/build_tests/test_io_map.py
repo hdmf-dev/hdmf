@@ -347,7 +347,7 @@ class TestDynamicContainer(TestCase):
         with self.assertRaises(TypeError):
             Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
 
-    def test_dynamic_container_composition_wrong_order(self):
+    def test_dynamic_container_composition_reverse_order(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
                               data_type_inc=self.bar_spec,
                               attributes=[
@@ -360,12 +360,16 @@ class TestDynamicContainer(TestCase):
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
 
-        # Setup all the data we need
-        msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
-               "Please define that type before defining 'Baz1'.")
-        with self.assertRaisesWith(ValueError, msg):
-            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+
+        with self.assertRaises(TypeError):
+            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):

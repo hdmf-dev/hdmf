@@ -516,6 +516,9 @@ class TypeMap:
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None:
             spec = self.__ns_catalog.get_spec(namespace, data_type)
+            if isinstance(spec, GroupSpec):
+                self.__resolve_child_container_classes(spec, namespace)
+
             dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
             parent_cls = None
             for t in dt_hier:
@@ -534,7 +537,7 @@ class TypeMap:
                 parent_cls = bases[0]
             if type(parent_cls) is not ExtenderMeta:
                 raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
-            name = data_type
+
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             fields = dict()
             for k, field_spec in attr_names.items():
@@ -543,13 +546,23 @@ class TypeMap:
             try:
                 d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
             except TypeDoesNotExistError as e:
-                name = spec.get('data_type_def', 'Unknown')
+                name = spec.data_type_def
+                if name is None:
+                    name = 'Unknown'
+                breakpoint()
                 raise ValueError("Cannot dynamically generate class for type '%s'. " % name
                                  + str(e)
                                  + " Please define that type before defining '%s'." % name)
-            cls = ExtenderMeta(str(name), bases, d)
+            cls = ExtenderMeta(str(data_type), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
+
+    def __resolve_child_container_classes(self, spec, namespace):
+        for child_spec in (spec.groups + spec.datasets):
+            if child_spec.data_type_inc is not None:
+                self.get_container_cls(namespace, child_spec.data_type_inc)
+            elif child_spec.data_type_def is not None:
+                self.get_container_cls(namespace, child_spec.data_type_def)
 
     def __get_container_cls(self, namespace, data_type):
         if namespace not in self.__container_types:
