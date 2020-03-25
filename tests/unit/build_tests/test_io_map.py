@@ -371,6 +371,17 @@ class TestDynamicContainer(TestCase):
         with self.assertRaises(TypeError):
             Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
 
+    def test_dynamic_container_composition_missing_type(self):
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+
+        msg = "No specification for 'Baz2' in namespace 'test_core'"
+        with self.assertRaisesWith(ValueError, msg):
+            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+
 
 class ObjectMapperMixin(metaclass=ABCMeta):
 
