@@ -384,7 +384,8 @@ class TypeMap:
             container_type = val.get(container_name)
             if container_type is not None:
                 return container_type
-        if container_type is None:
+        if container_type is None:  # pragma: no cover
+            # this code should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
 
     def __get_type(self, spec):
@@ -545,7 +546,8 @@ class TypeMap:
                     fields[k] = field_spec
             try:
                 d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
-            except TypeDoesNotExistError as e:
+            except TypeDoesNotExistError as e:  # pragma: no cover
+                # this error should never happen after hdmf#322
                 name = spec.data_type_def
                 if name is None:
                     name = 'Unknown'
@@ -793,5 +795,5 @@ class TypeMap:
             return obj_mapper.get_builder_name(container)
 
 
-class TypeDoesNotExistError(Exception):
+class TypeDoesNotExistError(Exception):  # pragma: no cover
     pass
