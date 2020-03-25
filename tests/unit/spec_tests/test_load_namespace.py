@@ -223,3 +223,192 @@ class TestSpecLoadEdgeCase(TestCase):
         namespace['version'] = None  # work around lack of setter to remove version key
 
         self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)
+
+
+class TestLoadSpecInheritProperties(TestCase):
+    NS_NAME = 'test_ns'
+
+    def setUp(self):
+        self.specs_path = 'test_load_spec_inherit.specs.yaml'
+        self.namespace_path = 'test_load_spec_inherit.namespace.yaml'
+
+        ns_dict = {
+            'doc': 'a test namespace',
+            'name': self.NS_NAME,
+            'schema': [
+                {'source': self.specs_path}
+            ],
+            'version': '0.1.0'
+        }
+        self.namespace = SpecNamespace.build_namespace(**ns_dict)
+        to_dump = {'namespaces': [self.namespace]}
+        with open(self.namespace_path, 'w') as tmp:
+            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+        self.ns_catalog = NamespaceCatalog()
+
+    def tearDown(self):
+        if os.path.exists(self.namespace_path):
+            os.remove(self.namespace_path)
+        if os.path.exists(self.specs_path):
+            os.remove(self.specs_path)
+
+    def test_inherited_shape(self):
+        """Test that an extended dataset/attribute inherits the dims and shape of the original dataset/attribute"""
+        attributes = [
+            AttributeSpec(
+                'attribute1',
+                'my first attribute',
+                'text',
+                dims=['my_dims'],
+                shape=[None]
+            )
+        ]
+        datasets = [
+            DatasetSpec(
+                'my first dataset',
+                'int',
+                name='dataset1',
+                dims=['my_dims'],
+                shape=[None]
+            )
+        ]
+        group_spec = GroupSpec(
+            'A test group',
+            name='root_constructor_datatype',
+            datasets=datasets,
+            attributes=attributes,
+            data_type_def='MyGroup'
+        )
+
+        # same name, same dtype, change docstring, omit dims and shape specifications
+        ext_attributes = [
+            AttributeSpec(
+                'attribute1',
+                'my first attribute extension',
+                'text',
+            )
+        ]
+        # same name, same dtype, change docstring, omit dims and shape specifications
+        ext_datasets = [
+            DatasetSpec(
+                'my first dataset extension',
+                'int',
+                name='dataset1'
+            )
+        ]
+        ext_group_spec = GroupSpec(
+            'A test group extension',
+            name='root_constructor_datatype',
+            datasets=ext_datasets,
+            attributes=ext_attributes,
+            data_type_inc='MyGroup',
+            data_type_def='MyExtGroup'
+        )
+        to_dump = {'groups': [group_spec, ext_group_spec]}
+        with open(self.specs_path, 'w') as tmp:
+            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+
+        self.ns_catalog.load_namespaces(self.namespace_path)
+
+        # first test that shape of the original dataset/attribute is set correctly
+        read_group_spec = self.ns_catalog.get_spec(self.NS_NAME, 'MyGroup')
+        read_dset_spec = read_group_spec.datasets[0]
+        read_attr_spec = read_group_spec.attributes[0]
+        self.assertEqual(read_dset_spec.dims, ['my_dims'])
+        self.assertEqual(read_attr_spec.dims, ['my_dims'])
+        self.assertEqual(read_dset_spec.shape, [None])
+        self.assertEqual(read_attr_spec.shape, [None])
+
+        # then test that shape of the extended dataset/attribute is set correctly
+        read_group_spec = self.ns_catalog.get_spec(self.NS_NAME, 'MyExtGroup')
+        read_dset_spec = read_group_spec.datasets[0]
+        read_attr_spec = read_group_spec.attributes[0]
+        self.assertEqual(read_dset_spec.dims, ['my_dims'])
+        self.assertEqual(read_attr_spec.dims, ['my_dims'])
+        self.assertEqual(read_dset_spec.shape, [None])
+        self.assertEqual(read_attr_spec.shape, [None])
+
+    def test_inherited_dtype(self):
+        """Test that an extended dataset inherits the dtype of the original dataset"""
+        # NOTE: we do not need to test whether dtype of attributes are extended because attribute dtype is required
+        datasets = [
+            DatasetSpec(
+                'my first dataset',
+                'int',
+                name='dataset1',
+            )
+        ]
+        group_spec = GroupSpec(
+            'A test group',
+            name='root_constructor_datatype',
+            datasets=datasets,
+            data_type_def='MyGroup'
+        )
+
+        # same name, omit dtype, change docstring
+        ext_datasets = [
+            DatasetSpec(
+                'my first dataset extension',
+                name='dataset1'
+            )
+        ]
+        ext_group_spec = GroupSpec(
+            'A test group extension',
+            name='root_constructor_datatype',
+            datasets=ext_datasets,
+            data_type_inc='MyGroup',
+            data_type_def='MyExtGroup'
+        )
+        to_dump = {'groups': [group_spec, ext_group_spec]}
+        with open(self.specs_path, 'w') as tmp:
+            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+
+        self.ns_catalog.load_namespaces(self.namespace_path)
+
+        # first test that dtype of the original dataset is set correctly
+        read_group_spec = self.ns_catalog.get_spec(self.NS_NAME, 'MyGroup')
+        read_dset_spec = read_group_spec.datasets[0]
+        self.assertEqual(read_dset_spec.dtype, 'int')
+
+        # then test that dtype of the extended dataset is set correctly
+        read_group_spec = self.ns_catalog.get_spec(self.NS_NAME, 'MyExtGroup')
+        read_dset_spec = read_group_spec.datasets[0]
+        self.assertEqual(read_dset_spec.dtype, 'int')
+
+    def test_inherited_incompatible_dtype(self):
+        """Test that an extended dataset cannot change the dtype of the original dataset to an incompatible dtype"""
+        datasets = [
+            DatasetSpec(
+                'my first dataset',
+                'int',
+                name='dataset1',
+            )
+        ]
+        group_spec = GroupSpec(
+            'A test group',
+            name='root_constructor_datatype',
+            datasets=datasets,
+            data_type_def='MyGroup'
+        )
+
+        # same name, change dtype, change docstring
+        ext_datasets = [
+            DatasetSpec(
+                'my first dataset extension',
+                'text',
+                name='dataset1'
+            )
+        ]
+        ext_group_spec = GroupSpec(
+            'A test group extension',
+            name='root_constructor_datatype',
+            datasets=ext_datasets,
+            data_type_inc='MyGroup',
+            data_type_def='MyExtGroup'
+        )
+        to_dump = {'groups': [group_spec, ext_group_spec]}
+        with open(self.specs_path, 'w') as tmp:
+            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+
+        # TODO this test should fail but currently succeeds
+        self.ns_catalog.load_namespaces(self.namespace_path)
