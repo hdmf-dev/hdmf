@@ -261,7 +261,7 @@ class Validator(metaclass=ABCMeta):
 
     @classmethod
     def get_spec_loc(cls, spec):
-        return spec.path_str()
+        return spec.path
 
     @classmethod
     def get_builder_loc(cls, builder):

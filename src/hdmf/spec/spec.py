@@ -145,7 +145,8 @@ class Spec(ConstructableDict):
     def __hash__(self):
         return id(self)
 
-    def path_str(self):
+    @property
+    def path(self):
         stack = list()
         tmp = self
         while tmp is not None:

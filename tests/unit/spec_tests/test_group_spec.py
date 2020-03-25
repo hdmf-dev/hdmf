@@ -210,18 +210,18 @@ class GroupSpecTests(TestCase):
         self.assertEqual(res.value, 5)
         self.assertEqual(res.dtype, 'int')
 
-    def test_path_str(self):
+    def test_path(self):
         GroupSpec('A test group',
                   name='root_constructor',
                   groups=self.subgroups,
                   datasets=self.datasets,
                   attributes=self.attributes,
                   linkable=False)
-        self.assertEqual(self.attributes[0].path_str(), 'root_constructor/attribute1')
-        self.assertEqual(self.datasets[0].path_str(), 'root_constructor/dataset1')
-        self.assertEqual(self.subgroups[0].path_str(), 'root_constructor/subgroup1')
+        self.assertEqual(self.attributes[0].path, 'root_constructor/attribute1')
+        self.assertEqual(self.datasets[0].path, 'root_constructor/dataset1')
+        self.assertEqual(self.subgroups[0].path, 'root_constructor/subgroup1')
 
-    def test_path_str_complicated(self):
+    def test_path_complicated(self):
         attribute = AttributeSpec('attribute1', 'my fifth attribute', 'text')
         dataset = DatasetSpec('my first dataset',
                               'int',
@@ -230,13 +230,15 @@ class GroupSpecTests(TestCase):
         subgroup = GroupSpec('A subgroup',
                              name='subgroup1',
                              datasets=[dataset])
+        self.assertEqual(attribute.path, 'subgroup1/dataset1/attribute1')
+
         _ = GroupSpec('A test group',
                       name='root',
                       groups=[subgroup])
 
-        self.assertEqual(attribute.path_str(), 'root/subgroup1/dataset1/attribute1')
+        self.assertEqual(attribute.path, 'root/subgroup1/dataset1/attribute1')
 
-    def test_path_str_no_name(self):
+    def test_path_no_name(self):
         attribute = AttributeSpec('attribute1', 'my fifth attribute', 'text')
         dataset = DatasetSpec('my first dataset',
                               'int',
@@ -249,4 +251,4 @@ class GroupSpecTests(TestCase):
                       name='root',
                       groups=[subgroup])
 
-        self.assertEqual(attribute.path_str(), 'root/GroupType/DatasetType/attribute1')
+        self.assertEqual(attribute.path, 'root/GroupType/DatasetType/attribute1')
