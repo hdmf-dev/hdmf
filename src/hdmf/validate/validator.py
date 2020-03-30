@@ -6,7 +6,7 @@ from itertools import chain
 
 from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
-from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec
+from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec.spec import BaseStorageSpec, DtypeHelper
 from ..spec import SpecNamespace
 
@@ -26,8 +26,10 @@ __additional = {
     'uint8': ['uint16', 'uint32', 'uint64'],
     'uint16': ['uint32', 'uint64'],
     'uint32': ['uint64'],
+    'utf': ['ascii']
 }
 
+# if the spec dtype is a key in __allowable, then all types in __allowable[key] are valid
 __allowable = dict()
 for dt, dt_syn in __synonyms.items():
     allow = copy(dt_syn)
@@ -404,9 +406,12 @@ class GroupValidator(BaseStorageValidator):
             else:
                 self.__include_dts[spec.data_type_def] = spec
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},    # noqa: C901
+        for spec in self.spec.links:
+            self.__include_dts[spec.data_type_inc] = spec
+
+    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
+    def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
         ret = super().validate(builder)
         # get the data_types
@@ -432,7 +437,7 @@ class GroupValidator(BaseStorageValidator):
                     for bldr in dt_builders:
                         tmp = bldr
                         if isinstance(bldr, LinkBuilder):
-                            if inc_spec.linkable:
+                            if isinstance(inc_spec, LinkSpec) or inc_spec.linkable:
                                 tmp = bldr.builder
                             else:
                                 ret.append(IllegalLinkError(self.get_spec_loc(inc_spec),

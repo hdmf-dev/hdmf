@@ -1,14 +1,18 @@
 import copy as _copy
-import itertools as _itertools
 from abc import ABCMeta
 import collections
 import h5py
 import numpy as np
+import warnings
+from enum import Enum
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float],
 }
+
+# code to signify how to handle positional arguments in docval
+AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 
 
 def docval_macro(macro):
@@ -117,7 +121,8 @@ def __format_type(argtype):
         raise ValueError("argtype must be a type, str, list, or tuple")
 
 
-def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False):   # noqa: C901
+def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
+                 allow_positional=AllowPositional.ALLOWED):
     """
     Internal helper function used by the docval decorator to parse and validate function arguments
 
@@ -130,30 +135,51 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                           should be enforced if possible.
     :param allow_extra: Boolean indicating whether extra keyword arguments are allowed (if False and extra keyword
                         arguments are specified, then an error is raised).
+    :param allow_positional: integer code indicating whether positional arguments are allowed:
+                             AllowPositional.ALLOWED: positional arguments are allowed
+                             AllowPositional.WARNING: return warning if positional arguments are supplied
+                             AllowPositional.ERROR: return error if positional arguments are supplied
 
     :return: Dict with:
         * 'args' : Dict all arguments where keys are the names and values are the values of the arguments.
         * 'errors' : List of string with error messages
     """
     ret = dict()
+    syntax_errors = list()
     type_errors = list()
     value_errors = list()
+    future_warnings = list()
     argsi = 0
-    extras = dict(kwargs)
+    extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
 
-    # check for duplicates in docval
-    names = [x['name'] for x in validator]
-    duplicated = [item for item, count in collections.Counter(names).items() if count > 1]
-    if duplicated:
-        raise ValueError('The following names are duplicated: {}'.format(duplicated))
     try:
+        # check for duplicates in docval
+        names = [x['name'] for x in validator]
+        duplicated = [item for item, count in collections.Counter(names).items()
+                      if count > 1]
+        if duplicated:
+            raise ValueError(
+                'The following names are duplicated: {}'.format(duplicated))
+
         if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
-            # verify only that the number of positional args is <= number of docval specified args
             if len(args) > len(validator):
-                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args)))
-        else:  # verify that the number of positional args + keyword args is <= number of docval specified args
-            if (len(args) + len(kwargs)) > len(validator):
-                raise TypeError('Expected at most %s arguments, got %s' % (len(validator), len(args) + len(kwargs)))
+                raise TypeError(
+                    'Expected at most %d arguments %r, got %d positional' % (len(validator), names, len(args))
+                )
+        else:  # allow for keyword args
+            if len(args) + len(kwargs) > len(validator):
+                raise TypeError(
+                    'Expected at most %d arguments %r, got %d: %d positional and %d keyword %s'
+                    % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
+                )
+
+        if args:
+            if allow_positional == AllowPositional.WARNING:
+                msg = 'Positional arguments are discouraged and may be forbidden in a future release.'
+                future_warnings.append(msg)
+            elif allow_positional == AllowPositional.ERROR:
+                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.'
+                syntax_errors.append(msg)
 
         # iterate through the docval specification and find a matching value in args / kwargs
         it = iter(validator)
@@ -164,8 +190,9 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         unsupported_terms = set(arg.keys()) - set(allowable_terms)
         if unsupported_terms:
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
-                                                                                    list(unsupported_terms)))
+                                                                                    sorted(unsupported_terms)))
         # process positional arguments of the docval specification (no default value)
+        extras = dict(kwargs)
         while True:
             if 'default' in arg:
                 break
@@ -225,7 +252,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 ret[argname] = args[argsi]
                 argsi += 1
             else:
-                ret[argname] = arg['default']
+                ret[argname] = _copy.deepcopy(arg['default'])
             argval = ret[argname]
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None):
@@ -254,6 +281,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             arg = next(it)
     except StopIteration:
         pass
+    except TypeError as e:
+        type_errors.append(str(e))
+    except ValueError as e:
+        value_errors.append(str(e))
+
     if not allow_extra:
         for key in extras.keys():
             type_errors.append("unrecognized argument: '%s'" % key)
@@ -262,18 +294,8 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         # allow_extra needs to be tracked on a function so that fmt_docval_args doesn't strip them out
         for key in extras.keys():
             ret[key] = extras[key]
-    return {'args': ret, 'type_errors': type_errors, 'value_errors': value_errors}
-
-
-def __sort_args(validator):
-    pos = list()
-    kw = list()
-    for arg in validator:
-        if "default" in arg:
-            kw.append(arg)
-        else:
-            pos.append(arg)
-    return list(_itertools.chain(pos, kw))
+    return {'args': ret, 'future_warnings': future_warnings, 'type_errors': type_errors, 'value_errors': value_errors,
+            'syntax_errors': syntax_errors}
 
 
 docval_idx_name = '__dv_idx__'
@@ -283,7 +305,7 @@ __docval_args_loc = 'args'
 
 def get_docval(func, *args):
     '''Get a copy of docval arguments for a function.
-    If args are supplied, return only docval arguments with value for 'name' key equal to *args
+    If args are supplied, return only docval arguments with value for 'name' key equal to the args
     '''
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
@@ -411,16 +433,17 @@ def docval(*validator, **options):
     rtype = options.pop('rtype', None)
     is_method = options.pop('is_method', True)
     allow_extra = options.pop('allow_extra', False)
-    val_copy = __sort_args(_copy.deepcopy(validator))
+    allow_positional = options.pop('allow_positional', True)
 
     def dec(func):
         _docval = _copy.copy(options)
         _docval['allow_extra'] = allow_extra
+        _docval['allow_positional'] = allow_positional
         func.__name__ = _docval.get('func_name', func.__name__)
         func.__doc__ = _docval.get('doc', func.__doc__)
         pos = list()
         kw = list()
-        for a in val_copy:
+        for a in validator:
             try:
                 a['type'] = __resolve_type(a['type'])
             except Exception as e:
@@ -432,40 +455,35 @@ def docval(*validator, **options):
                 pos.append(a)
         loc_val = pos+kw
         _docval[__docval_args_loc] = loc_val
-        if is_method:
-            def func_call(*args, **kwargs):
-                self = args[0]
-                parsed = __parse_args(
-                            _copy.deepcopy(loc_val),
-                            args[1:],
-                            kwargs,
-                            enforce_type=enforce_type,
-                            enforce_shape=enforce_shape,
-                            allow_extra=allow_extra)
 
-                for error_type, ExceptionType in (('type_errors', TypeError),
-                                                  ('value_errors', ValueError)):
-                    parse_err = parsed.get(error_type)
-                    if parse_err:
-                        msg = ', '.join(parse_err)
-                        raise ExceptionType(msg)
+        def func_call(*args, **kwargs):
+            parsed = __parse_args(
+                        loc_val,
+                        args[1:] if is_method else args,
+                        kwargs,
+                        enforce_type=enforce_type,
+                        enforce_shape=enforce_shape,
+                        allow_extra=allow_extra,
+                        allow_positional=allow_positional)
 
-                return func(self, **parsed['args'])
-        else:
-            def func_call(*args, **kwargs):
-                parsed = __parse_args(_copy.deepcopy(loc_val),
-                                      args,
-                                      kwargs,
-                                      enforce_type=enforce_type,
-                                      allow_extra=allow_extra)
-                for error_type, ExceptionType in (('type_errors', TypeError),
-                                                  ('value_errors', ValueError)):
-                    parse_err = parsed.get(error_type)
-                    if parse_err:
-                        msg = ', '.join(parse_err)
-                        raise ExceptionType(msg)
+            parse_warnings = parsed.get('future_warnings')
+            if parse_warnings:
+                msg = '%s: %s' % (func.__qualname__, ', '.join(parse_warnings))
+                warnings.warn(msg, FutureWarning)
 
+            for error_type, ExceptionType in (('type_errors', TypeError),
+                                              ('value_errors', ValueError),
+                                              ('syntax_errors', SyntaxError)):
+                parse_err = parsed.get(error_type)
+                if parse_err:
+                    msg = '%s: %s' % (func.__qualname__, ', '.join(parse_err))
+                    raise ExceptionType(msg)
+
+            if is_method:
+                return func(args[0], **parsed['args'])
+            else:
                 return func(**parsed['args'])
+
         _rtype = rtype
         if isinstance(rtype, type):
             _rtype = rtype.__name__

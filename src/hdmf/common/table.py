@@ -163,20 +163,20 @@ class DynamicTable(Container):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container) \
-                and bases[-1].__columns__ is not cls.__columns__:
+        if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
+                and bases[-1].__columns__ is not cls.__columns__):
             new_columns = list(cls.__columns__)
             new_columns[0:0] = bases[-1].__columns__
             cls.__columns__ = tuple(new_columns)
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},    # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
             {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data', 'doc': 'the names of the columns in this table',
              'default': None})
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
         call_docval_func(super().__init__, kwargs)
         self.description = desc
@@ -277,7 +277,9 @@ class DynamicTable(Container):
         self.__indices = dict()
         for col in self.columns:
             if hasattr(self, col.name):
-                raise ValueError("Column name '%s' is not allowed because it is already an attribute" % col.name)
+                msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
+                       % (col.name, col.name, self.__class__.__name__, self.name))
+                raise ValueError(msg)
             setattr(self, col.name, col)
             if isinstance(col, VectorData):
                 existing = col_dict.get(col.name)
@@ -298,14 +300,22 @@ class DynamicTable(Container):
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
+        self._init_class_columns()
+
+    def _init_class_columns(self):
+        self.__uninit_cols = []  # hold column names that are defined in __columns__ but not yet initialized
         for col in self.__columns__:
             if col['name'] not in self.__colids:
                 if col.get('required', False):
                     self.add_column(col['name'], col['description'],
                                     index=col.get('index', False),
-                                    table=col.get('table', False))
+                                    table=col.get('table', False),
+                                    # Pass through extra keyword arguments for add_column that subclasses may have added
+                                    **{k: col[k] for k in col.keys()
+                                       if k not in ['name', 'description', 'index', 'table', 'required']})
 
                 else:  # create column name attributes (set to None) on the object even if column is not required
+                    self.__uninit_cols.append(col['name'])
                     setattr(self, col['name'], None)
                     if col.get('index', False):
                         setattr(self, col['name'] + '_index', None)
@@ -372,7 +382,11 @@ class DynamicTable(Container):
                     if data[col['name']] is not None:
                         self.add_column(col['name'], col['description'],
                                         index=col.get('index', False),
-                                        table=col.get('table', False))
+                                        table=col.get('table', False),
+                                        # Pass through extra keyword arguments for add_column that
+                                        # subclasses may have added
+                                        **{k: col[k] for k in col.keys()
+                                           if k not in ['name', 'description', 'index', 'table', 'required']})
                     extra_columns.remove(col['name'])
 
         if extra_columns or missing_columns:
@@ -421,6 +435,11 @@ class DynamicTable(Container):
         index, table = popargs('index', 'table', kwargs)
         if name in self.__colids:
             msg = "column '%s' already exists in DynamicTable '%s'" % (name, self.name)
+            raise ValueError(msg)
+        if hasattr(self, name) and name not in self.__uninit_cols:
+            # the second part of the check is b/c uninitialized columns were set as attributes with value None in init
+            msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
+                   % (name, name, self.__class__.__name__, self.name))
             raise ValueError(msg)
 
         ckwargs = dict(kwargs)
@@ -552,7 +571,7 @@ class DynamicTable(Container):
             return self[key]
         return default
 
-    @docval({'name': 'exclude', 'type': set, 'doc': ' List of columns to exclude from the dataframe', 'default': None})
+    @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
@@ -726,6 +745,16 @@ class DynamicTableRegion(VectorData):
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
 
+    def to_dataframe(self, **kwargs):
+        """
+        Convert the whole DynamicTableRegion to a pandas dataframe.
+
+        Keyword arguments are passed through to the to_dataframe method of DynamicTable that
+        is being referenced (i.e., self.table). This allows specification of the 'exclude'
+        parameter and any other parameters of DynamicTable.to_dataframe.
+        """
+        return self.table.to_dataframe(**kwargs).iloc[self.data[:]]
+
     @property
     def shape(self):
         """
@@ -733,3 +762,12 @@ class DynamicTableRegion(VectorData):
         :return: Shape tuple with two integers indicating the number of rows and number of columns
         """
         return (len(self.data), len(self.table.columns))
+
+    def __repr__(self):
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d\n" % (self.name, cls.__module__, cls.__name__, id(self))
+        template += "    Target table: %s %s.%s at 0x%d\n" % (self.table.name,
+                                                              self.table.__class__.__module__,
+                                                              self.table.__class__.__name__,
+                                                              id(self.table))
+        return template

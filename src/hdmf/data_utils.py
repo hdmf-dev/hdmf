@@ -37,6 +37,7 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
     @abstractmethod
     def recommended_chunk_shape(self):
         """
+        Recommend the chunk shape for the data array.
 
         :return: NumPy-style shape tuple describing the recommended shape for the chunks of the target
                  array or None. This may or may not be the same as the shape of the chunks returned in the
@@ -346,10 +347,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
 class DataChunk:
     """
-    Class used to describe a data chunk. Used in DataChunkIterator to describe
-
-    :ivar data: Numpy ndarray with the data value(s) of the chunk
-    :ivar selection: Numpy index tuple describing the location of the chunk
+    Class used to describe a data chunk. Used in DataChunkIterator.
     """
     @docval({'name': 'data', 'type': np.ndarray,
              'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},
@@ -634,6 +632,9 @@ class DataIO:
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
+        if attr == '__array_struct__' and not self.valid:
+            # np.array() checks __array__ or __array_struct__ attribute dep. on numpy version
+            raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
         if not self.valid:
             raise InvalidDataIOError("Cannot get attribute '%s' of data. Data is not valid." % attr)
         return getattr(self.data, attr)
