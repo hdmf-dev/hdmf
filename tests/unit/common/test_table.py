@@ -246,7 +246,8 @@ class TestDynamicTable(TestCase):
             'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
         }).loc[:, ('foo', 'bar', 'description')]
 
-        msg = "Column name 'description' is not allowed because it is already an attribute"
+        msg = ("Cannot create column with name 'description'. The attribute 'description' already exists on "
+               "DynamicTable 'test'")
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable.from_dataframe(df, 'test')
 
@@ -463,6 +464,16 @@ class TestDynamicTableRegion(TestCase):
 """
         expected = expected % (id(dynamic_table_region), id(table))
         self.assertEqual(str(dynamic_table_region), expected)
+
+    def test_add_column_existing_attr(self):
+        table = self.with_columns_and_data()
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on "
+                       "DynamicTable 'with_columns_and_data'") % (attr, attr)
+                with self.assertRaisesWith(ValueError, msg):
+                    table.add_column(name=attr, description='')
 
 
 class TestElementIdentifiers(TestCase):
