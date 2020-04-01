@@ -240,16 +240,24 @@ class TestDynamicTable(TestCase):
         self.assertContainerEqual(expected, received, ignore_hdmf_attrs=True)
 
     def test_from_dataframe_dup_attr(self):
+        """
+        Test that when a DynamicTable is generated from a dataframe where one of the column names is an existing
+        DynamicTable attribute (e.g., description), that the table can be created, the existing attribute is not
+        altered, and the column can still be accessed using the table[col_name] syntax.
+        """
         df = pd.DataFrame({
-            'foo': [1, 2, 3, 4, 5],
-            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'parent': [1, 2, 3, 4, 5],
+            'name': [10.0, 20.0, 30.0, 40.0, 50.0],
             'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
-        }).loc[:, ('foo', 'bar', 'description')]
+        })
 
-        msg = ("Cannot create column with name 'description'. The attribute 'description' already exists on "
-               "DynamicTable 'test'")
-        with self.assertRaisesWith(ValueError, msg):
-            DynamicTable.from_dataframe(df, 'test')
+        table = DynamicTable.from_dataframe(df, 'test')
+        self.assertEqual(table.name, 'test')
+        self.assertEqual(table.description, '')
+        self.assertIsNone(table.parent)
+        self.assertEqual(table['name'].name, 'name')
+        self.assertEqual(table['description'].name, 'description')
+        self.assertEqual(table['parent'].name, 'parent')
 
     def test_missing_columns(self):
         table = self.with_spec()
@@ -320,6 +328,28 @@ Fields:
 """
         expected = expected % id(table)
         self.assertEqual(str(table), expected)
+
+    def test_add_column_existing_attr(self):
+        table = self.with_table_columns()
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                msg = ("An attribute '%s' already exists on DynamicTable 'with_table_columns' so this column cannot be "
+                       "accessed as an attribute, e.g., table.%s; it can only be accessed using other methods, "
+                       "e.g., table['%s']." % (attr, attr, attr))
+                with self.assertWarnsWith(UserWarning, msg):
+                    table.add_column(name=attr, description='')
+
+    def test_init_columns_existing_attr(self):
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                cols = [VectorData(name=attr, description='')]
+                msg = ("An attribute '%s' already exists on DynamicTable 'test_table' so this column cannot be "
+                       "accessed as an attribute, e.g., table.%s; it can only be accessed using other methods, "
+                       "e.g., table['%s']." % (attr, attr, attr))
+                with self.assertWarnsWith(UserWarning, msg):
+                    DynamicTable("test_table", 'a test table', columns=cols)
 
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
@@ -464,16 +494,6 @@ class TestDynamicTableRegion(TestCase):
 """
         expected = expected % (id(dynamic_table_region), id(table))
         self.assertEqual(str(dynamic_table_region), expected)
-
-    def test_add_column_existing_attr(self):
-        table = self.with_columns_and_data()
-        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
-        for attr in attrs:
-            with self.subTest(attr=attr):
-                msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on "
-                       "DynamicTable 'with_columns_and_data'") % (attr, attr)
-                with self.assertRaisesWith(ValueError, msg):
-                    table.add_column(name=attr, description='')
 
 
 class TestElementIdentifiers(TestCase):

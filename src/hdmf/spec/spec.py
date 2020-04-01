@@ -145,6 +145,20 @@ class Spec(ConstructableDict):
     def __hash__(self):
         return id(self)
 
+    @property
+    def path(self):
+        stack = list()
+        tmp = self
+        while tmp is not None:
+            name = tmp.name
+            if name is None:
+                name = tmp.data_type_def
+                if name is None:
+                    name = tmp.data_type_inc
+            stack.append(name)
+            tmp = tmp.parent
+        return "/".join(reversed(stack))
+
 #    def __eq__(self, other):
 #        return id(self) == id(other)
 

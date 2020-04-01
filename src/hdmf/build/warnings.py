@@ -13,3 +13,10 @@ class MissingRequiredWarning(UserWarning):
     Raised when a required field is missing.
     """
     pass
+
+
+class DtypeConversionWarning(UserWarning):
+    """
+    Raised when a value is converted to a different data type in order to match the specification.
+    """
+    pass
