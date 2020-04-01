@@ -7,6 +7,7 @@ from h5py import Dataset
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+from warnings import warn
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
@@ -299,11 +300,7 @@ class DynamicTable(Container):
         col_dict = dict()
         self.__indices = dict()
         for col in self.columns:
-            if hasattr(self, col.name):
-                msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
-                       % (col.name, col.name, self.__class__.__name__, self.name))
-                raise ValueError(msg)
-            setattr(self, col.name, col)
+            self.__set_table_attr(col)
             if isinstance(col, VectorData):
                 existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
@@ -324,6 +321,15 @@ class DynamicTable(Container):
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
         self._init_class_columns()
+
+    def __set_table_attr(self, col):
+        if hasattr(self, col.name):
+            msg = ("An attribute '%s' already exists on %s '%s' so this column cannot be accessed as an attribute, "
+                   "e.g., table.%s; it can only be accessed using other methods, e.g., table['%s']."
+                   % (col.name, self.__class__.__name__, self.name, col.name, col.name))
+            warn(msg)
+        else:
+            setattr(self, col.name, col)
 
     def _init_class_columns(self):
         self.__uninit_cols = []  # hold column names that are defined in __columns__ but not yet initialized
@@ -475,11 +481,6 @@ class DynamicTable(Container):
         if name in self.__colids:
             msg = "column '%s' already exists in DynamicTable '%s'" % (name, self.name)
             raise ValueError(msg)
-        if hasattr(self, name) and name not in self.__uninit_cols:
-            # the second part of the check is b/c uninitialized columns were set as attributes with value None in init
-            msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on %s '%s'"
-                   % (name, name, self.__class__.__name__, self.name))
-            raise ValueError(msg)
 
         ckwargs = dict(kwargs)
         cls = VectorData
@@ -493,7 +494,7 @@ class DynamicTable(Container):
         col = cls(**ckwargs)
         col.parent = self
         columns = [col]
-        setattr(self, name, col)
+        self.__set_table_attr(col)
 
         # Add index if it's been specified
         if index is not False:
