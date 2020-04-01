@@ -162,8 +162,8 @@ class DynamicTable(Container):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container) \
-                and bases[-1].__columns__ is not cls.__columns__:
+        if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
+                and bases[-1].__columns__ is not cls.__columns__):
             new_columns = list(cls.__columns__)
             new_columns[0:0] = bases[-1].__columns__
             cls.__columns__ = tuple(new_columns)
@@ -294,6 +294,9 @@ class DynamicTable(Container):
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
+        self._init_class_columns()
+
+    def _init_class_columns(self):
         self.__uninit_cols = []  # hold column names that are defined in __columns__ but not yet initialized
         for col in self.__columns__:
             if col['name'] not in self.__colids:
