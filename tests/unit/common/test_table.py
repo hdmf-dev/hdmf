@@ -541,3 +541,57 @@ class TestElementIdentifiers(TestCase):
             _ = (e == 0.1)
         with self.assertRaises(TypeError):
             _ = (e == 'test')
+
+
+class SubTable(DynamicTable):
+
+    __columns__ = (
+        {'name': 'col1', 'description': 'required column', 'required': True},
+        {'name': 'col2', 'description': 'optional column'},
+        {'name': 'col3', 'description': 'required, indexed column', 'required': True, 'index': True},
+        {'name': 'col4', 'description': 'optional, indexed column', 'index': True}
+    )
+
+
+class TestCustomDynamicTable(TestCase):
+
+    def test_init(self):
+        table = SubTable(name='subtable', description='subtable description')
+        self.assertEqual(table.colnames, ('col1', 'col3'))
+
+    def test_add_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_column(name='col5', description='column #5')
+        self.assertEqual(table.colnames, ('col1', 'col3', 'col5'))
+        self.assertTrue(hasattr(table, 'col5'))
+
+    def test_add_existing_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        msg = "column 'col1' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col1', description='column #1')
+
+    def test_add_optional_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        msg = "column 'col2' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col2', description='column #2')
+
+    def test_add_optional_column_after_data(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c')
+        msg = "column 'col2' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col2', description='column #2', data=('b', ))
+
+    def test_add_row_opt_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col2='b', col3='c')
+        self.assertEqual(set(table.colnames), {'col1', 'col2', 'col3'})
+        self.assertEqual(table['col2'].description, 'optional column')
+
+    def test_add_row_opt_column_after_data(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c')
+        with self.assertRaises(ValueError):
+            table.add_row(col1='a', col2='b', col3='c')
