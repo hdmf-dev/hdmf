@@ -456,7 +456,10 @@ def docval(*validator, **options):
         loc_val = pos+kw
         _docval[__docval_args_loc] = loc_val
 
-        def func_call(*args, **kwargs):
+        def _check_args(args, kwargs):
+            """Parse and check arguments to decorated function. Raise warnings and errors as appropriate."""
+            # this function was separated from func_call() in order to make stepping through lines of code using pdb
+            # easier
             parsed = __parse_args(
                         loc_val,
                         args[1:] if is_method else args,
@@ -479,10 +482,17 @@ def docval(*validator, **options):
                     msg = '%s: %s' % (func.__qualname__, ', '.join(parse_err))
                     raise ExceptionType(msg)
 
-            if is_method:
-                return func(args[0], **parsed['args'])
-            else:
-                return func(**parsed['args'])
+            return parsed['args']
+
+        # this code is intentionally separated to make stepping through lines of code using pdb easier
+        if is_method:
+            def func_call(*args, **kwargs):
+                pargs = _check_args(args, kwargs)
+                return func(args[0], **pargs)
+        else:
+            def func_call(*args, **kwargs):
+                pargs = _check_args(args, kwargs)
+                return func(**pargs)
 
         _rtype = rtype
         if isinstance(rtype, type):
