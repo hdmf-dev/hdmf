@@ -468,7 +468,8 @@ class DynamicTable(Container):
             {'name': 'table', 'type': (bool, 'DynamicTable'),
              'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
-             'doc': 'whether or not this column should be indexed', 'default': False})
+             'doc': 'whether or not this column should be indexed', 'default': False},
+            {'name': 'colcls', 'type': type, 'doc': 'VectorData class to be used', 'default': None})
     def add_column(self, **kwargs):
         name = getargs('name', kwargs)
         for col in self.__columns__:
@@ -485,7 +486,8 @@ class DynamicTable(Container):
             {'name': 'table', 'type': (bool, 'DynamicTable'),
              'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
-             'doc': 'whether or not this column should be indexed', 'default': False})
+             'doc': 'whether or not this column should be indexed', 'default': False},
+            {'name': 'colcls', 'type': type, 'doc': 'VectorData class to be used', 'default': None})
     def _add_column(self, **kwargs):
         """
         Add a column to this table.
@@ -501,8 +503,9 @@ class DynamicTable(Container):
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
             raise ValueError(msg)
 
+        colcls = popargs('colcls', kwargs)
+        cls = VectorData if colcls is None else colcls
         ckwargs = dict(kwargs)
-        cls = VectorData
 
         # Add table if it's been specified
         if table is not False:
