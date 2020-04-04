@@ -67,6 +67,16 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
             self.__inverted = cls(**kwargs)
         return self.__inverted
 
+    def __get_ref(self, ref):
+        return self.get_object(self.dataset.file[ref])
+
+    def __iter__(self):
+        for ref in super().__iter__():
+            yield self.__get_ref(ref)
+
+    def __next__(self):
+        return self.__get_ref(super().__next__())
+
 
 class BuilderResolverMixin(BuilderResolver):
     """
@@ -151,9 +161,6 @@ class AbstractH5TableDataset(DatasetOfReferences):
         for i in self.__refgetters:
             getref = self.__refgetters[i]
             row[i] = getref(row[i])
-
-    def __get_ref(self, ref):
-        return self.get_object(self.dataset.file[ref])
 
     def __get_regref(self, ref):
         obj = self.__get_ref(ref)
