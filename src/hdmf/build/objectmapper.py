@@ -13,7 +13,7 @@ from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .manager import Proxy, BuildManager
-from .warnings import OrphanContainerWarning, MissingRequiredWarning
+from .warnings import OrphanContainerWarning, MissingRequiredWarning, DtypeConversionWarning
 
 
 _const_arg = '__constructor_arg'
@@ -129,34 +129,34 @@ class ObjectMapper(metaclass=ExtenderMeta):
         g = np.dtype(given)
         s = np.dtype(specified)
         if g is s:
-            return s.type
+            return s.type, None
         if g.itemsize <= s.itemsize:  # given type has precision < precision of specified type
             # note: this allows float32 -> int32, bool -> int8, int16 -> uint16 which may involve buffer overflows,
             # truncated values, and other unexpected consequences.
-            warnings.warn('Value with data type %s is being converted to data type %s as specified.'
-                          % (g.name, s.name))
-            return s.type
+            warning_msg = ('Value with data type %s is being converted to data type %s as specified.'
+                           % (g.name, s.name))
+            return s.type, warning_msg
         elif g.name[:3] == s.name[:3]:
-            return g.type  # same base type, use higher-precision given type
+            return g.type, None  # same base type, use higher-precision given type
         else:
             if np.issubdtype(s, np.unsignedinteger):
                 # e.g.: given int64 and spec uint32, return uint64. given float32 and spec uint8, return uint32.
                 ret_type = np.dtype('uint' + str(int(g.itemsize*8)))
-                warnings.warn('Value with data type %s is being converted to data type %s (min specification: %s).'
-                              % (g.name, ret_type.name, s.name))
-                return ret_type.type
+                warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
+                               % (g.name, ret_type.name, s.name))
+                return ret_type.type, warning_msg
             if np.issubdtype(s, np.floating):
                 # e.g.: given int64 and spec float32, return float64. given uint64 and spec float32, return float32.
                 ret_type = np.dtype('float' + str(max(int(g.itemsize*8), 32)))
-                warnings.warn('Value with data type %s is being converted to data type %s (min specification: %s).'
-                              % (g.name, ret_type.name, s.name))
-                return ret_type.type
+                warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
+                               % (g.name, ret_type.name, s.name))
+                return ret_type.type, warning_msg
             if np.issubdtype(s, np.integer):
                 # e.g.: given float64 and spec int8, return int64. given uint32 and spec int8, return int32.
                 ret_type = np.dtype('int' + str(int(g.itemsize*8)))
-                warnings.warn('Value with data type %s is being converted to data type %s (min specification: %s).'
-                              % (g.name, ret_type.name, s.name))
-                return ret_type.type
+                warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
+                               % (g.name, ret_type.name, s.name))
+                return ret_type.type, warning_msg
             if s.type is np.bool_:
                 msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
                 raise ValueError(msg)
@@ -185,6 +185,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
         spec_dtype = cls.__dtypes[spec.dtype]
+        warning_msg = None
         if isinstance(value, np.ndarray):
             if spec_dtype is _unicode:
                 ret = value.astype('U')
@@ -193,7 +194,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
-                dtype_func = cls.__resolve_dtype(value.dtype, spec_dtype)
+                dtype_func, warning_msg = cls.__resolve_dtype(value.dtype, spec_dtype)
                 ret = np.asarray(value).astype(dtype_func)
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
@@ -207,7 +208,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret_dtype = tmp_dtype
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            ret_dtype = cls.__resolve_dtype(value.dtype, spec_dtype)
+            ret_dtype, warning_msg = cls.__resolve_dtype(value.dtype, spec_dtype)
         else:
             if spec_dtype in (_unicode, _ascii):
                 ret_dtype = 'ascii'
@@ -215,9 +216,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     ret_dtype = 'utf8'
                 ret = spec_dtype(value)
             else:
-                dtype_func = cls.__resolve_dtype(type(value), spec_dtype)
+                dtype_func, warning_msg = cls.__resolve_dtype(type(value), spec_dtype)
                 ret = dtype_func(value)
                 ret_dtype = type(ret)
+        if warning_msg:
+            full_warning_msg = "Spec '%s': %s" % (spec.path, warning_msg)
+            warnings.warn(full_warning_msg, DtypeConversionWarning)
         return ret, ret_dtype
 
     @classmethod
@@ -605,7 +609,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
                                                  dtype='object')
                     else:
-                        # a dataset that has no references, pass the donversion off to
+                        # a dataset that has no references, pass the conversion off to
                         # the convert_dtype method
                         try:
                             bldr_data, dtype = self.convert_dtype(spec, container.data)

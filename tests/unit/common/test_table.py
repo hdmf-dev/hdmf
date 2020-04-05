@@ -240,16 +240,24 @@ class TestDynamicTable(TestCase):
         self.assertContainerEqual(expected, received, ignore_hdmf_attrs=True)
 
     def test_from_dataframe_dup_attr(self):
+        """
+        Test that when a DynamicTable is generated from a dataframe where one of the column names is an existing
+        DynamicTable attribute (e.g., description), that the table can be created, the existing attribute is not
+        altered, and the column can still be accessed using the table[col_name] syntax.
+        """
         df = pd.DataFrame({
-            'foo': [1, 2, 3, 4, 5],
-            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'parent': [1, 2, 3, 4, 5],
+            'name': [10.0, 20.0, 30.0, 40.0, 50.0],
             'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
-        }).loc[:, ('foo', 'bar', 'description')]
+        })
 
-        msg = ("Cannot create column with name 'description'. The attribute 'description' already exists on "
-               "DynamicTable 'test'")
-        with self.assertRaisesWith(ValueError, msg):
-            DynamicTable.from_dataframe(df, 'test')
+        table = DynamicTable.from_dataframe(df, 'test')
+        self.assertEqual(table.name, 'test')
+        self.assertEqual(table.description, '')
+        self.assertIsNone(table.parent)
+        self.assertEqual(table['name'].name, 'name')
+        self.assertEqual(table['description'].name, 'description')
+        self.assertEqual(table['parent'].name, 'parent')
 
     def test_missing_columns(self):
         table = self.with_spec()
@@ -320,6 +328,28 @@ Fields:
 """
         expected = expected % id(table)
         self.assertEqual(str(table), expected)
+
+    def test_add_column_existing_attr(self):
+        table = self.with_table_columns()
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                msg = ("An attribute '%s' already exists on DynamicTable 'with_table_columns' so this column cannot be "
+                       "accessed as an attribute, e.g., table.%s; it can only be accessed using other methods, "
+                       "e.g., table['%s']." % (attr, attr, attr))
+                with self.assertWarnsWith(UserWarning, msg):
+                    table.add_column(name=attr, description='')
+
+    def test_init_columns_existing_attr(self):
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                cols = [VectorData(name=attr, description='')]
+                msg = ("An attribute '%s' already exists on DynamicTable 'test_table' so this column cannot be "
+                       "accessed as an attribute, e.g., table.%s; it can only be accessed using other methods, "
+                       "e.g., table['%s']." % (attr, attr, attr))
+                with self.assertWarnsWith(UserWarning, msg):
+                    DynamicTable("test_table", 'a test table', columns=cols)
 
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
@@ -465,16 +495,6 @@ class TestDynamicTableRegion(TestCase):
         expected = expected % (id(dynamic_table_region), id(table))
         self.assertEqual(str(dynamic_table_region), expected)
 
-    def test_add_column_existing_attr(self):
-        table = self.with_columns_and_data()
-        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
-        for attr in attrs:
-            with self.subTest(attr=attr):
-                msg = ("Cannot create column with name '%s'. The attribute '%s' already exists on "
-                       "DynamicTable 'with_columns_and_data'") % (attr, attr)
-                with self.assertRaisesWith(ValueError, msg):
-                    table.add_column(name=attr, description='')
-
 
 class TestElementIdentifiers(TestCase):
 
@@ -521,3 +541,57 @@ class TestElementIdentifiers(TestCase):
             _ = (e == 0.1)
         with self.assertRaises(TypeError):
             _ = (e == 'test')
+
+
+class SubTable(DynamicTable):
+
+    __columns__ = (
+        {'name': 'col1', 'description': 'required column', 'required': True},
+        {'name': 'col2', 'description': 'optional column'},
+        {'name': 'col3', 'description': 'required, indexed column', 'required': True, 'index': True},
+        {'name': 'col4', 'description': 'optional, indexed column', 'index': True}
+    )
+
+
+class TestCustomDynamicTable(TestCase):
+
+    def test_init(self):
+        table = SubTable(name='subtable', description='subtable description')
+        self.assertEqual(table.colnames, ('col1', 'col3'))
+
+    def test_add_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_column(name='col5', description='column #5')
+        self.assertEqual(table.colnames, ('col1', 'col3', 'col5'))
+        self.assertTrue(hasattr(table, 'col5'))
+
+    def test_add_existing_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        msg = "column 'col1' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col1', description='column #1')
+
+    def test_add_optional_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        msg = "column 'col2' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col2', description='column #2')
+
+    def test_add_optional_column_after_data(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c')
+        msg = "column 'col2' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col2', description='column #2', data=('b', ))
+
+    def test_add_row_opt_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col2='b', col3='c')
+        self.assertEqual(set(table.colnames), {'col1', 'col2', 'col3'})
+        self.assertEqual(table['col2'].description, 'optional column')
+
+    def test_add_row_opt_column_after_data(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c')
+        with self.assertRaises(ValueError):
+            table.add_row(col1='a', col2='b', col3='c')
