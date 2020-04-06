@@ -43,6 +43,17 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source)
         self.write_builder(f_builder, **kwargs)
 
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+            allow_extra=True)
+    def export(self, **kwargs):
+        container = popargs('container', kwargs)
+        # pass the same TypeMap to a clean BuildManager for exporting
+        temp_manager = BuildManager(self.__manager.type_map, export=True)
+        f_builder = temp_manager.build(container, source=self.__source)
+        self.write_builder(f_builder, **kwargs)
+
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
     def read_builder(self):

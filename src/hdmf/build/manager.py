@@ -84,10 +84,11 @@ class BuildManager:
     A class for managing builds of AbstractContainers
     """
 
-    def __init__(self, type_map):
+    def __init__(self, type_map, export=False):
         self.__builders = dict()
         self.__containers = dict()
         self.__type_map = type_map
+        self.__export = export
 
     @property
     def namespace_catalog(self):
@@ -96,6 +97,10 @@ class BuildManager:
     @property
     def type_map(self):
         return self.__type_map
+
+    @property
+    def export(self):
+        return self.__export
 
     @docval({"name": "object", "type": (BaseBuilder, AbstractContainer),
              "doc": "the container or builder to get a proxy for"},
@@ -145,16 +150,17 @@ class BuildManager:
         result = self.__builders.get(container_id)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
-            if container.container_source is None:
-                container.container_source = source
-            else:
-                if source is None:
-                    source = container.container_source
+            if not self.export:
+                if container.container_source is None:
+                    container.container_source = source
                 else:
-                    if container.container_source != source:
-                        raise ValueError("Cannot change container_source once set: '%s' %s.%s"
-                                         % (container.name, container.__class__.__module__,
-                                            container.__class__.__name__))
+                    if source is None:
+                        source = container.container_source
+                    else:
+                        if container.container_source != source:
+                            raise ValueError("Cannot change container_source once set: '%s' %s.%s"
+                                             % (container.name, container.__class__.__module__,
+                                                container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
         elif container.modified or spec_ext is not None:
