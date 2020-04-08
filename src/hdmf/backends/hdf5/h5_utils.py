@@ -67,15 +67,15 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
             self.__inverted = cls(**kwargs)
         return self.__inverted
 
-    def __get_ref(self, ref):
+    def _get_ref(self, ref):
         return self.get_object(self.dataset.file[ref])
 
     def __iter__(self):
         for ref in super().__iter__():
-            yield self.__get_ref(ref)
+            yield self._get_ref(ref)
 
     def __next__(self):
-        return self.__get_ref(super().__next__())
+        return self._get_ref(super().__next__())
 
 
 class BuilderResolverMixin(BuilderResolver):
@@ -118,7 +118,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
             if t is RegionReference:
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
-                self.__refgetters[i] = self.__get_ref
+                self.__refgetters[i] = self._get_ref
         self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
@@ -163,7 +163,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
             row[i] = getref(row[i])
 
     def __get_regref(self, ref):
-        obj = self.__get_ref(ref)
+        obj = self._get_ref(ref)
         return obj[ref]
 
     def resolve(self, manager):
@@ -175,9 +175,9 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
     def __getitem__(self, arg):
         ref = super().__getitem__(arg)
         if isinstance(ref, np.ndarray):
-            return [self.get_object(self.dataset.file[x]) for x in ref]
+            return [self._get_ref(x) for x in ref]
         else:
-            return self.get_object(self.dataset.file[ref])
+            return self._get_ref(ref)
 
     @property
     def dtype(self):
