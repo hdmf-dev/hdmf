@@ -1,7 +1,10 @@
 import requests
 import unittest
 from unittest import mock
+
 from hdmf import Container
+from hdmf.foreign import ForeignField
+
 
 class SimpleContainer(Container):
 
@@ -28,7 +31,7 @@ def mock_requests_get(*args, **kwargs):
 
 class ForeignTests(unittest.TestCase):
 
-    @mock.patch('requests.get', side_effect=mock_requests_get)
+    @mock.patch('hdmf.foreign.foreign.requests.get', side_effect=mock_requests_get)
     def test_resolve(self, get_mock):
         container = SimpleContainer(ForeignField(uri='http://myurl.com/foo.json'))
         self.assertIsInstance(container.foo, ForeignField)
