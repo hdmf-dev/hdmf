@@ -3,6 +3,7 @@ import unittest
 import tempfile
 import warnings
 import numpy as np
+import h5py
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
@@ -28,7 +29,7 @@ class FooFile(Container):
     @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
     def __init__(self, **kwargs):
         buckets = getargs('buckets', kwargs)
-        super(FooFile, self).__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
+        super().__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             f.parent = self
@@ -184,6 +185,19 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a.data))
         self.assertEqual(dset.compression, 'szip')
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
+    def test_write_dataset_list_compress_available_int_filters(self):
+        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
+                     compression=1,
+                     shuffle=True,
+                     fletcher32=True,
+                     allow_plugin_filters=True)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertEqual(dset.compression, 'gzip')
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
 
@@ -528,6 +542,17 @@ class H5IOTest(TestCase):
                         "recommended to ensure portability of the generated HDF5 files.")
             with self.assertWarnsWith(UserWarning, warn_msg):
                 H5DataIO(np.arange(30), compression="unknown")
+        # Make sure passing int compression filter raise an error if not installed
+        if not h5py_filters.h5z.filter_avail(h5py_filters.h5z.FILTER_MAX):
+            with self.assertRaises(ValueError):
+                warn_msg = ("%i compression may not be available on all installations of HDF5. Use of gzip is "
+                            "recommended to ensure portability of the generated HDF5 files."
+                            % h5py_filters.h5z.FILTER_MAX)
+                with self.assertWarnsWith(UserWarning, warn_msg):
+                    H5DataIO(np.arange(30), compression=h5py_filters.h5z.FILTER_MAX, allow_plugin_filters=True)
+        # Make sure available int compression filters raise an error without passing allow_plugin_filters=True
+        with self.assertRaises(ValueError):
+            H5DataIO(np.arange(30), compression=h5py_filters.h5z.FILTER_DEFLATE)
 
     def test_value_error_on_incompatible_compression_opts(self):
         # Make sure we warn when gzip with szip compression options is used
@@ -660,13 +685,13 @@ def _get_manager():
 
     class FooMapper(ObjectMapper):
         def __init__(self, spec):
-            super(FooMapper, self).__init__(spec)
+            super().__init__(spec)
             my_data_spec = spec.get_dataset('my_data')
             self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
 
     class BucketMapper(ObjectMapper):
         def __init__(self, spec):
-            super(BucketMapper, self).__init__(spec)
+            super().__init__(spec)
             foo_holder_spec = spec.get_group('foo_holder')
             self.unmap(foo_holder_spec)
             foo_spec = foo_holder_spec.get_data_type('Foo')
@@ -682,7 +707,7 @@ def _get_manager():
 
     class FileMapper(ObjectMapper):
         def __init__(self, spec):
-            super(FileMapper, self).__init__(spec)
+            super().__init__(spec)
             bucket_spec = spec.get_group('buckets').get_data_type('FooBucket')
             self.map_spec('buckets', bucket_spec)
 
@@ -694,6 +719,7 @@ def _get_manager():
         'a test namespace',
         CORE_NAMESPACE,
         [{'source': 'test.yaml'}],
+        version='0.1.0',
         catalog=spec_catalog)
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
@@ -1305,3 +1331,68 @@ class TestReadLink(TestCase):
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
+
+
+class TestLoadNamespaces(TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_load_namespaces_none_version(self):
+        """Test that reading a file with a cached namespace and None version works but raises a warning."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
+        # and set the version key to "None"
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/None')
+
+            # replace the namespace dataset with a serialized dict without the version key
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
+                      '"version":"None"}]}')
+            f['/specifications/' + CORE_NAMESPACE + '/None/namespace'][()] = new_ns
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = "Loaded namespace '%s' is unversioned. Please notify the extension author." % CORE_NAMESPACE
+        with self.assertWarnsWith(UserWarning, msg):
+            HDF5IO.load_namespaces(ns_catalog, self.path)
+
+    def test_load_namespaces_unversioned(self):
+        """Test that reading a file with a cached, unversioned version works but raises a warning."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
+        # and remove the version key
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/unversioned')
+
+            # replace the namespace dataset with a serialized dict without the version key
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
+            f['/specifications/' + CORE_NAMESPACE + '/unversioned/namespace'][()] = new_ns
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = ("Loaded namespace '%s' is missing the required key 'version'. Version will be set to "
+               "'%s'. Please notify the extension author." % (CORE_NAMESPACE, SpecNamespace.UNVERSIONED))
+        with self.assertWarnsWith(UserWarning, msg):
+            HDF5IO.load_namespaces(ns_catalog, self.path)

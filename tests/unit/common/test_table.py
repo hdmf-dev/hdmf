@@ -1,5 +1,5 @@
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
-from hdmf.testing import TestCase, TestMapH5RoundTrip
+from hdmf.testing import TestCase, H5RoundTripMixin
 
 import pandas as pd
 import numpy as np
@@ -218,16 +218,46 @@ class TestDynamicTable(TestCase):
         obtained_table = DynamicTable.from_dataframe(df, 'test')
         self.check_table(obtained_table)
 
-    def test_from_dataframe_dup_attr(self):
-        df = pd.DataFrame({
-            'foo': [1, 2, 3, 4, 5],
-            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
-            'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
-        }).loc[:, ('foo', 'bar', 'description')]
+    def test_from_dataframe_eq(self):
+        expected = DynamicTable('test_table', 'the expected table')
+        expected.add_column('a', '2d column')
+        expected.add_column('b', '1d column')
+        expected.add_row(a=[1, 2, 3], b='4')
+        expected.add_row(a=[1, 2, 3], b='5')
+        expected.add_row(a=[1, 2, 3], b='6')
 
-        msg = "Column name 'description' is not allowed because it is already an attribute"
-        with self.assertRaisesWith(ValueError, msg):
-            DynamicTable.from_dataframe(df, 'test')
+        df = pd.DataFrame({
+            'a': [[1, 2, 3],
+                  [1, 2, 3],
+                  [1, 2, 3]],
+            'b': ['4', '5', '6']
+        })
+        coldesc = {'a': '2d column', 'b': '1d column'}
+        received = DynamicTable.from_dataframe(df,
+                                               'test_table',
+                                               table_description='the expected table',
+                                               column_descriptions=coldesc)
+        self.assertContainerEqual(expected, received, ignore_hdmf_attrs=True)
+
+    def test_from_dataframe_dup_attr(self):
+        """
+        Test that when a DynamicTable is generated from a dataframe where one of the column names is an existing
+        DynamicTable attribute (e.g., description), that the table can be created, the existing attribute is not
+        altered, and the column can still be accessed using the table[col_name] syntax.
+        """
+        df = pd.DataFrame({
+            'parent': [1, 2, 3, 4, 5],
+            'name': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
+        })
+
+        table = DynamicTable.from_dataframe(df, 'test')
+        self.assertEqual(table.name, 'test')
+        self.assertEqual(table.description, '')
+        self.assertIsNone(table.parent)
+        self.assertEqual(table['name'].name, 'name')
+        self.assertEqual(table['description'].name, 'description')
+        self.assertEqual(table['parent'].name, 'parent')
 
     def test_missing_columns(self):
         table = self.with_spec()
@@ -261,23 +291,6 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             table.add_row({'bar': 60.0, 'foo': 6, 'baz': 'oryx', 'qax': -1}, None)
 
-    def test_indexed_dynamic_table_region(self):
-        table = self.with_columns_and_data()
-        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
-        fetch_ids = dynamic_table_region[:3].index.values
-        self.assertListEqual(fetch_ids.tolist(), [1, 2, 2])
-
-    def test_dynamic_table_iteration(self):
-        table = self.with_columns_and_data()
-        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
-        for ii, item in enumerate(dynamic_table_region):
-            self.assertTrue(table[ii].equals(item))
-
-    def test_dynamic_table_region_shape(self):
-        table = self.with_columns_and_data()
-        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
-        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
-
     def test_nd_array_to_df(self):
         data = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
         col = VectorData(name='data', description='desc', data=data)
@@ -301,11 +314,47 @@ class TestDynamicTable(TestCase):
         self.assertTupleEqual(tuple(res.iloc[0]), (3, 30.0, 'bird'))
         self.assertTupleEqual(tuple(res.iloc[1]), (5, 50.0, 'lizard'))
 
+    def test_repr(self):
+        table = self.with_spec()
+        expected = """with_spec hdmf.common.table.DynamicTable at 0x%d
+Fields:
+  colnames: ['foo' 'bar' 'baz']
+  columns: (
+    foo <class 'hdmf.common.table.VectorData'>,
+    bar <class 'hdmf.common.table.VectorData'>,
+    baz <class 'hdmf.common.table.VectorData'>
+  )
+  description: a test table
+"""
+        expected = expected % id(table)
+        self.assertEqual(str(table), expected)
 
-class TestDynamicTableRoundTrip(TestMapH5RoundTrip):
+    def test_add_column_existing_attr(self):
+        table = self.with_table_columns()
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                msg = ("An attribute '%s' already exists on DynamicTable 'with_table_columns' so this column cannot be "
+                       "accessed as an attribute, e.g., table.%s; it can only be accessed using other methods, "
+                       "e.g., table['%s']." % (attr, attr, attr))
+                with self.assertWarnsWith(UserWarning, msg):
+                    table.add_column(name=attr, description='')
+
+    def test_init_columns_existing_attr(self):
+        attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
+        for attr in attrs:
+            with self.subTest(attr=attr):
+                cols = [VectorData(name=attr, description='')]
+                msg = ("An attribute '%s' already exists on DynamicTable 'test_table' so this column cannot be "
+                       "accessed as an attribute, e.g., table.%s; it can only be accessed using other methods, "
+                       "e.g., table['%s']." % (attr, attr, attr))
+                with self.assertWarnsWith(UserWarning, msg):
+                    DynamicTable("test_table", 'a test table', columns=cols)
+
+
+class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
-        # this will get ignored
         table = DynamicTable('table0', 'an example table')
         table.add_column('foo', 'an int column')
         table.add_column('bar', 'a float column')
@@ -315,24 +364,136 @@ class TestDynamicTableRoundTrip(TestMapH5RoundTrip):
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False)
         return table
 
-    def test_from_dataframe(self):
-        # this will get ignored
-        expected = DynamicTable('test_table', 'the expected table')
-        expected.add_column('a', '2d column')
-        expected.add_column('b', '1d column')
-        expected.add_row(a=[1, 2, 3], b='4')
-        expected.add_row(a=[1, 2, 3], b='5')
-        expected.add_row(a=[1, 2, 3], b='6')
 
-        coldesc = {'a': '2d column', 'b': '1d column'}
+class TestDynamicTableRegion(TestCase):
 
-        received = DynamicTable.from_dataframe(pd.DataFrame({
-                'a': [[1, 2, 3],
-                      [1, 2, 3],
-                      [1, 2, 3]],
-                'b': ['4', '5', '6']
-            }), 'test_table', table_description='the expected table', column_descriptions=coldesc)
-        self.assertContainerEqual(expected, received)
+    def setUp(self):
+        self.spec = [
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
+        ]
+        self.data = [
+            [1, 2, 3, 4, 5],
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
+        ]
+
+    def with_columns_and_data(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        return DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+    def test_indexed_dynamic_table_region(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
+        fetch_ids = dynamic_table_region[:3].index.values
+        self.assertListEqual(fetch_ids.tolist(), [1, 2, 2])
+
+    def test_dynamic_table_region_iteration(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
+        for ii, item in enumerate(dynamic_table_region):
+            self.assertTrue(table[ii].equals(item))
+
+    def test_dynamic_table_region_shape(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 3, 4], 'desc', table=table)
+        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
+
+    def test_dynamic_table_region_to_dataframe(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region.to_dataframe()
+        self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
+        self.assertListEqual(res['foo'].tolist(), [1, 2, 3, 3])
+        self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
+        self.assertListEqual(res['baz'].tolist(), ['cat', 'dog', 'bird', 'bird'])
+
+    def test_dynamic_table_region_to_dataframe_exclude_cols(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region.to_dataframe(exclude=set(['baz', 'foo']))
+        self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
+        self.assertEqual(len(res.columns), 1)
+        self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
+
+    def test_dynamic_table_region_getitem_slice(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[1:3]
+        self.assertListEqual(res.index.tolist(), [1, 2])
+        self.assertListEqual(res['foo'].tolist(), [2, 3])
+        self.assertListEqual(res['bar'].tolist(), [20.0, 30.0])
+        self.assertListEqual(res['baz'].tolist(), ['dog', 'bird'])
+
+    def test_dynamic_table_region_getitem_single_row_by_index(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[2]
+        self.assertListEqual(res.index.tolist(), [2, ])
+        self.assertListEqual(res['foo'].tolist(), [3, ])
+        self.assertListEqual(res['bar'].tolist(), [30.0, ])
+        self.assertListEqual(res['baz'].tolist(), ['bird', ])
+
+    def test_dynamic_table_region_getitem_single_cell(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[2, 'foo']
+        self.assertEqual(res, 3)
+        res = dynamic_table_region[1, 'baz']
+        self.assertEqual(res, 'dog')
+
+    def test_dynamic_table_region_getitem_slice_of_column(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        res = dynamic_table_region[0:3, 'foo']
+        self.assertListEqual(res, [1, 2, 3])
+        res = dynamic_table_region[1:3, 'baz']
+        self.assertListEqual(res, ['dog', 'bird'])
+
+    def test_dynamic_table_region_getitem_bad_index(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        with self.assertRaises(ValueError):
+            _ = dynamic_table_region['bad index']
+
+    def test_dynamic_table_region_table_prop(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        self.assertEqual(table, dynamic_table_region.table)
+
+    def test_dynamic_table_region_set_table_prop(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc')
+        dynamic_table_region.table = table
+        self.assertEqual(table, dynamic_table_region.table)
+
+    def test_dynamic_table_region_set_table_prop_to_none(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        try:
+            dynamic_table_region.table = None
+        except AttributeError:
+            self.fail("DynamicTableRegion table setter raised AttributeError unexpectedly!")
+
+    def test_dynamic_table_region_set_with_bad_data(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [5, 1], 'desc')   # index 5 is out of range
+        with self.assertRaises(IndexError):
+            dynamic_table_region.table = table
+        self.assertIsNone(dynamic_table_region.table)
+
+    def test_repr(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=table)
+        expected = """dtr hdmf.common.table.DynamicTableRegion at 0x%d
+    Target table: with_columns_and_data hdmf.common.table.DynamicTable at 0x%d
+"""
+        expected = expected % (id(dynamic_table_region), id(table))
+        self.assertEqual(str(dynamic_table_region), expected)
 
 
 class TestElementIdentifiers(TestCase):
@@ -380,3 +541,57 @@ class TestElementIdentifiers(TestCase):
             _ = (e == 0.1)
         with self.assertRaises(TypeError):
             _ = (e == 'test')
+
+
+class SubTable(DynamicTable):
+
+    __columns__ = (
+        {'name': 'col1', 'description': 'required column', 'required': True},
+        {'name': 'col2', 'description': 'optional column'},
+        {'name': 'col3', 'description': 'required, indexed column', 'required': True, 'index': True},
+        {'name': 'col4', 'description': 'optional, indexed column', 'index': True}
+    )
+
+
+class TestCustomDynamicTable(TestCase):
+
+    def test_init(self):
+        table = SubTable(name='subtable', description='subtable description')
+        self.assertEqual(table.colnames, ('col1', 'col3'))
+
+    def test_add_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_column(name='col5', description='column #5')
+        self.assertEqual(table.colnames, ('col1', 'col3', 'col5'))
+        self.assertTrue(hasattr(table, 'col5'))
+
+    def test_add_existing_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        msg = "column 'col1' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col1', description='column #1')
+
+    def test_add_optional_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        msg = "column 'col2' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col2', description='column #2')
+
+    def test_add_optional_column_after_data(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c')
+        msg = "column 'col2' already exists in SubTable 'subtable'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col2', description='column #2', data=('b', ))
+
+    def test_add_row_opt_column(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col2='b', col3='c')
+        self.assertEqual(set(table.colnames), {'col1', 'col2', 'col3'})
+        self.assertEqual(table['col2'].description, 'optional column')
+
+    def test_add_row_opt_column_after_data(self):
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c')
+        with self.assertRaises(ValueError):
+            table.add_row(col1='a', col2='b', col3='c')
