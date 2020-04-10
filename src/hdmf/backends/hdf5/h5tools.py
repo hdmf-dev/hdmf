@@ -561,7 +561,7 @@ class HDF5IO(HDMFIO):
         '''
         failed = set()
         print('__ref_queue', len(self.__ref_queue))
-        breakpoint()
+        # breakpoint()
         while len(self.__ref_queue) > 0:
             call = self.__ref_queue.popleft()
             try:
@@ -670,8 +670,8 @@ class HDF5IO(HDMFIO):
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
                 print('setting attribute container, builder, referencebuilder', obj.name)
-                if obj.name == '/units/electrodes':
-                    breakpoint()
+                # if obj.name == '/units/electrodes':
+                #     breakpoint()
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
                 obj.attrs[key] = value                   # a regular scalar
@@ -1110,8 +1110,8 @@ class HDF5IO(HDMFIO):
             builder = self.manager.build(container)
         path = self.__get_path(builder)
         print(path, builder.name)
-        if path == '/electrodes':
-            breakpoint()
+        # if path == '/electrodes':
+        #     breakpoint()
         if isinstance(container, RegionBuilder):
             region = container.region
         if region is not None:

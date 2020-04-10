@@ -716,7 +716,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = "invalid type for reference '%s' (%s) - "\
                               "must be AbstractContainer" % (spec.name, type(attr_value))
                     raise ValueError(msg)
-                breakpoint()
+                # breakpoint()
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
             else:
