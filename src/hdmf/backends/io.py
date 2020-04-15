@@ -26,6 +26,14 @@ class HDMFIO(metaclass=ABCMeta):
         '''The source of the container being read/written i.e. file path'''
         return self.__source
 
+    @property
+    def type_map(self):
+        '''The TypeMap this HDMFIO is using (from the BuildManager). Returns None if there is no BuildManager'''
+        if self.manager is None:
+            return None
+        else:
+            return self.manager.type_map
+
     @docval(returns='the Container object that was read in', rtype=Container)
     def read(self, **kwargs):
         f_builder = self.read_builder()
@@ -37,22 +45,29 @@ class HDMFIO(metaclass=ABCMeta):
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+            allow_extra=True)
     def write(self, **kwargs):
         container = popargs('container', kwargs)
         f_builder = self.__manager.build(container, source=self.__source)
         self.write_builder(f_builder, **kwargs)
 
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+    @classmethod
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to export'},
+            {'name': 'type_map', 'type': 'TypeMap', 'doc': 'the TypeMap to use to export'},
+            {'name': 'source', 'type': str, 'doc': 'the source of container being built i.e. file path'},
+            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
+             'default': dict()},
             allow_extra=True)
-    def export(self, **kwargs):
-        container = popargs('container', kwargs)
-        # pass the same TypeMap to a clean BuildManager for exporting
-        temp_manager = BuildManager(self.__manager.type_map, export=True)
-        f_builder = temp_manager.build(container, source=self.__source)
-        self.write_builder(f_builder, **kwargs)
+    def export(cls, **kwargs):
+        ''' Export the given container using this IO object initialized with the given arguments '''
+        container, type_map, source, read_args, write_args = popargs('container', 'type_map', 'source', 'read_args',
+                                                                     'write_args', kwargs)
+        temp_manager = BuildManager(type_map, export=True)
+        write_io = cls(manager=temp_manager, source=source)
+        write_io.write(container, **write_args)
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')

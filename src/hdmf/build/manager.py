@@ -150,7 +150,7 @@ class BuildManager:
         result = self.__builders.get(container_id)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
-            if not self.export:
+            if not self.export:  # manipulate and check container_source/source only if not exporting
                 if container.container_source is None:
                     container.container_source = source
                 else:

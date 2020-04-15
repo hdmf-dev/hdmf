@@ -296,6 +296,28 @@ class HDF5IO(HDMFIO):
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
 
+    @classmethod
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to export'},
+            {'name': 'type_map', 'type': TypeMap, 'doc': 'the TypeMap to use to export'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'comm', 'type': 'Intracomm',
+             'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
+             'default': dict()})
+    def export(cls, **kwargs):
+        ''' Export the given container using this IO object initialized with the given arguments '''
+        container, type_map, path, comm, read_args, write_args = popargs('container', 'type_map', 'path', 'comm',
+                                                                         'read_args', 'write_args', kwargs)
+        temp_manager = BuildManager(type_map, export=True)
+        write_io = cls(path=path, mode='w', manager=temp_manager, comm=comm)
+        if 'link_data' in write_args:
+            link_data = popargs('link_data', write_args)
+            if link_data:
+                raise ValueError('Exporting requires link_data to be False')
+        write_io.write(container, link_data=False, **write_args)
+
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
@@ -560,14 +582,11 @@ class HDF5IO(HDMFIO):
         will be references, and then write them after we write everything else.
         '''
         failed = set()
-        print('__ref_queue', len(self.__ref_queue))
-        # breakpoint()
         while len(self.__ref_queue) > 0:
             call = self.__ref_queue.popleft()
             try:
                 call()
             except KeyError:
-                print('KeyError')
                 if id(call) in failed:
                     raise RuntimeError('Unable to resolve reference')
                 failed.add(id(call))
@@ -663,15 +682,11 @@ class HDF5IO(HDMFIO):
                     elif isinstance(tmp[0], bytes):
                         value = [np.string_(s) for s in tmp]
                     elif isinstance(tmp[0], Container):  # a list of references
-                        print('adding list of references', obj.name)
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
                         value = np.array(value)
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
-                print('setting attribute container, builder, referencebuilder', obj.name)
-                # if obj.name == '/units/electrodes':
-                #     breakpoint()
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
                 obj.attrs[key] = value                   # a regular scalar
@@ -791,7 +806,6 @@ class HDF5IO(HDMFIO):
         options['dtype'] = builder.dtype
         dset = None
         link = None
-        print('    writing hdf5 dataset', builder.name, link_data, type(data))
 
         # The user provided an existing h5py dataset as input and asked to create a link to the dataset
         if isinstance(data, Dataset):
@@ -830,7 +844,6 @@ class HDF5IO(HDMFIO):
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 builder.written = True
-                print('writing compound dataset', name)
 
                 @self.__queue_ref
                 def _filler():
@@ -855,7 +868,6 @@ class HDF5IO(HDMFIO):
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
                 builder.written = True
-                print('writing scalar region reference dataset', name)
 
                 @self.__queue_ref
                 def _filler():
@@ -867,7 +879,6 @@ class HDF5IO(HDMFIO):
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
                 builder.written = True
-                print('writing scalar object reference dataset', name)
 
                 @self.__queue_ref
                 def _filler():
@@ -881,7 +892,6 @@ class HDF5IO(HDMFIO):
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
                     builder.written = True
-                    print('writing array of region references dataset', name)
 
                     @self.__queue_ref
                     def _filler():
@@ -893,9 +903,8 @@ class HDF5IO(HDMFIO):
                         self.set_attributes(dset, attributes)
                 # Write array of object references
                 else:
-                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, ** options['io_settings'])
+                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                     builder.written = True
-                    print('writing array of object references dataset', name)
 
                     @self.__queue_ref
                     def _filler():
@@ -1109,9 +1118,6 @@ class HDF5IO(HDMFIO):
         else:
             builder = self.manager.build(container)
         path = self.__get_path(builder)
-        print(path, builder.name)
-        # if path == '/electrodes':
-        #     breakpoint()
         if isinstance(container, RegionBuilder):
             region = container.region
         if region is not None:
@@ -1145,7 +1151,6 @@ class HDF5IO(HDMFIO):
         # TODO: come up with more intelligent way of
         # queueing reference resolution, based on reference
         # dependency
-        print('add queue ref', func)
         self.__ref_queue.append(func)
 
     def __rec_get_ref(self, l):

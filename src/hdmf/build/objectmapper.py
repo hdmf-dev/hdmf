@@ -716,7 +716,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = "invalid type for reference '%s' (%s) - "\
                               "must be AbstractContainer" % (spec.name, type(attr_value))
                     raise ValueError(msg)
-                # breakpoint()
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
             else:
@@ -738,7 +737,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
             builder.set_attribute(spec.name, attr_value)
 
     def __add_links(self, builder, links, container, build_manager, source):
-        print('adding links', builder.name, container.name)
         for spec in links:
             attr_value = self.get_attr_value(spec, container, build_manager)
             if not attr_value:
@@ -746,7 +744,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
     def __add_datasets(self, builder, datasets, container, build_manager, source):
-        print('adding datasets', builder.name, container.name)
         for spec in datasets:
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
@@ -772,7 +769,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
     def __add_groups(self, builder, groups, container, build_manager, source):
-        print('adding group', builder.name, container.name)
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:
                 # we don't need to get attr_name since any named
@@ -828,17 +824,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # object this AbstractContainer corresponds to
                 if (isinstance(spec, LinkSpec)
                         or (value.parent is not parent_container and not build_manager.export)):
-                    print('    making link', builder.name, value.name)
                     name = spec.name
                     builder.set_link(LinkBuilder(rendered_obj, name, builder))
                 elif isinstance(spec, DatasetSpec):
-                    print('    setting dataset', builder.name, value.name)
                     if rendered_obj.dtype is None and spec.dtype is not None:
                         val, dtype = self.convert_dtype(spec, rendered_obj.data)
                         rendered_obj.dtype = dtype
                     builder.set_dataset(rendered_obj)
                 else:
-                    print('    setting group', builder.name, value.name)
                     builder.set_group(rendered_obj)
             elif value.container_source:        # make a link to an existing container
                 if (value.container_source != parent_container.container_source
