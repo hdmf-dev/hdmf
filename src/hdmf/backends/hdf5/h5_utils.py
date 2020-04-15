@@ -434,8 +434,10 @@ class H5DataIO(DataIO):
         # Confirm that the compressor is supported by h5py
         if not self.filter_available(self.__iosettings.get('compression', None),
                                      self.__allow_plugin_filters):
-            raise ValueError("%s compression not support by this version of h5py." %
-                             str(self.__iosettings['compression']))
+            msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
+            if not self.__allow_plugin_filters:
+                msg += "Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
+            raise ValueError(msg)
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
