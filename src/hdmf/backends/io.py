@@ -40,7 +40,7 @@ class HDMFIO(metaclass=ABCMeta):
              'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write(self, **kwargs):
         container = popargs('container', kwargs)
-        f_builder = self.__manager.build(container, source=self.__source)
+        f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
 
     @abstractmethod

@@ -724,8 +724,24 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = "invalid type for reference '%s' (%s) - "\
                               "must be AbstractContainer" % (spec.name, type(attr_value))
                     raise ValueError(msg)
-                target_builder = build_manager.build(attr_value, source=source)
-                attr_value = ReferenceBuilder(target_builder)
+
+                @build_manager.queue_ref
+                def _set_attr_to_ref():
+                    # breakpoint()
+                    # the problem is that attr_value is the vectordata 'spike_times' which hasn't been built yet
+                    # building it now means it has no parent, so it cannot be located later on
+                    # this problem only exists when i add set_modified(False) in the build manager
+                    # one solution may be to add a build references queue just like in h5tools
+                    self.logger.debug("Finding Builder for %s '%s'"
+                                      % (attr_value.__class__.__name__, attr_value.name))
+                    target_builder = build_manager.get_builder(attr_value)
+                    if target_builder is None:
+                        raise Exception("Could not find already-built Builder for %s '%s' in BuildManager"
+                                        % (attr_value.__class__.__name__, attr_value.name))
+                    ref_attr_value = ReferenceBuilder(target_builder)
+                    builder.set_attribute(spec.name, ref_attr_value)
+
+                continue
             else:
                 if attr_value is not None:
                     try:
@@ -837,11 +853,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                 else:
                     rendered_obj = build_manager.build(value, source=source)
-                # use spec to determine what kind of HDF5
-                # object this AbstractContainer corresponds to
+                # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
                     name = spec.name
-                    builder.set_link(LinkBuilder(rendered_obj, name, builder))
+                    builder.set_link(LinkBuilder(rendered_obj, name=name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
                     if rendered_obj.dtype is None and spec.dtype is not None:
                         val, dtype = self.convert_dtype(spec, rendered_obj.data)
@@ -861,15 +876,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 raise ValueError("Found unmodified AbstractContainer with no source - '%s' with parent '%s'" %
                                  (value.name, parent_container.name))
         else:
-            if any(isinstance(value, t) for t in (list, tuple)):
+            if isinstance(value, (list, tuple)):
                 values = value
             elif isinstance(value, dict):
                 values = value.values()
             else:
                 msg = ("received %s, expected AbstractContainer - 'value' "
-                       "must be an AbstractContainer a list/tuple/dict of "
-                       "AbstractContainers if 'spec' is a GroupSpec")
-                raise ValueError(msg % value.__class__.__name__)
+                       "must be an AbstractContainer or a list/tuple/dict of "
+                       "AbstractContainers if 'spec' is a GroupSpec") % value.__class__.__name__
+                raise ValueError(msg)
             for container in values:
                 if container:
                     self.__add_containers(builder, spec, container, build_manager, source, parent_container)

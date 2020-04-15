@@ -1,5 +1,5 @@
 import numpy as np
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from copy import copy
 from datetime import datetime
 import logging
@@ -90,6 +90,7 @@ class BuildManager:
         self.__builders = dict()
         self.__containers = dict()
         self.__type_map = type_map
+        self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
 
     @property
     def namespace_catalog(self):
@@ -139,13 +140,13 @@ class BuildManager:
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec that further refines the base specification",
-             'default': None})
+             'default': None},
+            {"name": "root", "type": bool, "doc": "the parent of the resulting Builder", 'default': False})
     def build(self, **kwargs):
         """ Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container = getargs('container', kwargs)
-        container_id = self.__conthash__(container)
-        result = self.__builders.get(container_id)
-        source, spec_ext = getargs('source', 'spec_ext', kwargs)
+        result = self.get_builder(container)
+        source, spec_ext, root = getargs('source', 'spec_ext', 'root', kwargs)
         if result is None:
             self.logger.debug("Building %s '%s' with extended spec (%s) new"
                               % (container.__class__.__name__, container.name, spec_ext is not None))
@@ -161,6 +162,7 @@ class BuildManager:
                                             container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
+            container.set_modified(False)
             self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
         elif container.modified or spec_ext is not None:
             self.logger.debug("Building %s '%s' modified (%s) / has extended spec (%s) "
@@ -171,6 +173,16 @@ class BuildManager:
                 self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
         else:
             self.logger.debug("Using prebuilt builder for %s '%s'" % (container.__class__.__name__, container.name))
+        if root:  # create reference builders only after building all other builders
+            self.__add_refs()
+        return result
+
+    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"})
+    def get_builder(self, **kwargs):
+        """Return the already-built Builder for the given Container, or None if it has not yet been built."""
+        container = getargs('container', kwargs)
+        container_id = self.__conthash__(container)
+        result = self.__builders.get(container_id)
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
@@ -189,6 +201,29 @@ class BuildManager:
 
     def __bldrhash__(self, obj):
         return id(obj)
+
+    def __add_refs(self):
+        '''
+        Add ReferenceBuilders.
+
+        References get queued to be added after all other objects are built. This is because
+        the current traversal algorithm (i.e. iterating over specs)
+        does not happen in a guaranteed order. We need to build the targets
+        of the reference builders so that the targets have the proper parent,
+        and then write the reference builders after we write everything else.
+        '''
+        while len(self.__ref_queue) > 0:
+            call = self.__ref_queue.popleft()
+            self.logger.debug("Adding ReferenceBuilder with call id %d from queue (length %d)"
+                              % (id(call), len(self.__ref_queue)))
+            call()
+
+    def queue_ref(self, func):
+        '''Set aside creating ReferenceBuilders'''
+        # TODO: come up with more intelligent way of
+        # queueing reference resolution, based on reference
+        # dependency
+        self.__ref_queue.append(func)
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the builder to construct the AbstractContainer from'})
