@@ -8,6 +8,14 @@ import jsonschema
 
 
 def validate_spec(fpath_spec, fpath_schema):
+    """
+    Validate a yaml specification file against the json schema file that
+    defines the specification language. Can be used to validate changes
+    to the NWB and HDMF core schemas, as well as any extensions to either.
+
+    :param fpath_spec: path-like
+    :param fpath_schema: path-like
+    """
 
     schemaAbs = 'file://' + os.path.abspath(fpath_schema)
 
