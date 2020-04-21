@@ -17,9 +17,9 @@ AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 __supported_bool_types = (bool, np.bool_)
 __supported_int_types = (int, np.int8, np.int16, np.int32, np.int64)
 __supported_float_types = [float, np.float16, np.float32, np.float64]
-if hasattr(np, "float128"):
+if hasattr(np, "float128"):  # pragma: no cover
     __supported_float_types.append(np.float128)
-if hasattr(np, "longdouble"):
+if hasattr(np, "longdouble"):  # pragma: no cover
     # on windows python<=3.5, h5py floats resolve float64s as either np.float64 or np.longdouble
     # non-deterministically. a future version of h5py will fix this. see #112
     __supported_float_types.append(np.longdouble)
