@@ -427,7 +427,7 @@ def __check_enum_argtype(argtype):
     return argtype in __allowed_enum_types
 
 
-def docval(*validator, **options):
+def docval(*validator, **options):  # noqa: C901
     '''A decorator for documenting and enforcing type for instance method arguments.
 
     This decorator takes a list of dictionaries that specify the method parameters. These
