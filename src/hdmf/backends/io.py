@@ -56,8 +56,6 @@ class HDMFIO(metaclass=ABCMeta):
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to export'},
             {'name': 'type_map', 'type': 'TypeMap', 'doc': 'the TypeMap to use to export'},
             {'name': 'source', 'type': str, 'doc': 'the source of container being built i.e. file path'},
-            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
-             'default': dict()},
             {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
              'default': dict()},
             allow_extra=True)
@@ -68,6 +66,20 @@ class HDMFIO(metaclass=ABCMeta):
         temp_manager = BuildManager(type_map, export=True)
         write_io = cls(manager=temp_manager, source=source)
         write_io.write(container, **write_args)
+
+    @classmethod
+    @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
+            {'name': 'source', 'type': str, 'doc': 'the source of container being built i.e. file path'},
+            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
+             'default': dict()},
+            allow_extra=True)
+    def export_io(cls, **kwargs):
+        ''' Export data from the given IO object using this IO object initialized with the given arguments '''
+        io, source, read_args, write_args = popargs('io', 'source', 'read_args', 'write_args', kwargs)
+        container = io.read(**read_args)
+        cls.export(container=container, type_map=io.type_map, source=source, write_args=write_args)
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')

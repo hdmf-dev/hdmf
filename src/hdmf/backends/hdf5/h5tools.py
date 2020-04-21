@@ -302,14 +302,12 @@ class HDF5IO(HDMFIO):
             {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
-             'default': dict()},
             {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
              'default': dict()})
     def export(cls, **kwargs):
         ''' Export the given container using this IO object initialized with the given arguments '''
-        container, type_map, path, comm, read_args, write_args = popargs('container', 'type_map', 'path', 'comm',
-                                                                         'read_args', 'write_args', kwargs)
+        container, type_map, path, comm, write_args = popargs('container', 'type_map', 'path', 'comm', 'write_args',
+                                                              kwargs)
         temp_manager = BuildManager(type_map, export=True)
         write_io = cls(path=path, mode='w', manager=temp_manager, comm=comm)
         if 'link_data' in write_args:
@@ -317,6 +315,21 @@ class HDF5IO(HDMFIO):
             if link_data:
                 raise ValueError('Exporting requires link_data to be False')
         write_io.write(container, link_data=False, **write_args)
+
+    @classmethod
+    @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'comm', 'type': 'Intracomm',
+             'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
+             'default': dict()})
+    def export_io(cls, **kwargs):
+        ''' Export data from the given IO object using this IO object initialized with the given arguments '''
+        io, path, comm, read_args, write_args = popargs('io', 'path', 'comm', 'read_args', 'write_args', kwargs)
+        container = io.read(**read_args)
+        cls.export(container=container, type_map=io.type_map, path=path, comm=comm, write_args=write_args)
 
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
