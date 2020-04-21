@@ -58,7 +58,10 @@ setup_args = {
                 'open-source '
                 'open-science '
                 'reproducible-research ',
-    'zip_safe': False
+    'zip_safe': False,
+    'entry_points': {
+        'console_scripts': ['validate_hdmf_spec=hdmf.testing.validate_spec:main'],
+    }
 }
 
 if __name__ == '__main__':
