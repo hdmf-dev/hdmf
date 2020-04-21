@@ -14,6 +14,17 @@ __macros = {
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 
+__supported_bool_types = (bool, np.bool_)
+__supported_int_types = (int, np.int8, np.int16, np.int32, np.int64)
+__supported_float_types = [float, np.float16, np.float32, np.float64]
+if hasattr(np, "float128"):
+    __supported_float_types.append(np.float128)
+if hasattr(np, "longdouble"):
+    # on windows python<=3.5, h5py floats resolve float64s as either np.float64 or np.longdouble
+    # non-deterministically. a future version of h5py will fix this. see #112
+    __supported_float_types.append(np.longdouble)
+__supported_float_types = tuple(__supported_float_types)
+
 
 def docval_macro(macro):
     """Class decorator to add the class to a list of types associated with the key macro in the __macros dict
@@ -86,22 +97,15 @@ def __shape_okay(value, argshape):
 
 
 def __is_int(value):
-    return any(isinstance(value, i) for i in (int, np.int8, np.int16, np.int32, np.int64))
+    return isinstance(value, __supported_int_types)
 
 
 def __is_float(value):
-    SUPPORTED_FLOAT_TYPES = [float, np.float16, np.float32, np.float64]
-    if hasattr(np, "float128"):
-        SUPPORTED_FLOAT_TYPES.append(np.float128)
-    if hasattr(np, "longdouble"):
-        # on windows python<=3.5, h5py floats resolve float64s as either np.float64 or np.longdouble
-        # non-deterministically. a future version of h5py will fix this. see #112
-        SUPPORTED_FLOAT_TYPES.append(np.longdouble)
-    return any(isinstance(value, i) for i in SUPPORTED_FLOAT_TYPES)
+    return isinstance(value, __supported_float_types)
 
 
 def __is_bool(value):
-    return isinstance(value, bool) or isinstance(value, np.bool_)
+    return isinstance(value, __supported_bool_types)
 
 
 def __format_type(argtype):
@@ -119,6 +123,51 @@ def __format_type(argtype):
         return "any type"
     else:
         raise ValueError("argtype must be a type, str, list, or tuple")
+
+
+def __check_enum_argtype(argtype):
+    """Return True/False whether the given argtype is a supported docval enum type (bool, ints, floats, str)"""
+    if isinstance(argtype, (list, tuple)):
+        for i in argtype:
+            if not __check_enum_argtype(i):
+                return False
+        return True
+    return argtype in __supported_bool_types + __supported_int_types + __supported_float_types + (str, )
+
+
+def __check_enum(argval, arg):
+    """
+    Helper function to check whether the given argument value validates against the enum specification.
+
+    :param argval: argument value passed to the function/method
+    :param arg: argument validator - the specification dictionary for this argument
+
+    :return: None if the value validates successfully, error message if the value does not.
+    """
+    allowed_vals = arg['enum']
+    if not isinstance(allowed_vals, (list, tuple)):
+        msg = 'docval for %s: enum value must be a list or tuple (received %s)' % (arg['name'], type(allowed_vals))
+        raise ValueError(msg)
+    if not __check_enum_argtype(arg['type']):
+        msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(arg['name'], arg['type'])
+        raise ValueError(msg)
+    if argval not in allowed_vals:
+        fmt_val = (arg['name'], __fmt_str_quotes(argval), ', '.join(__fmt_str_quotes(allowed_vals)))
+        return "forbidden value for '%s' (got %s, expected [%s])" % fmt_val
+
+
+def __fmt_str_quotes(x):
+    """Return a string or list of strings where the input string or list of strings have single quotes around strings"""
+    if isinstance(x, (list, tuple)):
+        ret = []
+        for val in x:
+            ret.append(__fmt_str_quotes(val))
+        return ret
+    else:
+        if isinstance(x, str):
+            return "'%s'" % x
+        else:
+            return str(x)
 
 
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
@@ -186,7 +235,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         arg = next(it)
 
         # catch unsupported keys
-        allowable_terms = ('name', 'doc', 'type', 'shape', 'default', 'help')
+        allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
         unsupported_terms = set(arg.keys()) - set(allowable_terms)
         if unsupported_terms:
             raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
@@ -238,6 +287,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
                         fmt_val = (argname, valshape, arg['shape'])
                         value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                if 'enum' in arg:
+                    err = __check_enum(argval, arg)
+                    if err:
+                        value_errors.append(err)
+
                 ret[argname] = argval
             argsi += 1
             arg = next(it)
@@ -278,6 +332,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
                     fmt_val = (argname, valshape, arg['shape'])
                     value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+            if 'enum' in arg:
+                err = __check_enum(argval, arg)
+                if err:
+                    value_errors.append(err)
+
             arg = next(it)
     except StopIteration:
         pass
