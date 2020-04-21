@@ -24,6 +24,7 @@ if hasattr(np, "longdouble"):  # pragma: no cover
     # non-deterministically. a future version of h5py will fix this. see #112
     __supported_float_types.append(np.longdouble)
 __supported_float_types = tuple(__supported_float_types)
+__allowed_enum_types = __supported_bool_types + __supported_int_types + __supported_float_types + (str, )
 
 
 def docval_macro(macro):
@@ -125,16 +126,6 @@ def __format_type(argtype):
         raise ValueError("argtype must be a type, str, list, or tuple")
 
 
-def __check_enum_argtype(argtype):
-    """Return True/False whether the given argtype is a supported docval enum type (bool, ints, floats, str)"""
-    if isinstance(argtype, (list, tuple)):
-        for i in argtype:
-            if not __check_enum_argtype(i):
-                return False
-        return True
-    return argtype in __supported_bool_types + __supported_int_types + __supported_float_types + (str, )
-
-
 def __check_enum(argval, arg):
     """
     Helper function to check whether the given argument value validates against the enum specification.
@@ -144,30 +135,18 @@ def __check_enum(argval, arg):
 
     :return: None if the value validates successfully, error message if the value does not.
     """
-    allowed_vals = arg['enum']
-    if not isinstance(allowed_vals, (list, tuple)):
-        msg = 'docval for %s: enum value must be a list or tuple (received %s)' % (arg['name'], type(allowed_vals))
-        raise ValueError(msg)
-    if not __check_enum_argtype(arg['type']):
-        msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(arg['name'], arg['type'])
-        raise ValueError(msg)
-    if argval not in allowed_vals:
-        fmt_val = (arg['name'], __fmt_str_quotes(argval), ', '.join(__fmt_str_quotes(allowed_vals)))
-        return "forbidden value for '%s' (got %s, expected [%s])" % fmt_val
+    if argval not in arg['enum']:
+        return "forbidden value for '{}' (got {}, expected {})".format(arg['name'], __fmt_str_quotes(argval),
+                                                                       arg['enum'])
 
 
 def __fmt_str_quotes(x):
     """Return a string or list of strings where the input string or list of strings have single quotes around strings"""
     if isinstance(x, (list, tuple)):
-        ret = []
-        for val in x:
-            ret.append(__fmt_str_quotes(val))
-        return ret
-    else:
-        if isinstance(x, str):
-            return "'%s'" % x
-        else:
-            return str(x)
+        return '{}'.format(x)
+    if isinstance(x, str):
+        return "'%s'" % x
+    return str(x)
 
 
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
@@ -234,12 +213,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         it = iter(validator)
         arg = next(it)
 
-        # catch unsupported keys
-        allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
-        unsupported_terms = set(arg.keys()) - set(allowable_terms)
-        if unsupported_terms:
-            raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
-                                                                                    sorted(unsupported_terms)))
         # process positional arguments of the docval specification (no default value)
         extras = dict(kwargs)
         while True:
@@ -447,6 +420,13 @@ def __resolve_type(t):
         raise ValueError(msg)
 
 
+def __check_enum_argtype(argtype):
+    """Return True/False whether the given argtype or list/tuple of argtypes is a supported docval enum type"""
+    if isinstance(argtype, (list, tuple)):
+        return all(x in __allowed_enum_types for x in argtype)
+    return argtype in __allowed_enum_types
+
+
 def docval(*validator, **options):
     '''A decorator for documenting and enforcing type for instance method arguments.
 
@@ -503,11 +483,33 @@ def docval(*validator, **options):
         pos = list()
         kw = list()
         for a in validator:
+            # catch unsupported keys
+            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
+            unsupported_terms = set(a.keys()) - set(allowable_terms)
+            if unsupported_terms:
+                raise Exception('docval for {}: keys {} are not supported by docval'.format(a['name'],
+                                                                                            sorted(unsupported_terms)))
+            # check that arg type is valid
             try:
                 a['type'] = __resolve_type(a['type'])
             except Exception as e:
-                msg = "error parsing '%s' argument' : %s" % (a['name'], e.args[0])
+                msg = "docval for %s: error parsing argument type: %s" % (a['name'], e.args[0])
                 raise Exception(msg)
+            if 'enum' in a:
+                # check that value for enum key is a list or tuple (cannot have only one allowed value)
+                if not isinstance(a['enum'], (list, tuple)):
+                    msg = ('docval for %s: enum value must be a list or tuple (received %s)'
+                           % (a['name'], type(a['enum'])))
+                    raise Exception(msg)
+                # check that arg type is compatible with enum
+                if not __check_enum_argtype(a['type']):
+                    msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(a['name'], a['type'])
+                    raise Exception(msg)
+                # check that enum allowed values are allowed by arg type
+                if any([not __type_okay(x, a['type']) for x in a['enum']]):
+                    msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
+                           'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
+                    raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:

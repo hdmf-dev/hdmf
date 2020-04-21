@@ -107,7 +107,7 @@ class TestDocValidator(TestCase):
         self.test_obj_sub = MyTestSubclass()
 
     def test_bad_type(self):
-        exp_msg = (r"error parsing 'arg1' argument' : argtype must be a type, "
+        exp_msg = (r"docval for arg1: error parsing argument type: argtype must be a type, "
                    r"a str, a list, a tuple, or None - got <class|type 'dict'>")
         with self.assertRaisesRegex(Exception, exp_msg):
             @docval({'name': 'arg1', 'type': {'a': 1}, 'doc': 'this is a bad type'})
@@ -434,11 +434,11 @@ class TestDocValidator(TestCase):
         """Test that docval does not allow setting of arguments
            marked as unsupported
         """
-        @docval({'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape', 'unsupported': 'hi!'})
-        def method(self, **kwargs):
-            pass
-        with self.assertRaises(ValueError):
-            method(self, arg1=[[1, 1]])
+        msg = "docval for arg1: keys ['unsupported'] are not supported by docval"
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': 'array_data', 'doc': 'this is a bad shape', 'unsupported': 'hi!'})
+            def method(self, **kwargs):
+                pass
 
     def test_catch_dup_names(self):
         """Test that docval does not allow duplicate argument names
@@ -583,7 +583,7 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 2), 2)
 
         msg = ("TestDocValidator.test_enum_int.<locals>.method: "
-               "forbidden value for 'arg1' (got 3, expected [1, 2])")
+               "forbidden value for 'arg1' (got 3, expected (1, 2))")
         with self.assertRaisesWith(ValueError, msg):
             method(self, 3)
 
@@ -596,7 +596,7 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 3.14), 3.14)
 
         msg = ("TestDocValidator.test_enum_float.<locals>.method: "
-               "forbidden value for 'arg1' (got 3.0, expected [3.14])")
+               "forbidden value for 'arg1' (got 3.0, expected (3.14,))")
         with self.assertRaisesWith(ValueError, msg):
             method(self, 3.)
 
@@ -612,43 +612,34 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 'true'), 'true')
 
         msg = ("TestDocValidator.test_enum_bool_mixed.<locals>.method: "
-               "forbidden value for 'arg1' (got 0, expected [True, 1, 1.0, 'true'])")
+               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true'))")
         with self.assertRaisesWith(ValueError, msg):
             method(self, 0)
 
     def test_enum_bad_type(self):
         """Test that docval with an enum check where the arg type includes an invalid enum type fails"""
-        @docval({'name': 'arg1', 'type': (bool, int, str, np.float64, object), 'doc': 'an arg', 'enum': (1, 2)})
-        def method(self, **kwargs):
-            return popargs('arg1', kwargs)
-
-        msg = ("TestDocValidator.test_enum_bad_type.<locals>.method: "
-               "docval for arg1: enum checking cannot be used with arg type (<class 'bool'>, <class 'int'>, "
+        msg = ("docval for arg1: enum checking cannot be used with arg type (<class 'bool'>, <class 'int'>, "
                "<class 'str'>, <class 'numpy.float64'>, <class 'object'>)")
-        with self.assertRaisesWith(ValueError, msg):
-            method(self, True)
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': (bool, int, str, np.float64, object), 'doc': 'an arg', 'enum': (1, 2)})
+            def method(self, **kwargs):
+                return popargs('arg1', kwargs)
 
     def test_enum_none_type(self):
         """Test that the basic usage of an enum check on None works"""
-        @docval({'name': 'arg1', 'type': None, 'doc': 'an arg', 'enum': (True, 1, 'true')})
-        def method(self, **kwargs):
-            return popargs('arg1', kwargs)
-
-        msg = ("TestDocValidator.test_enum_none_type.<locals>.method: "
-               "docval for arg1: enum checking cannot be used with arg type None")
-        with self.assertRaisesWith(ValueError, msg):
-            method(self, True)
+        msg = ("docval for arg1: enum checking cannot be used with arg type None")
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': None, 'doc': 'an arg', 'enum': (True, 1, 'true')})
+            def method(self, **kwargs):
+                pass
 
     def test_enum_single_allowed(self):
         """Test that docval with an enum check on a single value fails"""
-        @docval({'name': 'arg1', 'type': str, 'doc': 'an arg', 'enum': 'only one value'})
-        def method(self, **kwargs):
-            return popargs('arg1', kwargs)
-
-        msg = ("TestDocValidator.test_enum_single_allowed.<locals>.method: "
-               "docval for arg1: enum value must be a list or tuple (received <class 'str'>)")
-        with self.assertRaisesWith(ValueError, msg):
-            method(self, 'c')
+        msg = ("docval for arg1: enum value must be a list or tuple (received <class 'str'>)")
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': str, 'doc': 'an arg', 'enum': 'only one value'})
+            def method(self, **kwargs):
+                pass
 
     def test_enum_str_default(self):
         """Test that docval with an enum check on strings and a default value works"""
@@ -663,16 +654,14 @@ class TestDocValidator(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             method(self, 'c')
 
-    def test_enum_none_type_default(self):
-        """Test that docval with an enum check on type None and a default value fails"""
-        @docval({'name': 'arg1', 'type': None, 'doc': 'an arg', 'default': None, 'enum': (True, 1, 'true')})
-        def method(self, **kwargs):
-            return popargs('arg1', kwargs)
-
-        msg = ("TestDocValidator.test_enum_none_type_default.<locals>.method: "
-               "docval for arg1: enum checking cannot be used with arg type None")
-        with self.assertRaisesWith(ValueError, msg):
-            method(self)
+    def test_enum_forbidden_values(self):
+        """Test that docval with enum values that include a forbidden type fails"""
+        msg = ("docval for arg1: enum values are of types not allowed by arg type "
+               "(got [<class 'bool'>, <class 'list'>], expected <class 'bool'>)")
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': bool, 'doc': 'an arg', 'enum': (True, [])})
+            def method(self, **kwargs):
+                pass
 
 
 class TestDocValidatorChain(TestCase):
