@@ -2,6 +2,7 @@ import numpy as np
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
+import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
@@ -85,6 +86,7 @@ class BuildManager:
     """
 
     def __init__(self, type_map):
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         self.__builders = dict()
         self.__containers = dict()
         self.__type_map = type_map
@@ -145,6 +147,8 @@ class BuildManager:
         result = self.__builders.get(container_id)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
+            self.logger.debug("Building %s '%s' with extended spec (%s) new"
+                              % (container.__class__.__name__, container.name, spec_ext is not None))
             if container.container_source is None:
                 container.container_source = source
             else:
@@ -157,9 +161,16 @@ class BuildManager:
                                             container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
+            self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
         elif container.modified or spec_ext is not None:
+            self.logger.debug("Building %s '%s' modified (%s) / has extended spec (%s) "
+                              % (container.__class__.__name__, container.name, container.modified,
+                                 spec_ext is not None))
             if isinstance(result, BaseBuilder):
                 result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
+                self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
+        else:
+            self.logger.debug("Using prebuilt builder for %s '%s'" % (container.__class__.__name__, container.name))
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},

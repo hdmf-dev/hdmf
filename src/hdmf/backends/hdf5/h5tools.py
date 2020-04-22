@@ -3,6 +3,7 @@ import numpy as np
 import os.path
 from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
+import logging
 import warnings
 
 from ...container import Container
@@ -41,6 +42,7 @@ class HDF5IO(HDMFIO):
 
         For `mode`, see `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>_`.
         '''
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
@@ -562,11 +564,14 @@ class HDF5IO(HDMFIO):
         failed = set()
         while len(self.__ref_queue) > 0:
             call = self.__ref_queue.popleft()
+            self.logger.debug("Adding reference with call id %d from queue (length %d)"
+                              % (id(call), len(self.__ref_queue)))
             try:
                 call()
             except KeyError:
                 if id(call) in failed:
                     raise RuntimeError('Unable to resolve reference')
+                self.logger.debug("Adding reference with call id %d failed. Appending call to queue" % id(call))
                 failed.add(id(call))
                 self.__ref_queue.append(call)
 
@@ -575,6 +580,7 @@ class HDF5IO(HDMFIO):
         Read and write from any queued DataChunkIterators in a round-robin fashion
         """
         while len(self.__dci_queue) > 0:
+            self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self.__dci_queue))
             dset, data = self.__dci_queue.popleft()
             if self.__write_chunk__(dset, data):
                 self.__dci_queue.append((dset, data))
@@ -663,16 +669,22 @@ class HDF5IO(HDMFIO):
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
                         value = np.array(value)
+                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
+                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value                   # a regular scalar
 
     def _make_attr_ref_filler(self, obj, key, value):
         '''
             Make the callable for setting references to attributes
         '''
+        self.logger.debug("Queueing set attribute on %s '%s' attribute '%s' to %s"
+                          % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
         if isinstance(value, (tuple, list)):
             def _filler():
                 ret = list()
@@ -690,8 +702,8 @@ class HDF5IO(HDMFIO):
              'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
-
         parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
+        self.logger.debug("Writing group builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
         if builder.written:
             group = parent[builder.name]
         else:
@@ -732,6 +744,7 @@ class HDF5IO(HDMFIO):
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
+        self.logger.debug("Writing link builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
@@ -768,6 +781,7 @@ class HDF5IO(HDMFIO):
         __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
+        self.logger.debug("Writing dataset builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
@@ -821,6 +835,8 @@ class HDF5IO(HDMFIO):
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 builder.written = True
+                self.logger.debug("Queueing set attribute on dataset '%s' containing references. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
@@ -833,6 +849,7 @@ class HDF5IO(HDMFIO):
                     dset = parent[name]
                     dset[:] = ret
                     self.set_attributes(dset, attributes)
+
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
             else:
@@ -845,6 +862,8 @@ class HDF5IO(HDMFIO):
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
                 builder.written = True
+                self.logger.debug("Queueing set attribute on dataset '%s' containing a region reference. "
+                                  "attributes: %s" % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
@@ -856,6 +875,8 @@ class HDF5IO(HDMFIO):
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
                 builder.written = True
+                self.logger.debug("Queueing set attribute on dataset '%s' containing an object reference. "
+                                  "attributes: %s" % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
@@ -869,6 +890,8 @@ class HDF5IO(HDMFIO):
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
                     builder.written = True
+                    self.logger.debug("Queueing set attribute on dataset '%s' containing region references. "
+                                      "attributes: %s" % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
@@ -882,6 +905,8 @@ class HDF5IO(HDMFIO):
                 else:
                     dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, ** options['io_settings'])
                     builder.written = True
+                    self.logger.debug("Queueing set attribute on dataset '%s' containing object references. "
+                                      "attributes: %s" % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
@@ -1086,15 +1111,19 @@ class HDF5IO(HDMFIO):
         if container is None:
             return None
         if isinstance(container, Builder):
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder
             else:
                 builder = container
         elif isinstance(container, ReferenceBuilder):
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.builder.name))
             builder = container.builder
         else:
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
         path = self.__get_path(builder)
+        self.logger.debug("Getting reference at path '%s'" % path)
         if isinstance(container, RegionBuilder):
             region = container.region
         if region is not None:
