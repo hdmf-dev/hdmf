@@ -727,11 +727,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
                 @build_manager.queue_ref
                 def _set_attr_to_ref():
-                    # breakpoint()
-                    # the problem is that attr_value is the vectordata 'spike_times' which hasn't been built yet
-                    # building it now means it has no parent, so it cannot be located later on
-                    # this problem only exists when i add set_modified(False) in the build manager
-                    # one solution may be to add a build references queue just like in h5tools
                     self.logger.debug("Finding Builder for %s '%s'"
                                       % (attr_value.__class__.__name__, attr_value.name))
                     target_builder = build_manager.get_builder(attr_value)
@@ -840,23 +835,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container):
         if isinstance(value, AbstractContainer):
-            self.logger.debug("Adding containers to %s '%s' for %s '%s' with parent %s '%s'"
-                              % (builder.__class__.__name__, builder.name, value.__class__.__name__, value.name,
-                                 parent_container.__class__.__name__, parent_container.name))
+            self.logger.debug("Adding %s '%s' with parent %s '%s' to %s '%s'"
+                              % (value.__class__.__name__, value.name,
+                                 parent_container.__class__.__name__, parent_container.name,
+                                 builder.__class__.__name__, builder.name))
             if value.parent is None:
-                msg = "'%s' (%s) for '%s' (%s)"\
-                              % (value.name, getattr(value, self.spec.type_key()),
-                                 builder.name, self.spec.data_type_def)
+                msg = ("'%s' (%s) for '%s' (%s)" % (value.name, getattr(value, self.spec.type_key()),
+                                                    builder.name, self.spec.data_type_def))
                 warnings.warn(msg, OrphanContainerWarning)
-            if value.modified:                   # writing a new container
+
+            if value.modified:  # writing a newly instantiated container (modified is False only after read)
+                self.logger.debug("Building %s '%s' and setting it as a subgroup/dataset/link of %s '%s'"
+                                  % (value.__class__.__name__, value.name,
+                                     builder.__class__.__name__, builder.name))
                 if isinstance(spec, BaseStorageSpec):
                     rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                 else:
                     rendered_obj = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
-                    name = spec.name
-                    builder.set_link(LinkBuilder(rendered_obj, name=name, parent=builder))
+                    builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
                     if rendered_obj.dtype is None and spec.dtype is not None:
                         val, dtype = self.convert_dtype(spec, rendered_obj.data)
@@ -864,14 +862,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     builder.set_dataset(rendered_obj)
                 else:
                     builder.set_group(rendered_obj)
-            elif value.container_source:        # make a link to an existing container
-                if value.container_source != parent_container.container_source or\
-                   value.parent is not parent_container:
+            elif value.container_source:  # make a link to an existing container
+                if value.container_source != parent_container.container_source or value.parent is not parent_container:
+                    self.logger.debug("Building %s '%s' and linking to it from %s '%s'"
+                                      % (value.__class__.__name__, value.name,
+                                         builder.__class__.__name__, builder.name))
                     if isinstance(spec, BaseStorageSpec):
                         rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                     else:
                         rendered_obj = build_manager.build(value, source=source)
                     builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
+                else:
+                    self.logger.debug("Setting already built %s '%s' as group/dataset of %s '%s'"
+                                      % (value.__class__.__name__, value.name,
+                                         builder.__class__.__name__, builder.name))
             else:
                 raise ValueError("Found unmodified AbstractContainer with no source - '%s' with parent '%s'" %
                                  (value.name, parent_container.name))

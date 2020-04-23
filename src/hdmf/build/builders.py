@@ -44,7 +44,7 @@ class Builder(dict, metaclass=ABCMeta):
 
     @property
     def written(self):
-        ''' The source of this Builder '''
+        ''' Whether this Builder has been written '''
         return self.__written
 
     @written.setter
@@ -253,7 +253,7 @@ class GroupBuilder(BaseBuilder):
         if isinstance(builder, LinkBuilder):
             self.__set_builder(builder, GroupBuilder.__link)
         elif isinstance(builder, GroupBuilder):
-            self.__set_builder(builder, GroupBuilder.__dataset)
+            self.__set_builder(builder, GroupBuilder.__group)
         elif isinstance(builder, DatasetBuilder):
             self.__set_builder(builder, GroupBuilder.__dataset)
         else:
