@@ -105,6 +105,7 @@ class BaseBuilder(Builder):
         for name, val in attributes.items():
             self.set_attribute(name, val)
         self.__location = None
+        self.__placed = False
 
     @property
     def location(self):
@@ -116,6 +117,19 @@ class BaseBuilder(Builder):
     @location.setter
     def location(self, val):
         self.__location = val
+
+    @property
+    def placed(self):
+        ''' Whether this Builder has been placed in its correct position in the builder hierarchy
+        The Builder may have been built because another Builder links to it, but the original Builder has not
+        yet been built in its home (unlinked) location in the builder hierarchy.'''
+        return self.__placed
+
+    @placed.setter
+    def placed(self, s):
+        if self.__placed and not s:
+            raise ValueError("cannot change placed to not placed")
+        self.__placed = s
 
     @property
     def attributes(self):
@@ -261,6 +275,8 @@ class GroupBuilder(BaseBuilder):
         self.obj_type[name] = obj_type
         if builder.parent is None:
             builder.parent = self
+        if isinstance(builder, BaseBuilder):
+            builder.placed = True
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this dataset'},
             {'name': 'data', 'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', Iterable),

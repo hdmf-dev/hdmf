@@ -162,17 +162,17 @@ class BuildManager:
                                             container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
-            container.set_modified(False)
             self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
-        elif container.modified or spec_ext is not None:
-            self.logger.debug("Building %s '%s' modified (%s) / has extended spec (%s) "
+        elif (container.modified or spec_ext is not None) and isinstance(result, BaseBuilder) and not result.placed:
+            self.logger.debug("Rebuilding %s '%s' modified (%s) / has extended spec (%s) "
                               % (container.__class__.__name__, container.name, container.modified,
                                  spec_ext is not None))
-            if isinstance(result, BaseBuilder):
-                result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
-                self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
+            result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
+            self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
         else:
-            self.logger.debug("Using prebuilt builder for %s '%s'" % (container.__class__.__name__, container.name))
+            self.logger.debug("Using prebuilt %s '%s' for %s '%s'"
+                              % (result.__class__.__name__, result.name,
+                                 container.__class__.__name__, container.name))
         if root:  # create reference builders only after building all other builders
             self.__add_refs()
         return result
