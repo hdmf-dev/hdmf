@@ -563,7 +563,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         builder, spec_ext = getargs('builder', 'spec_ext', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
-            self.logger.debug("Building %s '%s' for GroupSpec" % (container.__class__.__name__, container.name))
+            self.logger.debug("Building %s '%s' as a group" % (container.__class__.__name__, container.name))
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
