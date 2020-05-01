@@ -163,7 +163,7 @@ class BuildManager:
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
             self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
-        elif (container.modified or spec_ext is not None) and isinstance(result, BaseBuilder) and not result.placed:
+        elif (container.modified or spec_ext is not None) and isinstance(result, BaseBuilder):
             self.logger.debug("Rebuilding %s '%s' modified (%s) / has extended spec (%s) "
                               % (container.__class__.__name__, container.name, container.modified,
                                  spec_ext is not None))

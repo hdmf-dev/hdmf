@@ -845,26 +845,33 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 warnings.warn(msg, OrphanContainerWarning)
 
             if value.modified:  # writing a newly instantiated container (modified is False only after read)
-                self.logger.debug("Building %s '%s' and setting it as a subgroup/dataset/link of %s '%s'"
-                                  % (value.__class__.__name__, value.name,
-                                     builder.__class__.__name__, builder.name))
+                self.logger.debug("Building new %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
                     rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                 else:
                     rendered_obj = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
+                    self.logger.debug("Linking to %s '%s' from %s '%s'"
+                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                         builder.__class__.__name__, builder.name))
                     builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
+                    self.logger.debug("Setting %s '%s' as a dataset of %s '%s'"
+                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                         builder.__class__.__name__, builder.name))
                     if rendered_obj.dtype is None and spec.dtype is not None:
                         val, dtype = self.convert_dtype(spec, rendered_obj.data)
                         rendered_obj.dtype = dtype
                     builder.set_dataset(rendered_obj)
                 else:
+                    self.logger.debug("Setting %s '%s' as a subgroup of %s '%s'"
+                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                         builder.__class__.__name__, builder.name))
                     builder.set_group(rendered_obj)
             elif value.container_source:  # make a link to an existing container
                 if value.container_source != parent_container.container_source or value.parent is not parent_container:
-                    self.logger.debug("Building %s '%s' and linking to it from %s '%s'"
+                    self.logger.debug("Building %s '%s' read from a file and linking to it from %s '%s'"
                                       % (value.__class__.__name__, value.name,
                                          builder.__class__.__name__, builder.name))
                     if isinstance(spec, BaseStorageSpec):
@@ -873,7 +880,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         rendered_obj = build_manager.build(value, source=source)
                     builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
                 else:
-                    self.logger.debug("Setting already built %s '%s' as group/dataset of %s '%s'"
+                    self.logger.debug("Skipping build for %s '%s' under %s '%s' because it was read from a file "
+                                      "and its parent was read from the same file."
                                       % (value.__class__.__name__, value.name,
                                          builder.__class__.__name__, builder.name))
             else:
