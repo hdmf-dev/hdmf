@@ -704,9 +704,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return False
 
     def __add_attributes(self, builder, attributes, container, build_manager, source):
-        self.logger.debug("Adding attributes to %s '%s' for %s '%s'"
-                          % (builder.__class__.__name__, builder.name, container.__class__.__name__, container.name))
         for spec in attributes:
+            self.logger.debug("Setting attribute '%s' (%s) on %s '%s'"
+                              % (spec.name, spec.dtype.__class__.__name__, builder.__class__.__name__, builder.name))
             if spec.value is not None:
                 attr_value = spec.value
             else:
@@ -772,8 +772,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
     def __add_datasets(self, builder, datasets, container, build_manager, source):
-        self.logger.debug("Adding datasets   to %s '%s' for %s '%s'"
-                          % (builder.__class__.__name__, builder.name, container.__class__.__name__, container.name))
+        """Add DatasetBuilders to the GroupBuilder builder corresponding to the datasets defined in the spec"""
         for spec in datasets:
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
@@ -782,11 +781,22 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if isinstance(attr_value, DataIO) and attr_value.data is None:
                 continue
             if isinstance(attr_value, Builder):
-                builder.set_builder(attr_value)
-            elif spec.data_type_def is None and spec.data_type_inc is None:
+                self.logger.debug("Adding %s '%s' (%s: %s, %s: %s, name: %s) to %s '%s' for %s '%s'"
+                                  % (attr_value.__class__.__name__, attr_value.name,
+                                     spec.def_key(), spec.data_type_def,
+                                     spec.inc_key(), spec.data_type_inc,
+                                     ('%s' % spec.name if spec.name is not None else spec.name),
+                                     builder.__class__.__name__, builder.name,
+                                     container.__class__.__name__, container.name))
+                builder.set_builder(attr_value)  # add the existing builder
+            elif spec.data_type_def is None and spec.data_type_inc is None:  # untyped, named dataset
                 if spec.name in builder.datasets:
                     sub_builder = builder.datasets[spec.name]
                 else:
+                    self.logger.debug("Converting and adding dataset for spec '%s' to %s '%s' for %s '%s'"
+                                      % (spec.name,
+                                         builder.__class__.__name__, builder.name,
+                                         container.__class__.__name__, container.name))
                     try:
                         data, dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
@@ -799,12 +809,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
     def __add_groups(self, builder, groups, container, build_manager, source):
-        self.logger.debug("Adding groups     to %s '%s' for %s '%s'"
-                          % (builder.__class__.__name__, builder.name, container.__class__.__name__, container.name))
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:
-                # we don't need to get attr_name since any named
-                # group does not have the concept of value
+                self.logger.debug("Adding untyped group '%s' to %s '%s' for %s '%s'"
+                                  % (spec.name,
+                                     builder.__class__.__name__, builder.name,
+                                     container.__class__.__name__, container.name))
+                # we don't need to get attr_name since any named group does not have the concept of value
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
@@ -829,13 +840,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         builder.set_group(sub_builder)
             else:
                 if spec.data_type_def is not None:
+                    self.logger.debug("Adding group with %s '%s' (%s: '%s', name: %s) to %s '%s' for %s '%s'"
+                                      % (spec.def_key(), spec.data_type_def,
+                                         spec.inc_key(), spec.data_type_inc,
+                                         ('%s' % spec.name if spec.name is not None else spec.name),
+                                         builder.__class__.__name__, builder.name,
+                                         container.__class__.__name__, container.name))
                     attr_name = self.get_attribute(spec)
                     if attr_name is not None:
                         attr_value = getattr(container, attr_name, None)
                         if attr_value is not None:
                             self.__add_containers(builder, spec, attr_value, build_manager, source, container)
-                else:
-                    attr_name = self.get_attribute(spec)
+                else:  # spec.data_type_def is None and spec.data_type_inc is not None
+                    self.logger.debug("Adding group(s) with %s '%s' (name: %s) to %s '%s' for %s '%s'"
+                                      % (spec.inc_key(), spec.data_type_inc,
+                                         ('%s' % spec.name if spec.name is not None else spec.name),
+                                         builder.__class__.__name__, builder.name,
+                                         container.__class__.__name__, container.name))
                     attr_value = self.get_attr_value(spec, container, build_manager)
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container)
@@ -878,7 +899,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.__check_container_matches_spec(spec, value, build_manager)
 
             if value.modified:  # writing a newly instantiated container (modified is False only after read)
-                self.logger.debug("Building new %s '%s'" % (value.__class__.__name__, value.name))
+                self.logger.debug("Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
                     rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                 else:

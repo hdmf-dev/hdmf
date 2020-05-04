@@ -1,8 +1,10 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
-from hdmf.build import GroupBuilder, DatasetBuilder
-from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
+from hdmf.build.errors import MismatchedTypeBuildError
 from hdmf.testing import TestCase
+from hdmf.container import Container
+from hdmf.utils import docval, call_docval_func
 
 from abc import ABCMeta, abstractmethod
 
@@ -261,6 +263,78 @@ class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
                 self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
+
+    def test_build(self):
+        ''' Test default mapping for an Container that has an Container as an attribute value '''
+        builder = self.manager.build(self.foo_bucket)
+        self.assertDictEqual(builder, self.bucket_builder)
+
+    def test_construct(self):
+        container = self.manager.construct(self.bucket_builder)
+        self.assertEqual(container, self.foo_bucket)
+
+
+class Bar(Container):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'})
+    def __init__(self, **kwargs):
+        call_docval_func(super().__init__, kwargs)
+
+
+class TestNestedContainersSubgroupWrongType(NestedBaseMixin, TestBase):
+    '''
+        Test BuildManager.build and BuildManager.construct when the
+        Container contains other Containers that are stored in a subgroup
+        but the nested Container type does not match the subgroup type
+    '''
+    def setUp(self):
+        # need to register a new type that can be built
+        super().setUp()
+        self.bar_spec = GroupSpec('A test group specification for a Bar', data_type_def='Bar')
+
+        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map.register_map(Bar, ObjectMapper)
+        self.manager = BuildManager(self.type_map)
+
+    def setUpBucketBuilder(self):
+        tmp_builder = GroupBuilder('foo_holder', groups=self.foo_builders)
+        self.bucket_builder = GroupBuilder(
+            'test_foo_bucket',
+            groups={'foos': tmp_builder},
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
+
+    def setUpBucketSpec(self):
+        tmp_spec = GroupSpec(
+            'A subgroup for Foos',
+            name='foo_holder',
+            groups=[GroupSpec('the Foos in this bucket',
+                              data_type_inc='Bar',
+                              quantity=ZERO_OR_MANY)])
+        self.bucket_spec = GroupSpec('A test group specification for a data type containing data type',
+                                     name="test_foo_bucket",
+                                     data_type_def='FooBucket',
+                                     groups=[tmp_spec])
+
+    def setUpBucketMapper(self):
+        class BucketMapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                self.unmap(spec.get_group('foo_holder'))
+                self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Bar'))
+
+        return BucketMapper
+
+    def test_build(self):
+        ''' Test default mapping for an Container that has an Container as an attribute value '''
+        msg = "Foo 'my_foo1' does not match type data_type_inc: Bar for spec test_foo_bucket/foo_holder/Bar"
+        with self.assertRaisesWith(MismatchedTypeBuildError, msg):
+            self.manager.build(self.foo_bucket)
+
+    def test_construct(self):
+        # TODO: a warning or error should be raised
+        container = self.manager.construct(self.bucket_builder)
+        self.assertEqual(container, self.foo_bucket)
 
 
 class TestTypeMap(TestBase):

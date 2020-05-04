@@ -247,7 +247,7 @@ class GroupBuilder(BaseBuilder):
     @docval({'name': 'builder', 'type': 'Builder', 'doc': 'the Builder to add to this GroupBuilder'})
     def set_builder(self, **kwargs):
         '''
-        Add an existing builder to this this GroupBuilder
+        Add an existing builder to this GroupBuilder
         '''
         builder = getargs('builder', kwargs)
         if isinstance(builder, LinkBuilder):
