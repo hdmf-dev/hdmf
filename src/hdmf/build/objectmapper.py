@@ -725,17 +725,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               "must be AbstractContainer" % (spec.name, type(attr_value))
                     raise ValueError(msg)
 
-                @build_manager.queue_ref
-                def _set_attr_to_ref():
-                    self.logger.debug("Finding Builder for %s '%s'"
-                                      % (attr_value.__class__.__name__, attr_value.name))
-                    target_builder = build_manager.get_builder(attr_value)
-                    if target_builder is None:
-                        raise Exception("Could not find already-built Builder for %s '%s' in BuildManager"
-                                        % (attr_value.__class__.__name__, attr_value.name))
-                    ref_attr_value = ReferenceBuilder(target_builder)
-                    builder.set_attribute(spec.name, ref_attr_value)
-
+                build_manager.queue_ref(self._set_attr_to_ref(builder, attr_value, build_manager, spec))
                 continue
             else:
                 if attr_value is not None:
@@ -754,6 +744,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
 
             builder.set_attribute(spec.name, attr_value)
+
+    def _set_attr_to_ref(self, builder, attr_value, build_manager, spec):
+        self.logger.debug("Queueing set reference attribute on %s '%s' attribute '%s' to %s"
+                          % (builder.__class__.__name__, builder.name, spec.name,
+                             attr_value.__class__.__name__))
+
+        def _filler():
+            self.logger.debug("Setting reference attribute on %s '%s' attribute '%s' to %s"
+                              % (builder.__class__.__name__, builder.name, spec.name,
+                                 attr_value.__class__.__name__))
+            target_builder = build_manager.get_builder(attr_value)
+            if target_builder is None:
+                raise Exception("Could not find already-built Builder for %s '%s' in BuildManager"
+                                % (attr_value.__class__.__name__, attr_value.name))
+            ref_attr_value = ReferenceBuilder(target_builder)
+            builder.set_attribute(spec.name, ref_attr_value)
+        return _filler
 
     def __add_links(self, builder, links, container, build_manager, source):
         self.logger.debug("Adding links      to %s '%s' for %s '%s'"
