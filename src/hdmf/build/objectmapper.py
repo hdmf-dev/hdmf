@@ -15,7 +15,7 @@ from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .manager import Proxy, BuildManager
 from .warnings import OrphanContainerWarning, MissingRequiredWarning, DtypeConversionWarning
-
+from .errors import MismatchedTypeBuildError
 
 _const_arg = '__constructor_arg'
 
@@ -833,6 +833,30 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
+    def __check_container_matches_spec(self, spec, container, build_manager):
+        """
+        Check that the data type associated with ``container`` matches data_type_def or data_type_inc of the ``spec``
+        or a subtype of data_type_def or data_type_inc (use data_type_def if defined, otherwise use data_type_inc).
+        Returns None.
+        """
+
+        if (isinstance(spec, (GroupSpec, DatasetSpec))
+                and (spec.data_type_def is not None or spec.data_type_inc is not None)):
+            # TODO how to get the namespace of the spec data type?
+            namespace, _ = build_manager.type_map.get_container_ns_dt(container)
+            if spec.data_type_def is not None:  # check for nested type definition
+                spec_class = build_manager.type_map.get_container_cls(namespace, spec.data_type_def, create_class=False)
+                if not isinstance(container, spec_class):
+                    raise MismatchedTypeBuildError("%s '%s' does not match type %s: %s for spec %s"
+                                                   % (container.__class__.__name__, container.name, spec.def_key(),
+                                                      spec.data_type_def, spec.path))
+            else:
+                spec_class = build_manager.type_map.get_container_cls(namespace, spec.data_type_inc, create_class=False)
+                if not isinstance(container, spec_class):
+                    raise MismatchedTypeBuildError("%s '%s' does not match type %s: %s for spec %s"
+                                                   % (container.__class__.__name__, container.name, spec.inc_key(),
+                                                      spec.data_type_inc, spec.path))
+
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container):
         if isinstance(value, AbstractContainer):
             self.logger.debug("Adding %s '%s' with parent %s '%s' to %s '%s'"
@@ -843,6 +867,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("'%s' (%s) for '%s' (%s)" % (value.name, getattr(value, self.spec.type_key()),
                                                     builder.name, self.spec.data_type_def))
                 warnings.warn(msg, OrphanContainerWarning)
+
+            self.__check_container_matches_spec(spec, value, build_manager)
 
             if value.modified:  # writing a newly instantiated container (modified is False only after read)
                 self.logger.debug("Building new %s '%s'" % (value.__class__.__name__, value.name))

@@ -553,15 +553,19 @@ class TypeMap:
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+            {"name": "create_class", "type": bool,
+             "doc": ("whether to dynamically create a class if no class has been associated with the data_type "
+                     "from namespace"), "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
         '''Get the container class from data type specification
-        If no class has been associated with the ``data_type`` from ``namespace``,
-        a class will be dynamically created and returned.
+        If no class has been associated with the ``data_type`` from ``namespace`` and ``create_class`` is True
+        (default), a class will be dynamically created and returned. If no class has been associated with ``data_type``
+        from ``namespace`` and ``create_class`` is False, then None will be returned.
         '''
-        namespace, data_type = getargs('namespace', 'data_type', kwargs)
+        namespace, data_type, create_class = getargs('namespace', 'data_type', 'create_class', kwargs)
         cls = self.__get_container_cls(namespace, data_type)
-        if cls is None:
+        if create_class and cls is None:
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             if isinstance(spec, GroupSpec):
                 self.__resolve_child_container_classes(spec, namespace)
