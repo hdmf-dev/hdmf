@@ -15,3 +15,8 @@ def get_region_slicer(**kwargs):
     elif isinstance(dataset, H5Dataset):
         return H5RegionSlicer(dataset, region)
     return None
+
+
+from ._version import get_versions  # noqa: E402
+__version__ = get_versions()['version']
+del get_versions
