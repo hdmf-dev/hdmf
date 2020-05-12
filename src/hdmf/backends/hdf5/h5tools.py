@@ -294,7 +294,9 @@ class HDF5IO(HDMFIO):
                 ns_builder = self.__convert_namespace(ns_catalog, ns_name)
                 namespace = ns_catalog.get_namespace(ns_name)
                 group_name = '%s/%s' % (ns_name, namespace.version)
-                ns_group = spec_group.require_group(group_name)
+                if group_name in spec_group:
+                    continue
+                ns_group = spec_group.create_group(group_name)
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
 

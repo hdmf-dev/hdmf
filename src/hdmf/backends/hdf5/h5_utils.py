@@ -273,7 +273,7 @@ class H5SpecWriter(SpecWriter):
     def __write(self, d, name):
         data = self.stringify(d)
         # create spec group if it does not exist. otherwise, do not overwrite existing spec
-        dset = self.__group.require_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
+        dset = self.__group.create_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
         return dset
 
     def write_spec(self, spec, path):
