@@ -1159,9 +1159,9 @@ class HDF5IO(HDMFIO):
         # dependency
         self.__ref_queue.append(func)
 
-    def __rec_get_ref(self, l):
+    def __rec_get_ref(self, ref_list):
         ret = list()
-        for elem in l:
+        for elem in ref_list:
             if isinstance(elem, (list, tuple)):
                 ret.append(self.__rec_get_ref(elem))
             elif isinstance(elem, (Builder, Container)):
