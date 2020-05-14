@@ -917,3 +917,48 @@ class DynamicTableRegion(VectorData):
                                                               self.table.__class__.__name__,
                                                               id(self.table))
         return template
+
+
+@register_class('VocabData')
+class VocabData(VectorData):
+    """
+    A n-dimensional dataset that can contain elements from a controlled
+    vocabulary.
+    """
+
+    __fields__ = ('vocabulary',)
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
+            {'name': 'description', 'type': str, 'doc': 'a description for this column'},
+            {'name': 'vocabulary', 'type': ('array_data', 'data'), 'doc': 'the items in this vocabulary'},
+            {'name': 'data', 'type': ('array_data', 'data'),
+             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()})
+    def __init__(self, **kwargs):
+        vocab = popargs('vocabulary', kwargs)
+        super().__init__(**kwargs)
+        self.vocabulary = np.asarray(vocab)
+
+    def __getitem__(self, arg):
+        return self.get(arg, indices=False)
+
+    def get(self, arg, indices=False, join=False):
+        """
+        Return vocabulary elements for the given argument.
+
+        Args:
+            indices (bool):    Return indices, do not return CV elements
+            join (bool):       Concatenate elements together into a single string
+
+        Returns:
+            CV elements if *join* is False or a concatenation of all selected
+            elements if *join* is True.
+        """
+        idx = self.data[arg]
+        if indices:
+            return idx
+        orig_shape = idx.shape
+        ret = self.vocabulary[idx.ravel()]
+        ret = ret.reshape(orig_shape)
+        if join:
+            ret = ''.join(ret.ravel())
+        return ret
