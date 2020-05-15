@@ -21,7 +21,7 @@ class HDF5Encoder(json.JSONEncoder):
                 try:
                     ret = t(obj)
                     break
-                except:  # noqa: F722
+                except:  # noqa: E722
                     pass
             if ret is None:
                 return obj

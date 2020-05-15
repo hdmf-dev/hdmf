@@ -555,7 +555,7 @@ class DynamicTable(Container):
         region = getargs('region', kwargs)
         if isinstance(region, slice):
             if (region.start is not None and region.start < 0) or (region.stop is not None and region.stop > len(self)):
-                msg = 'region slice %s is out of range for this DynamicTable of length ' % (str(region), len(self))
+                msg = 'region slice %s is out of range for this DynamicTable of length %d' % (str(region), len(self))
                 raise IndexError(msg)
             region = list(range(*region.indices(len(self))))
         else:

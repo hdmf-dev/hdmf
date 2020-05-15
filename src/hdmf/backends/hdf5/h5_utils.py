@@ -273,7 +273,7 @@ class H5SpecWriter(SpecWriter):
     def __write(self, d, name):
         data = self.stringify(d)
         # create spec group if it does not exist. otherwise, do not overwrite existing spec
-        dset = self.__group.require_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
+        dset = self.__group.create_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
         return dset
 
     def write_spec(self, spec, path):
@@ -389,7 +389,7 @@ class H5DataIO(DataIO):
             )
     def __init__(self, **kwargs):
         # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in['data', 'link_data', 'allow_plugin_filters']]
+        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters']]
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
