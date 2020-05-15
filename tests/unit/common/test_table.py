@@ -1,4 +1,4 @@
-from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
+from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion, VocabData
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 import pandas as pd
@@ -595,3 +595,44 @@ class TestCustomDynamicTable(TestCase):
         table.add_row(col1='a', col3='c')
         with self.assertRaises(ValueError):
             table.add_row(col1='a', col2='b', col3='c')
+
+
+class TestVocabData(TestCase):
+
+    def test_init(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        self.assertIsInstance(vd.vocabulary, np.ndarray)
+
+    def test_get(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = vd[2]
+        self.assertEqual(dat, 'b')
+        dat = vd[-1]
+        self.assertEqual(dat, 'c')
+        dat = vd[0]
+        self.assertEqual(dat, 'a')
+
+    def test_get_list(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = vd[[0, 1, 2]]
+        np.testing.assert_array_equal(dat, ['a', 'a', 'b'])
+
+    def test_get_list_join(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = vd.get([0, 1, 2], join=True)
+        self.assertEqual(dat, 'aab')
+
+    def test_get_list_indices(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = vd.get([0, 1, 2], indices=True)
+        np.testing.assert_array_equal(dat, [0, 0, 1])
+
+    def test_get_2d(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = vd[0]
+        np.testing.assert_array_equal(dat, ['a', 'a'])
+
+    def test_get_2d_w_2d(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = vd[[0, 1]]
+        np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])

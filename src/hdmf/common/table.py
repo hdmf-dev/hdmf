@@ -916,9 +916,12 @@ class VocabData(VectorData):
         idx = self.data[arg]
         if indices:
             return idx
-        orig_shape = idx.shape
-        ret = self.vocabulary[idx.ravel()]
-        ret = ret.reshape(orig_shape)
-        if join:
-            ret = ''.join(ret.ravel())
+        if not np.isscalar(idx):
+            orig_shape = idx.shape
+            ret = self.vocabulary[idx.ravel()]
+            ret = ret.reshape(orig_shape)
+            if join:
+                ret = ''.join(ret.ravel())
+        else:
+            ret = self.vocabulary[idx]
         return ret
