@@ -573,13 +573,15 @@ class DynamicTable(Container):
         Select a subset from the table
 
         :param key: Key defining which elements of the table to select. This may be one of the following:
-                    1) string with the name of the column to select,
-                    2) a tuple consisting of (str, int) where the string defines the column to select
-                       and the int selects the row
-                    3) int, list of ints, or slice selecting a set of full rows in the table
-        :return: 1) If key is a string then return array with the data of the selected column,
-                 2) If key is a tuple of (int, str) then return the scalar value of the selected cell
-                 3) If key is an int, list or slice then return pandas Dataframe consisting of one or more rows
+
+            1) string with the name of the column to select
+            2) a tuple consisting of (str, int) where the string identifies the column to select by name
+               and the int selects the row
+            3) int, list of ints, or slice selecting a set of full rows in the table
+
+        :return: 1) If key is a string, then return array with the data of the selected column
+                 2) If key is a tuple of (int, str), then return the scalar value of the selected cell
+                 3) If key is an int, list or slice, then return pandas.DataFrame consisting of one or more rows
 
         :raises: KeyError
         """
