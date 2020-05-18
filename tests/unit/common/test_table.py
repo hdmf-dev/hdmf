@@ -861,7 +861,7 @@ class TestVocabData(TestCase):
 
     def test_get_list_indices(self):
         vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], indices=True)
+        dat = vd.get([0, 1, 2], index=True)
         np.testing.assert_array_equal(dat, [0, 0, 1])
 
     def test_get_2d(self):
@@ -873,3 +873,17 @@ class TestVocabData(TestCase):
         vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([[0, 0], [1, 1], [2, 2]]))
         dat = vd[[0, 1]]
         np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])
+
+    def test_add_row(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
+        vd.add_row('b')
+        vd.add_row('a')
+        vd.add_row('c')
+        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
+
+    def test_add_row_index(self):
+        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
+        vd.add_row(1, index=True)
+        vd.add_row(0, index=True)
+        vd.add_row(2, index=True)
+        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
