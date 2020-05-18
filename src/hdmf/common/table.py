@@ -897,16 +897,19 @@ class VocabData(VectorData):
         vocab = popargs('vocabulary', kwargs)
         super().__init__(**kwargs)
         self.vocabulary = np.asarray(vocab)
+        # get minimum uint precision needed for vocabulary
+        uint = np.dtype('uint%d' % 8 * int((2 **np.ceil((np.ceil(np.log2(len(vocab))) - 8)/8)))).type
+        self.__revidx = { t[1]: uint(t[0]) for t in enumerate(self.vocabulary) }
 
     def __getitem__(self, arg):
-        return self.get(arg, indices=False)
+        return self.get(arg, index=False)
 
-    def get(self, arg, indices=False, join=False):
+    def get(self, arg, index=False, join=False):
         """
         Return vocabulary elements for the given argument.
 
         Args:
-            indices (bool):    Return indices, do not return CV elements
+            index (bool):      Return indices, do not return CV elements
             join (bool):       Concatenate elements together into a single string
 
         Returns:
@@ -914,7 +917,7 @@ class VocabData(VectorData):
             elements if *join* is True.
         """
         idx = self.data[arg]
-        if indices:
+        if index:
             return idx
         if not np.isscalar(idx):
             orig_shape = idx.shape
@@ -925,3 +928,17 @@ class VocabData(VectorData):
         else:
             ret = self.vocabulary[idx]
         return ret
+
+    @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'},
+            {'name': 'index', 'type': bool, 'doc': 'whether or not the value being added is an index',
+             'default': False})
+    def add_row(self, **kwargs):
+        """Append a data value to this VocabData column
+
+        If a controlled-vocabulary is provided for *val* (i.e. *index* is False), the correct
+        index value will be determined. Otherwise, *val* will be added as provided.
+        """
+        val, index = getargs('val', 'index', kwargs)
+        if not index:
+            val = self.__revidx[val]
+        super().append(val)
