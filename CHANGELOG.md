@@ -6,7 +6,7 @@
 - Update MacOS in CI. @rly (#310)
 - Raise more informative error when adding column to `DynamicTable` w/ used name. @rly (#307)
 - Refactor `_init_class_columns` for use by DynamicTable subclasses. @rly (#323)
-- Add/fix docstrings for DynamicTable. @oruebel (#304)
+- Add/fix docstrings for DynamicTable. @oruebel, @rly (#304, #353)
 - Make docval-decorated functions more debuggable in pdb. @rly (#308)
 - Change dtype conversion warning to include path to type. @rly (#311)
 - Refactor `DynamicTable.add_column` to raise error when name is an optional column. @rly (#305)
@@ -16,6 +16,7 @@
 - Add allowed value / enum validation in docval. @rly (#335)
 - Add logging of build and hdf5 write process. @rly (#336, #349)
 - Allow loading namespaces from h5py.File object not backed by file. @rly (#348)
+- Add CHANGELOG.md. @rly (#352)
 
 ### Bug fixes:
 - Register new child types before new parent type for dynamic class generation. @rly (#322)
