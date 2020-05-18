@@ -4,6 +4,7 @@ import tempfile
 import warnings
 import numpy as np
 import h5py
+from io import BytesIO
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
@@ -1396,3 +1397,93 @@ class TestLoadNamespaces(TestCase):
                "'%s'. Please notify the extension author." % (CORE_NAMESPACE, SpecNamespace.UNVERSIONED))
         with self.assertWarnsWith(UserWarning, msg):
             HDF5IO.load_namespaces(ns_catalog, self.path)
+
+    def test_load_namespaces_path(self):
+        """Test that loading namespaces given a path is OK and returns the correct dictionary."""
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        ns_catalog = NamespaceCatalog()
+        d = HDF5IO.load_namespaces(ns_catalog, self.path)
+        self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
+
+    def test_load_namespaces_no_path_no_file(self):
+        """Test that loading namespaces without a path or file raises an error."""
+        ns_catalog = NamespaceCatalog()
+
+        msg = "Either the 'path' or 'file' argument must be supplied to load_namespaces."
+        with self.assertRaisesWith(ValueError, msg):
+            HDF5IO.load_namespaces(ns_catalog)
+
+    def test_load_namespaces_file_no_path(self):
+        """
+        Test that loading namespaces from an h5py.File not backed by a file on disk is OK and does not close the file.
+        """
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with open(self.path, 'rb') as raw_file:
+            buffer = BytesIO(raw_file.read())
+            file_obj = h5py.File(buffer, 'r')
+
+        ns_catalog = NamespaceCatalog()
+        d = HDF5IO.load_namespaces(ns_catalog, file=file_obj)
+
+        self.assertTrue(file_obj.__bool__())  # check file object is still open
+        self.assertEqual(d, {'test_core': {}})
+
+        file_obj.close()
+
+    def test_load_namespaces_file_path_matched(self):
+        """Test that loading namespaces given an h5py.File and path is OK and does not close the file."""
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        file_obj = h5py.File(self.path, 'r')
+
+        ns_catalog = NamespaceCatalog()
+        d = HDF5IO.load_namespaces(ns_catalog, path=self.path, file=file_obj)
+
+        self.assertTrue(file_obj.__bool__())  # check file object is still open
+        self.assertEqual(d, {'test_core': {}})
+
+        file_obj.close()
+
+    def test_load_namespaces_file_path_mismatched(self):
+        """Test that loading namespaces given an h5py.File and path that are mismatched raises an error."""
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        file_obj = h5py.File(self.path, 'r')
+
+        ns_catalog = NamespaceCatalog()
+
+        msg = "You argued 'different_path' as this object's path, but supplied a file with filename: %s" % self.path
+        with self.assertRaisesWith(ValueError, msg):
+            HDF5IO.load_namespaces(ns_catalog, path='different_path', file=file_obj)
+
+        file_obj.close()
