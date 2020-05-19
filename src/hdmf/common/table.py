@@ -95,15 +95,16 @@ class VectorIndex(Index):
         """
         self.add_vector(arg)
 
-    def __getitem_helper(self, arg):
+    def __getitem_helper(self, arg, **kwargs):
         """
         Internal helper function used by __getitem__ to retrieve a data value from self.target
 
         :param arg: Integer index into this VectorIndex indicating the element we want to retrieve from the target
+        :param kwargs: keyword arguments to pass into *self.target.get*
         """
         start = 0 if arg == 0 else self.data[arg-1]
         end = self.data[arg]
-        return self.target[start:end]
+        return self.target.get(slice(start, end), **kwargs)
 
     def __getitem__(self, arg):
         """
@@ -112,14 +113,24 @@ class VectorIndex(Index):
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :return: Scalar or list of values retrieved
         """
+        return self.get(arg)
+
+    def get(self, arg, **kwargs):
+        """
+        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+
+        :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
+        :param kwargs: keyword arguments to pass into *target.get*
+        :return: Scalar or list of values retrieved
+        """
         if isinstance(arg, slice):
             indices = list(range(*arg.indices(len(self.data))))
             ret = list()
             for i in indices:
-                ret.append(self.__getitem_helper(i))
+                ret.append(self.__getitem_helper(i, **kwargs))
             return ret
         else:
-            return self.__getitem_helper(arg)
+            return self.__getitem_helper(arg, **kwargs)
 
 
 @register_class('ElementIdentifiers')
