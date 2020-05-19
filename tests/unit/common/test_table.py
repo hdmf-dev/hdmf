@@ -865,12 +865,16 @@ class TestVocabData(TestCase):
         np.testing.assert_array_equal(dat, [0, 0, 1])
 
     def test_get_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([[0, 0], [1, 1], [2, 2]]))
+        vd = VocabData('cv_data', 'a test VocabData',
+                       vocabulary=['a', 'b', 'c'],
+                       data=np.array([[0, 0], [1, 1], [2, 2]]))
         dat = vd[0]
         np.testing.assert_array_equal(dat, ['a', 'a'])
 
     def test_get_2d_w_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([[0, 0], [1, 1], [2, 2]]))
+        vd = VocabData('cv_data', 'a test VocabData',
+                       vocabulary=['a', 'b', 'c'],
+                       data=np.array([[0, 0], [1, 1], [2, 2]]))
         dat = vd[[0, 1]]
         np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])
 
