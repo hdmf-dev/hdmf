@@ -61,20 +61,23 @@ class VectorIndex(Index):
     def add_row(self, arg):
         self.add_vector(arg)
 
-    def __getitem_helper(self, arg):
+    def __getitem_helper(self, arg, **kwargs):
         start = 0 if arg == 0 else self.data[arg-1]
         end = self.data[arg]
-        return self.target[start:end]
+        return self.target.get(slice(start, end), **kwargs)
 
     def __getitem__(self, arg):
+        return self.get(arg)
+
+    def get(self, arg, **kwargs):
         if isinstance(arg, slice):
             indices = list(range(*arg.indices(len(self.data))))
             ret = list()
             for i in indices:
-                ret.append(self.__getitem_helper(i))
+                ret.append(self.__getitem_helper(i, **kwargs))
             return ret
         else:
-            return self.__getitem_helper(arg)
+            return self.__getitem_helper(arg, **kwargs)
 
 
 @register_class('ElementIdentifiers')
