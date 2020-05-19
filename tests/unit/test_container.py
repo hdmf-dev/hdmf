@@ -1,13 +1,14 @@
-import unittest
+import numpy as np
 
 from hdmf.container import AbstractContainer, Container, Data
+from hdmf.testing import TestCase
 
 
 class Subcontainer(Container):
     pass
 
 
-class TestContainer(unittest.TestCase):
+class TestContainer(TestCase):
 
     def test_constructor(self):
         """Test that constructor properly sets parent and both child and parent have an object_id
@@ -44,9 +45,9 @@ class TestContainer(unittest.TestCase):
         self.assertIs(parent_obj.children[0], child_obj)
 
         another_obj = Container('obj3')
-        with self.assertRaisesRegex(ValueError,
-                                    'Cannot reassign parent to Container: %s. Parent is already: %s.'
-                                    % (repr(child_obj), repr(child_obj.parent))):
+        with self.assertRaisesWith(ValueError,
+                                   'Cannot reassign parent to Container: %s. Parent is already: %s.'
+                                   % (repr(child_obj), repr(child_obj.parent))):
             child_obj.parent = another_obj
         self.assertIs(child_obj.parent, parent_obj)
         self.assertIs(parent_obj.children[0], child_obj)
@@ -82,8 +83,7 @@ class TestContainer(unittest.TestCase):
         parent_obj = Container('obj1')
         child_obj = Container('obj2')
         parent_obj.set_modified(False)
-        with self.assertWarnsRegex(DeprecationWarning,
-                                   r'add_child is deprecated\. Set the parent attribute instead\.'):
+        with self.assertWarnsWith(DeprecationWarning, 'add_child is deprecated. Set the parent attribute instead.'):
             parent_obj.add_child(child_obj)
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
@@ -107,7 +107,7 @@ class TestContainer(unittest.TestCase):
         """
         parent_obj = Container('obj1')
         parent_obj.container_source = 'a source'
-        with self.assertRaisesRegex(Exception, 'cannot reassign container_source'):
+        with self.assertRaisesWith(Exception, 'cannot reassign container_source'):
             parent_obj.container_source = 'some other source'
 
     def test_repr(self):
@@ -119,7 +119,7 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, AbstractContainer, object))
 
 
-class TestData(unittest.TestCase):
+class TestData(TestCase):
 
     def test_constructor_scalar(self):
         """Test that __bool__ method works correctly on data with len
@@ -139,6 +139,16 @@ class TestData(unittest.TestCase):
         data_obj = Data('my_data', [])
         self.assertFalse(data_obj)
 
+    def test_shape_nparray(self):
+        """
+        Test that shape works for np.array
+        """
+        data_obj = Data('my_data', np.arange(10).reshape(2, 5))
+        self.assertTupleEqual(data_obj.shape, (2, 5))
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_shape_list(self):
+        """
+        Test that shape works for np.array
+        """
+        data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
+        self.assertTupleEqual(data_obj.shape, (2, 5))

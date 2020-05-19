@@ -1,10 +1,10 @@
-import unittest
 import json
 
 from hdmf.spec import GroupSpec, DatasetSpec, AttributeSpec, DtypeSpec, RefSpec
+from hdmf.testing import TestCase
 
 
-class DatasetSpecTests(unittest.TestCase):
+class DatasetSpecTests(TestCase):
     def setUp(self):
         self.attributes = [
             AttributeSpec('attribute1', 'my first attribute', 'text'),
@@ -209,7 +209,7 @@ class DatasetSpecTests(unittest.TestCase):
         self.assertEqual(base['dtype'], [dtype1, dtype2])
         self.assertEqual(base['doc'], 'my first table')
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'float32')
-        with self.assertRaisesRegex(ValueError, 'Cannot extend float64 to float32'):
+        with self.assertRaisesWith(ValueError, 'Cannot extend float64 to float32'):
             DatasetSpec('my first table extension',
                         [dtype3],
                         data_type_inc=base,
@@ -225,7 +225,7 @@ class DatasetSpecTests(unittest.TestCase):
         self.assertEqual(base['dtype'], [dtype1, dtype2])
         self.assertEqual(base['doc'], 'my first table')
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'int32')
-        with self.assertRaisesRegex(ValueError, 'Cannot extend float64 to int32'):
+        with self.assertRaisesWith(ValueError, 'Cannot extend float64 to int32'):
             DatasetSpec('my first table extension',
                         [dtype3],
                         data_type_inc=base,

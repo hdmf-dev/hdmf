@@ -1,15 +1,14 @@
 import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
-from six import with_metaclass
-from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta
+from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
 from .data_utils import DataIO
 from warnings import warn
 import h5py
 import types
 
 
-class AbstractContainer(with_metaclass(ExtenderMeta, object)):
+class AbstractContainer(metaclass=ExtenderMeta):
 
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
@@ -227,7 +226,7 @@ class AbstractContainer(with_metaclass(ExtenderMeta, object)):
                     parent_container.__children.append(self)
                     parent_container.set_modified()
                 else:
-                    self.__parent.add_candidate(parent_container, self)
+                    self.__parent.add_candidate(parent_container)
         else:
             self.__parent = parent_container
             if isinstance(parent_container, Container):
@@ -341,20 +340,20 @@ class Container(AbstractContainer):
             return str(v)
 
     @staticmethod
-    def __smart_str_list(l, num_indent, left_br):
+    def __smart_str_list(str_list, num_indent, left_br):
         if left_br == '(':
             right_br = ')'
         if left_br == '{':
             right_br = '}'
-        if len(l) == 0:
+        if len(str_list) == 0:
             return left_br + ' ' + right_br
         indent = num_indent * 2 * ' '
         indent_in = (num_indent + 1) * 2 * ' '
         out = left_br
-        for v in l[:-1]:
+        for v in str_list[:-1]:
             out += '\n' + indent_in + Container.__smart_str(v, num_indent + 1) + ','
-        if l:
-            out += '\n' + indent_in + Container.__smart_str(l[-1], num_indent + 1)
+        if str_list:
+            out += '\n' + indent_in + Container.__smart_str(str_list[-1], num_indent + 1)
         out += '\n' + indent + right_br
         return out
 
@@ -384,12 +383,21 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
-        call_docval_func(super(Data, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__data = getargs('data', kwargs)
 
     @property
     def data(self):
         return self.__data
+
+    @property
+    def shape(self):
+        """
+        Get the shape of the data represented by this container
+        :return: Shape tuple
+        :rtype: tuple of ints
+        """
+        return get_data_shape(self.__data)
 
     @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
     def set_dataio(self, **kwargs):

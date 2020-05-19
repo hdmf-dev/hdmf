@@ -13,5 +13,6 @@ from .namespace import NamespaceCatalog
 from .namespace import SpecReader
 from .write import NamespaceBuilder
 from .write import SpecWriter
+from .write import export_spec
 
 from ..utils import docval

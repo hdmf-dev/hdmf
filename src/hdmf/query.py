@@ -1,4 +1,3 @@
-from six import with_metaclass
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
@@ -6,7 +5,7 @@ from .utils import ExtenderMeta, docval_macro, docval, getargs
 from .array import Array
 
 
-class Query(with_metaclass(ExtenderMeta, object)):
+class Query(metaclass=ExtenderMeta):
 
     __operations__ = (
         '__lt__',
@@ -94,7 +93,7 @@ class Query(with_metaclass(ExtenderMeta, object)):
 
 
 @docval_macro('array_data')
-class HDMFDataset(with_metaclass(ExtenderMeta, object)):
+class HDMFDataset(metaclass=ExtenderMeta):
 
     __operations__ = (
         '__lt__',
@@ -139,7 +138,7 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'})
     def __init__(self, **kwargs):
-        super(HDMFDataset, self).__init__()
+        super().__init__()
         self.__dataset = getargs('dataset', kwargs)
 
     @property
@@ -163,7 +162,7 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
         return self.dataset.next()
 
 
-class ReferenceResolver(with_metaclass(ABCMeta, object)):
+class ReferenceResolver(metaclass=ABCMeta):
     """
     A base class for classes that resolve references
     """

@@ -1,14 +1,14 @@
-import unittest
-
 from hdmf.spec import AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf import Data
 from hdmf.utils import docval, getargs
+from hdmf.testing import TestCase
+
 import h5py
 import numpy as np
 import os
 
-from tests.unit.test_utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE
 
 
 class Baz(Data):
@@ -18,7 +18,7 @@ class Baz(Data):
             {'name': 'baz_attr', 'type': str, 'doc': 'an attribute'})
     def __init__(self, **kwargs):
         name, data, baz_attr = getargs('name', 'data', 'baz_attr', kwargs)
-        super(Baz, self).__init__(name=name, data=data)
+        super().__init__(name=name, data=data)
         self.__baz_attr = baz_attr
 
     @property
@@ -26,13 +26,14 @@ class Baz(Data):
         return self.__baz_attr
 
 
-class TestDataMap(unittest.TestCase):
+class TestDataMap(TestCase):
 
     def setUp(self):
         self.setUpBazSpec()
         self.spec_catalog = SpecCatalog()
         self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                       version='0.1.0',
                                        catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)

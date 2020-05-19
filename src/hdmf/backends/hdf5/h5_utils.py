@@ -1,7 +1,6 @@
 from copy import copy
 from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
-from six import binary_type, text_type, with_metaclass
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
@@ -14,7 +13,6 @@ from ...array import Array
 from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...region import RegionSlicer
-
 from ...spec import SpecWriter, SpecReader
 
 
@@ -23,7 +21,7 @@ class H5Dataset(HDMFDataset):
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         self.__io = popargs('io', kwargs)
-        call_docval_func(super(H5Dataset, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
 
     @property
     def io(self):
@@ -42,7 +40,7 @@ class H5Dataset(HDMFDataset):
         return self.dataset.shape
 
 
-class DatasetOfReferences(with_metaclass(ABCMeta, H5Dataset, ReferenceResolver)):
+class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
     """
     An extension of the base ReferenceResolver class to add more abstract methods for
     subclasses that will read HDF5 references
@@ -104,7 +102,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         types = popargs('types', kwargs)
-        call_docval_func(super(AbstractH5TableDataset, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is RegionReference:
@@ -118,9 +116,9 @@ class AbstractH5TableDataset(DatasetOfReferences):
             if sub.metadata:
                 if 'vlen' in sub.metadata:
                     t = sub.metadata['vlen']
-                    if t is text_type:
+                    if t is str:
                         tmp.append('utf')
-                    elif t is binary_type:
+                    elif t is bytes:
                         tmp.append('ascii')
                 elif 'ref' in sub.metadata:
                     t = sub.metadata['ref']
@@ -141,7 +139,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
         return self.__dtype
 
     def __getitem__(self, arg):
-        rows = copy(super(AbstractH5TableDataset, self).__getitem__(arg))
+        rows = copy(super().__getitem__(arg))
         if np.issubdtype(type(arg), np.integer):
             self.__swap_refs(rows)
         else:
@@ -168,7 +166,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
 class AbstractH5ReferenceDataset(DatasetOfReferences):
 
     def __getitem__(self, arg):
-        ref = super(AbstractH5ReferenceDataset, self).__getitem__(arg)
+        ref = super().__getitem__(arg)
         if isinstance(ref, np.ndarray):
             return [self.get_object(self.dataset.file[x]) for x in ref]
         else:
@@ -182,7 +180,7 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
 class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
 
     def __getitem__(self, arg):
-        obj = super(AbstractH5RegionDataset, self).__getitem__(arg)
+        obj = super().__getitem__(arg)
         ref = self.dataset[arg]
         return obj[ref]
 
@@ -259,7 +257,7 @@ class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
 
 class H5SpecWriter(SpecWriter):
 
-    __str_type = special_dtype(vlen=text_type)
+    __str_type = special_dtype(vlen=str)
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to write specs to'})
     def __init__(self, **kwargs):
@@ -275,7 +273,7 @@ class H5SpecWriter(SpecWriter):
     def __write(self, d, name):
         data = self.stringify(d)
         # create spec group if it does not exist. otherwise, do not overwrite existing spec
-        dset = self.__group.require_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
+        dset = self.__group.create_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
         return dset
 
     def write_spec(self, spec, path):
@@ -291,7 +289,7 @@ class H5SpecReader(SpecReader):
     def __init__(self, **kwargs):
         self.__group = getargs('group', kwargs)
         super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
-        call_docval_func(super(H5SpecReader, self).__init__, super_kwargs)
+        call_docval_func(super().__init__, super_kwargs)
         self.__cache = None
 
     def __read(self, path):
@@ -359,7 +357,7 @@ class H5DataIO(DataIO):
              'doc': 'Chunk shape or True to enable auto-chunking',
              'default': None},
             {'name': 'compression',
-             'type': (str, bool),
+             'type': (str, bool, int),
              'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default.' +
                     'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
              'default': None},
@@ -383,21 +381,27 @@ class H5DataIO(DataIO):
              'type': bool,
              'doc': 'If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is only ' +
                     'allowed if data is an h5py.Dataset',
+             'default': False},
+            {'name': 'allow_plugin_filters',
+             'type': bool,
+             'doc': 'Enable passing dynamically loaded filters as compression parameter',
              'default': False}
             )
     def __init__(self, **kwargs):
         # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in['data', 'link_data']]
+        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters']]
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
         self.__link_data = popargs('link_data', kwargs)
+        # Consume allow_plugin_filters parameter
+        self.__allow_plugin_filters = popargs('allow_plugin_filters', kwargs)
         # Check for possible collision with other parameters
         if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
             self.__link_data = False
             warnings.warn('link_data parameter in H5DataIO will be ignored')
         # Call the super constructor and consume the data parameter
-        call_docval_func(super(H5DataIO, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
         self.__iosettings = {k: v for k, v in zip(ioarg_names, ioarg_values) if v is not None}
         # Set io_properties for DataChunkIterators
@@ -421,9 +425,12 @@ class H5DataIO(DataIO):
         # Validate the compression options used
         self._check_compression_options()
         # Confirm that the compressor is supported by h5py
-        if not self.filter_available(self.__iosettings.get('compression', None)):
-            raise ValueError("%s compression not support by this version of h5py." %
-                             str(self.__iosettings['compression']))
+        if not self.filter_available(self.__iosettings.get('compression', None),
+                                     self.__allow_plugin_filters):
+            msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
+            if not self.__allow_plugin_filters:
+                msg += "Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
+            raise ValueError(msg)
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
@@ -469,21 +476,33 @@ class H5DataIO(DataIO):
                         raise ValueError("SZIP compression filter compression_opts"
                                          " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
             # Warn if compressor other than gzip is being used
-            if self.__iosettings['compression'] != 'gzip':
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available"
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of"
+            if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
+                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
+                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
                               "the generated HDF5 files.")
 
     @staticmethod
-    def filter_available(filter):
+    def filter_available(filter, allow_plugin_filters):
         """
         Check if a given I/O filter is available
+
         :param filter: String with the name of the filter, e.g., gzip, szip etc.
-        :type filter: String
+                       int with the registered filter ID, e.g. 307
+        :type filter: String, int
+        :param allow_plugin_filters: bool indicating whether the given filter can be dynamically loaded
         :return: bool indicating wether the given filter is available
         """
         if filter is not None:
-            return filter in h5py_filters.encode
+            if filter in h5py_filters.encode:
+                return True
+            elif allow_plugin_filters is True:
+                if type(filter) == int:
+                    if h5py_filters.h5z.filter_avail(filter):
+                        filter_info = h5py_filters.h5z.get_filter_info(filter)
+                        if filter_info == (h5py_filters.h5z.FILTER_CONFIG_DECODE_ENABLED +
+                                           h5py_filters.h5z.FILTER_CONFIG_ENCODE_ENABLED):
+                            return True
+            return False
         else:
             return True
 
@@ -499,4 +518,4 @@ class H5DataIO(DataIO):
     def valid(self):
         if isinstance(self.data, Dataset) and not self.data.id.valid:
             return False
-        return super(H5DataIO, self).valid
+        return super().valid

@@ -1,7 +1,6 @@
 from ...utils import docval, getargs
 from ...build import ObjectMapper, BuildManager
 from ...spec import Spec
-from ...container import Container
 from ..table import DynamicTable, VectorIndex
 from .. import register_map
 
@@ -10,7 +9,7 @@ from .. import register_map
 class DynamicTableMap(ObjectMapper):
 
     def __init__(self, spec):
-        super(DynamicTableMap, self).__init__(spec)
+        super().__init__(spec)
         vector_data_spec = spec.get_data_type('VectorData')
         vector_index_spec = spec.get_data_type('VectorIndex')
         self.map_spec('columns', vector_data_spec)
@@ -23,13 +22,13 @@ class DynamicTableMap(ObjectMapper):
         return container.colnames
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": Container, "doc": "the container to get the attribute value from"},
+            {"name": "container", "type": DynamicTable, "doc": "the container to get the attribute value from"},
             {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
             returns='the value of the attribute')
     def get_attr_value(self, **kwargs):
         ''' Get the value of the attribute corresponding to this spec from the given container '''
         spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
-        attr_value = super(DynamicTableMap, self).get_attr_value(spec, container, manager)
+        attr_value = super().get_attr_value(spec, container, manager)
         if attr_value is None and spec.name in container:
             if spec.data_type_inc == 'VectorData':
                 attr_value = container[spec.name]
