@@ -6,14 +6,9 @@ from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Re
 import logging
 import warnings
 
-<<<<<<< HEAD
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval, fmt_docval_args
-from ...data_utils import AbstractDataChunkIterator, get_shape
-=======
 from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args
 from ...data_utils import AbstractDataChunkIterator
->>>>>>> dev
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
