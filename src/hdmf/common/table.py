@@ -949,8 +949,8 @@ class VocabData(VectorData):
         super().__init__(**kwargs)
         self.vocabulary = np.asarray(vocab)
         # get minimum uint precision needed for vocabulary
-        uint = np.dtype('uint%d' % 8 * int((2 **np.ceil((np.ceil(np.log2(len(vocab))) - 8)/8)))).type
-        self.__revidx = { t[1]: uint(t[0]) for t in enumerate(self.vocabulary) }
+        uint = np.dtype('uint%d' % 8 * int((2 ** np.ceil((np.ceil(np.log2(len(vocab))) - 8)/8)))).type
+        self.__revidx = {t[1]: uint(t[0]) for t in enumerate(self.vocabulary)}
 
     def __getitem__(self, arg):
         return self.get(arg, index=False)
