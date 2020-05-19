@@ -431,6 +431,9 @@ class Data(AbstractContainer):
         return len(self.__data)
 
     def __getitem__(self, args):
+        return self.get(args)
+
+    def get(self, args):
         if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list)):
             return [self.data[i] for i in args]
         return self.data[args]
