@@ -198,6 +198,9 @@ def validate(**kwargs):
 
 @docval(*get_docval(HDF5IO.__init__), is_method=False)
 def get_hdf5io(**kwargs):
+    """
+    A convenience method for getting an HDF5IO object
+    """
     manager = getargs('manager', kwargs)
     if manager is None:
         kwargs['manager'] = get_manager()
