@@ -556,7 +556,7 @@ class DynamicTable(Container):
         cls = VectorData
 
         # Add table if it's been specified
-        if table and index:
+        if table and vocab:
             raise ValueError("column '%s' cannot be both a table region and come from a controlled vocabulary" % name)
         if table is not False:
             cls = DynamicTableRegion
