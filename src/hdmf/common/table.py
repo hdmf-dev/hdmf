@@ -670,43 +670,60 @@ class DynamicTable(Container):
             # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
             if np.issubdtype(type(arg), np.integer):
-                ret = OrderedDict((col.name, col[arg]) for col in self.__df_cols)
+                ret = OrderedDict()
+                ret['id'] = self.id.data[arg]
+                for col in self.__df_cols:
+                    ret[col.name] = col[arg]
             # index with a python slice (or single integer) to select one or multiple rows
             elif isinstance(arg, slice):
-                data = OrderedDict()
+                ret = OrderedDict()
+                ret['id'] = self.id.data[arg]
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        data[name] = [x for x in col[arg]]
+                        ret[name] = col[arg]
                     else:
                         currdata = col[arg]
-                        data[name] = currdata
-                id_index = self.id.data[arg]
-                if np.isscalar(id_index):
-                    id_index = [id_index, ]
-                ret = data
+                        ret[name] = currdata
             # index by a list of ints, return multiple rows
             elif isinstance(arg, (tuple, list, np.ndarray)):
                 if isinstance(arg, np.ndarray):
                     if len(arg.shape) != 1:
                         raise ValueError("cannot index DynamicTable with multiple dimensions")
-                data = OrderedDict()
+                ret = OrderedDict()
+                ret['id'] = (self.id.data[arg]
+                             if isinstance(self.id.data, np.ndarray)
+                             else [self.id.data[i] for i in arg])
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        data[name] = [x for x in col[arg]]
+                        ret[name] = [x for x in col[arg]]
                     elif isinstance(col.data, np.ndarray):
-                        data[name] = col[arg]
+                        ret[name] = col[arg]
                     else:
-                        data[name] = [col[i] for i in arg]
-                id_index = (self.id.data[arg]
-                            if isinstance(self.id.data, np.ndarray)
-                            else [self.id.data[i] for i in arg])
-                ret = data
+                        ret[name] = [col[i] for i in arg]
             else:
                 raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
 
             if df:
+                # reformat objects to fit into a pandas DataFrame
+                id_index = ret.pop('id')
+                if np.isscalar(id_index):
+                    id_index = [id_index]
+                for k in ret:
+                    if isinstance(ret[k], np.ndarray):
+                        if ret[k].ndim == 1:
+                            if len(id_index) == 1:
+                                # k is a multi-dimension column, and
+                                # only one element has been selected
+                                ret[k] = [ret[k]]
+                        else:
+                            if len(id_index) == ret[k].shape[0]:
+                                # k is a multi-dimension column, and
+                                # more than one element has been selected
+                                ret[k] = list(ret[k])
+                            else:
+                                raise ValueError('unable to convert selection to DataFrame')
                 ret = pd.DataFrame(ret, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
             else:
                 ret = list(ret.values())
@@ -718,18 +735,6 @@ class DynamicTable(Container):
         Check if the given value (i.e., column) exists in this table
         """
         return val in self.__colids or val in self.__indices
-
-    #def get(self, key, default=None):
-    #    """
-    #    Get the data for the column specified by key exists, else return default.
-
-    #    :param key: String with the name of the column
-    #    :param default: Default value to return if the column does not exists
-    #    :return: Result of self[key] (i.e., self.__getitem__(key) if key exists else return default
-    #    """
-    #    if key in self:
-    #        return self[key]
-    #    return default
 
     @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
     def to_dataframe(self, **kwargs):
