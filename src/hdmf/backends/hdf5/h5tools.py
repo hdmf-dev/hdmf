@@ -7,7 +7,7 @@ import logging
 import warnings
 
 from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval, get_data_shape, fmt_docval_args
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
