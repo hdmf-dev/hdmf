@@ -418,8 +418,9 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('bar', 'a float column')
         table.add_column('baz', 'a string column')
         table.add_column('qux', 'a boolean column')
-        table.add_row(foo=27, bar=28.0, baz="cat", qux=True)
-        table.add_row(foo=37, bar=38.0, baz="dog", qux=False)
+        table.add_column('quux', 'a vocab column', vocab=True)
+        table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
+        table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
         return table
 
 
