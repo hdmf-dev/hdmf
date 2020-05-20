@@ -620,6 +620,9 @@ class DynamicTable(Container):
         return DynamicTableRegion(name, region, desc, self)
 
     def __getitem__(self, key):
+        return self.get(key)
+
+    def get(self, key, df=True, **kwargs):
         """
         Select a subset from the table
 
@@ -657,9 +660,9 @@ class DynamicTable(Container):
             # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
             if np.issubdtype(type(arg), np.integer):
-                arg = np.s_[arg:(arg+1)]
+                ret = OrderedDict((col.name, col[arg]) for col in self.__df_cols)
             # index with a python slice (or single integer) to select one or multiple rows
-            if isinstance(arg, slice):
+            elif isinstance(arg, slice):
                 data = OrderedDict()
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
@@ -671,7 +674,7 @@ class DynamicTable(Container):
                 id_index = self.id.data[arg]
                 if np.isscalar(id_index):
                     id_index = [id_index, ]
-                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+                ret = data
             # index by a list of ints, return multiple rows
             elif isinstance(arg, (tuple, list, np.ndarray)):
                 if isinstance(arg, np.ndarray):
@@ -689,9 +692,14 @@ class DynamicTable(Container):
                 id_index = (self.id.data[arg]
                             if isinstance(self.id.data, np.ndarray)
                             else [self.id.data[i] for i in arg])
-                ret = pd.DataFrame(data, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+                ret = data
             else:
                 raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+
+            if df:
+                ret = pd.DataFrame(ret, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+            else:
+                ret = list(ret.values())
 
         return ret
 
@@ -701,17 +709,17 @@ class DynamicTable(Container):
         """
         return val in self.__colids or val in self.__indices
 
-    def get(self, key, default=None):
-        """
-        Get the data for the column specified by key exists, else return default.
+    #def get(self, key, default=None):
+    #    """
+    #    Get the data for the column specified by key exists, else return default.
 
-        :param key: String with the name of the column
-        :param default: Default value to return if the column does not exists
-        :return: Result of self[key] (i.e., self.__getitem__(key) if key exists else return default
-        """
-        if key in self:
-            return self[key]
-        return default
+    #    :param key: String with the name of the column
+    #    :param default: Default value to return if the column does not exists
+    #    :return: Result of self[key] (i.e., self.__getitem__(key) if key exists else return default
+    #    """
+    #    if key in self:
+    #        return self[key]
+    #    return default
 
     @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
     def to_dataframe(self, **kwargs):
