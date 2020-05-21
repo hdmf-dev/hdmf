@@ -339,20 +339,20 @@ class Container(AbstractContainer):
             return str(v)
 
     @staticmethod
-    def __smart_str_list(l, num_indent, left_br):
+    def __smart_str_list(str_list, num_indent, left_br):
         if left_br == '(':
             right_br = ')'
         if left_br == '{':
             right_br = '}'
-        if len(l) == 0:
+        if len(str_list) == 0:
             return left_br + ' ' + right_br
         indent = num_indent * 2 * ' '
         indent_in = (num_indent + 1) * 2 * ' '
         out = left_br
-        for v in l[:-1]:
+        for v in str_list[:-1]:
             out += '\n' + indent_in + Container.__smart_str(v, num_indent + 1) + ','
-        if l:
-            out += '\n' + indent_in + Container.__smart_str(l[-1], num_indent + 1)
+        if str_list:
+            out += '\n' + indent_in + Container.__smart_str(str_list[-1], num_indent + 1)
         out += '\n' + indent + right_br
         return out
 

@@ -347,7 +347,7 @@ class TestDynamicContainer(TestCase):
         with self.assertRaises(TypeError):
             Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
 
-    def test_dynamic_container_composition_wrong_order(self):
+    def test_dynamic_container_composition_reverse_order(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
                               data_type_inc=self.bar_spec,
                               attributes=[
@@ -360,10 +360,25 @@ class TestDynamicContainer(TestCase):
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
+        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
 
-        # Setup all the data we need
-        msg = ("Cannot dynamically generate class for type 'Baz1'. Type 'Baz2' does not exist. "
-               "Please define that type before defining 'Baz1'.")
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+
+        with self.assertRaises(TypeError):
+            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+
+    def test_dynamic_container_composition_missing_type(self):
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
+                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+
+        msg = "No specification for 'Baz2' in namespace 'test_core'"
         with self.assertRaisesWith(ValueError, msg):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
@@ -763,7 +778,8 @@ class TestConvertDtype(TestCase):
             with self.subTest(dtype=dtype):
                 s = np.dtype(self._get_type(spec_type))
                 g = np.dtype(self._get_type(dtype))
-                msg = 'Value with data type %s is being converted to data type %s as specified.' % (g.name, s.name)
+                msg = ("Spec 'data': Value with data type %s is being converted to data type %s as specified."
+                       % (g.name, s.name))
                 with self.assertWarnsWith(UserWarning, msg):
                     ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)
@@ -790,8 +806,8 @@ class TestConvertDtype(TestCase):
                 s = np.dtype(self._get_type(spec_type))
                 e = np.dtype(self._get_type(exp_type))
                 g = np.dtype(self._get_type(dtype))
-                msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
-                       % (g.name, e.name, s.name))
+                msg = ("Spec 'data': Value with data type %s is being converted to data type %s "
+                       "(min specification: %s)." % (g.name, e.name, s.name))
                 with self.assertWarnsWith(UserWarning, msg):
                     ret = ObjectMapper.convert_dtype(spec, value)
                 self.assertTupleEqual(ret, match)

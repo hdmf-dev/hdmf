@@ -261,17 +261,7 @@ class Validator(metaclass=ABCMeta):
 
     @classmethod
     def get_spec_loc(cls, spec):
-        stack = list()
-        tmp = spec
-        while tmp is not None:
-            name = tmp.name
-            if name is None:
-                name = tmp.data_type_def
-                if name is None:
-                    name = tmp.data_type_inc
-            stack.append(name)
-            tmp = tmp.parent
-        return "/".join(reversed(stack))
+        return spec.path
 
     @classmethod
     def get_builder_loc(cls, builder):

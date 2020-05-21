@@ -2,6 +2,7 @@ import numpy as np
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
+import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
@@ -85,6 +86,7 @@ class BuildManager:
     """
 
     def __init__(self, type_map):
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         self.__builders = dict()
         self.__containers = dict()
         self.__type_map = type_map
@@ -145,6 +147,8 @@ class BuildManager:
         result = self.__builders.get(container_id)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
+            self.logger.debug("Building %s '%s' with extended spec (%s) new"
+                              % (container.__class__.__name__, container.name, spec_ext is not None))
             if container.container_source is None:
                 container.container_source = source
             else:
@@ -157,9 +161,16 @@ class BuildManager:
                                             container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
+            self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
         elif container.modified or spec_ext is not None:
+            self.logger.debug("Building %s '%s' modified (%s) / has extended spec (%s) "
+                              % (container.__class__.__name__, container.name, container.modified,
+                                 spec_ext is not None))
             if isinstance(result, BaseBuilder):
                 result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
+                self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
+        else:
+            self.logger.debug("Using prebuilt builder for %s '%s'" % (container.__class__.__name__, container.name))
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
@@ -384,7 +395,8 @@ class TypeMap:
             container_type = val.get(container_name)
             if container_type is not None:
                 return container_type
-        if container_type is None:
+        if container_type is None:  # pragma: no cover
+            # this code should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
 
     def __get_type(self, spec):
@@ -516,6 +528,9 @@ class TypeMap:
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None:
             spec = self.__ns_catalog.get_spec(namespace, data_type)
+            if isinstance(spec, GroupSpec):
+                self.__resolve_child_container_classes(spec, namespace)
+
             dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
             parent_cls = None
             for t in dt_hier:
@@ -534,7 +549,7 @@ class TypeMap:
                 parent_cls = bases[0]
             if type(parent_cls) is not ExtenderMeta:
                 raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
-            name = data_type
+
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             fields = dict()
             for k, field_spec in attr_names.items():
@@ -542,14 +557,24 @@ class TypeMap:
                     fields[k] = field_spec
             try:
                 d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
-            except TypeDoesNotExistError as e:
-                name = spec.get('data_type_def', 'Unknown')
+            except TypeDoesNotExistError as e:  # pragma: no cover
+                # this error should never happen after hdmf#322
+                name = spec.data_type_def
+                if name is None:
+                    name = 'Unknown'
                 raise ValueError("Cannot dynamically generate class for type '%s'. " % name
                                  + str(e)
                                  + " Please define that type before defining '%s'." % name)
-            cls = ExtenderMeta(str(name), bases, d)
+            cls = ExtenderMeta(str(data_type), bases, d)
             self.register_container_type(namespace, data_type, cls)
         return cls
+
+    def __resolve_child_container_classes(self, spec, namespace):
+        for child_spec in (spec.groups + spec.datasets):
+            if child_spec.data_type_inc is not None:
+                self.get_container_cls(namespace, child_spec.data_type_inc)
+            elif child_spec.data_type_def is not None:
+                self.get_container_cls(namespace, child_spec.data_type_def)
 
     def __get_container_cls(self, namespace, data_type):
         if namespace not in self.__container_types:
@@ -781,5 +806,5 @@ class TypeMap:
             return obj_mapper.get_builder_name(container)
 
 
-class TypeDoesNotExistError(Exception):
+class TypeDoesNotExistError(Exception):  # pragma: no cover
     pass
