@@ -601,7 +601,7 @@ class DynamicTable(Container):
     def __getitem__(self, key):
         return self.get(key)
 
-    def get(self, key, df=True, **kwargs):
+    def get(self, key, df=True, **kwargs):  # noqa: C901
         """
         Select a subset from the table
 

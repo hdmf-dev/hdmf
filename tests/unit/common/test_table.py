@@ -1,3 +1,5 @@
+import unittest
+
 from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion, VocabData
 from hdmf.testing import TestCase, H5RoundTripMixin
 
@@ -480,6 +482,7 @@ class TestDynamicTableRegion(TestCase):
         except AttributeError:
             self.fail("DynamicTableRegion table setter raised AttributeError unexpectedly!")
 
+    @unittest.skip('we no longer check data contents for performance reasons')
     def test_dynamic_table_region_set_with_bad_data(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [5, 1], 'desc')   # index 5 is out of range
