@@ -82,9 +82,9 @@ class VectorIndex(Index):
         self.target = getargs('target', kwargs)
         self.__uint = np.uint8
         self.__maxval = 255
-        if len(self.data) > 0:
-            self.__check_precision(len(self.target))
         if isinstance(self.data, (list, np.ndarray)):
+            if len(self.data) > 0:
+                self.__check_precision(len(self.target))
             # adjust precision for types that we can adjust precision for
             self.__adjust_precision(self.__uint)
 
