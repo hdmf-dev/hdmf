@@ -80,6 +80,13 @@ class VectorIndex(Index):
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self.target = getargs('target', kwargs)
+        self.__uint = np.uint8
+        self.__maxval = 255
+        if len(self.data) > 0:
+            self.__check_precision(len(self.target))
+        if isinstance(self.data, (list, np.ndarray)):
+            # adjust precision for types that we can adjust precision for
+            self.__adjust_precision(self.__uint)
 
     def add_vector(self, arg):
         """
@@ -87,7 +94,34 @@ class VectorIndex(Index):
         :param arg: The data value to be added to self.target
         """
         self.target.extend(arg)
-        self.append(len(self.target))
+        self.append(self.__check_precision(len(self.target)))
+
+    def __check_precision(self, idx):
+        """
+        Check precision of current dataset and, if
+        necessary, adjust precision to accomodate new value.
+
+        Returns:
+            unsigned integer encoding of idx
+        """
+        if idx > self.__maxval:
+            nbits = (np.log2(self.__maxval + 1)*2)
+            self.__uint = np.dtype('uint%d' % nbits).type
+            self.__maxval = 2**nbits - 1
+            self.__adjust_precision(self.__uint)
+        return self.__uint(idx)
+
+    def __adjust_precision(self, uint):
+        """
+        Adjust precision of data to specificied unsigned integer precision
+        """
+        if isinstance(self.data, list):
+            for i in range(len(self.data)):
+                self.data[i] = uint(self.data[i])
+        elif isinstance(self.data, np.ndarray):
+            self._VectorIndex__data = self.data.astype(uint)
+        else:
+            raise ValueError("cannot adjust precision of type %s to %s", (type(self.data), uint))
 
     def add_row(self, arg):
         """
