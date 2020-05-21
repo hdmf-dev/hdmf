@@ -669,6 +669,9 @@ class DynamicTable(Container):
         return DynamicTableRegion(name, region, desc, self)
 
     def __getitem__(self, key):
+        ret = self.get(key)
+        if ret is None:
+            raise KeyError(key)
         return self.get(key)
 
     def get(self, key, df=True, **kwargs):  # noqa: C901
@@ -703,7 +706,7 @@ class DynamicTable(Container):
             elif key in self.__indices:
                 ret = self.__indices[key]
             else:
-                raise KeyError(key)
+                return None
         else:
             # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
             # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
