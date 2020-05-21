@@ -767,6 +767,11 @@ class DynamicTable(Container):
                                 ret[k] = list(ret[k])
                             else:
                                 raise ValueError('unable to convert selection to DataFrame')
+                    elif isinstance(ret[k], list):
+                        if len(id_index) == 1:
+                            # k is a multi-dimension column, and
+                            # only one element has been selected
+                            ret[k] = [ret[k]]
                 ret = pd.DataFrame(ret, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
             else:
                 ret = list(ret.values())
