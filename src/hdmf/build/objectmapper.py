@@ -217,7 +217,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret_dtype = tmp_dtype
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
+            if spec_dtype is _unicode:
+                ret_dtype = "utf8"
+            elif spec_dtype is _ascii:
+                ret_dtype = "ascii"
+            else:
+                ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
             if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
