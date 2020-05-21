@@ -892,3 +892,73 @@ class TestVocabData(TestCase):
         vd.add_row(0, index=True)
         vd.add_row(2, index=True)
         np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
+
+
+class TestIndexing(TestCase):
+
+    def setUp(self):
+        dt = DynamicTable(name='slice_test_table', description='a table to test slicing',
+                          id=[0, 1, 2])
+        dt.add_column('foo', 'scalar column', data=np.array([0.0, 1.0, 2.0]))
+        dt.add_column('bar', 'ragged column', index=np.array([2, 3, 6]),
+                      data=np.array(['r11', 'r12', 'r21', 'r31', 'r32', 'r33']))
+        dt.add_column('baz', 'multi-dimension column',
+                      data=np.array([[10.0, 11.0, 12.0],
+                                     [20.0, 21.0, 22.0],
+                                     [30.0, 31.0, 32.0]]))
+        self.table = dt
+
+    def test_single_item(self):
+        elem = self.table[0]
+        data = OrderedDict()
+        data['foo'] = 0.0
+        data['bar'] = [np.array(['r11', 'r12'])]
+        data['baz'] = [np.array([10.0, 11.0, 12.0])]
+        idx = [0]
+        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+        pd.testing.assert_frame_equal(elem, exp)
+
+    def test_single_item_no_df(self):
+        elem = self.table.get(0, df=False)
+        self.assertEqual(elem[0], 0)
+        self.assertEqual(elem[1], 0.0)
+        np.testing.assert_array_equal(elem[2], np.array(['r11', 'r12']))
+        np.testing.assert_array_equal(elem[3], np.array([10.0, 11.0, 12.0]))
+
+    def test_slice(self):
+        elem = self.table[0:2]
+        data = OrderedDict()
+        data['foo'] = [0.0, 1.0]
+        data['bar'] = [np.array(['r11', 'r12']), np.array(['r21'])]
+        data['baz'] = [np.array([10.0, 11.0, 12.0]),
+                       np.array([20.0, 21.0, 22.0])]
+        idx = [0, 1]
+        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+        pd.testing.assert_frame_equal(elem, exp)
+
+    def test_slice_no_df(self):
+        elem = self.table.get(slice(0, 2), df=False)
+        self.assertEqual(elem[0], [0, 1])
+        np.testing.assert_array_equal(elem[1], np.array([0.0, 1.0]))
+        np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))
+        np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
+        np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+
+    def test_list(self):
+        elem = self.table[[0, 1]]
+        data = OrderedDict()
+        data['foo'] = [0.0, 1.0]
+        data['bar'] = [np.array(['r11', 'r12']), np.array(['r21'])]
+        data['baz'] = [np.array([10.0, 11.0, 12.0]),
+                       np.array([20.0, 21.0, 22.0])]
+        idx = [0, 1]
+        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+        pd.testing.assert_frame_equal(elem, exp)
+
+    def test_list_no_df(self):
+        elem = self.table.get([0, 1], df=False)
+        self.assertEqual(elem[0], [0, 1])
+        np.testing.assert_array_equal(elem[1], np.array([0.0, 1.0]))
+        np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))
+        np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
+        np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))

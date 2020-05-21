@@ -123,14 +123,19 @@ class VectorIndex(Index):
         :param kwargs: keyword arguments to pass into *target.get*
         :return: Scalar or list of values retrieved
         """
-        if isinstance(arg, slice):
-            indices = list(range(*arg.indices(len(self.data))))
+        if np.isscalar(arg):
+            return self.__getitem_helper(arg, **kwargs)
+        else:
+            if isinstance(arg, slice):
+                indices = list(range(*arg.indices(len(self.data))))
+            else:
+                if isinstance(arg[0], bool):
+                    arg = np.where(arg)[0]
+                indices = arg
             ret = list()
             for i in indices:
                 ret.append(self.__getitem_helper(i, **kwargs))
             return ret
-        else:
-            return self.__getitem_helper(arg, **kwargs)
 
 
 @register_class('ElementIdentifiers')
@@ -672,8 +677,9 @@ class DynamicTable(Container):
             if np.issubdtype(type(arg), np.integer):
                 ret = OrderedDict()
                 ret['id'] = self.id.data[arg]
-                for col in self.__df_cols:
-                    ret[col.name] = col[arg]
+                for name in self.colnames:
+                    col = self.__df_cols[self.__colids[name]]
+                    ret[name] = col[arg]
             # index with a python slice (or single integer) to select one or multiple rows
             elif isinstance(arg, slice):
                 ret = OrderedDict()
