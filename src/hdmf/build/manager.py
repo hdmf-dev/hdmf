@@ -377,16 +377,35 @@ class TypeMap:
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    _type_map = {
-        'text': str,
-        'float': float,
-        'float32': float,
-        'float64': float,
-        'int': int,
-        'int32': int,
-        'bool': bool,
+    # mapping from spec types to allowable python types for docval for fields during dynamic class generation
+    # see https://schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
+    _spec_dtype_map = {
+        'float32': (float, np.float32, np.float64),
+        'float': (float, np.float32, np.float64),
+        'float64': (float, np.float64),
+        'double': (float, np.float64),
+        'int8': (np.int8, np.int16, np.int32, np.int64, int),
+        'int16': (np.int16, np.int32, np.int64, int),
+        'short': (np.int16, np.int32, np.int64, int),
+        'int32': (int, np.int32, np.int64),
+        'int': (int, np.int32, np.int64),
+        'int64': np.int64,
+        'long': np.int64,
+        'uint8': (np.uint8, np.uint16, np.uint32, np.uint64),
+        'uint16': (np.uint16, np.uint32, np.uint64),
+        'uint32': (np.uint32, np.uint64),
         'uint64': np.uint64,
-        'isodatetime': datetime
+        'numeric': (float, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64, int, np.uint8, np.uint16,
+                    np.uint32, np.uint64),
+        'text': str,
+        'utf': str,
+        'utf8': str,
+        'utf-8': str,
+        'ascii': bytes,
+        'bytes': bytes,
+        'bool': bool,
+        'isodatetime': datetime,
+        'datetime': datetime
     }
 
     def __get_container_type(self, container_name):
@@ -399,6 +418,12 @@ class TypeMap:
             # this code should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
 
+    def __get_scalar_type_map(self, spec_dtype):
+        dtype = self._spec_dtype_map.get(spec_dtype)
+        if dtype is None:
+            raise ValueError("Spec dtype '%s' cannot be mapped to a Python type." % spec_dtype)
+        return dtype
+
     def __get_type(self, spec):
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
@@ -409,7 +434,7 @@ class TypeMap:
                         return container_type
                 return Data, Container
             elif spec.shape is None and spec.dims is None:
-                return self._type_map.get(spec.dtype)
+                return self.__get_scalar_type_map(spec.dtype)
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
@@ -419,7 +444,7 @@ class TypeMap:
         if spec.data_type_inc is not None:
             return self.__get_container_type(spec.data_type_inc)
         if spec.shape is None and spec.dims is None:
-            return self._type_map.get(spec.dtype)
+            return self.__get_scalar_type_map(spec.dtype)
         return 'array_data', 'data'
 
     def __ischild(self, dtype):
