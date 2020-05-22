@@ -963,7 +963,7 @@ class DynamicTableRegion(VectorData):
         self.fields['table'] = val
 
     def __getitem__(self, arg):
-        return self.get(key)
+        return self.get(arg)
 
     def get(self, arg, index=False):
         """
