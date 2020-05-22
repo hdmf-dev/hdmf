@@ -701,7 +701,9 @@ class DynamicTable(Container):
             ret = self.__df_cols[arg2][arg1]
         elif isinstance(key, str):
             # index by one string --> return column
-            if key in self.__colids:
+            if key == 'id':
+                return self.id
+            elif key in self.__colids:
                 ret = self.__df_cols[self.__colids[key]]
             elif key in self.__indices:
                 ret = self.__indices[key]
@@ -753,26 +755,39 @@ class DynamicTable(Container):
                 id_index = ret.pop('id')
                 if np.isscalar(id_index):
                     id_index = [id_index]
+                retdf = OrderedDict()
                 for k in ret:
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
                             if len(id_index) == 1:
                                 # k is a multi-dimension column, and
                                 # only one element has been selected
-                                ret[k] = [ret[k]]
+                                retdf[k] = [ret[k]]
+                            else:
+                                retdf[k] = ret[k]
                         else:
                             if len(id_index) == ret[k].shape[0]:
                                 # k is a multi-dimension column, and
                                 # more than one element has been selected
-                                ret[k] = list(ret[k])
+                                retdf[k] = list(ret[k])
                             else:
                                 raise ValueError('unable to convert selection to DataFrame')
                     elif isinstance(ret[k], list):
                         if len(id_index) == 1:
                             # k is a multi-dimension column, and
                             # only one element has been selected
-                            ret[k] = [ret[k]]
-                ret = pd.DataFrame(ret, index=pd.Index(name=self.id.name, data=id_index), columns=self.colnames)
+                            retdf[k] = [ret[k]]
+                        else:
+                            retdf[k] = ret[k]
+                    elif isinstance(ret[k], pd.DataFrame):
+                        retdf['%s_%s' % (k, ret[k].index.name)] = ret[k].index.values
+                        for col in ret[k].columns:
+                            newcolname = "%s_%s" % (k, col)
+                            retdf[newcolname] = ret[k][col].values
+                    else:
+                        retdf[k] = ret[k]
+
+                ret = pd.DataFrame(retdf, index=pd.Index(name=self.id.name, data=id_index))
             else:
                 ret = list(ret.values())
 
@@ -947,11 +962,14 @@ class DynamicTableRegion(VectorData):
             dat = dat.data
         self.fields['table'] = val
 
-    def __getitem__(self, key):
+    def __getitem__(self, arg):
+        return self.get(key)
+
+    def get(self, arg, index=False):
         """
         Subset the DynamicTableRegion
 
-        :param key: 1) tuple consisting of (str, int) where the string defines the column to select
+        :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
                        and the int selects the row, 2) int or slice to select a subset of rows
 
         :return: Result from self.table[....] with the approbritate selection based on the
@@ -959,16 +977,19 @@ class DynamicTableRegion(VectorData):
         """
         # treat the list of indices as data that can be indexed. then pass the
         # result to the table to get the data
-        if isinstance(key, tuple):
-            arg1 = key[0]
-            arg2 = key[1]
+        if isinstance(arg, tuple):
+            arg1 = arg[0]
+            arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
-        elif isinstance(key, slice) or np.issubdtype(type(key), np.integer):
-            if np.issubdtype(type(key), np.integer) and key >= len(self.data):
-                raise IndexError('index {} out of bounds for data of length {}'.format(key, len(self.data)))
-            return self.table[self.data[key]]
+        elif isinstance(arg, slice) or np.issubdtype(type(arg), np.integer):
+            if np.issubdtype(type(arg), np.integer) and arg >= len(self.data):
+                raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
+            ret = self.data[arg]
+            if not index:
+                ret =  self.table[self.data[arg]]
+            return ret
         else:
-            raise ValueError("unrecognized argument: '%s'" % key)
+            raise ValueError("unrecognized argument: '%s'" % arg)
 
     def to_dataframe(self, **kwargs):
         """
