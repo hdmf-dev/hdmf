@@ -986,7 +986,7 @@ class DynamicTableRegion(VectorData):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
             if not index:
-                ret =  self.table[self.data[arg]]
+                ret = self.table[self.data[arg]]
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
