@@ -528,14 +528,14 @@ class TestDocValidator(TestCase):
         self.assertIsInstance(res, np.bool_)
 
     def test_uint_type(self):
-        """Test that docval type specification of np.uint matches only np.uint32."""
-        @docval({'name': 'arg1', 'type': np.uint, 'doc': 'this is a uint'})
+        """Test that docval type specification of np.uint32 works as expected."""
+        @docval({'name': 'arg1', 'type': np.uint32, 'doc': 'this is a uint'})
         def method(self, **kwargs):
             return popargs('arg1', kwargs)
 
-        res = method(self, arg1=np.uint(1))
-        self.assertEqual(res, np.uint(1))
-        self.assertIsInstance(res, np.uint)
+        res = method(self, arg1=np.uint32(1))
+        self.assertEqual(res, np.uint32(1))
+        self.assertIsInstance(res, np.uint32)
 
         msg = ("TestDocValidator.test_uint_type.<locals>.method: incorrect type for 'arg1' (got 'uint8', expected "
                "'uint32')")
