@@ -38,8 +38,7 @@ for dt, dt_syn in __synonyms.items():
             allow.extend(__synonyms[addl])
     for syn in dt_syn:
         __allowable[syn] = allow
-__allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable
-                                                 if 'int' in k or 'float' in k or 'uint' in k))
+__allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable if 'int' in k or 'float' in k))
 
 
 def check_type(expected, received):
