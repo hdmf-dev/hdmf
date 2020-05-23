@@ -420,7 +420,9 @@ class TypeMap:
 
     def __get_scalar_type_map(self, spec_dtype):
         dtype = self._spec_dtype_map.get(spec_dtype)
-        if dtype is None:
+        if dtype is None:  # pragma: no cover
+            # this should not happen as long as _spec_dtype_map is kept up to date with
+            # hdmf.spec.spec.DtypeHelper.valid_primary_dtypes
             raise ValueError("Spec dtype '%s' cannot be mapped to a Python type." % spec_dtype)
         return dtype
 
