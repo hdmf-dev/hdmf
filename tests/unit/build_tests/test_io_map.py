@@ -1,4 +1,5 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
+from hdmf.spec import Spec
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
@@ -24,7 +25,7 @@ class Bar(Container):
             {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'a group', 'default': list()})
     def __init__(self, **kwargs):
         name, data, attr1, attr2, attr3, attr5, foo, bars = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
-                                                                    'attr4', 'foo', 'bars', kwargs)
+                                                                    'attr5', 'foo', 'bars', kwargs)
         super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
@@ -560,7 +561,131 @@ class BarHolder(Container):
         return self.__bars
 
 
+class BarExtMapper(ObjectMapper):
+
+    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
+            {"name": "container", "type": Bar, "doc": "the container to get the attribute value from"},
+            {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
+            returns='the value of the attribute')
+    def get_attr_value(self, **kwargs):
+        ''' Get the value of the attribute corresponding to this spec from the given container '''
+        spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
+
+        breakpoint()
+        # handle custom mapping of container Units.waveform_rate -> spec Units.waveform_mean.sampling_rate
+        if isinstance(container.parent, BarHolder):
+            if spec.name == 'attr5':
+                return container.attr5
+        return super().get_attr_value(**kwargs)
+
+
 class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
+    """
+    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
+    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
+    change or add attributes to the spec of A. This test ensures that the new attributes are added properly.
+
+    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
+    A' objects. A' adds an attribute 'attr5' to the spec of A.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.setUpBarHolderSpec()
+        self.spec_catalog.register_spec(self.bar_holder_spec, 'test.yaml')
+        self.type_map.register_container_type(CORE_NAMESPACE, 'BarHolder', BarHolder)
+        self.type_map.register_map(Bar, BarExtMapper)  # override default ObjectMapper set earlier
+        self.type_map.register_map(BarHolder, ObjectMapper)
+
+    def setUpBarSpec(self):
+        data_dset = DatasetSpec(
+            name='data',
+            dtype='int',
+            doc='an example dataset',
+        )
+        attr1_attr = AttributeSpec(
+            name='attr1',
+            dtype='text',
+            doc='an example string attribute',
+        )
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[data_dset],
+            attributes=[attr1_attr],
+        )
+
+    def setUpBarHolderSpec(self):
+        """
+        BarHolder may contain the named bar_ext group which extends Bar with an additional subgroup of any number
+        of extended Bar objects. Both extended Bar objects have an additional attribute.
+
+        """
+        attr5_attr = AttributeSpec(
+            name='attr5',
+            dtype='bool',
+            doc='A boolean attribute',
+        )
+        bar_ext_no_name_spec = GroupSpec(
+            doc='A Bar extended with attribute attr5',
+            data_type_inc='Bar',
+            quantity='*',
+            attributes=[attr5_attr],
+        )
+        self.bar_holder_spec = GroupSpec(
+            doc='A container of multiple extended Bar objects',
+            data_type_def='BarHolder',
+            groups=[bar_ext_no_name_spec],
+        )
+
+    def test_build_bar_holder(self):
+        ext_bar2_inst = Bar(
+            name='my_bar',
+            data=list(range(10)),
+            attr1='a string',
+            attr2=10,
+            attr5=False,
+        )
+        bar_holder_inst = BarHolder(
+            name='my_bar_holder',
+            bars=[ext_bar2_inst]
+        )
+
+        expected_inner = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10))
+            )},
+            attributes={'attr1': 'a string',
+                        'attr2': 10,
+                        'attr5': False,
+                        'data_type': 'Bar',
+                        'namespace': CORE_NAMESPACE,
+                        'object_id': ext_bar2_inst.object_id}
+        )
+        expected = GroupBuilder(
+            name='my_bar_holder',
+            groups={'my_bar': expected_inner})
+
+        bar_holder_mapper = ObjectMapper(self.bar_holder_spec)
+        bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
+        breakpoint()
+        bar_holder_mapper.map_spec('bars', bar_group_spec)  # map BarHolder.bars to the included extended bar types
+        builder = bar_holder_mapper.build(bar_holder_inst, self.manager)
+        breakpoint()
+        self.assertDictEqual(builder, expected)
+
+
+class TestObjectMapperExtAttrs2(ObjectMapperMixin, TestCase):
+    """
+    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
+    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
+    change or add attributes to the spec of A. This test ensures that the new attributes are added properly.
+
+    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
+    A' objects. A' adds an attribute 'attr5' to the spec of A.
+    """
 
     def setUp(self):
         super().setUp()
@@ -598,7 +723,7 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             attributes=[attr1_attr]
         )
 
-    def setUpBarExtSpec(self):
+    def setUpBarExtAttrs(self):
         """
         BarHolder may contain the named bar_ext group which extends Bar with an additional subgroup of any number
         of extended Bar objects. Both extended Bar objects have an additional attribute.
@@ -624,26 +749,6 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             data_type_def='BarHolder',
             groups=[self.bar_ext_no_name_spec]
         )
-
-    def test_build_bar(self):
-        ''' Test default mapping functionality when object attributes map to an attribute deeper
-        than top-level Builder '''
-        container_inst = Bar(
-            name='my_bar',
-            data=list(range(10)),
-            attr1='value1',
-            attr2=10
-        )
-        expected = GroupBuilder(
-            name='my_bar',
-            datasets={'data': DatasetBuilder(
-                name='data',
-                data=list(range(10))
-            )},
-            attributes={'attr1': 'value1'})
-        bar_mapper = ObjectMapper(self.bar_spec)
-        builder = bar_mapper.build(container_inst, self.manager)
-        self.assertDictEqual(builder, expected)
 
     def test_build_bar_holder(self):
         ''' Test default mapping functionality when object attributes map to an attribute deeper
