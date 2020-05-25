@@ -19,24 +19,32 @@ class Bar(Container):
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
-            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
+            {'name': 'attr4', 'type': bool, 'doc': 'a fourth attribute', 'default': True},
+            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
+            {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'a group', 'default': list()})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'foo', kwargs)
+        name, data, attr1, attr2, attr3, attr4, foo, bars = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
+                                                                    'attr4', 'foo', 'bars', kwargs)
         super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
         self.__attr2 = attr2
         self.__attr3 = attr3
+        self.__attr4 = attr4
         self.__foo = foo
         if self.__foo is not None and self.__foo.parent is None:
             self.__foo.parent = self
+        self.__bars = bars
+        for b in bars:
+            if b is not None and b.parent is None:
+                b.parent = self
 
     def __eq__(self, other):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'bars')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     def __str__(self):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'bars')
         return ','.join('%s=%s' % (a, getattr(self, a)) for a in attrs)
 
     @property
@@ -60,8 +68,16 @@ class Bar(Container):
         return self.__attr3
 
     @property
+    def attr4(self):
+        return self.__attr4
+
+    @property
     def foo(self):
         return self.__foo
+
+    @property
+    def bars(self):
+        return self.__bars
 
 
 class Foo(Container):
@@ -521,6 +537,178 @@ class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
         self.assertSetEqual(keys, expected)
 
 
+class BarHolder(Container):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
+            {'name': 'bar_ext', 'type': Bar, 'doc': 'a bar', 'default': None},
+            {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'bars', 'default': list()})
+    def __init__(self, **kwargs):
+        name, bar_ext, bars = getargs('name', 'bar_ext', 'bars', kwargs)
+        super().__init__(name=name)
+        self.__bar_ext = bar_ext
+        self.__bars = bars
+        for b in bars:
+            if b is not None and b.parent is None:
+                b.parent = self
+
+    @property
+    def bar_ext(self):
+        return self.__bar_ext
+
+    @property
+    def bars(self):
+        return self.__bars
+
+
+class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.setUpBarExtSpec()
+        self.spec_catalog.register_spec(self.bar_holder_spec, 'test.yaml')
+        self.type_map.register_container_type(CORE_NAMESPACE, 'BarHolder', BarHolder)
+        self.type_map.register_map(BarHolder, ObjectMapper)
+
+        import logging
+
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+
+        ch = logging.FileHandler('test.log', mode='w')
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+    def setUpBarSpec(self):
+        data_dset = DatasetSpec(
+            doc='an example dataset',
+            dtype='int',
+            name='data'
+        )
+        attr1_attr = AttributeSpec(
+            doc='an example string attribute',
+            dtype='text',
+            name='attr1'
+        )
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[data_dset],
+            attributes=[attr1_attr]
+        )
+
+    def setUpBarExtSpec(self):
+        """
+        BarHolder may contain the named bar_ext group which extends Bar with an additional subgroup of any number
+        of extended Bar objects. Both extended Bar objects have an additional attribute.
+
+        TODO do the same with dataset but with or without extending the dtype
+        """
+        self.bar_ext_no_name_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_inc='Bar',
+            quantity='*',
+            attributes=[AttributeSpec('attr4', 'an example boolean attribute', 'bool')]
+        )
+        # self.bar_ext_spec = GroupSpec(
+        #     doc='A test group specification with a data type',
+        #     data_type_inc='Bar',
+        #     name='bar_ext',
+        #     quantity='?',
+        #     groups=[self.bar_ext_no_name_spec],
+        #     attributes=[AttributeSpec('attr3', 'an example float attribute', 'float')]
+        # )
+        self.bar_holder_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='BarHolder',
+            groups=[self.bar_ext_no_name_spec]
+        )
+
+    def test_build_bar(self):
+        ''' Test default mapping functionality when object attributes map to an attribute deeper
+        than top-level Builder '''
+        container_inst = Bar(
+            name='my_bar',
+            data=list(range(10)),
+            attr1='value1',
+            attr2=10
+        )
+        expected = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10))
+            )},
+            attributes={'attr1': 'value1'})
+        bar_mapper = ObjectMapper(self.bar_spec)
+        builder = bar_mapper.build(container_inst, self.manager)
+        self.assertDictEqual(builder, expected)
+
+    def test_build_bar_holder(self):
+        ''' Test default mapping functionality when object attributes map to an attribute deeper
+        than top-level Builder '''
+        ext_bar2_inst = Bar(
+            name='my_bar',
+            data=list(range(10)),
+            attr1='value_inner_inner',
+            attr2=10,
+            attr4=False
+        )
+        # ext_bar1_inst = Bar(
+        #     name='my_bar',
+        #     data=list(range(10)),
+        #     attr1='value_inner',
+        #     attr2=10,
+        #     attr3=5.,
+        #     bars=[ext_bar2_inst]
+        # )
+        # extended type cannot have new groups
+        bar_holder_inst = BarHolder(
+            name='my_bar_holder',
+            # bar_ex=ext_bar1_inst
+            bars=[ext_bar2_inst]
+        )
+        expected_inner_inner = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10))
+            )},
+            attributes={'attr1': 'value_inner_inner',
+                        'attr2': 10,
+                        'attr4': False,
+                        'data_type': 'Bar',
+                        'namespace': CORE_NAMESPACE,
+                        'object_id': ext_bar2_inst.object_id}
+        )
+        # expected_inner = GroupBuilder(
+        #     name='bar_ext',
+        #     datasets={'data': DatasetBuilder(
+        #         name='data',
+        #         data=list(range(10))
+        #     )},
+        #     attributes={'attr1': 'value_inner',
+        #                 'attr2': 10,
+        #                 'attr3': 5.,
+        #                 'data_type': 'BarHolder',
+        #                 'namespace': CORE_NAMESPACE,
+        #                 'object_id': ext_bar1_inst.object_id},
+        #     groups={'bars': {'my_bar': expected_inner_inner}}
+        # )
+        expected = GroupBuilder(
+            name='my_bar_holder',
+            # groups={'bar_ext': expected_inner},
+            groups={'my_bar': expected_inner_inner})
+        bar_holder_mapper = ObjectMapper(self.bar_holder_spec)
+        bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
+        bar_holder_mapper.map_spec('bars', bar_group_spec)
+        builder = bar_holder_mapper.build(bar_holder_inst, self.manager)
+        breakpoint()
+        self.assertDictEqual(builder, expected)
+        # TODO builder missing extended attributes
+
+
 class TestLinkedContainer(TestCase):
 
     def setUp(self):
@@ -908,3 +1096,24 @@ class TestConvertDtype(TestCase):
         match = (value, np.bool_)
         self.assertTupleEqual(ret, match)
         self.assertIs(type(ret[0]), match[1])
+
+    def test_override_type_int_restrict_precision(self):
+        spec = DatasetSpec('an example dataset', 'int8', name='data')
+        res = ObjectMapper.convert_dtype(spec, 1, 'int64')
+        self.assertTupleEqual(res, (np.int64(1), np.int64))
+
+    def test_override_type_numeric_to_uint(self):
+        spec = DatasetSpec('an example dataset', 'numeric', name='data')
+        res = ObjectMapper.convert_dtype(spec, 1, 'uint8')
+        self.assertTupleEqual(res, (np.uint32(1), np.uint32))
+
+    def test_override_type_numeric_to_uint_list(self):
+        spec = DatasetSpec('an example dataset', 'numeric', name='data')
+        res = ObjectMapper.convert_dtype(spec, (1, 2, 3), 'uint8')
+        np.testing.assert_array_equal(res[0], np.uint32((1, 2, 3)))
+        self.assertEqual(res[1], np.uint32)
+
+    def test_override_type_none_to_bool(self):
+        spec = DatasetSpec('an example dataset', None, name='data')
+        res = ObjectMapper.convert_dtype(spec, True, 'bool')
+        self.assertTupleEqual(res, (True, np.bool_))
