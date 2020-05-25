@@ -19,18 +19,18 @@ class Bar(Container):
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
-            {'name': 'attr4', 'type': bool, 'doc': 'a fourth attribute', 'default': True},
+            {'name': 'attr5', 'type': bool, 'doc': 'a fourth attribute', 'default': True},
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
             {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'a group', 'default': list()})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3, attr4, foo, bars = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
+        name, data, attr1, attr2, attr3, attr5, foo, bars = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
                                                                     'attr4', 'foo', 'bars', kwargs)
         super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
         self.__attr2 = attr2
         self.__attr3 = attr3
-        self.__attr4 = attr4
+        self.__attr5 = attr5
         self.__foo = foo
         if self.__foo is not None and self.__foo.parent is None:
             self.__foo.parent = self
@@ -40,11 +40,11 @@ class Bar(Container):
                 b.parent = self
 
     def __eq__(self, other):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'bars')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr5', 'foo', 'bars')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     def __str__(self):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'bars')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr5', 'foo', 'bars')
         return ','.join('%s=%s' % (a, getattr(self, a)) for a in attrs)
 
     @property
@@ -68,8 +68,8 @@ class Bar(Container):
         return self.__attr3
 
     @property
-    def attr4(self):
-        return self.__attr4
+    def attr5(self):
+        return self.__attr5
 
     @property
     def foo(self):
@@ -259,7 +259,7 @@ class TestDynamicContainer(TestCase):
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
         received_args = set()
         for x in get_docval(cls.__init__):
-            if x['name'] != 'foo':
+            if x['name'] != 'foo' and x['name'] != 'attr5' and x['name'] != 'bars':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
                     self.assertNotIn('default', x)
@@ -281,7 +281,7 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another example float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr5', 'foo', 'bars'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
@@ -609,7 +609,7 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             doc='A test group specification with a data type',
             data_type_inc='Bar',
             quantity='*',
-            attributes=[AttributeSpec('attr4', 'an example boolean attribute', 'bool')]
+            attributes=[AttributeSpec('attr5', 'an example boolean attribute', 'bool')]
         )
         # self.bar_ext_spec = GroupSpec(
         #     doc='A test group specification with a data type',
@@ -653,7 +653,7 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             data=list(range(10)),
             attr1='value_inner_inner',
             attr2=10,
-            attr4=False
+            attr5=False
         )
         # ext_bar1_inst = Bar(
         #     name='my_bar',
@@ -677,7 +677,7 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             )},
             attributes={'attr1': 'value_inner_inner',
                         'attr2': 10,
-                        'attr4': False,
+                        'attr5': False,
                         'data_type': 'Bar',
                         'namespace': CORE_NAMESPACE,
                         'object_id': ext_bar2_inst.object_id}
@@ -704,7 +704,6 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
         bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
         bar_holder_mapper.map_spec('bars', bar_group_spec)
         builder = bar_holder_mapper.build(bar_holder_inst, self.manager)
-        breakpoint()
         self.assertDictEqual(builder, expected)
         # TODO builder missing extended attributes
 
