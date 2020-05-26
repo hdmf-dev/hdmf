@@ -527,6 +527,52 @@ class TestDocValidator(TestCase):
         self.assertEqual(res, np.bool_(True))
         self.assertIsInstance(res, np.bool_)
 
+    def test_uint_type(self):
+        """Test that docval type specification of np.uint32 works as expected."""
+        @docval({'name': 'arg1', 'type': np.uint32, 'doc': 'this is a uint'})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        res = method(self, arg1=np.uint32(1))
+        self.assertEqual(res, np.uint32(1))
+        self.assertIsInstance(res, np.uint32)
+
+        msg = ("TestDocValidator.test_uint_type.<locals>.method: incorrect type for 'arg1' (got 'uint8', expected "
+               "'uint32')")
+        with self.assertRaisesWith(TypeError, msg):
+            method(self, arg1=np.uint8(1))
+
+        msg = ("TestDocValidator.test_uint_type.<locals>.method: incorrect type for 'arg1' (got 'uint64', expected "
+               "'uint32')")
+        with self.assertRaisesWith(TypeError, msg):
+            method(self, arg1=np.uint64(1))
+
+    def test_uint_string_type(self):
+        """Test that docval type specification of string 'uint' matches np.uint of all available precisions."""
+        @docval({'name': 'arg1', 'type': 'uint', 'doc': 'this is a uint'})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        res = method(self, arg1=np.uint(1))
+        self.assertEqual(res, np.uint(1))
+        self.assertIsInstance(res, np.uint)
+
+        res = method(self, arg1=np.uint8(1))
+        self.assertEqual(res, np.uint8(1))
+        self.assertIsInstance(res, np.uint8)
+
+        res = method(self, arg1=np.uint16(1))
+        self.assertEqual(res, np.uint16(1))
+        self.assertIsInstance(res, np.uint16)
+
+        res = method(self, arg1=np.uint32(1))
+        self.assertEqual(res, np.uint32(1))
+        self.assertIsInstance(res, np.uint32)
+
+        res = method(self, arg1=np.uint64(1))
+        self.assertEqual(res, np.uint64(1))
+        self.assertIsInstance(res, np.uint64)
+
     def test_allow_positional_warn(self):
         @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool'}, allow_positional=AllowPositional.WARNING)
         def method(self, **kwargs):
@@ -587,6 +633,20 @@ class TestDocValidator(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             method(self, 3)
 
+    def test_enum_uint(self):
+        """Test that the basic usage of an enum check on uints works"""
+        @docval({'name': 'arg1', 'type': np.uint, 'doc': 'an arg', 'enum': (np.uint(1), np.uint(2))})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        self.assertEqual(method(self, np.uint(1)), np.uint(1))
+        self.assertEqual(method(self, np.uint(2)), np.uint(2))
+
+        msg = ("TestDocValidator.test_enum_uint.<locals>.method: "
+               "forbidden value for 'arg1' (got 3, expected (1, 2))")
+        with self.assertRaisesWith(ValueError, msg):
+            method(self, np.uint(3))
+
     def test_enum_float(self):
         """Test that the basic usage of an enum check on floats works"""
         @docval({'name': 'arg1', 'type': float, 'doc': 'an arg', 'enum': (3.14, )})
@@ -602,7 +662,8 @@ class TestDocValidator(TestCase):
 
     def test_enum_bool_mixed(self):
         """Test that the basic usage of an enum check on a tuple of bool, int, float, and string works"""
-        @docval({'name': 'arg1', 'type': (bool, int, float, str), 'doc': 'an arg', 'enum': (True, 1, 1.0, 'true')})
+        @docval({'name': 'arg1', 'type': (bool, int, float, str, np.uint), 'doc': 'an arg',
+                 'enum': (True, 1, 1.0, 'true', np.uint(1))})
         def method(self, **kwargs):
             return popargs('arg1', kwargs)
 
@@ -610,9 +671,10 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 1), 1)
         self.assertEqual(method(self, 1.0), 1.0)
         self.assertEqual(method(self, 'true'), 'true')
+        self.assertEqual(method(self, np.uint(1)), np.uint(1))
 
         msg = ("TestDocValidator.test_enum_bool_mixed.<locals>.method: "
-               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true'))")
+               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true', 1))")
         with self.assertRaisesWith(ValueError, msg):
             method(self, 0)
 

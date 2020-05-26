@@ -20,6 +20,8 @@ FLAGS = {
 
 class DtypeHelper():
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
+    # this is also used in the validator
+    # if this list is updated, also update hdmf.build.manager.TypeMap._spec_dtype_map
     primary_dtype_synonyms = {
             'float': ["float", "float32"],
             'double': ["double", "float64"],
