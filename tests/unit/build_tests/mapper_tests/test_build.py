@@ -10,11 +10,13 @@ from hdmf.testing import TestCase
 from tests.unit.utils import CORE_NAMESPACE
 
 
+# TODO: test build of extended group with attr that modifies dtype (commented out below), shape, value, etc.
+
 class Bar(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
             {'name': 'attr1', 'type': str, 'doc': 'a string attribute'},
-            {'name': 'attr2', 'type': ('int', 'float'), 'doc': 'a numeric attribute', 'default': None},
+            {'name': 'attr2', 'type': ('int', 'float', 'uint'), 'doc': 'a numeric attribute', 'default': None},
             {'name': 'ext_attr', 'type': bool, 'doc': 'a boolean attribute', 'default': True})
     def __init__(self, **kwargs):
         name, attr1, attr2, ext_attr = getargs('name', 'attr1', 'attr2', 'ext_attr', kwargs)
@@ -45,7 +47,7 @@ class BarHolder(Container):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
             {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'bars', 'default': list()})
     def __init__(self, **kwargs):
-        name, bar_ext, bars = getargs('name', 'bar_ext', 'bars', kwargs)
+        name, bars = getargs('name', 'bars', kwargs)
         super().__init__(name=name)
         self.__bars = bars
         for b in bars:
@@ -77,7 +79,7 @@ class ExtBarMapper(ObjectMapper):
         return super().get_attr_value(**kwargs)
 
 
-class ObjectMapperExtAttrsMixin(TestCase, metaclass=ABCMeta):
+class BuildExtAttrsMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         self.setUpBarSpec()
@@ -123,14 +125,12 @@ class ObjectMapperExtAttrsMixin(TestCase, metaclass=ABCMeta):
         pass
 
 
-class TestObjectMapperNewExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
+class TestBuildNewExtAttrs(BuildExtAttrsMixin, TestCase):
     """
-    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
-    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
-    change or add attributes to the spec of A. This test ensures that new attributes in A' are handled properly.
-
-    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
-    A' objects.
+    If the spec defines data_type A (Bar) using 'data_type_def' and defines another data_type B (BarHolder) that
+    includes A using 'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'.
+    The spec of A' can change or add attributes to the spec of A. This test ensures that *new attributes* in A' are
+    handled properly.
     """
 
     def setUpBarHolderSpec(self):
@@ -153,7 +153,7 @@ class TestObjectMapperNewExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
 
     def test_build_new_attr(self):
         """
-        Test build of BarHolder which can contain multiple extended Bar objects, each of which has a new attribute.
+        Test build of BarHolder which can contain multiple extended Bar objects, which have a new attribute.
         """
         ext_bar_inst = Bar(
             name='my_bar',
@@ -187,22 +187,17 @@ class TestObjectMapperNewExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
             },
         )
 
-        # use this object mapper to build the BarHolder
-        # bar_holder_mapper = ObjectMapper(self.bar_holder_spec)
-        # bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
-        # bar_holder_mapper.map_spec('bars', bar_group_spec)  # map BarHolder.bars to the included extended bar types
+        # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
         builder = self.manager.build(bar_holder_inst, source='test.h5')
         self.assertDictEqual(builder, expected)
 
 
-class TestObjectMapperModExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
+class TestBuildModExtAttrs(BuildExtAttrsMixin, TestCase):
     """
-    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
-    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
-    change or add attributes to the spec of A. This test ensures that modified attributes in A' are handled properly.
-
-    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
-    A' objects.
+    If the spec defines data_type A (Bar) using 'data_type_def' and defines another data_type B (BarHolder) that
+    includes A using 'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'.
+    The spec of A' can change or add attributes to the spec of A. This test ensures that *modified attributes* in A' are
+    handled properly.
     """
 
     def setUpBarHolderSpec(self):
@@ -225,7 +220,7 @@ class TestObjectMapperModExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
 
     def test_build_mod_attr(self):
         """
-        Test build of BarHolder which can contain multiple extended Bar objects, each of which has a modified attr2.
+        Test build of BarHolder which can contain multiple extended Bar objects, which have a modified attr2.
         """
         ext_bar_inst = Bar(
             name='my_bar',
@@ -254,47 +249,49 @@ class TestObjectMapperModExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
                 'data_type': 'BarHolder',
                 'namespace': CORE_NAMESPACE,
                 'object_id': bar_holder_inst.object_id,
-            }
+            },
         )
 
         # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
         builder = self.manager.build(bar_holder_inst, source='test.h5')
         self.assertDictEqual(builder, expected)
 
-    def test_build_mod_attr_mismatch(self):
-        """
-        Test build of BarHolder which can contain multiple extended Bar objects, each of which has a modified attr2.
-        """
-        ext_bar_inst = Bar(
-            name='my_bar',
-            attr1='a string',
-            attr2=10.1,  # pass float instead of int
-        )
-        bar_holder_inst = BarHolder(
-            name='my_bar_holder',
-            bars=[ext_bar_inst],
-        )
-
-        expected_inner = GroupBuilder(
-            name='my_bar',
-            attributes={
-                'attr1': 'a string',
-                'attr2': 10.1,  # <-- this should be an int
-                'data_type': 'Bar',
-                'namespace': CORE_NAMESPACE,
-                'object_id': ext_bar_inst.object_id,
-            }
-        )
-        expected = GroupBuilder(
-            name='my_bar_holder',
-            groups={'my_bar': expected_inner},
-        )
-
-        # use this object mapper to build the BarHolder
-        bar_holder_mapper = ObjectMapper(self.bar_holder_spec)
-        bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
-        bar_holder_mapper.map_spec('bars', bar_group_spec)  # map BarHolder.bars to the included extended bar types
-        builder = self.manager.build(bar_holder_inst, )
-        self.assertDictEqual(builder, expected)
-        breakpoint()
-        print('hi')
+    # def test_build_mod_attr_wrong_type(self):
+    #     """
+    #     Test build of BarHolder which contains a Bar that has the wrong dtype for an attr.
+    #     """
+    #     ext_bar_inst = Bar(
+    #         name='my_bar',
+    #         attr1='a string',
+    #         attr2=10.1,  # spec specifies attr2 should be an int for Bars within BarHolder
+    #     )
+    #     bar_holder_inst = BarHolder(
+    #         name='my_bar_holder',
+    #         bars=[ext_bar_inst],
+    #     )
+    #
+    #     expected_inner = GroupBuilder(
+    #         name='my_bar',
+    #         attributes={
+    #             'attr1': 'a string',
+    #             'attr2': 10,
+    #             'data_type': 'Bar',
+    #             'namespace': CORE_NAMESPACE,
+    #             'object_id': ext_bar_inst.object_id,
+    #         }
+    #     )
+    #     expected = GroupBuilder(
+    #         name='my_bar_holder',
+    #         groups={'my_bar': expected_inner},
+    #         attributes={
+    #             'data_type': 'BarHolder',
+    #             'namespace': CORE_NAMESPACE,
+    #             'object_id': bar_holder_inst.object_id,
+    #         },
+    #     )
+    #
+    #     # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
+    #
+    #     # TODO build should raise a conversion warning for converting 10.1 (float64) to np.int64
+    #     builder = self.manager.build(bar_holder_inst, source='test.h5')
+    #     self.assertDictEqual(builder, expected)
