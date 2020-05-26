@@ -634,31 +634,60 @@ def __googledoc(func, validator, returns=None, rtype=None):
 
 
 def getargs(*argnames):
-    '''getargs(*argnames, argdict)
-    Convenience function to retrieve arguments from a dictionary in batch
-    '''
+    """getargs(*argnames, argdict)
+    Convenience function to retrieve arguments from a dictionary in batch.
+
+    The last argument should be a dictionary, and the other arguments should be the keys (argument names) for which
+    to retrieve the values.
+
+    :raises ValueError: if a argument name is not found in the dictionary or there is only one argument passed to this
+        function or the last argument is not a dictionary
+    :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
+    """
     if len(argnames) < 2:
         raise ValueError('Must supply at least one key and a dict')
     if not isinstance(argnames[-1], dict):
-        raise ValueError('last argument must be dict')
+        raise ValueError('Last argument must be a dict')
     kwargs = argnames[-1]
     if len(argnames) == 2:
+        if argnames[0] not in kwargs:
+            raise ValueError("Argument not found in dict: '%s'" % argnames[0])
         return kwargs.get(argnames[0])
-    return [kwargs.get(arg) for arg in argnames[:-1]]
+    ret = []
+    for arg in argnames[:-1]:
+        if arg not in kwargs:
+            raise ValueError("Argument not found in dict: '%s'" % arg)
+        ret.append(kwargs.get(arg))
+    return ret
 
 
 def popargs(*argnames):
-    '''popargs(*argnames, argdict)
-    Convenience function to retrieve and remove arguments from a dictionary in batch
-    '''
+    """popargs(*argnames, argdict)
+    Convenience function to retrieve and remove arguments from a dictionary in batch.
+
+    The last argument should be a dictionary, and the other arguments should be the keys (argument names) for which
+    to retrieve the values.
+
+    :raises ValueError: if a argument name is not found in the dictionary or there is only one argument passed to this
+        function or the last argument is not a dictionary
+    :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
+    """
     if len(argnames) < 2:
         raise ValueError('Must supply at least one key and a dict')
     if not isinstance(argnames[-1], dict):
-        raise ValueError('last argument must be dict')
+        raise ValueError('Last argument must be a dict')
     kwargs = argnames[-1]
     if len(argnames) == 2:
-        return kwargs.pop(argnames[0])
-    return [kwargs.pop(arg) for arg in argnames[:-1]]
+        try:
+            ret = kwargs.pop(argnames[0])
+        except KeyError as ke:
+            raise ValueError('Argument not found in dict: %s' % str(ke))
+        return ret
+    try:
+        ret = [kwargs.pop(arg) for arg in argnames[:-1]]
+    except KeyError as ke:
+        raise ValueError('Argument not found in dict: %s' % str(ke))
+    return ret
 
 
 class ExtenderMeta(ABCMeta):
