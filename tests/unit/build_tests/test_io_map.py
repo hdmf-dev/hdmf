@@ -21,11 +21,10 @@ class Bar(Container):
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
             {'name': 'attr5', 'type': bool, 'doc': 'a fourth attribute', 'default': True},
-            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
-            {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'a group', 'default': list()})
+            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3, attr5, foo, bars = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
-                                                                    'attr5', 'foo', 'bars', kwargs)
+        name, data, attr1, attr2, attr3, attr5, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'attr5',
+                                                              'foo', kwargs)
         super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
@@ -35,10 +34,6 @@ class Bar(Container):
         self.__foo = foo
         if self.__foo is not None and self.__foo.parent is None:
             self.__foo.parent = self
-        self.__bars = bars
-        for b in bars:
-            if b is not None and b.parent is None:
-                b.parent = self
 
     def __eq__(self, other):
         attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr5', 'foo', 'bars')
@@ -75,10 +70,6 @@ class Bar(Container):
     @property
     def foo(self):
         return self.__foo
-
-    @property
-    def bars(self):
-        return self.__bars
 
 
 class Foo(Container):
@@ -538,64 +529,29 @@ class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
         self.assertSetEqual(keys, expected)
 
 
-class BarHolder(Container):
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
-            {'name': 'bar_ext', 'type': Bar, 'doc': 'a bar', 'default': None},
-            {'name': 'bars', 'type': ('data', 'array_data'), 'doc': 'bars', 'default': list()})
-    def __init__(self, **kwargs):
-        name, bar_ext, bars = getargs('name', 'bar_ext', 'bars', kwargs)
-        super().__init__(name=name)
-        self.__bar_ext = bar_ext
-        self.__bars = bars
-        for b in bars:
-            if b is not None and b.parent is None:
-                b.parent = self
-
-    @property
-    def bar_ext(self):
-        return self.__bar_ext
-
-    @property
-    def bars(self):
-        return self.__bars
-
-
-class BarExtMapper(ObjectMapper):
-
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": Bar, "doc": "the container to get the attribute value from"},
-            {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
-            returns='the value of the attribute')
-    def get_attr_value(self, **kwargs):
-        ''' Get the value of the attribute corresponding to this spec from the given container '''
-        spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
-
-        breakpoint()
-        # handle custom mapping of container Units.waveform_rate -> spec Units.waveform_mean.sampling_rate
-        if isinstance(container.parent, BarHolder):
-            if spec.name == 'attr5':
-                return container.attr5
-        return super().get_attr_value(**kwargs)
-
-
-class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
-    """
-    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
-    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
-    change or add attributes to the spec of A. This test ensures that the new attributes are added properly.
-
-    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
-    A' objects. A' adds an attribute 'attr5' to the spec of A.
-    """
+class ObjectMapperExtAttrsMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
-        super().setUp()
+        self.setUpBarSpec()
         self.setUpBarHolderSpec()
-        self.spec_catalog.register_spec(self.bar_holder_spec, 'test.yaml')
-        self.type_map.register_container_type(CORE_NAMESPACE, 'BarHolder', BarHolder)
-        self.type_map.register_map(Bar, BarExtMapper)  # override default ObjectMapper set earlier
-        self.type_map.register_map(BarHolder, ObjectMapper)
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        spec_catalog.register_spec(self.bar_holder_spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        type_map.register_container_type(CORE_NAMESPACE, 'BarHolder', BarHolder)
+        type_map.register_map(Bar, BarExtMapper)
+        type_map.register_map(BarHolder, ObjectMapper)
+        self.manager = BuildManager(type_map)
 
     def setUpBarSpec(self):
         data_dset = DatasetSpec(
@@ -608,19 +564,34 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             dtype='text',
             doc='an example string attribute',
         )
+        attr2_attr = AttributeSpec(
+            name='attr2',
+            dtype='int',
+            doc='an example int attribute',
+        )
         self.bar_spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Bar',
             datasets=[data_dset],
-            attributes=[attr1_attr],
+            attributes=[attr1_attr, attr2_attr],
         )
 
+    @abstractmethod
     def setUpBarHolderSpec(self):
-        """
-        BarHolder may contain the named bar_ext group which extends Bar with an additional subgroup of any number
-        of extended Bar objects. Both extended Bar objects have an additional attribute.
+        pass
 
-        """
+
+class TestObjectMapperNewExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
+    """
+    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
+    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
+    change or add attributes to the spec of A. This test ensures that new attributes in A' are handled properly.
+
+    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
+    A' objects.
+    """
+
+    def setUpBarHolderSpec(self):
         attr5_attr = AttributeSpec(
             name='attr5',
             dtype='bool',
@@ -638,7 +609,10 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
             groups=[bar_ext_no_name_spec],
         )
 
-    def test_build_bar_holder(self):
+    def test_build_new_attr(self):
+        """
+        Test build of BarHolder which can contain multiple extended Bar objects, each of which has a new attribute.
+        """
         ext_bar2_inst = Bar(
             name='my_bar',
             data=list(range(10)),
@@ -648,32 +622,113 @@ class TestObjectMapperExtAttrs(ObjectMapperMixin, TestCase):
         )
         bar_holder_inst = BarHolder(
             name='my_bar_holder',
-            bars=[ext_bar2_inst]
+            bars=[ext_bar2_inst],
         )
 
         expected_inner = GroupBuilder(
             name='my_bar',
-            datasets={'data': DatasetBuilder(
-                name='data',
-                data=list(range(10))
-            )},
-            attributes={'attr1': 'a string',
-                        'attr2': 10,
-                        'attr5': False,
-                        'data_type': 'Bar',
-                        'namespace': CORE_NAMESPACE,
-                        'object_id': ext_bar2_inst.object_id}
+            datasets={
+                'data': DatasetBuilder(
+                    name='data',
+                    data=list(range(10)),
+                )
+            },
+            attributes={
+                'attr1': 'a string',
+                'attr2': 10,
+                'attr5': False,
+                'data_type': 'Bar',
+                'namespace': CORE_NAMESPACE,
+                'object_id': ext_bar2_inst.object_id,
+            }
         )
         expected = GroupBuilder(
             name='my_bar_holder',
-            groups={'my_bar': expected_inner})
+            groups={'my_bar': expected_inner},
+        )
 
+        # use this object mapper to build the BarHolder
         bar_holder_mapper = ObjectMapper(self.bar_holder_spec)
         bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
-        breakpoint()
         bar_holder_mapper.map_spec('bars', bar_group_spec)  # map BarHolder.bars to the included extended bar types
         builder = bar_holder_mapper.build(bar_holder_inst, self.manager)
-        breakpoint()
+        self.assertDictEqual(builder, expected)
+
+
+class TestObjectMapperModExtAttrs(ObjectMapperExtAttrsMixin, TestCase):
+    """
+    If the spec defines data_type A using 'data_type_def' and defines another data_type B that includes A using
+    'data_type_inc', then the included A spec is an extended (or refined) spec of A - call it A'. The spec of A' can
+    change or add attributes to the spec of A. This test ensures that modified attributes in A' are handled properly.
+
+    The Bar type and class is the type A, and the BarHolder type and class is the type B which can contain multiple
+    A' objects.
+
+    TODO: test building an extended spec with a modified shape and a narrower dtype
+    """
+
+    def setUpBarHolderSpec(self):
+        attr1_attr = AttributeSpec(
+            name='attr1',
+            dtype='text',
+            value='fixed',
+            doc='An override text attribute',
+        )
+        bar_ext_no_name_spec = GroupSpec(
+            doc='A Bar extended with attribute attr5',
+            data_type_inc='Bar',
+            quantity='*',
+            attributes=[attr5_attr],
+        )
+        self.bar_holder_spec = GroupSpec(
+            doc='A container of multiple extended Bar objects',
+            data_type_def='BarHolder',
+            groups=[bar_ext_no_name_spec],
+        )
+
+    def test_build_new_attr(self):
+        """
+        Test build of BarHolder which can contain multiple extended Bar objects, each of which has a new attribute.
+        """
+        ext_bar2_inst = Bar(
+            name='my_bar',
+            data=list(range(10)),
+            attr1='a string',
+            attr2=10,
+            attr5=False,
+        )
+        bar_holder_inst = BarHolder(
+            name='my_bar_holder',
+            bars=[ext_bar2_inst],
+        )
+
+        expected_inner = GroupBuilder(
+            name='my_bar',
+            datasets={
+                'data': DatasetBuilder(
+                    name='data',
+                    data=list(range(10)),
+                )
+            },
+            attributes={
+                'attr1': 'a string',
+                'attr2': 10,
+                'attr5': False,
+                'data_type': 'Bar',
+                'namespace': CORE_NAMESPACE,
+                'object_id': ext_bar2_inst.object_id,
+            }
+        )
+        expected = GroupBuilder(
+            name='my_bar_holder',
+            groups={'my_bar': expected_inner},
+        )
+
+        # use this object mapper to build the BarHolder
+        bar_holder_mapper = ObjectMapper(self.bar_holder_spec)
+        bar_group_spec = bar_holder_mapper.spec.get_data_type('Bar')
+        bar_holder_mapper.map_spec('bars', bar_group_spec)  # map BarHolder.bars to the included extended bar types
+        builder = bar_holder_mapper.build(bar_holder_inst, self.manager)
         self.assertDictEqual(builder, expected)
 
 
