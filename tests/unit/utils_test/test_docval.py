@@ -1,6 +1,6 @@
 import numpy as np
 
-from hdmf.utils import docval, fmt_docval_args, get_docval, popargs, AllowPositional
+from hdmf.utils import docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional
 from hdmf.testing import TestCase
 
 
@@ -527,6 +527,52 @@ class TestDocValidator(TestCase):
         self.assertEqual(res, np.bool_(True))
         self.assertIsInstance(res, np.bool_)
 
+    def test_uint_type(self):
+        """Test that docval type specification of np.uint32 works as expected."""
+        @docval({'name': 'arg1', 'type': np.uint32, 'doc': 'this is a uint'})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        res = method(self, arg1=np.uint32(1))
+        self.assertEqual(res, np.uint32(1))
+        self.assertIsInstance(res, np.uint32)
+
+        msg = ("TestDocValidator.test_uint_type.<locals>.method: incorrect type for 'arg1' (got 'uint8', expected "
+               "'uint32')")
+        with self.assertRaisesWith(TypeError, msg):
+            method(self, arg1=np.uint8(1))
+
+        msg = ("TestDocValidator.test_uint_type.<locals>.method: incorrect type for 'arg1' (got 'uint64', expected "
+               "'uint32')")
+        with self.assertRaisesWith(TypeError, msg):
+            method(self, arg1=np.uint64(1))
+
+    def test_uint_string_type(self):
+        """Test that docval type specification of string 'uint' matches np.uint of all available precisions."""
+        @docval({'name': 'arg1', 'type': 'uint', 'doc': 'this is a uint'})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        res = method(self, arg1=np.uint(1))
+        self.assertEqual(res, np.uint(1))
+        self.assertIsInstance(res, np.uint)
+
+        res = method(self, arg1=np.uint8(1))
+        self.assertEqual(res, np.uint8(1))
+        self.assertIsInstance(res, np.uint8)
+
+        res = method(self, arg1=np.uint16(1))
+        self.assertEqual(res, np.uint16(1))
+        self.assertIsInstance(res, np.uint16)
+
+        res = method(self, arg1=np.uint32(1))
+        self.assertEqual(res, np.uint32(1))
+        self.assertIsInstance(res, np.uint32)
+
+        res = method(self, arg1=np.uint64(1))
+        self.assertEqual(res, np.uint64(1))
+        self.assertIsInstance(res, np.uint64)
+
     def test_allow_positional_warn(self):
         @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool'}, allow_positional=AllowPositional.WARNING)
         def method(self, **kwargs):
@@ -587,6 +633,20 @@ class TestDocValidator(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             method(self, 3)
 
+    def test_enum_uint(self):
+        """Test that the basic usage of an enum check on uints works"""
+        @docval({'name': 'arg1', 'type': np.uint, 'doc': 'an arg', 'enum': (np.uint(1), np.uint(2))})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        self.assertEqual(method(self, np.uint(1)), np.uint(1))
+        self.assertEqual(method(self, np.uint(2)), np.uint(2))
+
+        msg = ("TestDocValidator.test_enum_uint.<locals>.method: "
+               "forbidden value for 'arg1' (got 3, expected (1, 2))")
+        with self.assertRaisesWith(ValueError, msg):
+            method(self, np.uint(3))
+
     def test_enum_float(self):
         """Test that the basic usage of an enum check on floats works"""
         @docval({'name': 'arg1', 'type': float, 'doc': 'an arg', 'enum': (3.14, )})
@@ -602,7 +662,8 @@ class TestDocValidator(TestCase):
 
     def test_enum_bool_mixed(self):
         """Test that the basic usage of an enum check on a tuple of bool, int, float, and string works"""
-        @docval({'name': 'arg1', 'type': (bool, int, float, str), 'doc': 'an arg', 'enum': (True, 1, 1.0, 'true')})
+        @docval({'name': 'arg1', 'type': (bool, int, float, str, np.uint), 'doc': 'an arg',
+                 'enum': (True, 1, 1.0, 'true', np.uint(1))})
         def method(self, **kwargs):
             return popargs('arg1', kwargs)
 
@@ -610,9 +671,10 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 1), 1)
         self.assertEqual(method(self, 1.0), 1.0)
         self.assertEqual(method(self, 'true'), 'true')
+        self.assertEqual(method(self, np.uint(1)), np.uint(1))
 
         msg = ("TestDocValidator.test_enum_bool_mixed.<locals>.method: "
-               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true'))")
+               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true', 1))")
         with self.assertRaisesWith(ValueError, msg):
             method(self, 0)
 
@@ -758,3 +820,143 @@ class TestDocValidatorChain(TestCase):
                    r"\(expected shape '\(None, 2\)'\)")
         with self.assertRaisesRegex(ValueError, err_msg):
             MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
+
+
+class TestGetargs(TestCase):
+    """Test the getargs function and its error conditions."""
+
+    def test_one_arg_first(self):
+        kwargs = {'a': 1, 'b': None}
+        expected_kwargs = kwargs.copy()
+        res = getargs('a', kwargs)
+        self.assertEqual(res, 1)
+        self.assertDictEqual(kwargs, expected_kwargs)
+
+    def test_one_arg_second(self):
+        kwargs = {'a': 1, 'b': None}
+        expected_kwargs = kwargs.copy()
+        res = getargs('b', kwargs)
+        self.assertEqual(res, None)
+        self.assertDictEqual(kwargs, expected_kwargs)
+
+    def test_many_args_get_some(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        expected_kwargs = kwargs.copy()
+
+        res = getargs('a', 'c', kwargs)
+        self.assertListEqual(res, [1, 3])
+        self.assertDictEqual(kwargs, expected_kwargs)
+
+    def test_many_args_get_all(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        expected_kwargs = kwargs.copy()
+
+        res = getargs('a', 'b', 'c', kwargs)
+        self.assertListEqual(res, [1, None, 3])
+        self.assertDictEqual(kwargs, expected_kwargs)
+
+    def test_many_args_reverse(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        expected_kwargs = kwargs.copy()
+        res = getargs('c', 'b', 'a', kwargs)
+        self.assertListEqual(res, [3, None, 1])
+        self.assertDictEqual(kwargs, expected_kwargs)
+
+    def test_many_args_unpack(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        expected_kwargs = kwargs.copy()
+        res1, res2, res3 = getargs('a', 'b', 'c', kwargs)
+        self.assertEqual(res1, 1)
+        self.assertEqual(res2, None)
+        self.assertEqual(res3, 3)
+        self.assertDictEqual(kwargs, expected_kwargs)
+
+    def test_too_few_args(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = 'Must supply at least one key and a dict'
+        with self.assertRaisesWith(ValueError, msg):
+            getargs(kwargs)
+
+    def test_last_arg_not_dict(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = 'Last argument must be a dict'
+        with self.assertRaisesWith(ValueError, msg):
+            getargs(kwargs, 'a')
+
+    def test_arg_not_found_one_arg(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = "Argument not found in dict: 'c'"
+        with self.assertRaisesWith(ValueError, msg):
+            getargs('c', kwargs)
+
+    def test_arg_not_found_many_args(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = "Argument not found in dict: 'c'"
+        with self.assertRaisesWith(ValueError, msg):
+            getargs('a', 'c', kwargs)
+
+
+class TestPopargs(TestCase):
+    """Test the popargs function and its error conditions."""
+
+    def test_one_arg_first(self):
+        kwargs = {'a': 1, 'b': None}
+        res = popargs('a', kwargs)
+        self.assertEqual(res, 1)
+        self.assertDictEqual(kwargs, {'b': None})
+
+    def test_one_arg_second(self):
+        kwargs = {'a': 1, 'b': None}
+        res = popargs('b', kwargs)
+        self.assertEqual(res, None)
+        self.assertDictEqual(kwargs, {'a': 1})
+
+    def test_many_args_pop_some(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs('a', 'c', kwargs)
+        self.assertListEqual(res, [1, 3])
+        self.assertDictEqual(kwargs, {'b': None})
+
+    def test_many_args_pop_all(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs('a', 'b', 'c', kwargs)
+        self.assertListEqual(res, [1, None, 3])
+        self.assertDictEqual(kwargs, {})
+
+    def test_many_args_reverse(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs('c', 'b', 'a', kwargs)
+        self.assertListEqual(res, [3, None, 1])
+        self.assertDictEqual(kwargs, {})
+
+    def test_many_args_unpack(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res1, res2, res3 = popargs('a', 'b', 'c', kwargs)
+        self.assertEqual(res1, 1)
+        self.assertEqual(res2, None)
+        self.assertEqual(res3, 3)
+        self.assertDictEqual(kwargs, {})
+
+    def test_too_few_args(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = 'Must supply at least one key and a dict'
+        with self.assertRaisesWith(ValueError, msg):
+            popargs(kwargs)
+
+    def test_last_arg_not_dict(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = 'Last argument must be a dict'
+        with self.assertRaisesWith(ValueError, msg):
+            popargs(kwargs, 'a')
+
+    def test_arg_not_found_one_arg(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = "Argument not found in dict: 'c'"
+        with self.assertRaisesWith(ValueError, msg):
+            popargs('c', kwargs)
+
+    def test_arg_not_found_many_args(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = "Argument not found in dict: 'c'"
+        with self.assertRaisesWith(ValueError, msg):
+            popargs('a', 'c', kwargs)

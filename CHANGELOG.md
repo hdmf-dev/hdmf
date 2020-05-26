@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 1.6.2 (May 18, 2020)
+## HDMF 1.6.2 (May 26, 2020)
 
 ### Internal improvements:
 - Update MacOS in CI. @rly (#310)
@@ -17,12 +17,17 @@
 - Add logging of build and hdf5 write process. @rly (#336, #349)
 - Allow loading namespaces from h5py.File object not backed by file. @rly (#348)
 - Add CHANGELOG.md. @rly (#352)
+- Fix codecov reports. @rly (#362)
+- Make `getargs` raise an error if the argument name is not found. @rly (#365)
+- Improve `get_class` and `docval` support for uint. @rly (#361)
 
 ### Bug fixes:
 - Register new child types before new parent type for dynamic class generation. @rly (#322)
 - Raise warning not error when adding column with existing attr name. @rly (#324)
 - Add `__version__`. @rly (#345)
 - Only write a specific namespace version if it does not exist. @ajtritt (#346)
+- Fix documentation formatting for DynamicTable. @rly (#353)
+
 
 ## HDMF 1.6.1 (Mar. 2, 2020)
 
