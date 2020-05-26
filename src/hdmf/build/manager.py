@@ -378,6 +378,11 @@ class TypeMap:
         return deps
 
     # mapping from spec types to allowable python types for docval for fields during dynamic class generation
+    # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
+    # __init__ method that allows the types (int, np.int32, np.int64) for the corresponding field.
+    # passing an np.int16 would raise a docval error.
+    # passing an int64 to __init__ would result in the field storing the value as an int64 (and subsequently written
+    # as an int64). no upconversion or downconversion happens as a result of this map
     # see https://schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
     _spec_dtype_map = {
         'float32': (float, np.float32, np.float64),
