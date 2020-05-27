@@ -16,14 +16,14 @@ Types of Contributions
 Did you find a bug? or Do you intend to add a new feature or change an existing one?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* **Submit issues and requests using out `issue tracker <https://github.com/hdmf-dev/hdmf/issues>`_**
+* **Submit issues and requests** using our `issue tracker <https://github.com/hdmf-dev/hdmf/issues>`_
 
 * **Ensure the feature or change was not already reported** by searching on GitHub under `HDMF Issues <https://github.com/hdmf-dev/hdmf/issues>`_
 
 * If you are unable to find an open issue addressing the problem then open a new issue on the respective repository. Be sure to use our issue templates and include:
 
     * **brief and descriptive title**
-    * **clear description of the problem you are trying to solve***. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team community a better understanding for the reasons of changes and enables others to suggest solutions.
+    * **clear description of the problem you are trying to solve**. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team community a better understanding for the reasons of changes and enables others to suggest solutions.
     * **context** providing as much relevant information as possible and if available a **code sample** or an **executable test case** demonstrating the expected behavior and/or problem.
 
 * Be sure to select the appropriate labels (see :ref:`sec-issue-labels`) for your tickets so that they can be processed accordingly.
@@ -32,8 +32,8 @@ Did you find a bug? or Do you intend to add a new feature or change an existing 
 
 Did you write a patch that fixes a bug or implements a new feature?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-See the ``Contributing Patches and Changes`` section below for details.
 
+See the :ref:`sec-contributing` section below for details.
 
 Did you fix whitespace, format code, or make a purely cosmetic patch in source code?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,12 +45,10 @@ Do you have questions about HDMF?
 
 See our `hdmf-dev.github.io <https://hdmf-dev.github.io/>`_ website for details.
 
-
-Informal discussions between developers, users, and team?
+Informal discussions between developers and users?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The https://nwb-users.slack.com slack is currently used  mainly for internal discussions between developers, users, and teams.
-
+The https://nwb-users.slack.com slack is currently used for informal discussions between developers and users.
 
 .. _sec-contributing:
 
@@ -69,7 +67,7 @@ From your local copy directory, use the following commands.
 
 2) Make your changes.
 
-3) Push your feature branch to origin (i.e. github)
+3) Push your feature branch to origin (i.e. GitHub)
 
 .. code-block:: bash
 
@@ -124,25 +122,25 @@ Git Commit Message Styleguide
 Documentation Styleguide
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-All documentations is written in reStrcuturedText (RST) using Sphinx.
+All documentations is written in reStructuredText (RST) using Sphinx.
 
 Python Code Styleguide
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Python coding style is checked via ``flake8`` for automatic checking of PEP8 style during pull requets.
+Python coding style is checked via ``flake8`` for automatic checking of PEP8 style during pull requests.
 
 Endorsement
 -----------
 
-Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say  e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
+Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
 
-Licence and Copyright
+License and Copyright
 =======================
 
-See the `Readme <https://github.com/NeurodataWithoutBorders/pynwb#contributing>`_ and correspoding `licence <https://raw.githubusercontent.com/NeurodataWithoutBorders/pynwb/dev/license.txt>`_ files for details about the copyright and licence.
+See the `license <https://raw.githubusercontent.com/hdmf-dev/hdmf/dev/license.txt>`_ files for details about the copyright and license.
 
 As indicated in the HDMF license: *“You are under no obligation whatsoever to provide any bug fixes, patches, or upgrades to the features, functionality or performance of the source code ("Enhancements") to anyone; however, if you choose to make your Enhancements available either publicly, or directly to Lawrence Berkeley National Laboratory, without imposing a separate written license agreement for such Enhancements, then you hereby grant the following license: a non-exclusive, royalty-free perpetual license to install, use, modify, prepare derivative works, incorporate into other computer software, distribute, and sublicense such enhancements or derivative works thereof, in binary and source code form.”*
 
-Contributors to the HMDF code base are expected to use a permissive, non-copyleft open source license. Typically 3-clause BSD i used, but any compatible license is allowed, the MIT and Apache 2.0 licenses being good alternative choices. The GPL and other copyleft licenses are not allowed due to the consternation it generates across many organizations.
+Contributors to the HDMF code base are expected to use a permissive, non-copyleft open source license. Typically 3-clause BSD is used, but any compatible license is allowed, the MIT and Apache 2.0 licenses being good alternative choices. The GPL and other copyleft licenses are not allowed due to the consternation it generates across many organizations.
 
 Also, make sure that you are permitted to contribute code. Some organizations, even academic organizations, have agreements in place that discuss IP ownership in detail (i.e., address IP rights and ownership that you create while under the employ of the organization). These are typically signed documents that you looked at on your first day of work and then promptly forgot. We don’t want contributed code to be yanked later due to IP issues.

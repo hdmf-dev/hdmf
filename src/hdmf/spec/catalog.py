@@ -1,11 +1,11 @@
 from collections import OrderedDict
+import copy
 
 from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
-import copy
 
 
-class SpecCatalog(object):
+class SpecCatalog:
 
     def __init__(self):
         '''
@@ -60,6 +60,7 @@ class SpecCatalog(object):
         '''
         Return all registered specifications
         '''
+        # kwargs is not used here but is used by docval
         return tuple(self.__specs.keys())
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type of the spec to get the source file for'},
@@ -121,7 +122,8 @@ class SpecCatalog(object):
             while parent is not None:
                 hierarchy.append(parent)
                 parent = self.__parent_types.get(parent)
-            # store computed hierarchy for later
+            # store the computed hierarchy for data_type and all types in between it and
+            # the top of the hierarchy
             tmp_hier = tuple(hierarchy)
             ret = tmp_hier
             while len(tmp_hier) > 0:
@@ -167,16 +169,14 @@ class SpecCatalog(object):
         """
         For a given data type recursively find all the subtypes that inherit from it.
 
-        E.g., assume we have the following inheritance hierarchy:
+        E.g., assume we have the following inheritance hierarchy::
 
-        -BaseContainer--+-->AContainer--->ADContainer
-                        |
-                        +-->BContainer
+            -BaseContainer--+-->AContainer--->ADContainer
+                            |
+                            +-->BContainer
 
-
-        In this case the the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
-        for AContainer the subtypes would be (ADContainer) and for BContainer the list of subtypes
-        would be empty ().
+        In this case, the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
+        the subtypes of AContainer would be (ADContainer), and the subtypes of BContainer would be empty ().
         """
         data_type, recursive = getargs('data_type', 'recursive', kwargs)
         curr_spec = self.get_spec(data_type)

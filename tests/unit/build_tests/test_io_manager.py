@@ -1,17 +1,25 @@
-import unittest2 as unittest
-
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.testing import TestCase
 
-from abc import ABCMeta
-from six import with_metaclass
+from abc import ABCMeta, abstractmethod
 
-from tests.unit.test_utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 
 
-class TestBase(unittest.TestCase):
+class FooMapper(ObjectMapper):
+    """Maps nested 'attr2' attribute on dataset 'my_data' to Foo.attr2 in constructor and attribute map
+    """
+
+    def __init__(self, spec):
+        super().__init__(spec)
+        my_data_spec = spec.get_dataset('my_data')
+        self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
+
+
+class TestBase(TestCase):
 
     def setUp(self):
         self.foo_spec = GroupSpec('A test group specification with a data type',
@@ -32,12 +40,13 @@ class TestBase(unittest.TestCase):
             'a test namespace',
             CORE_NAMESPACE,
             [{'source': 'test.yaml'}],
+            version='0.1.0',
             catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        self.type_map.register_map(Foo, ObjectMapper)
+        self.type_map.register_map(Foo, FooMapper)
         self.manager = BuildManager(self.type_map)
 
 
@@ -53,7 +62,8 @@ class TestBuildManager(TestBase):
                     'my_data',
                     list(range(10)),
                     attributes={'attr2': 10})},
-            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo'})
+            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                        'object_id': container_inst.object_id})
         builder1 = self.manager.build(container_inst)
         self.assertDictEqual(builder1, expected)
 
@@ -66,7 +76,8 @@ class TestBuildManager(TestBase):
                     'my_data',
                     list(range(10)),
                     attributes={'attr2': 10})},
-            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo'})
+            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                        'object_id': container_inst.object_id})
         builder1 = self.manager.build(container_inst)
         builder2 = self.manager.build(container_inst)
         self.assertDictEqual(builder1, expected)
@@ -80,8 +91,8 @@ class TestBuildManager(TestBase):
                     'my_data',
                     list(range(10)),
                     attributes={'attr2': 10})},
-            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo'})
-        expected = Foo('my_foo', list(range(10)), 'value1', 10)  # noqa: F841
+            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                        'object_id': -1})
         container = self.manager.construct(builder)
         self.assertListEqual(container.my_data, list(range(10)))
         self.assertEqual(container.attr1, 'value1')
@@ -93,17 +104,17 @@ class TestBuildManager(TestBase):
                 'my_data',
                 list(range(10)),
                 attributes={'attr2': 10})},
-            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo'})
-        expected = Foo('my_foo', list(range(10)), 'value1', 10)  # noqa: F841
+            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                        'object_id': -1})
         container1 = self.manager.construct(builder)
         container2 = self.manager.construct(builder)
         self.assertIs(container1, container2)
 
 
-class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
+class NestedBaseMixin(metaclass=ABCMeta):
 
     def setUp(self):
-        super(TestNestedBase, self).setUp()
+        super().setUp()
         self.foo_bucket = FooBucket('test_foo_bucket', [
                             Foo('my_foo1', list(range(10)), 'value1', 10),
                             Foo('my_foo2', list(range(10, 20)), 'value2', 20)])
@@ -113,27 +124,35 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
                                         'my_data',
                                         list(range(10)),
                                         attributes={'attr2': 10})},
-                                    attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo'}),
+                                    attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                                                'object_id': self.foo_bucket.foos[0].object_id}),
             'my_foo2': GroupBuilder('my_foo2', datasets={'my_data':
                                                          DatasetBuilder(
                                                              'my_data',
                                                              list(range(10, 20)),
                                                              attributes={'attr2': 20})},
-                                    attributes={'attr1': 'value2', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo'})
+                                    attributes={'attr1': 'value2', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                                                'object_id': self.foo_bucket.foos[1].object_id})
         }
         self.setUpBucketBuilder()
         self.setUpBucketSpec()
 
         self.spec_catalog.register_spec(self.bucket_spec, 'test.yaml')
         self.type_map.register_container_type(CORE_NAMESPACE, 'FooBucket', FooBucket)
-        self.type_map.register_map(FooBucket, ObjectMapper)
+        self.type_map.register_map(FooBucket, self.setUpBucketMapper())
         self.manager = BuildManager(self.type_map)
 
+    @abstractmethod
     def setUpBucketBuilder(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketBuilder is implemented')
 
+    @abstractmethod
     def setUpBucketSpec(self):
-        raise unittest.SkipTest('Abstract Base Class')
+        raise NotImplementedError('Cannot run test unless setUpBucketSpec is implemented')
+
+    @abstractmethod
+    def setUpBucketMapper(self):
+        raise NotImplementedError('Cannot run test unless setUpBucketMapper is implemented')
 
     def test_build(self):
         ''' Test default mapping for an Container that has an Container as an attribute value '''
@@ -145,7 +164,7 @@ class TestNestedBase(with_metaclass(ABCMeta, TestBase)):
         self.assertEqual(container, self.foo_bucket)
 
 
-class TestNestedContainersNoSubgroups(TestNestedBase):
+class TestNestedContainersNoSubgroups(NestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers, but does not keep them in
@@ -156,7 +175,7 @@ class TestNestedContainersNoSubgroups(TestNestedBase):
         self.bucket_builder = GroupBuilder(
             'test_foo_bucket',
             groups=self.foo_builders,
-            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket'})
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
 
     def setUpBucketSpec(self):
         self.bucket_spec = GroupSpec('A test group specification for a data type containing data type',
@@ -167,8 +186,11 @@ class TestNestedContainersNoSubgroups(TestNestedBase):
                                          data_type_inc='Foo',
                                          quantity=ZERO_OR_MANY)])
 
+    def setUpBucketMapper(self):
+        return ObjectMapper
 
-class TestNestedContainersSubgroup(TestNestedBase):
+
+class TestNestedContainersSubgroup(NestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup
@@ -179,8 +201,7 @@ class TestNestedContainersSubgroup(TestNestedBase):
         self.bucket_builder = GroupBuilder(
             'test_foo_bucket',
             groups={'foos': tmp_builder},
-            attributes={'namespace':
-                        CORE_NAMESPACE, 'data_type': 'FooBucket'})
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
 
     def setUpBucketSpec(self):
         tmp_spec = GroupSpec(
@@ -194,8 +215,17 @@ class TestNestedContainersSubgroup(TestNestedBase):
                                      data_type_def='FooBucket',
                                      groups=[tmp_spec])
 
+    def setUpBucketMapper(self):
+        class BucketMapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                self.unmap(spec.get_group('foo_holder'))
+                self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Foo'))
 
-class TestNestedContainersSubgroupSubgroup(TestNestedBase):
+        return BucketMapper
+
+
+class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup
@@ -208,8 +238,7 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
         self.bucket_builder = GroupBuilder(
             'test_foo_bucket',
             groups={'foo_holder': tmp_builder},
-            attributes={'namespace': CORE_NAMESPACE,
-                        'data_type': 'FooBucket'})
+            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
 
     def setUpBucketSpec(self):
         tmp_spec = GroupSpec('A subgroup for Foos',
@@ -223,6 +252,16 @@ class TestNestedContainersSubgroupSubgroup(TestNestedBase):
                                      data_type_def='FooBucket',
                                      groups=[tmp_spec])
 
+    def setUpBucketMapper(self):
+        class BucketMapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                self.unmap(spec.get_group('foo_holder_holder'))
+                self.unmap(spec.get_group('foo_holder_holder').get_group('foo_holder'))
+                self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
+
+        return BucketMapper
+
 
 class TestTypeMap(TestBase):
 
@@ -234,7 +273,8 @@ class TestTypeMap(TestBase):
         self.assertIsNone(ns)
 
     def test_get_ns_dt(self):
-        bldr = GroupBuilder('my_foo', attributes={'attr1': 'value1', 'namespace': 'CORE', 'data_type': 'Foo'})
+        bldr = GroupBuilder('my_foo', attributes={'attr1': 'value1', 'namespace': 'CORE', 'data_type': 'Foo',
+                                                  'object_id': -1})
         dt = self.type_map.get_builder_dt(bldr)
         ns = self.type_map.get_builder_ns(bldr)
         self.assertEqual(dt, 'Foo')
@@ -242,9 +282,5 @@ class TestTypeMap(TestBase):
 
 
 # TODO:
-class TestWildCardNamedSpecs(unittest.TestCase):
+class TestWildCardNamedSpecs(TestCase):
     pass
-
-
-if __name__ == '__main__':
-    unittest.main()

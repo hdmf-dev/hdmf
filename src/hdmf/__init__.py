@@ -1,9 +1,8 @@
-# flake8: noqa: F401
+from . import query  # noqa: F401
 from .container import Container, Data, DataRegion
 from .utils import docval, getargs
-from .data_utils import ListSlicer
+from .region import ListSlicer
 from .backends.hdf5.h5_utils import H5RegionSlicer, H5Dataset
-from . import query
 
 
 @docval({'name': 'dataset', 'type': None, 'doc': 'the HDF5 dataset to slice'},
@@ -16,3 +15,8 @@ def get_region_slicer(**kwargs):
     elif isinstance(dataset, H5Dataset):
         return H5RegionSlicer(dataset, region)
     return None
+
+
+from ._version import get_versions  # noqa: E402
+__version__ = get_versions()['version']
+del get_versions

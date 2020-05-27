@@ -8,13 +8,13 @@ CORE_NAMESPACE = 'test_core'
 class Foo(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
-            {'name': 'my_data', 'type': 'array_data', 'doc': 'some data'},
+            {'name': 'my_data', 'type': ('array_data', 'data'), 'doc': 'some data'},
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14})
     def __init__(self, **kwargs):
         name, my_data, attr1, attr2, attr3 = getargs('name', 'my_data', 'attr1', 'attr2', 'attr3', kwargs)
-        super(Foo, self).__init__(name=name)
+        super().__init__(name=name)
         self.__data = my_data
         self.__attr1 = attr1
         self.__attr2 = attr2
@@ -54,10 +54,10 @@ class FooBucket(Container):
             {'name': 'foos', 'type': list, 'doc': 'the Foo objects in this bucket', 'default': list()})
     def __init__(self, **kwargs):
         name, foos = getargs('name', 'foos', kwargs)
-        super(FooBucket, self).__init__(name=name)
+        super().__init__(name=name)
         self.__foos = foos
         for f in self.__foos:
-            self.add_child(f)
+            f.parent = self
 
     def __eq__(self, other):
         return self.name == other.name and set(self.foos) == set(other.foos)

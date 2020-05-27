@@ -40,16 +40,15 @@ test:
 flake:
 	$(FLAKE) src/
 	$(FLAKE) tests/
-	$(FLAKE) --ignore E402,W504 docs/gallery
 
 checkpdb:
-	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print -e breakpoint {} \;
+	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print\( -e breakpoint {} \;
 
 devtest:
-	$(PYTHON) -W ignore:::pynwb.form.build.map: test.py -fpi
+	$(PYTHON) test.py
 
 testclean:
-	rm *.npy *.nwb *.yaml
+	rm *.npy *.yaml
 
 apidoc:
 	pip install -r requirements-doc.txt
@@ -71,7 +70,7 @@ htmldoc: htmldoc-only htmldoc-open
 pdfdoc:
 	cd docs && $(MAKE) latexpdf
 	@echo ""
-	@echo "To view the PDF documentation open: docs/_build/latex/PyNWB.pdf"
+	@echo "To view the PDF documentation open: docs/_build/latex/HDMF.pdf"
 
 coverage-only:
 	tox -e localcoverage

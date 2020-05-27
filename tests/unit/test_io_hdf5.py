@@ -1,17 +1,15 @@
-import unittest2 as unittest
 import os
 from h5py import File, Dataset, Reference
-from six import text_type
-
-from hdmf.backends.hdf5 import HDF5IO
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
-
 from numbers import Number
-
 import json
 import numpy as np
 
-from tests.unit.test_utils import Foo
+from hdmf.backends.hdf5 import HDF5IO
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
+from hdmf.utils import get_data_shape
+from hdmf.testing import TestCase
+
+from tests.unit.utils import Foo
 from tests.unit.test_io_hdf5_h5tools import _get_manager
 
 
@@ -23,7 +21,7 @@ class HDF5Encoder(json.JSONEncoder):
                 try:
                     ret = t(obj)
                     break
-                except:  # noqa: F722
+                except:  # noqa: E722
                     pass
             if ret is None:
                 return obj
@@ -36,7 +34,7 @@ class HDF5Encoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class GroupBuilderTestCase(unittest.TestCase):
+class GroupBuilderTestCase(TestCase):
     '''
     A TestCase class for comparing GroupBuilders.
     '''
@@ -45,7 +43,7 @@ class GroupBuilderTestCase(unittest.TestCase):
         if hasattr(obj, 'shape'):
             return len(obj.shape) == 0
         else:
-            if any(isinstance(obj, t) for t in (int, str, float, bytes, text_type)):
+            if any(isinstance(obj, t) for t in (int, str, float, bytes, str)):
                 return True
         return False
 
@@ -157,7 +155,8 @@ class TestHDF5Writer(GroupBuilderTestCase):
         self.foo_builder = GroupBuilder('foo1',
                                         attributes={'data_type': 'Foo',
                                                     'namespace': 'test_core',
-                                                    'attr1': "bar"},
+                                                    'attr1': "bar",
+                                                    'object_id': -1},
                                         datasets={'my_data': DatasetBuilder('my_data', list(range(100, 200, 10)),
                                                                             attributes={'attr2': 17})})
         self.foo = Foo('foo1', list(range(100, 200, 10)), attr1="bar", attr2=17, attr3=3.14)
@@ -177,7 +176,7 @@ class TestHDF5Writer(GroupBuilderTestCase):
             os.remove(self.path)
 
     def check_fields(self):
-        f = File(self.path)
+        f = File(self.path, 'r')
         self.assertIn('test_bucket', f)
         bucket = f.get('test_bucket')
         self.assertIn('foo_holder', bucket)
@@ -227,6 +226,15 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io = HDF5IO(self.path, manager=self.manager, mode='a')
         io.write_builder(self.builder)
         builder = io.read_builder()
-        with self.assertRaisesRegex(ValueError, "cannot change written to not written"):
+        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
             builder.written = False
+        io.close()
+
+    def test_dataset_shape(self):
+        self.maxDiff = None
+        io = HDF5IO(self.path, manager=self.manager, mode='a')
+        io.write_builder(self.builder)
+        builder = io.read_builder()
+        dset = builder['test_bucket']['foo_holder']['foo1']['my_data'].data
+        self.assertEqual(get_data_shape(dset), (10,))
         io.close()

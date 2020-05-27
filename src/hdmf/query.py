@@ -1,11 +1,11 @@
-from six import with_metaclass
+from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from .utils import ExtenderMeta, docval_macro, docval, getargs
 from .array import Array
 
 
-class Query(with_metaclass(ExtenderMeta, object)):
+class Query(metaclass=ExtenderMeta):
 
     __operations__ = (
         '__lt__',
@@ -93,7 +93,7 @@ class Query(with_metaclass(ExtenderMeta, object)):
 
 
 @docval_macro('array_data')
-class HDMFDataset(with_metaclass(ExtenderMeta, object)):
+class HDMFDataset(metaclass=ExtenderMeta):
 
     __operations__ = (
         '__lt__',
@@ -138,7 +138,7 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'})
     def __init__(self, **kwargs):
-        super(HDMFDataset, self).__init__()
+        super().__init__()
         self.__dataset = getargs('dataset', kwargs)
 
     @property
@@ -160,3 +160,60 @@ class HDMFDataset(with_metaclass(ExtenderMeta, object)):
 
     def next(self):
         return self.dataset.next()
+
+
+class ReferenceResolver(metaclass=ABCMeta):
+    """
+    A base class for classes that resolve references
+    """
+
+    @classmethod
+    @abstractmethod
+    def get_inverse_class(cls):
+        """
+        Return the class the represents the ReferenceResolver
+        that resolves refernces to the opposite type.
+
+        BuilderResolver.get_inverse_class should return a class
+        that subclasses ContainerResolver.
+
+        ContainerResolver.get_inverse_class should return a class
+        that subclasses BuilderResolver.
+        """
+        pass
+
+    @abstractmethod
+    def invert(self):
+        """
+        Return an object that defers reference resolution
+        but in the opposite direction.
+        """
+        pass
+
+
+class BuilderResolver(ReferenceResolver):
+    """
+    A reference resolver that resolves references to Builders
+
+    Subclasses should implement the invert method and the get_inverse_class
+    classmethod
+
+    BuilderResolver.get_inverse_class should return a class that subclasses
+    ContainerResolver.
+    """
+
+    pass
+
+
+class ContainerResolver(ReferenceResolver):
+    """
+    A reference resolver that resolves references to Containers
+
+    Subclasses should implement the invert method and the get_inverse_class
+    classmethod
+
+    ContainerResolver.get_inverse_class should return a class that subclasses
+    BuilderResolver.
+    """
+
+    pass

@@ -1,34 +1,14 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
-from collections import Iterable
-from operator import itemgetter
-
+from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
 import numpy as np
-from six import with_metaclass, text_type, binary_type
+from warnings import warn
+import copy
 
-from .container import Data, DataRegion
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
-def __get_shape_helper(data):
-    shape = list()
-    if hasattr(data, '__len__'):
-        shape.append(len(data))
-        if len(data) and not isinstance(data[0], (text_type, binary_type)):
-            shape.extend(__get_shape_helper(data[0]))
-    return tuple(shape)
-
-
-def get_shape(data):
-    if isinstance(data, dict):
-        return None
-    elif hasattr(data, '__len__') and not isinstance(data, (text_type, binary_type)):
-        return __get_shape_helper(data)
-    else:
-        return None
-
-
 @docval_macro('array_data')
-class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
+class AbstractDataChunkIterator(metaclass=ABCMeta):
     """
     Abstract iterator class used to iterate over DataChunks.
 
@@ -43,7 +23,7 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def __next__(self):
-        """
+        r"""
         Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
         HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
@@ -51,12 +31,13 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
 
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
-        """  # noqa: W605
+        """
         raise NotImplementedError("__next__ not implemented for derived class")
 
     @abstractmethod
     def recommended_chunk_shape(self):
         """
+        Recommend the chunk shape for the data array.
 
         :return: NumPy-style shape tuple describing the recommended shape for the chunks of the target
                  array or None. This may or may not be the same as the shape of the chunks returned in the
@@ -79,7 +60,8 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError("recommended_data_shape not implemented for derived class")
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def dtype(self):
         """
         Define the data type of the array
@@ -88,7 +70,8 @@ class AbstractDataChunkIterator(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError("dtype not implemented for derived class")
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def maxshape(self):
         """
         Property describing the maximum shape of the data array that is being iterated over
@@ -104,33 +87,56 @@ class DataChunkIterator(AbstractDataChunkIterator):
     Custom iterator class used to iterate over chunks of data.
 
     This default implementation of AbstractDataChunkIterator accepts any iterable and assumes that we iterate over
-    the first dimension of the data array. DataChunkIterator supports buffered read,
+    a single dimension of the data array (default: the first dimension). DataChunkIterator supports buffered read,
     i.e., multiple values from the input iterator can be combined to a single chunk. This is
     useful for buffered I/O operations, e.g., to improve performance by accumulating data
     in memory and writing larger blocks at once.
     """
-    @docval({'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
+
+    __docval_init = (
+            {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
             {'name': 'maxshape', 'type': tuple,
              'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
              'default': None},
             {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
             {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
+            {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
             )
+
+    @docval(*__docval_init)
     def __init__(self, **kwargs):
-        """Initialize the DataChunkIterator"""
+        """Initialize the DataChunkIterator.
+        If 'data' is an iterator and 'dtype' is not specified, then next is called on the iterator in order to determine
+        the dtype of the data.
+        """
         # Get the user parameters
-        self.data, self.__maxshape, self.__dtype, self.buffer_size = getargs('data',
-                                                                             'maxshape',
-                                                                             'dtype',
-                                                                             'buffer_size',
-                                                                             kwargs)
+        self.data, self.__maxshape, self.__dtype, self.buffer_size, self.iter_axis = getargs('data',
+                                                                                             'maxshape',
+                                                                                             'dtype',
+                                                                                             'buffer_size',
+                                                                                             'iter_axis',
+                                                                                             kwargs)
+        self.chunk_index = 0
         # Create an iterator for the data if possible
-        self.__data_iter = iter(self.data) if isinstance(self.data, Iterable) else None
+        if isinstance(self.data, Iterable):
+            if self.iter_axis != 0 and isinstance(self.data, (list, tuple)):
+                warn('Iterating over an axis other than the first dimension of list or tuple data '
+                     'involves converting the data object to a numpy ndarray, which may incur a computational '
+                     'cost.')
+                self.data = np.asarray(self.data)
+            if isinstance(self.data, np.ndarray):
+                # iterate over the given axis by adding a new view on data (iter only works on the first dim)
+                self.__data_iter = iter(np.moveaxis(self.data, self.iter_axis, 0))
+            else:
+                self.__data_iter = iter(self.data)
+        else:
+            self.__data_iter = None
         self.__next_chunk = DataChunk(None, None)
+        self.__next_chunk_start = 0
         self.__first_chunk_shape = None
         # Determine the shape of the data if possible
         if self.__maxshape is None:
-            # If the self.data object identifies it shape then use it
+            # If the self.data object identifies its shape, then use it
             if hasattr(self.data,  "shape"):
                 self.__maxshape = self.data.shape
                 # Avoid the special case of scalar values by making them into a 1D numpy array
@@ -138,38 +144,29 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     self.data = np.asarray([self.data, ])
                     self.__maxshape = self.data.shape
                     self.__data_iter = iter(self.data)
-            # Try to get an accurate idea of __maxshape for other Python datastructures if possible.
+            # Try to get an accurate idea of __maxshape for other Python data structures if possible.
             # Don't just callget_shape for a generator as that would potentially trigger loading of all the data
             elif isinstance(self.data, list) or isinstance(self.data, tuple):
                 self.__maxshape = get_data_shape(self.data, strict_no_data_load=True)
 
-        # If we have a data iterator, then read the first chunk
-        if self.__data_iter is not None:  # and(self.__maxshape is None or self.__dtype is None):
+        # If we have a data iterator and do not know the dtype, then read the first chunk
+        if self.__data_iter is not None and self.__dtype is None:
             self._read_next_chunk()
-
-        # If we still don't know the shape then try to determine the shape from the first chunk
-        if self.__maxshape is None and self.__next_chunk.data is not None:
-            data_shape = get_data_shape(self.__next_chunk.data)
-            self.__maxshape = list(data_shape)
-            try:
-                self.__maxshape[0] = len(self.data)  # We use self.data here because self.__data_iter does not allow len
-            except TypeError:
-                self.__maxshape[0] = None
-            self.__maxshape = tuple(self.__maxshape)
 
         # Determine the type of the data if possible
         if self.__next_chunk.data is not None:
             self.__dtype = self.__next_chunk.data.dtype
             self.__first_chunk_shape = get_data_shape(self.__next_chunk.data)
 
+        # This should be done as a last resort only
+        if self.__first_chunk_shape is None and self.__maxshape is not None:
+            self.__first_chunk_shape = tuple(1 if i is None else i for i in self.__maxshape)
+
+        if self.__dtype is None:
+            raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
+
     @classmethod
-    @docval({'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
-            {'name': 'maxshape', 'type': tuple,
-             'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
-             'default': None},
-            {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
-            {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
-            )
+    @docval(*__docval_init)
     def from_iterable(cls, **kwargs):
         return cls(**kwargs)
 
@@ -178,43 +175,90 @@ class DataChunkIterator(AbstractDataChunkIterator):
         return self
 
     def _read_next_chunk(self):
-        """Read a single chunk from self.__data_iter and store the results in
-           self.__next_chunk
+        """Read a single chunk from self.__data_iter and store the results in self.__next_chunk
 
         :returns: self.__next_chunk, i.e., the DataChunk object describing the next chunk
         """
-        if self.__data_iter is not None:
-            curr_next_chunk = []
-            for i in range(self.buffer_size):
-                try:
-                    curr_next_chunk.append(next(self.__data_iter))
-                except StopIteration:
-                    pass
-            next_chunk_size = len(curr_next_chunk)
-            if next_chunk_size == 0:
+        from h5py import Dataset as H5Dataset
+        if isinstance(self.data, H5Dataset):
+            start_index = self.chunk_index * self.buffer_size
+            stop_index = start_index + self.buffer_size
+            iter_data_bounds = self.data.shape[self.iter_axis]
+            if start_index >= iter_data_bounds:
                 self.__next_chunk = DataChunk(None, None)
             else:
-                self.__next_chunk.data = np.asarray(curr_next_chunk)
-                if self.__next_chunk.selection is None:
-                    self.__next_chunk.selection = slice(0, next_chunk_size)
-                else:
-                    self.__next_chunk.selection = slice(self.__next_chunk.selection.stop,
-                                                        self.__next_chunk.selection.stop+next_chunk_size)
+                if stop_index > iter_data_bounds:
+                    stop_index = iter_data_bounds
+
+                selection = [slice(None)] * len(self.maxshape)
+                selection[self.iter_axis] = slice(start_index, stop_index)
+                selection = tuple(selection)
+                self.__next_chunk.data = self.data[selection]
+                self.__next_chunk.selection = selection
+        elif self.__data_iter is not None:
+            # the pieces in the buffer - first dimension consists of individual calls to next
+            iter_pieces = []
+            # offset of where data begins - shift the selection of where to place this chunk by this much
+            curr_chunk_offset = 0
+            read_next_empty = False
+            while len(iter_pieces) < self.buffer_size:
+                try:
+                    dat = next(self.__data_iter)
+                    if dat is None and len(iter_pieces) == 0:
+                        # Skip forward in our chunk until we find data
+                        curr_chunk_offset += 1
+                    elif dat is None and len(iter_pieces) > 0:
+                        # Stop iteration if we hit empty data while constructing our block
+                        # Buffer may not be full.
+                        read_next_empty = True
+                        break
+                    else:
+                        # Add pieces of data to our buffer
+                        iter_pieces.append(np.asarray(dat))
+                except StopIteration:
+                    break
+
+            if len(iter_pieces) == 0:
+                self.__next_chunk = DataChunk(None, None)  # signal end of iteration
+            else:
+                # concatenate all the pieces into the chunk along the iteration axis
+                piece_shape = list(get_data_shape(iter_pieces[0]))
+                piece_shape.insert(self.iter_axis, 1)  # insert the missing axis
+                next_chunk_shape = piece_shape.copy()
+                next_chunk_shape[self.iter_axis] *= len(iter_pieces)
+                next_chunk_size = next_chunk_shape[self.iter_axis]
+
+                # use the piece dtype because the actual dtype may not have been determined yet
+                # NOTE: this could be problematic if a generator returns e.g. floats first and ints later
+                self.__next_chunk.data = np.empty(next_chunk_shape, dtype=iter_pieces[0].dtype)
+                self.__next_chunk.data = np.stack(iter_pieces, axis=self.iter_axis)
+
+                selection = [slice(None)] * len(self.maxshape)
+                selection[self.iter_axis] = slice(self.__next_chunk_start + curr_chunk_offset,
+                                                  self.__next_chunk_start + curr_chunk_offset + next_chunk_size)
+                self.__next_chunk.selection = tuple(selection)
+
+                # next chunk should start at self.__next_chunk.selection[self.iter_axis].stop
+                # but if this chunk stopped because of reading empty data, then this should be adjusted by 1
+                self.__next_chunk_start = self.__next_chunk.selection[self.iter_axis].stop
+                if read_next_empty:
+                    self.__next_chunk_start += 1
         else:
             self.__next_chunk = DataChunk(None, None)
 
+        self.chunk_index += 1
         return self.__next_chunk
 
     def __next__(self):
-        """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
+        r"""Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
         HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
-        is often useful to define the DataChunkk.selection of the current chunk
+        is often useful to define the DataChunk.selection of the current chunk
 
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
 
-        """  # noqa: W605
+        """
         # If we have not already read the next chunk, then read it now
         if self.__next_chunk.data is None:
             self._read_next_chunk()
@@ -251,27 +295,59 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     'recommendation is available')
     def recommended_data_shape(self):
         """Recommend an initial shape of the data. This is useful when progressively writing data and
-        we want to recommend and initial size for the dataset"""
-        if self.__maxshape is not None:
-            if np.all([i is not None for i in self.__maxshape]):
-                return self.__maxshape
+        we want to recommend an initial size for the dataset"""
+        if self.maxshape is not None:
+            if np.all([i is not None for i in self.maxshape]):
+                return self.maxshape
         return self.__first_chunk_shape
 
     @property
     def maxshape(self):
+        """
+        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator. If an iterator
+        is provided and no data has been read yet, then the first chunk will be read (i.e., next will be called on the
+        iterator) in order to determine the maxshape.
+
+        :return: Shape tuple. None is used for dimenwions where the maximum shape is not known or unlimited.
+        """
+        if self.__maxshape is None:
+            # If no data has been read from the iterator yet, read the first chunk and use it to determine the maxshape
+            if self.__data_iter is not None and self.__next_chunk.data is None:
+                self._read_next_chunk()
+
+            # Determine maxshape from self.__next_chunk
+            if self.__next_chunk.data is None:
+                return None
+            data_shape = get_data_shape(self.__next_chunk.data)
+            self.__maxshape = list(data_shape)
+            try:
+                # Size of self.__next_chunk.data along self.iter_axis is not accurate for maxshape because it is just a
+                # chunk. So try to set maxshape along the dimension self.iter_axis based on the shape of self.data if
+                # possible. Otherwise, use None to represent an unlimited size
+                if hasattr(self.data, '__len__') and self.iter_axis == 0:
+                    # special case of 1-D array
+                    self.__maxshape[0] = len(self.data)
+                else:
+                    self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
+            except AttributeError:  # from self.data.shape
+                self.__maxshape[self.iter_axis] = None
+            self.__maxshape = tuple(self.__maxshape)
+
         return self.__maxshape
 
     @property
     def dtype(self):
+        """
+        Get the value data type
+
+        :return: np.dtype object describing the datatype
+        """
         return self.__dtype
 
 
-class DataChunk(object):
+class DataChunk:
     """
-    Class used to describe a data chunk. Used in DataChunkIterator to describe
-
-    :ivar data: Numpy ndarray with the data value(s) of the chunk
-    :ivar selection: Numpy index tuple describing the location of the chunk
+    Class used to describe a data chunk. Used in DataChunkIterator.
     """
     @docval({'name': 'data', 'type': np.ndarray,
              'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},
@@ -281,13 +357,40 @@ class DataChunk(object):
         self.data, self.selection = getargs('data', 'selection', kwargs)
 
     def __len__(self):
+        """Get the number of values in the data chunk"""
         if self.data is not None:
             return len(self.data)
         else:
             return 0
 
     def __getattr__(self, attr):
+        """Delegate retrival of attributes to the data in self.data"""
         return getattr(self.data, attr)
+
+    def __copy__(self):
+        newobj = DataChunk(data=self.data,
+                           selection=self.selection)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        result = DataChunk(data=copy.deepcopy(self.data),
+                           selection=copy.deepcopy(self.selection))
+        memo[id(self)] = result
+        return result
+
+    def astype(self, dtype):
+        """Get a new DataChunk with the self.data converted to the given type"""
+        return DataChunk(data=self.data.astype(dtype),
+                         selection=self.selection)
+
+    @property
+    def dtype(self):
+        """
+        Data type of the values in the chunk
+
+        :returns: np.dtype of the values in the DataChunk
+        """
+        return self.data.dtype
 
 
 def assertEqualShape(data1,
@@ -392,7 +495,7 @@ def assertEqualShape(data1,
     return response
 
 
-class ShapeValidatorResult(object):
+class ShapeValidatorResult:
     """Class for storing results from validating the shape of multi-dimensional arrays.
 
     This class is used to store results generated by ShapeValidator
@@ -443,11 +546,11 @@ class ShapeValidatorResult(object):
                 raise ValueError("Illegal error type. Error must be one of ShapeValidatorResult.SHAPE_ERROR: %s"
                                  % str(self.SHAPE_ERROR))
             else:
-                super(ShapeValidatorResult, self).__setattr__(key, value)
+                super().__setattr__(key, value)
         elif key in ['shape1', 'shape2', 'axes1', 'axes2', 'ignored', 'unmatched']:  # Make sure we sore tuples
-            super(ShapeValidatorResult, self).__setattr__(key, tuple(value))
+            super().__setattr__(key, tuple(value))
         else:
-            super(ShapeValidatorResult, self).__setattr__(key, value)
+            super().__setattr__(key, value)
 
     def __getattr__(self, item):
         """
@@ -459,23 +562,88 @@ class ShapeValidatorResult(object):
 
 
 @docval_macro('data')
-class DataIO(with_metaclass(ABCMeta, object)):
-
-    @docval({'name': 'data', 'type': 'array_data', 'doc': 'the data to be written'})
+class DataIO:
+    """
+    Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
+    used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
+    """
+    @docval({'name': 'data', 'type': 'array_data', 'doc': 'the data to be written', 'default': None})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         self.__data = data
 
+    def get_io_params(self):
+        """
+        Returns a dict with the I/O parameters specified in this DataIO.
+        """
+        return dict()
+
     @property
     def data(self):
+        """Get the wrapped data object"""
         return self.__data
 
+    @data.setter
+    def data(self, val):
+        """Set the wrapped data object"""
+        if self.__data is not None:
+            raise ValueError("cannot overwrite 'data' on DataIO")
+        self.__data = val
+
+    def __copy__(self):
+        """
+        Define a custom copy method for shallow copy..
+
+        This is needed due to delegation of __getattr__ to the data to
+        ensure proper copy.
+
+        :return: Shallow copy of self, ie., a new instance of DataIO wrapping the same self.data object
+        """
+        newobj = DataIO(data=self.data)
+        return newobj
+
+    def __deepcopy__(self, memo):
+        """
+        Define a custom copy method for deep copy.
+
+        This is needed due to delegation of __getattr__ to the data to
+        ensure proper copy.
+
+        :param memo:
+        :return: Deep copy of self, i.e., a new instance of DataIO wrapping a deepcopy of the
+        self.data object.
+        """
+        result = DataIO(data=copy.deepcopy(self.__data))
+        memo[id(self)] = result
+        return result
+
     def __len__(self):
-        return len(self.__data)
+        """Number of values in self.data"""
+        if not self.valid:
+            raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
+        return len(self.data)
+
+    def __bool__(self):
+        if self.valid:
+            if isinstance(self.data, AbstractDataChunkIterator):
+                return True
+            return len(self) > 0
+        return False
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
+        if attr == '__array_struct__' and not self.valid:
+            # np.array() checks __array__ or __array_struct__ attribute dep. on numpy version
+            raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
+        if not self.valid:
+            raise InvalidDataIOError("Cannot get attribute '%s' of data. Data is not valid." % attr)
         return getattr(self.data, attr)
+
+    def __getitem__(self, item):
+        """Delegate slicing to the data object"""
+        if not self.valid:
+            raise InvalidDataIOError("Cannot get item from data. Data is not valid.")
+        return self.data[item]
 
     def __array__(self):
         """
@@ -484,6 +652,8 @@ class DataIO(with_metaclass(ABCMeta, object)):
 
         :return: An array instance of self.data
         """
+        if not self.valid:
+            raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
         if hasattr(self.data, '__array__'):
             return self.data.__array__()
         elif isinstance(self.data, DataChunkIterator):
@@ -492,80 +662,23 @@ class DataIO(with_metaclass(ABCMeta, object)):
             # NOTE this may result in a copy of the array
             return np.asarray(self.data)
 
-    # Delegate iteration interface to data object:
     def __next__(self):
+        """Delegate iteration interface to data object"""
+        if not self.valid:
+            raise InvalidDataIOError("Cannot iterate on data. Data is not valid.")
         return self.data.__next__()
 
-    # Delegate iteration interface to data object:
     def __iter__(self):
+        """Delegate iteration interface to the data object"""
+        if not self.valid:
+            raise InvalidDataIOError("Cannot iterate on data. Data is not valid.")
         return self.data.__iter__()
 
-
-class RegionSlicer(with_metaclass(ABCMeta, DataRegion)):
-    '''
-    A abstract base class to control getting using a region
-
-    Subclasses must implement `__getitem__` and `__len__`
-    '''
-
-    @docval({'name': 'target', 'type': None, 'doc': 'the target to slice'},
-            {'name': 'slice', 'type': None, 'doc': 'the region to slice'})
-    def __init__(self, **kwargs):
-        self.__target = getargs('target', kwargs)
-        self.__slice = getargs('slice', kwargs)
-
     @property
-    def data(self):
-        return self.target
-
-    @property
-    def region(self):
-        return self.slice
-
-    @property
-    def target(self):
-        return self.__target
-
-    @property
-    def slice(self):
-        return self.__slice
-
-    @abstractproperty
-    def __getitem__(self, idx):
-        pass
-
-    @abstractproperty
-    def __len__(self):
-        pass
+    def valid(self):
+        """bool indicating if the data object is valid"""
+        return self.data is not None
 
 
-class ListSlicer(RegionSlicer):
-
-    @docval({'name': 'dataset', 'type': (list, tuple, Data), 'doc': 'the HDF5 dataset to slice'},
-            {'name': 'region', 'type': (list, tuple, slice), 'doc': 'the region reference to use to slice'})
-    def __init__(self, **kwargs):
-        self.__dataset, self.__region = getargs('dataset', 'region', kwargs)
-        super(ListSlicer, self).__init__(self.__dataset, self.__region)
-        if isinstance(self.__region, slice):
-            self.__getter = itemgetter(self.__region)
-            self.__len = len(range(*self.__region.indices(len(self.__dataset))))
-        else:
-            self.__getter = itemgetter(*self.__region)
-            self.__len = len(self.__region)
-
-    def __read_region(self):
-        if not hasattr(self, '_read'):
-            self._read = self.__getter(self.__dataset)
-            del self.__getter
-
-    def __getitem__(self, idx):
-        self.__read_region()
-        getter = None
-        if isinstance(idx, (list, tuple)):
-            getter = itemgetter(*idx)
-        else:
-            getter = itemgetter(idx)
-        return getter(self._read)
-
-    def __len__(self):
-        return self.__len
+class InvalidDataIOError(Exception):
+    pass

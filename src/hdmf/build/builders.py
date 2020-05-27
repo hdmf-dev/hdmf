@@ -5,13 +5,13 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 import warnings
-from collections import Iterable
+from collections.abc import Iterable
+from datetime import datetime
 
 from ..utils import docval, getargs, popargs, call_docval_func, fmt_docval_args
-from six import with_metaclass
 
 
-class Builder(with_metaclass(ABCMeta, dict)):
+class Builder(dict, metaclass=ABCMeta):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
             {'name': 'parent', 'type': 'Builder', 'doc': 'the parent builder of this Builder', 'default': None},
@@ -19,7 +19,7 @@ class Builder(with_metaclass(ABCMeta, dict)):
              'doc': 'the source of the data in this builder e.g. file name', 'default': None})
     def __init__(self, **kwargs):
         name, parent, source = getargs('name', 'parent', 'source', kwargs)
-        super(Builder, self).__init__()
+        super().__init__()
         self.__name = name
         self.__parent = parent
         if source is not None:
@@ -84,6 +84,10 @@ class Builder(with_metaclass(ABCMeta, dict)):
         else:
             raise ValueError('Cannot reset parent once it is specified')
 
+    def __repr__(self):
+        ret = "%s %s %s" % (self.path, self.__class__.__name__, super().__repr__())
+        return ret
+
 
 class BaseBuilder(Builder):
     __attribute = 'attributes'
@@ -96,22 +100,34 @@ class BaseBuilder(Builder):
              'doc': 'the source of the data represented in this Builder', 'default': None})
     def __init__(self, **kwargs):
         name, attributes, parent, source = getargs('name', 'attributes', 'parent', 'source', kwargs)
-        super(BaseBuilder, self).__init__(name, parent, source)
-        super(BaseBuilder, self).__setitem__(BaseBuilder.__attribute, dict())
+        super().__init__(name, parent, source)
+        super().__setitem__(BaseBuilder.__attribute, dict())
         for name, val in attributes.items():
             self.set_attribute(name, val)
+        self.__location = None
+
+    @property
+    def location(self):
+        """
+        The location of this Builder in its source
+        """
+        return self.__location
+
+    @location.setter
+    def location(self, val):
+        self.__location = val
 
     @property
     def attributes(self):
         ''' The attributes stored in this Builder object '''
-        return super(BaseBuilder, self).__getitem__(BaseBuilder.__attribute)
+        return super().__getitem__(BaseBuilder.__attribute)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute'},
             {'name': 'value', 'type': None, 'doc': 'the attribute value'})
     def set_attribute(self, **kwargs):
         ''' Set an attribute for this group. '''
         name, value = getargs('name', 'value', kwargs)
-        super(BaseBuilder, self).__getitem__(BaseBuilder.__attribute)[name] = value
+        super().__getitem__(BaseBuilder.__attribute)[name] = value
         # self.obj_type[name] = BaseBuilder.__attribute
 
     @docval({'name': 'builder', 'type': 'BaseBuilder', 'doc': 'the BaseBuilder to merge attributes from '})
@@ -151,10 +167,10 @@ class GroupBuilder(BaseBuilder):
         datasets = self.__to_list(datasets)
         links = self.__to_list(links)
         self.obj_type = dict()
-        super(GroupBuilder, self).__init__(name, attributes, parent, source)
-        super(GroupBuilder, self).__setitem__(GroupBuilder.__group, dict())
-        super(GroupBuilder, self).__setitem__(GroupBuilder.__dataset, dict())
-        super(GroupBuilder, self).__setitem__(GroupBuilder.__link, dict())
+        super().__init__(name, attributes, parent, source)
+        super().__setitem__(GroupBuilder.__group, dict())
+        super().__setitem__(GroupBuilder.__dataset, dict())
+        super().__setitem__(GroupBuilder.__link, dict())
         self.__name = name
         for group in groups:
             self.set_group(group)
@@ -172,7 +188,7 @@ class GroupBuilder(BaseBuilder):
     @property
     def source(self):
         ''' The source of this Builder '''
-        return super(GroupBuilder, self).source
+        return super().source
 
     @source.setter
     def source(self, s):
@@ -181,37 +197,37 @@ class GroupBuilder(BaseBuilder):
         source when this source is set
         '''
         super(GroupBuilder, self.__class__).source.fset(self, s)
-        for g in self.groups.values():
-            if g.source is None:
-                g.source = s
-        for d in self.datasets.values():
-            if d.source is None:
-                d.source = s
-        for l in self.links.values():
-            if l.source is None:
-                l.source = s
+        for group in self.groups.values():
+            if group.source is None:
+                group.source = s
+        for dset in self.datasets.values():
+            if dset.source is None:
+                dset.source = s
+        for link in self.links.values():
+            if link.source is None:
+                link.source = s
 
     @property
     def groups(self):
         ''' The subgroups contained in this GroupBuilder '''
-        return super(GroupBuilder, self).__getitem__(GroupBuilder.__group)
+        return super().__getitem__(GroupBuilder.__group)
 
     @property
     def datasets(self):
         ''' The datasets contained in this GroupBuilder '''
-        return super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset)
+        return super().__getitem__(GroupBuilder.__dataset)
 
     @property
     def links(self):
         ''' The datasets contained in this GroupBuilder '''
-        return super(GroupBuilder, self).__getitem__(GroupBuilder.__link)
+        return super().__getitem__(GroupBuilder.__link)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute'},
             {'name': 'value', 'type': None, 'doc': 'the attribute value'})
     def set_attribute(self, **kwargs):
         ''' Set an attribute for this group '''
         name, value = getargs('name', 'value', kwargs)
-        super(GroupBuilder, self).set_attribute(name, value)
+        super().set_attribute(name, value)
         self.obj_type[name] = GroupBuilder.__attribute
 
     @docval({'name': 'builder', 'type': 'Builder', 'doc': 'the Builder to add to this GroupBuilder'})
@@ -241,7 +257,7 @@ class GroupBuilder(BaseBuilder):
                 else:
                     raise KeyError("'%s' already exists as %s in %s, cannot set as %s" %
                                    (name, self.obj_type[name], self.name, obj_type))
-        super(GroupBuilder, self).__getitem__(obj_type)[name] = builder
+        super().__getitem__(obj_type)[name] = builder
         self.obj_type[name] = obj_type
         if builder.parent is None:
             builder.parent = self
@@ -259,9 +275,9 @@ class GroupBuilder(BaseBuilder):
             returns='the DatasetBuilder object for the dataset', rtype='DatasetBuilder')
     def add_dataset(self, **kwargs):
         ''' Create a dataset and add it to this group '''
+        kwargs['parent'] = self
+        kwargs['source'] = self.source
         pargs, pkwargs = fmt_docval_args(DatasetBuilder.__init__, kwargs)
-        pkwargs['parent'] = self
-        pkwargs['source'] = self.source
         builder = DatasetBuilder(*pargs, **pkwargs)
         self.set_dataset(builder)
         return builder
@@ -314,10 +330,10 @@ class GroupBuilder(BaseBuilder):
     # TODO: write unittests for this method
     def deep_update(self, builder):
         ''' Recursively update subgroups in this group '''
-        super(GroupBuilder, self).deep_update(builder)
+        super().deep_update(builder)
         # merge subgroups
         groups = super(GroupBuilder, builder).__getitem__(GroupBuilder.__group)
-        self_groups = super(GroupBuilder, self).__getitem__(GroupBuilder.__group)
+        self_groups = super().__getitem__(GroupBuilder.__group)
         for name, subgroup in groups.items():
             if name in self_groups:
                 self_groups[name].deep_update(subgroup)
@@ -325,7 +341,7 @@ class GroupBuilder(BaseBuilder):
                 self.set_group(subgroup)
         # merge datasets
         datasets = super(GroupBuilder, builder).__getitem__(GroupBuilder.__dataset)
-        self_datasets = super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset)
+        self_datasets = super().__getitem__(GroupBuilder.__dataset)
         for name, dataset in datasets.items():
             # self.add_dataset(name, dataset)
             if name in self_datasets:
@@ -341,12 +357,12 @@ class GroupBuilder(BaseBuilder):
         '''Returns true if there are no datasets, attributes, links or
            subgroups that contain datasets, attributes or links. False otherwise.
         '''
-        if (len(super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset)) or
-            len(super(GroupBuilder, self).__getitem__(GroupBuilder.__attribute)) or
-            len(super(GroupBuilder, self).__getitem__(GroupBuilder.__link))):  # noqa: E129
+        if (len(super().__getitem__(GroupBuilder.__dataset)) or
+                len(super().__getitem__(GroupBuilder.__attribute)) or
+                len(super().__getitem__(GroupBuilder.__link))):
             return False
-        elif len(super(GroupBuilder, self).__getitem__(GroupBuilder.__group)):
-            return all(g.is_empty() for g in super(GroupBuilder, self).__getitem__(GroupBuilder.__group).values())
+        elif len(super().__getitem__(GroupBuilder.__group)):
+            return all(g.is_empty() for g in super().__getitem__(GroupBuilder.__group).values())
         else:
             return True
 
@@ -373,10 +389,10 @@ class GroupBuilder(BaseBuilder):
     def __get_rec(self, key_ar):
         # recursive helper for __getitem__
         if len(key_ar) == 1:
-            return super(GroupBuilder, self).__getitem__(self.obj_type[key_ar[0]])[key_ar[0]]
+            return super().__getitem__(self.obj_type[key_ar[0]])[key_ar[0]]
         else:
-            if key_ar[0] in super(GroupBuilder, self).__getitem__(GroupBuilder.__group):
-                return super(GroupBuilder, self).__getitem__(GroupBuilder.__group)[key_ar[0]].__get_rec(key_ar[1:])
+            if key_ar[0] in super().__getitem__(GroupBuilder.__group):
+                return super().__getitem__(GroupBuilder.__group)[key_ar[0]].__get_rec(key_ar[1:])
         raise KeyError(key_ar[0])
 
     def __setitem__(self, args, val):
@@ -389,28 +405,28 @@ class GroupBuilder(BaseBuilder):
         '''Like dict.items, but iterates over key-value pairs in groups,
            datasets, attributes, and links sub-dictionaries.
         '''
-        return _itertools.chain(super(GroupBuilder, self).__getitem__(GroupBuilder.__group).items(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset).items(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__attribute).items(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__link).items())
+        return _itertools.chain(super().__getitem__(GroupBuilder.__group).items(),
+                                super().__getitem__(GroupBuilder.__dataset).items(),
+                                super().__getitem__(GroupBuilder.__attribute).items(),
+                                super().__getitem__(GroupBuilder.__link).items())
 
     def keys(self):
         '''Like dict.keys, but iterates over keys in groups, datasets,
            attributes, and links sub-dictionaries.
         '''
-        return _itertools.chain(super(GroupBuilder, self).__getitem__(GroupBuilder.__group).keys(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset).keys(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__attribute).keys(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__link).keys())
+        return _itertools.chain(super().__getitem__(GroupBuilder.__group).keys(),
+                                super().__getitem__(GroupBuilder.__dataset).keys(),
+                                super().__getitem__(GroupBuilder.__attribute).keys(),
+                                super().__getitem__(GroupBuilder.__link).keys())
 
     def values(self):
         '''Like dict.values, but iterates over values in groups, datasets,
            attributes, and links sub-dictionaries.
         '''
-        return _itertools.chain(super(GroupBuilder, self).__getitem__(GroupBuilder.__group).values(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__dataset).values(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__attribute).values(),
-                                super(GroupBuilder, self).__getitem__(GroupBuilder.__link).values())
+        return _itertools.chain(super().__getitem__(GroupBuilder.__group).values(),
+                                super().__getitem__(GroupBuilder.__dataset).values(),
+                                super().__getitem__(GroupBuilder.__attribute).values(),
+                                super().__getitem__(GroupBuilder.__link).values())
 
 
 class DatasetBuilder(BaseBuilder):
@@ -418,7 +434,8 @@ class DatasetBuilder(BaseBuilder):
     REGION_REF_TYPE = 'region'
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
-            {'name': 'data', 'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable),
+            {'name': 'data',
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime),
              'doc': 'the data in this dataset', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'the datatype of this dataset', 'default': None},
@@ -433,7 +450,7 @@ class DatasetBuilder(BaseBuilder):
         ''' Create a Builder object for a dataset '''
         name, data, dtype, attributes, maxshape, chunks, parent, source = getargs(
             'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', kwargs)
-        super(DatasetBuilder, self).__init__(name, attributes, parent, source)
+        super().__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
         self.__chunks = chunks
@@ -498,7 +515,7 @@ class LinkBuilder(Builder):
         name, builder, parent, source = getargs('name', 'builder', 'parent', 'source', kwargs)
         if name is None:
             name = builder.name
-        super(LinkBuilder, self).__init__(name, parent, source)
+        super().__init__(name, parent, source)
         self['builder'] = builder
 
     @property
@@ -527,7 +544,7 @@ class RegionBuilder(ReferenceBuilder):
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the Dataset this region applies to'})
     def __init__(self, **kwargs):
         region = popargs('region', kwargs)
-        call_docval_func(super(RegionBuilder, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
         self['region'] = region
 
     @property

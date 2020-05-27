@@ -1,12 +1,11 @@
 from abc import ABCMeta, abstractmethod
-from ..build import BuildManager
-from ..build import GroupBuilder
+
+from ..build import BuildManager, GroupBuilder
 from ..utils import docval, getargs, popargs
 from ..container import Container
-from six import with_metaclass
 
 
-class HDMFIO(with_metaclass(ABCMeta, object)):
+class HDMFIO(metaclass=ABCMeta):
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": str,
@@ -30,10 +29,15 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
     @docval(returns='the Container object that was read in', rtype=Container)
     def read(self, **kwargs):
         f_builder = self.read_builder()
+        if all(len(v) == 0 for v in f_builder.values()):
+            # TODO also check that the keys are appropriate. print a better error message
+            raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
         return container
 
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'})
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write(self, **kwargs):
         container = popargs('container', kwargs)
         f_builder = self.__manager.build(container, source=self.__source)
@@ -46,7 +50,9 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'})
+    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
     def write_builder(self, **kwargs):
         ''' Write a GroupBuilder representing an Container object '''
         pass
@@ -66,3 +72,7 @@ class HDMFIO(with_metaclass(ABCMeta, object)):
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+
+class UnsupportedOperation(ValueError):
+    pass

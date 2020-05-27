@@ -1,10 +1,10 @@
-import unittest2 as unittest
 import json
 
 from hdmf.spec import RefSpec
+from hdmf.testing import TestCase
 
 
-class RefSpecTests(unittest.TestCase):
+class RefSpecTests(TestCase):
 
     def test_constructor(self):
         spec = RefSpec('TimeSeries', 'object')
@@ -19,5 +19,5 @@ class RefSpecTests(unittest.TestCase):
     def test_isregion(self):
         spec = RefSpec('TimeSeries', 'object')
         self.assertFalse(spec.is_region())
-        spec = RefSpec('NWBData', 'region')
+        spec = RefSpec('Data', 'region')
         self.assertTrue(spec.is_region())
