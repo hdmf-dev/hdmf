@@ -119,7 +119,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
     __no_convert = set()
 
     @classmethod
-    def __resolve_dtype(cls, given, specified):
+    def __resolve_numeric_dtype(cls, given, specified):
         """
         Determine the dtype to use from the dtype of the given value and the specified dtype.
         This amounts to determining the greater precision of the two arguments, but also
@@ -172,38 +172,46 @@ class ObjectMapper(metaclass=ExtenderMeta):
         cls.__no_convert.add(obj_type)
 
     @classmethod
-    def convert_dtype(cls, spec, value):
+    def convert_dtype(cls, spec, value, spec_dtype=None):
         """
         Convert values to the specified dtype. For example, if a literal int
         is passed in to a field that is specified as a unsigned integer, this function
         will convert the Python int to a numpy unsigned int.
 
+        :param spec: The DatasetSpec or AttributeSpec to which this value is being applied
+        :param value: The value being converted to the spec dtype
+        :param spec_dtype: Optional override of the dtype in spec.dtype. Used to specify the parent dtype when the given
+                           extended spec lacks a dtype.
+
         :return: The function returns a tuple consisting of 1) the value, and 2) the data type.
                  The value is returned as the function may convert the input value to comply
                  with the dtype specified in the schema.
         """
-        ret, ret_dtype = cls.__check_edgecases(spec, value)
+        if spec_dtype is None:
+            spec_dtype = spec.dtype
+        ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
-        spec_dtype = cls.__dtypes[spec.dtype]
+        # spec_dtype is a string, spec_dtype_type is a type or the conversion helper functions _unicode or _ascii
+        spec_dtype_type = cls.__dtypes[spec_dtype]
         warning_msg = None
         if isinstance(value, np.ndarray):
-            if spec_dtype is _unicode:
+            if spec_dtype_type is _unicode:
                 ret = value.astype('U')
                 ret_dtype = "utf8"
-            elif spec_dtype is _ascii:
+            elif spec_dtype_type is _ascii:
                 ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
-                dtype_func, warning_msg = cls.__resolve_dtype(value.dtype, spec_dtype)
+                dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
                 ret = np.asarray(value).astype(dtype_func)
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
-                return value, spec_dtype
+                return value, spec_dtype_type
             ret = list()
             for elem in value:
-                tmp, tmp_dtype = cls.convert_dtype(spec, elem)
+                tmp, tmp_dtype = cls.convert_dtype(spec, elem, spec_dtype)
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
@@ -214,15 +222,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif spec_dtype is _ascii:
                 ret_dtype = "ascii"
             else:
-                ret_dtype, warning_msg = cls.__resolve_dtype(value.dtype, spec_dtype)
+                ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
-            if spec_dtype in (_unicode, _ascii):
+            if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
-                if spec_dtype == _unicode:
+                if spec_dtype_type == _unicode:
                     ret_dtype = 'utf8'
-                ret = spec_dtype(value)
+                ret = spec_dtype_type(value)
             else:
-                dtype_func, warning_msg = cls.__resolve_dtype(type(value), spec_dtype)
+                dtype_func, warning_msg = cls.__resolve_numeric_dtype(type(value), spec_dtype_type)
                 ret = dtype_func(value)
                 ret_dtype = type(ret)
         if warning_msg:
@@ -231,43 +239,57 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret, ret_dtype
 
     @classmethod
-    def __check_edgecases(cls, spec, value):
+    def __check_convert_numeric(cls, value_type):
+        # dtype 'numeric' allows only ints, floats, and uints
+        value_dtype = np.dtype(value_type)
+        if not (np.issubdtype(value_dtype, np.unsignedinteger) or
+                np.issubdtype(value_dtype, np.floating) or
+                np.issubdtype(value_dtype, np.integer)):
+            raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
+
+    @classmethod
+    def __check_edgecases(cls, spec, value, spec_dtype):
         """
         Check edge cases in converting data to a dtype
         """
         if value is None:
-            dt = spec.dtype
+            dt = spec_dtype
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
             return None, dt
-        if isinstance(spec.dtype, list):
+        if isinstance(spec_dtype, list):
             # compound dtype - Since the I/O layer needs to determine how to handle these,
             # return the list of DtypeSpecs
-            return value, spec.dtype
+            return value, spec_dtype
         if isinstance(value, DataIO):
-            return value, cls.convert_dtype(spec, value.data)[1]
-        if spec.dtype is None or spec.dtype == 'numeric' or type(value) in cls.__no_convert:
+            return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
+        if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
-                return value, value.dtype.type
+                ret_dtype = value.dtype.type
+                if spec_dtype == 'numeric':
+                    cls.__check_convert_numeric(ret_dtype)
+                return value, ret_dtype
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
                     msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
                     raise ValueError(msg)
-                return value, cls.__check_edgecases(spec, value[0])[1]  # infer dtype from first element
+                return value, cls.__check_edgecases(spec, value[0], spec_dtype)[1]  # infer dtype from first element
             ret_dtype = type(value)
+            if spec_dtype == 'numeric':
+                cls.__check_convert_numeric(ret_dtype)
             if ret_dtype is str:
                 ret_dtype = 'utf8'
             elif ret_dtype is bytes:
                 ret_dtype = 'ascii'
             return value, ret_dtype
-        if isinstance(spec.dtype, RefSpec):
+        if isinstance(spec_dtype, RefSpec):
             if not isinstance(value, ReferenceBuilder):
                 msg = "got RefSpec for value of type %s" % type(value)
                 raise ValueError(msg)
-            return value, spec.dtype
-        if spec.dtype is not None and spec.dtype not in cls.__dtypes:
-            msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
+            return value, spec_dtype
+        if spec_dtype is not None and spec_dtype not in cls.__dtypes:
+            msg = "unrecognized dtype: %s -- cannot convert value" % spec_dtype
             raise ValueError(msg)
         return None, None
 
@@ -599,7 +621,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             tmp[j] = self.__get_ref_builder(subt.dtype, None, row[j], manager, source=source)
                         bldr_data.append(tuple(tmp))
                     try:
-                        bldr_data, dtype = self.convert_dtype(spec, bldr_data)
+                        # use spec_dtype from self.spec when spec_ext does not specify dtype
+                        bldr_data, dtype = self.convert_dtype(spec, bldr_data, spec_dtype=spec_dtype)
                     except Exception as ex:
                         msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                         raise Exception(msg) from ex
@@ -623,7 +646,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         self.logger.debug("Building %s '%s' as a dataset"
                                           % (container.__class__.__name__, container.name))
                         try:
-                            bldr_data, dtype = self.convert_dtype(spec, container.data)
+                            # use spec_dtype from self.spec when spec_ext does not specify dtype
+                            bldr_data, dtype = self.convert_dtype(spec, container.data, spec_dtype=spec_dtype)
                         except Exception as ex:
                             msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                             raise Exception(msg) from ex

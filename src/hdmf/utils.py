@@ -15,6 +15,7 @@ __macros = {
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 
 __supported_bool_types = (bool, np.bool_)
+__supported_uint_types = (np.uint8, np.uint16, np.uint32, np.uint64)
 __supported_int_types = (int, np.int8, np.int16, np.int32, np.int64)
 __supported_float_types = [float, np.float16, np.float32, np.float64]
 if hasattr(np, "float128"):  # pragma: no cover
@@ -24,7 +25,8 @@ if hasattr(np, "longdouble"):  # pragma: no cover
     # non-deterministically. a future version of h5py will fix this. see #112
     __supported_float_types.append(np.longdouble)
 __supported_float_types = tuple(__supported_float_types)
-__allowed_enum_types = __supported_bool_types + __supported_int_types + __supported_float_types + (str, )
+__allowed_enum_types = (__supported_bool_types + __supported_uint_types + __supported_int_types
+                        + __supported_float_types + (str, ))
 
 
 def docval_macro(macro):
@@ -59,6 +61,8 @@ def __type_okay(value, argtype, allow_none=False):
     if isinstance(argtype, str):
         if argtype in __macros:
             return __type_okay(value, __macros[argtype], allow_none=allow_none)
+        elif argtype == 'uint':
+            return __is_uint(value)
         elif argtype == 'int':
             return __is_int(value)
         elif argtype == 'float':
@@ -95,6 +99,10 @@ def __shape_okay(value, argshape):
         if b not in (a, None):
             return False
     return True
+
+
+def __is_uint(value):
+    return isinstance(value, __supported_uint_types)
 
 
 def __is_int(value):
@@ -634,31 +642,60 @@ def __googledoc(func, validator, returns=None, rtype=None):
 
 
 def getargs(*argnames):
-    '''getargs(*argnames, argdict)
-    Convenience function to retrieve arguments from a dictionary in batch
-    '''
+    """getargs(*argnames, argdict)
+    Convenience function to retrieve arguments from a dictionary in batch.
+
+    The last argument should be a dictionary, and the other arguments should be the keys (argument names) for which
+    to retrieve the values.
+
+    :raises ValueError: if a argument name is not found in the dictionary or there is only one argument passed to this
+        function or the last argument is not a dictionary
+    :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
+    """
     if len(argnames) < 2:
         raise ValueError('Must supply at least one key and a dict')
     if not isinstance(argnames[-1], dict):
-        raise ValueError('last argument must be dict')
+        raise ValueError('Last argument must be a dict')
     kwargs = argnames[-1]
     if len(argnames) == 2:
+        if argnames[0] not in kwargs:
+            raise ValueError("Argument not found in dict: '%s'" % argnames[0])
         return kwargs.get(argnames[0])
-    return [kwargs.get(arg) for arg in argnames[:-1]]
+    ret = []
+    for arg in argnames[:-1]:
+        if arg not in kwargs:
+            raise ValueError("Argument not found in dict: '%s'" % arg)
+        ret.append(kwargs.get(arg))
+    return ret
 
 
 def popargs(*argnames):
-    '''popargs(*argnames, argdict)
-    Convenience function to retrieve and remove arguments from a dictionary in batch
-    '''
+    """popargs(*argnames, argdict)
+    Convenience function to retrieve and remove arguments from a dictionary in batch.
+
+    The last argument should be a dictionary, and the other arguments should be the keys (argument names) for which
+    to retrieve the values.
+
+    :raises ValueError: if a argument name is not found in the dictionary or there is only one argument passed to this
+        function or the last argument is not a dictionary
+    :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
+    """
     if len(argnames) < 2:
         raise ValueError('Must supply at least one key and a dict')
     if not isinstance(argnames[-1], dict):
-        raise ValueError('last argument must be dict')
+        raise ValueError('Last argument must be a dict')
     kwargs = argnames[-1]
     if len(argnames) == 2:
-        return kwargs.pop(argnames[0])
-    return [kwargs.pop(arg) for arg in argnames[:-1]]
+        try:
+            ret = kwargs.pop(argnames[0])
+        except KeyError as ke:
+            raise ValueError('Argument not found in dict: %s' % str(ke))
+        return ret
+    try:
+        ret = [kwargs.pop(arg) for arg in argnames[:-1]]
+    except KeyError as ke:
+        raise ValueError('Argument not found in dict: %s' % str(ke))
+    return ret
 
 
 class ExtenderMeta(ABCMeta):
