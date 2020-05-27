@@ -923,7 +923,7 @@ class TestConvertDtype(TestCase):
 
         value = np.array(['a', 'b'])
         msg = "Cannot convert from <class 'numpy.str_'> to 'numeric' specification dtype."
-        with self.assertRaisesWith(ValueError, ''):
+        with self.assertRaisesWith(ValueError, msg):
             ObjectMapper.convert_dtype(spec, value)
 
     def test_bool_spec(self):
