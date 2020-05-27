@@ -3,6 +3,7 @@ import numpy as np
 import os.path
 from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
+import logging
 import warnings
 
 from ...container import Container
@@ -41,6 +42,7 @@ class HDF5IO(HDMFIO):
 
         For `mode`, see `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>_`.
         '''
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
@@ -80,63 +82,83 @@ class HDF5IO(HDMFIO):
         return self.__file
 
     @classmethod
-    @docval({'name': 'namespace_catalog',
-             'type': (NamespaceCatalog, TypeMap),
+    @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
-    def load_namespaces(cls, namespace_catalog, path, namespaces=None):
+    def load_namespaces(cls, **kwargs):
         '''
-        Load cached namespaces from a file.
+        Load cached namespaces from a file. If `file` is not supplied, then an h5py.File object will be opened for the
+        given `path`, the namespaces will be read, and the File object will be closed. If `file` is supplied, then the
+        given h5py.File object will be read from and not closed.
         '''
+        namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
+                                                                kwargs)
 
+        if path is None and file_obj is None:
+            raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
+
+        if path is not None and file_obj is not None:  # consistency check
+            if os.path.abspath(file_obj.filename) != os.path.abspath(path):
+                msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
+                       % (path, file_obj.filename))
+                raise ValueError(msg)
+
+        if file_obj is None:
+            with File(path, 'r') as f:
+                return cls.__load_namespaces(namespace_catalog, namespaces, f)
+        else:
+            return cls.__load_namespaces(namespace_catalog, namespaces, file_obj)
+
+    @classmethod
+    def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
         d = {}
 
-        with File(path, 'r') as f:
-            if SPEC_LOC_ATTR not in f.attrs:
-                msg = "No cached namespaces found in %s" % path
-                warnings.warn(msg)
-                return d
-
-            spec_group = f[f.attrs[SPEC_LOC_ATTR]]
-
-            if namespaces is None:
-                namespaces = list(spec_group.keys())
-
-            readers = dict()
-            deps = dict()
-            for ns in namespaces:
-                ns_group = spec_group[ns]
-                # NOTE: by default, objects within groups are iterated in alphanumeric order
-                version_names = list(ns_group.keys())
-                if len(version_names) > 1:
-                    # prior to HDMF 1.6.1, extensions without a version were written under the group name "unversioned"
-                    # make sure that if there is another group representing a newer version, that is read instead
-                    if 'unversioned' in version_names:
-                        version_names.remove('unversioned')
-                if len(version_names) > 1:
-                    # as of HDMF 1.6.1, extensions without a version are written under the group name "None"
-                    # make sure that if there is another group representing a newer version, that is read instead
-                    if 'None' in version_names:
-                        version_names.remove('None')
-                latest_version = version_names[-1]
-                ns_group = ns_group[latest_version]
-                reader = H5SpecReader(ns_group)
-                readers[ns] = reader
-                for spec_ns in reader.read_namespace('namespace'):
-                    deps[ns] = list()
-                    for s in spec_ns['schema']:
-                        dep = s.get('namespace')
-                        if dep is not None:
-                            deps[ns].append(dep)
-
-            order = cls._order_deps(deps)
-            for ns in order:
-                reader = readers[ns]
-                d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
-
+        if SPEC_LOC_ATTR not in file_obj.attrs:
+            msg = "No cached namespaces found in %s" % file_obj.filename
+            warnings.warn(msg)
             return d
+
+        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
+
+        if namespaces is None:
+            namespaces = list(spec_group.keys())
+
+        readers = dict()
+        deps = dict()
+        for ns in namespaces:
+            ns_group = spec_group[ns]
+            # NOTE: by default, objects within groups are iterated in alphanumeric order
+            version_names = list(ns_group.keys())
+            if len(version_names) > 1:
+                # prior to HDMF 1.6.1, extensions without a version were written under the group name "unversioned"
+                # make sure that if there is another group representing a newer version, that is read instead
+                if 'unversioned' in version_names:
+                    version_names.remove('unversioned')
+            if len(version_names) > 1:
+                # as of HDMF 1.6.1, extensions without a version are written under the group name "None"
+                # make sure that if there is another group representing a newer version, that is read instead
+                if 'None' in version_names:
+                    version_names.remove('None')
+            latest_version = version_names[-1]
+            ns_group = ns_group[latest_version]
+            reader = H5SpecReader(ns_group)
+            readers[ns] = reader
+            for spec_ns in reader.read_namespace('namespace'):
+                deps[ns] = list()
+                for s in spec_ns['schema']:
+                    dep = s.get('namespace')
+                    if dep is not None:
+                        deps[ns].append(dep)
+
+        order = cls._order_deps(deps)
+        for ns in order:
+            reader = readers[ns]
+            d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
+
+        return d
 
     @classmethod
     def _order_deps(cls, deps):
@@ -292,7 +314,9 @@ class HDF5IO(HDMFIO):
                 ns_builder = self.__convert_namespace(ns_catalog, ns_name)
                 namespace = ns_catalog.get_namespace(ns_name)
                 group_name = '%s/%s' % (ns_name, namespace.version)
-                ns_group = spec_group.require_group(group_name)
+                if group_name in spec_group:
+                    continue
+                ns_group = spec_group.create_group(group_name)
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
 
@@ -597,11 +621,14 @@ class HDF5IO(HDMFIO):
         failed = set()
         while len(self.__ref_queue) > 0:
             call = self.__ref_queue.popleft()
+            self.logger.debug("Adding reference with call id %d from queue (length %d)"
+                              % (id(call), len(self.__ref_queue)))
             try:
                 call()
             except KeyError:
                 if id(call) in failed:
                     raise RuntimeError('Unable to resolve reference')
+                self.logger.debug("Adding reference with call id %d failed. Appending call to queue" % id(call))
                 failed.add(id(call))
                 self.__ref_queue.append(call)
 
@@ -610,6 +637,7 @@ class HDF5IO(HDMFIO):
         Read and write from any queued DataChunkIterators in a round-robin fashion
         """
         while len(self.__dci_queue) > 0:
+            self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self.__dci_queue))
             dset, data = self.__dci_queue.popleft()
             if self.__write_chunk__(dset, data):
                 self.__dci_queue.append((dset, data))
@@ -698,16 +726,22 @@ class HDF5IO(HDMFIO):
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
                         value = np.array(value)
+                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
+                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value                   # a regular scalar
 
     def _make_attr_ref_filler(self, obj, key, value):
         '''
             Make the callable for setting references to attributes
         '''
+        self.logger.debug("Queueing set attribute on %s '%s' attribute '%s' to %s"
+                          % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
         if isinstance(value, (tuple, list)):
             def _filler():
                 ret = list()
@@ -728,6 +762,7 @@ class HDF5IO(HDMFIO):
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
+        self.logger.debug("Writing group builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
         if builder.written:
             group = parent[builder.name]
         else:
@@ -768,6 +803,7 @@ class HDF5IO(HDMFIO):
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
+        self.logger.debug("Writing link builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
@@ -804,6 +840,7 @@ class HDF5IO(HDMFIO):
         __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
+        self.logger.debug("Writing dataset builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
@@ -857,6 +894,8 @@ class HDF5IO(HDMFIO):
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 builder.written = True
+                self.logger.debug("Queueing set attribute on dataset '%s' containing references. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
@@ -869,6 +908,7 @@ class HDF5IO(HDMFIO):
                     dset = parent[name]
                     dset[:] = ret
                     self.set_attributes(dset, attributes)
+
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
             else:
@@ -881,6 +921,8 @@ class HDF5IO(HDMFIO):
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
                 builder.written = True
+                self.logger.debug("Queueing set attribute on dataset '%s' containing a region reference. "
+                                  "attributes: %s" % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
@@ -892,6 +934,8 @@ class HDF5IO(HDMFIO):
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
                 builder.written = True
+                self.logger.debug("Queueing set attribute on dataset '%s' containing an object reference. "
+                                  "attributes: %s" % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
@@ -905,6 +949,8 @@ class HDF5IO(HDMFIO):
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
                     builder.written = True
+                    self.logger.debug("Queueing set attribute on dataset '%s' containing region references. "
+                                      "attributes: %s" % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
@@ -918,6 +964,8 @@ class HDF5IO(HDMFIO):
                 else:
                     dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                     builder.written = True
+                    self.logger.debug("Queueing set attribute on dataset '%s' containing object references. "
+                                      "attributes: %s" % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
@@ -1122,15 +1170,19 @@ class HDF5IO(HDMFIO):
         if container is None:
             return None
         if isinstance(container, Builder):
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder
             else:
                 builder = container
         elif isinstance(container, ReferenceBuilder):
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.builder.name))
             builder = container.builder
         else:
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
         path = self.__get_path(builder)
+        self.logger.debug("Getting reference at path '%s'" % path)
         if isinstance(container, RegionBuilder):
             region = container.region
         if region is not None:
@@ -1166,9 +1218,9 @@ class HDF5IO(HDMFIO):
         # dependency
         self.__ref_queue.append(func)
 
-    def __rec_get_ref(self, l):
+    def __rec_get_ref(self, ref_list):
         ret = list()
-        for elem in l:
+        for elem in ref_list:
             if isinstance(elem, (list, tuple)):
                 ret.append(self.__rec_get_ref(elem))
             elif isinstance(elem, (Builder, Container)):
