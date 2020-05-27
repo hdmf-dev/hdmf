@@ -916,6 +916,16 @@ class TestConvertDtype(TestCase):
         self.assertTupleEqual(ret, match)
         self.assertIs(ret[0].dtype.type, match[1])
 
+        value = ['a', 'b']
+        msg = "Cannot convert from <class 'str'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
+
+        value = np.array(['a', 'b'])
+        msg = "Cannot convert from <class 'numpy.str_'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
+
     def test_bool_spec(self):
         spec_type = 'bool'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
@@ -931,3 +941,24 @@ class TestConvertDtype(TestCase):
         match = (value, np.bool_)
         self.assertTupleEqual(ret, match)
         self.assertIs(type(ret[0]), match[1])
+
+    def test_override_type_int_restrict_precision(self):
+        spec = DatasetSpec('an example dataset', 'int8', name='data')
+        res = ObjectMapper.convert_dtype(spec, 1, 'int64')
+        self.assertTupleEqual(res, (np.int64(1), np.int64))
+
+    def test_override_type_numeric_to_uint(self):
+        spec = DatasetSpec('an example dataset', 'numeric', name='data')
+        res = ObjectMapper.convert_dtype(spec, np.uint32(1), 'uint8')
+        self.assertTupleEqual(res, (np.uint32(1), np.uint32))
+
+    def test_override_type_numeric_to_uint_list(self):
+        spec = DatasetSpec('an example dataset', 'numeric', name='data')
+        res = ObjectMapper.convert_dtype(spec, np.uint32((1, 2, 3)), 'uint8')
+        np.testing.assert_array_equal(res[0], np.uint32((1, 2, 3)))
+        self.assertEqual(res[1], np.uint32)
+
+    def test_override_type_none_to_bool(self):
+        spec = DatasetSpec('an example dataset', None, name='data')
+        res = ObjectMapper.convert_dtype(spec, True, 'bool')
+        self.assertTupleEqual(res, (True, np.bool_))
