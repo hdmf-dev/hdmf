@@ -916,6 +916,16 @@ class TestConvertDtype(TestCase):
         self.assertTupleEqual(ret, match)
         self.assertIs(ret[0].dtype.type, match[1])
 
+        value = ['a', 'b']
+        msg = "Cannot convert from <class 'str'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
+
+        value = np.array(['a', 'b'])
+        msg = "Cannot convert from <class 'numpy.str_'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, ''):
+            ObjectMapper.convert_dtype(spec, value)
+
     def test_bool_spec(self):
         spec_type = 'bool'
         spec = DatasetSpec('an example dataset', spec_type, name='data')

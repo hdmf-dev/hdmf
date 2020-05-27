@@ -234,6 +234,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret, ret_dtype
 
     @classmethod
+    def __check_convert_numeric(cls, value_type):
+        # dtype 'numeric' allows only ints, floats, and uints
+        value_dtype = np.dtype(value_type)
+        if not (np.issubdtype(value_dtype, np.unsignedinteger) or
+                np.issubdtype(value_dtype, np.floating) or
+                np.issubdtype(value_dtype, np.integer)):
+            raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
+
+    @classmethod
     def __check_edgecases(cls, spec, value, spec_dtype):
         """
         Check edge cases in converting data to a dtype
@@ -252,13 +261,18 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
-                return value, value.dtype.type
+                ret_dtype = value.dtype.type
+                if spec_dtype == 'numeric':
+                    cls.__check_convert_numeric(ret_dtype)
+                return value, ret_dtype
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
                     msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
                     raise ValueError(msg)
                 return value, cls.__check_edgecases(spec, value[0], spec_dtype)[1]  # infer dtype from first element
             ret_dtype = type(value)
+            if spec_dtype == 'numeric':
+                cls.__check_convert_numeric(ret_dtype)
             if ret_dtype is str:
                 ret_dtype = 'utf8'
             elif ret_dtype is bytes:
