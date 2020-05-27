@@ -949,12 +949,12 @@ class TestConvertDtype(TestCase):
 
     def test_override_type_numeric_to_uint(self):
         spec = DatasetSpec('an example dataset', 'numeric', name='data')
-        res = ObjectMapper.convert_dtype(spec, 1, 'uint8')
+        res = ObjectMapper.convert_dtype(spec, np.uint32(1), 'uint8')
         self.assertTupleEqual(res, (np.uint32(1), np.uint32))
 
     def test_override_type_numeric_to_uint_list(self):
         spec = DatasetSpec('an example dataset', 'numeric', name='data')
-        res = ObjectMapper.convert_dtype(spec, (1, 2, 3), 'uint8')
+        res = ObjectMapper.convert_dtype(spec, np.uint32((1, 2, 3)), 'uint8')
         np.testing.assert_array_equal(res[0], np.uint32((1, 2, 3)))
         self.assertEqual(res[1], np.uint32)
 
