@@ -211,15 +211,15 @@ class GroupBuilder(BaseBuilder):
         source when this source is set
         '''
         super(GroupBuilder, self.__class__).source.fset(self, s)
-        for g in self.groups.values():
-            if g.source is None:
-                g.source = s
-        for d in self.datasets.values():
-            if d.source is None:
-                d.source = s
-        for l in self.links.values():
-            if l.source is None:
-                l.source = s
+        for group in self.groups.values():
+            if group.source is None:
+                group.source = s
+        for dset in self.datasets.values():
+            if dset.source is None:
+                dset.source = s
+        for link in self.links.values():
+            if link.source is None:
+                link.source = s
 
     @property
     def groups(self):
