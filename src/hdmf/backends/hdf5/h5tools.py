@@ -29,11 +29,11 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 class HDF5IO(HDMFIO):
 
-    @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+    @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'mode', 'type': str,
+             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")', 'default': None},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
-            {'name': 'mode', 'type': str,
-             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
@@ -45,10 +45,15 @@ class HDF5IO(HDMFIO):
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
-        if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            msg = 'You argued %s as this object\'s path, ' % path
-            msg += 'but supplied a file with filename: %s' % file_obj.filename
-            raise ValueError(msg)
+        if file_obj is not None:
+            if path is None:
+                path = file_obj.filename
+            elif os.path.abspath(file_obj.filename) != os.path.abspath(path):
+                msg = 'You argued %s as this object\'s path, ' % path
+                msg += 'but supplied a file with filename: %s' % file_obj.filename
+                raise ValueError(msg)
+        elif path is None:
+            TypeError("Must supply either 'path' or 'file' arg to HDF5IO.")
 
         if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+'):
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
