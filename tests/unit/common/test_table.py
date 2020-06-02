@@ -1,4 +1,4 @@
-from hdmf.common import DynamicTable, VectorData, ElementIdentifiers, DynamicTableRegion
+from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, DynamicTableRegion
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 import pandas as pd
@@ -97,6 +97,22 @@ class TestDynamicTable(TestCase):
         self.add_rows(table)
         self.check_table(table)
 
+    def test_get(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        self.assertIsInstance(table.get('foo'), VectorData)
+        self.assertEqual(table.get('foo'), table['foo'])
+
+    def test_get_not_found(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        self.assertIsNone(table.get('qux'))
+
+    def test_get_not_found_default(self):
+        table = self.with_spec()
+        self.add_rows(table)
+        self.assertEqual(table.get('qux', 1), 1)
+
     def test_get_item(self):
         table = self.with_spec()
         self.add_rows(table)
@@ -107,6 +123,14 @@ class TestDynamicTable(TestCase):
         table.add_column(name='qux', description='qux column')
         self.assertEqual(table.colnames, ('foo', 'bar', 'baz', 'qux'))
         self.assertTrue(hasattr(table, 'qux'))
+
+    def test_add_column_twice(self):
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+
+        msg = "column 'qux' already exists in DynamicTable 'with_spec'"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux', description='qux column')
 
     def test_getitem_row_num(self):
         table = self.with_spec()
@@ -243,7 +267,7 @@ class TestDynamicTable(TestCase):
         """
         Test that when a DynamicTable is generated from a dataframe where one of the column names is an existing
         DynamicTable attribute (e.g., description), that the table can be created, the existing attribute is not
-        altered, and the column can still be accessed using the table[col_name] syntax.
+        altered, a warning is raised, and the column can still be accessed using the table[col_name] syntax.
         """
         df = pd.DataFrame({
             'parent': [1, 2, 3, 4, 5],
@@ -251,7 +275,12 @@ class TestDynamicTable(TestCase):
             'description': ['cat', 'dog', 'bird', 'fish', 'lizard']
         })
 
-        table = DynamicTable.from_dataframe(df, 'test')
+        # technically there are three separate warnings but just catch one here
+        msg1 = ("An attribute 'parent' already exists on DynamicTable 'test' so this column cannot be accessed "
+                "as an attribute, e.g., table.parent; it can only be accessed using other methods, e.g., "
+                "table['parent'].")
+        with self.assertWarnsWith(UserWarning, msg1):
+            table = DynamicTable.from_dataframe(df, 'test')
         self.assertEqual(table.name, 'test')
         self.assertEqual(table.description, '')
         self.assertIsNone(table.parent)
