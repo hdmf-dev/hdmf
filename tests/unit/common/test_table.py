@@ -610,13 +610,16 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertEqual(table['col1'].description, 'required column')
         # self.assertEqual(table['col3'].description, 'required, indexed column')  # TODO this should work
 
-        # col2, col4 are not yet accessible
+        self.assertIsNone(table.col2)
+        self.assertIsNone(table.col4)
+        self.assertIsNone(table.col4_index)
+        self.assertIsNone(table.col6)
+        self.assertIsNone(table.col8)
+        self.assertIsNone(table.col8_index)
+
+        # uninitialized optional predefined columns cannot be accessed in this manner
         with self.assertRaisesWith(KeyError, "'col2'"):
             table['col2']
-
-        msg = "'SubTable' object has no attribute 'col2'"
-        with self.assertRaisesWith(AttributeError, msg):
-            table.col2
 
     def test_gather_columns_inheritance(self):
         """Test that gathering columns across a type hierarchy works."""

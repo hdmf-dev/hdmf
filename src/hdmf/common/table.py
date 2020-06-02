@@ -330,7 +330,7 @@ class DynamicTable(Container):
         self._init_class_columns()
 
     def __set_table_attr(self, col):
-        if hasattr(self, col.name):
+        if hasattr(self, col.name) and col.name not in self.__uninit_cols:
             msg = ("An attribute '%s' already exists on %s '%s' so this column cannot be accessed as an attribute, "
                    "e.g., table.%s; it can only be accessed using other methods, e.g., table['%s']."
                    % (col.name, self.__class__.__name__, self.name, col.name, col.name))
@@ -354,8 +354,13 @@ class DynamicTable(Container):
                                     **{k: col[k] for k in col.keys()
                                         if k not in ['name', 'description', 'index', 'table', 'required']})
                 else:
-                    # track the not yet initialized optional columns
+                    # track the not yet initialized optional predefined columns
                     self.__uninit_cols[col['name']] = col
+
+                    # set the table attributes for not yet init optional predefined columns
+                    setattr(self, col['name'], None)
+                    if col.get('index', False):
+                        setattr(self, col['name'] + '_index', None)
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -542,7 +547,7 @@ class DynamicTable(Container):
             # else, the ObjectMapper will create a link from self (parent) to col_index (child with existing parent)
             col = col_index
             self.__indices[col_index.name] = col_index
-            setattr(self, col_index.name, col_index)
+            self.__set_table_attr(col_index)
 
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
