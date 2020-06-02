@@ -189,8 +189,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         if spec_dtype is None:
             spec_dtype = spec.dtype
-        if spec.name == 'sequence_name':
-            breakpoint()
         ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
