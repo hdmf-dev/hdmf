@@ -418,6 +418,7 @@ class Data(AbstractContainer):
         """
         func = getargs('func', kwargs)
         self.__data = func(self.__data)
+        return self
 
     def __bool__(self):
         if self.data is not None:
