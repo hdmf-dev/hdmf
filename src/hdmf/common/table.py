@@ -233,6 +233,10 @@ class DynamicTable(Container):
             if len(all_names) != len(set(all_names)):
                 raise ValueError("'columns' contains columns with duplicate names: %s" % all_names)
 
+            # TODO: check columns against __columns__
+            # mismatches should raise an error (e.g., a VectorData cannot be passed in with the same name as a
+            # prespecified table region column)
+
             # check column lengths against each other and id length
             # set ids if non-zero cols are provided and ids is empty
             colset = {c.name: c for c in columns}

@@ -748,7 +748,7 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertTrue(hasattr(table, 'col1'))
 
     def test_init_columns_add_req_column_mismatch_index(self):
-        """Test that passing a required column to init works."""
+        """Test that passing a required column that does not match the predefined column specs raises an error."""
         col1 = VectorData(name='col1', description='column #1')  # override __columns__ description
         col1_ind = VectorIndex(name='col1_index', data=list(), target=col1)
 
@@ -756,7 +756,7 @@ class TestDynamicTableClassColumns(TestCase):
         SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
 
     def test_init_columns_add_req_column_mismatch_table(self):
-        """Test that passing a required column to init works."""
+        """Test that passing a required column that does not match the predefined column specs raises an error."""
         dummy_table = DynamicTable(name='dummy', description='dummy table')
         col1 = DynamicTableRegion(name='col1', data=list(), description='column #1', table=dummy_table)
 
