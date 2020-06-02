@@ -549,49 +549,187 @@ class SubTable(DynamicTable):
         {'name': 'col1', 'description': 'required column', 'required': True},
         {'name': 'col2', 'description': 'optional column'},
         {'name': 'col3', 'description': 'required, indexed column', 'required': True, 'index': True},
-        {'name': 'col4', 'description': 'optional, indexed column', 'index': True}
+        {'name': 'col4', 'description': 'optional, indexed column', 'index': True},
+        {'name': 'col5', 'description': 'required region', 'required': True, 'table': True},
+        {'name': 'col6', 'description': 'optional region', 'table': True},
+        {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
+        {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
     )
 
 
-class TestCustomDynamicTable(TestCase):
+class SubSubTable(SubTable):
+
+    __columns__ = (
+        {'name': 'col9', 'description': 'required column', 'required': True},
+        # TODO handle edge case where subclass re-defines a column from superclass
+        # {'name': 'col2', 'description': 'optional column subsub', 'required': True},  # make col2 required
+    )
+
+
+class TestDynamicTableClassColumns(TestCase):
+    """Test functionality related to the predefined __columns__ field of a DynamicTable class."""
 
     def test_init(self):
+        """Test that required columns, and not optional columns, in __columns__ are created on init."""
         table = SubTable(name='subtable', description='subtable description')
-        self.assertEqual(table.colnames, ('col1', 'col3'))
+        self.assertEqual(table.colnames, ('col1', 'col3', 'col5', 'col7'))
+        # test different access methods. note: table.get('col1') is equivalent to table['col1']
+        self.assertEqual(table.col1.description, 'required column')
+        self.assertEqual(table.col3.description, 'required, indexed column')
+        self.assertEqual(table.col5.description, 'required region')
+        self.assertEqual(table.col7.description, 'required, indexed region')
+        self.assertEqual(table['col1'].description, 'required column')
+        # self.assertEqual(table['col3'].description, 'required, indexed column')  # TODO this should work
 
-    def test_add_column(self):
-        table = SubTable(name='subtable', description='subtable description')
-        table.add_column(name='col5', description='column #5')
-        self.assertEqual(table.colnames, ('col1', 'col3', 'col5'))
-        self.assertTrue(hasattr(table, 'col5'))
+        # col2, col4 are not yet accessible
+        with self.assertRaisesWith(KeyError, "'col2'"):
+            table['col2']
 
-    def test_add_existing_column(self):
+        msg = "'SubTable' object has no attribute 'col2'"
+        with self.assertRaisesWith(AttributeError, msg):
+            table.col2
+
+    def test_gather_columns_inheritance(self):
+        """Test that gathering columns across a type hierarchy works."""
+        table = SubSubTable(name='subtable', description='subtable description')
+        self.assertEqual(table.colnames, ('col1', 'col3', 'col5', 'col7', 'col9'))
+
+    def test_bad_predefined_columns(self):
+        """Test that gathering columns across a type hierarchy works."""
+        msg = "'__columns__' must be of type tuple, found <class 'list'>"
+        with self.assertRaisesWith(TypeError, msg):
+            class BadSubTable(DynamicTable):
+
+                __columns__ = []
+
+    def test_add_req_column(self):
+        """Test that adding a required column from __columns__ raises an error."""
         table = SubTable(name='subtable', description='subtable description')
         msg = "column 'col1' already exists in SubTable 'subtable'"
         with self.assertRaisesWith(ValueError, msg):
             table.add_column(name='col1', description='column #1')
 
-    def test_add_optional_column(self):
+    def test_add_req_ind_column(self):
+        """Test that adding a required, indexed column from __columns__ raises an error."""
         table = SubTable(name='subtable', description='subtable description')
-        msg = "column 'col2' already exists in SubTable 'subtable'"
+        msg = "column 'col3' already exists in SubTable 'subtable'"
         with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='col2', description='column #2')
+            table.add_column(name='col3', description='column #3')
 
-    def test_add_optional_column_after_data(self):
+    def test_add_opt_column(self):
+        """Test that adding an optional column from __columns__ with matching specs except for description works."""
         table = SubTable(name='subtable', description='subtable description')
-        table.add_row(col1='a', col3='c')
+
+        table.add_column(name='col2', description='column #2')  # override __columns__ description
+        self.assertEqual(table.col2.description, 'column #2')
+
+        table.add_column(name='col4', description='column #4', index=True)
+        self.assertEqual(table.col4.description, 'column #4')
+
+        table.add_column(name='col6', description='column #6', table=True)
+        self.assertEqual(table.col6.description, 'column #6')
+
+        table.add_column(name='col8', description='column #8', index=True, table=True)
+        self.assertEqual(table.col8.description, 'column #8')
+
+    def test_add_opt_column_mismatched_table(self):
+        """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
+        table = SubTable(name='subtable', description='subtable description')
+        msg = ("Column 'col2' is predefined in SubTable with table=False which does not match the entered table "
+               "argument. The entered table argument will be ignored.")
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col2', description='column #2', table=True)
+        self.assertEqual(table.col2.description, 'column #2')
+        self.assertEqual(type(table.col2), VectorData)  # not DynamicTableRegion
+
+    def test_add_opt_column_mismatched_index(self):
+        """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
+        table = SubTable(name='subtable', description='subtable description')
+        msg = ("Column 'col2' is predefined in SubTable with index=False which does not match the entered index "
+               "argument. The entered index argument will be ignored.")
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col2', description='column #2', index=True)
+        self.assertEqual(table.col2.description, 'column #2')
+        self.assertEqual(type(table.get('col2')), VectorData)  # not VectorIndex
+
+    def test_add_opt_column_twice(self):
+        """Test that adding an optional column from __columns__ twice fails the second time."""
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_column(name='col2', description='column #2')
+
         msg = "column 'col2' already exists in SubTable 'subtable'"
         with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='col2', description='column #2', data=('b', ))
+            table.add_column(name='col2', description='column #2b')
+
+    def test_add_opt_column_after_data(self):
+        """Test that adding an optional column from __columns__ with data works."""
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c', col5='e', col7='g')
+        table.add_column(name='col2', description='column #2', data=('b', ))
+        self.assertTupleEqual(table.col2.data, ('b', ))
+
+    def test_add_opt_ind_column_after_data(self):
+        """Test that adding an optional, indexed column from __columns__ with data works."""
+        table = SubTable(name='subtable', description='subtable description')
+        table.add_row(col1='a', col3='c', col5='e', col7='g')
+        # TODO this use case is tricky and should not be allowed
+        # table.add_column(name='col4', description='column #4', data=(('b', 'b2'), ))
 
     def test_add_row_opt_column(self):
+        """Test that adding a row with an optional column works."""
         table = SubTable(name='subtable', description='subtable description')
-        table.add_row(col1='a', col2='b', col3='c')
-        self.assertEqual(set(table.colnames), {'col1', 'col2', 'col3'})
-        self.assertEqual(table['col2'].description, 'optional column')
+        table.add_row(col1='a', col2='b', col3='c', col4=('d1', 'd2'), col5='e', col7='g')
+        table.add_row(col1='a', col2='b2', col3='c', col4=('d3', 'd4'), col5='e', col7='g')
+        self.assertTupleEqual(table.colnames, ('col1', 'col3', 'col5', 'col7', 'col2', 'col4'))
+        self.assertEqual(table.col2.description, 'optional column')
+        self.assertEqual(table.col4.description, 'optional, indexed column')
+        self.assertListEqual(table.col2.data, ['b', 'b2'])
+        # self.assertListEqual(table.col4.data, [('d1', 'd2'), ('d3', 'd4')])  # TODO this should work
 
     def test_add_row_opt_column_after_data(self):
+        """Test that adding a row with an optional column after adding a row without the column raises an error."""
         table = SubTable(name='subtable', description='subtable description')
-        table.add_row(col1='a', col3='c')
-        with self.assertRaises(ValueError):
-            table.add_row(col1='a', col2='b', col3='c')
+        table.add_row(col1='a', col3='c', col5='e', col7='g')
+        msg = "column must have the same number of rows as 'id'"  # TODO improve error message
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_row(col1='a', col2='b', col3='c', col5='e', col7='g')
+
+    def test_init_columns_add_req_column(self):
+        """Test that passing a required column to init works."""
+        col1 = VectorData(name='col1', description='column #1')  # override __columns__ description
+        table = SubTable(name='subtable', description='subtable description', columns=[col1])
+        self.assertEqual(table.colnames, ('col1', 'col3', 'col5', 'col7'))
+        self.assertEqual(table.col1.description, 'column #1')
+        self.assertTrue(hasattr(table, 'col1'))
+
+    def test_init_columns_add_req_column_mismatch_index(self):
+        """Test that passing a required column to init works."""
+        col1 = VectorData(name='col1', description='column #1')  # override __columns__ description
+        col1_ind = VectorIndex(name='col1_index', data=list(), target=col1)
+
+        # TODO raise an error
+        SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
+
+    def test_init_columns_add_req_column_mismatch_table(self):
+        """Test that passing a required column to init works."""
+        dummy_table = DynamicTable(name='dummy', description='dummy table')
+        col1 = DynamicTableRegion(name='col1', data=list(), description='column #1', table=dummy_table)
+
+        # TODO raise an error
+        SubTable(name='subtable', description='subtable description', columns=[col1])
+
+    def test_init_columns_add_opt_column(self):
+        """Test that passing an optional column to init works."""
+        col2 = VectorData(name='col2', description='column #2')  # override __columns__ description
+        table = SubTable(name='subtable', description='subtable description', columns=[col2])
+        self.assertEqual(table.colnames, ('col2', 'col1', 'col3', 'col5', 'col7'))
+        self.assertEqual(table.col2.description, 'column #2')
+
+    def test_init_columns_add_dup_column(self):
+        """Test that passing two columns with the same name raises an error."""
+        col1 = VectorData(name='col1', description='column #1')  # override __columns__ description
+        col1_ind = VectorIndex(name='col1', data=list(), target=col1)
+
+        msg = "'columns' contains columns with duplicate names: ['col1', 'col1']"
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])

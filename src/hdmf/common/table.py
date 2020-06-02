@@ -210,6 +210,10 @@ class DynamicTable(Container):
         call_docval_func(super().__init__, kwargs)
         self.description = desc
 
+        # hold names of optional columns that are defined in __columns__ that are not yet initialized
+        # map name to column specification
+        self.__uninit_cols = dict()
+
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
         if id is not None:
@@ -332,23 +336,23 @@ class DynamicTable(Container):
             setattr(self, col.name, col)
 
     def _init_class_columns(self):
-        self.__uninit_cols = []  # hold column names that are defined in __columns__ but not yet initialized
+        """
+        Process all predefined columns specified in class variable __columns__.
+        Optional columns are not tracked but not added.
+        """
         for col in self.__columns__:
-            if col['name'] not in self.__colids:
+            if col['name'] not in self.__colids:  # if column has not been added in __init__
                 if col.get('required', False):
-                    self._add_column(col['name'], col['description'],
-                                     index=col.get('index', False),
-                                     table=col.get('table', False),
-                                     # Pass through extra keyword arguments for _add_column that subclasses may have
-                                     # added
-                                     **{k: col[k] for k in col.keys()
+                    self.add_column(name=col['name'],
+                                    description=col['description'],
+                                    index=col.get('index', False),
+                                    table=col.get('table', False),
+                                    # Pass through extra kwargs for add_column that subclasses may have added
+                                    **{k: col[k] for k in col.keys()
                                         if k not in ['name', 'description', 'index', 'table', 'required']})
-
-                else:  # create column name attributes (set to None) on the object even if column is not required
-                    self.__uninit_cols.append(col['name'])
-                    setattr(self, col['name'], None)
-                    if col.get('index', False):
-                        setattr(self, col['name'] + '_index', None)
+                else:
+                    # track the not yet initialized optional columns
+                    self.__uninit_cols[col['name']] = col
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -411,12 +415,12 @@ class DynamicTable(Container):
             for col in self.__columns__:
                 if col['name'] in extra_columns:
                     if data[col['name']] is not None:
-                        self._add_column(col['name'], col['description'],
-                                         index=col.get('index', False),
-                                         table=col.get('table', False),
-                                         # Pass through extra keyword arguments for _add_column that
-                                         # subclasses may have added
-                                         **{k: col[k] for k in col.keys()
+                        self.add_column(col['name'], col['description'],
+                                        index=col.get('index', False),
+                                        table=col.get('table', False),
+                                        # Pass through extra keyword arguments for add_column that
+                                        # subclasses may have added
+                                        **{k: col[k] for k in col.keys()
                                             if k not in ['name', 'description', 'index', 'table', 'required']})
                     extra_columns.remove(col['name'])
 
@@ -470,36 +474,38 @@ class DynamicTable(Container):
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
              'doc': 'whether or not this column should be indexed', 'default': False})
     def add_column(self, **kwargs):
-        name = getargs('name', kwargs)
-        for col in self.__columns__:
-            if col['name'] == name:  # column has not been added but is pre-specified
-                msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
-                raise ValueError(msg)
-
-        self._add_column(**kwargs)
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
-            {'name': 'description', 'type': str, 'doc': 'a description for this column'},
-            {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
-            {'name': 'table', 'type': (bool, 'DynamicTable'),
-             'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
-            {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
-             'doc': 'whether or not this column should be indexed', 'default': False})
-    def _add_column(self, **kwargs):
         """
         Add a column to this table.
 
         If data is provided, it must contain the same number of rows as the current state of the table.
 
-        :raises ValueError
+        :raises ValueError: if the column has already been added to the table
         """
-        name, data = getargs('name', 'data', kwargs)
+        name, data, description = getargs('name', 'data', 'description', kwargs)
         index, table = popargs('index', 'table', kwargs)
 
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
             raise ValueError(msg)
+
+        if name in self.__uninit_cols:  # column is a predefined optional column from the spec
+            # check the given values against the predefined optional column spec. if they do not match, raise a warning
+            # and ignore the given arguments. users should not be able to override these values
+            spec_table = self.__uninit_cols[name].get('table', False)
+            if table != spec_table:
+                msg = ("Column '%s' is predefined in %s with table=%s which does not match the entered "
+                       "table argument. The entered table argument will be ignored."
+                       % (name, self.__class__.__name__, spec_table))
+                warn(msg)
+                table = spec_table
+
+            spec_index = self.__uninit_cols[name].get('index', False)
+            if index != spec_index:
+                msg = ("Column '%s' is predefined in %s with index=%s which does not match the entered "
+                       "index argument. The entered index argument will be ignored."
+                       % (name, self.__class__.__name__, spec_index))
+                warn(msg)
+                index = spec_index
 
         ckwargs = dict(kwargs)
         cls = VectorData
