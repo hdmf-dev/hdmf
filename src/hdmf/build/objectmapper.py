@@ -189,6 +189,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         if spec_dtype is None:
             spec_dtype = spec.dtype
+        if spec.name == 'sequence_name':
+            breakpoint()
         ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
@@ -217,9 +219,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret_dtype = tmp_dtype
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            if spec_dtype is _unicode:
+            if spec_dtype_type is _unicode:
                 ret_dtype = "utf8"
-            elif spec_dtype is _ascii:
+            elif spec_dtype_type is _ascii:
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
