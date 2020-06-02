@@ -195,7 +195,7 @@ class DynamicTable(Container):
         if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
                 and bases[-1].__columns__ is not cls.__columns__):
             new_columns = list(cls.__columns__)
-            new_columns[0:0] = bases[-1].__columns__
+            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
             cls.__columns__ = tuple(new_columns)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
@@ -222,30 +222,31 @@ class DynamicTable(Container):
         else:
             id = ElementIdentifiers('id')
 
-        if columns is not None:
-            if len(columns) > 0:
-                # If columns have been passed in, check them over
-                # and process accordingly
-                if isinstance(columns[0], dict):
-                    columns = self.__build_columns(columns)
-                elif not all(isinstance(c, (VectorData, VectorIndex)) for c in columns):
-                    raise ValueError("'columns' must be a list of VectorData, DynamicTableRegion or VectorIndex")
-                colset = {c.name: c for c in columns}
-                for c in columns:
-                    if isinstance(c, VectorIndex):
-                        colset.pop(c.target.name)
-                lens = [len(c) for c in colset.values()]
-                if not all(i == lens[0] for i in lens):
-                    raise ValueError("columns must be the same length")
-                if lens[0] != len(id):
-                    if len(id) > 0:
-                        raise ValueError("must provide same number of ids as length of columns")
-                    else:
-                        id.data.extend(range(lens[0]))
-        else:
-            # if the user has not passed in columns, make a place to put them,
-            # as they will presumably be adding new columns
-            columns = list()
+        if columns is not None and len(columns) > 0:
+            # If columns have been passed in, check them over and process accordingly
+            if isinstance(columns[0], dict):
+                columns = self.__build_columns(columns)
+            elif not all(isinstance(c, (VectorData, VectorIndex)) for c in columns):
+                raise ValueError("'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex")
+
+            all_names = [c.name for c in columns]
+            if len(all_names) != len(set(all_names)):
+                raise ValueError("'columns' contains columns with duplicate names: %s" % all_names)
+
+            # check column lengths against each other and id length
+            # set ids if non-zero cols are provided and ids is empty
+            colset = {c.name: c for c in columns}
+            for c in columns:  # remove all VectorData objects that have an associated VectorIndex from colset
+                if isinstance(c, VectorIndex):
+                    colset.pop(c.target.name)
+            lens = [len(c) for c in colset.values()]
+            if not all(i == lens[0] for i in lens):
+                raise ValueError("columns must be the same length")
+            if lens[0] != len(id):
+                if len(id) > 0:
+                    raise ValueError("must provide same number of ids as length of columns")
+                else:  # set ids to: 0 to length of columns - 1
+                    id.data.extend(range(lens[0]))
 
         self.id = id
 
@@ -323,6 +324,8 @@ class DynamicTable(Container):
                 self.__indices[col.name] = col
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
+
+        # self.__colids maps the column name to an index starting at 1
         self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
         self._init_class_columns()
 
@@ -604,7 +607,7 @@ class DynamicTable(Container):
             if key in self.__colids:
                 ret = self.__df_cols[self.__colids[key]]
             elif key in self.__indices:
-                return self.__indices[key]
+                ret = self.__indices[key]
             else:
                 raise KeyError(key)
         else:
