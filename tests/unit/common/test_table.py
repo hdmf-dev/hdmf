@@ -85,6 +85,19 @@ class TestDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable("with_columns", 'a test table', id=[0, 1], columns=columns)
 
+    def test_constructor_bad_columns(self):
+        columns = ['bad_column']
+        msg = "'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table', columns=columns)
+
+    def test_constructor_unequal_length_columns(self):
+        columns = [VectorData(name='col1', description='desc', data=[1, 2, 3]),
+                   VectorData(name='col2', description='desc', data=[1, 2])]
+        msg = "columns must be the same length"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table', columns=columns)
+
     def add_rows(self, table):
         table.add_row({'foo': 1, 'bar': 10.0, 'baz': 'cat'})
         table.add_row({'foo': 2, 'bar': 20.0, 'baz': 'dog'})
