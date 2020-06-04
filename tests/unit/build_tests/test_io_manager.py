@@ -52,7 +52,7 @@ class TestBase(TestCase):
 
 class TestBuildManager(TestBase):
 
-    def test_build(self):
+    def get_container_expected_builder(self):
         container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
         expected = GroupBuilder(
             'my_foo',
@@ -64,8 +64,34 @@ class TestBuildManager(TestBase):
                     attributes={'attr2': 10})},
             attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
                         'object_id': container_inst.object_id})
+        return container_inst, expected
+
+    def test_build(self):
+        container_inst, expected = self.get_container_expected_builder()
         builder1 = self.manager.build(container_inst)
         self.assertDictEqual(builder1, expected)
+        self.assertIsNone(container_inst.container_source)
+
+    def test_build_set_container_source(self):
+        container_inst, expected = self.get_container_expected_builder()
+        builder1 = self.manager.build(container_inst, source='file.h5')
+        self.assertDictEqual(builder1, expected)
+        self.assertEqual(container_inst.container_source, 'file.h5')
+
+    def test_build_set_container_source_preset(self):
+        container_inst, expected = self.get_container_expected_builder()
+        container_inst.container_source = 'file1.h5'  # as if read from file
+        builder1 = self.manager.build(container_inst, source='file1.h5')
+        self.assertDictEqual(builder1, expected)
+        self.assertEqual(container_inst.container_source, 'file1.h5')
+
+    def test_build_set_container_source_preset_mismatch(self):
+        container_inst, expected = self.get_container_expected_builder()
+        container_inst.container_source = 'file1.h5'  # as if read from file
+
+        msg = "Cannot change container_source once set: 'my_foo' tests.unit.utils.Foo"
+        with self.assertRaisesWith(ValueError, msg):
+            self.manager.build(container_inst, source='file2.h5')
 
     def test_build_memoization(self):
         container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
@@ -284,3 +310,61 @@ class TestTypeMap(TestBase):
 # TODO:
 class TestWildCardNamedSpecs(TestCase):
     pass
+
+
+class TestBuildManagerExport(TestBase):
+
+    def test_constructor(self):
+        bm1 = BuildManager(TypeMap())
+        self.assertFalse(bm1.export)
+
+        bm1 = BuildManager(TypeMap(), export=True)
+        self.assertTrue(bm1.export)
+
+    def get_container_expected_builder(self):
+        container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
+
+        dset_builder = DatasetBuilder(
+            name='my_data',
+            data=list(range(10)),
+            attributes={'attr2': 10},
+        )
+        attrs = {'attr1': 'value1',
+                 'namespace': CORE_NAMESPACE,
+                 'data_type': 'Foo',
+                 'object_id': container_inst.object_id}
+        expected = GroupBuilder(
+            name='my_foo',
+            datasets={'my_data': dset_builder},
+            attributes=attrs,
+        )
+        return container_inst, expected
+
+    def test_build_set_container_source(self):
+        container_inst, expected = self.get_container_expected_builder()
+        builder1 = self.manager.build(container_inst, source='file1.h5')
+        self.assertEqual(container_inst.container_source, 'file1.h5')
+        self.assertDictEqual(builder1, expected)
+
+        # building with an export buildmanager does not modify container_source
+        bm = BuildManager(self.type_map, export=True)
+        builder2 = bm.build(container_inst, source='file2.h5')
+        self.assertEqual(container_inst.container_source, 'file1.h5')
+        self.assertDictEqual(builder2, expected)
+        self.assertFalse(builder1 is builder2)
+
+    def test_build_container_source_preset(self):
+        container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
+        container_inst.container_source = 'file1.h5'  # as if it were loaded from file
+
+        # building with an export buildmanager does not modify container_source
+        bm = BuildManager(self.type_map, export=True)
+        bm.build(container_inst, source='file2.h5')
+        self.assertEqual(container_inst.container_source, 'file1.h5')
+
+    def test_build_container_source_memoization(self):
+        container_inst, expected = self.get_container_expected_builder()
+        bm = BuildManager(self.type_map, export=True)
+        builder1 = bm.build(container_inst, source='file2.h5')
+        builder2 = bm.build(container_inst, source='file2.h5')
+        self.assertIs(builder1, builder2)

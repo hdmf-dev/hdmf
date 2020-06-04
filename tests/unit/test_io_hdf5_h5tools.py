@@ -756,11 +756,13 @@ class TestRoundTrip(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(foofile)
+            self.assertEqual(foofile.container_source, self.path)
 
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
             self.assertListEqual(foofile.buckets[0].foos[0].my_data,
                                  read_foofile.buckets[0].foos[0].my_data[:].tolist())
+            self.assertEqual(foofile.container_source, self.path)
 
     def test_roundtrip_empty_dataset(self):
         foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
@@ -1487,3 +1489,70 @@ class TestLoadNamespaces(TestCase):
             HDF5IO.load_namespaces(ns_catalog, path='different_path', file=file_obj)
 
         file_obj.close()
+
+
+class TestExport(TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path1 = get_temp_filepath()
+        self.path2 = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path1):
+            os.remove(self.path1)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
+
+    def test_export(self):
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        HDF5IO.export(
+            container=foofile,
+            type_map=self.manager.type_map,
+            path=self.path1,
+        )
+
+        self.assertTrue(os.path.exists(self.path1))
+        self.assertIsNone(foofile.container_source)
+
+    def test_export_link_data(self):
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+        self.assertFalse(os.path.exists(self.path1))
+        self.assertIsNone(foofile.container_source)
+
+        msg = "Exporting requires link_data to be False"
+        with self.assertRaisesWith(ValueError, msg):
+            HDF5IO.export(
+                container=foofile,
+                type_map=self.manager.type_map,
+                path=self.path1,
+                write_args={'link_data': True}
+            )
+
+    def test_export_io(self):
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path1, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
+            HDF5IO.export_io(io=io, path=self.path2)
+
+        self.assertTrue(os.path.exists(self.path2))
+        self.assertEqual(foofile.container_source, self.path1)
+
+    def test_export_io_read_args(self):
+        pass  # TODO
+
+    def test_export_write_args(self):
+        pass  # TODO
+
+    def test_links(self):
+        pass  # TODO
