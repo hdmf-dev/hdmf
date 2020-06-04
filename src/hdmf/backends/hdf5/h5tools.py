@@ -332,13 +332,14 @@ class HDF5IO(HDMFIO):
         ''' Export the given container using this IO object initialized with the given arguments '''
         container, type_map, path, comm, write_args = popargs('container', 'type_map', 'path', 'comm', 'write_args',
                                                               kwargs)
-        temp_manager = BuildManager(type_map, export=True)
-        write_io = cls(path=path, mode='w', manager=temp_manager, comm=comm)
         if 'link_data' in write_args:
             link_data = popargs('link_data', write_args)
             if link_data:
                 raise ValueError('Exporting requires link_data to be False')
-        write_io.write(container, link_data=False, **write_args)
+
+        temp_manager = BuildManager(type_map, export=True)
+        with cls(path=path, mode='w', manager=temp_manager, comm=comm) as write_io:
+            write_io.write(container, link_data=False, **write_args)
 
     @classmethod
     @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
