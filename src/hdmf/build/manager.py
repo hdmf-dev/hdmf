@@ -102,6 +102,13 @@ class BuildManager:
 
     @property
     def export(self):
+        """Return whether this BuildManager is used solely for exporting data read from one backend to another
+        backend. This property is not settable after being initialized in the constructor.
+
+        A BuildManager with export=True will not set the container_source of its containers to the export destination.
+        A BuildManager used for exporting will also have a separate set of builders and containers than the
+        BuildManager used to read the file.
+        """
         return self.__export
 
     @docval({"name": "object", "type": (BaseBuilder, AbstractContainer),
