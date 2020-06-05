@@ -888,6 +888,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (value.__class__.__name__, value.name,
                                  parent_container.__class__.__name__, parent_container.name,
                                  builder.__class__.__name__, builder.name))
+
+            if isinstance(spec, LinkSpec):
+                if value.container_source and build_manager.export:
+                    # link target exists in another file. since we are using a clean buildmanager that
+                    # lacks a cached builder with the correct source, re-build the target with its
+                    # original source
+                    # breakpoint()
+                    rendered_obj = build_manager.build(value, source=value.container_source)
+                    builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
+                    return
+
             if value.parent is None:
                 msg = ("'%s' (%s) for '%s' (%s)"
                        % (value.name, getattr(value, self.spec.type_key()), builder.name, self.spec.data_type_def))
