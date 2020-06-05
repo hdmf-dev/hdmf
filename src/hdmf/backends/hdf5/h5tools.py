@@ -775,6 +775,8 @@ class HDF5IO(HDMFIO):
         # source will indicate target_builder's location
         if parent.file.filename == target_builder.source:
             link_obj = SoftLink(path)
+            self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                              % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
             parent_filename = os.path.abspath(parent.file.filename)
@@ -782,12 +784,12 @@ class HDF5IO(HDMFIO):
             if target_builder.location is not None:
                 path = target_builder.location + path
             link_obj = ExternalLink(relative_path, path)
+            self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                              % (parent.name, name, link_obj.filename, link_obj.path))
         else:
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
         parent[name] = link_obj
-        self.logger.debug("    Created %s '%s/%s' to '%s://%s'"
-                          % (link_obj.__class__.__name__, parent.name, name, link_obj.filename, link_obj.path))
         builder.written = True
         return link_obj
 
