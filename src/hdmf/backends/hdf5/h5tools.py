@@ -329,7 +329,14 @@ class HDF5IO(HDMFIO):
             {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
              'default': dict()})
     def export(cls, **kwargs):
-        ''' Export the given container using this IO object initialized with the given arguments '''
+        '''
+        Export the given container to a new destination using a clean instance of this HDF5IO class.
+
+        If Container objects were read from file, then HDF5IO.write supports writing changes to the Containers
+        back to the same file, but not to a new file. HDF5IO.export allows writing Containers to a new destination,
+        regardless of the origin of the Container. It does this by creating a clean instance of this HDF5IO class in
+        'w' mode and a clean BuildManager using the same TypeMap.
+        '''
         container, type_map, path, comm, write_args = popargs('container', 'type_map', 'path', 'comm', 'write_args',
                                                               kwargs)
         if 'link_data' in write_args:
@@ -351,7 +358,20 @@ class HDF5IO(HDMFIO):
             {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
              'default': dict()})
     def export_io(cls, **kwargs):
-        ''' Export data from the given IO object using this IO object initialized with the given arguments '''
+        '''
+        Export the container read from the given HDF5IO object to a new destination using a clean instance of this
+        HDF5IO class.
+
+        Similar to the export method, except this method takes care of reading the container from the given HDF5IO
+        object first. Arguments can be passed in for the io.read and write_io.write methods.
+
+        Example usage:
+
+            # create a new HDF5IO object for reading a file and export its contents to a new HDF5 file
+            with HDF5IO('in_file.h5', 'r') as io:
+                HDF5IO.export_io(io=io, path='out_file.h5')
+
+        '''
         io, path, comm, read_args, write_args = popargs('io', 'path', 'comm', 'read_args', 'write_args', kwargs)
         container = io.read(**read_args)
         cls.export(container=container, type_map=io.type_map, path=path, comm=comm, write_args=write_args)

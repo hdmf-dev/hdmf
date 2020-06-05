@@ -52,34 +52,27 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source)
         self.write_builder(f_builder, **kwargs)
 
-    @classmethod
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to export'},
-            {'name': 'type_map', 'type': 'TypeMap', 'doc': 'the TypeMap to use to export'},
-            {'name': 'source', 'type': str, 'doc': 'the source of container being built i.e. file path'},
-            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
-             'default': dict()},
-            allow_extra=True)
+    @abstractmethod
     def export(cls, **kwargs):
-        ''' Export the given container using this IO object initialized with the given arguments '''
-        container, type_map, source, read_args, write_args = popargs('container', 'type_map', 'source', 'read_args',
-                                                                     'write_args', kwargs)
-        temp_manager = BuildManager(type_map, export=True)
-        write_io = cls(manager=temp_manager, source=source)
-        write_io.write(container, **write_args)
+        '''
+        Export the given container to a new destination using a clean instance of this HDMFIO class.
 
-    @classmethod
-    @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
-            {'name': 'source', 'type': str, 'doc': 'the source of container being built i.e. file path'},
-            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
-             'default': dict()},
-            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
-             'default': dict()},
-            allow_extra=True)
+        If Container objects were read from file, then HDMFIO.write supports writing changes to the Containers
+        back to the same file, but not to a new file. HDMFIO.export allows writing Containers to a new destination,
+        regardless of the origin of the Container.
+        '''
+        pass
+
+    @abstractmethod
     def export_io(cls, **kwargs):
-        ''' Export data from the given IO object using this IO object initialized with the given arguments '''
-        io, source, read_args, write_args = popargs('io', 'source', 'read_args', 'write_args', kwargs)
-        container = io.read(**read_args)
-        cls.export(container=container, type_map=io.type_map, source=source, write_args=write_args)
+        '''
+        Export the container read from the given HDMFIO object to a new destination using a clean instance of this
+        HDMFIO class.
+
+        Similar to the export method, except this method takes care of reading the container from the given HDMFIO
+        object first.
+        '''
+        pass
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
