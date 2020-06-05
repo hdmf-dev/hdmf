@@ -504,16 +504,18 @@ class DynamicTable(Container):
         if name in self.__uninit_cols:  # column is a predefined optional column from the spec
             # check the given values against the predefined optional column spec. if they do not match, raise a warning
             # and ignore the given arguments. users should not be able to override these values
+            table_bool = table or not isinstance(table, bool)
             spec_table = self.__uninit_cols[name].get('table', False)
-            if table != spec_table:
+            if table_bool != spec_table:
                 msg = ("Column '%s' is predefined in %s with table=%s which does not match the entered "
                        "table argument. The entered table argument will be ignored."
                        % (name, self.__class__.__name__, spec_table))
                 warn(msg)
                 table = spec_table
 
+            index_bool = index or not isinstance(index, bool)
             spec_index = self.__uninit_cols[name].get('index', False)
-            if index != spec_index:
+            if index_bool != spec_index:
                 msg = ("Column '%s' is predefined in %s with index=%s which does not match the entered "
                        "index argument. The entered index argument will be ignored."
                        % (name, self.__class__.__name__, spec_index))
