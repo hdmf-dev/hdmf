@@ -727,13 +727,13 @@ class HDF5IO(HDMFIO):
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
                         value = np.array(value)
-                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                   % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
-                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                   % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value                   # a regular scalar
 
@@ -741,7 +741,7 @@ class HDF5IO(HDMFIO):
         '''
             Make the callable for setting references to attributes
         '''
-        self.logger.debug("Queueing set attribute on %s '%s' attribute '%s' to %s"
+        self.logger.debug("Queueing set %s '%s' attribute '%s' to %s"
                           % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
         if isinstance(value, (tuple, list)):
             def _filler():
@@ -763,7 +763,7 @@ class HDF5IO(HDMFIO):
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
-        self.logger.debug("Writing group builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
+        self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             group = parent[builder.name]
         else:
@@ -804,7 +804,7 @@ class HDF5IO(HDMFIO):
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        self.logger.debug("Writing link builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
+        self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
@@ -824,6 +824,8 @@ class HDF5IO(HDMFIO):
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
         parent[name] = link_obj
+        self.logger.debug("    Created %s '%s/%s' to '%s://%s'"
+                          % (link_obj.__class__.__name__, parent.name, name, link_obj.filename, link_obj.path))
         builder.written = True
         return link_obj
 
@@ -841,7 +843,7 @@ class HDF5IO(HDMFIO):
         __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
-        self.logger.debug("Writing dataset builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
+        self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
