@@ -498,6 +498,10 @@ class DynamicTable(Container):
         name, data, description = getargs('name', 'data', 'description', kwargs)
         index, table = popargs('index', 'table', kwargs)
 
+        if isinstance(index, VectorIndex):
+            warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
+                 "deprecated in a future version of HDMF.", FutureWarning)
+
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
             raise ValueError(msg)
@@ -509,19 +513,21 @@ class DynamicTable(Container):
             spec_table = self.__uninit_cols[name].get('table', False)
             if table_bool != spec_table:
                 msg = ("Column '%s' is predefined in %s with table=%s which does not match the entered "
-                       "table argument. The entered table argument will be ignored."
+                       "table argument. The predefined table spec will be ignored. "
+                       "Please ensure the new column complies with the spec. "
+                       "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_table))
                 warn(msg)
-                table = spec_table
 
             index_bool = index or not isinstance(index, bool)
             spec_index = self.__uninit_cols[name].get('index', False)
             if index_bool != spec_index:
                 msg = ("Column '%s' is predefined in %s with index=%s which does not match the entered "
-                       "index argument. The entered index argument will be ignored."
+                       "index argument. The predefined index spec will be ignored. "
+                       "Please ensure the new column complies with the spec. "
+                       "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_index))
                 warn(msg)
-                index = spec_index
 
         ckwargs = dict(kwargs)
         cls = VectorData
