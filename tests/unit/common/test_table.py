@@ -145,6 +145,16 @@ class TestDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             table.add_column(name='qux', description='qux column')
 
+    def test_add_column_vectorindex(self):
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        ind = VectorIndex(name='bar', data=list(), target=table['qux'])
+
+        msg = ("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
+               "deprecated in a future version of HDMF.")
+        with self.assertWarnsWith(FutureWarning, msg):
+            table.add_column(name='bad', description='bad column', index=ind)
+
     def test_getitem_row_num(self):
         table = self.with_spec()
         self.add_rows(table)
