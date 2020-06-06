@@ -894,8 +894,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # link target exists in another file. since we are using a clean buildmanager that
                     # lacks a cached builder with the correct source, re-build the target with its
                     # original source
-                    # breakpoint()
                     rendered_obj = build_manager.build(value, source=value.container_source)
+                    rendered_obj.location = value.source_location
                     builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
                     return
 
@@ -1107,7 +1107,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             kwargs[argname] = val
         try:
-            obj = cls.__new__(cls, container_source=builder.source, parent=parent,
+            obj = cls.__new__(cls,
+                              container_source=builder.source,
+                              source_location=builder.location,
+                              parent=parent,
                               object_id=builder.attributes.get(self.__spec.id_key()))
             obj.__init__(**kwargs)
         except Exception as ex:

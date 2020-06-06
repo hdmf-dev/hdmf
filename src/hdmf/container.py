@@ -102,6 +102,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def __new__(cls, *args, **kwargs):
         inst = super().__new__(cls)
         inst.__container_source = kwargs.pop('container_source', None)
+        inst.__source_location = kwargs.pop('source_location', None)
         inst.__parent = None
         inst.__children = list()
         inst.__modified = True
@@ -196,6 +197,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         if self.__container_source is not None:
             raise Exception('cannot reassign container_source')
         self.__container_source = source
+
+    @property
+    def source_location(self):
+        '''
+        The location of this Container within its source
+        '''
+        return self.__source_location
+
+    @source_location.setter
+    def source_location(self, location):
+        if self.__source_location is not None:
+            raise Exception('cannot reassign source_location')
+        self.__source_location = location
 
     @property
     def parent(self):

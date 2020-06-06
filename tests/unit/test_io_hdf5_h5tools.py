@@ -1669,15 +1669,12 @@ class TestExport(TestCase):
 
         with HDF5IO(self.path2, manager=self.manager, mode='r') as io:
             read_foofile2 = io.read()
-            print('read')
 
             HDF5IO.export(
                 container=read_foofile2,
                 type_map=self.manager.type_map,  # TODO pass the current manager since it contains the loaded object
                 path=self.path3,
             )
-
-        print('moo')
 
         with HDF5IO(self.path3, manager=self.manager, mode='r') as io:
             read_foofile2 = io.read()
