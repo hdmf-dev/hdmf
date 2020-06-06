@@ -365,6 +365,7 @@ class DynamicTable(Container):
                     # set the table attributes for not yet init optional predefined columns
                     setattr(self, col['name'], None)
                     if col.get('index', False):
+                        self.__uninit_cols[col['name'] + '_index'] = col
                         setattr(self, col['name'] + '_index', None)
 
     @staticmethod
@@ -535,6 +536,8 @@ class DynamicTable(Container):
         col.parent = self
         columns = [col]
         self.__set_table_attr(col)
+        if col in self.__uninit_cols:
+            self.__uninit_cols.pop(col)
 
         # Add index if it's been specified
         if index is not False:
@@ -555,6 +558,8 @@ class DynamicTable(Container):
             col = col_index
             self.__indices[col_index.name] = col_index
             self.__set_table_attr(col_index)
+            if col_index in self.__uninit_cols:
+                self.__uninit_cols.pop(col_index)
 
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
