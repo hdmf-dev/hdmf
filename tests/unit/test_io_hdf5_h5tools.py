@@ -1738,7 +1738,7 @@ class TestExport(TestCase):
             self.assertListEqual(read_foofile2.buckets, [])
 
             # check that file size of file 2 is smaller
-            self.assertTrue(os.stat(self.path1) > os.stat(self.path2))
+            self.assertTrue(os.path.getsize(self.path1) > os.path.getsize(self.path2))
 
     def test_export_append_data(self):
         """Test that exporting a written container after adding to it in-memory works."""
