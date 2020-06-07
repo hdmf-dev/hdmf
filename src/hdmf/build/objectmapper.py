@@ -889,31 +889,37 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                  parent_container.__class__.__name__, parent_container.name,
                                  builder.__class__.__name__, builder.name))
 
-            if isinstance(spec, LinkSpec):
-                if value.container_source and build_manager.export:
-                    # link target exists in another file. since we are using a clean buildmanager that
-                    # lacks a cached builder with the correct source, re-build the target with its
-                    # original source
-                    rendered_obj = build_manager.build(value, source=value.container_source)
-                    rendered_obj.location = value.source_location
-                    builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
-                    return
+            if build_manager.export and isinstance(spec, LinkSpec) and value.container_source:
+                # link target exists in another file. since we are using a clean buildmanager that
+                # lacks a cached builder with the correct source, re-build the target with its
+                # original source and location
+                self.logger.debug("    Building linked %s '%s' (source='%s', location='%s')"
+                                  % (value.__class__.__name__, value.name,
+                                     value.container_source, value.source_location))
+                rendered_obj = build_manager.build(value, source=value.container_source)
+                rendered_obj.location = value.source_location
+                self.logger.debug("    Adding link to %s '%s' in %s '%s'"
+                                  % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                     builder.__class__.__name__, builder.name))
+                builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
+                return
 
             if value.parent is None:
                 msg = ("'%s' (%s) for '%s' (%s)"
                        % (value.name, getattr(value, self.spec.type_key()), builder.name, self.spec.data_type_def))
                 warnings.warn(msg, OrphanContainerWarning)
+                self.logger.warning('OrphanContainerWarning: %s' % msg)
 
             if value.modified or build_manager.export:
-                # writing a newly instantiated container (modified is False only after read)
+                # writing a newly instantiated container (modified is False only after read) or as if it is newly
+                # instantianted (export=True)
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
                     rendered_obj = build_manager.build(value, source=source, spec_ext=spec)
                 else:
                     rendered_obj = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
-                if (isinstance(spec, LinkSpec)
-                        or (value.parent is not parent_container and not build_manager.export)):
+                if isinstance(spec, LinkSpec) or value.parent is not parent_container:
                     self.logger.debug("    Adding link to %s '%s' in %s '%s'"
                                       % (rendered_obj.__class__.__name__, rendered_obj.name,
                                          builder.__class__.__name__, builder.name))
