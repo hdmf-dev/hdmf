@@ -1720,6 +1720,7 @@ class TestExport(TestCase):
         with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
             read_foofile.buckets.clear()  # remove child FooBucket
+            read_foofile.buckets.children.clear()  # remove child FooBucket
 
             HDF5IO.export(
                 container=read_foofile,
