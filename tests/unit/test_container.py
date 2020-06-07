@@ -145,7 +145,6 @@ class TestContainer(TestCase):
             Container('obj1')._remove_child(object())
 
 
-
 class TestData(TestCase):
 
     def test_bool_true(self):
