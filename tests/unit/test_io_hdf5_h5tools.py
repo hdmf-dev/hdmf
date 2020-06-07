@@ -52,6 +52,10 @@ class FooFile(Container):
     def buckets(self):
         return self.__buckets
 
+    def remove_bucket(self, bucket):
+        self.__buckets.remove(bucket)
+        self._remove_child(bucket)
+
     @property
     def foo_link(self):
         return self.__foo_link
@@ -1719,8 +1723,7 @@ class TestExport(TestCase):
 
         with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
-            read_foofile.buckets.clear()  # remove child FooBucket
-            read_foofile.children.clear()  # remove child FooBucket
+            read_foofile.remove_bucket(read_foofile.buckets[0])  # remove child FooBucket
 
             HDF5IO.export(
                 container=read_foofile,
