@@ -852,6 +852,10 @@ class TestHDF5IO(TestCase):
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
 
+    def test_close_no_file(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()  # test no error
+
 
 class TestCacheSpec(TestCase):
 
@@ -1574,6 +1578,30 @@ class TestExport(TestCase):
                 path=self.path1,
                 write_args={'link_data': True}
             )
+
+    def test_export_link_data_false(self):
+        """Test that exporting an unwritten container to file with link_data=False results works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        HDF5IO.export(
+            container=foofile,
+            type_map=self.manager.type_map,
+            path=self.path1,
+            write_args={'link_data': False}
+        )
+
+        self.assertTrue(os.path.exists(self.path1))
+        self.assertIsNone(foofile.container_source)
+
+        with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(read_foofile.container_source, self.path1)
+
+            # containers should be equal after setting the container source of in-memory foofile
+            foofile.container_source = self.path1
+            self.assertContainerEqual(foofile, read_foofile)
 
     def test_export_io(self):
         """Test that export_io on a read IO object works and does not alter the Container's container_source."""

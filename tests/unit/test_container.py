@@ -110,6 +110,14 @@ class TestContainer(TestCase):
         with self.assertRaisesWith(Exception, 'cannot reassign container_source'):
             parent_obj.container_source = 'some other source'
 
+    def test_reassign_source_location(self):
+        """Test that reassign source location throws error
+        """
+        parent_obj = Container('obj1')
+        parent_obj.source_location = 'a location'
+        with self.assertRaisesWith(Exception, 'cannot reassign source_location'):
+            parent_obj.source_location = 'some other location'
+
     def test_repr(self):
         parent_obj = Container('obj1')
         self.assertRegex(str(parent_obj), r"obj1 hdmf.container.Container at 0x\d+")
