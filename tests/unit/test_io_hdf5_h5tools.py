@@ -723,21 +723,26 @@ def _get_manager():
             foo_spec = foo_holder_spec.get_data_type('Foo')
             self.map_spec('foos', foo_spec)
 
+    file_links_spec = GroupSpec('Foo link group',
+                                name='links',
+                                links=[LinkSpec('Foo link',
+                                                name='foo_link',
+                                                target_type='Foo',
+                                                quantity=ZERO_OR_ONE)]
+                                )
+
     file_spec = GroupSpec("A file of Foos contained in FooBuckets",
                           data_type_def='FooFile',
                           groups=[GroupSpec('Holds the FooBuckets',
                                             name='buckets',
                                             groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
-                                                              quantity=ONE_OR_MANY)])],
+                                                              quantity=ONE_OR_MANY)]),
+                                  file_links_spec],
                           datasets=[DatasetSpec('Foo data',
                                                 name='foofile_data',
                                                 dtype='int',
                                                 quantity=ZERO_OR_ONE)],
-                          links=[LinkSpec('Foo link',
-                                          name='foo_link',
-                                          target_type='Foo',
-                                          quantity=ZERO_OR_ONE)]
                           )
 
     class FileMapper(ObjectMapper):
@@ -745,6 +750,9 @@ def _get_manager():
             super().__init__(spec)
             bucket_spec = spec.get_group('buckets').get_data_type('FooBucket')
             self.map_spec('buckets', bucket_spec)
+            self.unmap(spec.get_group('links'))
+            foo_link_spec = spec.get_group('links').get_link('foo_link')
+            self.map_spec('foo_link', foo_link_spec)
 
     spec_catalog = SpecCatalog()
     spec_catalog.register_spec(foo_spec, 'test.yaml')
@@ -1681,7 +1689,32 @@ class TestExport(TestCase):
         with File(self.path2, 'r') as f:
             self.assertEqual(f['foofile_data'].file.filename, self.path2)
 
-    def test_export_with_link(self):
+    def test_export_soft_link(self):
+        """Test that exporting a file with export keeps soft links within the new exported file rather than making
+        extenral links to the original file."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket], foo_link=foo1)
+
+        with HDF5IO(self.path1, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+
+            HDF5IO.export(
+                container=read_foofile,
+                type_map=self.manager.type_map,
+                path=self.path2,
+            )
+
+        with HDF5IO(self.path2, manager=self.manager, mode='r') as io:
+            read_foofile2 = io.read()
+
+            # make sure the linked foobucket is within the same file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.path2)
+
+    def test_export_with_new_link(self):
         """Test that exporting a file with export keeps external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
