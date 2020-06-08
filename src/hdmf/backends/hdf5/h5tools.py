@@ -691,13 +691,13 @@ class HDF5IO(HDMFIO):
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
                         value = np.array(value)
-                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                   % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
-                self.logger.debug("Setting attribute on %s '%s' attribute '%s' to %s"
+                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                   % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value                   # a regular scalar
 
@@ -705,7 +705,7 @@ class HDF5IO(HDMFIO):
         '''
             Make the callable for setting references to attributes
         '''
-        self.logger.debug("Queueing set attribute on %s '%s' attribute '%s' to %s"
+        self.logger.debug("Queueing set %s '%s' attribute '%s' to %s"
                           % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
         if isinstance(value, (tuple, list)):
             def _filler():
@@ -725,7 +725,7 @@ class HDF5IO(HDMFIO):
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
-        self.logger.debug("Writing group builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
+        self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             group = parent[builder.name]
         else:
@@ -766,7 +766,7 @@ class HDF5IO(HDMFIO):
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        self.logger.debug("Writing link builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
+        self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
@@ -775,6 +775,8 @@ class HDF5IO(HDMFIO):
         # source will indicate target_builder's location
         if parent.file.filename == target_builder.source:
             link_obj = SoftLink(path)
+            self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                              % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
             parent_filename = os.path.abspath(parent.file.filename)
@@ -782,6 +784,8 @@ class HDF5IO(HDMFIO):
             if target_builder.location is not None:
                 path = target_builder.location + path
             link_obj = ExternalLink(relative_path, path)
+            self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                              % (parent.name, name, link_obj.filename, link_obj.path))
         else:
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
@@ -803,7 +807,7 @@ class HDF5IO(HDMFIO):
         __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
-        self.logger.debug("Writing dataset builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
+        self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             return None
         name = builder.name
