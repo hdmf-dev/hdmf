@@ -431,6 +431,13 @@ class HDF5IO(HDMFIO):
     #     cls.export(container=container, type_map=io.type_map, path=path, comm=comm, write_args=write_args)
 
     def read(self, **kwargs):
+        """Short summary.
+
+        :param type **kwargs: Description of parameter `**kwargs`.
+        :return: Description of returned object.
+        :rtype: type
+
+        """
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
                                        % (self.__path, self.__mode))

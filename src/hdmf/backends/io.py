@@ -53,28 +53,6 @@ class HDMFIO(metaclass=ABCMeta):
         self.write_builder(f_builder, **kwargs)
 
     @abstractmethod
-    def export(cls, **kwargs):
-        '''
-        Export the given container to a new destination using a clean instance of this HDMFIO class.
-
-        If Container objects were read from file, then HDMFIO.write supports writing changes to the Containers
-        back to the same file, but not to a new file. HDMFIO.export allows writing Containers to a new destination,
-        regardless of the origin of the Container.
-        '''
-        pass
-
-    @abstractmethod
-    def export_io(cls, **kwargs):
-        '''
-        Export the container read from the given HDMFIO object to a new destination using a clean instance of this
-        HDMFIO class.
-
-        Similar to the export method, except this method takes care of reading the container from the given HDMFIO
-        object first.
-        '''
-        pass
-
-    @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
     def read_builder(self):
         ''' Read data and return the GroupBuilder representing '''
