@@ -1,6 +1,6 @@
-# Prepare a release
+Prepare for release of HDMF [version]
 
-Before merging:
+### Before merging:
 - [ ] Minor releases: Update package versions in `requirements.txt`, `requirements-dev.txt`, `requirements-doc.txt`, `requirements-min.txt` as needed. See https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
 - [ ] Check legal file dates and information in `Legal.txt`, `license.txt`, `README.rst`, `docs/source/conf.py`, and any other locations as needed
 - [ ] Update `setup.py` as needed
@@ -14,7 +14,7 @@ Before merging:
 - [ ] Check that the readthedocs build for this PR succeeds (build latest to pull the new branch, then activate and
   build docs for new branch): https://readthedocs.org/projects/hdmf/builds/
 
-After merging:
+### After merging:
 1. Create release by following steps in `docs/source/make_a_release.rst` or use alias `git pypi-release [tag]` if set up
 2. After the CI bot creates the new release (wait ~10 min), update the release notes on the [GitHub releases page](https://github.com/hdmf-dev/hdmf/releases) with the changelog
 3. Check that the readthedocs "latest" and "stable" builds run and succeed
