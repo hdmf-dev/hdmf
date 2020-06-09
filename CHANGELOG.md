@@ -1,5 +1,13 @@
 # HDMF Changelog
 
+## HDMF 1.6.3 (Upcoming)
+
+### Internal improvements
+- Improve documentation of `DynamicTable`. @rly (#371)
+
+### Bug fixes:
+- Fix adding of optional predefined columns to `DynamicTable`. @rly (#371)
+
 ## HDMF 1.6.2 (May 26, 2020)
 
 ### Internal improvements:
