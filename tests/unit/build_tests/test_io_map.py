@@ -944,7 +944,7 @@ class TestConvertDtype(TestCase):
 
     def test_override_type_int_restrict_precision(self):
         spec = DatasetSpec('an example dataset', 'int8', name='data')
-        res = ObjectMapper.convert_dtype(spec, 1, 'int64')
+        res = ObjectMapper.convert_dtype(spec, np.int64(1), 'int64')
         self.assertTupleEqual(res, (np.int64(1), np.int64))
 
     def test_override_type_numeric_to_uint(self):

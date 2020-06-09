@@ -1,12 +1,15 @@
 # HDMF Changelog
 
-## HDMF 1.6.3 (Upcoming)
+## HDMF 1.6.3 (June 9, 2020)
 
 ### Internal improvements
 - Improve documentation of `DynamicTable`. @rly (#371)
+- Add user guide / tutorial for `DynamicTable`. @rly (#372)
+- Improve logging of build and write processes. @rly (#373)
 
 ### Bug fixes:
 - Fix adding of optional predefined columns to `DynamicTable`. @rly (#371)
+- Use dtype from dataset data_type definition when extended spec lacks dtype. @rly (#364)
 
 ## HDMF 1.6.2 (May 26, 2020)
 
