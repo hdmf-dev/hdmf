@@ -105,7 +105,10 @@ def get_type(data):
     elif isinstance(data, ReferenceBuilder):
         return 'object'
     elif isinstance(data, np.ndarray):
-        return get_type(data[0])
+        if len(data) > 0:
+            return get_type(data[0])
+        else:
+            return data.dtype
     if not hasattr(data, '__len__'):
         return type(data).__name__
     else:
