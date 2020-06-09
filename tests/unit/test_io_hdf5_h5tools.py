@@ -1559,11 +1559,16 @@ class TestExport(TestCase):
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
-        HDF5IO.export(
-            container=foofile,
-            type_map=self.manager.type_map,
-            path=self.path1,
-        )
+        manager = BuildManager(self.manager.type_map, export=True)
+        write_io = HDF5IO(path=self.path1, manager=manager)
+        write_io.export(container=foofile)
+        # ^ this will check that buildmanager.export = True and has an empty prebuilt cache
+
+        # HDF5IO.export(
+        #     container=foofile,
+        #     type_map=self.manager.type_map,
+        #     path=self.path1,
+        # )
 
         self.assertTrue(os.path.exists(self.path1))
         self.assertIsNone(foofile.container_source)

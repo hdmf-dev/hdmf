@@ -349,33 +349,86 @@ class HDF5IO(HDMFIO):
         with cls(path=path, mode='w', manager=temp_manager, comm=comm) as write_io:
             write_io.write(container, link_data=False, **write_args)
 
-    @classmethod
-    @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-            {'name': 'comm', 'type': 'Intracomm',
-             'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
-             'default': dict()},
-            {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
-             'default': dict()})
-    def export_io(cls, **kwargs):
-        '''
-        Export the container read from the given HDF5IO object to a new destination using a clean instance of this
-        HDF5IO class.
-
-        Similar to the export method, except this method takes care of reading the container from the given HDF5IO
-        object first. Arguments can be passed in for the io.read and write_io.write methods.
-
+    # module level function
+    @docval({'name': 'readio', 'type': type, 'doc': 'x'},
+            {'name': 'writeio', 'type': type, 'doc': 'x'},
+            {'name': 'type_map', 'type': type, 'doc': 'x'},
+            {'name': 'readio_args', 'type': dict, 'doc': 'x', 'default': dict()},
+            {'name': 'writeio_args', 'type': dict, 'doc': 'x', 'default': dict()},
+            {'name': 'read_args', 'type': dict, 'doc': 'x', 'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'x', 'default': dict()})
+    def export_io(**kwargs):
+        """
         Example usage:
 
-            # create a new HDF5IO object for reading a file and export its contents to a new HDF5 file
-            with HDF5IO('in_file.h5', 'r') as io:
-                HDF5IO.export_io(io=io, path='out_file.h5')
+            export(readio=HDF5IO,
+                   writeio=HDF5IO,
+                   type_map=type_map,
+                   readio_args={'path': 'in.h5'},
+                   writeio_args={'path': 'out.h5'},
+                   write_args={'cache_spec': False})
 
-        '''
-        io, path, comm, read_args, write_args = popargs('io', 'path', 'comm', 'read_args', 'write_args', kwargs)
-        container = io.read(**read_args)
-        cls.export(container=container, type_map=io.type_map, path=path, comm=comm, write_args=write_args)
+        """
+        # when creating the writeio object, set the build manager
+        pass
+
+    # module level function
+    @docval({'name': 'container', 'type': Container, 'doc': 'x'},
+            {'name': 'writeio', 'type': type, 'doc': 'x'},
+            {'name': 'type_map', 'type': type, 'doc': 'x'},
+            {'name': 'writeio_args', 'type': dict, 'doc': 'x', 'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'x', 'default': dict()})
+    def export_container(**kwargs):
+        """
+        Example usage:
+
+            export(container=container,
+                   writeio=HDF5IO,
+                   type_map=type_map,
+                   writeio_args={'path': 'out.h5'},
+                   write_args={'cache_spec': False})
+
+        """
+        # when creating the writeio object, set the build manager
+        pass
+
+    #         {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+    #         {'name': 'comm', 'type': 'Intracomm',
+    #          'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+    #         {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
+    #          'default': dict()},
+    #         {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
+    #          'default': dict()})
+    #
+    #
+    #
+    # @classmethod
+    # @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
+    #         {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+    #         {'name': 'comm', 'type': 'Intracomm',
+    #          'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+    #         {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
+    #          'default': dict()},
+    #         {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
+    #          'default': dict()})
+    # def export_io(cls, **kwargs):
+    #     '''
+    #     Export the container read from the given HDF5IO object to a new destination using a clean instance of this
+    #     HDF5IO class.
+    #
+    #     Similar to the export method, except this method takes care of reading the container from the given HDF5IO
+    #     object first. Arguments can be passed in for the io.read and write_io.write methods.
+    #
+    #     Example usage:
+    #
+    #         # create a new HDF5IO object for reading a file and export its contents to a new HDF5 file
+    #         with HDF5IO('in_file.h5', 'r') as io:
+    #             HDF5IO.export_io(io=io, path='out_file.h5')
+    #
+    #     '''
+    #     io, path, comm, read_args, write_args = popargs('io', 'path', 'comm', 'read_args', 'write_args', kwargs)
+    #     container = io.read(**read_args)
+    #     cls.export(container=container, type_map=io.type_map, path=path, comm=comm, write_args=write_args)
 
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
