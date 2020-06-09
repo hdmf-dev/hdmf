@@ -7,11 +7,13 @@ __all__ = [
     "Error",
     "DtypeError",
     "MissingError",
+    "ExpectedScalarError",
     "ExpectedArrayError",
     "ShapeError",
     "MissingDataType",
     "IllegalLinkError",
-    "IncorrectDataType"
+    "IncorrectDataType",
+    "EmptyDataNoTypeWarning"
 ]
 
 
@@ -96,6 +98,19 @@ class MissingDataType(Error):
         return self.__data_type
 
 
+class ExpectedScalarError(Error):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
+            {'name': 'received', 'type': (tuple, list), 'doc': 'the received data'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    def __init__(self, **kwargs):
+        name = getargs('name', kwargs)
+        received = getargs('received', kwargs)
+        reason = "incorrect shape - expected a scalar, got array with shape '%s'" % str(received)
+        loc = getargs('location', kwargs)
+        super().__init__(name, reason, location=loc)
+
+
 class ExpectedArrayError(Error):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
@@ -155,5 +170,26 @@ class IncorrectDataType(Error):
         expected = getargs('expected', kwargs)
         received = getargs('received', kwargs)
         reason = "incorrect data_type - expected '%s', got '%s'" % (expected, received)
+        loc = getargs('location', kwargs)
+        super().__init__(name, reason, location=loc)
+
+
+class ValidatorWarning(UserWarning):
+
+    pass
+
+
+class EmptyDataNoTypeWarning(Error, ValidatorWarning):
+    """
+    A warning for indicating that a value is empty and has no data type (e.g., an empty list).
+    """
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
+            {'name': 'data_type', 'type': type, 'doc': 'the type of the data'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    def __init__(self, **kwargs):
+        name = getargs('name', kwargs)
+        data_type = getargs('data_type', kwargs)
+        reason = "could not determine data type for empty data %s" % data_type
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)

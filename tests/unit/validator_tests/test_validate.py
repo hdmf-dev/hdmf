@@ -6,7 +6,7 @@ import numpy as np
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
 from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.validate import ValidatorMap
-from hdmf.validate.errors import *  # noqa: F403
+from hdmf.validate.errors import EmptyDataNoTypeWarning, DtypeError, MissingError, MissingDataType, ExpectedArrayError
 from hdmf.testing import TestCase
 
 CORE_NAMESPACE = 'test_core'
@@ -292,3 +292,277 @@ class TestDtypeValidation(TestCase):
         expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'numeric', got 'bool'",
                            "Bar/data (my_bar/data): incorrect type - expected 'numeric', got 'bool'"}
         self.assertEqual(result_strings, expected_errors)
+
+
+class ValueTestMixin(metaclass=ABCMeta):
+
+    @abstractmethod
+    def set_up_spec(self, spec_kwargs):
+        pass
+
+    @abstractmethod
+    def set_up_group_builder(self, value):
+        pass
+
+    @property
+    @abstractmethod
+    def err_prefix(cls):
+        pass
+
+    def test_str_for_text(self):
+        """Test that validator allows a string for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = 'a'
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_empty_str_for_text(self):
+        """Test that validator allows an empty string for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = ''
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_str_list_for_text(self):
+        """Test that validator does not allow a list of strings for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = ['a']
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected a scalar, got array with shape '(1,)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_str_array_for_text(self):
+        """Test that validator does not allow an array of strings for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = np.array(['a'])
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected a scalar, got array with shape '(1,)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_empty_float_array_for_text(self):
+        """Test that validator does not allow an array of strings for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = np.array([])  # default dtype float64
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected a scalar, got array with shape '(0,)'",
+                           self.err_prefix + "incorrect type - expected 'text', got 'float64'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_2d_str_list_for_text(self):
+        """Test that validator does not allow a 2D list of strings for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = [['a']]
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected a scalar, got array with shape '(1, 1)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_2d_str_array_for_text(self):
+        """Test that validator does not allow a 2D array of strings for a text attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text'})
+        value = np.array([['a']])
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected a scalar, got array with shape '(1, 1)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_str_list_for_text_array(self):
+        """Test that validator allows a list of strings for a text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = ['a']
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_str_array_for_text_array(self):
+        """Test that validator allows an array of strings for a text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = np.array(['a'])
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_empty_list_for_text_array(self):
+        """Test that validator raises a warning for an empty list for a text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = []
+        bar_builder = self.set_up_group_builder(value)
+        msg = self.err_prefix + "could not determine data type for empty data <class 'list'>"
+        with self.assertWarnsWith(EmptyDataNoTypeWarning, msg):
+            results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_empty_str_array_for_text_array(self):
+        """Test that validator allows an empty array of type string for a text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = np.array([], dtype=str)
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_empty_float_array_for_text_array(self):
+        """Test that validator does not allow an empty array of type float for a text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = np.array([])  # default dtpye float64
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect type - expected 'text', got 'float64'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_2d_str_list_for_1d_text_array(self):
+        """Test that validator does not allow a 2D lists of strings for a 1D text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = [['a']]
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[None]', got '(1, 1)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_2d_str_array_for_1d_text_array(self):
+        """Test that validator does not allow a 2D array of strings for a 1D text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = np.array([['a']])
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[None]', got '(1, 1)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_empty_2d_list_for_1d_text_array(self):
+        """Test that validator raises a warning and error for an empty 2D list for a 1D text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = [[]]
+        bar_builder = self.set_up_group_builder(value)
+        msg = self.err_prefix + "could not determine data type for empty data <class 'list'>"
+        with self.assertWarnsWith(EmptyDataNoTypeWarning, msg):
+            results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[None]', got '(1, 0)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_empty_2d_str_array_for_1d_text_array(self):
+        """Test that validator does not allow an empty 2D array of type string for a 1D text array attr/dset."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [None]})
+        value = np.array([[]], dtype=str)
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[None]', got '(1, 0)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_str_array_correct_length(self):
+        """Test that validator allows a 1D text array attr/dset with the correct length."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [2]})
+        value = np.array(['a', ''], dtype=str)
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_str_list_correct_length(self):
+        """Test that validator allows a 1D text list attr/dset with the correct length."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [2]})
+        value = ['a', '']
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_str_array_incorrect_length(self):
+        """Test that validator does not allow a 1D text array attr/dset with the incorrect length."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [2]})
+        value = np.array([''], dtype=str)
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[2]', got '(1,)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_str_list_incorrect_length(self):
+        """Test that validator does not allow a 1D text list attr/dset with the incorrect length."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [2]})
+        value = ['']
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[2]', got '(1,)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_empty_str_array_incorrect_length(self):
+        """Test that validator does not allow an empty text array for a 1D text array attr/dset with a length."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [2]})
+        value = np.array([], dtype=str)
+        bar_builder = self.set_up_group_builder(value)
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[2]', got '(0,)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_empty_list_incorrect_length(self):
+        """Test that validator raises a warning and error an empty list for a 1D text array attr/dset with a length."""
+        self.set_up_spec({'doc': 'doc', 'dtype': 'text', 'shape': [2]})
+        value = []
+        bar_builder = self.set_up_group_builder(value)
+        msg = self.err_prefix + "could not determine data type for empty data <class 'list'>"
+        with self.assertWarnsWith(EmptyDataNoTypeWarning, msg):
+            results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {self.err_prefix + "incorrect shape - expected '[2]', got '(0,)'"}
+        self.assertEqual(result_strings, expected_errors)
+
+
+class TestAttrValidation(TestCase, ValueTestMixin):
+
+    def set_up_spec(self, spec_kwargs):
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         attributes=[AttributeSpec(name='val1', **spec_kwargs)])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def set_up_group_builder(self, value):
+        """Return a GroupBuilder with an attribute with name val1 and value set to the given value"""
+        return GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'val1': value})
+
+    @property
+    def err_prefix(cls):
+        """Prefix for an error message such as: "Bar/val1 (my_bar.val1): incorrect shape - expected '[2]', got '(1, 0)'"
+        """
+        return 'Bar/val1 (my_bar.val1): '
+
+
+class TestDsetValidation(TestCase, ValueTestMixin):
+
+    def set_up_spec(self, spec_kwargs):
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec(name='val1', **spec_kwargs)])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def set_up_group_builder(self, value):
+        """Return a GroupBuilder with a DatasetBuilder with name val1 and data set to the given value"""
+        return GroupBuilder('my_bar', attributes={'data_type': 'Bar'},
+                            datasets=[DatasetBuilder('val1', data=value)])
+
+    @property
+    def err_prefix(cls):
+        """Prefix for an error message such as: "Bar/val1 (my_bar/val1): incorrect shape - expected '[2]', got '(1, 0)'"
+        """
+        return 'Bar/val1 (my_bar/val1): '
