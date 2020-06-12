@@ -323,7 +323,10 @@ class AttributeValidator(Validator):
                     pass
             shape = get_data_shape(value)
             if not check_shape(spec.shape, shape):
-                ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+                if shape is None:
+                    ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
+                else:
+                    ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
         return ret
 
 
