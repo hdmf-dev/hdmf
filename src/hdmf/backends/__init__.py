@@ -3,6 +3,7 @@ from ..container import Container
 from ..build import BuildManager, TypeMap
 
 from . import hdf5
+from .io import HDMFIO
 
 
 @docval({'name': 'container', 'type': Container, 'doc': 'the Container to export'},
@@ -16,7 +17,8 @@ from . import hdf5
         {'name': 'keep_external_links', 'type': bool,
          'doc': ('whether to preserve links to external files. If False (default), all external links will be '
                  'resolved. This flag depends on support from the write_io_cls class'),
-         'default': False})
+         'default': False},
+        is_method=False)
 def export_container(**kwargs):
     """
     Export the container to a new destination using the given HDF5IO class.
@@ -28,7 +30,7 @@ def export_container(**kwargs):
 
     The 'manager' key is not allowed in `write_io_args` because a new BuildManager will be used.
 
-    Some arguments in `write_args` may not be supported during export.
+    Some arguments in `write_args` may not be supported during export, depending on the backend class.
 
     Example usage:
 
@@ -48,8 +50,18 @@ def export_container(**kwargs):
     write_io_cls, write_io_args = popargs('write_io_cls', 'write_io_args', kwargs)
     write_args, keep_external_links = popargs('write_args', 'keep_external_links', kwargs)
 
+    if not issubclass(write_io_cls, HDMFIO):
+        raise ValueError("The 'write_io_cls' argument '%s' is not an instance of HDMFIO."
+                         % write_io_cls.__class__.__name__)
+
     if 'manager' in write_io_args:
         raise ValueError("The 'manager' key is not allowed in write_io_args because a new BuildManager will be used.")
+
+    supported_export_write_args = write_io_cls.supported_export_write_args()
+    for arg in write_args:
+        if arg not in supported_export_write_args or write_args[arg] not in supported_export_write_args[arg]:
+            raise ValueError("The argument '%s=%s' in write_args is not supported during export."
+                             % (arg, repr(write_args[arg])))
 
     export_manager = BuildManager(type_map, export=True)
     write_io_args['manager'] = export_manager
@@ -74,7 +86,8 @@ def export_container(**kwargs):
         {'name': 'keep_external_links', 'type': bool,
          'doc': ('whether to preserve links to external files. If False (default), all external links will be '
                  'resolved. This flag depends on support from the write_io_cls class'),
-         'default': False})
+         'default': False},
+        is_method=False)
 def export_io(**kwargs):
     """
     Export from one HDMFIO class to another with the given arguments.

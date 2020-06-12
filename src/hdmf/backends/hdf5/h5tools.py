@@ -322,122 +322,53 @@ class HDF5IO(HDMFIO):
                 ns_builder.export('namespace', writer=writer)
 
     @classmethod
+    @docval(returns='a dict of args and their supported values to the write method when exporting', rtype=dict)
+    def supported_export_write_args(cls):
+        """
+        Return the args supported by HDF5IO.write when exporting besides the "container" argument.
+
+        The link_data=True argument is not supported during export.
+        """
+        args = {'cache_spec': (True, False),
+                'link_data': (False, )}
+        args.update(super().supported_export_write_args())
+        return args
+
+    @classmethod
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to export'},
             {'name': 'type_map', 'type': TypeMap, 'doc': 'the TypeMap to use to export'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-            {'name': 'comm', 'type': 'Intracomm',
-             'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+            {'name': 'path', 'type': str, 'doc': 'the path to export to'},
+            {'name': 'comm', 'type': 'Intracomm', 'doc': 'the MPI communicator to use for parallel I/O',
+             'default': None},
             {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
-             'default': dict()})
-    def export(cls, **kwargs):
-        '''
-        Export the given container to a new destination using a clean instance of this HDF5IO class.
-
-        If Container objects were read from file, then HDF5IO.write supports writing changes to the Containers
-        back to the same file, but not to a new file. HDF5IO.export allows writing Containers to a new destination,
-        regardless of the origin of the Container. It does this by creating a clean instance of this HDF5IO class in
-        'w' mode and a clean BuildManager using the same TypeMap.
-        '''
-        container, type_map, path, comm, write_args = popargs('container', 'type_map', 'path', 'comm', 'write_args',
-                                                              kwargs)
-        if 'link_data' in write_args:
-            link_data = popargs('link_data', write_args)
-            if link_data:
-                raise ValueError('Exporting requires link_data to be False')
-
-        temp_manager = BuildManager(type_map, export=True)
-        with cls(path=path, mode='w', manager=temp_manager, comm=comm) as write_io:
-            write_io.write(container, link_data=False, **write_args)
-
-    # module level function
-    @docval({'name': 'readio', 'type': type, 'doc': 'x'},
-            {'name': 'writeio', 'type': type, 'doc': 'x'},
-            {'name': 'type_map', 'type': type, 'doc': 'x'},
-            {'name': 'readio_args', 'type': dict, 'doc': 'x', 'default': dict()},
-            {'name': 'writeio_args', 'type': dict, 'doc': 'x', 'default': dict()},
-            {'name': 'read_args', 'type': dict, 'doc': 'x', 'default': dict()},
-            {'name': 'write_args', 'type': dict, 'doc': 'x', 'default': dict()})
-    def export_io(**kwargs):
+             'default': dict()},
+            {'name': 'keep_external_links', 'type': bool,
+             'doc': ('whether to preserve links to external files. If False (default), all external links will be '
+                     'resolved.'),
+             'default': False})
+    def export_container_to_hdf5(cls, **kwargs):
         """
-        Example usage:
+        Export the given container to a new HDF5 file.
 
-            export(readio=HDF5IO,
-                   writeio=HDF5IO,
-                   type_map=type_map,
-                   readio_args={'path': 'in.h5'},
-                   writeio_args={'path': 'out.h5'},
-                   write_args={'cache_spec': False})
-
+        The 'link_data' argument for HDF5IO.write is not supported during export.
         """
-        # when creating the writeio object, set the build manager
-        pass
+        container, type_map = popargs('container', 'type_map', kwargs)
+        path, comm = popargs('path', 'comm', kwargs)
+        write_args, keep_external_links = popargs('write_args', 'keep_external_links', kwargs)
+        write_io_args = {'mode': 'w', 'path': path, 'comm': comm}
 
-    # module level function
-    @docval({'name': 'container', 'type': Container, 'doc': 'x'},
-            {'name': 'writeio', 'type': type, 'doc': 'x'},
-            {'name': 'type_map', 'type': type, 'doc': 'x'},
-            {'name': 'writeio_args', 'type': dict, 'doc': 'x', 'default': dict()},
-            {'name': 'write_args', 'type': dict, 'doc': 'x', 'default': dict()})
-    def export_container(**kwargs):
-        """
-        Example usage:
+        from .. import export_container  # avoid circular import
 
-            export(container=container,
-                   writeio=HDF5IO,
-                   type_map=type_map,
-                   writeio_args={'path': 'out.h5'},
-                   write_args={'cache_spec': False})
-
-        """
-        # when creating the writeio object, set the build manager
-        pass
-
-    #         {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-    #         {'name': 'comm', 'type': 'Intracomm',
-    #          'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-    #         {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
-    #          'default': dict()},
-    #         {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
-    #          'default': dict()})
-    #
-    #
-    #
-    # @classmethod
-    # @docval({'name': 'io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object to read data from'},
-    #         {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
-    #         {'name': 'comm', 'type': 'Intracomm',
-    #          'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-    #         {'name': 'read_args', 'type': dict, 'doc': 'dictionary of arguments to use when reading from read_io',
-    #          'default': dict()},
-    #         {'name': 'write_args', 'type': dict, 'doc': 'dictionary of arguments to use when writing to file',
-    #          'default': dict()})
-    # def export_io(cls, **kwargs):
-    #     '''
-    #     Export the container read from the given HDF5IO object to a new destination using a clean instance of this
-    #     HDF5IO class.
-    #
-    #     Similar to the export method, except this method takes care of reading the container from the given HDF5IO
-    #     object first. Arguments can be passed in for the io.read and write_io.write methods.
-    #
-    #     Example usage:
-    #
-    #         # create a new HDF5IO object for reading a file and export its contents to a new HDF5 file
-    #         with HDF5IO('in_file.h5', 'r') as io:
-    #             HDF5IO.export_io(io=io, path='out_file.h5')
-    #
-    #     '''
-    #     io, path, comm, read_args, write_args = popargs('io', 'path', 'comm', 'read_args', 'write_args', kwargs)
-    #     container = io.read(**read_args)
-    #     cls.export(container=container, type_map=io.type_map, path=path, comm=comm, write_args=write_args)
+        export_container(
+            container=container,
+            write_io_cls=HDF5IO,
+            type_map=type_map,
+            write_io_args=write_io_args,
+            write_args=write_args,
+            keep_external_links=keep_external_links,
+        )
 
     def read(self, **kwargs):
-        """Short summary.
-
-        :param type **kwargs: Description of parameter `**kwargs`.
-        :return: Description of returned object.
-        :rtype: type
-
-        """
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
                                        % (self.__path, self.__mode))

@@ -52,6 +52,13 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source)
         self.write_builder(f_builder, **kwargs)
 
+    @classmethod
+    @docval(returns='a dict of args and their supported values to the write method when exporting', rtype=dict)
+    def supported_export_write_args(cls):
+        """Return the args supported by HDMFIO.write when exporting besides the "container" argument."""
+        args = {'exhaust_dci': (True, False)}
+        return args
+
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
     def read_builder(self):

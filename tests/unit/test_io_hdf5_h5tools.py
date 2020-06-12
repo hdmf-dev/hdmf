@@ -1553,22 +1553,17 @@ class TestExport(TestCase):
         if os.path.exists(self.path3):
             os.remove(self.path3)
 
-    def test_export(self):
+    def test_unwritten(self):
         """Test that exporting an unwritten container to file works without modifying container source."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
-        manager = BuildManager(self.manager.type_map, export=True)
-        write_io = HDF5IO(path=self.path1, manager=manager)
-        write_io.export(container=foofile)
-        # ^ this will check that buildmanager.export = True and has an empty prebuilt cache
-
-        # HDF5IO.export(
-        #     container=foofile,
-        #     type_map=self.manager.type_map,
-        #     path=self.path1,
-        # )
+        HDF5IO.export_container_to_hdf5(
+            container=foofile,
+            type_map=self.manager.type_map,
+            path=self.path1,
+        )
 
         self.assertTrue(os.path.exists(self.path1))
         self.assertIsNone(foofile.container_source)
@@ -1581,28 +1576,28 @@ class TestExport(TestCase):
             foofile.container_source = self.path1
             self.assertContainerEqual(foofile, read_foofile)
 
-    def test_export_link_data_true(self):
-        """Test that exporting an unwritten container to file with link_data=True results in an error."""
+    def test_link_data_true(self):
+        """Test that exporting with link_data=True results in an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
-        msg = "Exporting requires link_data to be False"
+        msg = "The argument 'link_data=True' in write_args is not supported during export."
         with self.assertRaisesWith(ValueError, msg):
-            HDF5IO.export(
+            HDF5IO.export_container_to_hdf5(
                 container=foofile,
                 type_map=self.manager.type_map,
                 path=self.path1,
                 write_args={'link_data': True}
             )
 
-    def test_export_link_data_false(self):
+    def test_link_data_false(self):
         """Test that exporting an unwritten container to file with link_data=False results works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
-        HDF5IO.export(
+        HDF5IO.export_container_to_hdf5(
             container=foofile,
             type_map=self.manager.type_map,
             path=self.path1,
@@ -1620,8 +1615,8 @@ class TestExport(TestCase):
             foofile.container_source = self.path1
             self.assertContainerEqual(foofile, read_foofile)
 
-    def test_export_io(self):
-        """Test that export_io on a read IO object works and does not alter the Container's container_source."""
+    def test_written(self):
+        """Test that exporting a written container works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
@@ -1630,23 +1625,54 @@ class TestExport(TestCase):
             io.write(foofile)
 
         with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
-            HDF5IO.export_io(io=io, path=self.path2)
+            read_foofile = io.read()
+            HDF5IO.export_container_to_hdf5(
+                container=read_foofile,
+                type_map=self.manager.type_map,
+                path=self.path2,
+            )
 
         self.assertTrue(os.path.exists(self.path2))
         self.assertEqual(foofile.container_source, self.path1)
+        self.assertEqual(read_foofile.container_source, self.path1)
 
         with HDF5IO(self.path2, manager=self.manager, mode='r') as io:
-            read_foofile = io.read()
-            self.assertEqual(read_foofile.container_source, self.path2)
+            read_foofile2 = io.read()
+            self.assertEqual(read_foofile2.container_source, self.path2)
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
 
-    def test_export_write_args(self):
-        """Test that exporting a file with export and write_args set works."""
+    def test_written_part(self):
+        """Test that exporting a part of a written container works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket])
 
-        HDF5IO.export(
+        with HDF5IO(self.path1, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            HDF5IO.export_container_to_hdf5(
+                container=read_foofile.buckets[0],
+                type_map=self.manager.type_map,
+                path=self.path2,
+            )
+
+        with HDF5IO(self.path2, manager=self.manager, mode='r') as io:
+            read_foobucket = io.read()
+            self.assertIsInstance(read_foobucket, FooBucket)
+            self.assertIsNone(read_foobucket.parent)
+            # note that the name of the read file is re-set to 'root' so ignore the name when
+            # comparing containers
+            self.assertContainerEqual(foobucket, read_foobucket, ignore_name=True, ignore_hdmf_attrs=True)
+
+    def test_export_write_args(self):
+        """Test that exporting with write_args set works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        HDF5IO.export_container_to_hdf5(
             container=foofile,
             type_map=self.manager.type_map,
             path=self.path1,
@@ -1656,23 +1682,8 @@ class TestExport(TestCase):
         with File(self.path1, 'r') as f:
             self.assertNotIn('specifications', f)
 
-    def test_export_io_write_args(self):
-        """Test that exporting a file with export_io and write_args set works."""
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path1, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
-        with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
-            HDF5IO.export_io(io=io, path=self.path2, write_args={'cache_spec': False})
-
-        with File(self.path2, 'r') as f:
-            self.assertNotIn('specifications', f)
-
     def test_link_data(self):
-        """Test that exporting a file with export resolves all linked datasets."""
+        """Test that exporting a written file resolves all linked datasets."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('test_bucket', [foo1])
         foofile = FooFile([foobucket], foofile_data=[1, 2, 3])
@@ -1684,7 +1695,7 @@ class TestExport(TestCase):
             read_foofile = io.read()
             foofile2 = FooFile(foofile_data=read_foofile.foofile_data)  # make a link to existing dataset
 
-            HDF5IO.export(
+            HDF5IO.export_container_to_hdf5(
                 container=foofile2,
                 type_map=self.manager.type_map,
                 path=self.path2,
@@ -1707,7 +1718,7 @@ class TestExport(TestCase):
         with HDF5IO(self.path1, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
 
-            HDF5IO.export(
+            HDF5IO.export_container_to_hdf5(
                 container=read_foofile,
                 type_map=self.manager.type_map,
                 path=self.path2,
@@ -1738,7 +1749,7 @@ class TestExport(TestCase):
         with HDF5IO(self.path2, manager=self.manager, mode='r') as io:
             read_foofile2 = io.read()
 
-            HDF5IO.export(
+            HDF5IO.export_container_to_hdf5(
                 container=read_foofile2,
                 type_map=self.manager.type_map,
                 path=self.path3,
@@ -1763,7 +1774,7 @@ class TestExport(TestCase):
             read_foofile = io.read()
             read_foofile.remove_bucket(read_foofile.buckets[0])  # remove child FooBucket
 
-            HDF5IO.export(
+            HDF5IO.export_container_to_hdf5(
                 container=read_foofile,
                 type_map=self.manager.type_map,
                 path=self.path2,
@@ -1798,7 +1809,7 @@ class TestExport(TestCase):
 
             read_foofile.foo_link = foo2  # add link from foofile to new foo2
 
-            HDF5IO.export(
+            HDF5IO.export_container_to_hdf5(
                 container=read_foofile,
                 type_map=self.manager.type_map,
                 path=self.path2,
