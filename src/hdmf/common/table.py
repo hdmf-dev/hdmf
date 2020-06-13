@@ -255,20 +255,21 @@ class DynamicTable(Container):
 
         self.id = id
 
-        if colnames is None:
+        if colnames is None or len(colnames) == 0:
+            # if colnames is a specified type but empty. don't replace dataset with a list
             if columns is None:
                 # make placeholder for columns if nothing was given
-                self.colnames = list()
-                self.columns = list()
+                self.colnames = colnames if colnames is not None else tuple()
+                self.columns = tuple()
             else:
                 # Figure out column names if columns were given
-                tmp = list()
+                tmp = colnames if colnames is not None else list()
                 for col in columns:
                     if isinstance(col, VectorIndex):
                         continue
                     tmp.append(col.name)
                 self.colnames = tuple(tmp)
-                self.columns = columns
+                self.columns = tuple(columns)
         else:
             # Calculate the order of column names
             if columns is None:
@@ -304,7 +305,7 @@ class DynamicTable(Container):
                         pos = order[col.target.name]
                         tmp[pos] = col
                         tmp[pos+1] = col.target
-                self.columns = list(tmp)
+                self.columns = tuple(tmp)
 
         # to make generating DataFrames and Series easier
         col_dict = dict()
