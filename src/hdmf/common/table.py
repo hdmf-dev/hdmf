@@ -255,15 +255,16 @@ class DynamicTable(Container):
 
         self.id = id
 
+        # NOTE: self.colnames and self.columns are always tuples
+        # if kwarg colnames is an h5dataset, self.colnames is still a tuple
         if colnames is None or len(colnames) == 0:
-            # if colnames is a specified type but empty. don't replace dataset with a list
             if columns is None:
                 # make placeholder for columns if nothing was given
-                self.colnames = colnames if colnames is not None else tuple()
+                self.colnames = tuple()
                 self.columns = tuple()
             else:
                 # Figure out column names if columns were given
-                tmp = colnames if colnames is not None else list()
+                tmp = list()
                 for col in columns:
                     if isinstance(col, VectorIndex):
                         continue
