@@ -546,7 +546,7 @@ class HDF5IO(HDMFIO):
                 kwargs["data"] = scalar
         elif ndims == 1:
             d = None
-            if h5obj.dtype.kind == 'O':
+            if h5obj.dtype.kind == 'O' and len(h5obj) > 0:
                 elem1 = h5obj[0]
                 if isinstance(elem1, (str, bytes)):
                     d = h5obj
