@@ -51,8 +51,8 @@ def export_container(**kwargs):
     write_args, keep_external_links = popargs('write_args', 'keep_external_links', kwargs)
 
     if not issubclass(write_io_cls, HDMFIO):
-        raise ValueError("The 'write_io_cls' argument '%s' is not an instance of HDMFIO."
-                         % write_io_cls.__class__.__name__)
+        raise ValueError("The 'write_io_cls' argument '%s' must be a subclass of HDMFIO."
+                         % write_io_cls.__name__)
 
     if 'manager' in write_io_args:
         raise ValueError("The 'manager' key is not allowed in write_io_args because a new BuildManager will be used.")
@@ -107,14 +107,19 @@ def export_io(**kwargs):
             read_io_cls=HDF5IO,
             write_io_cls=HDF5IO,
             type_map=type_map,
-            read_io_args={'path': 'in.h5'},
+            read_io_args={'path': 'in.h5', 'mode': 'r', 'manager': manager},
             read_args={},
-            write_io_args={'path': 'out.h5'},
+            write_io_args={'path': 'out.h5', 'mode': 'w'},
             write_args={'cache_spec': False},
             keep_external_links=True,
         )
     """
     read_io_cls, read_io_args, read_args = popargs('read_io_cls', 'read_io_args', 'read_args', kwargs)
+
+    if not issubclass(read_io_cls, HDMFIO):
+        raise ValueError("The 'read_io_cls' argument '%s' must be a subclass of HDMFIO."
+                         % read_io_cls.__name__)
+
     with read_io_cls(**read_io_args) as read_io:
         container = read_io.read(**read_args)
         export_container(container=container, **kwargs)

@@ -1,6 +1,5 @@
 import os
 import unittest
-import tempfile
 import warnings
 import numpy as np
 import h5py
@@ -22,7 +21,7 @@ from hdmf.testing import TestCase
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
 
 
 class FooFile(Container):
@@ -70,14 +69,6 @@ class FooFile(Container):
     @property
     def foofile_data(self):
         return self.__foofile_data
-
-
-def get_temp_filepath():
-    # On Windows, h5py cannot truncate an open file in write mode.
-    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
-    temp_file = tempfile.NamedTemporaryFile()
-    temp_file.close()
-    return temp_file.name
 
 
 class H5IOTest(TestCase):
@@ -1538,6 +1529,7 @@ class TestLoadNamespaces(TestCase):
 
 
 class TestExport(TestCase):
+    """Test exporting HDF5 to HDF5 using HDF5IO.export_container_to_hdf5."""
 
     def setUp(self):
         self.manager = _get_manager()
