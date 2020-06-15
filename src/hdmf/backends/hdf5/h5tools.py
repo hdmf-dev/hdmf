@@ -726,7 +726,7 @@ class HDF5IO(HDMFIO):
     def write_group(self, **kwargs):
         parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
         self.logger.debug("Writing group builder '%s' to HDF5 Group under parent '%s'" % (builder.name, parent.name))
-        if builder.written:
+        if self.get_written(builder):
             group = parent[builder.name]
         else:
             group = parent.create_group(builder.name)
@@ -748,8 +748,14 @@ class HDF5IO(HDMFIO):
                 self.write_link(group, sub_builder)
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        builder.written = True
+        self.set_written(builder)
         return group
+
+    def set_written(self, builder):
+        self._written_builders[builder] = True
+
+    def get_written(self, builder):
+        return self._written_builders.get(builder, False)
 
     def __get_path(self, builder):
         curr = builder
@@ -773,7 +779,8 @@ class HDF5IO(HDMFIO):
         target_builder = builder.builder
         path = self.__get_path(target_builder)
         # source will indicate target_builder's location
-        if parent.file.filename == target_builder.source:
+
+        if builder.source == target_builder.source:
             link_obj = SoftLink(path)
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
