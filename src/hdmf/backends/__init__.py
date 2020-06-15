@@ -26,7 +26,8 @@ def export_container(**kwargs):
     The `container` can be an unwritten Container or a Container read from a source. Unlike HDMFIO.write,
     export_container allows writing Containers to a new destination, regardless of the source of the Container. It does
     this by creating a clean instance of the HDMFIO class in 'w' mode and a BuildManager flagged for exporting using
-    the given TypeMap.
+    the given TypeMap. Arguments can be passed in for the write_io.write method. By default, all external links will be
+    resolved (i.e., the exported file will have no external links).
 
     The 'manager' key is not allowed in `write_io_args` because a new BuildManager will be used.
 
@@ -60,8 +61,8 @@ def export_container(**kwargs):
     supported_export_write_args = write_io_cls.supported_export_write_args()
     for arg in write_args:
         if arg not in supported_export_write_args or write_args[arg] not in supported_export_write_args[arg]:
-            raise ValueError("The argument '%s=%s' in write_args is not supported during export."
-                             % (arg, repr(write_args[arg])))
+            raise NotImplementedError("The argument '%s=%s' in write_args is not supported during export."
+                                      % (arg, repr(write_args[arg])))
 
     export_manager = BuildManager(type_map, export=True)
     write_io_args['manager'] = export_manager
@@ -94,7 +95,8 @@ def export_io(**kwargs):
 
     Similar to the export_container function, except instead of taking a container as input, this function will read
     the container from a source using the given read_io_cls. Arguments can be passed in for the read_io_cls.read and
-    write_io.write methods.
+    write_io.write methods. By default, all external links will be resolved (i.e., the exported file will have no
+    external links).
 
     The 'manager' key is not allowed in `write_io_args` because a new BuildManager will be used.
 

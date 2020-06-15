@@ -1575,7 +1575,7 @@ class TestExport(TestCase):
         foofile = FooFile([foobucket])
 
         msg = "The argument 'link_data=True' in write_args is not supported during export."
-        with self.assertRaisesWith(ValueError, msg):
+        with self.assertRaisesWith(NotImplementedError, msg):
             HDF5IO.export_container_to_hdf5(
                 container=foofile,
                 type_map=self.manager.type_map,

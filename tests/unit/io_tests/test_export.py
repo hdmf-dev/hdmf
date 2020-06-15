@@ -92,6 +92,18 @@ class TestExportH5ToH5(TestCase):
                 write_io_args={'path': self.path2, 'mode': 'w'},
             )
 
+    def test_export_bad_write_arg(self):
+        foofile = FooFile([])
+        msg = "The argument 'unknown='val'' in write_args is not supported during export."
+        with self.assertRaisesWith(NotImplementedError, msg):
+            export_container(
+                container=foofile,
+                write_io_cls=HDF5IO,
+                type_map=self.manager.type_map,
+                write_io_args={'path': self.path2, 'mode': 'w'},
+                write_args={'unknown': 'val'},
+            )
+
     def test_export_manager_arg(self):
         foofile = FooFile([])
         msg = "The 'manager' key is not allowed in write_io_args because a new BuildManager will be used."
