@@ -37,9 +37,10 @@ class TestDynamicTable(TestCase):
         return table
 
     def check_empty_table(self, table):
+        self.assertIsInstance(table.columns, tuple)
         self.assertIsInstance(table.columns[0], VectorData)
         self.assertEqual(len(table.columns), 3)
-        self.assertEqual(table.colnames, ('foo', 'bar', 'baz'))
+        self.assertTupleEqual(table.colnames, ('foo', 'bar', 'baz'))
 
     def test_constructor_table_columns(self):
         table = self.with_table_columns()
@@ -134,7 +135,7 @@ class TestDynamicTable(TestCase):
     def test_add_column(self):
         table = self.with_spec()
         table.add_column(name='qux', description='qux column')
-        self.assertEqual(table.colnames, ('foo', 'bar', 'baz', 'qux'))
+        self.assertTupleEqual(table.colnames, ('foo', 'bar', 'baz', 'qux'))
         self.assertTrue(hasattr(table, 'qux'))
 
     def test_add_column_twice(self):
@@ -403,6 +404,11 @@ Fields:
                 with self.assertWarnsWith(UserWarning, msg):
                     DynamicTable("test_table", 'a test table', columns=cols)
 
+    def test_colnames_none(self):
+        table = DynamicTable('table0', 'an example table')
+        self.assertTupleEqual(table.colnames, tuple())
+        self.assertTupleEqual(table.columns, tuple())
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -414,6 +420,14 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('qux', 'a boolean column')
         table.add_row(foo=27, bar=28.0, baz="cat", qux=True)
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False)
+        return table
+
+
+class TestEmptyDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
+    """Test roundtripping a DynamicTable with no rows and no columns."""
+
+    def setUpContainer(self):
+        table = DynamicTable('table0', 'an example table')
         return table
 
 

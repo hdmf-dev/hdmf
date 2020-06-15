@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 1.6.4 (Upcoming)
+
+### Bug fixes:
+- Fix validation of empty arrays and scalar attributes. @rly (#377)
+- Fix issue with constructing `DynamicTable` with empty array colnames. @rly (#379)
+
 ## HDMF 1.6.3 (June 9, 2020)
 
 ### Internal improvements

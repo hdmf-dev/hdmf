@@ -255,11 +255,13 @@ class DynamicTable(Container):
 
         self.id = id
 
-        if colnames is None:
+        # NOTE: self.colnames and self.columns are always tuples
+        # if kwarg colnames is an h5dataset, self.colnames is still a tuple
+        if colnames is None or len(colnames) == 0:
             if columns is None:
                 # make placeholder for columns if nothing was given
-                self.colnames = list()
-                self.columns = list()
+                self.colnames = tuple()
+                self.columns = tuple()
             else:
                 # Figure out column names if columns were given
                 tmp = list()
@@ -268,7 +270,7 @@ class DynamicTable(Container):
                         continue
                     tmp.append(col.name)
                 self.colnames = tuple(tmp)
-                self.columns = columns
+                self.columns = tuple(columns)
         else:
             # Calculate the order of column names
             if columns is None:
@@ -304,7 +306,7 @@ class DynamicTable(Container):
                         pos = order[col.target.name]
                         tmp[pos] = col
                         tmp[pos+1] = col.target
-                self.columns = list(tmp)
+                self.columns = tuple(tmp)
 
         # to make generating DataFrames and Series easier
         col_dict = dict()
