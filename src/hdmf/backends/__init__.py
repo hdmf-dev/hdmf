@@ -92,8 +92,8 @@ def export_io(**kwargs):
     """
     Export from one HDMFIO class to another with the given arguments.
 
-    Similar to the export_container function, except this function will read the contents of a source using the given
-    read_io_cls and export those contents to a new destination. Arguments can be passed in for the read_io_cls.read and
+    Similar to the export_container function, except instead of taking a container as input, this function will read
+    the container from a source using the given read_io_cls. Arguments can be passed in for the read_io_cls.read and
     write_io.write methods.
 
     The 'manager' key is not allowed in `write_io_args` because a new BuildManager will be used.
@@ -115,6 +115,6 @@ def export_io(**kwargs):
         )
     """
     read_io_cls, read_io_args, read_args = popargs('read_io_cls', 'read_io_args', 'read_args', kwargs)
-    read_io = read_io_cls(**read_io_args)
-    container = read_io.read(**read_args)
-    export_container(container=container, **kwargs)
+    with read_io_cls(**read_io_args) as read_io:
+        container = read_io.read(**read_args)
+        export_container(container=container, **kwargs)
