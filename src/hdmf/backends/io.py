@@ -16,6 +16,22 @@ class HDMFIO(metaclass=ABCMeta):
         self.__source = getargs('source', kwargs)
         self.open()
 
+    def export(self, src_io, container=None):
+        """ Export a Container from one backend to another.
+
+        Example usage:
+
+        old_io = HDF5IO('old.nwb', 'r').read()
+
+        with HDF5IO('new_copy.nwb', 'w') as new_io:
+            new_io.export(old_io)
+        """
+        if container is not None:
+            bldr = src_io.manager.build(container)
+        else:
+            bldr = src_io.read_builder()
+        self.write_builder(bldr)
+
     @property
     def manager(self):
         '''The BuildManager this HDMFIO is using'''
