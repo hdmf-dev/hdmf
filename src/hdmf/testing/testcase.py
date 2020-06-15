@@ -213,7 +213,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         """
         container = self.roundtripContainer(cache_spec=cache_spec)
 
-        HDF5IO.export(
+        HDF5IO.export_container_to_hdf5(
             container=container,
             type_map=self.manager.type_map,
             path=self.export_filename,
