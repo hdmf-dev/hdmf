@@ -567,7 +567,8 @@ class HDF5IO(HDMFIO):
             self.__file.close()
         if close_links:
             for obj in self.__open_links:
-                obj.file.close()
+                if obj:
+                    obj.file.close()
             self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
