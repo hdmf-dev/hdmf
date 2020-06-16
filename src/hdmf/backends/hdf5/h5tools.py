@@ -757,8 +757,6 @@ class HDF5IO(HDMFIO):
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             group = parent[builder.name]
-        # elif builder.name in parent:
-        #     raise WriteError("Cannot write group '%s' because it already exists." % self.__get_path(builder))
         else:
             group = parent.create_group(builder.name)
         # write all groups
@@ -800,8 +798,6 @@ class HDF5IO(HDMFIO):
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             return None
-        # elif builder.name in parent:
-        #     raise WriteError("Cannot write link '%s' because it already exists." % self.__get_path(builder))
         name = builder.name
         target_builder = builder.builder
         path = self.__get_path(target_builder)
@@ -843,8 +839,6 @@ class HDF5IO(HDMFIO):
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             return None
-        # elif builder.name in parent:
-        #     raise WriteError("Cannot write dataset '%s' because it already exists." % self.__get_path(builder))
         name = builder.name
         data = builder.data
         options = dict()   # dict with additional
