@@ -1020,14 +1020,12 @@ class TestCloseLinks(TestCase):
         with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
             read_foofile2 = new_io1.read()  # keep reference to container in memory
 
-        self.assertEqual(read_foofile2.foo_link.name, 'foo1')
+        self.assertTrue(read_foofile2.foo_link.my_data)
+        new_io1.close_linked_files()
         self.assertFalse(read_foofile2.foo_link.my_data)
 
         # should be able to reopen both files
-        with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io2:
-            new_io2.read()
-
-        with HDF5IO(self.path1, mode='a', manager=_get_manager()) as new_io3:
+        with HDF5IO(self.path1, mode='w', manager=_get_manager()) as new_io3:
             new_io3.read()
 
     def test_double_close_file_with_links(self):
@@ -1052,9 +1050,10 @@ class TestCloseLinks(TestCase):
 
         with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
             read_foofile2 = new_io1.read()  # keep reference to container in memory
-            read_foofile2.foo_link.my_data.file.close()  # explicitly close the h5dataset
-            self.assertFalse(read_foofile2.foo_link.my_data)
-        # make sure new_io1.close() does not fail because the linked-to file is already closed
+
+        read_foofile2.foo_link.my_data.file.close()  # explicitly close the file from the h5dataset
+        self.assertFalse(read_foofile2.foo_link.my_data)
+        new_io1.close_linked_files()  # make sure this does not fail because the linked-to file is already closed
 
 
 class HDF5IOInitNoFileTest(TestCase):
