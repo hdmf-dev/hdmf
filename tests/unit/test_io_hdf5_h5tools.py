@@ -847,19 +847,6 @@ class TestCacheSpec(TestCase):
             read_types = self.__get_types(ns_catalog)
             self.assertSetEqual(source_types, read_types)
 
-    def test_double_cache_spec(self):
-        # Setup all the data we need
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
-        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
-            io.write(foofile)
-
     def __get_types(self, catalog):
         types = set()
         for ns_name in catalog.namespaces:
@@ -891,6 +878,111 @@ class TestNoCacheSpec(TestCase):
 
         with File(self.path, 'r') as f:
             self.assertNotIn('specifications', f)
+
+
+class TestMultiWrite(TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path = get_temp_filepath()
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        self.foofile = FooFile([foobucket])
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_write_write_unwritten(self):
+        """Test writing a container, adding to the in-memory container, then overwriting the same file."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(self.foofile)
+
+        # append new container to in-memory container
+        foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
+        new_bucket1 = FooBucket('new_bucket1', [foo3])
+        self.foofile.buckets.append(new_bucket1)
+        new_bucket1.parent = self.foofile
+
+        # write to same file with same manager, overwriting existing file
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        new_manager = BuildManager(self.manager.type_map)
+        with HDF5IO(self.path, manager=new_manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 2)
+            for bucket in read_foofile.buckets:
+                if bucket.name == 'new_bucket1':
+                    break
+            self.assertContainerEqual(bucket, new_bucket1)
+
+    def test_append_bucket(self):
+        """Test appending a container to a file."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(self.foofile)
+
+        foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
+        new_bucket1 = FooBucket('new_bucket1', [foo3])
+
+        new_manager = BuildManager(self.manager.type_map)
+        with HDF5IO(self.path, manager=new_manager, mode='a') as io:
+            read_foofile = io.read()
+            # append to read container and call write
+            read_foofile.buckets.append(new_bucket1)
+            new_bucket1.parent = read_foofile
+            io.write(read_foofile)
+
+        # check that new bucket was written
+        new_manager2 = BuildManager(self.manager.type_map)
+        with HDF5IO(self.path, manager=new_manager2, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 2)
+            for bucket in read_foofile.buckets:
+                if bucket.name == 'new_bucket1':
+                    break
+            self.assertContainerEqual(bucket, new_bucket1)
+
+    def test_append_bucket_double_write(self):
+        """Test using the same IO object to append a container to a file twice."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(self.foofile)
+
+        foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
+        new_bucket1 = FooBucket('new_bucket1', [foo3])
+        foo4 = Foo('foo4', [10, 20], "I am foo4", 2, 0.1)
+        new_bucket2 = FooBucket('new_bucket2', [foo4])
+
+        new_manager = BuildManager(self.manager.type_map)
+        with HDF5IO(self.path, manager=new_manager, mode='a') as io:
+            read_foofile = io.read()
+            # append to read container and call write
+            read_foofile.buckets.append(new_bucket1)
+            new_bucket1.parent = read_foofile
+            io.write(read_foofile)
+
+            # append to read container again and call write again
+            read_foofile.buckets.append(new_bucket2)
+            new_bucket2.parent = read_foofile
+            io.write(read_foofile)
+
+        # check that both new buckets were written
+        new_manager2 = BuildManager(self.manager.type_map)
+        with HDF5IO(self.path, manager=new_manager2, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 3)
+
+            for bucket in read_foofile.buckets:
+                if bucket.name == 'new_bucket1':
+                    break
+            self.assertContainerEqual(bucket, new_bucket1)
+
+            for bucket in read_foofile.buckets:
+                if bucket.name == 'new_bucket2':
+                    break
+            self.assertContainerEqual(bucket, new_bucket2)
 
 
 class HDF5IOMultiFileTest(TestCase):
@@ -1167,7 +1259,7 @@ class HDF5IOWriteFileExists(TestCase):
     def test_write_a(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
             # even though foofile1 and foofile2 have different names, writing a
-            # root object into a file that already has a root object, in r+ mode
+            # root object into a file that already has a root object, in a mode
             # should throw an error
             with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
                 io.write(self.foofile2)
@@ -1188,6 +1280,41 @@ class HDF5IOWriteFileExists(TestCase):
                                        ("Cannot write to file %s in mode 'r'. "
                                         "Please use mode 'r+', 'w', 'w-', 'x', or 'a'") % self.path):
                 io.write(self.foofile2)
+
+
+class TestWritten(TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path = get_temp_filepath()
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        self.foofile = FooFile([foobucket])
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_set_written_on_write(self):
+        """Test that write_builder changes the written flag of the builder and its children from False to True."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            builder = self.manager.build(container=self.foofile, source=self.path)
+            self.assertFalse(io.get_written(builder))
+            self._check_written_children(io, builder, False)
+            io.write_builder(builder)
+            self.assertTrue(io.get_written(builder))
+            self._check_written_children(io, builder, True)
+
+    def _check_written_children(self, io, builder, val):
+        """Test whether the io object has the written flag of the child builders set to val."""
+        for group_bldr in builder.groups.values():
+            self.assertEqual(io.get_written(group_bldr), val)
+            self._check_written_children(io, group_bldr, val)
+        for dset_bldr in builder.datasets.values():
+            self.assertEqual(io.get_written(dset_bldr), val)
+        for link_bldr in builder.links.values():
+            self.assertEqual(io.get_written(link_bldr), val)
 
 
 class H5DataIOValid(TestCase):
