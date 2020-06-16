@@ -393,19 +393,31 @@ class HDF5IO(HDMFIO):
             self.__read[self.__file] = f_builder
         return f_builder
 
-    def set_written(self, builder):
-        """Mark this builder as written."""
+    def __set_written(self, builder):
+        """
+        Mark this builder as written.
+
+        :param builder: Builder object to be marked as written
+        :type builder: Builder
+        """
         # currently all values in self._written_builders are True, so this could be a set but is a dict for
         # future flexibility
         builder_id = self.__bldrhash__(builder)
         self._written_builders[builder_id] = True
 
     def get_written(self, builder):
-        """Return True if this builder has been written to (or read from) disk by this IO object."""
+        """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
+
+        :param builder: Builder object to get the written flag for
+        :type builder: Builder
+
+        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
+        """
         builder_id = self.__bldrhash__(builder)
         return self._written_builders.get(builder_id, False)
 
     def __bldrhash__(self, obj):
+        """Return the ID of a builder for use as a unique hash."""
         return id(obj)
 
     def __set_built(self, fpath, id, builder):
@@ -504,7 +516,7 @@ class HDF5IO(HDMFIO):
                         self.__set_built(sub_h5obj.file.filename,  sub_h5obj.file[target_path].id, builder)
                     builder.location = parent_loc
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
-                    self.set_written(link_builder)
+                    self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
                     self.__open_files.append(sub_h5obj.file)
                 else:
@@ -527,7 +539,7 @@ class HDF5IO(HDMFIO):
                 continue
         kwargs['source'] = h5obj.file.filename
         ret = GroupBuilder(name, **kwargs)
-        self.set_written(ret)
+        self.__set_written(ret)
         return ret
 
     def __read_dataset(self, h5obj, name=None):
@@ -580,7 +592,7 @@ class HDF5IO(HDMFIO):
         else:
             kwargs["data"] = h5obj
         ret = DatasetBuilder(name, **kwargs)
-        self.set_written(ret)
+        self.__set_written(ret)
         return ret
 
     def __read_attrs(self, h5obj):
@@ -641,7 +653,7 @@ class HDF5IO(HDMFIO):
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
         self.__exhaust_dcis()
-        self.set_written(f_builder)
+        self.__set_written(f_builder)
 
     def __add_refs(self):
         '''
@@ -821,7 +833,7 @@ class HDF5IO(HDMFIO):
                 self.write_link(group, sub_builder)
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        self.set_written(builder)
+        self.__set_written(builder)
         return group
 
     def __get_path(self, builder):
@@ -865,7 +877,7 @@ class HDF5IO(HDMFIO):
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
         parent[name] = link_obj
-        self.set_written(builder)
+        self.__set_written(builder)
         return link_obj
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
@@ -937,7 +949,7 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                self.set_written(builder)
+                self.__set_written(builder)
                 self.logger.debug("Queueing set attribute on dataset '%s' containing references. attributes: %s"
                                   % (name, list(attributes.keys())))
 
@@ -961,7 +973,7 @@ class HDF5IO(HDMFIO):
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
             _dtype = self.__dtypes.get(options['dtype'])
-            self.set_written(builder)
+            self.__set_written(builder)
             # Write a scalar data region reference dataset
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
@@ -1038,7 +1050,7 @@ class HDF5IO(HDMFIO):
         # Validate the attributes on the linked dataset
         elif len(attributes) > 0:
             pass
-        self.set_written(builder)
+        self.__set_written(builder)
         if exhaust_dci:
             self.__exhaust_dcis()
 
