@@ -72,6 +72,7 @@ class HDF5IO(HDMFIO):
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
+        self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
     def comm(self):
@@ -442,6 +443,8 @@ class HDF5IO(HDMFIO):
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
                     link_builder.written = True
                     kwargs['links'][builder_name] = link_builder
+                    if isinstance(link_type, ExternalLink):
+                        self.__open_links.append(sub_h5obj)
                 else:
                     builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.id)
                     obj_type = None
@@ -553,9 +556,13 @@ class HDF5IO(HDMFIO):
                 kwargs = {}
             self.__file = File(self.__path, open_flag, **kwargs)
 
-    def close(self):
+    def close(self, close_links=False):
         if self.__file is not None:
             self.__file.close()
+        if close_links:
+            for f in self.__open_links:
+                f.file.close()
+            self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,
