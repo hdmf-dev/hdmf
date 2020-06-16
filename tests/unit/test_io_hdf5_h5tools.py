@@ -895,17 +895,17 @@ class TestMultiWrite(TestCase):
             os.remove(self.path)
 
     def test_write_write_unwritten(self):
-        """Test writing a container, adding to the in-memory container, then writing it again."""
+        """Test writing a container, adding to the in-memory container, then overwriting the same file."""
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(self.foofile)
 
-        # append new container
+        # append new container to in-memory container
         foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
         new_bucket1 = FooBucket('new_bucket1', [foo3])
         self.foofile.buckets.append(new_bucket1)
         new_bucket1.parent = self.foofile
 
-        # write to same file with same manager
+        # write to same file with same manager, overwriting existing file
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(self.foofile)
 
