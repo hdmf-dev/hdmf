@@ -354,7 +354,7 @@ class HDF5IO(HDMFIO):
         """
         # currently all values in self._written_builders are True, so this could be a set but is a dict for
         # future flexibility
-        builder_id = self.__bldrhash__(builder)
+        builder_id = self.__builderhash(builder)
         self._written_builders[builder_id] = True
 
     def get_written(self, builder):
@@ -365,10 +365,10 @@ class HDF5IO(HDMFIO):
 
         :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
         """
-        builder_id = self.__bldrhash__(builder)
+        builder_id = self.__builderhash(builder)
         return self._written_builders.get(builder_id, False)
 
-    def __bldrhash__(self, obj):
+    def __builderhash(self, obj):
         """Return the ID of a builder for use as a unique hash."""
         return id(obj)
 
@@ -913,10 +913,10 @@ class HDF5IO(HDMFIO):
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
             _dtype = self.__dtypes.get(options['dtype'])
-            self.__set_written(builder)
             # Write a scalar data region reference dataset
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
+                self.__set_written(builder)
                 self.logger.debug("Queueing set attribute on dataset '%s' containing a region reference. "
                                   "attributes: %s" % (name, list(attributes.keys())))
 
@@ -929,6 +929,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar object reference dataset
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
+                self.__set_written(builder)
                 self.logger.debug("Queueing set attribute on dataset '%s' containing an object reference. "
                                   "attributes: %s" % (name, list(attributes.keys())))
 
@@ -943,6 +944,7 @@ class HDF5IO(HDMFIO):
                 # Write a array of region references
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
+                    self.__set_written(builder)
                     self.logger.debug("Queueing set attribute on dataset '%s' containing region references. "
                                       "attributes: %s" % (name, list(attributes.keys())))
 
@@ -957,6 +959,7 @@ class HDF5IO(HDMFIO):
                 # Write array of object references
                 else:
                     dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                    self.__set_written(builder)
                     self.logger.debug("Queueing set attribute on dataset '%s' containing object references. "
                                       "attributes: %s" % (name, list(attributes.keys())))
 
