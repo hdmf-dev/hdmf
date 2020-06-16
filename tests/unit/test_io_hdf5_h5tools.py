@@ -1025,7 +1025,7 @@ class TestCloseLinks(TestCase):
         self.assertFalse(read_foofile2.foo_link.my_data)
 
         # should be able to reopen both files
-        with HDF5IO(self.path1, mode='w', manager=_get_manager()) as new_io3:
+        with HDF5IO(self.path1, mode='a', manager=_get_manager()) as new_io3:
             new_io3.read()
 
     def test_double_close_file_with_links(self):
