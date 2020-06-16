@@ -556,12 +556,18 @@ class HDF5IO(HDMFIO):
                 kwargs = {}
             self.__file = File(self.__path, open_flag, **kwargs)
 
-    def close(self, close_links=False):
+    def close(self, close_links=True):
+        """Close the file.
+
+        :param bool close_links: Whether to explicitly close all opened, linked-to files. MacOS and Linux automatically
+                                 closes opened, linked-to files when the linking file is closed, but Windows does not.
+                                 This flag allows Windows users not to close those linked-to files. Default True.
+        """
         if self.__file is not None:
             self.__file.close()
         if close_links:
-            for f in self.__open_links:
-                f.file.close()
+            for obj in self.__open_links:
+                obj.file.close()
             self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
