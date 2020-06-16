@@ -564,7 +564,8 @@ class HDF5IO(HDMFIO):
         """Close all opened, linked-to files.
 
         MacOS and Linux automatically releases the linked-to file after the linking file is closed, but Windows does
-        not, which prevents the linked-to file from being deleted or truncated.
+        not, which prevents the linked-to file from being deleted or truncated. Use this method to close all opened,
+        linked-to files.
         """
         for obj in self.__open_links:
             if obj:
