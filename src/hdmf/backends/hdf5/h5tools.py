@@ -1221,7 +1221,3 @@ class HDF5IO(HDMFIO):
         Return the HDF5 file mode. One of ("w", "r", "r+", "a", "w-", "x").
         """
         return self.__mode
-
-
-class WriteError(Exception):
-    pass
