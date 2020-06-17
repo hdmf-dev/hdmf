@@ -565,9 +565,9 @@ class HDF5IO(HDMFIO):
     def write_builder(self, **kwargs):
         f_builder, link_data, exhaust_dci = getargs('builder', 'link_data', 'exhaust_dci', kwargs)
         for name, gbldr in f_builder.groups.items():
-            self.write_group(self.__file, gbldr, exhaust_dci=exhaust_dci)
+            self.write_group(self.__file, gbldr, link_data=link_data, exhaust_dci=exhaust_dci)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, link_data, exhaust_dci=exhaust_dci)
+            self.write_dataset(self.__file, dbldr, link_data=link_data, exhaust_dci=exhaust_dci)
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
@@ -720,11 +720,13 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
+            {'name': 'link_data', 'type': bool,
+             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
-        parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
+        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if builder.written:
             group = parent[builder.name]
@@ -735,12 +737,12 @@ class HDF5IO(HDMFIO):
         if subgroups:
             for subgroup_name, sub_builder in subgroups.items():
                 # do not create an empty group without attributes or links
-                self.write_group(group, sub_builder, exhaust_dci=exhaust_dci)
+                self.write_group(group, sub_builder, link_data=link_data, exhaust_dci=exhaust_dci)
         # write all datasets
         datasets = builder.datasets
         if datasets:
             for dset_name, sub_builder in datasets.items():
-                self.write_dataset(group, sub_builder, exhaust_dci=exhaust_dci)
+                self.write_dataset(group, sub_builder, link_data=link_data, exhaust_dci=exhaust_dci)
         # write all links
         links = builder.links
         if links:

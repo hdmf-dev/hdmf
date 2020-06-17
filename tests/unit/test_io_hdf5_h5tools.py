@@ -1334,6 +1334,47 @@ class TestReadLink(TestCase):
         read_io2.close()
 
 
+class TestLinkData(TestCase):
+
+    def setUp(self):
+        self.target_path = get_temp_filepath()
+        self.link_path = get_temp_filepath()
+        root1 = GroupBuilder(name='root')
+        subgroup = root1.add_group('test_group')
+        subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+
+        with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(root1)
+
+    def test_link_data_true(self):
+        manager = _get_manager()
+        with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
+            read_root = read_io.read_builder()
+            read_dataset_data = read_root.groups['test_group'].datasets['test_dataset'].data
+
+            with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
+                root2 = GroupBuilder(name='root')
+                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                write_io.write_builder(root2, link_data=True)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertIsInstance(f.get('link_to_test_dataset', getlink=True), ExternalLink)
+
+    def test_link_data_false(self):
+        manager = _get_manager()
+        with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
+            read_root = read_io.read_builder()
+            read_dataset_data = read_root.groups['test_group'].datasets['test_dataset'].data
+
+            with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
+                root2 = GroupBuilder(name='root')
+                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                write_io.write_builder(root2, link_data=False)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertFalse(isinstance(f.get('link_to_test_dataset', getlink=True), ExternalLink))
+
+
 class TestLoadNamespaces(TestCase):
 
     def setUp(self):
