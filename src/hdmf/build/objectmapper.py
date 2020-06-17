@@ -844,6 +844,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     sub_builder = GroupBuilder(spec.name, source=source)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
+                self.__add_links(sub_builder, spec.links, container, build_manager, source)
 
                 # handle subgroups that are not Containers
                 attr_name = self.get_attribute(spec)
