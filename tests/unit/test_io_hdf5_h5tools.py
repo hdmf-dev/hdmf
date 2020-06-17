@@ -1400,7 +1400,11 @@ class TestReadLink(TestCase):
             io.write_builder(self.root2)
         self.root2.source = self.link_path
 
+        self.ios = []
+
     def tearDown(self):
+        for io in self.ios:
+            io.close_linked_files()
         if os.path.exists(self.target_path):
             os.remove(self.target_path)
         if os.path.exists(self.link_path):
@@ -1411,6 +1415,7 @@ class TestReadLink(TestCase):
         Test that Builder location is set when it is read as a link
         """
         read_io = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io)  # store IO object for closing in tearDown
         bldr = read_io.read_builder()
         self.assertEqual(bldr['link_to_test_group'].builder.location, '/')
         self.assertEqual(bldr['link_to_test_dataset'].builder.location, '/test_group')
@@ -1422,6 +1427,7 @@ class TestReadLink(TestCase):
         """
         link_to_link_path = get_temp_filepath()
         read_io1 = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io1)  # store IO object for closing in tearDown
         bldr1 = read_io1.read_builder()
         root3 = GroupBuilder(name='root')
         root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
@@ -1430,6 +1436,7 @@ class TestReadLink(TestCase):
         read_io1.close()
 
         read_io2 = HDF5IO(link_to_link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io2)
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
