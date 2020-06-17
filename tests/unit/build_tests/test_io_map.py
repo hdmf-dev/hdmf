@@ -873,13 +873,11 @@ class TestConvertDtype(TestCase):
         value = np.array(['a', 'b'])
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, value)
-        self.assertIs(ret.dtype.type, np.str_)
         self.assertEqual(ret_dtype, 'utf8')
 
         value = np.array(['a', 'b'], dtype='S1')
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
-        self.assertIs(ret.dtype.type, np.str_)
         self.assertEqual(ret_dtype, 'utf8')
 
     def test_ascii_spec(self):
@@ -907,13 +905,11 @@ class TestConvertDtype(TestCase):
         value = np.array(['a', 'b'])
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
-        self.assertIs(ret.dtype.type, np.bytes_)
         self.assertEqual(ret_dtype, 'ascii')
 
         value = np.array(['a', 'b'], dtype='S1')
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, value)
-        self.assertIs(ret.dtype.type, np.bytes_)
         self.assertEqual(ret_dtype, 'ascii')
 
     def test_no_spec(self):
@@ -947,13 +943,11 @@ class TestConvertDtype(TestCase):
         value = np.array(['aa', 'bb'])
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, value)
-        self.assertIs(type(ret[0]), np.str_)
         self.assertEqual(ret_dtype, 'utf8')
 
         value = np.array(['aa', 'bb'], dtype='S2')
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, value)
-        self.assertIs(type(ret[0]), np.bytes_)
         self.assertEqual(ret_dtype, 'ascii')
 
         value = DataChunkIterator(data=[1, 2, 3])
