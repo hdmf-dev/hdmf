@@ -321,6 +321,59 @@ class HDF5IO(HDMFIO):
                 writer = H5SpecWriter(ns_group)
                 ns_builder.export('namespace', writer=writer)
 
+    @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+            {'name': 'container', 'type': Container,
+             'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
+                     'exported'),
+             'default': None},
+            {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
+             'default': dict()})
+    def export(self, **kwargs):
+        """Export from one backend to HDF5.
+
+        See hdmf.backends.io.HDMFIO.export for more details.
+        """
+        if self.__mode != 'w':
+            raise UnsupportedOperation("Cannot export to file %s in mode '%s'. Please use mode 'w'."
+                                       % (self.__path, self.__mode))
+        src_io, write_args = getargs('src_io', 'write_args', kwargs)
+        if not isinstance(src_io, HDF5IO) and write_args.get('link_data', False):
+            raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write_args "
+                                       "'link_data'=True.")
+        call_docval_func(super().export, kwargs)
+
+    @classmethod
+    @docval({'name': 'io_args', 'type': dict, 'doc': 'the HDMFIO object for reading the data to export'},
+            {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+            {'name': 'container', 'type': Container,
+             'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
+                     'exported'),
+             'default': None},
+            {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
+             'default': dict()})
+    def export_io(self, **kwargs):
+        """Export from one backend to HDF5 (class method).
+
+        Convenience function for export where the user does not need to instantiate a new HDF5IO object for writing.
+
+        See export for more details.
+        """
+        io_args = popargs('io_args', kwargs)
+        if 'mode' in io_args and io_args['mode'] != 'w':
+            raise ValueError("The 'mode' key in io_args must be 'w' if present.")
+        io_args['mode'] = 'w'
+
+        if 'manager' in io_args and io_args['manager'] is not None:
+            warnings.warn("The 'manager' key in io_args will be ignored.")
+            io_args.remove('manager')
+
+        with HDF5IO(io_args) as write_io:
+            write_io.export(**kwargs)
+
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."

@@ -43,10 +43,48 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source)
         self.write_builder(f_builder, **kwargs)
 
+    @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+            {'name': 'container', 'type': Container,
+             'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
+                     'exported'),
+             'default': None},
+            {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
+             'default': dict()},
+            {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
+             'default': dict()})
+    def export(self, **kwargs):
+        """Export from one backend to another.
+
+        If container is provided, then the build manager of src_io is used to build the container, and the resulting
+        builder will be exported to the new backend. So if container is provided, src_io must have a non-None manager
+        property. If container is None, then the contents of src_io will be read and exported to the new backend.
+
+        Arguments can be passed in for the read_builder and write_builder methods. By default, all external links
+        will be resolved (i.e., the exported file will have no external links).
+
+        Some arguments in `write_args` may not be supported during export.
+
+        Example usage:
+
+            old_io = HDF5IO('old.nwb', 'r')
+            with HDF5IO('new_copy.nwb', 'w') as new_io:
+                new_io.export(old_io)
+        """
+        src_io, container, read_args, write_args = getargs('src_io', 'container', 'read_args', 'write_args', kwargs)
+        if container is not None:
+            if src_io.manager is None:
+                raise ValueError('When a container is provided, src_io must have a non-None manager (BuildManager) '
+                                 'property.')
+            bldr = src_io.manager.build(container)
+        else:
+            bldr = src_io.read_builder(**read_args)
+        self.write_builder(builder=bldr, **write_args)
+        self.close()  # user should not be able to use this IO object for read/write after exporting
+
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
     def read_builder(self):
-        ''' Read data and return the GroupBuilder representing '''
+        ''' Read data and return the GroupBuilder representing it '''
         pass
 
     @abstractmethod
