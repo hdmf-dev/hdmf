@@ -1286,6 +1286,7 @@ class H5DataIOValid(TestCase):
 
 
 class TestReadLink(TestCase):
+
     def setUp(self):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
@@ -1304,6 +1305,12 @@ class TestReadLink(TestCase):
         with HDF5IO(self.link_path, manager=_get_manager(), mode='w') as io:
             io.write_builder(self.root2)
         self.root2.source = self.link_path
+
+    def tearDown(self):
+        if os.path.exists(self.target_path):
+            os.remove(self.target_path)
+        if os.path.exists(self.link_path):
+            os.remove(self.link_path)
 
     def test_set_link_loc(self):
         """
@@ -1346,7 +1353,14 @@ class TestLinkData(TestCase):
         with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
             io.write_builder(root1)
 
+    def tearDown(self):
+        if os.path.exists(self.target_path):
+            os.remove(self.target_path)
+        if os.path.exists(self.link_path):
+            os.remove(self.link_path)
+
     def test_link_data_true(self):
+        """Test that the argument link_data=True for write_builder creates an external link."""
         manager = _get_manager()
         with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
             read_root = read_io.read_builder()
@@ -1361,6 +1375,7 @@ class TestLinkData(TestCase):
             self.assertIsInstance(f.get('link_to_test_dataset', getlink=True), ExternalLink)
 
     def test_link_data_false(self):
+        """Test that the argument link_data=False for write_builder copies the data."""
         manager = _get_manager()
         with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
             read_root = read_io.read_builder()
@@ -1373,6 +1388,7 @@ class TestLinkData(TestCase):
 
         with File(self.link_path, mode='r') as f:
             self.assertFalse(isinstance(f.get('link_to_test_dataset', getlink=True), ExternalLink))
+            self.assertListEqual(f.get('link_to_test_dataset')[:].tolist(), [1, 2, 3, 4])
 
 
 class TestLoadNamespaces(TestCase):
