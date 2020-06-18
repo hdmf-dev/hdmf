@@ -757,22 +757,27 @@ def get_data_shape(data, strict_no_data_load=False):
         shape = list()
         if hasattr(local_data, '__len__'):
             shape.append(len(local_data))
-            if len(local_data) and not isinstance(local_data[0], (str, bytes)):
-                shape.extend(__get_shape_helper(local_data[0]))
+            if len(local_data):
+                el = next(iter(local_data))
+                if not isinstance(el, (str, bytes)):
+                    shape.extend(__get_shape_helper(el))
         return tuple(shape)
 
-    shape = np.shape(data)
-    if shape:
-        return shape
+    # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
     if hasattr(data, 'maxshape'):
         return data.maxshape
     if hasattr(data, 'shape'):
-        return data.shape
+        return data.shape  # unlike np.shape(data), this will return None if data.shape is None
+    else:
+        np_shape = np.asarray(data).shape  # np.asarray not copy the data
+        if np_shape:
+            return np_shape
     if isinstance(data, dict):
-        return
+        return None
     if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
-        if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
+        if not strict_no_data_load or isinstance(data, (list, tuple, set)):
             return __get_shape_helper(data)
+    return None
 
 
 def pystr(s):
