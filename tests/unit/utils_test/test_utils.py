@@ -131,9 +131,6 @@ class TestGetDataShape(TestCase):
         res = get_data_shape({1, 2})
         self.assertTupleEqual(res, (2, ))
 
-        res = get_data_shape([{1, 2}, {3, 4}, {5, 6}])
-        self.assertTupleEqual(res, (3, 2))
-
     def test_arbitrary_iterable_with_len(self):
         """Test get_data_shape with strict_no_data_load=True on an arbitrary iterable object with __len__."""
 
@@ -161,13 +158,6 @@ class TestGetDataShape(TestCase):
         self.assertTupleEqual(res, (10, 5, 2, 3))
         res = get_data_shape(data, strict_no_data_load=True)
         self.assertIsNone(res)
-
-        # NOTE: strict_no_data_load does not apply if data is a list/tuple/set, even if elements are other types
-        data = [MyIterable(), MyIterable(), MyIterable()]
-        res = get_data_shape(data)
-        self.assertTupleEqual(res, (3, 10, 5, 2, 3))
-        res = get_data_shape(data, strict_no_data_load=True)
-        self.assertTupleEqual(res, (3, 10, 5, 2, 3))
 
     def test_strict_no_data_load(self):
         """Test get_data_shape with strict_no_data_load=True on nested lists/tuples is the same as when it is False."""
