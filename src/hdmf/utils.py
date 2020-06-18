@@ -769,7 +769,7 @@ def get_data_shape(data, strict_no_data_load=False):
     if hasattr(data, 'shape'):
         return data.shape  # unlike np.shape(data), this will return None if data.shape is None
     else:
-        np_shape = np.asarray(data).shape  # np.asarray not copy the data
+        np_shape = np.asarray(data).shape  # np.asarray does not copy the data
         if np_shape:
             return np_shape
     if isinstance(data, dict):
