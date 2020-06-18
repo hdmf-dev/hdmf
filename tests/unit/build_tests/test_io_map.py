@@ -848,73 +848,156 @@ class TestConvertDtype(TestCase):
                 with self.assertRaisesWith(ValueError, msg):
                     ObjectMapper.convert_dtype(spec, value)
 
+    def test_text_spec(self):
+        spec_type = 'text'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = 'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = b'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, 'a')
+        self.assertIs(type(ret), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = ['a', 'b']
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
+        self.assertIs(type(ret[0]), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = np.array(['a', 'b'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = np.array(['a', 'b'], dtype='S1')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
+        self.assertEqual(ret_dtype, 'utf8')
+
+    def test_ascii_spec(self):
+        spec_type = 'ascii'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = 'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, b'a')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = b'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, b'a')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = ['a', 'b']
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, [b'a', b'b'])
+        self.assertIs(type(ret[0]), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = np.array(['a', 'b'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = np.array(['a', 'b'], dtype='S1')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
+
     def test_no_spec(self):
         spec_type = None
         spec = DatasetSpec('an example dataset', spec_type, name='data')
 
         value = [1, 2, 3]
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, int)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0][0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
+        self.assertIs(type(ret[0]), int)
+        self.assertEqual(ret_dtype, int)
 
         value = np.uint64(4)
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.uint64)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.uint64)
+        self.assertEqual(ret_dtype, np.uint64)
 
         value = 'hello'
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, 'utf8')
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), str)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), str)
+        self.assertEqual(ret_dtype, 'utf8')
 
-        value = bytes('hello', encoding='utf-8')
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, 'ascii')
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), bytes)
+        value = b'hello'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = np.array(['aa', 'bb'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = np.array(['aa', 'bb'], dtype='S2')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
 
         value = DataChunkIterator(data=[1, 2, 3])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.dtype.type, np.dtype(int).type)
+        self.assertIs(type(ret.data[0]), int)
+        self.assertEqual(ret_dtype, np.dtype(int).type)
 
-        value = DataChunkIterator(data=[1., 2., 3.])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(float).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        value = DataChunkIterator(data=['a', 'b'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.dtype.type, np.str_)
+        self.assertIs(type(ret.data[0]), str)
+        self.assertEqual(ret_dtype, 'utf8')
 
         value = H5DataIO(np.arange(30).reshape(5, 2, 3))
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.data.dtype.type, np.dtype(int).type)
+        self.assertEqual(ret_dtype, np.dtype(int).type)
 
-        value = H5DataIO(['foo' 'bar'])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, 'utf8')
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0].data[0]), str)
+        value = H5DataIO(['foo', 'bar'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret.data[0]), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = H5DataIO([b'foo', b'bar'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret.data[0]), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
 
     def test_numeric_spec(self):
         spec_type = 'numeric'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
 
         value = np.uint64(4)
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.uint64)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.uint64)
+        self.assertEqual(ret_dtype, np.uint64)
 
         value = DataChunkIterator(data=[1, 2, 3])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.dtype.type, np.dtype(int).type)
+        self.assertIs(type(ret.data[0]), int)
+        self.assertEqual(ret_dtype, np.dtype(int).type)
 
         value = ['a', 'b']
         msg = "Cannot convert from <class 'str'> to 'numeric' specification dtype."
@@ -931,16 +1014,16 @@ class TestConvertDtype(TestCase):
         spec = DatasetSpec('an example dataset', spec_type, name='data')
 
         value = np.bool_(True)
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.bool_)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.bool_)
+        self.assertEqual(ret_dtype, np.bool_)
 
         value = True
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.bool_)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.bool_)
+        self.assertEqual(ret_dtype, np.bool_)
 
     def test_override_type_int_restrict_precision(self):
         spec = DatasetSpec('an example dataset', 'int8', name='data')
