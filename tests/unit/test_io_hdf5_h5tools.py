@@ -1507,6 +1507,7 @@ class H5DataIOValid(TestCase):
 
 
 class TestReadLink(TestCase):
+
     def setUp(self):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
@@ -1526,11 +1527,22 @@ class TestReadLink(TestCase):
             io.write_builder(self.root2)
         self.root2.source = self.link_path
 
+        self.ios = []
+
+    def tearDown(self):
+        for io in self.ios:
+            io.close_linked_files()
+        if os.path.exists(self.target_path):
+            os.remove(self.target_path)
+        if os.path.exists(self.link_path):
+            os.remove(self.link_path)
+
     def test_set_link_loc(self):
         """
         Test that Builder location is set when it is read as a link
         """
         read_io = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io)  # store IO object for closing in tearDown
         bldr = read_io.read_builder()
         self.assertEqual(bldr['link_to_test_group'].builder.location, '/')
         self.assertEqual(bldr['link_to_test_dataset'].builder.location, '/test_group')
@@ -1542,6 +1554,7 @@ class TestReadLink(TestCase):
         """
         link_to_link_path = get_temp_filepath()
         read_io1 = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io1)  # store IO object for closing in tearDown
         bldr1 = read_io1.read_builder()
         root3 = GroupBuilder(name='root')
         root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
@@ -1550,9 +1563,60 @@ class TestReadLink(TestCase):
         read_io1.close()
 
         read_io2 = HDF5IO(link_to_link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io2)
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
+
+
+class TestLinkData(TestCase):
+
+    def setUp(self):
+        self.target_path = get_temp_filepath()
+        self.link_path = get_temp_filepath()
+        root1 = GroupBuilder(name='root')
+        subgroup = root1.add_group('test_group')
+        subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+
+        with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(root1)
+
+    def tearDown(self):
+        if os.path.exists(self.target_path):
+            os.remove(self.target_path)
+        if os.path.exists(self.link_path):
+            os.remove(self.link_path)
+
+    def test_link_data_true(self):
+        """Test that the argument link_data=True for write_builder creates an external link."""
+        manager = _get_manager()
+        with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
+            read_root = read_io.read_builder()
+            read_dataset_data = read_root.groups['test_group'].datasets['test_dataset'].data
+
+            with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
+                root2 = GroupBuilder(name='root')
+                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                write_io.write_builder(root2, link_data=True)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertIsInstance(f.get('link_to_test_dataset', getlink=True), ExternalLink)
+
+    def test_link_data_false(self):
+        """Test that the argument link_data=False for write_builder copies the data."""
+        manager = _get_manager()
+        with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
+            read_root = read_io.read_builder()
+            read_dataset_data = read_root.groups['test_group'].datasets['test_dataset'].data
+
+            with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
+                root2 = GroupBuilder(name='root')
+                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                write_io.write_builder(root2, link_data=False)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertFalse(isinstance(f.get('link_to_test_dataset', getlink=True), ExternalLink))
+            self.assertListEqual(f.get('link_to_test_dataset')[:].tolist(), [1, 2, 3, 4])
 
 
 class TestLoadNamespaces(TestCase):
