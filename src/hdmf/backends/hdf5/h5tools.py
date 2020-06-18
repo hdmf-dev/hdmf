@@ -303,34 +303,43 @@ class HDF5IO(HDMFIO):
         cache_spec = popargs('cache_spec', kwargs)
         call_docval_func(super().write, kwargs)
         if cache_spec:
-            ref = self.__file.attrs.get(SPEC_LOC_ATTR)
-            spec_group = None
-            if ref is not None:
-                spec_group = self.__file[ref]
-            else:
-                path = 'specifications'  # do something to figure out where the specifications should go
-                spec_group = self.__file.require_group(path)
-                self.__file.attrs[SPEC_LOC_ATTR] = spec_group.ref
-            ns_catalog = self.manager.namespace_catalog
-            for ns_name in ns_catalog.namespaces:
-                ns_builder = self.__convert_namespace(ns_catalog, ns_name)
-                namespace = ns_catalog.get_namespace(ns_name)
-                group_name = '%s/%s' % (ns_name, namespace.version)
-                if group_name in spec_group:
-                    continue
-                ns_group = spec_group.create_group(group_name)
-                writer = H5SpecWriter(ns_group)
-                ns_builder.export('namespace', writer=writer)
+            self.__cache_spec()
 
-    @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
-            {'name': 'container', 'type': Container,
-             'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
-                     'exported'),
-             'default': None},
-            {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
-             'default': dict()},
-            {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
-             'default': dict()})
+    def __cache_spec(self):
+        ref = self.__file.attrs.get(SPEC_LOC_ATTR)
+        spec_group = None
+        if ref is not None:
+            spec_group = self.__file[ref]
+        else:
+            path = 'specifications'  # do something to figure out where the specifications should go
+            spec_group = self.__file.require_group(path)
+            self.__file.attrs[SPEC_LOC_ATTR] = spec_group.ref
+        ns_catalog = self.manager.namespace_catalog
+        for ns_name in ns_catalog.namespaces:
+            ns_builder = self.__convert_namespace(ns_catalog, ns_name)
+            namespace = ns_catalog.get_namespace(ns_name)
+            group_name = '%s/%s' % (ns_name, namespace.version)
+            if group_name in spec_group:
+                continue
+            ns_group = spec_group.create_group(group_name)
+            writer = H5SpecWriter(ns_group)
+            ns_builder.export('namespace', writer=writer)
+
+    export_args = (
+        {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+        {'name': 'container', 'type': Container,
+         'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
+                 'exported'),
+         'default': None},
+        {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
+         'default': dict()},
+        {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
+         'default': dict()},
+        {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
+         'default': True}
+    )
+
+    @docval(*export_args)
     def export(self, **kwargs):
         """Export from one backend to HDF5.
 
@@ -339,23 +348,17 @@ class HDF5IO(HDMFIO):
         if self.__mode != 'w':
             raise UnsupportedOperation("Cannot export to file %s in mode '%s'. Please use mode 'w'."
                                        % (self.__path, self.__mode))
-        src_io, write_args = getargs('src_io', 'write_args', kwargs)
+        src_io, write_args, cache_spec = getargs('src_io', 'write_args', 'cache_spec', kwargs)
         if not isinstance(src_io, HDF5IO) and write_args.get('link_data', False):
             raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write_args "
                                        "'link_data'=True.")
         call_docval_func(super().export, kwargs)
+        if cache_spec:
+            self.__cache_spec()
 
     @classmethod
     @docval({'name': 'io_args', 'type': dict, 'doc': 'the HDMFIO object for reading the data to export'},
-            {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
-            {'name': 'container', 'type': Container,
-             'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
-                     'exported'),
-             'default': None},
-            {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
-             'default': dict()},
-            {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
-             'default': dict()})
+            *export_args)
     def export_io(self, **kwargs):
         """Export from one backend to HDF5 (class method).
 

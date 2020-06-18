@@ -27,25 +27,33 @@ from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
 class FooFile(Container):
 
     @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()},
-            {'name': 'foo_link', 'type': Foo, 'doc': 'an optional linked Foo', 'default': None})
+            {'name': 'foo_link', 'type': Foo, 'doc': 'an optional linked Foo', 'default': None},
+            {'name': 'foofile_data', 'type': 'array_data', 'doc': 'an optional dataset', 'default': None})
     def __init__(self, **kwargs):
-        buckets, foo_link = getargs('buckets', 'foo_link', kwargs)
+        buckets, foo_link, foofile_data = getargs('buckets', 'foo_link', 'foofile_data', kwargs)
         super().__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             f.parent = self
         self.__foo_link = foo_link
+        self.__foofile_data = foofile_data
 
     def __eq__(self, other):
-        return set(self.buckets) == set(other.buckets)
+        return (set(self.buckets) == set(other.buckets)
+                and self.foo_link == other.foo_link
+                and self.foofile_data == other.foofile_data)
 
     def __str__(self):
         foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
-        return 'buckets=%s, foo_link=%s' % (foo_str, self.foo_link)
+        return 'buckets=%s, foo_link=%s, foofile_data=%s' % (foo_str, self.foo_link, self.foofile_data)
 
     @property
     def buckets(self):
         return self.__buckets
+
+    def remove_bucket(self, bucket):
+        self.__buckets.remove(bucket)
+        self._remove_child(bucket)
 
     @property
     def foo_link(self):
@@ -57,6 +65,10 @@ class FooFile(Container):
             self.__foo_link = value
         else:
             raise ValueError("can't reset foo_link attribute")
+
+    @property
+    def foofile_data(self):
+        return self.__foofile_data
 
 
 class H5IOTest(TestCase):
@@ -717,7 +729,12 @@ def _get_manager():
                                             groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
                                                               quantity=ONE_OR_MANY)]),
-                                  file_links_spec])
+                                  file_links_spec],
+                          datasets=[DatasetSpec('Foo data',
+                                                name='foofile_data',
+                                                dtype='int',
+                                                quantity=ZERO_OR_ONE)],
+                          )
 
     class FileMapper(ObjectMapper):
         def __init__(self, spec):
@@ -1806,10 +1823,12 @@ class TestExport(TestCase):
         self.assertTrue(os.path.exists(self.path2))
         self.assertEqual(foofile.container_source, self.path1)
 
-        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as io:
-            read_foofile = io.read()
+        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as read_io:
+            read_foofile = read_io.read()
             self.assertEqual(read_foofile.container_source, self.path2)
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
+            self.assertEqual(os.path.abspath(read_foofile.buckets[0].foos[0].my_data.file.filename),
+                             self.path2)
 
     def test_basic_container(self):
         """Test that exporting a written container, passing in the container arg, works."""
@@ -1829,8 +1848,8 @@ class TestExport(TestCase):
         self.assertTrue(os.path.exists(self.path2))
         self.assertEqual(foofile.container_source, self.path1)
 
-        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as io:
-            read_foofile = io.read()
+        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as read_io:
+            read_foofile = read_io.read()
             self.assertEqual(read_foofile.container_source, self.path2)
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
 
@@ -1873,7 +1892,7 @@ class TestExport(TestCase):
                 export_io.export(
                     src_io=read_io,
                     container=read_foofile,
-                    write_args={'cache_spec': False},
+                    cache_spec=False,
                 )
 
         with File(self.path2, 'r') as f:
@@ -1902,6 +1921,8 @@ class TestExport(TestCase):
             with HDF5IO(self.path3, mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile2)
 
+        read_io.close_linked_files()
+
         with File(self.path3, 'r') as f:
             self.assertEqual(f['foofile_data'].file.filename, self.path1)
 
@@ -1928,6 +1949,8 @@ class TestExport(TestCase):
             with HDF5IO(self.path3, mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile2)
 
+        read_io.close_linked_files()
+
         with File(self.path3, 'r') as f:
             self.assertEqual(f['foofile_data'].file.filename, self.path2)
 
@@ -1946,11 +1969,13 @@ class TestExport(TestCase):
             with HDF5IO(self.path2, mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
 
-        with HDF5IO(self.path2, manager=self.manager, mode='r') as read_io:
+        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
             # make sure the linked foobucket is within the same file
             self.assertEqual(read_foofile2.foo_link.container_source, self.path2)
+
+        read_io.close_linked_files()
 
     def test_export_external_link(self):
         """Test that exporting a file with export keeps external links."""
@@ -1972,14 +1997,18 @@ class TestExport(TestCase):
         with HDF5IO(self.path2, manager=_get_manager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
-            with HDF5IO(self.path2, mode='w') as export_io:
+            with HDF5IO(self.path3, mode='w') as export_io:
                 export_io.export(src_io=read_io)
 
-        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as io:
+        read_io.close_linked_files()
+
+        with HDF5IO(self.path3, manager=_get_manager(), mode='r') as io:
             read_foofile2 = io.read()
 
             # make sure the linked foobucket is not a link and has the right container_source
             self.assertEqual(read_foofile2.foo_link.container_source, self.path1)
+
+        read_io.close_linked_files()
 
     def test_export_pop_data(self):
         """Test that exporting a written container after removing an element from it works."""
@@ -2029,11 +2058,13 @@ class TestExport(TestCase):
             with HDF5IO(self.path2, mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
 
-        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as io:
-            read_foofile2 = io.read()
+        with HDF5IO(self.path2, manager=_get_manager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
 
             self.assertContainerEqual(read_foofile2, read_foofile, ignore_hdmf_attrs=True)
 
             # python 3.5 dicts are unordered so builders can return lists in different order
             # so this check will not work until we drop python 3.5 support
             # self.assertIs(read_foofile2.foo_link, read_foofile2.buckets[1].foos[0])
+
+        read_io.close_linked_files()

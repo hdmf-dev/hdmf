@@ -79,7 +79,6 @@ class HDMFIO(metaclass=ABCMeta):
         else:
             bldr = src_io.read_builder(**read_args)
         self.write_builder(builder=bldr, **write_args)
-        self.close()  # user should not be able to use this IO object for read/write after exporting
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
