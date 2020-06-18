@@ -771,9 +771,9 @@ def get_data_shape(data, strict_no_data_load=False):
         return data.maxshape
     if hasattr(data, 'shape'):
         return data.shape  # unlike np.shape(data), this will return None if data.shape is None
-    array_shape = np.asarray(data).shape  # np.asarray does not copy the data
-    if array_shape:
-        return array_shape
+    # array_shape = np.asarray(data).shape  # np.asarray does not copy the data
+    # if array_shape:
+    #     return array_shape
     if isinstance(data, dict):
         return None
     if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
