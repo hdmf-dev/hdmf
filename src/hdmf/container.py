@@ -232,6 +232,15 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
+    def _remove_child(self, child):
+        """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
+        if not isinstance(child, AbstractContainer):
+            raise ValueError('Cannot remove non-AbstractContainer object from children.')
+        if child not in self.children:
+            raise ValueError("%s '%s' is not a child of %s '%s'." % (child.__class__.__name__, child.name,
+                                                                    self.__class__.__name__, self.name))
+        self.__children.remove(child)
+
 
 class Container(AbstractContainer):
 
