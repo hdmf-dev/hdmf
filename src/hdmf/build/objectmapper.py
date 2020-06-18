@@ -243,7 +243,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
     @classmethod
-    def __check_edgecases(cls, spec, value, spec_dtype):
+    def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
         Check edge cases in converting data to a dtype
         """
@@ -261,9 +261,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
-                ret_dtype = value.dtype.type
                 if spec_dtype == 'numeric':
-                    cls.__check_convert_numeric(ret_dtype)
+                    cls.__check_convert_numeric(value.dtype.type)
+                if np.issubdtype(value.dtype, np.str_):
+                    ret_dtype = 'utf8'
+                elif np.issubdtype(value.dtype, np.string_):
+                    ret_dtype = 'ascii'
+                else:
+                    ret_dtype = value.dtype.type
                 return value, ret_dtype
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
@@ -844,6 +849,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     sub_builder = GroupBuilder(spec.name, source=source)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
+                self.__add_links(sub_builder, spec.links, container, build_manager, source)
 
                 # handle subgroups that are not Containers
                 attr_name = self.get_attribute(spec)
