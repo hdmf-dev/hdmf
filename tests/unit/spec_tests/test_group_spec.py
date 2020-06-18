@@ -209,3 +209,46 @@ class GroupSpecTests(TestCase):
         res = spec.get_attribute('attribute1')
         self.assertEqual(res.value, 5)
         self.assertEqual(res.dtype, 'int')
+
+    def test_path(self):
+        GroupSpec('A test group',
+                  name='root_constructor',
+                  groups=self.subgroups,
+                  datasets=self.datasets,
+                  attributes=self.attributes,
+                  linkable=False)
+        self.assertEqual(self.attributes[0].path, 'root_constructor/attribute1')
+        self.assertEqual(self.datasets[0].path, 'root_constructor/dataset1')
+        self.assertEqual(self.subgroups[0].path, 'root_constructor/subgroup1')
+
+    def test_path_complicated(self):
+        attribute = AttributeSpec('attribute1', 'my fifth attribute', 'text')
+        dataset = DatasetSpec('my first dataset',
+                              'int',
+                              name='dataset1',
+                              attributes=[attribute])
+        subgroup = GroupSpec('A subgroup',
+                             name='subgroup1',
+                             datasets=[dataset])
+        self.assertEqual(attribute.path, 'subgroup1/dataset1/attribute1')
+
+        _ = GroupSpec('A test group',
+                      name='root',
+                      groups=[subgroup])
+
+        self.assertEqual(attribute.path, 'root/subgroup1/dataset1/attribute1')
+
+    def test_path_no_name(self):
+        attribute = AttributeSpec('attribute1', 'my fifth attribute', 'text')
+        dataset = DatasetSpec('my first dataset',
+                              'int',
+                              data_type_inc='DatasetType',
+                              attributes=[attribute])
+        subgroup = GroupSpec('A subgroup',
+                             data_type_def='GroupType',
+                             datasets=[dataset])
+        _ = GroupSpec('A test group',
+                      name='root',
+                      groups=[subgroup])
+
+        self.assertEqual(attribute.path, 'root/GroupType/DatasetType/attribute1')

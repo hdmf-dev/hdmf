@@ -20,6 +20,8 @@ FLAGS = {
 
 class DtypeHelper():
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
+    # this is also used in the validator
+    # if this list is updated, also update hdmf.build.manager.TypeMap._spec_dtype_map
     primary_dtype_synonyms = {
             'float': ["float", "float32"],
             'double': ["double", "float64"],
@@ -37,7 +39,7 @@ class DtypeHelper():
             'object': ['object'],
             'region': ['region'],
             'numeric': ['numeric'],
-            'isodatetime': ["isodatetime", "datetime", "datetime64"]
+            'isodatetime': ["isodatetime", "datetime"]
         }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
@@ -144,6 +146,20 @@ class Spec(ConstructableDict):
 
     def __hash__(self):
         return id(self)
+
+    @property
+    def path(self):
+        stack = list()
+        tmp = self
+        while tmp is not None:
+            name = tmp.name
+            if name is None:
+                name = tmp.data_type_def
+                if name is None:
+                    name = tmp.data_type_inc
+            stack.append(name)
+            tmp = tmp.parent
+        return "/".join(reversed(stack))
 
 #    def __eq__(self, other):
 #        return id(self) == id(other)
@@ -297,15 +313,14 @@ class BaseStorageSpec(Spec):
     __type_key = 'data_type'
     __id_key = 'object_id'
 
-    @docval(*deepcopy(_attrbl_args))
+    @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        name, doc, parent, quantity, attributes, linkable, data_type_def, data_type_inc =\
-             getargs('name', 'doc', 'parent', 'quantity', 'attributes',
-                     'linkable', 'data_type_def', 'data_type_inc', kwargs)
+        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc =\
+             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with wildcard name "
                              "without specifying 'data_type_def' and/or 'data_type_inc'")
-        super().__init__(doc, name=name, parent=parent)
+        super().__init__(doc, name=name)
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
@@ -477,7 +492,7 @@ class BaseStorageSpec(Spec):
         ''' The number of times the object being specified should be present '''
         return self.get('quantity', DEF_QUANTITY)
 
-    @docval(*deepcopy(_attr_args))
+    @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
         pargs, pkwargs = fmt_docval_args(AttributeSpec.__init__, kwargs)
@@ -618,7 +633,7 @@ class DatasetSpec(BaseStorageSpec):
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*_dataset_args)
     def __init__(self, **kwargs):
         doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
         if shape is not None:
@@ -811,7 +826,7 @@ class GroupSpec(BaseStorageSpec):
     ''' Specification for groups
     '''
 
-    @docval(*deepcopy(_group_args))
+    @docval(*_group_args)
     def __init__(self, **kwargs):
         doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
         self.__data_types = dict()
@@ -1095,7 +1110,7 @@ class GroupSpec(BaseStorageSpec):
         ''' The links specificed in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
-    @docval(*deepcopy(_group_args))
+    @docval(*_group_args)
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
         doc = kwargs.pop('doc')
@@ -1127,7 +1142,7 @@ class GroupSpec(BaseStorageSpec):
         name = getargs('name', kwargs)
         return self.__groups.get(name, self.__links.get(name))
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*_dataset_args)
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
         doc = kwargs.pop('doc')

@@ -1,7 +1,13 @@
+"""
+Collection of Container classes for interacting with data types related to
+the storage and use of dynamic data tables as part of the hdmf-common schema
+"""
+
 from h5py import Dataset
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+from warnings import warn
 
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 from ..container import Container, Data
@@ -11,7 +17,9 @@ from . import register_class
 
 @register_class('Index')
 class Index(Data):
-
+    """
+    Base data type for storing pointers that index data values
+    """
     __fields__ = ("target",)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
@@ -49,6 +57,7 @@ class VectorData(Data):
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
+        """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
         self.append(val)
 
@@ -72,18 +81,36 @@ class VectorIndex(Index):
         self.target = getargs('target', kwargs)
 
     def add_vector(self, arg):
+        """
+        Add the given data value to the target VectorData and append the corresponding index to this VectorIndex
+        :param arg: The data value to be added to self.target
+        """
         self.target.extend(arg)
         self.append(len(self.target))
 
     def add_row(self, arg):
+        """
+        Convenience function. Same as :py:func:`add_vector`
+        """
         self.add_vector(arg)
 
     def __getitem_helper(self, arg):
+        """
+        Internal helper function used by __getitem__ to retrieve a data value from self.target
+
+        :param arg: Integer index into this VectorIndex indicating the element we want to retrieve from the target
+        """
         start = 0 if arg == 0 else self.data[arg-1]
         end = self.data[arg]
         return self.target[start:end]
 
     def __getitem__(self, arg):
+        """
+        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+
+        :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
+        :return: Scalar or list of values retrieved
+        """
         if isinstance(arg, slice):
             indices = list(range(*arg.indices(len(self.data))))
             ret = list()
@@ -96,7 +123,9 @@ class VectorIndex(Index):
 
 @register_class('ElementIdentifiers')
 class ElementIdentifiers(Data):
-
+    """
+    Data container with a list of unique identifiers for values within a dataset, e.g. rows of a DynamicTable.
+    """
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
              'default': list()})
@@ -114,8 +143,7 @@ class ElementIdentifiers(Data):
                     'result would be [0,2] and NOT [2,0,None]')
     def __eq__(self, other):
         """
-        Given a list of ids return the indices in the ElementIdentifiers array where the
-        indices are found.
+        Given a list of ids return the indices in the ElementIdentifiers array where the indices are found.
         """
         # Determine the ids we want to find
         search_ids = other if not isinstance(other, Data) else other.data
@@ -154,31 +182,38 @@ class DynamicTable(Container):
 
     @ExtenderMeta.pre_init
     def __gather_columns(cls, name, bases, classdict):
-        '''
+        r"""
+        Gather columns from the *\_\_columns\_\_* class attribute and add them to the class.
+
         This classmethod will be called during class declaration in the metaclass to automatically
-        include all columns declared in subclasses
-        '''
+        include all columns declared in subclasses.
+        """
         if not isinstance(cls.__columns__, tuple):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container) \
-                and bases[-1].__columns__ is not cls.__columns__:
+        if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
+                and bases[-1].__columns__ is not cls.__columns__):
             new_columns = list(cls.__columns__)
-            new_columns[0:0] = bases[-1].__columns__
+            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
             cls.__columns__ = tuple(new_columns)
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},    # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
             {'name': 'id', 'type': ('array_data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
-            {'name': 'colnames', 'type': 'array_data', 'doc': 'the names of the columns in this table',
+            {'name': 'colnames', 'type': 'array_data',
+             'doc': 'the ordered names of the columns in this table. columns must also be provided.',
              'default': None})
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
         call_docval_func(super().__init__, kwargs)
         self.description = desc
+
+        # hold names of optional columns that are defined in __columns__ that are not yet initialized
+        # map name to column specification
+        self.__uninit_cols = dict()
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
@@ -188,38 +223,45 @@ class DynamicTable(Container):
         else:
             id = ElementIdentifiers('id')
 
-        if columns is not None:
-            if len(columns) > 0:
-                # If columns have been passed in, check them over
-                # and process accordingly
-                if isinstance(columns[0], dict):
-                    columns = self.__build_columns(columns)
-                elif not all(isinstance(c, (VectorData, VectorIndex)) for c in columns):
-                    raise ValueError("'columns' must be a list of VectorData, DynamicTableRegion or VectorIndex")
-                colset = {c.name: c for c in columns}
-                for c in columns:
-                    if isinstance(c, VectorIndex):
-                        colset.pop(c.target.name)
-                lens = [len(c) for c in colset.values()]
-                if not all(i == lens[0] for i in lens):
-                    raise ValueError("columns must be the same length")
-                if lens[0] != len(id):
-                    if len(id) > 0:
-                        raise ValueError("must provide same number of ids as length of columns")
-                    else:
-                        id.data.extend(range(lens[0]))
-        else:
-            # if the user has not passed in columns, make a place to put them,
-            # as they will presumably be adding new columns
-            columns = list()
+        if columns is not None and len(columns) > 0:
+            # If columns have been passed in, check them over and process accordingly
+            if isinstance(columns[0], dict):
+                columns = self.__build_columns(columns)
+            elif not all(isinstance(c, (VectorData, VectorIndex)) for c in columns):
+                raise ValueError("'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex")
+
+            all_names = [c.name for c in columns]
+            if len(all_names) != len(set(all_names)):
+                raise ValueError("'columns' contains columns with duplicate names: %s" % all_names)
+
+            # TODO: check columns against __columns__
+            # mismatches should raise an error (e.g., a VectorData cannot be passed in with the same name as a
+            # prespecified table region column)
+
+            # check column lengths against each other and id length
+            # set ids if non-zero cols are provided and ids is empty
+            colset = {c.name: c for c in columns}
+            for c in columns:  # remove all VectorData objects that have an associated VectorIndex from colset
+                if isinstance(c, VectorIndex):
+                    colset.pop(c.target.name)
+            lens = [len(c) for c in colset.values()]
+            if not all(i == lens[0] for i in lens):
+                raise ValueError("columns must be the same length")
+            if lens[0] != len(id):
+                if len(id) > 0:
+                    raise ValueError("must provide same number of ids as length of columns")
+                else:  # set ids to: 0 to length of columns - 1
+                    id.data.extend(range(lens[0]))
 
         self.id = id
 
-        if colnames is None:
+        # NOTE: self.colnames and self.columns are always tuples
+        # if kwarg colnames is an h5dataset, self.colnames is still a tuple
+        if colnames is None or len(colnames) == 0:
             if columns is None:
                 # make placeholder for columns if nothing was given
-                self.colnames = list()
-                self.columns = list()
+                self.colnames = tuple()
+                self.columns = tuple()
             else:
                 # Figure out column names if columns were given
                 tmp = list()
@@ -228,7 +270,7 @@ class DynamicTable(Container):
                         continue
                     tmp.append(col.name)
                 self.colnames = tuple(tmp)
-                self.columns = columns
+                self.columns = tuple(columns)
         else:
             # Calculate the order of column names
             if columns is None:
@@ -264,15 +306,13 @@ class DynamicTable(Container):
                         pos = order[col.target.name]
                         tmp[pos] = col
                         tmp[pos+1] = col.target
-                self.columns = list(tmp)
+                self.columns = tuple(tmp)
 
         # to make generating DataFrames and Series easier
         col_dict = dict()
         self.__indices = dict()
         for col in self.columns:
-            if hasattr(self, col.name):
-                raise ValueError("Column name '%s' is not allowed because it is already an attribute" % col.name)
-            setattr(self, col.name, col)
+            self.__set_table_attr(col)
             if isinstance(col, VectorData):
                 existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
@@ -291,17 +331,43 @@ class DynamicTable(Container):
                 self.__indices[col.name] = col
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
-        self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
-        for col in self.__columns__:
-            if col['name'] not in self.__colids:
-                if col.get('required', False):
-                    self.add_column(col['name'], col['description'],
-                                    index=col.get('index', False),
-                                    table=col.get('table', False))
 
-                else:  # create column name attributes (set to None) on the object even if column is not required
+        # self.__colids maps the column name to an index starting at 1
+        self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
+        self._init_class_columns()
+
+    def __set_table_attr(self, col):
+        if hasattr(self, col.name) and col.name not in self.__uninit_cols:
+            msg = ("An attribute '%s' already exists on %s '%s' so this column cannot be accessed as an attribute, "
+                   "e.g., table.%s; it can only be accessed using other methods, e.g., table['%s']."
+                   % (col.name, self.__class__.__name__, self.name, col.name, col.name))
+            warn(msg)
+        else:
+            setattr(self, col.name, col)
+
+    def _init_class_columns(self):
+        """
+        Process all predefined columns specified in class variable __columns__.
+        Optional columns are not tracked but not added.
+        """
+        for col in self.__columns__:
+            if col['name'] not in self.__colids:  # if column has not been added in __init__
+                if col.get('required', False):
+                    self.add_column(name=col['name'],
+                                    description=col['description'],
+                                    index=col.get('index', False),
+                                    table=col.get('table', False),
+                                    # Pass through extra kwargs for add_column that subclasses may have added
+                                    **{k: col[k] for k in col.keys()
+                                        if k not in ['name', 'description', 'index', 'table', 'required']})
+                else:
+                    # track the not yet initialized optional predefined columns
+                    self.__uninit_cols[col['name']] = col
+
+                    # set the table attributes for not yet init optional predefined columns
                     setattr(self, col['name'], None)
                     if col.get('index', False):
+                        self.__uninit_cols[col['name'] + '_index'] = col
                         setattr(self, col['name'] + '_index', None)
 
     @staticmethod
@@ -342,6 +408,7 @@ class DynamicTable(Container):
         return tmp
 
     def __len__(self):
+        """Number of rows in the table"""
         return len(self.id)
 
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
@@ -350,9 +417,9 @@ class DynamicTable(Container):
              'default': False},
             allow_extra=True)
     def add_row(self, **kwargs):
-        '''
+        """
         Add a row to the table. If *id* is not provided, it will auto-increment.
-        '''
+        """
         data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
@@ -366,7 +433,11 @@ class DynamicTable(Container):
                     if data[col['name']] is not None:
                         self.add_column(col['name'], col['description'],
                                         index=col.get('index', False),
-                                        table=col.get('table', False))
+                                        table=col.get('table', False),
+                                        # Pass through extra keyword arguments for add_column that
+                                        # subclasses may have added
+                                        **{k: col[k] for k in col.keys()
+                                            if k not in ['name', 'description', 'index', 'table', 'required']})
                     extra_columns.remove(col['name'])
 
         if extra_columns or missing_columns:
@@ -396,6 +467,18 @@ class DynamicTable(Container):
                 c.add_row(data[colname])
 
     def __eq__(self, other):
+        """
+        Compare if the two DynamicTables contain the same data
+
+        This implemented by converting the DynamicTables to a pandas dataframe and
+        comparing the equality of the two tables.
+
+        :param other: DynamicTable to compare to
+
+        :raises: An error will be raised with to_dataframe is not defined or other
+
+        :return: Bool indicating whether the two DynamicTables contain the same data
+        """
         return self.to_dataframe().equals(other.to_dataframe())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
@@ -408,14 +491,45 @@ class DynamicTable(Container):
              'doc': 'whether or not this column should be indexed', 'default': False})
     def add_column(self, **kwargs):
         """
-        Add a column to this table. If data is provided, it must
-        contain the same number of rows as the current state of the table.
+        Add a column to this table.
+
+        If data is provided, it must contain the same number of rows as the current state of the table.
+
+        :raises ValueError: if the column has already been added to the table
         """
-        name, data = getargs('name', 'data', kwargs)
+        name, data, description = getargs('name', 'data', 'description', kwargs)
         index, table = popargs('index', 'table', kwargs)
-        if name in self.__colids:
-            msg = "column '%s' already exists in DynamicTable '%s'" % (name, self.name)
+
+        if isinstance(index, VectorIndex):
+            warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
+                 "deprecated in a future version of HDMF.", FutureWarning)
+
+        if name in self.__colids:  # column has already been added
+            msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
             raise ValueError(msg)
+
+        if name in self.__uninit_cols:  # column is a predefined optional column from the spec
+            # check the given values against the predefined optional column spec. if they do not match, raise a warning
+            # and ignore the given arguments. users should not be able to override these values
+            table_bool = table or not isinstance(table, bool)
+            spec_table = self.__uninit_cols[name].get('table', False)
+            if table_bool != spec_table:
+                msg = ("Column '%s' is predefined in %s with table=%s which does not match the entered "
+                       "table argument. The predefined table spec will be ignored. "
+                       "Please ensure the new column complies with the spec. "
+                       "This will raise an error in a future version of HDMF."
+                       % (name, self.__class__.__name__, spec_table))
+                warn(msg)
+
+            index_bool = index or not isinstance(index, bool)
+            spec_index = self.__uninit_cols[name].get('index', False)
+            if index_bool != spec_index:
+                msg = ("Column '%s' is predefined in %s with index=%s which does not match the entered "
+                       "index argument. The predefined index spec will be ignored. "
+                       "Please ensure the new column complies with the spec. "
+                       "This will raise an error in a future version of HDMF."
+                       % (name, self.__class__.__name__, spec_index))
+                warn(msg)
 
         ckwargs = dict(kwargs)
         cls = VectorData
@@ -429,7 +543,9 @@ class DynamicTable(Container):
         col = cls(**ckwargs)
         col.parent = self
         columns = [col]
-        setattr(self, name, col)
+        self.__set_table_attr(col)
+        if col in self.__uninit_cols:
+            self.__uninit_cols.pop(col)
 
         # Add index if it's been specified
         if index is not False:
@@ -449,7 +565,9 @@ class DynamicTable(Container):
             # else, the ObjectMapper will create a link from self (parent) to col_index (child with existing parent)
             col = col_index
             self.__indices[col_index.name] = col_index
-            setattr(self, col_index.name, col_index)
+            self.__set_table_attr(col_index)
+            if col_index in self.__uninit_cols:
+                self.__uninit_cols.pop(col_index)
 
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
@@ -462,10 +580,16 @@ class DynamicTable(Container):
             {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the indices of the table'},
             {'name': 'description', 'type': str, 'doc': 'a brief description of what the region is'})
     def create_region(self, **kwargs):
+        """
+        Create a DynamicTableRegion selecting a region (i.e., rows) in this DynamicTable.
+
+        :raises: IndexError if the provided region contains invalid indices
+
+        """
         region = getargs('region', kwargs)
         if isinstance(region, slice):
             if (region.start is not None and region.start < 0) or (region.stop is not None and region.stop > len(self)):
-                msg = 'region slice %s is out of range for this DynamicTable of length ' % (str(region), len(self))
+                msg = 'region slice %s is out of range for this DynamicTable of length %d' % (str(region), len(self))
                 raise IndexError(msg)
             region = list(range(*region.indices(len(self))))
         else:
@@ -479,6 +603,22 @@ class DynamicTable(Container):
         return DynamicTableRegion(name, region, desc, self)
 
     def __getitem__(self, key):
+        """
+        Select a subset from the table
+
+        :param key: Key defining which elements of the table to select. This may be one of the following:
+
+            1) string with the name of the column to select
+            2) a tuple consisting of (str, int) where the string identifies the column to select by name
+               and the int selects the row
+            3) int, list of ints, or slice selecting a set of full rows in the table
+
+        :return: 1) If key is a string, then return array with the data of the selected column
+                 2) If key is a tuple of (int, str), then return the scalar value of the selected cell
+                 3) If key is an int, list or slice, then return pandas.DataFrame consisting of one or more rows
+
+        :raises: KeyError
+        """
         ret = None
         if isinstance(key, tuple):
             # index by row and column --> return specific cell
@@ -492,7 +632,7 @@ class DynamicTable(Container):
             if key in self.__colids:
                 ret = self.__df_cols[self.__colids[key]]
             elif key in self.__indices:
-                return self.__indices[key]
+                ret = self.__indices[key]
             else:
                 raise KeyError(key)
         else:
@@ -539,14 +679,24 @@ class DynamicTable(Container):
         return ret
 
     def __contains__(self, val):
+        """
+        Check if the given value (i.e., column) exists in this table
+        """
         return val in self.__colids or val in self.__indices
 
     def get(self, key, default=None):
+        """
+        Get the data for the column specified by key exists, else return default.
+
+        :param key: String with the name of the column
+        :param default: Default value to return if the column does not exists
+        :return: Result of self[key] (i.e., self.__getitem__(key) if key exists else return default
+        """
         if key in self:
             return self[key]
         return default
 
-    @docval({'name': 'exclude', 'type': set, 'doc': ' List of columns to exclude from the dataframe', 'default': None})
+    @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
@@ -659,7 +809,13 @@ class DynamicTable(Container):
 @register_class('DynamicTableRegion')
 class DynamicTableRegion(VectorData):
     """
-    An object for easily slicing into a DynamicTable
+    DynamicTableRegion provides a link from one table to an index or region of another. The `table`
+    attribute is another `DynamicTable`, indicating which table is referenced. The data is int(s)
+    indicating the row(s) (0-indexed) of the target array. `DynamicTableRegion`s can be used to
+    associate multiple rows with the same meta-data without data duplication. They can also be used to
+    create hierarchical relationships between multiple `DynamicTable`s. `DynamicTableRegion` objects
+    may be paired with a `VectorIndex` object to create ragged references, so a single cell of a
+    `DynamicTable` can reference many rows of another `DynamicTable`.
     """
 
     __fields__ = (
@@ -680,10 +836,19 @@ class DynamicTableRegion(VectorData):
 
     @property
     def table(self):
+        """The DynamicTable this DynamicTableRegion is pointing to"""
         return self.fields.get('table')
 
     @table.setter
     def table(self, val):
+        """
+        Set the table this DynamicTableRegion should be pointing to
+
+        :param val: The DynamicTable this DynamicTableRegion should be pointing to
+
+        :raises: AttributeError if table is already in fields
+        :raises: IndexError if the current indices are out of bounds for the new table given by val
+        """
         if val is None:
             return
         if 'table' in self.fields:
@@ -697,6 +862,15 @@ class DynamicTableRegion(VectorData):
         self.fields['table'] = val
 
     def __getitem__(self, key):
+        """
+        Subset the DynamicTableRegion
+
+        :param key: 1) tuple consisting of (str, int) where the string defines the column to select
+                       and the int selects the row, 2) int or slice to select a subset of rows
+
+        :return: Result from self.table[....] with the approbritate selection based on the
+                 rows selected by this DynamicTableRegion
+        """
         # treat the list of indices as data that can be indexed. then pass the
         # result to the table to get the data
         if isinstance(key, tuple):
@@ -710,6 +884,16 @@ class DynamicTableRegion(VectorData):
         else:
             raise ValueError("unrecognized argument: '%s'" % key)
 
+    def to_dataframe(self, **kwargs):
+        """
+        Convert the whole DynamicTableRegion to a pandas dataframe.
+
+        Keyword arguments are passed through to the to_dataframe method of DynamicTable that
+        is being referenced (i.e., self.table). This allows specification of the 'exclude'
+        parameter and any other parameters of DynamicTable.to_dataframe.
+        """
+        return self.table.to_dataframe(**kwargs).iloc[self.data[:]]
+
     @property
     def shape(self):
         """
@@ -717,3 +901,15 @@ class DynamicTableRegion(VectorData):
         :return: Shape tuple with two integers indicating the number of rows and number of columns
         """
         return (len(self.data), len(self.table.columns))
+
+    def __repr__(self):
+        """
+        :return: Human-readable string representation of the DynamicTableRegion
+        """
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d\n" % (self.name, cls.__module__, cls.__name__, id(self))
+        template += "    Target table: %s %s.%s at 0x%d\n" % (self.table.name,
+                                                              self.table.__class__.__module__,
+                                                              self.table.__class__.__name__,
+                                                              id(self.table))
+        return template
