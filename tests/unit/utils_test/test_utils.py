@@ -135,7 +135,7 @@ class TestGetDataShape(TestCase):
         """Test get_data_shape with strict_no_data_load=True on an arbitrary iterable object with __len__."""
 
         class MyIterable:
-            """Iterable class with 10 elements, each a 5x2x3 numpy array."""
+            """Iterable class without shape or maxshape, where loading the first element raises an error."""
 
             def __init__(self):
                 self.count = 0
@@ -147,15 +147,14 @@ class TestGetDataShape(TestCase):
                 return self
 
             def __next__(self):
-                if self.count < len(self):
-                    self.count = self.count + 1
-                    return np.arange(30).reshape(5, 2, 3)
-                else:
-                    return None
+                raise DataLoadedError()
+
+        class DataLoadedError(Exception):
+            pass
 
         data = MyIterable()
-        res = get_data_shape(data)
-        self.assertTupleEqual(res, (10, 5, 2, 3))
+        with self.assertRaises(DataLoadedError):
+            get_data_shape(data)
         res = get_data_shape(data, strict_no_data_load=True)
         self.assertIsNone(res)
 
