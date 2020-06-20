@@ -919,6 +919,7 @@ class HDF5IO(HDMFIO):
         parent, builder, write_config = getargs('parent', 'builder', 'write_config', kwargs)
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    DatasetBuilder '%s' is already written" % builder.name)
             return None
         name = builder.name
         data = builder.data
@@ -937,20 +938,27 @@ class HDF5IO(HDMFIO):
 
         # The user provided an existing h5py dataset as input and asked to create a link to the dataset
         if isinstance(data, Dataset):
-            # Create a Soft/External link to the dataset
             data_filename = os.path.abspath(data.file.filename)
             export_source = write_config.export_source
             if export_source is not None:
                 export_source = os.path.abspath(export_source)
-            if link_data and export_source != data_filename:
+            if link_data and (data_filename != export_source or parent.name != data.parent.name):
+                # Create a Soft/External link to the dataset
                 parent_filename = os.path.abspath(parent.file.filename)
-                if data_filename != parent_filename:
-                    link = ExternalLink(os.path.relpath(data_filename, os.path.dirname(parent_filename)), data.name)
+                if data_filename != parent_filename and data_filename != export_source:
+                    relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
+                    link = ExternalLink(relative_path, data.name)
+                    self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                                      % (parent.name, name, link.filename, link.path))
                 else:
                     link = SoftLink(data.name)
+                    self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                                      % (parent.name, name, link.path))
                 parent[name] = link
             # Copy the dataset
             else:
+                self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
+                                  % (data.file.filename, data.name, parent.name, name))
                 parent.copy(source=data,
                             dest=parent,
                             name=name,

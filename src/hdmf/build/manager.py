@@ -145,13 +145,12 @@ class BuildManager:
     def build(self, **kwargs):
         """ Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container, export = getargs('container', 'export', kwargs)
-        container_id = self.__conthash__(container)
-        result = self.__builders.get(container_id)
+        result = self.get_builder(container)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
-        if result is None or (container.modified and export):
-            self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s)"
+        if result is None:
+            self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s, export: %s)"
                               % (container.__class__.__name__, container.name, repr(container.container_source),
-                                 repr(source), spec_ext is not None))
+                                 repr(source), spec_ext is not None, export))
             if not export:
                 if container.container_source is None:
                     container.container_source = source
@@ -196,6 +195,27 @@ class BuildManager:
 
     def __bldrhash__(self, obj):
         return id(obj)
+
+    def purge_outdated(self):
+        containers_copy = self.__containers.copy()
+        for container in containers_copy.values():
+            if container.modified:
+                container_id = self.__conthash__(container)
+                builder = self.__builders[container_id]
+                builder_id = self.__bldrhash__(builder)
+                self.logger.debug("Purging %s '%s' for %s '%s' from prebuilt cache"
+                                  % (builder.__class__.__name__, builder.name,
+                                     container.__class__.__name__, container.name))
+                self.__builders.pop(container_id)
+                self.__containers.pop(builder_id)
+
+    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to get the builder for"})
+    def get_builder(self, **kwargs):
+        """Return the prebuilt builder for the given container or None if it does not exist."""
+        container = getargs('container', kwargs)
+        container_id = self.__conthash__(container)
+        result = self.__builders.get(container_id)
+        return result
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the builder to construct the AbstractContainer from'})

@@ -59,6 +59,9 @@ class HDMFIO(metaclass=ABCMeta):
         builder will be exported to the new backend. So if container is provided, src_io must have a non-None manager
         property. If container is None, then the contents of src_io will be read and exported to the new backend.
 
+        The provided container must be the root of the hierarchy of the source used to read the container (i.e., you
+        cannot read a file and export a part of that file.
+
         Arguments can be passed in for the read_builder and write_builder methods. By default, all external links
         will be resolved (i.e., the exported file will have no external links).
 
@@ -75,6 +78,13 @@ class HDMFIO(metaclass=ABCMeta):
             if src_io.manager is None:
                 raise ValueError('When a container is provided, src_io must have a non-None manager (BuildManager) '
                                  'property.')
+            old_bldr = src_io.manager.get_builder(container)  # get existing builder for this container
+            if old_bldr is None:
+                raise ValueError('The provided container must have been read by the provided src_io.')
+            if old_bldr.parent is not None:
+                raise ValueError('The provided container must be the root of the hierarchy of the '
+                                 'source used to read the container.')
+            src_io.manager.purge_outdated()
             bldr = src_io.manager.build(container, source=self.__source, export=True)
         else:
             bldr = src_io.read_builder(**read_args)
