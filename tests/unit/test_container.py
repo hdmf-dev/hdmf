@@ -128,6 +128,8 @@ class TestContainer(TestCase):
         child_obj3.parent = parent_obj
         parent_obj._remove_child(child_obj)
         self.assertTupleEqual(parent_obj.children, (child_obj3, ))
+        self.assertTrue(parent_obj.modified)
+        self.assertTrue(child_obj.modified)
 
     def test_remove_child_noncontainer(self):
         """Test that removing a non-Container child raises an error.

@@ -7,7 +7,7 @@ import logging
 import warnings
 
 from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, get_docval
 from ...data_utils import AbstractDataChunkIterator
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
@@ -16,7 +16,7 @@ from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBu
 from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset,\
                       H5DataIO, H5SpecReader, H5SpecWriter
 
-from ..io import HDMFIO, UnsupportedOperation
+from ..io import HDMFIO, UnsupportedOperation, WriteConfig
 from ..warnings import BrokenLinkWarning
 
 ROOT_NAME = 'root'
@@ -290,10 +290,8 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': True},
-            {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
-            {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
+            {'name': 'write_config', 'type': 'H5WriteConfig', 'doc': 'configuration settings for writing builders',
+             'default': None})
     def write(self, **kwargs):
         if self.__mode == 'r':
             raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
@@ -333,8 +331,8 @@ class HDF5IO(HDMFIO):
          'default': None},
         {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
          'default': dict()},
-        {'name': 'write_args', 'type': dict, 'doc': 'dict of arguments to use when calling write_io.write_builder',
-         'default': dict()},
+        {'name': 'write_config', 'type': 'H5WriteConfig', 'doc': 'configuration settings for writing builders',
+         'default': None},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
     )
@@ -348,11 +346,20 @@ class HDF5IO(HDMFIO):
         if self.__mode != 'w':
             raise UnsupportedOperation("Cannot export to file %s in mode '%s'. Please use mode 'w'."
                                        % (self.__path, self.__mode))
-        src_io, write_args, cache_spec = getargs('src_io', 'write_args', 'cache_spec', kwargs)
-        if not isinstance(src_io, HDF5IO) and write_args.get('link_data', False):
-            raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write_args "
-                                       "'link_data'=True.")
-        call_docval_func(super().export, kwargs)
+
+        src_io = getargs('src_io', kwargs)
+        write_config, cache_spec = popargs('write_config', 'cache_spec', kwargs)
+        if write_config is None:
+            write_config = H5WriteConfig()
+
+        if not isinstance(src_io, HDF5IO) and write_config.link_data:
+            raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write_config "
+                                       "link_data=True.")
+
+        write_config['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
+        ckwargs = kwargs.copy()
+        ckwargs['write_config'] = write_config
+        call_docval_func(super().export, ckwargs)
         if cache_spec:
             self.__cache_spec()
 
@@ -657,22 +664,25 @@ class HDF5IO(HDMFIO):
         self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
-            {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
-            {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
+            {'name': 'write_config', 'type': 'H5WriteConfig', 'doc': 'configuration settings for writing builders',
+             'default': None})
     def write_builder(self, **kwargs):
-        f_builder, link_data, exhaust_dci = getargs('builder', 'link_data', 'exhaust_dci', kwargs)
+        f_builder, write_config = getargs('builder', 'write_config', kwargs)
+        if write_config is None:
+            write_config = H5WriteConfig()
+        self.logger.debug("Writing GroupBuilder '%s' to path '%s' with write config: %s"
+                          % (f_builder.name, self.__path, write_config))
         for name, gbldr in f_builder.groups.items():
-            self.write_group(self.__file, gbldr, link_data=link_data, exhaust_dci=exhaust_dci)
+            self.write_group(self.__file, gbldr, write_config=write_config)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, link_data=link_data, exhaust_dci=exhaust_dci)
+            self.write_dataset(self.__file, dbldr, write_config=write_config)
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
         self.__exhaust_dcis()
         self.__set_written(f_builder)
+        self.logger.debug("Done writing GroupBuilder '%s' to path '%s'" % (f_builder.name, self.__path))
 
     def __add_refs(self):
         '''
@@ -820,13 +830,11 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
-            {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
-            {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+            {'name': 'write_config', 'type': 'H5WriteConfig', 'doc': 'configuration settings for writing builders',
+             'default': None},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
-        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
+        parent, builder, write_config = getargs('parent', 'builder', 'write_config', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             group = parent[builder.name]
@@ -837,12 +845,12 @@ class HDF5IO(HDMFIO):
         if subgroups:
             for subgroup_name, sub_builder in subgroups.items():
                 # do not create an empty group without attributes or links
-                self.write_group(group, sub_builder, link_data=link_data, exhaust_dci=exhaust_dci)
+                self.write_group(group, sub_builder, write_config=write_config)
         # write all datasets
         datasets = builder.datasets
         if datasets:
             for dset_name, sub_builder in datasets.items():
-                self.write_dataset(group, sub_builder, link_data=link_data, exhaust_dci=exhaust_dci)
+                self.write_dataset(group, sub_builder, write_config=write_config)
         # write all links
         links = builder.links
         if links:
@@ -865,9 +873,11 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'},
+            {'name': 'write_config', 'type': 'H5WriteConfig', 'doc': 'configuration settings for writing builders',
+             'default': None},
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
-        parent, builder = getargs('parent', 'builder', kwargs)
+        parent, builder, write_config = getargs('parent', 'builder', 'write_config', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             return None
@@ -875,7 +885,7 @@ class HDF5IO(HDMFIO):
         target_builder = builder.builder
         path = self.__get_path(target_builder)
         # source will indicate target_builder's location
-        if parent.file.filename == target_builder.source:
+        if builder.source == target_builder.source:
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                               % (parent.name, name, link_obj.path))
@@ -897,10 +907,8 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
-            {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
-            {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+            {'name': 'write_config', 'type': 'H5WriteConfig', 'doc': 'configuration settings for writing builders',
+             'default': None},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
@@ -908,12 +916,13 @@ class HDF5IO(HDMFIO):
         The function uses other dataset-dependent write functions, e.g,
         __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
-        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
+        parent, builder, write_config = getargs('parent', 'builder', 'write_config', kwargs)
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             return None
         name = builder.name
         data = builder.data
+        link_data = write_config.link_data
         options = dict()   # dict with additional
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
@@ -929,8 +938,11 @@ class HDF5IO(HDMFIO):
         # The user provided an existing h5py dataset as input and asked to create a link to the dataset
         if isinstance(data, Dataset):
             # Create a Soft/External link to the dataset
-            if link_data:
-                data_filename = os.path.abspath(data.file.filename)
+            data_filename = os.path.abspath(data.file.filename)
+            export_source = write_config.export_source
+            if export_source is not None:
+                export_source = os.path.abspath(export_source)
+            if link_data and export_source != data_filename:
                 parent_filename = os.path.abspath(parent.file.filename)
                 if data_filename != parent_filename:
                     link = ExternalLink(os.path.relpath(data_filename, os.path.dirname(parent_filename)), data.name)
@@ -1067,7 +1079,7 @@ class HDF5IO(HDMFIO):
         elif len(attributes) > 0:
             pass
         self.__set_written(builder)
-        if exhaust_dci:
+        if write_config.exhaust_dci:
             self.__exhaust_dcis()
 
     @classmethod
@@ -1303,3 +1315,14 @@ class HDF5IO(HDMFIO):
         Return the HDF5 file mode. One of ("w", "r", "r+", "a", "w-", "x").
         """
         return self.__mode
+
+
+class H5WriteConfig(WriteConfig):
+
+    @docval(*get_docval(WriteConfig.__init__),
+            {'name': 'link_data', 'type': bool,
+             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
+    def __init__(self, **kwargs):
+        link_data = popargs('link_data', kwargs)
+        call_docval_func(super().__init__, kwargs)
+        self['link_data'] = link_data

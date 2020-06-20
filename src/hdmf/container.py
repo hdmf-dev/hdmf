@@ -238,8 +238,11 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError('Cannot remove non-AbstractContainer object from children.')
         if child not in self.children:
             raise ValueError("%s '%s' is not a child of %s '%s'." % (child.__class__.__name__, child.name,
-                                                                    self.__class__.__name__, self.name))
+                                                                     self.__class__.__name__, self.name))
+        child.__parent = None
         self.__children.remove(child)
+        child.set_modified()
+        self.set_modified()
 
 
 class Container(AbstractContainer):
