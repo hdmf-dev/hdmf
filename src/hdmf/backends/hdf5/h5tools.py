@@ -835,6 +835,8 @@ class HDF5IO(HDMFIO):
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         parent, builder, write_config = getargs('parent', 'builder', 'write_config', kwargs)
+        if write_config is None:
+            write_config = H5WriteConfig()
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             group = parent[builder.name]
@@ -917,6 +919,8 @@ class HDF5IO(HDMFIO):
         __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
         """
         parent, builder, write_config = getargs('parent', 'builder', 'write_config', kwargs)
+        if write_config is None:
+            write_config = H5WriteConfig()
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             self.logger.debug("    DatasetBuilder '%s' is already written" % builder.name)
