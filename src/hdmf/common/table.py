@@ -538,7 +538,7 @@ class DynamicTable(Container):
         """
         return self.to_dataframe().equals(other.to_dataframe())
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
@@ -674,7 +674,7 @@ class DynamicTable(Container):
             raise KeyError(key)
         return self.get(key)
 
-    def get(self, key, df=True, **kwargs):  # noqa: C901
+    def get(self, key, default=None, df=True, **kwargs):  # noqa: C901
         """
         Select a subset from the table
 
@@ -708,7 +708,7 @@ class DynamicTable(Container):
             elif key in self.__indices:
                 ret = self.__indices[key]
             else:
-                return None
+                return default
         else:
             # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
             # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
@@ -972,7 +972,7 @@ class DynamicTableRegion(VectorData):
         :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
                        and the int selects the row, 2) int or slice to select a subset of rows
 
-        :return: Result from self.table[....] with the approbritate selection based on the
+        :return: Result from self.table[....] with the appropritate selection based on the
                  rows selected by this DynamicTableRegion
         """
         # treat the list of indices as data that can be indexed. then pass the

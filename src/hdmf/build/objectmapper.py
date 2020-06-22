@@ -247,7 +247,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 np.issubdtype(value_dtype, np.integer)):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
-    @classmethod
+    @classmethod  # noqa: C901
     def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
         Check edge cases in converting data to a dtype
