@@ -549,7 +549,7 @@ class DynamicTable(Container):
             {'name': 'vocab', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a '
                      'controlled vocabulary or the controlled vocabulary')})
-    def add_column(self, **kwargs):
+    def add_column(self, **kwargs): # noqa: C901
         """
         Add a column to this table.
 
