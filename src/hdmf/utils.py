@@ -8,7 +8,7 @@ from enum import Enum
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, bytes],
 }
 
 # code to signify how to handle positional arguments in docval
