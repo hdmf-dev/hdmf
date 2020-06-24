@@ -18,7 +18,7 @@ class HDMFIO(metaclass=ABCMeta):
 
     @property
     def manager(self):
-        '''The BuildManager this HDMFIO is using'''
+        '''The BuildManager this instance is using'''
         return self.__manager
 
     @property
@@ -28,6 +28,7 @@ class HDMFIO(metaclass=ABCMeta):
 
     @docval(returns='the Container object that was read in', rtype=Container)
     def read(self, **kwargs):
+        """Read a container from the IO source."""
         f_builder = self.read_builder()
         if all(len(v) == 0 for v in f_builder.values()):
             # TODO also check that the keys are appropriate. print a better error message
@@ -38,6 +39,7 @@ class HDMFIO(metaclass=ABCMeta):
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             allow_extra=True)
     def write(self, **kwargs):
+        """Write a container to the IO source."""
         container = popargs('container', kwargs)
         f_builder = self.__manager.build(container, source=self.__source)
         self.write_builder(f_builder, **kwargs)
@@ -47,22 +49,25 @@ class HDMFIO(metaclass=ABCMeta):
              'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
                      'exported'),
              'default': None},
-            {'name': 'write_args', 'type': dict,
-             'doc': 'arguments to use when calling write_builder with this HDMFIO object', 'default': dict()})
+            {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
+             'default': dict()})
     def export(self, **kwargs):
-        """Export from one backend to another.
+        """Export from one backend to the backend represented by this class.
 
-        If container is provided, then the build manager of src_io is used to build the container, and the resulting
-        builder will be exported to the new backend. So if container is provided, src_io must have a non-None manager
-        property. If container is None, then the contents of src_io will be read and exported to the new backend.
+        If `container` is provided, then the build manager of `src_io` is used to build the container, and the resulting
+        builder will be exported to the new backend. So if `container` is provided, `src_io` must have a non-None
+        manager property. If `container` is None, then the contents of `src_io` will be read and exported to the new
+        backend.
 
         The provided container must be the root of the hierarchy of the source used to read the container (i.e., you
         cannot read a file and export a part of that file.
 
-        Arguments can be passed in for the write_builder method under write_args. Some arguments may not be supported
-        during export.
+        Arguments can be passed in for the `write_builder` method using `write_args`. Some arguments may not be
+        supported during export.
 
         Example usage:
+
+        .. code-block:: python
 
             old_io = HDF5IO('old.nwb', 'r')
             with HDF5IO('new_copy.nwb', 'w') as new_io:

@@ -33,15 +33,15 @@ class HDF5IO(HDMFIO):
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
-             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
+             'doc': ('the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). '
+                     'See `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>`_ for '
+                     'more details.')},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
     def __init__(self, **kwargs):
-        '''Open an HDF5 file for IO
-
-        For `mode`, see `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>_`.
-        '''
+        """Open an HDF5 file for IO.
+        """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
@@ -64,7 +64,6 @@ class HDF5IO(HDMFIO):
             manager = BuildManager(manager)
         self.__comm = comm
         self.__mode = mode
-        self.__path = path
         self.__file = file_obj
         super().__init__(manager, source=path)
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
@@ -77,6 +76,7 @@ class HDF5IO(HDMFIO):
 
     @property
     def comm(self):
+        """The MPI communicator to use for parallel I/O."""
         return self.__comm
 
     @property
@@ -91,11 +91,12 @@ class HDF5IO(HDMFIO):
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
     def load_namespaces(cls, **kwargs):
-        '''
-        Load cached namespaces from a file. If `file` is not supplied, then an h5py.File object will be opened for the
-        given `path`, the namespaces will be read, and the File object will be closed. If `file` is supplied, then the
-        given h5py.File object will be read from and not closed.
-        '''
+        """Load cached namespaces from a file.
+
+        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
+        namespaces will be read, and the File object will be closed. If `file` is supplied, then
+        the given File object will be read from and not closed.
+        """
         namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
                                                                 kwargs)
 
@@ -260,9 +261,16 @@ class HDF5IO(HDMFIO):
         """
         Convenience function to copy an HDF5 file while allowing external links to be resolved.
 
-        NOTE: The source file will be opened in 'r' mode and the destination file will be opened in 'w' mode
-              using h5py. To avoid possible collisions, care should be taken that, e.g., the source file is
-              not opened already when calling this function.
+        .. warning::
+
+            As of HDMF 2.0, this method is no longer supported and may be removed in a future version.
+            Please use the export method or h5py.File.copy method instead.
+
+        .. note::
+
+            The source file will be opened in 'r' mode and the destination file will be opened in 'w' mode
+            using h5py. To avoid possible collisions, care should be taken that, e.g., the source file is
+            not opened already when calling this function.
 
         """
 
@@ -293,17 +301,23 @@ class HDF5IO(HDMFIO):
         dest_file.close()
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': True},
-            {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
+            {'name': 'cache_spec', 'type': bool,
+             'doc': ('If True (default), cache specification to file (highly recommended). If False, do not cache '
+                     'specification to file. The appropriate specification will then need to be loaded prior to '
+                     'reading the file.'),
              'default': True},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
+             'doc': 'If True (default), create external links to HDF5 Datasets. If False, copy HDF5 Datasets.',
+             'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
+             'default': True})
     def write(self, **kwargs):
+        """Write the container to an HDF5 file."""
         if self.__mode == 'r':
             raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
                                         "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
-                                       % (self.__path, self.__mode))
+                                       % (self.source, self.__mode))
 
         cache_spec = popargs('cache_spec', kwargs)
         call_docval_func(super().write, kwargs)
@@ -330,27 +344,27 @@ class HDF5IO(HDMFIO):
             writer = H5SpecWriter(ns_group)
             ns_builder.export('namespace', writer=writer)
 
-    export_args = (
+    _export_args = (
         {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
         {'name': 'container', 'type': Container,
          'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
                  'exported'),
          'default': None},
-        {'name': 'write_args', 'type': dict,
-         'doc': 'arguments to use when calling write_builder with this HDf5IO object', 'default': dict()},
+        {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
+         'default': dict()},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
     )
 
-    @docval(*export_args)
+    @docval(*_export_args)
     def export(self, **kwargs):
-        """Export from one backend to HDF5.
+        """Export data read from a file from any backend to HDF5.
 
-        See hdmf.backends.io.HDMFIO.export for more details.
+        See :py:meth:`hdmf.backends.io.HDMFIO.export` for more details.
         """
         if self.__mode != 'w':
             raise UnsupportedOperation("Cannot export to file %s in mode '%s'. Please use mode 'w'."
-                                       % (self.__path, self.__mode))
+                                       % (self.source, self.__mode))
 
         src_io = getargs('src_io', kwargs)
         write_args, cache_spec = popargs('write_args', 'cache_spec', kwargs)
@@ -367,24 +381,29 @@ class HDF5IO(HDMFIO):
             self.__cache_spec()
 
     @classmethod
-    @docval({'name': 'io_args', 'type': dict, 'doc': 'the HDMFIO object for reading the data to export'},
-            *export_args)
+    @docval({'name': 'path', 'type': str, 'doc': 'the path to the destination HDF5 file'},
+            {'name': 'comm', 'type': 'Intracomm', 'doc': 'the MPI communicator to use for parallel I/O',
+             'default': None},
+            *_export_args)  # NOTE: src_io is required and is the second positional argument
     def export_io(self, **kwargs):
         """Export from one backend to HDF5 (class method).
 
-        Convenience function for export where the user does not need to instantiate a new HDF5IO object for writing.
+        Convenience function for :py:meth:`export` where you do not need to
+        instantiate a new `HDF5IO` object for writing.
 
         Example usage:
 
-            old_io = HDF5IO('old.nwb', 'r')
-            new_io.export_io(io_args={'path': 'new_copy.nwb'}, src_io=old_io)
+        .. code-block:: python
 
-        See export for more details.
+            old_io = HDF5IO('old.nwb', 'r')
+            new_io.export_io(path='new_copy.nwb', src_io=old_io)
+
+        See :py:meth:`export` for more details.
         """
         io_args = popargs('io_args', kwargs)
         mode = io_args.get('mode', default='w')
-        if mode != 'w' and mode != 'w-':
-            raise UnsupportedOperation("The 'mode' key in io_args must be 'w' or 'w-' if present.")
+        if mode != 'w' and mode != 'w-' and mode != 'x':
+            raise UnsupportedOperation("The 'mode' key in io_args must be 'w', 'w-', or 'x', if present.")
         io_args['mode'] = mode
 
         manager = io_args.get('manager')
@@ -398,13 +417,13 @@ class HDF5IO(HDMFIO):
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
-                                       % (self.__path, self.__mode))
+                                       % (self.source, self.__mode))
         try:
             return call_docval_func(super().read, kwargs)
         except UnsupportedOperation as e:
             if str(e) == 'Cannot build data. There are no values.':
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
-                                           % (self.__path, self.__mode))
+                                           % (self.source, self.__mode))
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
@@ -655,7 +674,7 @@ class HDF5IO(HDMFIO):
                 kwargs = {'driver': 'mpio', 'comm': self.comm}
             else:
                 kwargs = {}
-            self.__file = File(self.__path, open_flag, **kwargs)
+            self.__file = File(self.source, open_flag, **kwargs)
 
     def close(self):
         if self.__file is not None:
@@ -685,7 +704,7 @@ class HDF5IO(HDMFIO):
         f_builder = popargs('builder', kwargs)
         link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
-                          % (f_builder.name, self.__path, kwargs))
+                          % (f_builder.name, self.source, kwargs))
         for name, gbldr in f_builder.groups.items():
             self.write_group(self.__file, gbldr, **kwargs)
         for name, dbldr in f_builder.datasets.items():
@@ -696,7 +715,7 @@ class HDF5IO(HDMFIO):
         self.__add_refs()
         self.__exhaust_dcis()
         self.__set_written(f_builder)
-        self.logger.debug("Done writing GroupBuilder '%s' to path '%s'" % (f_builder.name, self.__path))
+        self.logger.debug("Done writing GroupBuilder '%s' to path '%s'" % (f_builder.name, self.source))
 
     def __add_refs(self):
         '''
@@ -936,7 +955,7 @@ class HDF5IO(HDMFIO):
         """ Write a dataset to HDF5
 
         The function uses other dataset-dependent write functions, e.g,
-        __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
+        `__scalar_fill__`, `__list_fill__`, and `__setup_chunked_dset__` to write the data.
         """
         parent, builder = popargs('parent', 'builder', kwargs)
         link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
