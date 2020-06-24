@@ -7,6 +7,8 @@
 #### Breaking changes
 - `Builder` objects no longer have the `written` field which was used by `HDF5IO` to mark the object as written. This
   is replaced by `HDF5IO.get_written`. @rly (#381)
+- `HDMFIO.write` and `HDMFIO.write_builder` no longer have the keyword argument `exhaust_dcis`. This remains present in
+  `HDF5IO.write` and `HDF5IO.write_builder`
 
 ## HDMF 1.6.4 (Upcoming)
 

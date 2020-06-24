@@ -7,7 +7,7 @@ from io import BytesIO
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, H5WriteConfig
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
@@ -45,7 +45,7 @@ class FooFile(Container):
 
     def __str__(self):
         foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
-        return 'buckets=%s, foo_link=%s, foofile_data=%s' % (foo_str, self.foo_link, self.foofile_data)
+        return ('buckets=%s, foo_link=%s, foofile_data=%s' % (foo_str, self.foo_link, self.foofile_data))
 
     @property
     def buckets(self):
@@ -656,7 +656,7 @@ class H5IOTest(TestCase):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
         self.io.write_dataset(self.f,
                               DatasetBuilder('test_copy', self.f['test_dataset'], attributes={}),
-                              H5WriteConfig(link_data=False))
+                              link_data=False)
         self.assertTrue(isinstance(self.f.get('test_copy', getlink=True), HardLink))
         self.assertListEqual(self.f['test_dataset'][:].tolist(),
                              self.f['test_copy'][:].tolist())
@@ -1624,8 +1624,7 @@ class TestLinkData(TestCase):
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
                 root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
-                write_config = H5WriteConfig(link_data=True)
-                write_io.write_builder(root2, write_config=write_config)
+                write_io.write_builder(root2, link_data=True)
 
         with File(self.link_path, mode='r') as f:
             self.assertIsInstance(f.get('link_to_test_dataset', getlink=True), ExternalLink)
@@ -1640,8 +1639,7 @@ class TestLinkData(TestCase):
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
                 root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
-                write_config = H5WriteConfig(link_data=False)
-                write_io.write_builder(root2, write_config=write_config)
+                write_io.write_builder(root2, link_data=False)
 
         with File(self.link_path, mode='r') as f:
             self.assertFalse(isinstance(f.get('link_to_test_dataset', getlink=True), ExternalLink))

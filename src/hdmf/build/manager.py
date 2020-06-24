@@ -201,7 +201,7 @@ class BuildManager:
         for container in containers_copy.values():
             if container.modified:
                 container_id = self.__conthash__(container)
-                builder = self.__builders[container_id]
+                builder = self.__builders.get(container_id)
                 builder_id = self.__bldrhash__(builder)
                 self.logger.debug("Purging %s '%s' for %s '%s' from prebuilt cache"
                                   % (builder.__class__.__name__, builder.name,

@@ -36,8 +36,7 @@ class HDMFIO(metaclass=ABCMeta):
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'write_config', 'type': 'WriteConfig', 'doc': 'configuration settings for writing builders',
-             'default': None})
+            allow_extra=True)
     def write(self, **kwargs):
         container = popargs('container', kwargs)
         f_builder = self.__manager.build(container, source=self.__source)
@@ -48,10 +47,8 @@ class HDMFIO(metaclass=ABCMeta):
              'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
                      'exported'),
              'default': None},
-            {'name': 'read_args', 'type': dict, 'doc': 'dict of arguments to use when calling read_io.read_builder',
-             'default': dict()},
-            {'name': 'write_config', 'type': 'WriteConfig', 'doc': 'configuration settings for writing builders',
-             'default': None})
+            {'name': 'write_args', 'type': dict,
+             'doc': 'arguments to use when calling write_builder with this HDMFIO object', 'default': dict()})
     def export(self, **kwargs):
         """Export from one backend to another.
 
@@ -62,10 +59,8 @@ class HDMFIO(metaclass=ABCMeta):
         The provided container must be the root of the hierarchy of the source used to read the container (i.e., you
         cannot read a file and export a part of that file.
 
-        Arguments can be passed in for the read_builder and write_builder methods. By default, all external links
-        will be resolved (i.e., the exported file will have no external links).
-
-        Some arguments in `write_config` may not be supported during export.
+        Arguments can be passed in for the write_builder method under write_args. Some arguments may not be supported
+        during export.
 
         Example usage:
 
@@ -73,22 +68,25 @@ class HDMFIO(metaclass=ABCMeta):
             with HDF5IO('new_copy.nwb', 'w') as new_io:
                 new_io.export(old_io)
         """
-        src_io, container, read_args, write_config = getargs('src_io', 'container', 'read_args', 'write_config', kwargs)
+        src_io, container, write_args = getargs('src_io', 'container', 'write_args', kwargs)
         if container is not None:
+            # check that manager exists, container was built from manager, and container is root of hierarchy
             if src_io.manager is None:
                 raise ValueError('When a container is provided, src_io must have a non-None manager (BuildManager) '
                                  'property.')
-            old_bldr = src_io.manager.get_builder(container)  # get existing builder for this container
+            old_bldr = src_io.manager.get_builder(container)
             if old_bldr is None:
                 raise ValueError('The provided container must have been read by the provided src_io.')
             if old_bldr.parent is not None:
                 raise ValueError('The provided container must be the root of the hierarchy of the '
                                  'source used to read the container.')
+
+            # build any modified containers
             src_io.manager.purge_outdated()
             bldr = src_io.manager.build(container, source=self.__source, export=True)
         else:
-            bldr = src_io.read_builder(**read_args)
-        self.write_builder(builder=bldr, write_config=write_config)
+            bldr = src_io.read_builder()  # TODO export=True needed?
+        self.write_builder(builder=bldr, **write_args)
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
@@ -98,8 +96,7 @@ class HDMFIO(metaclass=ABCMeta):
 
     @abstractmethod
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'},
-            {'name': 'write_config', 'type': 'WriteConfig', 'doc': 'configuration settings for writing builders',
-             'default': None})
+            allow_extra=True)
     def write_builder(self, **kwargs):
         ''' Write a GroupBuilder representing an Container object '''
         pass
@@ -123,21 +120,3 @@ class HDMFIO(metaclass=ABCMeta):
 
 class UnsupportedOperation(ValueError):
     pass
-
-
-class WriteConfig(dict):
-
-    # TODO: make attributes immutable, or use namedtuple
-
-    @docval({'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
-             'default': True},
-            {'name': 'export_source', 'type': str,
-             'doc': 'The source of the builders when exporting', 'default': None})
-    def __init__(self, **kwargs):
-        exhaust_dci, export_source = getargs('exhaust_dci', 'export_source', kwargs)
-        self['exhaust_dci'] = exhaust_dci
-        self['export_source'] = export_source
-
-    def __getattr__(self, name):
-        return self[name]
