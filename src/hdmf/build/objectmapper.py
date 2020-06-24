@@ -759,12 +759,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
-                    if attr_value is None:
-                        msg = ("object of data_type %s not found on %s '%s'" %
-                               (spec.dtype.target_type, type(container).__name__, container.name))
-                    else:
-                        msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
-                               % (spec.name, type(attr_value)))
+                    msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
+                           % (spec.name, type(attr_value)))
                     raise ValueError(msg)
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
