@@ -1,5 +1,5 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
-from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
+from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder, ReferenceBuilder
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator
@@ -599,6 +599,67 @@ class TestLinkedContainer(TestCase):
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      links={'foo': link_foo_builder},
                                      attributes={'attr1': 'value1', 'attr2': 10})
+        self.assertDictEqual(foo_builder, foo_expected)
+        self.assertDictEqual(bar1_builder, bar1_expected)
+        self.assertDictEqual(bar2_builder, bar2_expected)
+
+
+class TestReference(TestCase):
+
+    def setUp(self):
+        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        self.bar_spec = GroupSpec('A test group specification with a data type Bar',
+                                  data_type_def='Bar',
+                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                              AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                                              AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'),
+                                                            required=False)])
+
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map.register_map(Foo, ObjectMapper)
+        self.type_map.register_map(Bar, ObjectMapper)
+        self.manager = BuildManager(self.type_map)
+        self.foo_mapper = ObjectMapper(self.foo_spec)
+        self.bar_mapper = ObjectMapper(self.bar_spec)
+
+    def test_build_attr_ref(self):
+        ''' Test default mapping functionality when one container contains an attribute reference to another container.
+        '''
+        foo_inst = Foo('my_foo')
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10)
+
+        foo_builder = self.foo_mapper.build(foo_inst, self.manager)
+        bar1_builder = self.bar_mapper.build(bar_inst1, self.manager)
+        bar2_builder = self.bar_mapper.build(bar_inst2, self.manager)
+
+        foo_expected = GroupBuilder('my_foo')
+
+        inner_foo_builder = GroupBuilder('my_foo',
+                                         attributes={'data_type': 'Foo',
+                                                     'namespace': CORE_NAMESPACE,
+                                                     'object_id': foo_inst.object_id})
+        bar1_expected = GroupBuilder('n/a',  # name doesn't matter
+                                     datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                     attributes={'attr1': 'value1',
+                                                 'attr2': 10,
+                                                 'foo': ReferenceBuilder(inner_foo_builder)})
+        bar2_expected = GroupBuilder('n/a',  # name doesn't matter
+                                     datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                     attributes={'attr1': 'value1',
+                                                 'attr2': 10})
         self.assertDictEqual(foo_builder, foo_expected)
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
