@@ -28,7 +28,7 @@ Situation 3b
 - **TODO**: is link_data=False respected in this case? I think when an external link is loaded, it is loaded as a LinkBuilder,
 not a DatasetBuilder, so link_data is not relevant.
 
-What happens if I load an HDF5 file, add a soft/external link to it, and export it to a new HDF5 file?
+## What happens if I load an HDF5 file, add a soft/external link to it, and export it to a new HDF5 file?
 
 Situation 4
 - Read File A

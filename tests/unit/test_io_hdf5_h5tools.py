@@ -1076,11 +1076,13 @@ class HDF5IOMultiFileTest(TestCase):
 
         # Copy the file
         self.io[2].close()
-        HDF5IO.copy_file(source_filename=self.paths[1],
-                         dest_filename=self.paths[2],
-                         expand_external=True,
-                         expand_soft=False,
-                         expand_refs=False)
+
+        with self.assertWarns(DeprecationWarning):
+            HDF5IO.copy_file(source_filename=self.paths[1],
+                             dest_filename=self.paths[2],
+                             expand_external=True,
+                             expand_soft=False,
+                             expand_refs=False)
 
         # Test that everything is working as expected
         # Confirm that our original data file is correct
