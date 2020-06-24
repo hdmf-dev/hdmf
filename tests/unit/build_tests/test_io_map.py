@@ -1,5 +1,6 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
-from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder, ReferenceBuilder
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
+                        ReferenceBuilder, MissingRequiredWarning)
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator
@@ -673,6 +674,70 @@ class TestReference(TestCase):
         msg = "invalid type for reference 'foo' (<class 'object'>) - must be AbstractContainer"
         with self.assertRaisesWith(ValueError, msg):
             self.bar_mapper.build(bar_inst1, self.manager)
+
+
+class TestMissingRequiredAttribute(TestCase):
+
+    def test_required_attr_missing(self):
+        ''' Test mapping when one container is missing a required attribute reference
+        '''
+        bar_spec = GroupSpec('A test group specification with a data type Bar',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        type_map.register_map(Bar, ObjectMapper)
+        manager = BuildManager(type_map)
+        bar_mapper = ObjectMapper(bar_spec)
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__attr1 = None  # make attr1 attribute None
+
+        msg = "attribute 'attr1' for 'my_bar1' (Bar)"
+        with self.assertWarnsWith(MissingRequiredWarning, msg):
+            bar_mapper.build(bar_inst1, manager)
+
+    def test_required_attr_ref_missing(self):
+        ''' Test mapping when one container is missing a required attribute reference
+        '''
+        bar_spec = GroupSpec('A test group specification with a data type Bar',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        type_map.register_map(Bar, ObjectMapper)
+        manager = BuildManager(type_map)
+        bar_mapper = ObjectMapper(bar_spec)
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+
+        msg = "attribute 'foo' for 'my_bar1' (Bar)"
+        with self.assertWarnsWith(MissingRequiredWarning, msg):
+            bar_mapper.build(bar_inst1, manager)
 
 
 class TestConvertDtype(TestCase):
