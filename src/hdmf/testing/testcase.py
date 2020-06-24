@@ -55,15 +55,15 @@ class TestCase(unittest.TestCase):
         # this is in case non-field children are added to one and not the other
 
         for field in getattr(container1, type1._fieldsname):
-            with self.subTest(nwbfield=field, container_type=type1.__name__):
+            with self.subTest(field=field, container_type=type1.__name__):
                 f1 = getattr(container1, field)
                 f2 = getattr(container2, field)
-                self._assert_field_equal(f1, f2, ignore_hdmf_attrs)
+                self._assert_field_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_field_equal(self, f1, f2, ignore_hdmf_attrs=False):
         if (isinstance(f1, (tuple, list, np.ndarray, h5py.Dataset))
                 or isinstance(f2, (tuple, list, np.ndarray, h5py.Dataset))):
-            self._assert_array_equal(f1, f2, ignore_hdmf_attrs)
+            self._assert_array_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, dict) and len(f1) and isinstance(f1.values()[0], Container):
             self.assertIsInstance(f2, dict)
             f1_keys = set(f1.keys())
@@ -71,11 +71,11 @@ class TestCase(unittest.TestCase):
             self.assertSetEqual(f1_keys, f2_keys)
             for k in f1_keys:
                 with self.subTest(module_name=k):
-                    self.assertContainerEqual(f1[k], f2[k], ignore_hdmf_attrs)
+                    self.assertContainerEqual(f1[k], f2[k], ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, Container):
-            self.assertContainerEqual(f1, f2, ignore_hdmf_attrs)
+            self.assertContainerEqual(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, Data):
-            self._assert_data_equal(f1, f2, ignore_hdmf_attrs)
+            self._assert_data_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, (float, np.floating)):
             np.testing.assert_equal(f1, f2)
         else:
@@ -84,7 +84,7 @@ class TestCase(unittest.TestCase):
     def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False):
         self.assertEqual(type(data1), type(data2))
         self.assertEqual(len(data1), len(data2))
-        self._assert_array_equal(data1.data, data2.data, ignore_hdmf_attrs)
+        self._assert_array_equal(data1.data, data2.data, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False):
         if isinstance(arr1, (h5py.Dataset, HDMFDataset)):
@@ -107,24 +107,25 @@ class TestCase(unittest.TestCase):
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
-                        self.assertContainerEqual(sub1, sub2, ignore_hdmf_attrs)
+                        self.assertContainerEqual(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
                     elif isinstance(sub1, Data):
-                        self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs)
+                        self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
                     else:
-                        self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs)
+                        self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
 
-class TestH5RoundTripMixin(metaclass=ABCMeta):
+class H5RoundTripMixin(metaclass=ABCMeta):
     """
     Mixin class for methods to run a roundtrip test writing a container to and reading the container from an HDF5 file.
     The setUp, test_roundtrip, and tearDown methods will be run by unittest.
 
     The abstract method setUpContainer needs to be implemented by classes that include this mixin.
 
-    Example:
-    class TestMyContainerRoundTrip(TestH5RoundTripMixin, TestCase):
-        def setUpContainer(self):
-            # return the Container to read/write
+    Example::
+
+        class TestMyContainerRoundTrip(H5RoundTripMixin, TestCase):
+            def setUpContainer(self):
+                # return the Container to read/write
 
     NOTE: This class is a mix-in and not a subclass of TestCase so that unittest does not discover it, try to run it,
     and skip it.

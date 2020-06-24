@@ -40,6 +40,7 @@ class TestBase(TestCase):
             'a test namespace',
             CORE_NAMESPACE,
             [{'source': 'test.yaml'}],
+            version='0.1.0',
             catalog=self.spec_catalog)
         self.namespace_catalog = NamespaceCatalog()
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
@@ -110,7 +111,7 @@ class TestBuildManager(TestBase):
         self.assertIs(container1, container2)
 
 
-class TestNestedBaseMixin(metaclass=ABCMeta):
+class NestedBaseMixin(metaclass=ABCMeta):
 
     def setUp(self):
         super().setUp()
@@ -163,7 +164,7 @@ class TestNestedBaseMixin(metaclass=ABCMeta):
         self.assertEqual(container, self.foo_bucket)
 
 
-class TestNestedContainersNoSubgroups(TestNestedBaseMixin, TestBase):
+class TestNestedContainersNoSubgroups(NestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers, but does not keep them in
@@ -189,7 +190,7 @@ class TestNestedContainersNoSubgroups(TestNestedBaseMixin, TestBase):
         return ObjectMapper
 
 
-class TestNestedContainersSubgroup(TestNestedBaseMixin, TestBase):
+class TestNestedContainersSubgroup(NestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup
@@ -224,7 +225,7 @@ class TestNestedContainersSubgroup(TestNestedBaseMixin, TestBase):
         return BucketMapper
 
 
-class TestNestedContainersSubgroupSubgroup(TestNestedBaseMixin, TestBase):
+class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
     '''
         Test BuildManager.build and BuildManager.construct when the
         Container contains other Containers that are stored in a subgroup

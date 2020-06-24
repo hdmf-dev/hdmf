@@ -16,14 +16,14 @@ Types of Contributions
 Did you find a bug? or Do you intend to add a new feature or change an existing one?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* **Submit issues and requests using out `issue tracker <https://github.com/hdmf-dev/hdmf/issues>`_**
+* **Submit issues and requests** using our `issue tracker <https://github.com/hdmf-dev/hdmf/issues>`_
 
 * **Ensure the feature or change was not already reported** by searching on GitHub under `HDMF Issues <https://github.com/hdmf-dev/hdmf/issues>`_
 
 * If you are unable to find an open issue addressing the problem then open a new issue on the respective repository. Be sure to use our issue templates and include:
 
     * **brief and descriptive title**
-    * **clear description of the problem you are trying to solve***. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team community a better understanding for the reasons of changes and enables others to suggest solutions.
+    * **clear description of the problem you are trying to solve**. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team community a better understanding for the reasons of changes and enables others to suggest solutions.
     * **context** providing as much relevant information as possible and if available a **code sample** or an **executable test case** demonstrating the expected behavior and/or problem.
 
 * Be sure to select the appropriate labels (see :ref:`sec-issue-labels`) for your tickets so that they can be processed accordingly.
@@ -32,7 +32,8 @@ Did you find a bug? or Do you intend to add a new feature or change an existing 
 
 Did you write a patch that fixes a bug or implements a new feature?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-See the ``Contributing Patches and Changes`` section below for details.
+
+See the :ref:`sec-contributing` section below for details.
 
 Did you fix whitespace, format code, or make a purely cosmetic patch in source code?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +48,7 @@ See our `hdmf-dev.github.io <https://hdmf-dev.github.io/>`_ website for details.
 Informal discussions between developers and users?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The https://nwb-users.slack.com slack is currently used mainly for informal discussions between developers and users.
+The https://nwb-users.slack.com slack is currently used for informal discussions between developers and users.
 
 .. _sec-contributing:
 
@@ -66,7 +67,7 @@ From your local copy directory, use the following commands.
 
 2) Make your changes.
 
-3) Push your feature branch to origin (i.e. github)
+3) Push your feature branch to origin (i.e. GitHub)
 
 .. code-block:: bash
 
@@ -131,7 +132,7 @@ Python coding style is checked via ``flake8`` for automatic checking of PEP8 sty
 Endorsement
 -----------
 
-Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say  e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
+Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
 
 License and Copyright
 =======================
