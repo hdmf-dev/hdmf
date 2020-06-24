@@ -12,7 +12,8 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
-from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE
+from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
+                            RefSpec)
 from hdmf.spec.namespace import SpecNamespace
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.container import Container
@@ -28,15 +29,19 @@ class FooFile(Container):
 
     @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()},
             {'name': 'foo_link', 'type': Foo, 'doc': 'an optional linked Foo', 'default': None},
-            {'name': 'foofile_data', 'type': 'array_data', 'doc': 'an optional dataset', 'default': None})
+            {'name': 'foofile_data', 'type': 'array_data', 'doc': 'an optional dataset', 'default': None},
+            {'name': 'foo_ref_attr', 'type': Foo, 'doc': 'a reference Foo', 'default': None},
+            )
     def __init__(self, **kwargs):
-        buckets, foo_link, foofile_data = getargs('buckets', 'foo_link', 'foofile_data', kwargs)
+        buckets, foo_link, foofile_data, foo_ref_attr = getargs('buckets', 'foo_link', 'foofile_data',
+                                                                'foo_ref_attr', kwargs)
         super().__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             f.parent = self
         self.__foo_link = foo_link
         self.__foofile_data = foofile_data
+        self.__foo_ref_attr = foo_ref_attr
 
     def __eq__(self, other):
         return (set(self.buckets) == set(other.buckets)
@@ -80,6 +85,17 @@ class FooFile(Container):
             self.__foofile_data = value
         else:
             raise ValueError("can't reset foofile_data attribute")
+
+    @property
+    def foo_ref_attr(self):
+        return self.__foo_ref_attr
+
+    @foo_ref_attr.setter
+    def foo_ref_attr(self, value):
+        if self.__foo_ref_attr is None:
+            self.__foo_ref_attr = value
+        else:
+            raise ValueError("can't reset foo_ref_attr attribute")
 
 
 class H5IOTest(TestCase):
@@ -744,6 +760,10 @@ def _get_manager():
                                                 name='foofile_data',
                                                 dtype='int',
                                                 quantity=ZERO_OR_ONE)],
+                          attributes=[AttributeSpec(doc='Foo ref attr',
+                                                    name='foo_ref_attr',
+                                                    dtype=RefSpec('Foo', 'object'),
+                                                    required=False)],
                           )
 
     class FileMapper(ObjectMapper):
