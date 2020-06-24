@@ -95,6 +95,10 @@ def _check_isodatetime(s, default=None):
     return default
 
 
+class EmptyArrayError(Exception):
+    pass
+
+
 def get_type(data):
     if isinstance(data, str):
         return _check_isodatetime(data, 'utf')
@@ -105,6 +109,8 @@ def get_type(data):
     elif isinstance(data, ReferenceBuilder):
         return 'object'
     elif isinstance(data, np.ndarray):
+        if data.size == 0:
+            raise EmptyArrayError()
         return get_type(data[0])
     if not hasattr(data, '__len__'):
         return type(data).__name__
@@ -114,7 +120,7 @@ def get_type(data):
                 return get_type(data[0])
             return data.dtype
         if len(data) == 0:
-            raise ValueError('cannot determine type for empty data')
+            raise EmptyArrayError()
         return get_type(data[0])
 
 
@@ -261,17 +267,7 @@ class Validator(metaclass=ABCMeta):
 
     @classmethod
     def get_spec_loc(cls, spec):
-        stack = list()
-        tmp = spec
-        while tmp is not None:
-            name = tmp.name
-            if name is None:
-                name = tmp.data_type_def
-                if name is None:
-                    name = tmp.data_type_inc
-            stack.append(name)
-            tmp = tmp.parent
-        return "/".join(reversed(stack))
+        return spec.path
 
     @classmethod
     def get_builder_loc(cls, builder):
@@ -305,7 +301,12 @@ class AttributeValidator(Validator):
             elif isinstance(spec.dtype, RefSpec):
                 if not isinstance(value, BaseBuilder):
                     expected = '%s reference' % spec.dtype.reftype
-                    ret.append(DtypeError(self.get_spec_loc(spec), expected, get_type(value)))
+                    try:
+                        value_type = get_type(value)
+                        ret.append(DtypeError(self.get_spec_loc(spec), expected, value_type))
+                    except EmptyArrayError:
+                        # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
+                        pass
                 else:
                     target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
                     data_type = value.attributes.get(target_spec.type_key())
@@ -313,12 +314,19 @@ class AttributeValidator(Validator):
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
             else:
-                dtype = get_type(value)
-                if not check_type(spec.dtype, dtype):
-                    ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
+                try:
+                    dtype = get_type(value)
+                    if not check_type(spec.dtype, dtype):
+                        ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
+                except EmptyArrayError:
+                    # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
+                    pass
             shape = get_data_shape(value)
             if not check_shape(spec.shape, shape):
-                ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+                if shape is None:
+                    ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
+                else:
+                    ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
         return ret
 
 
@@ -368,10 +376,14 @@ class DatasetValidator(BaseStorageValidator):
         ret = super().validate(builder)
         data = builder.data
         if self.spec.dtype is not None:
-            dtype = get_type(data)
-            if not check_type(self.spec.dtype, dtype):
-                ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
-                                      location=self.get_builder_loc(builder)))
+            try:
+                dtype = get_type(data)
+                if not check_type(self.spec.dtype, dtype):
+                    ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
+                                          location=self.get_builder_loc(builder)))
+            except EmptyArrayError:
+                # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
+                pass
         shape = get_data_shape(data)
         if not check_shape(self.spec.shape, shape):
             if shape is None:

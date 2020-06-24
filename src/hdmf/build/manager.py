@@ -2,6 +2,7 @@ import numpy as np
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
+import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion
@@ -85,6 +86,7 @@ class BuildManager:
     """
 
     def __init__(self, type_map):
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         self.__builders = dict()
         self.__containers = dict()
         self.__type_map = type_map
@@ -145,6 +147,9 @@ class BuildManager:
         result = self.__builders.get(container_id)
         source, spec_ext = getargs('source', 'spec_ext', kwargs)
         if result is None:
+            self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s)"
+                              % (container.__class__.__name__, container.name, repr(container.container_source),
+                                 repr(source), spec_ext is not None))
             if container.container_source is None:
                 container.container_source = source
             else:
@@ -157,9 +162,18 @@ class BuildManager:
                                             container.__class__.__name__))
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
+            self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
         elif container.modified or spec_ext is not None:
             if isinstance(result, BaseBuilder):
+                self.logger.debug("Rebuilding modified / extended %s '%s' (modified: %s, source: %s, extended spec: %s)"
+                                  % (container.__class__.__name__, container.name, container.modified,
+                                     source, spec_ext is not None))
                 result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
+                self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
+        else:
+            self.logger.debug("Using prebuilt %s '%s' for %s '%s'"
+                              % (result.__class__.__name__, result.name,
+                                 container.__class__.__name__, container.name))
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
@@ -366,16 +380,40 @@ class TypeMap:
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    _type_map = {
-        'text': str,
-        'float': float,
-        'float32': float,
-        'float64': float,
-        'int': int,
-        'int32': int,
-        'bool': bool,
+    # mapping from spec types to allowable python types for docval for fields during dynamic class generation
+    # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
+    # __init__ method that allows the types (int, np.int32, np.int64) for the corresponding field.
+    # passing an np.int16 would raise a docval error.
+    # passing an int64 to __init__ would result in the field storing the value as an int64 (and subsequently written
+    # as an int64). no upconversion or downconversion happens as a result of this map
+    # see https://schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
+    _spec_dtype_map = {
+        'float32': (float, np.float32, np.float64),
+        'float': (float, np.float32, np.float64),
+        'float64': (float, np.float64),
+        'double': (float, np.float64),
+        'int8': (np.int8, np.int16, np.int32, np.int64, int),
+        'int16': (np.int16, np.int32, np.int64, int),
+        'short': (np.int16, np.int32, np.int64, int),
+        'int32': (int, np.int32, np.int64),
+        'int': (int, np.int32, np.int64),
+        'int64': np.int64,
+        'long': np.int64,
+        'uint8': (np.uint8, np.uint16, np.uint32, np.uint64),
+        'uint16': (np.uint16, np.uint32, np.uint64),
+        'uint32': (np.uint32, np.uint64),
         'uint64': np.uint64,
-        'isodatetime': datetime
+        'numeric': (float, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64, int, np.uint8, np.uint16,
+                    np.uint32, np.uint64),
+        'text': str,
+        'utf': str,
+        'utf8': str,
+        'utf-8': str,
+        'ascii': bytes,
+        'bytes': bytes,
+        'bool': bool,
+        'isodatetime': datetime,
+        'datetime': datetime
     }
 
     def __get_container_type(self, container_name):
@@ -388,6 +426,14 @@ class TypeMap:
             # this code should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
 
+    def __get_scalar_type_map(self, spec_dtype):
+        dtype = self._spec_dtype_map.get(spec_dtype)
+        if dtype is None:  # pragma: no cover
+            # this should not happen as long as _spec_dtype_map is kept up to date with
+            # hdmf.spec.spec.DtypeHelper.valid_primary_dtypes
+            raise ValueError("Spec dtype '%s' cannot be mapped to a Python type." % spec_dtype)
+        return dtype
+
     def __get_type(self, spec):
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
@@ -398,7 +444,7 @@ class TypeMap:
                         return container_type
                 return Data, Container
             elif spec.shape is None and spec.dims is None:
-                return self._type_map.get(spec.dtype)
+                return self.__get_scalar_type_map(spec.dtype)
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
@@ -408,7 +454,7 @@ class TypeMap:
         if spec.data_type_inc is not None:
             return self.__get_container_type(spec.data_type_inc)
         if spec.shape is None and spec.dims is None:
-            return self._type_map.get(spec.dtype)
+            return self.__get_scalar_type_map(spec.dtype)
         return 'array_data', 'data'
 
     def __ischild(self, dtype):

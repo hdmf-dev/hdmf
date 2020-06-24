@@ -1,3 +1,5 @@
+import tempfile
+
 from hdmf.utils import docval, getargs
 from hdmf.container import Container
 
@@ -69,3 +71,11 @@ class FooBucket(Container):
     @property
     def foos(self):
         return self.__foos
+
+
+def get_temp_filepath():
+    # On Windows, h5py cannot truncate an open file in write mode.
+    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name
