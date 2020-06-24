@@ -92,7 +92,7 @@ class HDF5IO(HDMFIO):
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
             {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
-            {'name': 'file', 'type': (File, 'Group'), 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'file', 'type': (File, 'Group'), 'doc': 'a pre-existing h5py.File object or Zarr group', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
     def load_namespaces(cls, **kwargs):
         '''
