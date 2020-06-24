@@ -664,6 +664,16 @@ class TestReference(TestCase):
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
 
+    def test_build_attr_ref_invalid(self):
+        ''' Test default mapping functionality when one container contains an attribute reference to another container.
+        '''
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__foo = object()  # make foo object a non-container type
+
+        msg = "invalid type for reference 'foo' (<class 'object'>) - must be AbstractContainer"
+        with self.assertRaisesWith(ValueError, msg):
+            self.bar_mapper.build(bar_inst1, self.manager)
+
 
 class TestConvertDtype(TestCase):
 
