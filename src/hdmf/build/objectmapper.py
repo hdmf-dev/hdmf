@@ -750,14 +750,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     attr_value = spec.default_value
 
             attr_value = self.__check_ref_resolver(attr_value)
+
+            if attr_value is None:
+                if spec.required:
+                    msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
+                    warnings.warn(msg, MissingRequiredWarning)
+                continue
+
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
-                    if attr_value is None:
-                        msg = ("object of data_type %s not found on %s '%s'" %
-                               (spec.dtype.target_type, type(container).__name__, container.name))
-                    else:
-                        msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
-                               % (spec.name, type(attr_value)))
+                    msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
+                           % (spec.name, type(attr_value)))
                     raise ValueError(msg)
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
@@ -769,12 +772,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
                         raise Exception(msg) from ex
 
-            # do not write empty or null valued objects
-            if attr_value is None:
-                if spec.required:
-                    msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
-                    warnings.warn(msg, MissingRequiredWarning)
-                continue
+                    # do not write empty or null valued objects
+                    if attr_value is None:
+                        if spec.required:
+                            msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
+                            warnings.warn(msg, MissingRequiredWarning)
+                        continue
 
             builder.set_attribute(spec.name, attr_value)
 
