@@ -20,6 +20,8 @@ FLAGS = {
 
 class DtypeHelper():
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
+    # this is also used in the validator
+    # if this list is updated, also update hdmf.build.manager.TypeMap._spec_dtype_map
     primary_dtype_synonyms = {
             'float': ["float", "float32"],
             'double': ["double", "float64"],
@@ -313,13 +315,12 @@ class BaseStorageSpec(Spec):
 
     @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        name, doc, parent, quantity, attributes, linkable, data_type_def, data_type_inc =\
-             getargs('name', 'doc', 'parent', 'quantity', 'attributes',
-                     'linkable', 'data_type_def', 'data_type_inc', kwargs)
+        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc =\
+             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with wildcard name "
                              "without specifying 'data_type_def' and/or 'data_type_inc'")
-        super().__init__(doc, name=name, parent=parent)
+        super().__init__(doc, name=name)
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:

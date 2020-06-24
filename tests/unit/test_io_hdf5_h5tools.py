@@ -1,6 +1,5 @@
 import os
 import unittest
-import tempfile
 import warnings
 import numpy as np
 import h5py
@@ -13,7 +12,7 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
-from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, ZERO_OR_MANY, ONE_OR_MANY
+from hdmf.spec.spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE
 from hdmf.spec.namespace import SpecNamespace
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.container import Container
@@ -22,37 +21,42 @@ from hdmf.testing import TestCase
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
 
 
 class FooFile(Container):
 
-    @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()})
+    @docval({'name': 'buckets', 'type': list, 'doc': 'the FooBuckets in this file', 'default': list()},
+            {'name': 'foo_link', 'type': Foo, 'doc': 'an optional linked Foo', 'default': None})
     def __init__(self, **kwargs):
-        buckets = getargs('buckets', kwargs)
+        buckets, foo_link = getargs('buckets', 'foo_link', kwargs)
         super().__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = buckets
         for f in self.__buckets:
             f.parent = self
+        self.__foo_link = foo_link
 
     def __eq__(self, other):
         return set(self.buckets) == set(other.buckets)
 
     def __str__(self):
         foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
-        return 'buckets=%s' % foo_str
+        return 'buckets=%s, foo_link=%s' % (foo_str, self.foo_link)
 
     @property
     def buckets(self):
         return self.__buckets
 
+    @property
+    def foo_link(self):
+        return self.__foo_link
 
-def get_temp_filepath():
-    # On Windows, h5py cannot truncate an open file in write mode.
-    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
-    temp_file = tempfile.NamedTemporaryFile()
-    temp_file.close()
-    return temp_file.name
+    @foo_link.setter
+    def foo_link(self, value):
+        if self.__foo_link is None:
+            self.__foo_link = value
+        else:
+            raise ValueError("can't reset foo_link attribute")
 
 
 class H5IOTest(TestCase):
@@ -698,19 +702,31 @@ def _get_manager():
             foo_spec = foo_holder_spec.get_data_type('Foo')
             self.map_spec('foos', foo_spec)
 
+    file_links_spec = GroupSpec('Foo link group',
+                                name='links',
+                                links=[LinkSpec('Foo link',
+                                                name='foo_link',
+                                                target_type='Foo',
+                                                quantity=ZERO_OR_ONE)]
+                                )
+
     file_spec = GroupSpec("A file of Foos contained in FooBuckets",
                           data_type_def='FooFile',
                           groups=[GroupSpec('Holds the FooBuckets',
                                             name='buckets',
                                             groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
-                                                              quantity=ONE_OR_MANY)])])
+                                                              quantity=ONE_OR_MANY)]),
+                                  file_links_spec])
 
     class FileMapper(ObjectMapper):
         def __init__(self, spec):
             super().__init__(spec)
             bucket_spec = spec.get_group('buckets').get_data_type('FooBucket')
             self.map_spec('buckets', bucket_spec)
+            self.unmap(spec.get_group('links'))
+            foo_link_spec = spec.get_group('links').get_link('foo_link')
+            self.map_spec('foo_link', foo_link_spec)
 
     spec_catalog = SpecCatalog()
     spec_catalog.register_spec(foo_spec, 'test.yaml')
@@ -898,13 +914,12 @@ class HDF5IOMultiFileTest(TestCase):
 
     def setUp(self):
         numfiles = 3
-        base_name = "test_multifile_hdf5_%d.h5"
-        self.test_temp_files = [base_name % i for i in range(numfiles)]
+        self.paths = [get_temp_filepath() for i in range(numfiles)]
 
         # On Windows h5py cannot truncate an open file in write mode.
         # The temp file will be closed before h5py truncates it
         # and will be removed during the tearDown step.
-        self.io = [HDF5IO(i, mode='a', manager=_get_manager()) for i in self.test_temp_files]
+        self.io = [HDF5IO(i, mode='a', manager=_get_manager()) for i in self.paths]
         self.f = [i._file for i in self.io]
 
     def tearDown(self):
@@ -915,26 +930,24 @@ class HDF5IOMultiFileTest(TestCase):
         self.io = None
         self.f = None
         # Make sure the files have been deleted
-        for tf in self.test_temp_files:
+        for tf in self.paths:
             try:
                 os.remove(tf)
             except OSError:
                 pass
-        self.test_temp_files = None
 
     def test_copy_file_with_external_links(self):
         # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('test_bucket1', [foo1])
-
         foofile1 = FooFile(buckets=[bucket1])
 
         # Write the first file
         self.io[0].write(foofile1)
 
         # Create the second file
-        bucket1_read = self.io[0].read()
-        foo2 = Foo('foo2', bucket1_read.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
+        read_foofile1 = self.io[0].read()
+        foo2 = Foo('foo2', read_foofile1.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
         bucket2 = FooBucket('test_bucket2', [foo2])
         foofile2 = FooFile(buckets=[bucket2])
         # Write the second file
@@ -944,22 +957,103 @@ class HDF5IOMultiFileTest(TestCase):
 
         # Copy the file
         self.io[2].close()
-        HDF5IO.copy_file(source_filename=self.test_temp_files[1],
-                         dest_filename=self.test_temp_files[2],
+        HDF5IO.copy_file(source_filename=self.paths[1],
+                         dest_filename=self.paths[2],
                          expand_external=True,
                          expand_soft=False,
                          expand_refs=False)
 
         # Test that everything is working as expected
         # Confirm that our original data file is correct
-        f1 = File(self.test_temp_files[0], 'r')
+        f1 = File(self.paths[0], 'r')
         self.assertIsInstance(f1.get('/buckets/test_bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
         # Confirm that we successfully created and External Link in our second file
-        f2 = File(self.test_temp_files[1], 'r')
+        f2 = File(self.paths[1], 'r')
         self.assertIsInstance(f2.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
         # Confirm that we successfully resolved the External Link when we copied our second file
-        f3 = File(self.test_temp_files[2], 'r')
+        f3 = File(self.paths[2], 'r')
         self.assertIsInstance(f3.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
+
+
+class TestCloseLinks(TestCase):
+
+    def setUp(self):
+        self.path1 = get_temp_filepath()
+        self.path2 = get_temp_filepath()
+        import logging
+
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+
+        ch = logging.FileHandler('test.log', mode='w')
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+    def tearDown(self):
+        if self.path1 is not None:
+            os.remove(self.path1)  # linked file may not be closed
+        if self.path2 is not None:
+            os.remove(self.path2)
+
+    def test_close_file_with_links(self):
+        # Create the first file
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+
+        # Write the first file
+        with HDF5IO(self.path1, mode='w', manager=_get_manager()) as io:
+            io.write(foofile1)
+
+        # Create the second file
+        manager = _get_manager()  # use the same manager for read and write so that links work
+        with HDF5IO(self.path1, mode='r', manager=manager) as read_io:
+            read_foofile1 = read_io.read()
+            foofile2 = FooFile(foo_link=read_foofile1.buckets[0].foos[0])  # cross-file link
+
+            # Write the second file
+            with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
+                write_io.write(foofile2)
+
+        with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
+            read_foofile2 = new_io1.read()  # keep reference to container in memory
+
+        self.assertTrue(read_foofile2.foo_link.my_data)
+        new_io1.close_linked_files()
+        self.assertFalse(read_foofile2.foo_link.my_data)
+
+        # should be able to reopen both files
+        with HDF5IO(self.path1, mode='a', manager=_get_manager()) as new_io3:
+            new_io3.read()
+
+    def test_double_close_file_with_links(self):
+        # Create the first file
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('test_bucket1', [foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+
+        # Write the first file
+        with HDF5IO(self.path1, mode='w', manager=_get_manager()) as io:
+            io.write(foofile1)
+
+        # Create the second file
+        manager = _get_manager()  # use the same manager for read and write so that links work
+        with HDF5IO(self.path1, mode='r', manager=manager) as read_io:
+            read_foofile1 = read_io.read()
+            foofile2 = FooFile(foo_link=read_foofile1.buckets[0].foos[0])  # cross-file link
+
+            # Write the second file
+            with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
+                write_io.write(foofile2)
+
+        with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
+            read_foofile2 = new_io1.read()  # keep reference to container in memory
+
+        read_foofile2.foo_link.my_data.file.close()  # explicitly close the file from the h5dataset
+        self.assertFalse(read_foofile2.foo_link.my_data)
+        new_io1.close_linked_files()  # make sure this does not fail because the linked-to file is already closed
 
 
 class HDF5IOInitNoFileTest(TestCase):
@@ -1286,6 +1380,7 @@ class H5DataIOValid(TestCase):
 
 
 class TestReadLink(TestCase):
+
     def setUp(self):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
@@ -1305,11 +1400,22 @@ class TestReadLink(TestCase):
             io.write_builder(self.root2)
         self.root2.source = self.link_path
 
+        self.ios = []
+
+    def tearDown(self):
+        for io in self.ios:
+            io.close_linked_files()
+        if os.path.exists(self.target_path):
+            os.remove(self.target_path)
+        if os.path.exists(self.link_path):
+            os.remove(self.link_path)
+
     def test_set_link_loc(self):
         """
         Test that Builder location is set when it is read as a link
         """
         read_io = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io)  # store IO object for closing in tearDown
         bldr = read_io.read_builder()
         self.assertEqual(bldr['link_to_test_group'].builder.location, '/')
         self.assertEqual(bldr['link_to_test_dataset'].builder.location, '/test_group')
@@ -1321,6 +1427,7 @@ class TestReadLink(TestCase):
         """
         link_to_link_path = get_temp_filepath()
         read_io1 = HDF5IO(self.link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io1)  # store IO object for closing in tearDown
         bldr1 = read_io1.read_builder()
         root3 = GroupBuilder(name='root')
         root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
@@ -1329,9 +1436,60 @@ class TestReadLink(TestCase):
         read_io1.close()
 
         read_io2 = HDF5IO(link_to_link_path, manager=_get_manager(), mode='r')
+        self.ios.append(read_io2)
         bldr2 = read_io2.read_builder()
         self.assertEqual(bldr2['link_to_link'].builder.source, self.target_path)
         read_io2.close()
+
+
+class TestLinkData(TestCase):
+
+    def setUp(self):
+        self.target_path = get_temp_filepath()
+        self.link_path = get_temp_filepath()
+        root1 = GroupBuilder(name='root')
+        subgroup = root1.add_group('test_group')
+        subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+
+        with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
+            io.write_builder(root1)
+
+    def tearDown(self):
+        if os.path.exists(self.target_path):
+            os.remove(self.target_path)
+        if os.path.exists(self.link_path):
+            os.remove(self.link_path)
+
+    def test_link_data_true(self):
+        """Test that the argument link_data=True for write_builder creates an external link."""
+        manager = _get_manager()
+        with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
+            read_root = read_io.read_builder()
+            read_dataset_data = read_root.groups['test_group'].datasets['test_dataset'].data
+
+            with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
+                root2 = GroupBuilder(name='root')
+                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                write_io.write_builder(root2, link_data=True)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertIsInstance(f.get('link_to_test_dataset', getlink=True), ExternalLink)
+
+    def test_link_data_false(self):
+        """Test that the argument link_data=False for write_builder copies the data."""
+        manager = _get_manager()
+        with HDF5IO(self.target_path, manager=manager, mode='r') as read_io:
+            read_root = read_io.read_builder()
+            read_dataset_data = read_root.groups['test_group'].datasets['test_dataset'].data
+
+            with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
+                root2 = GroupBuilder(name='root')
+                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                write_io.write_builder(root2, link_data=False)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertFalse(isinstance(f.get('link_to_test_dataset', getlink=True), ExternalLink))
+            self.assertListEqual(f.get('link_to_test_dataset')[:].tolist(), [1, 2, 3, 4])
 
 
 class TestLoadNamespaces(TestCase):
