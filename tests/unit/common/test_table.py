@@ -964,3 +964,67 @@ class TestIndexing(TestCase):
         np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))
         np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
         np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+
+
+class TestVectorIndex(TestCase):
+
+    def test_init_empty(self):
+        foo = VectorData(name='foo', description='foo column')
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=list())
+        self.assertEqual(foo_ind.name, 'foo_index')
+        self.assertEqual(foo_ind.description, "Index for VectorData 'foo'")
+        self.assertIs(foo_ind.target, foo)
+        self.assertListEqual(foo_ind.data, list())
+
+    def test_init_data(self):
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+        self.assertListEqual(foo_ind.data, [2, 4])
+        self.assertListEqual(foo_ind[0], ['a', 'b'])
+        self.assertListEqual(foo_ind[1], ['c'])
+
+
+class TestDoubleIndex(TestCase):
+
+    def test_double_index(self):
+        # row 1 has three entries
+        # the first entry has two sub-entries
+        # the first sub-entry has two values, the second sub-entry has one value
+        # the second entry has one sub-entry, which has one value
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        self.assertListEqual(foo_ind_ind[0][0], ['a11', 'a12'])
+        self.assertListEqual(foo_ind_ind[0][1], ['a21'])
+        self.assertListEqual(foo_ind_ind[1][0], ['b11'])
+
+
+class TestDynamicTableAddIndexRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('foo', 'an int column', index=True)
+        table.add_row(foo=[1, 2, 3])
+        return table
+
+
+class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind])
+        return table
+
+
+class TestDoubleIndexRoundtrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind])
+        return table

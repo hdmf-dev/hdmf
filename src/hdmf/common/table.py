@@ -64,7 +64,7 @@ class VectorData(Data):
 
 
 @register_class('VectorIndex')
-class VectorIndex(Index):
+class VectorIndex(VectorData):
     """
     When paired with a VectorData, this allows for storing arrays of varying
     length in a single cell of the DynamicTable by indexing into this VectorData.
@@ -72,14 +72,18 @@ class VectorIndex(Index):
     VectorData[VectorIndex(0)+1:VectorIndex(1)+1], and so on.
     """
 
+    __fields__ = ("target",)
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorIndex'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a 1D dataset containing indexes that apply to VectorData object'},
             {'name': 'target', 'type': VectorData,
              'doc': 'the target dataset that this index applies to'})
     def __init__(self, **kwargs):
+        target = getargs('target', kwargs)
+        kwargs['description'] = "Index for VectorData '%s'" % target.name
         call_docval_func(super().__init__, kwargs)
-        self.target = getargs('target', kwargs)
+        self.target = target
         self.__uint = np.uint8
         self.__maxval = 255
         if isinstance(self.data, (list, np.ndarray)):
