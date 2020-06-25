@@ -742,7 +742,7 @@ def get_data_shape(data, strict_no_data_load=False):
     """
     Helper function used to determine the shape of the given array.
 
-    In order to determine the shape of nested tuples and lists, this function
+    In order to determine the shape of nested tuples, lists, and sets, this function
     recursively inspects elements along the dimensions, assuming that the data has a regular,
     rectangular shape. In the case of out-of-core iterators, this means that the first item
     along each dimension would potentially be loaded into memory. Set strict_no_data_load=True
@@ -751,8 +751,8 @@ def get_data_shape(data, strict_no_data_load=False):
 
     :param data: Array for which we should determine the shape.
     :type data: List, numpy.ndarray, DataChunkIterator, any object that support __len__ or .shape.
-    :param strict_no_data_load: If True and data is an out-of-core iterator, None may be returned. If False, the
-                                first element of data may be loaded into memory. Default: False.
+    :param strict_no_data_load: If True and data is an out-of-core iterator, None may be returned. If False (default),
+                                the first element of data may be loaded into memory.
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """

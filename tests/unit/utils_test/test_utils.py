@@ -21,6 +21,7 @@ class TestGetDataShape(TestCase):
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
+            # test that maxshape takes priority
             dset = f.create_dataset('shape_maxshape', shape=(3, 2), maxshape=(None, 100))
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (None, 100))
@@ -41,6 +42,7 @@ class TestGetDataShape(TestCase):
         res = get_data_shape(dci)
         self.assertTupleEqual(res, (3, 2))
 
+        # test that maxshape takes priority
         dci = DataChunkIterator(data=[[1, 2], [3, 4], [5, 6]], maxshape=(None, 100))
         res = get_data_shape(dci)
         self.assertTupleEqual(res, (None, 100))
@@ -137,9 +139,6 @@ class TestGetDataShape(TestCase):
         class MyIterable:
             """Iterable class without shape or maxshape, where loading the first element raises an error."""
 
-            def __init__(self):
-                self.count = 0
-
             def __len__(self):
                 return 10
 
@@ -154,8 +153,9 @@ class TestGetDataShape(TestCase):
 
         data = MyIterable()
         with self.assertRaises(DataLoadedError):
-            get_data_shape(data)
-        res = get_data_shape(data, strict_no_data_load=True)
+            get_data_shape(data)  # test that data is loaded
+
+        res = get_data_shape(data, strict_no_data_load=True)  # no error raised means data was not loaded
         self.assertIsNone(res)
 
     def test_strict_no_data_load(self):
