@@ -979,7 +979,7 @@ class TestVectorIndex(TestCase):
     def test_init_data(self):
         foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
-        self.assertListEqual(foo_ind.data, [2, 4])
+        self.assertListEqual(foo_ind.data, [2, 3])
         self.assertListEqual(foo_ind[0], ['a', 'b'])
         self.assertListEqual(foo_ind[1], ['c'])
 

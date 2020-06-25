@@ -16,22 +16,6 @@ from ..container import Container, Data
 from . import register_class
 
 
-@register_class('Index')
-class Index(Data):
-    """
-    Base data type for storing pointers that index data values
-    """
-    __fields__ = ("target",)
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
-            {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors'},
-            {'name': 'target', 'type': Data,
-             'doc': 'the target dataset that this index applies to'})
-    def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-
-
 @register_class('VectorData')
 class VectorData(Data):
     """
@@ -283,7 +267,7 @@ class DynamicTable(Container):
             # If columns have been passed in, check them over and process accordingly
             if isinstance(columns[0], dict):
                 columns = self.__build_columns(columns)
-            elif not all(isinstance(c, (VectorData, VectorIndex)) for c in columns):
+            elif not all(isinstance(c, VectorData) for c in columns):
                 raise ValueError("'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex")
 
             all_names = [c.name for c in columns]
@@ -360,13 +344,13 @@ class DynamicTable(Container):
                 for col in columns:
                     if indexed.get(col.name, False):
                         continue
-                    if isinstance(col, VectorData):
-                        pos = order[col.name]
-                        tmp[pos] = col
-                    elif isinstance(col, VectorIndex):
+                    if isinstance(col, VectorIndex):
                         pos = order[col.target.name]
                         tmp[pos] = col
                         tmp[pos+1] = col.target
+                    elif isinstance(col, VectorData):
+                        pos = order[col.name]
+                        tmp[pos] = col
                 self.columns = tuple(tmp)
 
         # to make generating DataFrames and Series easier
@@ -374,7 +358,7 @@ class DynamicTable(Container):
         self.__indices = dict()
         for col in self.columns:
             self.__set_table_attr(col)
-            if isinstance(col, VectorData):
+            if isinstance(col, VectorData) and not isinstance(col, VectorIndex):
                 existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
                 if existing is not None:

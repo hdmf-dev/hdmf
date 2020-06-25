@@ -11,9 +11,7 @@ class DynamicTableMap(ObjectMapper):
     def __init__(self, spec):
         super().__init__(spec)
         vector_data_spec = spec.get_data_type('VectorData')
-        vector_index_spec = spec.get_data_type('VectorIndex')
         self.map_spec('columns', vector_data_spec)
-        self.map_spec('columns', vector_index_spec)
 
     @ObjectMapper.object_attr('colnames')
     def attr_columns(self, container, manager):
