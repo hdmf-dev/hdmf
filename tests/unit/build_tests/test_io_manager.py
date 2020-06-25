@@ -1,7 +1,6 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
-from hdmf.build.errors import MismatchedTypeBuildError
 from hdmf.testing import TestCase
 from hdmf.container import Container
 from hdmf.utils import docval, call_docval_func
@@ -309,7 +308,7 @@ class TestNestedContainersSubgroupWrongType(NestedBaseMixin, TestBase):
             'A subgroup for Foos',
             name='foo_holder',
             groups=[GroupSpec('the Foos in this bucket',
-                              data_type_inc='Bar',
+                              data_type_inc='Bar',  # <--
                               quantity=ZERO_OR_MANY)])
         self.bucket_spec = GroupSpec('A test group specification for a data type containing data type',
                                      name="test_foo_bucket",
@@ -321,20 +320,21 @@ class TestNestedContainersSubgroupWrongType(NestedBaseMixin, TestBase):
             def __init__(self, spec):
                 super().__init__(spec)
                 self.unmap(spec.get_group('foo_holder'))
-                self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Bar'))
+                self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Bar'))  # <--
 
         return BucketMapper
 
     def test_build(self):
-        ''' Test default mapping for an Container that has an Container as an attribute value '''
-        msg = "Foo 'my_foo1' does not match type data_type_inc: Bar for spec test_foo_bucket/foo_holder/Bar"
-        with self.assertRaisesWith(MismatchedTypeBuildError, msg):
-            self.manager.build(self.foo_bucket)
+        """Test build when the Container data type does not match the data type described in the spec."""
+        # foo_bucket contains Foos but the BucketMapper maps foos to the data type Bar
+        bldr = self.manager.build(self.foo_bucket)
+        self.assertDictEqual(bldr['foo_holder'].groups, {})
 
     def test_construct(self):
-        # TODO: a warning or error should be raised
+        """Test construct when the builder data type does not match the data type of the Container field."""
+        # TODO: a warning should be raised
         container = self.manager.construct(self.bucket_builder)
-        self.assertEqual(container, self.foo_bucket)
+        self.assertListEqual(container.foos, [])
 
 
 class TestTypeMap(TestBase):

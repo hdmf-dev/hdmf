@@ -15,7 +15,6 @@ from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .manager import Proxy, BuildManager
 from .warnings import OrphanContainerWarning, MissingRequiredWarning, DtypeConversionWarning
-from .errors import MismatchedTypeBuildError
 
 _const_arg = '__constructor_arg'
 
@@ -585,7 +584,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
             returns="the Builder representing the given AbstractContainer", rtype=Builder)
     def build(self, **kwargs):
-        ''' Convert a AbstractContainer to a Builder representation '''
+        '''Convert an AbstractContainer to a Builder representation.
+
+        References are not added but are queued to be added in the BuildManager.
+        '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
         builder, spec_ext = getargs('builder', 'spec_ext', kwargs)
         name = manager.get_builder_name(container)
@@ -912,25 +914,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         Check that the data type associated with ``container`` matches data_type_def or data_type_inc of the ``spec``
         or a subtype of data_type_def or data_type_inc (use data_type_def if defined, otherwise use data_type_inc).
-        Returns None.
+        Returns True if they match, False if not.
         """
 
+        ret = True
         if (isinstance(spec, (GroupSpec, DatasetSpec))
                 and (spec.data_type_def is not None or spec.data_type_inc is not None)):
             # TODO how to get the namespace of the spec data type?
             namespace, _ = build_manager.type_map.get_container_ns_dt(container)
             if spec.data_type_def is not None:  # check for nested type definition
                 spec_class = build_manager.type_map.get_container_cls(namespace, spec.data_type_def, create_class=False)
-                if not isinstance(container, spec_class):
-                    raise MismatchedTypeBuildError("%s '%s' does not match type %s: %s for spec %s"
-                                                   % (container.__class__.__name__, container.name, spec.def_key(),
-                                                      spec.data_type_def, spec.path))
             else:
                 spec_class = build_manager.type_map.get_container_cls(namespace, spec.data_type_inc, create_class=False)
-                if not isinstance(container, spec_class):
-                    raise MismatchedTypeBuildError("%s '%s' does not match type %s: %s for spec %s"
-                                                   % (container.__class__.__name__, container.name, spec.inc_key(),
-                                                      spec.data_type_inc, spec.path))
+            if spec_class is not None:
+                ret = isinstance(container, spec_class)
+            else:
+                ret = False
+        return ret
 
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container):
         if isinstance(value, AbstractContainer):
@@ -943,7 +943,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                        % (value.name, getattr(value, self.spec.type_key()), builder.name, self.spec.data_type_def))
                 warnings.warn(msg, OrphanContainerWarning)
 
-            self.__check_container_matches_spec(spec, value, build_manager)
+            if not self.__check_container_matches_spec(spec, value, build_manager):
+                self.logger.debug("    %s '%s' does not match %s name: %s, %s: %s, %s: %s"
+                                  % (value.__class__.__name__, value.name,
+                                     spec.__class__.__name__, repr(spec.name),
+                                     spec.def_key(), repr(spec.data_type_def),
+                                     spec.inc_key(), repr(spec.data_type_inc)))
+                return
 
             if value.modified:                   # writing a new container
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
