@@ -44,7 +44,7 @@ class Builder(dict, metaclass=ABCMeta):
 
     @property
     def written(self):
-        ''' Whether this Builder has been written '''
+        ''' The source of this Builder '''
         return self.__written
 
     @written.setter

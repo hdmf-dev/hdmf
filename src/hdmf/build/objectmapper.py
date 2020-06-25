@@ -964,9 +964,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                          builder.__class__.__name__, builder.name))
                     builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
-                    self.logger.debug("Setting %s '%s' as a dataset of %s '%s'"
-                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
-                                         builder.__class__.__name__, builder.name))
                     if rendered_obj.dtype is None and spec.dtype is not None:
                         self.logger.debug("    Converting dataset %s '%s' to spec dtype '%s'"
                                           % (rendered_obj.__class__.__name__, rendered_obj.name, spec.dtype))
