@@ -1,5 +1,6 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
-from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
+                        ReferenceBuilder, MissingRequiredWarning)
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator
@@ -604,6 +605,141 @@ class TestLinkedContainer(TestCase):
         self.assertDictEqual(bar2_builder, bar2_expected)
 
 
+class TestReference(TestCase):
+
+    def setUp(self):
+        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        self.bar_spec = GroupSpec('A test group specification with a data type Bar',
+                                  data_type_def='Bar',
+                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                              AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                                              AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'),
+                                                            required=False)])
+
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map.register_map(Foo, ObjectMapper)
+        self.type_map.register_map(Bar, ObjectMapper)
+        self.manager = BuildManager(self.type_map)
+        self.foo_mapper = ObjectMapper(self.foo_spec)
+        self.bar_mapper = ObjectMapper(self.bar_spec)
+
+    def test_build_attr_ref(self):
+        ''' Test default mapping functionality when one container contains an attribute reference to another container.
+        '''
+        foo_inst = Foo('my_foo')
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10)
+
+        foo_builder = self.foo_mapper.build(foo_inst, self.manager)
+        bar1_builder = self.bar_mapper.build(bar_inst1, self.manager)
+        bar2_builder = self.bar_mapper.build(bar_inst2, self.manager)
+
+        foo_expected = GroupBuilder('my_foo')
+
+        inner_foo_builder = GroupBuilder('my_foo',
+                                         attributes={'data_type': 'Foo',
+                                                     'namespace': CORE_NAMESPACE,
+                                                     'object_id': foo_inst.object_id})
+        bar1_expected = GroupBuilder('n/a',  # name doesn't matter
+                                     datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                     attributes={'attr1': 'value1',
+                                                 'attr2': 10,
+                                                 'foo': ReferenceBuilder(inner_foo_builder)})
+        bar2_expected = GroupBuilder('n/a',  # name doesn't matter
+                                     datasets={'data': DatasetBuilder('data', list(range(10)))},
+                                     attributes={'attr1': 'value1',
+                                                 'attr2': 10})
+        self.assertDictEqual(foo_builder, foo_expected)
+        self.assertDictEqual(bar1_builder, bar1_expected)
+        self.assertDictEqual(bar2_builder, bar2_expected)
+
+    def test_build_attr_ref_invalid(self):
+        ''' Test default mapping functionality when one container contains an attribute reference to another container.
+        '''
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__foo = object()  # make foo object a non-container type
+
+        msg = "invalid type for reference 'foo' (<class 'object'>) - must be AbstractContainer"
+        with self.assertRaisesWith(ValueError, msg):
+            self.bar_mapper.build(bar_inst1, self.manager)
+
+
+class TestMissingRequiredAttribute(TestCase):
+
+    def test_required_attr_missing(self):
+        ''' Test mapping when one container is missing a required attribute reference
+        '''
+        bar_spec = GroupSpec('A test group specification with a data type Bar',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        type_map.register_map(Bar, ObjectMapper)
+        manager = BuildManager(type_map)
+        bar_mapper = ObjectMapper(bar_spec)
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__attr1 = None  # make attr1 attribute None
+
+        msg = "attribute 'attr1' for 'my_bar1' (Bar)"
+        with self.assertWarnsWith(MissingRequiredWarning, msg):
+            bar_mapper.build(bar_inst1, manager)
+
+    def test_required_attr_ref_missing(self):
+        ''' Test mapping when one container is missing a required attribute reference
+        '''
+        bar_spec = GroupSpec('A test group specification with a data type Bar',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        type_map.register_map(Bar, ObjectMapper)
+        manager = BuildManager(type_map)
+        bar_mapper = ObjectMapper(bar_spec)
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+
+        msg = "attribute 'foo' for 'my_bar1' (Bar)"
+        with self.assertWarnsWith(MissingRequiredWarning, msg):
+            bar_mapper.build(bar_inst1, manager)
+
+
 class TestConvertDtype(TestCase):
 
     def test_value_none(self):
@@ -848,86 +984,200 @@ class TestConvertDtype(TestCase):
                 with self.assertRaisesWith(ValueError, msg):
                     ObjectMapper.convert_dtype(spec, value)
 
+    def test_text_spec(self):
+        spec_type = 'text'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = 'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = b'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, 'a')
+        self.assertIs(type(ret), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = ['a', 'b']
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
+        self.assertIs(type(ret[0]), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = np.array(['a', 'b'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = np.array(['a', 'b'], dtype='S1')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
+        self.assertEqual(ret_dtype, 'utf8')
+
+    def test_ascii_spec(self):
+        spec_type = 'ascii'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        value = 'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, b'a')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = b'a'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, b'a')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = ['a', 'b']
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, [b'a', b'b'])
+        self.assertIs(type(ret[0]), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = np.array(['a', 'b'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = np.array(['a', 'b'], dtype='S1')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
+
     def test_no_spec(self):
         spec_type = None
         spec = DatasetSpec('an example dataset', spec_type, name='data')
 
         value = [1, 2, 3]
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, int)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0][0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
+        self.assertIs(type(ret[0]), int)
+        self.assertEqual(ret_dtype, int)
 
         value = np.uint64(4)
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.uint64)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.uint64)
+        self.assertEqual(ret_dtype, np.uint64)
 
         value = 'hello'
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, 'utf8')
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), str)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), str)
+        self.assertEqual(ret_dtype, 'utf8')
 
-        value = bytes('hello', encoding='utf-8')
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, 'ascii')
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), bytes)
+        value = b'hello'
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = np.array(['aa', 'bb'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = np.array(['aa', 'bb'], dtype='S2')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
 
         value = DataChunkIterator(data=[1, 2, 3])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.dtype.type, np.dtype(int).type)
+        self.assertIs(type(ret.data[0]), int)
+        self.assertEqual(ret_dtype, np.dtype(int).type)
 
-        value = DataChunkIterator(data=[1., 2., 3.])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(float).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        value = DataChunkIterator(data=['a', 'b'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.dtype.type, np.str_)
+        self.assertIs(type(ret.data[0]), str)
+        self.assertEqual(ret_dtype, 'utf8')
 
         value = H5DataIO(np.arange(30).reshape(5, 2, 3))
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.data.dtype.type, np.dtype(int).type)
+        self.assertEqual(ret_dtype, np.dtype(int).type)
 
-        value = H5DataIO(['foo' 'bar'])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, 'utf8')
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0].data[0]), str)
+        value = H5DataIO(['foo', 'bar'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret.data[0]), str)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = H5DataIO([b'foo', b'bar'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret.data[0]), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
 
     def test_numeric_spec(self):
         spec_type = 'numeric'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
 
         value = np.uint64(4)
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.uint64)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.uint64)
+        self.assertEqual(ret_dtype, np.uint64)
 
         value = DataChunkIterator(data=[1, 2, 3])
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.dtype(int).type)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(ret[0].dtype.type, match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(ret.dtype.type, np.dtype(int).type)
+        self.assertIs(type(ret.data[0]), int)
+        self.assertEqual(ret_dtype, np.dtype(int).type)
+
+        value = ['a', 'b']
+        msg = "Cannot convert from <class 'str'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
+
+        value = np.array(['a', 'b'])
+        msg = "Cannot convert from <class 'numpy.str_'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
 
     def test_bool_spec(self):
         spec_type = 'bool'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
 
         value = np.bool_(True)
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.bool_)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.bool_)
+        self.assertEqual(ret_dtype, np.bool_)
 
         value = True
-        ret = ObjectMapper.convert_dtype(spec, value)
-        match = (value, np.bool_)
-        self.assertTupleEqual(ret, match)
-        self.assertIs(type(ret[0]), match[1])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), np.bool_)
+        self.assertEqual(ret_dtype, np.bool_)
+
+    def test_override_type_int_restrict_precision(self):
+        spec = DatasetSpec('an example dataset', 'int8', name='data')
+        res = ObjectMapper.convert_dtype(spec, np.int64(1), 'int64')
+        self.assertTupleEqual(res, (np.int64(1), np.int64))
+
+    def test_override_type_numeric_to_uint(self):
+        spec = DatasetSpec('an example dataset', 'numeric', name='data')
+        res = ObjectMapper.convert_dtype(spec, np.uint32(1), 'uint8')
+        self.assertTupleEqual(res, (np.uint32(1), np.uint32))
+
+    def test_override_type_numeric_to_uint_list(self):
+        spec = DatasetSpec('an example dataset', 'numeric', name='data')
+        res = ObjectMapper.convert_dtype(spec, np.uint32((1, 2, 3)), 'uint8')
+        np.testing.assert_array_equal(res[0], np.uint32((1, 2, 3)))
+        self.assertEqual(res[1], np.uint32)
+
+    def test_override_type_none_to_bool(self):
+        spec = DatasetSpec('an example dataset', None, name='data')
+        res = ObjectMapper.convert_dtype(spec, True, 'bool')
+        self.assertTupleEqual(res, (True, np.bool_))
