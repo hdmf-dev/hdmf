@@ -934,7 +934,7 @@ class HDF5IO(HDMFIO):
             parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
             if target_builder.location is not None:
-                path = target_builder.location + path
+                path = target_builder.location + "/" + target_builder.name
             link_obj = ExternalLink(relative_path, path)
             self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
                               % (parent.name, name, link_obj.filename, link_obj.path))
