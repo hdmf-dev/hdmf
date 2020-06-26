@@ -901,7 +901,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (value.__class__.__name__, value.name,
                                  parent_container.__class__.__name__, parent_container.name,
                                  builder.__class__.__name__, builder.name))
-            if value.parent is None:
+            if value.parent is None and build_manager.get_builder(value) is None:
+                # parent may not have been set in API or because value was read from an external link
                 msg = ("'%s' (%s) for '%s' (%s)"
                        % (value.name, getattr(value, self.spec.type_key()), builder.name, self.spec.data_type_def))
                 warnings.warn(msg, OrphanContainerWarning)
