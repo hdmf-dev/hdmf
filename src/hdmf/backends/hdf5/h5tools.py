@@ -806,6 +806,9 @@ class HDF5IO(HDMFIO):
             return cls.__dtypes.get(dtype)
         elif isinstance(dtype, dict):
             return cls.__dtypes.get(dtype['reftype'])
+        elif isinstance(dtype, np.dtype):
+            # NOTE: some dtypes may not be supported, but we need to support writing of read-in compound types
+            return dtype
         else:
             return np.dtype([(x['name'], cls.__resolve_dtype_helper__(x['dtype'])) for x in dtype])
 
