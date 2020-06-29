@@ -1000,6 +1000,8 @@ class HDF5IO(HDMFIO):
                                       % (parent.name, name, link.path))
                 parent[name] = link
             # Copy the dataset
+            # TODO add option for case where there are multiple links to the same dataset within a file:
+            # instead of copying the dset N times, copy it once and create soft links to it  within the file
             else:
                 self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
                                   % (data.file.filename, data.name, parent.name, name))
