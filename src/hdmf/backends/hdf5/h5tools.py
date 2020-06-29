@@ -540,17 +540,18 @@ class HDF5IO(HDMFIO):
                     # Reading links might be better suited in its own function
                     # get path of link (the key used for tracking what's been built)
                     target_path = link_type.path
+                    target_obj = sub_h5obj.file[target_path]
                     builder_name = os.path.basename(target_path)
                     parent_loc = os.path.dirname(target_path)
                     # get builder if already read, else build it
-                    builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.file[target_path].id)
+                    builder = self.__get_built(sub_h5obj.file.filename, target_obj.id)
                     if builder is None:
                         # NOTE: all links must have absolute paths
-                        if isinstance(sub_h5obj, Dataset):
-                            builder = self.__read_dataset(sub_h5obj, builder_name)
+                        if isinstance(target_obj, Dataset):
+                            builder = self.__read_dataset(target_obj, builder_name)
                         else:
-                            builder = self.__read_group(sub_h5obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename,  sub_h5obj.file[target_path].id, builder)
+                            builder = self.__read_group(target_obj, builder_name, ignore=ignore)
+                        self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
                     builder.location = parent_loc
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
                     self.__set_written(link_builder)
@@ -978,6 +979,8 @@ class HDF5IO(HDMFIO):
             data_filename = os.path.abspath(data.file.filename)
             if export_source is not None:
                 export_source = os.path.abspath(export_source)
+            # if exporting and dset is in same file as export source, then the current dset could be linked or the
+            # actual dset in the right location
             if link_data and (data_filename != export_source or parent.name != data.parent.name):
                 # Create a Soft/External link to the dataset
                 parent_filename = os.path.abspath(parent.file.filename)
