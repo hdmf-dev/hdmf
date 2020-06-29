@@ -389,29 +389,21 @@ class HDF5IO(HDMFIO):
         """Export from one backend to HDF5 (class method).
 
         Convenience function for :py:meth:`export` where you do not need to
-        instantiate a new `HDF5IO` object for writing.
+        instantiate a new `HDF5IO` object for writing. An `HDF5IO` object is created with mode 'w' and the given
+        arguments.
 
         Example usage:
 
         .. code-block:: python
 
-            old_io = HDF5IO('old.nwb', 'r')
-            new_io.export_io(path='new_copy.nwb', src_io=old_io)
+            old_io = HDF5IO('old.h5', 'r')
+            HDF5IO.export_io(path='new_copy.h5', src_io=old_io)
 
         See :py:meth:`export` for more details.
         """
-        io_args = popargs('io_args', kwargs)
-        mode = io_args.get('mode', default='w')
-        if mode != 'w' and mode != 'w-' and mode != 'x':
-            raise UnsupportedOperation("The 'mode' key in io_args must be 'w', 'w-', or 'x', if present.")
-        io_args['mode'] = mode
+        path, comm = popargs('path', 'comm', kwargs)
 
-        manager = io_args.get('manager')
-        if manager:
-            warnings.warn("The 'manager' key in io_args will be ignored.")
-            io_args.remove('manager')
-
-        with HDF5IO(io_args) as write_io:
+        with HDF5IO(path=path, comm=comm, mode='w') as write_io:
             write_io.export(**kwargs)
 
     def read(self, **kwargs):

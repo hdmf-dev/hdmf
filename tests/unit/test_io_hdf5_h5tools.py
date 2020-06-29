@@ -2359,3 +2359,23 @@ class TestExport(TestCase):
         with File(self.paths[2], 'r') as f:
             self.assertEqual(f['buckets/test_bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
             self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
+
+    def test_export_io(self):
+        """Test that exporting a written container using HDF5IO.export_io works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('test_bucket', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+            HDF5IO.export_io(src_io=read_io, path=self.paths[1])
+
+        self.assertTrue(os.path.exists(self.paths[1]))
+        self.assertEqual(foofile.container_source, self.paths[0])
+
+        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+            self.assertEqual(read_foofile.container_source, self.paths[1])
+            self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
