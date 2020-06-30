@@ -283,7 +283,10 @@ class DynamicTable(Container):
             colset = {c.name: c for c in columns}
             for c in columns:  # remove all VectorData objects that have an associated VectorIndex from colset
                 if isinstance(c, VectorIndex):
-                    colset.pop(c.target.name)
+                    if c.target.name in colset:
+                        colset.pop(c.target.name)
+                    else:
+                        raise ValueError("Found VectorIndex '%s' but not its target '%s'" % (c.name, c.target.name))
                 _data = c.data
                 if isinstance(_data, DataIO):
                     _data = _data.data
@@ -321,59 +324,68 @@ class DynamicTable(Container):
             if columns is None:
                 raise ValueError("Must supply 'columns' if specifying 'colnames'")
             else:
-                # order the columns according to the column names
+                # order the columns according to the column names, which does not include indices
                 self.colnames = tuple(pystr(c) for c in colnames)
                 col_dict = {col.name: col for col in columns}
-                order = dict()
-                indexed = dict()
+                # map from vectordata name to list of vectorindex objects where target of last vectorindex is vectordata
+                indices = dict()
+                # determine which columns are indexed by another column
                 for col in columns:
                     if isinstance(col, VectorIndex):
-                        indexed[col.target.name] = True
+                        # loop through nested indices to get to non-index column
+                        tmp_indices = [col]
+                        curr_col = col
+                        while isinstance(curr_col.target, VectorIndex):
+                            curr_col = curr_col.target
+                            tmp_indices.append(curr_col)
+                        # make sure the indices values has the full index chain, so replace existing value if it is
+                        # shorter
+                        if len(tmp_indices) > len(indices.get(curr_col.target.name, [])):
+                            indices[curr_col.target.name] = tmp_indices
                     else:
-                        if col.name in indexed:
+                        if col.name in indices:
                             continue
-                        indexed[col.name] = False
-                i = 0
+                        indices[col.name] = []
+                # put columns in order of colnames, with indices before the target vectordata
+                tmp = []
                 for name in self.colnames:
-                    col = col_dict[name]
-                    order[col.name] = i
-                    if indexed[col.name]:
-                        i = i + 1
-                    i = i + 1
-                tmp = [None] * i
-                for col in columns:
-                    if indexed.get(col.name, False):
-                        continue
-                    if isinstance(col, VectorIndex):
-                        pos = order[col.target.name]
-                        tmp[pos] = col
-                        tmp[pos+1] = col.target
-                    elif isinstance(col, VectorData):
-                        pos = order[col.name]
-                        tmp[pos] = col
+                    tmp.extend(indices[name])
+                    tmp.append(col_dict[name])
                 self.columns = tuple(tmp)
 
         # to make generating DataFrames and Series easier
         col_dict = dict()
         self.__indices = dict()
         for col in self.columns:
-            self.__set_table_attr(col)
             if isinstance(col, VectorData) and not isinstance(col, VectorIndex):
                 existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
                 if existing is not None:
                     if isinstance(existing, VectorIndex):
-                        if existing.target.name == col.name:
-                            continue
-                        else:
-                            raise ValueError("duplicate column does not target VectorData '%s'" % col.name)
+                        continue
                     else:
                         raise ValueError("duplicate column found: '%s'" % col.name)
                 else:
                     col_dict[col.name] = col
+                    self.__set_table_attr(col)
             elif isinstance(col, VectorIndex):
-                col_dict[col.target.name] = col  # use target name for reference and VectorIndex for retrieval
+                # if index has already been added because it is part of a nested index chain, ignore this column
+                if col.name in self.__indices:
+                    continue
                 self.__indices[col.name] = col
+
+                # loop through nested indices to get to non-index column
+                curr_col = col
+                while isinstance(curr_col.target, VectorIndex):
+                    curr_col = curr_col.target
+                    # check if index has been added. if not, add it
+                    if not hasattr(self, curr_col.name):
+                        self.__set_table_attr(curr_col)
+                        self.__indices[curr_col.name] = col
+
+                # use target vectordata name at end of indexing chain as key to get to the top level index
+                col_dict[curr_col.target.name] = col
+                self.__set_table_attr(col)
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
 

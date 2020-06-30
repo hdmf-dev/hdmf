@@ -986,7 +986,7 @@ class TestVectorIndex(TestCase):
 
 class TestDoubleIndex(TestCase):
 
-    def test_double_index(self):
+    def test_index(self):
         # row 1 has three entries
         # the first entry has two sub-entries
         # the first sub-entry has two values, the second sub-entry has one value
@@ -995,9 +995,53 @@ class TestDoubleIndex(TestCase):
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
         foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
 
-        self.assertListEqual(foo_ind_ind[0][0], ['a11', 'a12'])
-        self.assertListEqual(foo_ind_ind[0][1], ['a21'])
-        self.assertListEqual(foo_ind_ind[1][0], ['b11'])
+        self.assertListEqual(foo_ind[0], ['a11', 'a12'])
+        self.assertListEqual(foo_ind[1], ['a21'])
+        self.assertListEqual(foo_ind[2], ['b11'])
+        self.assertListEqual(foo_ind_ind[0], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(foo_ind_ind[1], [['b11']])
+
+
+class TestDTDoubleIndex(TestCase):
+
+    def test_index(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind])
+
+        self.assertIs(table['foo'], foo_ind_ind)
+        self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[1, 'foo'], [['b11']])
+
+
+class TestDTDoubleIndexReverse(TestCase):
+
+    def test_index(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo])
+
+        self.assertIs(table['foo'], foo_ind_ind)
+        self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[1, 'foo'], [['b11']])
+
+
+class TestDTDoubleIndexSkipMiddle(TestCase):
+
+    def test_index(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        msg = "Found VectorIndex 'foo_index_index' but not its target 'foo_index'"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo])
 
 
 class TestDynamicTableAddIndexRoundTrip(H5RoundTripMixin, TestCase):
@@ -1015,7 +1059,9 @@ class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
         foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
 
-        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind])
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo])
         return table
 
 
@@ -1026,5 +1072,7 @@ class TestDoubleIndexRoundtrip(H5RoundTripMixin, TestCase):
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
         foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
 
-        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind])
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo])
         return table
