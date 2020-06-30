@@ -376,6 +376,7 @@ class DynamicTable(Container):
 
                 # loop through nested indices to get to non-index column
                 curr_col = col
+                self.__set_table_attr(curr_col)
                 while isinstance(curr_col.target, VectorIndex):
                     curr_col = curr_col.target
                     # check if index has been added. if not, add it
@@ -385,7 +386,8 @@ class DynamicTable(Container):
 
                 # use target vectordata name at end of indexing chain as key to get to the top level index
                 col_dict[curr_col.target.name] = col
-                self.__set_table_attr(col)
+                if not hasattr(self, curr_col.target.name):
+                    self.__set_table_attr(curr_col.target)
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
 

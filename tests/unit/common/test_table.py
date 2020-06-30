@@ -1012,6 +1012,7 @@ class TestDTDoubleIndex(TestCase):
         table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind])
 
         self.assertIs(table['foo'], foo_ind_ind)
+        self.assertIs(table.foo, foo)
         self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[1, 'foo'], [['b11']])
@@ -1027,6 +1028,7 @@ class TestDTDoubleIndexReverse(TestCase):
         table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo])
 
         self.assertIs(table['foo'], foo_ind_ind)
+        self.assertIs(table.foo, foo)
         self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[1, 'foo'], [['b11']])
