@@ -413,21 +413,22 @@ table_double_ragged_col = DynamicTable(
     columns=[col6, col6_ind, col6_ind_ind],
 )
 
+###############################################################################
 # Access the first row using the same syntax as before, except now a list of
-# lists is returned.
+# lists is returned. You can then index the resulting list of lists to access
+# the individual elements.
+
 table_double_ragged_col[0, 'col6']  # returns [['a', 'b', 'c'], ['d', 'e', 'f']]
 table_double_ragged_col['col6'][0]  # same as line above
-
-# You can then index the resulting list of lists to access the individual
-# elements
 table_double_ragged_col['col6'][0][1]  # returns ['d', 'e', 'f']
 
+###############################################################################
 # Accessing the column named 'col6' using square bracket notation will return
-# the top-level :py:class:`~hdmf.common.table.VectorIndex` for the column
-table_double_ragged_col['col6']  # returns col6_ind_ind
-
+# the top-level :py:class:`~hdmf.common.table.VectorIndex` for the column.
 # Accessing the column named 'col6' using dot notation will return the
 # :py:class:`~hdmf.common.table.VectorData` object
+
+table_double_ragged_col['col6']  # returns col6_ind_ind
 table_double_ragged_col.col6  # returns col6
 
 ###############################################################################
