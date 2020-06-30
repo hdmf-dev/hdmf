@@ -359,6 +359,58 @@ table['col4'][:2]  # get a list of the 0th and 1st list elements
 #   not recommended because they interact with the internal list of columns.
 
 ###############################################################################
+# Nested ragged array columns
+# ---------------------------
+# A :py:class:`~hdmf.common.table.VectorIndex` object can index another
+# :py:class:`~hdmf.common.table.VectorIndex` object. This is useful if each
+# row of a table contains a different number of elements, and each of those
+# elements contains a different number of sub-elements from other rows. If each
+# row element contained the same number of sub-elements, then a 2-D array could
+# be used as the row element. For example, the first row of a table might
+# be a 2x3 array, the second row might be a 3x2 array, and the third row might
+# be a 1x1 array. This cannot be represented by a singly indexed column.
+
+col5 = VectorData(
+    name='col5',
+    description='column #5',
+    data=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'],
+)
+col5_ind = VectorIndex(
+    name='col5_index',
+    target=col5,
+    data=[3, 6, 8, 10, 12, 13],
+)
+col5_ind_ind = VectorIndex(
+    name='col5_index_index',
+    target=col5_ind,
+    data=[2, 5, 6],
+)
+
+# All indices must be added to the table.
+table_double_ragged_col = DynamicTable(
+    name='my table',
+    description='an example table',
+    columns=[col5, col5_ind, col5_ind_ind],
+)
+
+# Access the first row using the same syntax as before, except now a list of
+# lists is returned.
+table_double_ragged_col[0, 'col5']  # returns [['a', 'b', 'c'], ['d', 'e', 'f']]
+table_double_ragged_col['col5'][0]  # same as line above
+
+# You can then index the resulting list of lists to access the individual
+# elements
+table_double_ragged_col['col5'][0][1]  # returns ['d', 'e', 'f']
+
+# Accessing the column named 'col5' using square bracket notation will return
+# the top-level :py:class:`~hdmf.common.table.VectorIndex` for the column
+table_double_ragged_col['col5']  # returns col5_ind_ind
+
+# Accessing the column named 'col5' using dot notation will return the
+# :py:class:`~hdmf.common.table.VectorData` object
+table_double_ragged_col.col5  # returns col5
+
+###############################################################################
 # Referencing rows of a DynamicTable
 # ----------------------------------
 # TODO
