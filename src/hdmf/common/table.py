@@ -274,6 +274,10 @@ class DynamicTable(Container):
             if len(all_names) != len(set(all_names)):
                 raise ValueError("'columns' contains columns with duplicate names: %s" % all_names)
 
+            all_targets = [c.target.name for c in columns if isinstance(c, VectorIndex)]
+            if len(all_targets) != len(set(all_targets)):
+                raise ValueError("'columns' contains index columns with the same target: %s" % all_targets)
+
             # TODO: check columns against __columns__
             # mismatches should raise an error (e.g., a VectorData cannot be passed in with the same name as a
             # prespecified table region column)
@@ -358,13 +362,9 @@ class DynamicTable(Container):
         self.__indices = dict()
         for col in self.columns:
             if isinstance(col, VectorData) and not isinstance(col, VectorIndex):
-                existing = col_dict.get(col.name)
                 # if we added this column using its index, ignore this column
-                if existing is not None:
-                    if isinstance(existing, VectorIndex):
-                        continue
-                    else:
-                        raise ValueError("duplicate column found: '%s'" % col.name)
+                if col.name in col_dict:
+                    continue
                 else:
                     col_dict[col.name] = col
                     self.__set_table_attr(col)

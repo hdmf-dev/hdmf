@@ -100,6 +100,43 @@ class TestDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable("with_columns", 'a test table', columns=columns)
 
+    def test_constructor_colnames(self):
+        """Test that passing colnames correctly sets the order of the columns."""
+        cols = [VectorData(**d) for d in self.spec]
+        table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
+        self.assertTupleEqual(table.columns, tuple(cols[::-1]))
+
+    def test_constructor_colnames_no_columns(self):
+        """Test that passing colnames without columns raises an error."""
+        msg = "Must supply 'columns' if specifying 'colnames'"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table',  colnames=['baz', 'bar', 'foo'])
+
+    def test_constructor_colnames_vectorindex(self):
+        """Test that passing colnames with a VectorIndex column puts the index in the right location in columns."""
+        cols = [VectorData(**d) for d in self.spec]
+        cols.append(VectorIndex(name='foo_index', data=list(), target=cols[0]))
+        table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
+        self.assertTupleEqual(table.columns, (cols[2], cols[1], cols[3], cols[0]))
+
+    def test_constructor_dup_index(self):
+        """Test that passing two indices for the same column raises an error."""
+        cols = [VectorData(**d) for d in self.spec]
+        cols.append(VectorIndex(name='foo_index', data=list(), target=cols[0]))
+        cols.append(VectorIndex(name='foo_index2', data=list(), target=cols[0]))
+        msg = "'columns' contains index columns with the same target: ['foo', 'foo']"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table', columns=cols)
+
+    def test_constructor_index_missing_target(self):
+        """Test that passing an index without its target raises an error."""
+        cols = [VectorData(**d) for d in self.spec]
+        missing_col = cols.pop(2)
+        cols.append(VectorIndex(name='foo_index', data=list(), target=missing_col))
+        msg = "Found VectorIndex 'foo_index' but not its target 'baz'"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table', columns=cols)
+
     def add_rows(self, table):
         table.add_row({'foo': 1, 'bar': 10.0, 'baz': 'cat'})
         table.add_row({'foo': 2, 'bar': 20.0, 'baz': 'dog'})
