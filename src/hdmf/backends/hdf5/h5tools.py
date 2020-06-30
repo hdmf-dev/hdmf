@@ -769,9 +769,13 @@ class HDF5IO(HDMFIO):
         return group
 
     def __get_path(self, builder):
+        """Get the path to the builder.
+
+        Note that the root of the file has no name - it is just "/". Thus, the name of the root container is ignored.
+        """
         curr = builder
         names = list()
-        while curr is not None and curr.name != ROOT_NAME:
+        while curr.parent is not None:
             names.append(curr.name)
             curr = curr.parent
         delim = "/"
