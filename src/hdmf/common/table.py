@@ -368,7 +368,7 @@ class DynamicTable(Container):
                 else:
                     col_dict[col.name] = col
                     self.__set_table_attr(col)
-            elif isinstance(col, VectorIndex):
+            else:  # col is a vectorindex
                 # if index has already been added because it is part of a nested index chain, ignore this column
                 if col.name in self.__indices:
                     continue

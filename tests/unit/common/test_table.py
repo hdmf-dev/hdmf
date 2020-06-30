@@ -115,9 +115,18 @@ class TestDynamicTable(TestCase):
     def test_constructor_colnames_vectorindex(self):
         """Test that passing colnames with a VectorIndex column puts the index in the right location in columns."""
         cols = [VectorData(**d) for d in self.spec]
-        cols.append(VectorIndex(name='foo_index', data=list(), target=cols[0]))
+        ind = VectorIndex(name='foo_index', data=list(), target=cols[0])
+        cols.append(ind)
         table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
-        self.assertTupleEqual(table.columns, (cols[2], cols[1], cols[3], cols[0]))
+        self.assertTupleEqual(table.columns, (cols[2], cols[1], ind, cols[0]))
+
+    def test_constructor_colnames_vectorindex_rev(self):
+        """Test that passing colnames with a VectorIndex column puts the index in the right location in columns."""
+        cols = [VectorData(**d) for d in self.spec]
+        ind = VectorIndex(name='foo_index', data=list(), target=cols[0])
+        cols.insert(0, ind)  # put index before its target
+        table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
+        self.assertTupleEqual(table.columns, (cols[2], cols[1], ind, cols[0]))
 
     def test_constructor_dup_index(self):
         """Test that passing two indices for the same column raises an error."""
@@ -1041,7 +1050,7 @@ class TestDoubleIndex(TestCase):
 
 class TestDTDoubleIndex(TestCase):
 
-    def test_index(self):
+    def test_double_index(self):
         foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
         foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
@@ -1054,10 +1063,7 @@ class TestDTDoubleIndex(TestCase):
         self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[1, 'foo'], [['b11']])
 
-
-class TestDTDoubleIndexReverse(TestCase):
-
-    def test_index(self):
+    def test_double_index_reverse(self):
         foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
         foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
@@ -1069,6 +1075,28 @@ class TestDTDoubleIndexReverse(TestCase):
         self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
         self.assertListEqual(table[1, 'foo'], [['b11']])
+
+    def test_double_index_colnames(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        bar = VectorData(name='bar', description='bar column', data=[1, 2])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind, bar],
+                             colnames=['foo', 'bar'])
+
+        self.assertTupleEqual(table.columns, (foo_ind_ind, foo_ind, foo, bar))
+
+    def test_double_index_reverse_colnames(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        bar = VectorData(name='bar', description='bar column', data=[1, 2])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo, bar],
+                             colnames=['bar', 'foo'])
+
+        self.assertTupleEqual(table.columns, (bar, foo_ind_ind, foo_ind, foo))
 
 
 class TestDTDoubleIndexSkipMiddle(TestCase):
