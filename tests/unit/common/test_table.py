@@ -126,7 +126,7 @@ class TestDynamicTable(TestCase):
         ind = VectorIndex(name='foo_index', data=list(), target=cols[0])
         cols.insert(0, ind)  # put index before its target
         table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
-        self.assertTupleEqual(table.columns, (cols[2], cols[1], ind, cols[0]))
+        self.assertTupleEqual(table.columns, (cols[3], cols[2], ind, cols[1]))
 
     def test_constructor_dup_index(self):
         """Test that passing two indices for the same column raises an error."""
