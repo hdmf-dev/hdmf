@@ -5,7 +5,6 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 import warnings
-from collections import OrderedDict
 from collections.abc import Iterable
 from datetime import datetime
 
@@ -90,7 +89,7 @@ class BaseBuilder(Builder):
     def __init__(self, **kwargs):
         name, attributes, parent, source = getargs('name', 'attributes', 'parent', 'source', kwargs)
         super().__init__(name, parent, source)
-        super().__setitem__(BaseBuilder.__attribute, OrderedDict())
+        super().__setitem__(BaseBuilder.__attribute, dict())
         for name, val in attributes.items():
             self.set_attribute(name, val)
         self.__location = None
@@ -157,9 +156,9 @@ class GroupBuilder(BaseBuilder):
         links = self.__to_list(links)
         self.obj_type = dict()
         super().__init__(name, attributes, parent, source)
-        super().__setitem__(GroupBuilder.__group, OrderedDict())
-        super().__setitem__(GroupBuilder.__dataset, OrderedDict())
-        super().__setitem__(GroupBuilder.__link, OrderedDict())
+        super().__setitem__(GroupBuilder.__group, dict())
+        super().__setitem__(GroupBuilder.__dataset, dict())
+        super().__setitem__(GroupBuilder.__link, dict())
         self.__name = name
         for group in groups:
             self.set_group(group)
