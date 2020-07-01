@@ -16,7 +16,7 @@ from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZER
                             RefSpec)
 from hdmf.spec.namespace import SpecNamespace
 from hdmf.spec.catalog import SpecCatalog
-from hdmf.container import Container
+from hdmf.container import Container, Data
 from hdmf.testing import TestCase
 
 from h5py import SoftLink, HardLink, ExternalLink, File
@@ -2379,3 +2379,155 @@ class TestExport(TestCase):
             read_foofile = read_io.read()
             self.assertEqual(read_foofile.container_source, self.paths[1])
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
+
+    def test_export_dset_refs(self):
+        """Test that exporting a written container with a dataset of references works."""
+        bazs = []
+        num_bazs = 10
+        for i in range(num_bazs):
+            bazs.append(Baz(name='baz%d' % i))
+        baz_data = BazData(name='baz_data1', data=bazs)
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+
+        with HDF5IO(self.paths[0], manager=_get_baz_manager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=_get_baz_manager(), mode='r') as read_io:
+            read_bucket1 = read_io.read()
+
+            # NOTE: reference IDs might be the same between two identical files
+            # append a Baz. this should change the reference IDs on export
+            new_baz = Baz(name='baz000')
+            read_bucket1.bazs.insert(0, new_baz)
+            new_baz.parent = read_bucket1
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_bucket1)
+
+        with HDF5IO(self.paths[1], manager=_get_baz_manager(), mode='r') as read_io:
+            read_bucket2 = read_io.read()
+
+            # remove and check the appended child, then compare the read container with the original
+            read_new_baz = read_bucket2.bazs.pop(0)
+            read_bucket2._remove_child(read_new_baz)
+            self.assertContainerEqual(new_baz, read_new_baz, ignore_hdmf_attrs=True)
+
+            self.assertContainerEqual(bucket, read_bucket2, ignore_name=True, ignore_hdmf_attrs=True)
+            for i in range(num_bazs):
+                self.assertIs(read_bucket2.baz_data.data[i], read_bucket2.bazs[i])
+
+
+class TestDatasetRefs(TestCase):
+
+    def test_roundtrip(self):
+        self.path = get_temp_filepath()
+        bazs = []
+        num_bazs = 10
+        for i in range(num_bazs):
+            bazs.append(Baz(name='baz%d' % i))
+        baz_data = BazData(name='baz_data1', data=bazs)
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+
+        with HDF5IO(self.path, manager=_get_baz_manager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.path, manager=_get_baz_manager(), mode='r') as read_io:
+            read_bucket = read_io.read()
+
+            self.assertContainerEqual(bucket, read_bucket, ignore_name=True)
+            for i in range(num_bazs):
+                self.assertIs(read_bucket.baz_data.data[i], read_bucket.bazs[i])
+
+
+class Baz(Container):
+
+    pass
+
+
+class BazData(Data):
+
+    pass
+
+
+class BazBucket(Container):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this bucket'},
+            {'name': 'bazs', 'type': list, 'doc': 'the Baz objects in this bucket'},
+            {'name': 'baz_data', 'type': BazData, 'doc': 'dataset of Baz references'})
+    def __init__(self, **kwargs):
+        name, bazs, baz_data = getargs('name', 'bazs', 'baz_data', kwargs)
+        super().__init__(name=name)
+        self.__bazs = bazs
+        for b in self.__bazs:
+            b.parent = self
+        self.__baz_data = baz_data
+        self.__baz_data.parent = self
+
+    @property
+    def bazs(self):
+        return self.__bazs
+
+    @property
+    def baz_data(self):
+        return self.__baz_data
+
+
+def _get_baz_manager():
+    baz_spec = GroupSpec(
+        doc='A test group specification with a data type',
+        data_type_def='Baz',
+    )
+
+    baz_data_spec = DatasetSpec(
+        doc='A test dataset of references specification with a data type',
+        name='baz_data',
+        data_type_def='BazData',
+        dtype=RefSpec('Baz', 'object'),
+        shape=[None],
+    )
+
+    baz_holder_spec = GroupSpec(
+        doc='group of bazs',
+        name='bazs',
+        groups=[GroupSpec(doc='Baz', data_type_inc='Baz', quantity=ONE_OR_MANY)],
+    )
+
+    baz_bucket_spec = GroupSpec(
+        doc='A test group specification for a data type containing data type',
+        data_type_def='BazBucket',
+        groups=[baz_holder_spec],
+        datasets=[DatasetSpec(doc='doc', data_type_inc='BazData')],
+    )
+
+    spec_catalog = SpecCatalog()
+    spec_catalog.register_spec(baz_spec, 'test.yaml')
+    spec_catalog.register_spec(baz_data_spec, 'test.yaml')
+    spec_catalog.register_spec(baz_bucket_spec, 'test.yaml')
+
+    namespace = SpecNamespace(
+        'a test namespace',
+        CORE_NAMESPACE,
+        [{'source': 'test.yaml'}],
+        version='0.1.0',
+        catalog=spec_catalog)
+
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+
+    type_map = TypeMap(namespace_catalog)
+    type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
+    type_map.register_container_type(CORE_NAMESPACE, 'BazData', BazData)
+    type_map.register_container_type(CORE_NAMESPACE, 'BazBucket', BazBucket)
+
+    class BazBucketMapper(ObjectMapper):
+        def __init__(self, spec):
+            super().__init__(spec)
+            baz_holder_spec = spec.get_group('bazs')
+            self.unmap(baz_holder_spec)
+            baz_spec = baz_holder_spec.get_data_type('Baz')
+            self.map_spec('bazs', baz_spec)
+
+    type_map.register_map(BazBucket, BazBucketMapper)
+
+    manager = BuildManager(type_map)
+    return manager

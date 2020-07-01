@@ -606,9 +606,11 @@ class HDF5IO(HDMFIO):
                 target_builder = self.__read_dataset(target)
                 self.__set_built(target.file.filename, target.id, target_builder)
                 if isinstance(scalar, RegionReference):
-                    kwargs['data'] = RegionBuilder(scalar, target_builder)
+                    d = RegionBuilder(scalar, target_builder)
                 else:
-                    kwargs['data'] = ReferenceBuilder(target_builder)
+                    d = ReferenceBuilder(target_builder)
+                kwargs['data'] = d
+                kwargs['dtype'] = d.dtype
             else:
                 kwargs["data"] = scalar
         elif ndims == 1:
@@ -619,12 +621,15 @@ class HDF5IO(HDMFIO):
                     d = h5obj
                 elif isinstance(elem1, RegionReference):  # read list of references
                     d = BuilderH5RegionDataset(h5obj, self)
+                    kwargs['dtype'] = d.dtype
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
+                    kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':    # table
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
+                kwargs['dtype'] = d.dtype
             else:
                 d = h5obj
             kwargs["data"] = d
@@ -873,7 +878,7 @@ class HDF5IO(HDMFIO):
         if self.get_written(builder):
             group = parent[builder.name]
         else:
-            group = parent.create_group(builder.name)
+            group = parent.create_group(builder.name, track_order=True)
         # write all groups
         subgroups = builder.groups
         if subgroups:
@@ -1027,11 +1032,15 @@ class HDF5IO(HDMFIO):
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                 self.__set_written(builder)
-                self.logger.debug("Queueing set attribute on dataset '%s' containing references. attributes: %s"
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                  "object references. attributes: %s"
                                   % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
+                    self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
                     ret = list()
                     for item in data:
                         new_item = list(item)
@@ -1054,11 +1063,15 @@ class HDF5IO(HDMFIO):
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
                 self.__set_written(builder)
-                self.logger.debug("Queueing set attribute on dataset '%s' containing a region reference. "
-                                  "attributes: %s" % (name, list(attributes.keys())))
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing a "
+                                  "region reference. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
+                    self.logger.debug("Resolving region reference and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
                     ref = self.__get_ref(data.builder, data.region)
                     dset = parent[name]
                     dset[()] = ref
@@ -1067,11 +1080,15 @@ class HDF5IO(HDMFIO):
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
                 self.__set_written(builder)
-                self.logger.debug("Queueing set attribute on dataset '%s' containing an object reference. "
-                                  "attributes: %s" % (name, list(attributes.keys())))
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing an "
+                                  "object reference. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
+                    self.logger.debug("Resolving object reference and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
                     ref = self.__get_ref(data.builder)
                     dset = parent[name]
                     dset[()] = ref
@@ -1082,11 +1099,15 @@ class HDF5IO(HDMFIO):
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
                     self.__set_written(builder)
-                    self.logger.debug("Queueing set attribute on dataset '%s' containing region references. "
-                                      "attributes: %s" % (name, list(attributes.keys())))
+                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                      "region references. attributes: %s"
+                                      % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
+                        self.logger.debug("Resolving region references and setting attribute on dataset '%s' "
+                                          "containing attributes: %s"
+                                          % (name, list(attributes.keys())))
                         refs = list()
                         for item in data:
                             refs.append(self.__get_ref(item.builder, item.region))
@@ -1097,11 +1118,15 @@ class HDF5IO(HDMFIO):
                 else:
                     dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
                     self.__set_written(builder)
-                    self.logger.debug("Queueing set attribute on dataset '%s' containing object references. "
-                                      "attributes: %s" % (name, list(attributes.keys())))
+                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                      "object references. attributes: %s"
+                                      % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
+                        self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
+                                          "containing attributes: %s"
+                                          % (name, list(attributes.keys())))
                         refs = list()
                         for item in data:
                             refs.append(self.__get_ref(item))
