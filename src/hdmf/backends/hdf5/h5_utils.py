@@ -169,6 +169,10 @@ class AbstractH5TableDataset(DatasetOfReferences):
     def resolve(self, manager):
         return self[0:len(self)]
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
 
 class AbstractH5ReferenceDataset(DatasetOfReferences):
 

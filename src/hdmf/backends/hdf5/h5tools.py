@@ -625,11 +625,11 @@ class HDF5IO(HDMFIO):
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
-            elif h5obj.dtype.kind == 'V':    # table
+            elif h5obj.dtype.kind == 'V':    # table / compound data type
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
-                kwargs['dtype'] = d.dtype
+                kwargs['dtype'] = HDF5IO.__compound_dtype_to_list(h5obj.dtype, d.dtype)
             else:
                 d = h5obj
             kwargs["data"] = d
@@ -637,6 +637,13 @@ class HDF5IO(HDMFIO):
             kwargs["data"] = h5obj
         ret = DatasetBuilder(name, **kwargs)
         self.__set_written(ret)
+        return ret
+
+    @classmethod
+    def __compound_dtype_to_list(cls, h5obj_dtype, dset_dtype):
+        ret = []
+        for name, dtype in zip(h5obj_dtype.fields, dset_dtype):
+            ret.append({'name': name, 'dtype': dtype})
         return ret
 
     def __read_attrs(self, h5obj):
@@ -1355,6 +1362,8 @@ class HDF5IO(HDMFIO):
             return self.__is_ref(dtype.dtype)
         if isinstance(dtype, RefSpec):
             return True
+        if isinstance(dtype, dict):  # may be dict from reading a compound dataset
+            return self.__is_ref(dtype['dtype'])
         if isinstance(dtype, str):
             return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
         return False
