@@ -885,7 +885,7 @@ class HDF5IO(HDMFIO):
         if self.get_written(builder):
             group = parent[builder.name]
         else:
-            group = parent.create_group(builder.name, track_order=True)
+            group = parent.create_group(builder.name)
         # write all groups
         subgroups = builder.groups
         if subgroups:

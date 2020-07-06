@@ -36,33 +36,33 @@ class FooFile(Container):
         buckets, foo_link, foofile_data, foo_ref_attr = getargs('buckets', 'foo_link', 'foofile_data',
                                                                 'foo_ref_attr', kwargs)
         super().__init__(name=ROOT_NAME)  # name is not used - FooFile should be the root container
-        self.__buckets = buckets
-        for f in self.__buckets:
+        self.__buckets = {b.name: b for b in buckets}  # note: collections of groups are unordered in HDF5
+        for f in buckets:
             f.parent = self
         self.__foo_link = foo_link
         self.__foofile_data = foofile_data
         self.__foo_ref_attr = foo_ref_attr
 
     def __eq__(self, other):
-        return (set(self.buckets) == set(other.buckets)
+        return (self.buckets == other.buckets
                 and self.foo_link == other.foo_link
                 and self.foofile_data == other.foofile_data)
 
     def __str__(self):
-        foo_str = "[" + ",".join(str(f) for f in self.buckets) + "]"
-        return ('buckets=%s, foo_link=%s, foofile_data=%s' % (foo_str, self.foo_link, self.foofile_data))
+        return ('buckets=%s, foo_link=%s, foofile_data=%s' % (self.buckets, self.foo_link, self.foofile_data))
 
     @property
     def buckets(self):
         return self.__buckets
 
     def add_bucket(self, bucket):
-        self.__buckets.append(bucket)
+        self.__buckets[bucket.name] = bucket
         bucket.parent = self
 
-    def remove_bucket(self, bucket):
-        self.__buckets.remove(bucket)
+    def remove_bucket(self, bucket_name):
+        bucket = self.__buckets.pop(bucket_name)
         self._remove_child(bucket)
+        return bucket
 
     @property
     def foo_link(self):
@@ -814,7 +814,7 @@ class TestRoundTrip(TestCase):
     def test_roundtrip_basic(self):
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -822,12 +822,12 @@ class TestRoundTrip(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
-            self.assertListEqual(foofile.buckets[0].foos[0].my_data,
-                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_roundtrip_empty_dataset(self):
         foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -835,10 +835,10 @@ class TestRoundTrip(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
-            self.assertListEqual([], read_foofile.buckets[0].foos[0].my_data[:].tolist())
+            self.assertListEqual([], read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_roundtrip_empty_group(self):
-        foobucket = FooBucket('test_bucket', [])
+        foobucket = FooBucket('bucket1', [])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -846,7 +846,7 @@ class TestRoundTrip(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
-            self.assertListEqual([], read_foofile.buckets[0].foos)
+            self.assertDictEqual({}, read_foofile.buckets['bucket1'].foos)
 
 
 class TestHDF5IO(TestCase):
@@ -856,7 +856,7 @@ class TestHDF5IO(TestCase):
         self.path = get_temp_filepath()
 
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         self.foofile = FooFile([foobucket])
 
         self.file_obj = None
@@ -897,7 +897,7 @@ class TestCacheSpec(TestCase):
     def test_cache_spec(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foobucket = FooBucket('bucket1', [foo1, foo2])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -933,7 +933,7 @@ class TestNoCacheSpec(TestCase):
         # Setup all the data we need
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foobucket = FooBucket('bucket1', [foo1, foo2])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -950,7 +950,7 @@ class TestMultiWrite(TestCase):
         self.path = get_temp_filepath()
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foobucket = FooBucket('bucket1', [foo1, foo2])
         self.foofile = FooFile([foobucket])
 
     def tearDown(self):
@@ -965,8 +965,7 @@ class TestMultiWrite(TestCase):
         # append new container to in-memory container
         foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
         new_bucket1 = FooBucket('new_bucket1', [foo3])
-        self.foofile.buckets.append(new_bucket1)
-        new_bucket1.parent = self.foofile
+        self.foofile.add_bucket(new_bucket1)
 
         # write to same file with same manager, overwriting existing file
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -977,10 +976,7 @@ class TestMultiWrite(TestCase):
         with HDF5IO(self.path, manager=new_manager, mode='r') as io:
             read_foofile = io.read()
             self.assertEqual(len(read_foofile.buckets), 2)
-            for bucket in read_foofile.buckets:
-                if bucket.name == 'new_bucket1':
-                    break
-            self.assertContainerEqual(bucket, new_bucket1)
+            self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
 
     def test_append_bucket(self):
         """Test appending a container to a file."""
@@ -994,8 +990,7 @@ class TestMultiWrite(TestCase):
         with HDF5IO(self.path, manager=new_manager, mode='a') as io:
             read_foofile = io.read()
             # append to read container and call write
-            read_foofile.buckets.append(new_bucket1)
-            new_bucket1.parent = read_foofile
+            read_foofile.add_bucket(new_bucket1)
             io.write(read_foofile)
 
         # check that new bucket was written
@@ -1003,10 +998,8 @@ class TestMultiWrite(TestCase):
         with HDF5IO(self.path, manager=new_manager2, mode='r') as io:
             read_foofile = io.read()
             self.assertEqual(len(read_foofile.buckets), 2)
-            for bucket in read_foofile.buckets:
-                if bucket.name == 'new_bucket1':
-                    break
-            self.assertContainerEqual(bucket, new_bucket1)
+            self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
+
 
     def test_append_bucket_double_write(self):
         """Test using the same IO object to append a container to a file twice."""
@@ -1022,13 +1015,11 @@ class TestMultiWrite(TestCase):
         with HDF5IO(self.path, manager=new_manager, mode='a') as io:
             read_foofile = io.read()
             # append to read container and call write
-            read_foofile.buckets.append(new_bucket1)
-            new_bucket1.parent = read_foofile
+            read_foofile.add_bucket(new_bucket1)
             io.write(read_foofile)
 
             # append to read container again and call write again
-            read_foofile.buckets.append(new_bucket2)
-            new_bucket2.parent = read_foofile
+            read_foofile.add_bucket(new_bucket2)
             io.write(read_foofile)
 
         # check that both new buckets were written
@@ -1036,16 +1027,8 @@ class TestMultiWrite(TestCase):
         with HDF5IO(self.path, manager=new_manager2, mode='r') as io:
             read_foofile = io.read()
             self.assertEqual(len(read_foofile.buckets), 3)
-
-            for bucket in read_foofile.buckets:
-                if bucket.name == 'new_bucket1':
-                    break
-            self.assertContainerEqual(bucket, new_bucket1)
-
-            for bucket in read_foofile.buckets:
-                if bucket.name == 'new_bucket2':
-                    break
-            self.assertContainerEqual(bucket, new_bucket2)
+            self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
+            self.assertContainerEqual(read_foofile.buckets['new_bucket2'], new_bucket2)
 
 
 class HDF5IOMultiFileTest(TestCase):
@@ -1078,7 +1061,7 @@ class HDF5IOMultiFileTest(TestCase):
     def test_copy_file_with_external_links(self):
         # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
+        bucket1 = FooBucket('bucket1', [foo1])
         foofile1 = FooFile(buckets=[bucket1])
 
         # Write the first file
@@ -1086,8 +1069,8 @@ class HDF5IOMultiFileTest(TestCase):
 
         # Create the second file
         read_foofile1 = self.io[0].read()
-        foo2 = Foo('foo2', read_foofile1.buckets[0].foos[0].my_data, "I am foo2", 34, 6.28)
-        bucket2 = FooBucket('test_bucket2', [foo2])
+        foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 34, 6.28)
+        bucket2 = FooBucket('bucket2', [foo2])
         foofile2 = FooFile(buckets=[bucket2])
         # Write the second file
         self.io[1].write(foofile2)
@@ -1107,13 +1090,13 @@ class HDF5IOMultiFileTest(TestCase):
         # Test that everything is working as expected
         # Confirm that our original data file is correct
         f1 = File(self.paths[0], 'r')
-        self.assertIsInstance(f1.get('/buckets/test_bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
+        self.assertIsInstance(f1.get('/buckets/bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
         # Confirm that we successfully created and External Link in our second file
         f2 = File(self.paths[1], 'r')
-        self.assertIsInstance(f2.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
+        self.assertIsInstance(f2.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
         # Confirm that we successfully resolved the External Link when we copied our second file
         f3 = File(self.paths[2], 'r')
-        self.assertIsInstance(f3.get('/buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
+        self.assertIsInstance(f3.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
 
 
 class TestCloseLinks(TestCase):
@@ -1141,7 +1124,7 @@ class TestCloseLinks(TestCase):
     def test_close_file_with_links(self):
         # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
+        bucket1 = FooBucket('bucket1', [foo1])
         foofile1 = FooFile(buckets=[bucket1])
 
         # Write the first file
@@ -1152,7 +1135,7 @@ class TestCloseLinks(TestCase):
         manager = _get_manager()  # use the same manager for read and write so that links work
         with HDF5IO(self.path1, mode='r', manager=manager) as read_io:
             read_foofile1 = read_io.read()
-            foofile2 = FooFile(foo_link=read_foofile1.buckets[0].foos[0])  # cross-file link
+            foofile2 = FooFile(foo_link=read_foofile1.buckets['bucket1'].foos['foo1'])  # cross-file link
 
             # Write the second file
             with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
@@ -1172,7 +1155,7 @@ class TestCloseLinks(TestCase):
     def test_double_close_file_with_links(self):
         # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
+        bucket1 = FooBucket('bucket1', [foo1])
         foofile1 = FooFile(buckets=[bucket1])
 
         # Write the first file
@@ -1183,7 +1166,7 @@ class TestCloseLinks(TestCase):
         manager = _get_manager()  # use the same manager for read and write so that links work
         with HDF5IO(self.path1, mode='r', manager=manager) as read_io:
             read_foofile1 = read_io.read()
-            foofile2 = FooFile(foo_link=read_foofile1.buckets[0].foos[0])  # cross-file link
+            foofile2 = FooFile(foo_link=read_foofile1.buckets['bucket1'].foos['foo1'])  # cross-file link
 
             # Write the second file
             with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
@@ -1301,7 +1284,7 @@ class HDF5IOReadData(TestCase):
     def setUp(self):
         self.path = get_temp_filepath()
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
+        bucket1 = FooBucket('bucket1', [foo1])
         self.foofile1 = FooFile(buckets=[bucket1])
 
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as temp_io:
@@ -1327,8 +1310,8 @@ class HDF5IOReadData(TestCase):
                                        "Cannot read from file %s in mode 'w'. Please use mode 'r', 'r+', or 'a'."
                                        % self.path):
                 read_foofile1 = io.read()
-                self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
-                                     read_foofile1.buckets[0].foos[0].my_data[:].tolist())
+                self.assertListEqual(self.foofile1.buckets['bucket1'].foos['foo1'].my_data,
+                                     read_foofile1.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
 
 class HDF5IOWriteNoFile(TestCase):
@@ -1336,7 +1319,7 @@ class HDF5IOWriteNoFile(TestCase):
 
     def setUp(self):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
+        bucket1 = FooBucket('bucket1', [foo1])
         self.foofile1 = FooFile(buckets=[bucket1])
         self.path = 'test_write_nofile.h5'
 
@@ -1362,8 +1345,8 @@ class HDF5IOWriteNoFile(TestCase):
 
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             read_foofile = io.read()
-            self.assertListEqual(self.foofile1.buckets[0].foos[0].my_data,
-                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
+            self.assertListEqual(self.foofile1.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
 
 class HDF5IOWriteFileExists(TestCase):
@@ -1373,11 +1356,11 @@ class HDF5IOWriteFileExists(TestCase):
         self.path = get_temp_filepath()
 
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [foo1])
+        bucket1 = FooBucket('bucket1', [foo1])
         self.foofile1 = FooFile(buckets=[bucket1])
 
         foo2 = Foo('foo2', [0, 1, 2, 3, 4], "I am foo2", 17, 3.14)
-        bucket2 = FooBucket('test_bucket2', [foo2])
+        bucket2 = FooBucket('bucket2', [foo2])
         self.foofile2 = FooFile(buckets=[bucket2])
 
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
@@ -1414,8 +1397,8 @@ class HDF5IOWriteFileExists(TestCase):
 
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             read_foofile = io.read()
-            self.assertListEqual(self.foofile2.buckets[0].foos[0].my_data,
-                                 read_foofile.buckets[0].foos[0].my_data[:].tolist())
+            self.assertListEqual(self.foofile2.buckets['bucket2'].foos['foo2'].my_data,
+                                 read_foofile.buckets['bucket2'].foos['foo2'].my_data[:].tolist())
 
     def test_write_r(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
@@ -1432,7 +1415,7 @@ class TestWritten(TestCase):
         self.path = get_temp_filepath()
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        foobucket = FooBucket('bucket1', [foo1, foo2])
         self.foofile = FooFile([foobucket])
 
     def tearDown(self):
@@ -1466,7 +1449,7 @@ class H5DataIOValid(TestCase):
         self.paths = [get_temp_filepath(), ]
 
         self.foo1 = Foo('foo1', H5DataIO([1, 2, 3, 4, 5]), "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('test_bucket1', [self.foo1])
+        bucket1 = FooBucket('bucket1', [self.foo1])
         foofile1 = FooFile(buckets=[bucket1])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as io:
@@ -1484,17 +1467,18 @@ class H5DataIOValid(TestCase):
         """Test that h5py.H5Dataset.id.valid works as expected"""
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as io:
             read_foofile1 = io.read()
-            self.assertTrue(read_foofile1.buckets[0].foos[0].my_data.id.valid)
+            self.assertTrue(read_foofile1.buckets['bucket1'].foos['foo1'].my_data.id.valid)
 
-        self.assertFalse(read_foofile1.buckets[0].foos[0].my_data.id.valid)
+        self.assertFalse(read_foofile1.buckets['bucket1'].foos['foo1'].my_data.id.valid)
 
     def test_link(self):
         """Test that wrapping of linked data within H5DataIO """
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as io:
             read_foofile1 = io.read()
 
-            self.foo2 = Foo('foo2', H5DataIO(data=read_foofile1.buckets[0].foos[0].my_data), "I am foo2", 17, 3.14)
-            bucket2 = FooBucket('test_bucket2', [self.foo2])
+            self.foo2 = Foo('foo2', H5DataIO(data=read_foofile1.buckets['bucket1'].foos['foo1'].my_data),
+                            "I am foo2", 17, 3.14)
+            bucket2 = FooBucket('bucket2', [self.foo2])
             foofile2 = FooFile(buckets=[bucket2])
 
             self.paths.append(get_temp_filepath())
@@ -1538,7 +1522,7 @@ class H5DataIOValid(TestCase):
         # re-open the file with the data linking to other file (still closed)
         with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as io:
             read_foofile2 = io.read()
-            read_foo2 = read_foofile2.buckets[0].foos[0]
+            read_foo2 = read_foofile2.buckets['bucket2'].foos['foo2']
 
             # note that read_foo2 dataset does not have an attribute 'valid'
             self.assertEqual(len(read_foo2.my_data), 5)  # test len
@@ -1638,7 +1622,7 @@ class TestBuildWriteLinkToLink(TestCase):
     def test_external_link_to_external_link(self):
         """Test writing a file with external links to external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -1647,7 +1631,8 @@ class TestBuildWriteLinkToLink(TestCase):
         manager = _get_manager()
         with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
-            foofile2 = FooFile(foo_link=read_foofile.buckets[0].foos[0])  # make external link to existing group
+            # make external link to existing group
+            foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
 
             with HDF5IO(self.paths[1], manager=manager, mode='w') as write_io:
                 write_io.write(foofile2)
@@ -1670,7 +1655,7 @@ class TestBuildWriteLinkToLink(TestCase):
     def test_external_link_to_soft_link(self):
         """Test writing a file with external links to external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foo_link=foo1)  # create soft link
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -1764,7 +1749,7 @@ class TestLoadNamespaces(TestCase):
         """Test that reading a file with a cached namespace and None version works but raises a warning."""
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -1791,7 +1776,7 @@ class TestLoadNamespaces(TestCase):
         """Test that reading a file with a cached, unversioned version works but raises a warning."""
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -1819,7 +1804,7 @@ class TestLoadNamespaces(TestCase):
 
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -1844,7 +1829,7 @@ class TestLoadNamespaces(TestCase):
 
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -1867,7 +1852,7 @@ class TestLoadNamespaces(TestCase):
 
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -1888,7 +1873,7 @@ class TestLoadNamespaces(TestCase):
 
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
@@ -1927,7 +1912,7 @@ class TestExport(TestCase):
     def test_basic(self):
         """Test that exporting a written container works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -1944,13 +1929,13 @@ class TestExport(TestCase):
             read_foofile = read_io.read()
             self.assertEqual(read_foofile.container_source, self.paths[1])
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
-            self.assertEqual(os.path.abspath(read_foofile.buckets[0].foos[0].my_data.file.filename),
+            self.assertEqual(os.path.abspath(read_foofile.buckets['bucket1'].foos['foo1'].my_data.file.filename),
                              self.paths[1])
 
     def test_basic_container(self):
         """Test that exporting a written container, passing in the container arg, works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -1973,7 +1958,7 @@ class TestExport(TestCase):
     def test_container_part(self):
         """Test that exporting a part of a written container raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -1986,12 +1971,12 @@ class TestExport(TestCase):
                 msg = ("The provided container must be the root of the hierarchy of the source used to read the "
                        "container.")
                 with self.assertRaisesWith(ValueError, msg):
-                    export_io.export(src_io=read_io, container=read_foofile.buckets[0])
+                    export_io.export(src_io=read_io, container=read_foofile.buckets['bucket1'])
 
     def test_container_unknown(self):
         """Test that exporting a part of a written container raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2008,7 +1993,7 @@ class TestExport(TestCase):
     def test_cache_spec(self):
         """Test that exporting with write_args set works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2030,7 +2015,7 @@ class TestExport(TestCase):
     def test_soft_link_group(self):
         """Test that exporting a written file with soft linked groups keeps links within the file."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foo_link=foo1)
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2051,7 +2036,7 @@ class TestExport(TestCase):
     def test_soft_link_dataset(self):
         """Test that exporting a written file with soft linked datasets keeps links within the file."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foofile_data=foo1.my_data)
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2069,7 +2054,7 @@ class TestExport(TestCase):
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as read_io:
@@ -2078,7 +2063,8 @@ class TestExport(TestCase):
         manager = _get_manager()
         with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
-            foofile2 = FooFile(foo_link=read_foofile.buckets[0].foos[0])  # make external link to existing group
+            # make external link to existing group
+            foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
 
             with HDF5IO(self.paths[1], manager=manager, mode='w') as write_io:
                 write_io.write(foofile2)
@@ -2099,7 +2085,7 @@ class TestExport(TestCase):
     def test_external_link_dataset(self):
         """Test that exporting a written file with external linked datasets maintains the links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foofile_data=[1, 2, 3])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2125,7 +2111,7 @@ class TestExport(TestCase):
     def test_external_link_link(self):
         """Test that exporting a written file with external links to external links maintains the links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2134,7 +2120,8 @@ class TestExport(TestCase):
         manager = _get_manager()
         with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
-            foofile2 = FooFile(foo_link=read_foofile.buckets[0].foos[0])  # make external link to existing group
+            # make external link to existing group
+            foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
 
             with HDF5IO(self.paths[1], manager=manager, mode='w') as write_io:
                 write_io.write(foofile2)
@@ -2163,7 +2150,7 @@ class TestExport(TestCase):
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foo_ref_attr=foo1)
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as read_io:
@@ -2177,7 +2164,7 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
-            self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets[0].foos[0])
+            self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets['bucket1'].foos['foo1'])
 
         with File(self.paths[1], 'r') as f:
             self.assertIsInstance(f.attrs['foo_ref_attr'], h5py.Reference)
@@ -2185,7 +2172,7 @@ class TestExport(TestCase):
     def test_pop_data(self):
         """Test that exporting a written container after removing an element from it works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2193,7 +2180,7 @@ class TestExport(TestCase):
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
             read_foofile = read_io.read()
-            read_foofile.remove_bucket(read_foofile.buckets[0])  # remove child group
+            read_foofile.remove_bucket('bucket1')  # remove child group
 
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
@@ -2202,7 +2189,7 @@ class TestExport(TestCase):
             read_foofile2 = read_io.read()
 
             # make sure the read foofile has no buckets
-            self.assertListEqual(read_foofile2.buckets, [])
+            self.assertDictEqual(read_foofile2.buckets, {})
 
         # check that file size of file 2 is smaller
         self.assertTrue(os.path.getsize(self.paths[0]) > os.path.getsize(self.paths[1]))
@@ -2210,7 +2197,7 @@ class TestExport(TestCase):
     def test_append_data(self):
         """Test that exporting a written container after adding to it works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2221,8 +2208,8 @@ class TestExport(TestCase):
 
             # create a foo with link to existing dataset my_data, add the foo to new foobucket
             # this should make a soft link within the exported file
-            foo2 = Foo('foo2', read_foofile.buckets[0].foos[0].my_data, "I am foo2", 17, 3.14)
-            foobucket2 = FooBucket('test_bucket2', [foo2])
+            foo2 = Foo('foo2', read_foofile.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
             read_foofile.add_bucket(foobucket2)
 
             # also add link from foofile to new foo2 container
@@ -2241,13 +2228,11 @@ class TestExport(TestCase):
             self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile2 = read_io.read()
 
-            self.assertIs(read_foofile2.buckets[0].foos[0].my_data, read_foofile2.buckets[1].foos[0].my_data)
-            self.assertIs(read_foofile2.buckets[0].foos[0].my_data, read_foofile2.foofile_data)
-            for bucket in read_foofile2.buckets:
-                if bucket.name == 'test_bucket2':
-                    break
-            self.assertIs(read_foofile2.foo_link, bucket.foos[0])
-            self.assertIs(read_foofile2.foo_ref_attr, bucket.foos[0])
+            self.assertIs(read_foofile2.buckets['bucket1'].foos['foo1'].my_data,
+                          read_foofile2.buckets['bucket2'].foos['foo2'].my_data)
+            self.assertIs(read_foofile2.buckets['bucket1'].foos['foo1'].my_data, read_foofile2.foofile_data)
+            self.assertIs(read_foofile2.foo_link, read_foofile2.buckets['bucket2'].foos['foo2'])
+            self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets['bucket2'].foos['foo2'])
 
         with File(self.paths[1], 'r') as f:
             self.assertEqual(f['foofile_data'].file.filename, self.paths[1])
@@ -2256,7 +2241,7 @@ class TestExport(TestCase):
     def test_append_external_link_data(self):
         """Test that exporting a written container after adding a link with link_data=True creates external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2278,8 +2263,8 @@ class TestExport(TestCase):
 
                 # create a foo with link to existing dataset my_data (not in same file), add the foo to new foobucket
                 # this should make an external link within the exported file
-                foo2 = Foo('foo2', read_foofile1.buckets[0].foos[0].my_data, "I am foo2", 17, 3.14)
-                foobucket2 = FooBucket('test_bucket2', [foo2])
+                foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+                foobucket2 = FooBucket('bucket2', [foo2])
                 read_foofile2.add_bucket(foobucket2)
 
                 # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
@@ -2297,20 +2282,21 @@ class TestExport(TestCase):
                 self.ios.append(read_io2)  # track IO objects for tearDown
                 read_foofile4 = read_io2.read()
 
-                self.assertEqual(read_foofile4.buckets[0].foos[0].my_data, read_foofile3.buckets[0].foos[0].my_data)
-                self.assertEqual(read_foofile4.foofile_data, read_foofile3.buckets[0].foos[0].my_data)
+                self.assertEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                 read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
 
         with File(self.paths[2], 'r') as f:
-            self.assertEqual(f['buckets/test_bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[0])
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[0])
             self.assertEqual(f['foofile_data'].file.filename, self.paths[0])
-            self.assertIsInstance(f.get('buckets/test_bucket2/foo_holder/foo2/my_data', getlink=True),
+            self.assertIsInstance(f.get('buckets/bucket2/foo_holder/foo2/my_data', getlink=True),
                                   h5py.ExternalLink)
             self.assertIsInstance(f.get('foofile_data', getlink=True), h5py.ExternalLink)
 
     def test_append_external_link_copy_data(self):
         """Test that exporting a written container after adding a link with link_data=False copies the data."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2332,8 +2318,8 @@ class TestExport(TestCase):
 
                 # create a foo with link to existing dataset my_data (not in same file), add the foo to new foobucket
                 # this would normally make an external link but because link_data=False, data will be copied
-                foo2 = Foo('foo2', read_foofile1.buckets[0].foos[0].my_data, "I am foo2", 17, 3.14)
-                foobucket2 = FooBucket('test_bucket2', [foo2])
+                foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+                foobucket2 = FooBucket('bucket2', [foo2])
                 read_foofile2.add_bucket(foobucket2)
 
                 # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
@@ -2352,18 +2338,19 @@ class TestExport(TestCase):
                 read_foofile4 = read_io2.read()
 
                 # check that file can be read
-                self.assertNotEqual(read_foofile4.buckets[0].foos[0].my_data, read_foofile3.buckets[0].foos[0].my_data)
-                self.assertNotEqual(read_foofile4.foofile_data, read_foofile3.buckets[0].foos[0].my_data)
-                self.assertNotEqual(read_foofile4.foofile_data, read_foofile4.buckets[0].foos[0].my_data)
+                self.assertNotEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                    read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile4.buckets['bucket2'].foos['foo2'].my_data)
 
         with File(self.paths[2], 'r') as f:
-            self.assertEqual(f['buckets/test_bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
             self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
 
     def test_export_io(self):
         """Test that exporting a written container using HDF5IO.export_io works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('test_bucket', [foo1])
+        foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
         with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
@@ -2396,10 +2383,9 @@ class TestExport(TestCase):
             read_bucket1 = read_io.read()
 
             # NOTE: reference IDs might be the same between two identical files
-            # append a Baz. this should change the reference IDs on export
+            # adding a Baz with a smaller name should change the reference IDs on export
             new_baz = Baz(name='baz000')
-            read_bucket1.bazs.insert(0, new_baz)
-            new_baz.parent = read_bucket1
+            read_bucket1.add_baz(new_baz)
 
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_bucket1)
@@ -2408,13 +2394,13 @@ class TestExport(TestCase):
             read_bucket2 = read_io.read()
 
             # remove and check the appended child, then compare the read container with the original
-            read_new_baz = read_bucket2.bazs.pop(0)
-            read_bucket2._remove_child(read_new_baz)
+            read_new_baz = read_bucket2.remove_baz('baz000')
             self.assertContainerEqual(new_baz, read_new_baz, ignore_hdmf_attrs=True)
 
             self.assertContainerEqual(bucket, read_bucket2, ignore_name=True, ignore_hdmf_attrs=True)
             for i in range(num_bazs):
-                self.assertIs(read_bucket2.baz_data.data[i], read_bucket2.bazs[i])
+                baz_name = 'baz%d' % i
+                self.assertIs(read_bucket2.baz_data.data[i], read_bucket2.bazs[baz_name])
 
     def test_export_cpd_dset_refs(self):
         """Test that exporting a written container with a compound dataset with references works."""
@@ -2435,10 +2421,9 @@ class TestExport(TestCase):
             read_bucket1 = read_io.read()
 
             # NOTE: reference IDs might be the same between two identical files
-            # append a Baz. this should change the reference IDs on export
+            # adding a Baz with a smaller name should change the reference IDs on export
             new_baz = Baz(name='baz000')
-            read_bucket1.bazs.insert(0, new_baz)
-            new_baz.parent = read_bucket1
+            read_bucket1.add_baz(new_baz)
 
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_bucket1)
@@ -2447,14 +2432,14 @@ class TestExport(TestCase):
             read_bucket2 = read_io.read()
 
             # remove and check the appended child, then compare the read container with the original
-            read_new_baz = read_bucket2.bazs.pop(0)
-            read_bucket2._remove_child(read_new_baz)
+            read_new_baz = read_bucket2.remove_baz(new_baz.name)
             self.assertContainerEqual(new_baz, read_new_baz, ignore_hdmf_attrs=True)
 
             self.assertContainerEqual(bucket, read_bucket2, ignore_name=True, ignore_hdmf_attrs=True)
             for i in range(num_bazs):
+                baz_name = 'baz%d' % i
                 self.assertEqual(read_bucket2.baz_cpd_data.data[i][0], i)
-                self.assertIs(read_bucket2.baz_cpd_data.data[i][1], read_bucket2.bazs[i])
+                self.assertIs(read_bucket2.baz_cpd_data.data[i][1], read_bucket2.bazs[baz_name])
 
 
 class TestDatasetRefs(TestCase):
@@ -2476,7 +2461,8 @@ class TestDatasetRefs(TestCase):
 
             self.assertContainerEqual(bucket, read_bucket, ignore_name=True)
             for i in range(num_bazs):
-                self.assertIs(read_bucket.baz_data.data[i], read_bucket.bazs[i])
+                baz_name = 'baz%d' % i
+                self.assertIs(read_bucket.baz_data.data[i], read_bucket.bazs[baz_name])
 
 
 class TestCpdDatasetRefs(TestCase):
@@ -2501,8 +2487,9 @@ class TestCpdDatasetRefs(TestCase):
 
             self.assertContainerEqual(bucket, read_bucket, ignore_name=True)
             for i in range(num_bazs):
+                baz_name = 'baz%d' % i
                 self.assertEqual(read_bucket.baz_cpd_data.data[i][0], i)
-                self.assertIs(read_bucket.baz_cpd_data.data[i][1], read_bucket.bazs[i])
+                self.assertIs(read_bucket.baz_cpd_data.data[i][1], read_bucket.bazs[baz_name])
 
 
 class Baz(Container):
@@ -2529,8 +2516,8 @@ class BazBucket(Container):
     def __init__(self, **kwargs):
         name, bazs, baz_data, baz_cpd_data = getargs('name', 'bazs', 'baz_data', 'baz_cpd_data', kwargs)
         super().__init__(name=name)
-        self.__bazs = bazs
-        for b in self.__bazs:
+        self.__bazs = {b.name: b for b in bazs}  # note: collections of groups are unordered in HDF5
+        for b in bazs:
             b.parent = self
         self.__baz_data = baz_data
         if self.__baz_data is not None:
@@ -2550,6 +2537,15 @@ class BazBucket(Container):
     @property
     def baz_cpd_data(self):
         return self.__baz_cpd_data
+
+    def add_baz(self, baz):
+        self.__bazs[baz.name] = baz
+        baz.parent = self
+
+    def remove_baz(self, baz_name):
+        baz = self.__bazs.pop(baz_name)
+        self._remove_child(baz)
+        return baz
 
 
 def _get_baz_manager():
