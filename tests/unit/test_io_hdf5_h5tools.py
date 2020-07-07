@@ -1000,7 +1000,6 @@ class TestMultiWrite(TestCase):
             self.assertEqual(len(read_foofile.buckets), 2)
             self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
 
-
     def test_append_bucket_double_write(self):
         """Test using the same IO object to append a container to a file twice."""
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
