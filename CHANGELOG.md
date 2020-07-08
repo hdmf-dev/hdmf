@@ -5,7 +5,7 @@
 ### New features
 - Users can now call `HDF5IO.export` and `HDF5IO.export_io` to write data that was read from one source to a new HDF5
   file. Developers can implement the `export` method in classes that extend `HDMFIO` to customize the export
-  functionality. @rly (#388)
+  functionality. See https://hdmf.readthedocs.io/en/latest/export.html for more details. @rly (#388)
 - Users can use the new export functionality to read data from one source, modify the data in-memory, and then write the
   modified data to a new file. Modifications can include additions and removals. To facilitate removals,
   `AbstractContainer` contains a new `_remove_child` method and `BuildManager` contains a new `purge_outdated` method.

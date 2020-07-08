@@ -151,6 +151,7 @@ class BuildManager:
             self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s, export: %s)"
                               % (container.__class__.__name__, container.name, repr(container.container_source),
                                  repr(source), spec_ext is not None, export))
+            # the container_source is not set or checked when exporting
             if not export:
                 if container.container_source is None:
                     container.container_source = source

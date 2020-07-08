@@ -1103,16 +1103,6 @@ class TestCloseLinks(TestCase):
     def setUp(self):
         self.path1 = get_temp_filepath()
         self.path2 = get_temp_filepath()
-        import logging
-
-        logger = logging.getLogger()
-        logger.setLevel(logging.DEBUG)
-
-        ch = logging.FileHandler('test.log', mode='w')
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
 
     def tearDown(self):
         if self.path1 is not None:
@@ -1311,6 +1301,31 @@ class HDF5IOReadData(TestCase):
                 read_foofile1 = io.read()
                 self.assertListEqual(self.foofile1.buckets['bucket1'].foos['foo1'].my_data,
                                      read_foofile1.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
+
+class HDF5IOReadBuilderClosed(TestCase):
+    """Test if file exists but is closed, then read_builder raises an error. """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        temp_io = HDF5IO(self.path, mode='w')
+        temp_io.close()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+            del(self.io)
+
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_read_closed(self):
+        self.io = HDF5IO(self.path, mode='r')
+        self.io.close()
+        msg = "Cannot read data from closed HDF5 file '%s'" % self.path
+        with self.assertRaisesWith(UnsupportedOperation, msg):
+            self.io.read_builder()
 
 
 class HDF5IOWriteNoFile(TestCase):
@@ -1894,10 +1909,10 @@ class TestExport(TestCase):
 
     def setUp(self):
         self.paths = [
-            os.path.abspath('test1.h5'),  # get_temp_filepath()
-            os.path.abspath('test2.h5'),  # get_temp_filepath()
-            os.path.abspath('test3.h5'),  # get_temp_filepath()
-            os.path.abspath('test4.h5'),
+            get_temp_filepath(),
+            get_temp_filepath(),
+            get_temp_filepath(),
+            get_temp_filepath(),
         ]
         self.ios = []
 
@@ -1973,7 +1988,7 @@ class TestExport(TestCase):
                     export_io.export(src_io=read_io, container=read_foofile.buckets['bucket1'])
 
     def test_container_unknown(self):
-        """Test that exporting a part of a written container raises an error."""
+        """Test that exporting a container that did not come from the src_io object raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
@@ -1990,7 +2005,7 @@ class TestExport(TestCase):
                     export_io.export(src_io=read_io, container=dummy_file)
 
     def test_cache_spec(self):
-        """Test that exporting with write_args set works."""
+        """Test that exporting with cache_spec works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
@@ -2029,7 +2044,7 @@ class TestExport(TestCase):
             self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile2 = read_io.read()
 
-            # make sure the linked foobucket is within the same file
+            # make sure the linked group is within the same file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
 
     def test_soft_link_dataset(self):
@@ -2047,8 +2062,12 @@ class TestExport(TestCase):
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io)
 
-        with File(self.paths[1], 'r') as f:
-            self.assertEqual(f['foofile_data'].file.filename, self.paths[1])
+        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked dataset is within the same file
+            self.assertEqual(read_foofile2.foofile_data.file.filename, self.paths[1])
 
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
@@ -2079,6 +2098,7 @@ class TestExport(TestCase):
             self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile2 = read_io.read()
 
+            # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[0])
 
     def test_external_link_dataset(self):
@@ -2104,8 +2124,12 @@ class TestExport(TestCase):
             with HDF5IO(self.paths[2], mode='w') as export_io:
                 export_io.export(src_io=read_io)
 
-        with File(self.paths[2], 'r') as f:
-            self.assertEqual(f['foofile_data'].file.filename, self.paths[0])
+        with HDF5IO(self.paths[2], manager=_get_manager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked dataset is read from the first file
+            self.assertEqual(read_foofile2.foofile_data.file.filename, self.paths[0])
 
     def test_external_link_link(self):
         """Test that exporting a written file with external links to external links maintains the links."""
@@ -2144,6 +2168,7 @@ class TestExport(TestCase):
             self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile3 = read_io.read()
 
+            # make sure the linked group is read from the first file
             self.assertEqual(read_foofile3.foo_link.container_source, self.paths[0])
 
     def test_attr_reference(self):
@@ -2163,6 +2188,7 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
+            # make sure the attribute reference resolves to the container within the same file
             self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets['bucket1'].foos['foo1'])
 
         with File(self.paths[1], 'r') as f:
@@ -2194,7 +2220,7 @@ class TestExport(TestCase):
         self.assertTrue(os.path.getsize(self.paths[0]) > os.path.getsize(self.paths[1]))
 
     def test_append_data(self):
-        """Test that exporting a written container after adding to it works."""
+        """Test that exporting a written container after adding groups, links, and references to it works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
@@ -2227,10 +2253,17 @@ class TestExport(TestCase):
             self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile2 = read_io.read()
 
+            # test new soft link to dataset in file
             self.assertIs(read_foofile2.buckets['bucket1'].foos['foo1'].my_data,
                           read_foofile2.buckets['bucket2'].foos['foo2'].my_data)
-            self.assertIs(read_foofile2.buckets['bucket1'].foos['foo1'].my_data, read_foofile2.foofile_data)
+
+            # test new soft link to group in file
             self.assertIs(read_foofile2.foo_link, read_foofile2.buckets['bucket2'].foos['foo2'])
+
+            # test new soft link to new soft link to dataset in file
+            self.assertIs(read_foofile2.buckets['bucket1'].foos['foo1'].my_data, read_foofile2.foofile_data)
+
+            # test new attribute reference to new group in file
             self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets['bucket2'].foos['foo2'])
 
         with File(self.paths[1], 'r') as f:

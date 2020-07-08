@@ -90,7 +90,7 @@ class HDMFIO(metaclass=ABCMeta):
             src_io.manager.purge_outdated()
             bldr = src_io.manager.build(container, source=self.__source, export=True)
         else:
-            bldr = src_io.read_builder()  # TODO export=True needed?
+            bldr = src_io.read_builder()
         self.write_builder(builder=bldr, **write_args)
 
     @abstractmethod

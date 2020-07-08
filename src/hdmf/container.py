@@ -217,9 +217,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
             else:
                 if parent_container is None:
                     raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))
-                # TODO this assumes isinstance(parent_container, Proxy) but
-                # circular import if we try to do that. Proxy would need to move
-                # or Container extended with this functionality in build/map.py
+                # NOTE this assumes isinstance(parent_container, Proxy) but we get a circular import
+                # if we try to do that
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
                     parent_container.__children.append(self)

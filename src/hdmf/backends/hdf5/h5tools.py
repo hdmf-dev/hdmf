@@ -419,6 +419,8 @@ class HDF5IO(HDMFIO):
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
+        if not self.__file:
+            raise UnsupportedOperation("Cannot read data from closed HDF5 file '%s'" % self.source)
         f_builder = self.__read.get(self.__file)
         # ignore cached specs when reading builder
         ignore = set()
@@ -1011,7 +1013,7 @@ class HDF5IO(HDMFIO):
                 parent[name] = link
             # Copy the dataset
             # TODO add option for case where there are multiple links to the same dataset within a file:
-            # instead of copying the dset N times, copy it once and create soft links to it  within the file
+            # instead of copying the dset N times, copy it once and create soft links to it within the file
             else:
                 self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
                                   % (data.file.filename, data.name, parent.name, name))
