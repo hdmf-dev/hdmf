@@ -9,7 +9,7 @@ from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
 from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.io import UnsupportedOperation
+from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
@@ -946,7 +946,6 @@ class TestNoCacheSpec(TestCase):
 class TestMultiWrite(TestCase):
 
     def setUp(self):
-        self.manager = _get_manager()
         self.path = get_temp_filepath()
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
@@ -957,9 +956,66 @@ class TestMultiWrite(TestCase):
         if os.path.exists(self.path):
             os.remove(self.path)
 
-    def test_write_write_unwritten(self):
+    def test_double_write_new_manager(self):
+        """Test writing to a container in write mode twice using a new manager without changing the container."""
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    def test_double_write_same_manager(self):
+        """Test writing to a container in write mode twice using the same manager without changing the container."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    @unittest.skip('Functionality not yet supported')
+    def test_double_append_new_manager(self):
+        """Test writing to a container in append mode twice using a new manager without changing the container."""
+        with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    @unittest.skip('Functionality not yet supported')
+    def test_double_append_same_manager(self):
+        """Test writing to a container in append mode twice using the same manager without changing the container."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    def test_write_add_write(self):
         """Test writing a container, adding to the in-memory container, then overwriting the same file."""
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
             io.write(self.foofile)
 
         # append new container to in-memory container
@@ -968,41 +1024,41 @@ class TestMultiWrite(TestCase):
         self.foofile.add_bucket(new_bucket1)
 
         # write to same file with same manager, overwriting existing file
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
             io.write(self.foofile)
 
         # check that new bucket was written
-        new_manager = BuildManager(self.manager.type_map)
-        with HDF5IO(self.path, manager=new_manager, mode='r') as io:
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             read_foofile = io.read()
             self.assertEqual(len(read_foofile.buckets), 2)
             self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
 
-    def test_append_bucket(self):
+    def test_write_add_append_bucket(self):
         """Test appending a container to a file."""
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
             io.write(self.foofile)
 
         foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
         new_bucket1 = FooBucket('new_bucket1', [foo3])
 
-        new_manager = BuildManager(self.manager.type_map)
-        with HDF5IO(self.path, manager=new_manager, mode='a') as io:
+        # append to same file with same manager, overwriting existing file
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
             read_foofile = io.read()
             # append to read container and call write
             read_foofile.add_bucket(new_bucket1)
             io.write(read_foofile)
 
         # check that new bucket was written
-        new_manager2 = BuildManager(self.manager.type_map)
-        with HDF5IO(self.path, manager=new_manager2, mode='r') as io:
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             read_foofile = io.read()
             self.assertEqual(len(read_foofile.buckets), 2)
             self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
 
-    def test_append_bucket_double_write(self):
+    def test_write_add_append_double_write(self):
         """Test using the same IO object to append a container to a file twice."""
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
             io.write(self.foofile)
 
         foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
@@ -1010,8 +1066,8 @@ class TestMultiWrite(TestCase):
         foo4 = Foo('foo4', [10, 20], "I am foo4", 2, 0.1)
         new_bucket2 = FooBucket('new_bucket2', [foo4])
 
-        new_manager = BuildManager(self.manager.type_map)
-        with HDF5IO(self.path, manager=new_manager, mode='a') as io:
+        # append to same file with same manager, overwriting existing file
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
             read_foofile = io.read()
             # append to read container and call write
             read_foofile.add_bucket(new_bucket1)
@@ -1022,8 +1078,7 @@ class TestMultiWrite(TestCase):
             io.write(read_foofile)
 
         # check that both new buckets were written
-        new_manager2 = BuildManager(self.manager.type_map)
-        with HDF5IO(self.path, manager=new_manager2, mode='r') as io:
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
             read_foofile = io.read()
             self.assertEqual(len(read_foofile.buckets), 3)
             self.assertContainerEqual(read_foofile.buckets['new_bucket1'], new_bucket1)
@@ -2472,6 +2527,82 @@ class TestExport(TestCase):
                 baz_name = 'baz%d' % i
                 self.assertEqual(read_bucket2.baz_cpd_data.data[i][0], i)
                 self.assertIs(read_bucket2.baz_cpd_data.data[i][1], read_bucket2.bazs[baz_name])
+
+    def test_non_manager_container(self):
+        """Test that exporting with a src_io without a manager raises an error."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        class OtherIO(HDMFIO):
+
+            def read_builder(self):
+                pass
+
+            def write_builder(self, **kwargs):
+                pass
+
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        with OtherIO() as read_io:
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                msg = 'When a container is provided, src_io must have a non-None manager (BuildManager) property.'
+                with self.assertRaisesWith(ValueError, msg):
+                    export_io.export(src_io=read_io, container=foofile, write_args={'link_data': False})
+
+    def test_non_HDF5_src_link_data_true(self):
+        """Test that exporting with a src_io without a manager raises an error."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        class OtherIO(HDMFIO):
+
+            def __init__(self, manager):
+                super().__init__(manager=manager)
+
+            def read_builder(self):
+                pass
+
+            def write_builder(self, **kwargs):
+                pass
+
+            def open(self):
+                pass
+
+            def close(self):
+                pass
+
+        with OtherIO(manager=_get_manager()) as read_io:
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                msg = "Cannot export from non-HDF5 backend OtherIO to HDF5 with write argument link_data=True."
+                with self.assertRaisesWith(UnsupportedOperation, msg):
+                    export_io.export(src_io=read_io, container=foofile)
+
+    def test_wrong_mode(self):
+        """Test that exporting with a src_io without a manager raises an error."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], mode='r') as read_io:
+            with HDF5IO(self.paths[1], mode='a') as export_io:
+                msg = "Cannot export to file %s in mode 'a'. Please use mode 'w'." % self.paths[1]
+                with self.assertRaisesWith(UnsupportedOperation, msg):
+                    export_io.export(src_io=read_io)
 
 
 class TestDatasetRefs(TestCase):

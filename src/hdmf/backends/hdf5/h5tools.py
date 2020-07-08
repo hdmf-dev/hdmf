@@ -369,9 +369,9 @@ class HDF5IO(HDMFIO):
         src_io = getargs('src_io', kwargs)
         write_args, cache_spec = popargs('write_args', 'cache_spec', kwargs)
 
-        if not isinstance(src_io, HDF5IO) and write_args.get('link_data', False):
-            raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write_config "
-                                       "link_data=True.")
+        if not isinstance(src_io, HDF5IO) and write_args.get('link_data', True):
+            raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write argument "
+                                       "link_data=True." % src_io.__class__.__name__)
 
         write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
         ckwargs = kwargs.copy()
@@ -413,7 +413,7 @@ class HDF5IO(HDMFIO):
         try:
             return call_docval_func(super().read, kwargs)
         except UnsupportedOperation as e:
-            if str(e) == 'Cannot build data. There are no values.':
+            if str(e) == 'Cannot build data. There are no values.':  # pragma: no cover
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
                                            % (self.source, self.__mode))
 
@@ -822,6 +822,7 @@ class HDF5IO(HDMFIO):
             return cls.__dtypes.get(dtype['reftype'])
         elif isinstance(dtype, np.dtype):
             # NOTE: some dtypes may not be supported, but we need to support writing of read-in compound types
+            breakpoint()
             return dtype
         else:
             return np.dtype([(x['name'], cls.__resolve_dtype_helper__(x['dtype'])) for x in dtype])
