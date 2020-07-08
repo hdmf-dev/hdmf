@@ -62,6 +62,8 @@ class VectorData(Data):
         val = getargs('val', kwargs)
         self.append(val)
 
+    def get(self, key, **kwargs):
+        return super().get(key)
 
 @register_class('VectorIndex')
 class VectorIndex(Index):
@@ -682,7 +684,7 @@ class DynamicTable(Container):
                 ret['id'] = self.id.data[arg]
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
-                    ret[name] = col[arg]
+                    ret[name] = col.get(arg, df=df, **kwargs)
             # index with a python slice (or single integer) to select one or multiple rows
             elif isinstance(arg, slice):
                 ret = OrderedDict()
@@ -690,9 +692,11 @@ class DynamicTable(Container):
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        ret[name] = col[arg]
+                        #ret[name] = col[arg]
+                        ret[name] = col.get(arg, df=df, **kwargs)
                     else:
-                        currdata = col[arg]
+                        #currdata = col[arg]
+                        currdata = col.get(arg, df=df, **kwargs)
                         ret[name] = currdata
             # index by a list of ints, return multiple rows
             elif isinstance(arg, (tuple, list, np.ndarray)):
@@ -706,11 +710,12 @@ class DynamicTable(Container):
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        ret[name] = [x for x in col[arg]]
+                        ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
                     elif isinstance(col.data, np.ndarray):
-                        ret[name] = col[arg]
+                        #ret[name] = col[arg]
+                        ret[name] = col.get(arg, df=df, **kwargs)
                     else:
-                        ret[name] = [col[i] for i in arg]
+                        ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
             else:
                 raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
 
@@ -929,7 +934,7 @@ class DynamicTableRegion(VectorData):
     def __getitem__(self, arg):
         return self.get(arg)
 
-    def get(self, arg, index=False):
+    def get(self, arg, index=False, **kwargs):
         """
         Subset the DynamicTableRegion
 
@@ -950,7 +955,7 @@ class DynamicTableRegion(VectorData):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
             if not index:
-                ret = self.table[self.data[arg]]
+                ret = self.table.get(ret, **kwargs)
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
@@ -1048,7 +1053,7 @@ class VocabData(VectorData):
     def __getitem__(self, arg):
         return self.get(arg, index=False)
 
-    def get(self, arg, index=False, join=False):
+    def get(self, arg, index=False, join=False, **kwargs):
         """
         Return vocabulary elements for the given argument.
 
