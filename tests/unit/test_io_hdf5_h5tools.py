@@ -47,6 +47,10 @@ class FooFile(Container):
     def buckets(self):
         return self.__buckets
 
+    def add_bucket(self, bucket):
+        self.__buckets.append(bucket)
+        bucket.parent = self
+
     @property
     def foo_link(self):
         return self.__foo_link
@@ -907,6 +911,151 @@ class TestNoCacheSpec(TestCase):
 
         with File(self.path, 'r') as f:
             self.assertNotIn('specifications', f)
+
+
+class TestMultiWrite(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('bucket1', [foo1, foo2])
+        self.foofile = FooFile([foobucket])
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_double_write_new_manager(self):
+        """Test writing to a container in write mode twice using a new manager without changing the container."""
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    def test_double_write_same_manager(self):
+        """Test writing to a container in write mode twice using the same manager without changing the container."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    def test_double_append_new_manager(self):
+        """Test writing to a container in append mode twice using a new manager without changing the container."""
+        with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    def test_double_append_same_manager(self):
+        """Test writing to a container in append mode twice using the same manager without changing the container."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertContainerEqual(read_foofile, self.foofile)
+
+    def test_write_add_write(self):
+        """Test writing a container, adding to the in-memory container, then overwriting the same file."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        # append new container to in-memory container
+        foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
+        new_bucket1 = FooBucket('new_bucket1', [foo3])
+        self.foofile.add_bucket(new_bucket1)
+
+        # write to same file with same manager, overwriting existing file
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 2)
+            read_new_bucket = next(b for b in read_foofile.buckets if b.name == 'new_bucket1')
+            self.assertContainerEqual(read_new_bucket, new_bucket1)
+
+    def test_write_add_append_bucket(self):
+        """Test appending a container to a file."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
+        new_bucket1 = FooBucket('new_bucket1', [foo3])
+
+        # append to same file with same manager, overwriting existing file
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
+            read_foofile = io.read()
+            # append to read container and call write
+            read_foofile.add_bucket(new_bucket1)
+            io.write(read_foofile)
+
+        # check that new bucket was written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 2)
+            read_new_bucket = next(b for b in read_foofile.buckets if b.name == 'new_bucket1')
+            self.assertContainerEqual(read_new_bucket, new_bucket1)
+
+    def test_write_add_append_double_write(self):
+        """Test using the same IO object to append a container to a file twice."""
+        manager = _get_manager()
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(self.foofile)
+
+        foo3 = Foo('foo3', [10, 20], "I am foo3", 2, 0.1)
+        new_bucket1 = FooBucket('new_bucket1', [foo3])
+        foo4 = Foo('foo4', [10, 20], "I am foo4", 2, 0.1)
+        new_bucket2 = FooBucket('new_bucket2', [foo4])
+
+        # append to same file with same manager, overwriting existing file
+        with HDF5IO(self.path, manager=manager, mode='a') as io:
+            read_foofile = io.read()
+            # append to read container and call write
+            read_foofile.add_bucket(new_bucket1)
+            io.write(read_foofile)
+
+            # append to read container again and call write again
+            read_foofile.add_bucket(new_bucket2)
+            io.write(read_foofile)
+
+        # check that both new buckets were written
+        with HDF5IO(self.path, manager=_get_manager(), mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 3)
+            read_new_bucket1 = next(b for b in read_foofile.buckets if b.name == 'new_bucket1')
+            read_new_bucket2 = next(b for b in read_foofile.buckets if b.name == 'new_bucket2')
+
+            self.assertContainerEqual(read_new_bucket1, new_bucket1)
+            self.assertContainerEqual(read_new_bucket2, new_bucket2)
 
 
 class HDF5IOMultiFileTest(TestCase):
