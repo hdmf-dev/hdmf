@@ -1053,6 +1053,25 @@ class VocabData(VectorData):
     def __getitem__(self, arg):
         return self.get(arg, index=False)
 
+    def _get_helper(self, idx, index=False, join=False, **kwargs):
+        """
+        A helper function for getting vocabulary elements
+
+        This helper function contains the post-processing of retrieve indices. By separating this,
+        it allows customizing processing of indices before resolving the vocabulary elements
+        """
+        if index:
+            return idx
+        if not np.isscalar(idx):
+            orig_shape = idx.shape
+            ret = self.vocabulary[idx.ravel()]
+            ret = ret.reshape(orig_shape)
+            if join:
+                ret = ''.join(ret.ravel())
+        else:
+            ret = self.vocabulary[idx]
+        return ret
+
     def get(self, arg, index=False, join=False, **kwargs):
         """
         Return vocabulary elements for the given argument.
@@ -1066,17 +1085,7 @@ class VocabData(VectorData):
             elements if *join* is True.
         """
         idx = self.data[arg]
-        if index:
-            return idx
-        if not np.isscalar(idx):
-            orig_shape = idx.shape
-            ret = self.vocabulary[idx.ravel()]
-            ret = ret.reshape(orig_shape)
-            if join:
-                ret = ''.join(ret.ravel())
-        else:
-            ret = self.vocabulary[idx]
-        return ret
+        return self._get_helper(idx, index=index, join=join, **kwargs)
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'},
             {'name': 'index', 'type': bool, 'doc': 'whether or not the value being added is an index',
