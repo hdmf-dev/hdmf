@@ -35,6 +35,13 @@ It depends. You can only export the root container from a file. To export the ro
 sub-containers in the hierarchy, you can remove those other containers before exporting. However, you cannot export
 only a sub-container of the container hierarchy.
 
+Can I write a newly instantiated container to two different files?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+HDMF does not allow you to write a container that was not read from a file to two different files. For example, if you
+instantiate container A and write it file 1 and then try to write it to file 2, an error will be raised. However, you
+can read container A from file 1 and then export it to file 2, with or without modifications to container A in
+memory.
+
 What happens to links when I export?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The exported file will not contain any links to the original file.
@@ -57,9 +64,8 @@ References will be preserved in the exported file.
 NOTE: Exporting a file involves loading into memory all datasets that contain references and attributes that are
 references. The HDF5 reference IDs within an exported file may differ from the reference IDs in the original file.
 
-Can I write a newly instantiated container to two different files?
+What happens to object IDs when I export?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-HDMF does not allow you to write a container that was not read from a file to two different files. For example, if you
-instantiate container A and write it file 1 and then try to write it to file 2, an error will be raised. However, you
-can read container A from file 1 and then export it to file 2, with or without modifications to container A in
-memory.
+After exporting a container, the object IDs of the container and its child containers will be identical to the object
+IDs of the read container and its child containers. The object ID of a container uniquely identifies the container
+within a file, but should *not* be used to distinguish between two different files.
