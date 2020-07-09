@@ -11,8 +11,8 @@ if __name__ == '__main__':
     rc = call(cmd, shell=True)
     while rc != 0 and num_tries < max_tries:
         time.sleep(5)
-        rc = call(cmd, shell=True)
         os.remove(os.path.join(os.getcwd(), "coverage.xml"))
+        rc = call(cmd, shell=True)
         num_tries += 1
 
     raise SystemExit(rc)
