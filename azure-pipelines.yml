@@ -116,6 +116,8 @@ jobs:
         tox -e $(coverageToxEnv)
       fi
     displayName: 'Run coverage tests if coverageToxEnv != ""'
+    env: |
+      CODECOV_TOKEN: $(CODECOV_TOKEN)
 
   - bash: |
       tox -e $(buildToxEnv)
