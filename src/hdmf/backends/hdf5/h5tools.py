@@ -775,7 +775,7 @@ class HDF5IO(HDMFIO):
         if self.get_written(builder):
             group = parent[builder.name]
         else:
-            group = parent.create_group(builder.name)
+            group = parent.require_group(builder.name)
         # write all groups
         subgroups = builder.groups
         if subgroups:
@@ -1032,7 +1032,7 @@ class HDF5IO(HDMFIO):
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise Exception(msg) from exc
         try:
-            dset = parent.create_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
+            dset = parent.require_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
         except Exception as exc:
             msg = "Could not create scalar dataset %s in %s" % (name, parent.name)
             raise Exception(msg) from exc
@@ -1073,7 +1073,7 @@ class HDF5IO(HDMFIO):
             else:
                 io_settings['dtype'] = data.dtype
         try:
-            dset = parent.create_dataset(name, **io_settings)
+            dset = parent.require_dataset(name, **io_settings)
         except Exception as exc:
             raise Exception("Could not create dataset %s in %s" % (name, parent.name)) from exc
         return dset
@@ -1160,7 +1160,7 @@ class HDF5IO(HDMFIO):
             data_shape = get_data_shape(data)
         # Create the dataset
         try:
-            dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
+            dset = parent.require_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
         except Exception as exc:
             msg = "Could not create dataset %s in %s with shape %s, dtype %s, and iosettings %s. %s" % \
                   (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))

@@ -1377,30 +1377,36 @@ class HDF5IOWriteFileExists(TestCase):
 
         with HDF5IO(self.path, manager=_get_manager(), mode='w') as io:
             io.write(self.foofile1)
-        self.io = None
 
     def tearDown(self):
-        if self.io is not None:
-            self.io.close()
-            del(self.io)
         if os.path.exists(self.path):
             os.remove(self.path)
 
     def test_write_rplus(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='r+') as io:
-            # even though foofile1 and foofile2 have different names, writing a
-            # root object into a file that already has a root object, in r+ mode
-            # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
-                io.write(self.foofile2)
+            # NOTE: both foofile objects are named "root"
+            # this edge case results in test_bucket2 being added to root/buckets/
+            io.write(self.foofile2)
+
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 2)
+            read_new_bucket1 = next(b for b in read_foofile.buckets if b.name == 'test_bucket1')
+            self.assertContainerEqual(read_new_bucket1, self.foofile1.buckets[0])
+            read_new_bucket2 = next(b for b in read_foofile.buckets if b.name == 'test_bucket2')
+            self.assertContainerEqual(read_new_bucket2, self.foofile2.buckets[0])
 
     def test_write_a(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
-            # even though foofile1 and foofile2 have different names, writing a
-            # root object into a file that already has a root object, in a mode
-            # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
-                io.write(self.foofile2)
+            # NOTE: both foofile objects are named "root"
+            # this edge case results in test_bucket2 being added to root/buckets/
+            io.write(self.foofile2)
+
+            read_foofile = io.read()
+            self.assertEqual(len(read_foofile.buckets), 2)
+            read_new_bucket1 = next(b for b in read_foofile.buckets if b.name == 'test_bucket1')
+            self.assertContainerEqual(read_new_bucket1, self.foofile1.buckets[0])
+            read_new_bucket2 = next(b for b in read_foofile.buckets if b.name == 'test_bucket2')
+            self.assertContainerEqual(read_new_bucket2, self.foofile2.buckets[0])
 
     def test_write_w(self):
         # mode 'w' should overwrite contents of file
