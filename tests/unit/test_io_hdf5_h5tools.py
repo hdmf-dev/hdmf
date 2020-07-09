@@ -867,19 +867,6 @@ class TestCacheSpec(TestCase):
             read_types = self.__get_types(ns_catalog)
             self.assertSetEqual(source_types, read_types)
 
-    def test_double_cache_spec(self):
-        # Setup all the data we need
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
-        foobucket = FooBucket('test_bucket', [foo1, foo2])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
-        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
-            io.write(foofile)
-
     def __get_types(self, catalog):
         types = set()
         for ns_name in catalog.namespaces:
@@ -1410,7 +1397,7 @@ class HDF5IOWriteFileExists(TestCase):
     def test_write_a(self):
         with HDF5IO(self.path, manager=_get_manager(), mode='a') as io:
             # even though foofile1 and foofile2 have different names, writing a
-            # root object into a file that already has a root object, in r+ mode
+            # root object into a file that already has a root object, in a mode
             # should throw an error
             with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
                 io.write(self.foofile2)
@@ -1431,6 +1418,41 @@ class HDF5IOWriteFileExists(TestCase):
                                        ("Cannot write to file %s in mode 'r'. "
                                         "Please use mode 'r+', 'w', 'w-', 'x', or 'a'") % self.path):
                 io.write(self.foofile2)
+
+
+class TestWritten(TestCase):
+
+    def setUp(self):
+        self.manager = _get_manager()
+        self.path = get_temp_filepath()
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+        foobucket = FooBucket('test_bucket', [foo1, foo2])
+        self.foofile = FooFile([foobucket])
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_set_written_on_write(self):
+        """Test that write_builder changes the written flag of the builder and its children from False to True."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            builder = self.manager.build(container=self.foofile, source=self.path)
+            self.assertFalse(io.get_written(builder))
+            self._check_written_children(io, builder, False)
+            io.write_builder(builder)
+            self.assertTrue(io.get_written(builder))
+            self._check_written_children(io, builder, True)
+
+    def _check_written_children(self, io, builder, val):
+        """Test whether the io object has the written flag of the child builders set to val."""
+        for group_bldr in builder.groups.values():
+            self.assertEqual(io.get_written(group_bldr), val)
+            self._check_written_children(io, group_bldr, val)
+        for dset_bldr in builder.datasets.values():
+            self.assertEqual(io.get_written(dset_bldr), val)
+        for link_bldr in builder.links.values():
+            self.assertEqual(io.get_written(link_bldr), val)
 
 
 class H5DataIOValid(TestCase):

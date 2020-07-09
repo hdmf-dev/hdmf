@@ -72,6 +72,7 @@ class HDF5IO(HDMFIO):
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
+        self._written_builders = dict()  # keep track of which builders were written (or read) by this IO object
         self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
@@ -345,6 +346,33 @@ class HDF5IO(HDMFIO):
             self.__read[self.__file] = f_builder
         return f_builder
 
+    def __set_written(self, builder):
+        """
+        Mark this builder as written.
+
+        :param builder: Builder object to be marked as written
+        :type builder: Builder
+        """
+        # currently all values in self._written_builders are True, so this could be a set but is a dict for
+        # future flexibility
+        builder_id = self.__builderhash(builder)
+        self._written_builders[builder_id] = True
+
+    def get_written(self, builder):
+        """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
+
+        :param builder: Builder object to get the written flag for
+        :type builder: Builder
+
+        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
+        """
+        builder_id = self.__builderhash(builder)
+        return self._written_builders.get(builder_id, False)
+
+    def __builderhash(self, obj):
+        """Return the ID of a builder for use as a unique hash."""
+        return id(obj)
+
     def __set_built(self, fpath, id, builder):
         """
         Update self.__built to cache the given builder for the given file and id.
@@ -441,7 +469,7 @@ class HDF5IO(HDMFIO):
                         self.__set_built(sub_h5obj.file.filename,  sub_h5obj.file[target_path].id, builder)
                     builder.location = parent_loc
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
-                    link_builder.written = True
+                    self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
                     if isinstance(link_type, ExternalLink):
                         self.__open_links.append(sub_h5obj)
@@ -465,7 +493,7 @@ class HDF5IO(HDMFIO):
                 continue
         kwargs['source'] = h5obj.file.filename
         ret = GroupBuilder(name, **kwargs)
-        ret.written = True
+        self.__set_written(ret)
         return ret
 
     def __read_dataset(self, h5obj, name=None):
@@ -518,7 +546,7 @@ class HDF5IO(HDMFIO):
         else:
             kwargs["data"] = h5obj
         ret = DatasetBuilder(name, **kwargs)
-        ret.written = True
+        self.__set_written(ret)
         return ret
 
     def __read_attrs(self, h5obj):
@@ -588,6 +616,7 @@ class HDF5IO(HDMFIO):
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
         self.__exhaust_dcis()
+        self.__set_written(f_builder)
 
     def __add_refs(self):
         '''
@@ -743,7 +772,7 @@ class HDF5IO(HDMFIO):
     def write_group(self, **kwargs):
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
-        if builder.written:
+        if self.get_written(builder):
             group = parent[builder.name]
         else:
             group = parent.create_group(builder.name)
@@ -765,7 +794,7 @@ class HDF5IO(HDMFIO):
                 self.write_link(group, sub_builder)
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        builder.written = True
+        self.__set_written(builder)
         return group
 
     def __get_path(self, builder):
@@ -788,7 +817,7 @@ class HDF5IO(HDMFIO):
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
-        if builder.written:
+        if self.get_written(builder):
             return None
         name = builder.name
         target_builder = builder.builder
@@ -811,7 +840,7 @@ class HDF5IO(HDMFIO):
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
         parent[name] = link_obj
-        builder.written = True
+        self.__set_written(builder)
         return link_obj
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
@@ -829,7 +858,7 @@ class HDF5IO(HDMFIO):
         """
         parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
-        if builder.written:
+        if self.get_written(builder):
             return None
         name = builder.name
         data = builder.data
@@ -881,7 +910,7 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                builder.written = True
+                self.__set_written(builder)
                 self.logger.debug("Queueing set attribute on dataset '%s' containing references. attributes: %s"
                                   % (name, list(attributes.keys())))
 
@@ -908,7 +937,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar data region reference dataset
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
-                builder.written = True
+                self.__set_written(builder)
                 self.logger.debug("Queueing set attribute on dataset '%s' containing a region reference. "
                                   "attributes: %s" % (name, list(attributes.keys())))
 
@@ -921,7 +950,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar object reference dataset
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
-                builder.written = True
+                self.__set_written(builder)
                 self.logger.debug("Queueing set attribute on dataset '%s' containing an object reference. "
                                   "attributes: %s" % (name, list(attributes.keys())))
 
@@ -936,7 +965,7 @@ class HDF5IO(HDMFIO):
                 # Write a array of region references
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
-                    builder.written = True
+                    self.__set_written(builder)
                     self.logger.debug("Queueing set attribute on dataset '%s' containing region references. "
                                       "attributes: %s" % (name, list(attributes.keys())))
 
@@ -950,8 +979,8 @@ class HDF5IO(HDMFIO):
                         self.set_attributes(dset, attributes)
                 # Write array of object references
                 else:
-                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, ** options['io_settings'])
-                    builder.written = True
+                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                    self.__set_written(builder)
                     self.logger.debug("Queueing set attribute on dataset '%s' containing object references. "
                                       "attributes: %s" % (name, list(attributes.keys())))
 
@@ -985,10 +1014,9 @@ class HDF5IO(HDMFIO):
         # Validate the attributes on the linked dataset
         elif len(attributes) > 0:
             pass
-        builder.written = True
+        self.__set_written(builder)
         if exhaust_dci:
             self.__exhaust_dcis()
-        return
 
     @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):

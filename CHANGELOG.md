@@ -1,5 +1,13 @@
 # HDMF Changelog
 
+## HDMF 2.0.0 (Upcoming)
+
+### Internal improvements
+
+#### Breaking changes
+- `Builder` objects no longer have the `written` field which was used by `HDF5IO` to mark the object as written. This
+  is replaced by `HDF5IO.get_written`. @rly (#381)
+
 ## HDMF 1.6.4 (June 26, 2020)
 
 ### Internal improvements
