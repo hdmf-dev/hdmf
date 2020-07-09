@@ -5,12 +5,13 @@ import time
 import os
 
 if __name__ == '__main__':
-    max_tries = 10
+    max_tries = 3
     num_tries = 1
     cmd = 'codecov --required'
     rc = call(cmd, shell=True)
     while rc != 0 and num_tries < max_tries:
-        time.sleep(5)
+        print("Try #%d/%d failed. Sleeping for 60 seconds and trying again..." % (num_tries, max_tries))
+        time.sleep(60)
         os.remove(os.path.join(os.getcwd(), "coverage.xml"))
         rc = call(cmd, shell=True)
         num_tries += 1
