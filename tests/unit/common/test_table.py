@@ -100,6 +100,52 @@ class TestDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable("with_columns", 'a test table', columns=columns)
 
+    def test_constructor_colnames(self):
+        """Test that passing colnames correctly sets the order of the columns."""
+        cols = [VectorData(**d) for d in self.spec]
+        table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
+        self.assertTupleEqual(table.columns, tuple(cols[::-1]))
+
+    def test_constructor_colnames_no_columns(self):
+        """Test that passing colnames without columns raises an error."""
+        msg = "Must supply 'columns' if specifying 'colnames'"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table',  colnames=['baz', 'bar', 'foo'])
+
+    def test_constructor_colnames_vectorindex(self):
+        """Test that passing colnames with a VectorIndex column puts the index in the right location in columns."""
+        cols = [VectorData(**d) for d in self.spec]
+        ind = VectorIndex(name='foo_index', data=list(), target=cols[0])
+        cols.append(ind)
+        table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
+        self.assertTupleEqual(table.columns, (cols[2], cols[1], ind, cols[0]))
+
+    def test_constructor_colnames_vectorindex_rev(self):
+        """Test that passing colnames with a VectorIndex column puts the index in the right location in columns."""
+        cols = [VectorData(**d) for d in self.spec]
+        ind = VectorIndex(name='foo_index', data=list(), target=cols[0])
+        cols.insert(0, ind)  # put index before its target
+        table = DynamicTable("with_columns", 'a test table', columns=cols, colnames=['baz', 'bar', 'foo'])
+        self.assertTupleEqual(table.columns, (cols[3], cols[2], ind, cols[1]))
+
+    def test_constructor_dup_index(self):
+        """Test that passing two indices for the same column raises an error."""
+        cols = [VectorData(**d) for d in self.spec]
+        cols.append(VectorIndex(name='foo_index', data=list(), target=cols[0]))
+        cols.append(VectorIndex(name='foo_index2', data=list(), target=cols[0]))
+        msg = "'columns' contains index columns with the same target: ['foo', 'foo']"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table', columns=cols)
+
+    def test_constructor_index_missing_target(self):
+        """Test that passing an index without its target raises an error."""
+        cols = [VectorData(**d) for d in self.spec]
+        missing_col = cols.pop(2)
+        cols.append(VectorIndex(name='foo_index', data=list(), target=missing_col))
+        msg = "Found VectorIndex 'foo_index' but not its target 'baz'"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable("with_columns", 'a test table', columns=cols)
+
     def add_rows(self, table):
         table.add_row({'foo': 1, 'bar': 10.0, 'baz': 'cat'})
         table.add_row({'foo': 2, 'bar': 20.0, 'baz': 'dog'})
@@ -964,3 +1010,136 @@ class TestIndexing(TestCase):
         np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))
         np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
         np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+
+
+class TestVectorIndex(TestCase):
+
+    def test_init_empty(self):
+        foo = VectorData(name='foo', description='foo column')
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=list())
+        self.assertEqual(foo_ind.name, 'foo_index')
+        self.assertEqual(foo_ind.description, "Index for VectorData 'foo'")
+        self.assertIs(foo_ind.target, foo)
+        self.assertListEqual(foo_ind.data, list())
+
+    def test_init_data(self):
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+        self.assertListEqual(foo_ind.data, [2, 3])
+        self.assertListEqual(foo_ind[0], ['a', 'b'])
+        self.assertListEqual(foo_ind[1], ['c'])
+
+
+class TestDoubleIndex(TestCase):
+
+    def test_index(self):
+        # row 1 has three entries
+        # the first entry has two sub-entries
+        # the first sub-entry has two values, the second sub-entry has one value
+        # the second entry has one sub-entry, which has one value
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        self.assertListEqual(foo_ind[0], ['a11', 'a12'])
+        self.assertListEqual(foo_ind[1], ['a21'])
+        self.assertListEqual(foo_ind[2], ['b11'])
+        self.assertListEqual(foo_ind_ind[0], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(foo_ind_ind[1], [['b11']])
+
+
+class TestDTDoubleIndex(TestCase):
+
+    def test_double_index(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind])
+
+        self.assertIs(table['foo'], foo_ind_ind)
+        self.assertIs(table.foo, foo)
+        self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[1, 'foo'], [['b11']])
+
+    def test_double_index_reverse(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo])
+
+        self.assertIs(table['foo'], foo_ind_ind)
+        self.assertIs(table.foo, foo)
+        self.assertListEqual(table['foo'][0], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[0, 'foo'], [['a11', 'a12'], ['a21']])
+        self.assertListEqual(table[1, 'foo'], [['b11']])
+
+    def test_double_index_colnames(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        bar = VectorData(name='bar', description='bar column', data=[1, 2])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo, foo_ind, foo_ind_ind, bar],
+                             colnames=['foo', 'bar'])
+
+        self.assertTupleEqual(table.columns, (foo_ind_ind, foo_ind, foo, bar))
+
+    def test_double_index_reverse_colnames(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        bar = VectorData(name='bar', description='bar column', data=[1, 2])
+
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo, bar],
+                             colnames=['bar', 'foo'])
+
+        self.assertTupleEqual(table.columns, (bar, foo_ind_ind, foo_ind, foo))
+
+
+class TestDTDoubleIndexSkipMiddle(TestCase):
+
+    def test_index(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        msg = "Found VectorIndex 'foo_index_index' but not its target 'foo_index'"
+        with self.assertRaisesWith(ValueError, msg):
+            DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo])
+
+
+class TestDynamicTableAddIndexRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('foo', 'an int column', index=True)
+        table.add_row(foo=[1, 2, 3])
+        return table
+
+
+class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo])
+        return table
+
+
+class TestDoubleIndexRoundtrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind_ind, foo_ind, foo])
+        return table
