@@ -532,7 +532,7 @@ class MultiContainerInterface(Container):
     See LFP or Position for an example of how to use this.
     '''
 
-    @docval(*get_docval(super().__init__))
+    @docval(*get_docval(Container.__init__))
     def __init__(self, **kwargs):
         call_docval_func(super(MultiContainerInterface, self).__init__, kwargs)
         if isinstance(self.__clsconf__, dict):
