@@ -1,5 +1,5 @@
 from ..utils import docval, get_docval
-from ..container import Container, MultiContainerInterface, LabelledDict
+from ..container import Container, MultiContainerInterface
 from .testcase import TestCase
 
 
@@ -50,21 +50,3 @@ class MCITests(TestCase):
         self.assertEqual(dv[1]['name'], 'edges')
         self.assertTupleEqual(dv[0]['type'], (list, tuple, dict, Node))
         self.assertTupleEqual(dv[1]['type'], (list, tuple, dict, Edge))
-
-
-class TestLabelledDict(TestCase):
-
-    def setUp(self):
-        self.name = 'name'
-        self.container = Container(self.name)
-        self.object_id = self.container.object_id
-
-    def test_add_default(self):
-        ld = LabelledDict('test_dict')
-        ld.add(self.container)
-        self.assertIs(ld[self.name], self.container)
-
-    def test_add_nondefault(self):
-        ld = LabelledDict('test_dict', def_key_name='object_id')
-        ld.add(self.container)
-        self.assertIs(ld[self.object_id], self.container)

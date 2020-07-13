@@ -2,7 +2,7 @@ import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
 from .utils import docval, get_docval, call_docval_func, getargs, \
-    ExtenderMeta, get_data_shape, fmt_docval_args, popargs
+    ExtenderMeta, get_data_shape, fmt_docval_args, popargs, LabelledDict
 from .data_utils import DataIO
 from warnings import warn
 import h5py
@@ -469,51 +469,6 @@ class DataRegion(Data):
         The region that indexes into data e.g. slice or list of indices
         '''
         pass
-
-
-class LabelledDict(dict):
-    '''
-    A dict wrapper class for aggregating Timeseries
-    from the standard locations
-    '''
-
-    @docval({'name': 'label', 'type': str, 'doc': 'the label on this dictionary'},
-            {'name': 'def_key_name', 'type': str, 'doc': 'the default key name', 'default': 'name'})
-    def __init__(self, **kwargs):
-        label, def_key_name = getargs('label', 'def_key_name', kwargs)
-        self.__label = label
-        self.__defkey = def_key_name
-
-    @property
-    def label(self):
-        return self.__label
-
-    def __getitem__(self, args):
-        key = args
-        if '==' in args:
-            key, val = args.split("==")
-            key = key.strip()
-            val = val.strip()
-            if key != self.__defkey:
-                ret = list()
-                for item in self.values():
-                    if getattr(item, key, None) == val:
-                        ret.append(item)
-                return ret if len(ret) else None
-            key = val
-        return super(LabelledDict, self).__getitem__(key)
-
-    @docval({'name': 'container', 'type': (Data, Container), 'doc': 'the container to add to this LabelledDict'})
-    def add(self, **kwargs):
-        '''
-        Add a container to this LabelledDict
-        '''
-        container = getargs('container', kwargs)
-        key = getattr(container, self.__defkey, None)
-        if key is None:
-            msg = "container '%s' does not have attribute '%s'" % (container.name, self.__defkey)
-            raise ValueError(msg)
-        self[key] = container
 
 
 class MultiContainerInterface(Container):
