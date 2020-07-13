@@ -5,6 +5,7 @@ from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, 
 from .data_utils import DataIO
 from warnings import warn
 import h5py
+import types
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -380,7 +381,7 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self.__data = getargs('data', kwargs)
@@ -407,13 +408,33 @@ class Data(AbstractContainer):
         dataio.data = self.__data
         self.__data = dataio
 
+    @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
+    def transform(self, **kwargs):
+        """
+        Transform data from the current underlying state.
+
+        This function can be used to permanently load data from disk, or convert to a different
+        representation, such as a torch.Tensor
+        """
+        func = getargs('func', kwargs)
+        self.__data = func(self.__data)
+        return self
+
     def __bool__(self):
-        return len(self.data) != 0
+        if self.data is not None:
+            if isinstance(self.data, (np.ndarray, tuple, list)):
+                return len(self.data) != 0
+            if self.data:
+                return True
+        return False
 
     def __len__(self):
         return len(self.__data)
 
     def __getitem__(self, args):
+        return self.get(args)
+
+    def get(self, args):
         if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list)):
             return [self.data[i] for i in args]
         return self.data[args]
