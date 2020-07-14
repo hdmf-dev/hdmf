@@ -66,6 +66,7 @@ references. The HDF5 reference IDs within an exported file may differ from the r
 
 What happens to object IDs when I export?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-After exporting a container, the object IDs of the container and its child containers will be identical to the object
-IDs of the read container and its child containers. The object ID of a container uniquely identifies the container
-within a file, but should *not* be used to distinguish between two different files.
+After exporting a container, the object IDs of the container and its child containers will be different from the object
+IDs of the read container and its child containers. The object IDs can be preserved on export by passing the keyword
+argument ``new_object_ids=False`` to
+:py:meth:`HDF5IO.export <hdmf.backends.hdf5.h5tools.HDF5IO.export>`.
