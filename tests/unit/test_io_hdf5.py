@@ -52,22 +52,37 @@ class GroupBuilderTestCase(TestCase):
             return obj[...]
         return obj
 
+    def __compare_reserved_dicts(self, a, b):
+        reasons = list()
+        b_keys = set(b.keys())
+        for k in a:
+            if k not in b:
+                reasons.append("'%s' reserved value missing from second group/dataset" % k)
+            else:
+                if a[k] != b[k]:
+                    reasons.append("'%s' reserved value on group/sdatasets not equal" % k)
+                b_keys.remove(k)
+        for k in b_keys:
+            reasons.append("'%s' reserved value missing from first group/dataset" % k)
+        return reasons
+
     def __compare_attr_dicts(self, a, b):
         reasons = list()
         b_keys = set(b.keys())
         for k in a:
             if k not in b:
-                reasons.append("'%s' attribute missing from second dataset" % k)
+                reasons.append("'%s' attribute missing from second group/dataset" % k)
             else:
                 if a[k] != b[k]:
-                    reasons.append("'%s' attribute on datasets not equal" % k)
+                    reasons.append("'%s' attribute on groups/datasets not equal" % k)
                 b_keys.remove(k)
         for k in b_keys:
-            reasons.append("'%s' attribute missing from first dataset" % k)
+            reasons.append("'%s' attribute missing from first group/dataset" % k)
         return reasons
 
     def __compare_dataset(self, a, b):
         reasons = self.__compare_attr_dicts(a.attributes, b.attributes)
+        reasons.extend(self.__compare_reserved_dicts(a.reserved, b.reserved))
         if not self.__compare_data(a.data, b.data):
             reasons.append("dataset '%s' not equal" % a.name)
         return reasons
@@ -185,25 +200,22 @@ class TestHDF5Writer(GroupBuilderTestCase):
         return f
 
     def test_write_builder(self):
-        writer = HDF5IO(self.path, manager=self.manager, mode='a')
-        writer.write_builder(self.builder)
-        writer.close()
+        with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
+            writer.write_builder(self.builder)
         self.check_fields()
 
     def test_write_attribute_reference_container(self):
-        writer = HDF5IO(self.path, manager=self.manager, mode='a')
-        self.builder.set_attribute('ref_attribute', self.foo)
-        writer.write_builder(self.builder)
-        writer.close()
+        with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
+            self.builder.set_attribute('ref_attribute', self.foo)
+            writer.write_builder(self.builder)
         f = self.check_fields()
         self.assertIsInstance(f.attrs['ref_attribute'], Reference)
         self.assertEqual(f['test_bucket/foo_holder/foo1'], f[f.attrs['ref_attribute']])
 
     def test_write_attribute_reference_builder(self):
-        writer = HDF5IO(self.path, manager=self.manager, mode='a')
-        self.builder.set_attribute('ref_attribute', self.foo_builder)
-        writer.write_builder(self.builder)
-        writer.close()
+        with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
+            self.builder.set_attribute('ref_attribute', self.foo_builder)
+            writer.write_builder(self.builder)
         f = self.check_fields()
         self.assertIsInstance(f.attrs['ref_attribute'], Reference)
         self.assertEqual(f['test_bucket/foo_holder/foo1'], f[f.attrs['ref_attribute']])
@@ -215,26 +227,23 @@ class TestHDF5Writer(GroupBuilderTestCase):
 
     def test_read_builder(self):
         self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
-        io.write_builder(self.builder)
-        builder = io.read_builder()
-        self.assertBuilderEqual(builder, self.builder)
-        io.close()
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            io.write_builder(self.builder)
+            builder = io.read_builder()
+            self.assertBuilderEqual(builder, self.builder)
 
     def test_overwrite_written(self):
         self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
-        io.write_builder(self.builder)
-        builder = io.read_builder()
-        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
-            builder.written = False
-        io.close()
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            io.write_builder(self.builder)
+            builder = io.read_builder()
+            with self.assertRaisesWith(ValueError, "cannot change written to not written"):
+                builder.written = False
 
     def test_dataset_shape(self):
         self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
-        io.write_builder(self.builder)
-        builder = io.read_builder()
-        dset = builder['test_bucket']['foo_holder']['foo1']['my_data'].data
-        self.assertEqual(get_data_shape(dset), (10,))
-        io.close()
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            io.write_builder(self.builder)
+            builder = io.read_builder()
+            dset = builder['test_bucket']['foo_holder']['foo1']['my_data'].data
+            self.assertEqual(get_data_shape(dset), (10,))

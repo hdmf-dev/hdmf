@@ -95,9 +95,9 @@ class BaseBuilder(Builder):
     __reserved = 'reserved'
 
     # keys in __reserved dict
-    __namespace = 'namespace'
-    __data_type = 'data_type'
-    __object_id = 'object_id'
+    _namespace = 'namespace'
+    _data_type = 'data_type'
+    _object_id = 'object_id'
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
             {'name': 'attributes', 'type': dict, 'doc': 'a dictionary of attributes to create in this group',
@@ -162,30 +162,30 @@ class BaseBuilder(Builder):
         if self.reserved:
             raise ValueError('cannot reset reserved attributes')
         namespace, data_type, object_id = getargs('namespace', 'data_type', 'object_id', kwargs)
-        self.reserved[BaseBuilder.__namespace] = namespace
-        self.reserved[BaseBuilder.__data_type] = data_type
-        self.reserved[BaseBuilder.__object_id] = object_id
+        self.reserved[BaseBuilder._namespace] = namespace
+        self.reserved[BaseBuilder._data_type] = data_type
+        self.reserved[BaseBuilder._object_id] = object_id
 
     @property
     def namespace(self):
         """
         The namespace of this Builder
         """
-        return self.reserved.get(BaseBuilder.__namespace, None)
+        return self.reserved.get(BaseBuilder._namespace, None)
 
     @property
     def data_type(self):
         """
         The data type of this Builder
         """
-        return self.reserved.get(BaseBuilder.__data_type, None)
+        return self.reserved.get(BaseBuilder._data_type, None)
 
     @property
     def object_id(self):
         """
         The object ID of this Builder
         """
-        return self.reserved.get(BaseBuilder.__object_id, None)
+        return self.reserved.get(BaseBuilder._object_id, None)
 
     @docval({'name': 'builder', 'type': 'BaseBuilder', 'doc': 'the BaseBuilder to merge attributes from '})
     def deep_update(self, **kwargs):
@@ -194,6 +194,13 @@ class BaseBuilder(Builder):
         # merge attributes
         for name, value in super(BaseBuilder, builder).__getitem__(BaseBuilder.__attribute).items():
             self.set_attribute(name, value)
+        # merge reserved
+        if builder.reserved:
+            self.set_reserved(
+                namespace=builder.namespace,
+                data_type=builder.data_type,
+                object_id=builder.object_id
+            )
 
 
 class GroupBuilder(BaseBuilder):
@@ -290,6 +297,21 @@ class GroupBuilder(BaseBuilder):
         name, value = getargs('name', 'value', kwargs)
         super().set_attribute(name, value)
         self.obj_type[name] = GroupBuilder.__attribute
+
+    @docval({'name': 'namespace', 'type': str, 'doc': 'the namespace'},
+            {'name': 'data_type', 'type': str, 'doc': 'the data type'},
+            {'name': 'object_id', 'type': str, 'doc': 'the object ID', 'default': None})
+    def set_reserved(self, **kwargs):
+        """Set the reserved attributes for this builder.
+
+        Cannot be reset once set. Raises ValueError if reserved attributes have already been set.
+
+        Note: older files may not have object id set.
+        """
+        call_docval_func(super().set_reserved, kwargs)
+        self.obj_type[GroupBuilder._namespace] = GroupBuilder.__reserved
+        self.obj_type[GroupBuilder._data_type] = GroupBuilder.__reserved
+        self.obj_type[GroupBuilder._object_id] = GroupBuilder.__reserved
 
     @docval({'name': 'builder', 'type': 'Builder', 'doc': 'the Builder to add to this GroupBuilder'})
     def set_builder(self, **kwargs):
