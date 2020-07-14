@@ -420,7 +420,7 @@ class GroupValidator(BaseStorageValidator):
         for spec in self.spec.links:
             self.__include_dts[spec.data_type_inc] = spec
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
+    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)

@@ -980,16 +980,6 @@ class TestCloseLinks(TestCase):
     def setUp(self):
         self.path1 = get_temp_filepath()
         self.path2 = get_temp_filepath()
-        import logging
-
-        logger = logging.getLogger()
-        logger.setLevel(logging.DEBUG)
-
-        ch = logging.FileHandler('test.log', mode='w')
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
 
     def tearDown(self):
         if self.path1 is not None:
