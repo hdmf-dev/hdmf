@@ -5,6 +5,7 @@ from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import logging
 import warnings
+from uuid import uuid4
 
 from ...container import Container
 from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
@@ -356,6 +357,8 @@ class HDF5IO(HDMFIO):
          'default': None},
         {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
          'default': dict()},
+        {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+         'default': True},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
     )
@@ -724,10 +727,13 @@ class HDF5IO(HDMFIO):
              'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
              'default': True},
             {'name': 'export_source', 'type': str,
-             'doc': 'The source of the builders when exporting', 'default': None})
+             'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+             'default': False})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
-        link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
+        link_data, exhaust_dci, export_source, new_object_ids = getargs('link_data', 'exhaust_dci', 'export_source',
+                                                                        'new_object_ids', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
                           % (f_builder.name, self.source, kwargs))
         for name, gbldr in f_builder.groups.items():
@@ -737,7 +743,7 @@ class HDF5IO(HDMFIO):
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
-        self.__set_reserved(self.__file, f_builder)
+        self.__set_reserved(self.__file, f_builder, new_object_ids=new_object_ids)
         self.__add_refs()
         self.__exhaust_dcis()
         self.__set_written(f_builder)
@@ -883,15 +889,19 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'obj', 'type': (Group, Dataset), 'doc': 'the HDF5 object to add reserved attributes to'},
             {'name': 'builder', 'type': (GroupBuilder, DatasetBuilder),
-             'doc': 'the builder containing the reserved attributes'})
+             'doc': 'the builder containing the reserved attributes'},
+            {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+             'default': False})
     def __set_reserved(self, **kwargs):
         """Set the reserved attributes from the builder as attributes on the HDF5 Group or Dataset."""
-        obj, builder = getargs('obj', 'builder', kwargs)
+        obj, builder, new_object_ids = getargs('obj', 'builder', 'new_object_ids', kwargs)
         if builder.reserved:
             self.logger.debug("Setting %s '%s' reserved attributes" % (builder.__class__.__name__, builder.name))
             obj.attrs[self.__namespace_key] = builder.namespace
             obj.attrs[self.__data_type_key] = builder.data_type
-            if builder.object_id:
+            if new_object_ids:
+                obj.attrs[self.__object_id_key] = str(uuid4())
+            elif builder.object_id:
                 obj.attrs[self.__object_id_key] = builder.object_id
 
     def _make_attr_ref_filler(self, obj, key, value):
@@ -920,9 +930,11 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+             'default': False},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
-        parent, builder = popargs('parent', 'builder', kwargs)
+        parent, builder, new_object_ids = popargs('parent', 'builder', 'new_object_ids', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             group = parent[builder.name]
@@ -946,7 +958,7 @@ class HDF5IO(HDMFIO):
                 self.write_link(group, sub_builder)
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        self.__set_reserved(group, builder)
+        self.__set_reserved(group, builder, new_object_ids=new_object_ids)
         self.__set_written(builder)
         return group
 
@@ -1005,6 +1017,8 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+             'default': False},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
@@ -1013,7 +1027,8 @@ class HDF5IO(HDMFIO):
         `__scalar_fill__`, `__list_fill__`, and `__setup_chunked_dset__` to write the data.
         """
         parent, builder = popargs('parent', 'builder', kwargs)
-        link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
+        link_data, exhaust_dci, export_source, new_object_ids = getargs('link_data', 'exhaust_dci', 'export_source',
+                                                                        'new_object_ids', kwargs)
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             self.logger.debug("    DatasetBuilder '%s' is already written" % builder.name)
@@ -1081,7 +1096,7 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                self.__set_reserved(dset, builder)
+                self.__set_reserved(dset, builder, new_object_ids=new_object_ids)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1113,7 +1128,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar data region reference dataset
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
-                self.__set_reserved(dset, builder)
+                self.__set_reserved(dset, builder, new_object_ids=new_object_ids)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing a "
                                   "region reference. attributes: %s"
@@ -1131,7 +1146,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar object reference dataset
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
-                self.__set_reserved(dset, builder)
+                self.__set_reserved(dset, builder, new_object_ids=new_object_ids)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing an "
                                   "object reference. attributes: %s"
@@ -1151,7 +1166,7 @@ class HDF5IO(HDMFIO):
                 # Write a array of region references
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
-                    self.__set_reserved(dset, builder)
+                    self.__set_reserved(dset, builder, new_object_ids=new_object_ids)
                     self.__set_written(builder)
                     self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                       "region references. attributes: %s"
@@ -1171,7 +1186,7 @@ class HDF5IO(HDMFIO):
                 # Write array of object references
                 else:
                     dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                    self.__set_reserved(dset, builder)
+                    self.__set_reserved(dset, builder, new_object_ids=new_object_ids)
                     self.__set_written(builder)
                     self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                       "object references. attributes: %s"
@@ -1207,7 +1222,7 @@ class HDF5IO(HDMFIO):
         # Create the attributes on the dataset only if we are the primary and not just a Soft/External link
         if link is None:
             self.set_attributes(dset, attributes)
-            self.__set_reserved(dset, builder)
+            self.__set_reserved(dset, builder, new_object_ids=new_object_ids)
         # Validate the attributes on the linked dataset
         elif len(attributes) > 0:
             pass
