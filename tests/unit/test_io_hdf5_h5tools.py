@@ -705,6 +705,36 @@ class H5IOTest(TestCase):
         with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
 
+    def test_write_namespace_attr(self):
+        bldr = DatasetBuilder(
+            name='test_dataset',
+            data=[1, 2, 3],
+            attributes={'namespace': 'core'}
+        )
+        msg = "Attribute 'namespace' is reserved and cannot be set."
+        with self.assertRaisesWith(ValueError, msg):
+            self.io.write_dataset(self.f, bldr)
+
+    def test_write_data_type_attr(self):
+        bldr = DatasetBuilder(
+            name='test_dataset',
+            data=[1, 2, 3],
+            attributes={'data_type': 'Foo'}
+        )
+        msg = "Attribute 'data_type' is reserved and cannot be set."
+        with self.assertRaisesWith(ValueError, msg):
+            self.io.write_dataset(self.f, bldr)
+
+    def test_write_object_id_attr(self):
+        bldr = DatasetBuilder(
+            name='test_dataset',
+            data=[1, 2, 3],
+            attributes={'object_id': '-1'}
+        )
+        msg = "Attribute 'object_id' is reserved and cannot be set."
+        with self.assertRaisesWith(ValueError, msg):
+            self.io.write_dataset(self.f, bldr)
+
 
 def _get_manager():
 

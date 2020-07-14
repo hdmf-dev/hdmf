@@ -58,6 +58,24 @@ class GroupBuilderSetterTests(TestCase):
         self.gb.set_group(self.gb2)
         self.assertIs(self.gb2.parent, self.gb)
 
+    def test_set_reserved(self):
+        self.gb.set_reserved(namespace='core', data_type='Foo', object_id='-1')
+        self.assertEqual(self.gb.namespace, 'core')
+        self.assertEqual(self.gb.data_type, 'Foo')
+        self.assertEqual(self.gb.object_id, '-1')
+
+    def test_set_reserved_twice(self):
+        self.gb.set_reserved(namespace='core', data_type='Foo', object_id='-1')
+        msg = 'cannot reset reserved values once they are specified'
+        with self.assertRaisesWith(ValueError, msg):
+            self.gb.set_reserved(namespace='core', data_type='Foo', object_id='-1')
+
+    def test_init_reserved(self):
+        gb = GroupBuilder('gb', reserved={'namespace': 'core', 'data_type': 'Foo', 'object_id': '-1'})
+        self.assertEqual(gb.namespace, 'core')
+        self.assertEqual(gb.data_type, 'Foo')
+        self.assertEqual(gb.object_id, '-1')
+
 
 class GroupBuilderGetterTests(TestCase):
 
@@ -261,6 +279,19 @@ class GroupBuilderDeepUpdateTests(TestCase):
         self.assertIn('link2', gb2)
         self.assertEqual(gb1['link2'], gb2['link2'])
 
+    def test_mutually_exclusive_reserved(self):
+        gb1 = GroupBuilder('gb1')
+        gb2 = GroupBuilder('gb2', reserved={'namespace': 'core', 'data_type': 'Foo2'})
+        gb1.deep_update(gb2)
+        self.assertIn('data_type', gb2)
+        self.assertEqual(gb1['data_type'], 'Foo2')
+
+    def test_mutually_exclusive_reserved_empty(self):
+        gb1 = GroupBuilder('gb1', reserved={'namespace': 'core', 'data_type': 'Foo2'})
+        gb2 = GroupBuilder('gb2')
+        gb1.deep_update(gb2)
+        self.assertNotIn('data_type', gb2)
+
     def test_intersecting_subgroups(self):
         subgroup2 = GroupBuilder('subgroup2')
         gb1 = GroupBuilder('gb1', {'subgroup1': GroupBuilder('subgroup1'), 'subgroup2': subgroup2})
@@ -282,7 +313,7 @@ class GroupBuilderDeepUpdateTests(TestCase):
         gb2 = GroupBuilder('gb2', attributes={'attr2': 'my_attribute2'})
         gb1.deep_update(gb2)
         self.assertIn('attr2', gb2)
-        self.assertEqual(gb2['attr2'], 'my_attribute2')
+        self.assertEqual(gb1['attr2'], 'my_attribute2')
 
     def test_intersecting_links(self):
         gb1 = GroupBuilder('gb1', links={'link2': LinkBuilder(GroupBuilder('target1'), 'link2')})
@@ -290,6 +321,13 @@ class GroupBuilderDeepUpdateTests(TestCase):
         gb1.deep_update(gb2)
         self.assertIn('link2', gb2)
         self.assertEqual(gb1['link2'], gb2['link2'])
+
+    def test_intersecting_reserved(self):
+        msg = 'cannot reset reserved values once they are specified'
+        gb1 = GroupBuilder('gb1', reserved={'namespace': 'core', 'data_type': 'Foo'})
+        gb2 = GroupBuilder('gb2', reserved={'namespace': 'core', 'data_type': 'Foo2'})
+        with self.assertRaisesWith(ValueError, msg):
+            gb1.deep_update(gb2)
 
 
 class DatasetBuilderDeepUpdateTests(TestCase):

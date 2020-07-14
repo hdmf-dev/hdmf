@@ -148,7 +148,7 @@ class BaseBuilder(Builder):
         Note: older files may not have object id set.
         """
         if self.reserved:
-            raise ValueError('cannot reset reserved attributes')
+            raise ValueError('cannot reset reserved values once they are specified')
         namespace, data_type, object_id = getargs('namespace', 'data_type', 'object_id', kwargs)
         self.reserved[BaseBuilder._namespace] = namespace
         self.reserved[BaseBuilder._data_type] = data_type
