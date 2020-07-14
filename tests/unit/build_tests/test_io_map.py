@@ -88,8 +88,9 @@ class TestGetSubSpec(TestCase):
 
     def test_get_subspec_data_type_noname(self):
         parent_spec = GroupSpec('Something to hold a Bar', 'bar_bucket', groups=[self.bar_spec])
-        sub_builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
-                                                         'object_id': -1})
+        sub_builder = GroupBuilder('my_bar', reserved={'data_type': 'Bar',
+                                                       'namespace': CORE_NAMESPACE,
+                                                       'object_id': '-1'})
         GroupBuilder('bar_bucket', groups={'my_bar': sub_builder})
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, self.bar_spec)
@@ -97,8 +98,9 @@ class TestGetSubSpec(TestCase):
     def test_get_subspec_named(self):
         child_spec = GroupSpec('A test group specification with a data type', 'my_subgroup')
         parent_spec = GroupSpec('Something to hold a Bar', 'my_group', groups=[child_spec])
-        sub_builder = GroupBuilder('my_subgroup', attributes={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
-                                                              'object_id': -1})
+        sub_builder = GroupBuilder('my_subgroup', reserved={'data_type': 'Bar',
+                                                            'namespace': CORE_NAMESPACE,
+                                                            'object_id': '-1'})
         GroupBuilder('my_group', groups={'my_bar': sub_builder})
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, child_spec)
@@ -465,8 +467,10 @@ class TestObjectMapperNested(ObjectMapperMixin, TestCase):
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
             'data', list(range(10)), attributes={'attr2': 10})},
-                               attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
-                                           'object_id': expected.object_id})
+                               attributes={'attr1': 'value1'},
+                               reserved={'data_type': 'Bar',
+                                         'namespace': CORE_NAMESPACE,
+                                         'object_id': expected.object_id})
         self._remap_nested_attr()
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
@@ -517,8 +521,9 @@ class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
     def test_construct(self):
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
         builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
-                               attributes={'attr1': 'value1', 'attr2': 10, 'data_type': 'Bar',
-                                           'namespace': CORE_NAMESPACE, 'object_id': expected.object_id})
+                               attributes={'attr1': 'value1', 'attr2': 10},
+                               reserved={'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
+                                         'object_id': expected.object_id})
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
 
@@ -588,9 +593,9 @@ class TestLinkedContainer(TestCase):
         foo_expected = GroupBuilder('my_foo')
 
         inner_foo_builder = GroupBuilder('my_foo',
-                                         attributes={'data_type': 'Foo',
-                                                     'namespace': CORE_NAMESPACE,
-                                                     'object_id': foo_inst.object_id})
+                                         reserved={'data_type': 'Foo',
+                                                   'namespace': CORE_NAMESPACE,
+                                                   'object_id': foo_inst.object_id})
         bar1_expected = GroupBuilder('n/a',  # name doesn't matter
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      groups={'foo': inner_foo_builder},
@@ -649,9 +654,9 @@ class TestReference(TestCase):
         foo_expected = GroupBuilder('my_foo')
 
         inner_foo_builder = GroupBuilder('my_foo',
-                                         attributes={'data_type': 'Foo',
-                                                     'namespace': CORE_NAMESPACE,
-                                                     'object_id': foo_inst.object_id})
+                                         reserved={'data_type': 'Foo',
+                                                   'namespace': CORE_NAMESPACE,
+                                                   'object_id': foo_inst.object_id})
         bar1_expected = GroupBuilder('n/a',  # name doesn't matter
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      attributes={'attr1': 'value1',

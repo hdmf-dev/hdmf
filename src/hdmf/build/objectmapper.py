@@ -1103,7 +1103,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             kwargs[argname] = val
         try:
             obj = cls.__new__(cls, container_source=builder.source, parent=parent,
-                              object_id=builder.attributes.get(self.__spec.id_key()))
+                              object_id=builder.object_id)
             obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object due to: %s' % (cls.__name__, ex)

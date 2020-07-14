@@ -230,13 +230,13 @@ class ValidatorMap:
     def validate(self, **kwargs):
         """Validate a builder against a Spec
 
-        ``builder`` must have the attribute used to specifying data type
+        ``builder`` must have the reserved key-value pair used to specify the data type
         by the namespace used to construct this ValidatorMap.
         """
         builder = getargs('builder', kwargs)
-        dt = builder.attributes.get(self.__type_key)
+        dt = builder.data_type
         if dt is None:
-            msg = "builder must have data type defined with attribute '%s'" % self.__type_key
+            msg = "builder must have data type defined with reserved key '%s'" % self.__type_key
             raise ValueError(msg)
         validator = self.get_validator(dt)
         return validator.validate(builder)
@@ -308,8 +308,7 @@ class AttributeValidator(Validator):
                         # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                         pass
                 else:
-                    target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
-                    data_type = value.attributes.get(target_spec.type_key())
+                    data_type = value.data_type
                     hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
@@ -433,7 +432,7 @@ class GroupValidator(BaseStorageValidator):
             if isinstance(v_builder, LinkBuilder):
                 v_builder = v_builder.builder
             if isinstance(v_builder, BaseBuilder):
-                dt = v_builder.attributes.get(self.spec.type_key())
+                dt = v_builder.data_type
                 if dt is not None:
                     data_types.setdefault(dt, list()).append(value)
         for dt, inc_spec in self.__include_dts.items():

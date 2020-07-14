@@ -508,7 +508,7 @@ class TypeMap:
 
         # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
-            if not f == 'help':  # (legacy) do not all help to any part of class object
+            if not f == 'help':  # (legacy) do not add help to any part of class object
                 # build docval arguments for generated constructor
                 dtype = self.__get_type(field_spec)
                 if dtype is None:
@@ -648,10 +648,7 @@ class TypeMap:
         ret = None
         if isinstance(builder, LinkBuilder):
             builder = builder.builder
-        if isinstance(builder, GroupBuilder):
-            ret = builder.attributes.get(self.__ns_catalog.group_spec_cls.type_key())
-        else:
-            ret = builder.attributes.get(self.__ns_catalog.dataset_spec_cls.type_key())
+        ret = builder.data_type
         if isinstance(ret, bytes):
             ret = ret.decode('UTF-8')
         return ret
@@ -663,7 +660,7 @@ class TypeMap:
         builder = getargs('builder', kwargs)
         if isinstance(builder, LinkBuilder):
             builder = builder.builder
-        ret = builder.attributes.get('namespace')
+        ret = builder.namespace
         return ret
 
     @docval({'name': 'builder', 'type': Builder,
@@ -806,9 +803,12 @@ class TypeMap:
 
         # add additional attributes (namespace, data_type, object_id) to builder
         namespace, data_type = self.get_container_ns_dt(container)
-        builder.set_attribute('namespace', namespace)
-        builder.set_attribute(self.__type_key(obj_mapper.spec), data_type)
-        builder.set_attribute(obj_mapper.spec.id_key(), container.object_id)
+        if not builder.reserved:
+            builder.set_reserved(
+                namespace=namespace,
+                data_type=data_type,
+                object_id=container.object_id
+            )
         return builder
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
@@ -824,8 +824,7 @@ class TypeMap:
             build_manager = BuildManager(self)
         obj_mapper = self.get_map(builder)
         if obj_mapper is None:
-            dt = builder.attributes[self.namespace_catalog.group_spec_cls.type_key()]
-            raise ValueError('No ObjectMapper found for builder of type %s' % dt)
+            raise ValueError('No ObjectMapper found for builder of type %s' % builder.data_type)
         else:
             return obj_mapper.construct(builder, build_manager, parent)
 

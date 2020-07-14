@@ -174,8 +174,10 @@ class TestBuildGroupAddedAttr(BuildGroupExtAttrsMixin, TestCase):
             attributes={
                 'attr1': 'a string',
                 'attr2': 10,
-                'data_type': 'Bar',
                 'ext_attr': False,
+            },
+            reserved={
+                'data_type': 'Bar',
                 'namespace': CORE_NAMESPACE,
                 'object_id': ext_bar_inst.object_id,
             },
@@ -183,7 +185,7 @@ class TestBuildGroupAddedAttr(BuildGroupExtAttrsMixin, TestCase):
         expected = GroupBuilder(
             name='my_bar_holder',
             groups={'my_bar': expected_inner},
-            attributes={
+            reserved={
                 'data_type': 'BarHolder',
                 'namespace': CORE_NAMESPACE,
                 'object_id': bar_holder_inst.object_id,
@@ -240,6 +242,8 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
             attributes={
                 'attr1': 'a string',
                 'attr2': np.int64(10),
+            },
+            reserved={
                 'data_type': 'Bar',
                 'namespace': CORE_NAMESPACE,
                 'object_id': ext_bar_inst.object_id,
@@ -248,7 +252,7 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
         expected = GroupBuilder(
             name='my_bar_holder',
             groups={'my_bar': expected_inner},
-            attributes={
+            reserved={
                 'data_type': 'BarHolder',
                 'namespace': CORE_NAMESPACE,
                 'object_id': bar_holder_inst.object_id,
@@ -278,6 +282,8 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
     #         attributes={
     #             'attr1': 'a string',
     #             'attr2': np.int64(10),
+    #         },
+    #         reserved={
     #             'data_type': 'Bar',
     #             'namespace': CORE_NAMESPACE,
     #             'object_id': ext_bar_inst.object_id,
@@ -286,7 +292,7 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
     #     expected = GroupBuilder(
     #         name='my_bar_holder',
     #         groups={'my_bar': expected_inner},
-    #         attributes={
+    #         reserved={
     #             'data_type': 'BarHolder',
     #             'namespace': CORE_NAMESPACE,
     #             'object_id': bar_holder_inst.object_id,
@@ -466,8 +472,10 @@ class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
             attributes={
                 'attr1': 'a string',
                 'attr2': 10,
-                'data_type': 'BarData',
                 'ext_attr': False,
+            },
+            reserved={
+                'data_type': 'BarData',
                 'namespace': CORE_NAMESPACE,
                 'object_id': ext_bar_data_inst.object_id,
             },
@@ -475,7 +483,7 @@ class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
         expected = GroupBuilder(
             name='my_bar_holder',
             datasets={'my_bar': expected_inner},
-            attributes={
+            reserved={
                 'data_type': 'BarDataHolder',
                 'namespace': CORE_NAMESPACE,
                 'object_id': bar_data_holder_inst.object_id,
@@ -526,6 +534,8 @@ class TestBuildDatasetRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
             attributes={
                 'attr1': 'a string',
                 'attr2': 10,
+            },
+            reserved={
                 'data_type': 'BarData',
                 'namespace': CORE_NAMESPACE,
                 'object_id': ext_bar_data_inst.object_id,
@@ -534,7 +544,7 @@ class TestBuildDatasetRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         expected = GroupBuilder(
             name='my_bar_holder',
             datasets={'my_bar': expected_inner},
-            attributes={
+            reserved={
                 'data_type': 'BarDataHolder',
                 'namespace': CORE_NAMESPACE,
                 'object_id': bar_data_holder_inst.object_id,
@@ -588,6 +598,8 @@ class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
             attributes={
                 'attr1': 'a string',
                 'attr2': 10,
+            },
+            reserved={
                 'data_type': 'BarData',
                 'namespace': CORE_NAMESPACE,
                 'object_id': ext_bar_data_inst.object_id,
@@ -596,7 +608,7 @@ class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         expected = GroupBuilder(
             name='my_bar_holder',
             datasets={'my_bar': expected_inner},
-            attributes={
+            reserved={
                 'data_type': 'BarDataHolder',
                 'namespace': CORE_NAMESPACE,
                 'object_id': bar_data_holder_inst.object_id,

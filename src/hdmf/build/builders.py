@@ -90,21 +90,34 @@ class Builder(dict, metaclass=ABCMeta):
 
 
 class BaseBuilder(Builder):
+    # keys in self (dict)
     __attribute = 'attributes'
+    __reserved = 'reserved'
+
+    # keys in __reserved dict
+    __namespace = 'namespace'
+    __data_type = 'data_type'
+    __object_id = 'object_id'
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
             {'name': 'attributes', 'type': dict, 'doc': 'a dictionary of attributes to create in this group',
              'default': dict()},
             {'name': 'parent', 'type': 'GroupBuilder', 'doc': 'the parent builder of this Builder', 'default': None},
             {'name': 'source', 'type': str,
-             'doc': 'the source of the data represented in this Builder', 'default': None})
+             'doc': 'the source of the data represented in this Builder', 'default': None},
+            {'name': 'reserved', 'type': dict,
+             'doc': 'the reserved attributes of this Builder', 'default': dict()})
     def __init__(self, **kwargs):
-        name, attributes, parent, source = getargs('name', 'attributes', 'parent', 'source', kwargs)
+        name, attributes, parent, source, reserved = getargs('name', 'attributes', 'parent', 'source', 'reserved',
+                                                             kwargs)
         super().__init__(name, parent, source)
         super().__setitem__(BaseBuilder.__attribute, dict())
+        super().__setitem__(BaseBuilder.__reserved, dict())
         for name, val in attributes.items():
             self.set_attribute(name, val)
         self.__location = None
+        if reserved:
+            self.set_reserved(**reserved)
 
     @property
     def location(self):
@@ -127,8 +140,52 @@ class BaseBuilder(Builder):
     def set_attribute(self, **kwargs):
         ''' Set an attribute for this group. '''
         name, value = getargs('name', 'value', kwargs)
-        super().__getitem__(BaseBuilder.__attribute)[name] = value
-        # self.obj_type[name] = BaseBuilder.__attribute
+        self.attributes[name] = value
+
+    @property
+    def reserved(self):
+        """
+        The reserved attributes of this Builder
+        """
+        return super().__getitem__(BaseBuilder.__reserved)
+
+    @docval({'name': 'namespace', 'type': str, 'doc': 'the namespace'},
+            {'name': 'data_type', 'type': str, 'doc': 'the data type'},
+            {'name': 'object_id', 'type': str, 'doc': 'the object ID', 'default': None})
+    def set_reserved(self, **kwargs):
+        """Set the reserved attributes for this builder.
+
+        Cannot be reset once set. Raises ValueError if reserved attributes have already been set.
+
+        Note: older files may not have object id set.
+        """
+        if self.reserved:
+            raise ValueError('cannot reset reserved attributes')
+        namespace, data_type, object_id = getargs('namespace', 'data_type', 'object_id', kwargs)
+        self.reserved[BaseBuilder.__namespace] = namespace
+        self.reserved[BaseBuilder.__data_type] = data_type
+        self.reserved[BaseBuilder.__object_id] = object_id
+
+    @property
+    def namespace(self):
+        """
+        The namespace of this Builder
+        """
+        return self.reserved.get(BaseBuilder.__namespace, None)
+
+    @property
+    def data_type(self):
+        """
+        The data type of this Builder
+        """
+        return self.reserved.get(BaseBuilder.__data_type, None)
+
+    @property
+    def object_id(self):
+        """
+        The object ID of this Builder
+        """
+        return self.reserved.get(BaseBuilder.__object_id, None)
 
     @docval({'name': 'builder', 'type': 'BaseBuilder', 'doc': 'the BaseBuilder to merge attributes from '})
     def deep_update(self, **kwargs):
@@ -156,18 +213,20 @@ class GroupBuilder(BaseBuilder):
              'default': dict()},
             {'name': 'parent', 'type': 'GroupBuilder', 'doc': 'the parent builder of this Builder', 'default': None},
             {'name': 'source', 'type': str,
-             'doc': 'the source of the data represented in this Builder', 'default': None})
+             'doc': 'the source of the data represented in this Builder', 'default': None},
+            {'name': 'reserved', 'type': dict,
+             'doc': 'the reserved attributes of this Builder', 'default': dict()})
     def __init__(self, **kwargs):
         '''
         Create a GroupBuilder object
         '''
-        name, groups, datasets, links, attributes, parent, source = getargs(
-            'name', 'groups', 'datasets', 'links', 'attributes', 'parent', 'source', kwargs)
+        name, groups, datasets, links, attributes, parent, source, reserved = getargs(
+            'name', 'groups', 'datasets', 'links', 'attributes', 'parent', 'source', 'reserved', kwargs)
         groups = self.__to_list(groups)
         datasets = self.__to_list(datasets)
         links = self.__to_list(links)
         self.obj_type = dict()
-        super().__init__(name, attributes, parent, source)
+        super().__init__(name, attributes, parent, source, reserved)
         super().__setitem__(GroupBuilder.__group, dict())
         super().__setitem__(GroupBuilder.__dataset, dict())
         super().__setitem__(GroupBuilder.__link, dict())
@@ -445,12 +504,14 @@ class DatasetBuilder(BaseBuilder):
              'doc': 'the shape of this dataset. Use None for scalars', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'whether or not to chunk this dataset', 'default': False},
             {'name': 'parent', 'type': GroupBuilder, 'doc': 'the parent builder of this Builder', 'default': None},
-            {'name': 'source', 'type': str, 'doc': 'the source of the data in this builder', 'default': None})
+            {'name': 'source', 'type': str, 'doc': 'the source of the data in this builder', 'default': None},
+            {'name': 'reserved', 'type': dict,
+             'doc': 'the reserved attributes of this Builder', 'default': dict()})
     def __init__(self, **kwargs):
         ''' Create a Builder object for a dataset '''
-        name, data, dtype, attributes, maxshape, chunks, parent, source = getargs(
-            'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', kwargs)
-        super().__init__(name, attributes, parent, source)
+        name, data, dtype, attributes, maxshape, chunks, parent, source, reserved = getargs(
+            'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', 'reserved', kwargs)
+        super().__init__(name, attributes, parent, source, reserved)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
         self.__chunks = chunks

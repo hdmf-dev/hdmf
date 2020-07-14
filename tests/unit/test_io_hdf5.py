@@ -153,10 +153,10 @@ class TestHDF5Writer(GroupBuilderTestCase):
         self.path = "test_io_hdf5.h5"
 
         self.foo_builder = GroupBuilder('foo1',
-                                        attributes={'data_type': 'Foo',
-                                                    'namespace': 'test_core',
-                                                    'attr1': "bar",
-                                                    'object_id': -1},
+                                        reserved={'data_type': 'Foo',
+                                                  'namespace': 'test_core',
+                                                  'object_id': '-1'},
+                                        attributes={'attr1': "bar"},
                                         datasets={'my_data': DatasetBuilder('my_data', list(range(100, 200, 10)),
                                                                             attributes={'attr2': 17})})
         self.foo = Foo('foo1', list(range(100, 200, 10)), attr1="bar", attr2=17, attr3=3.14)
@@ -169,7 +169,7 @@ class TestHDF5Writer(GroupBuilderTestCase):
                                  groups={'foo_holder':
                                          GroupBuilder('foo_holder',
                                                       groups={'foo1': self.foo_builder})})},
-            attributes={'data_type': 'FooFile'})
+            reserved={'data_type': 'FooFile', 'namespace': 'test_core'})
 
     def tearDown(self):
         if os.path.exists(self.path):

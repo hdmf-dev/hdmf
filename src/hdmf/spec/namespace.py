@@ -236,6 +236,15 @@ class NamespaceCatalog:
         self.__namespaces = OrderedDict()
         self.__dataset_spec_cls = getargs('dataset_spec_cls', kwargs)
         self.__group_spec_cls = getargs('group_spec_cls', kwargs)
+        # check for consistency
+        if self.__group_spec_cls.type_key() != self.__dataset_spec_cls.type_key():  # pragma: no cover
+            raise ValueError('Type keys of %s and %s must the same: %s != %s'
+                             % (self.__group_spec_cls.__name__, self.__dataset_spec_cls.__name__,
+                                self.__group_spec_cls.type_key(), self.__dataset_spec_cls.type_key()))
+        if self.__group_spec_cls.id_key() != self.__dataset_spec_cls.id_key():  # pragma: no cover
+            raise ValueError('ID keys of %s and %s must the same: %s != %s'
+                             % (self.__group_spec_cls.__name__, self.__dataset_spec_cls.__name__,
+                                self.__group_spec_cls.id_key(), self.__dataset_spec_cls.id_key()))
         self.__spec_namespace_cls = getargs('spec_namespace_cls', kwargs)
         # keep track of all spec objects ever loaded, so we don't have
         # multiple object instances of a spec

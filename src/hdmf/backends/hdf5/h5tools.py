@@ -73,6 +73,10 @@ class HDF5IO(HDMFIO):
         self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
         self.__open_links = []      # keep track of other files opened from links in this file
+        if self.manager:
+            self.__namespace_key = 'namespace'
+            self.__data_type_key = self.manager.namespace_catalog.group_spec_cls.type_key()
+            self.__object_id_key = self.manager.namespace_catalog.group_spec_cls.id_key()
 
     @property
     def comm(self):
@@ -464,6 +468,7 @@ class HDF5IO(HDMFIO):
                 kwargs['datasets'][k] = None
                 continue
         kwargs['source'] = h5obj.file.filename
+        kwargs['reserved'] = self.__read_reserved(h5obj)
         ret = GroupBuilder(name, **kwargs)
         ret.written = True
         return ret
@@ -517,6 +522,7 @@ class HDF5IO(HDMFIO):
             kwargs["data"] = d
         else:
             kwargs["data"] = h5obj
+        kwargs['reserved'] = self.__read_reserved(h5obj)
         ret = DatasetBuilder(name, **kwargs)
         ret.written = True
         return ret
@@ -526,12 +532,24 @@ class HDF5IO(HDMFIO):
         for k, v in h5obj.attrs.items():
             if k == SPEC_LOC_ATTR:     # ignore cached spec
                 continue
+            if k in [self.__namespace_key, self.__data_type_key, self.__object_id_key]:
+                continue
             if isinstance(v, RegionReference):
                 raise ValueError("cannot read region reference attributes yet")
             elif isinstance(v, Reference):
                 ret[k] = self.__read_ref(h5obj.file[v])
             else:
                 ret[k] = v
+        return ret
+
+    def __read_reserved(self, h5obj):
+        namespace = h5obj.attrs.get(self.__namespace_key, None)
+        data_type = h5obj.attrs.get(self.__data_type_key, None)
+        object_id = h5obj.attrs.get(self.__object_id_key, None)
+        if namespace:
+            ret = {'namespace': namespace, 'data_type': data_type, 'object_id': object_id}
+        else:
+            ret = {}
         return ret
 
     def __read_ref(self, h5obj):
@@ -586,6 +604,7 @@ class HDF5IO(HDMFIO):
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
+        self.__set_reserved(self.__file, f_builder)
         self.__add_refs()
         self.__exhaust_dcis()
 
@@ -694,6 +713,13 @@ class HDF5IO(HDMFIO):
              'doc': 'a dict containing the attributes on the Group or Dataset, indexed by attribute name'})
     def set_attributes(self, **kwargs):
         obj, attributes = getargs('obj', 'attributes', kwargs)
+        err_msg = "Attribute '%s' is reserved and cannot be set."
+        if self.__namespace_key in attributes:
+            raise ValueError(err_msg % self.__namespace_key)
+        if self.__data_type_key in attributes:
+            raise ValueError(err_msg % self.__data_type_key)
+        if self.__object_id_key in attributes:
+            raise ValueError(err_msg % self.__object_id_key)
         for key, value in attributes.items():
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
@@ -715,6 +741,19 @@ class HDF5IO(HDMFIO):
                 self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                   % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value                   # a regular scalar
+
+    @docval({'name': 'obj', 'type': (Group, Dataset), 'doc': 'the HDF5 object to add reserved attributes to'},
+            {'name': 'builder', 'type': (GroupBuilder, DatasetBuilder),
+             'doc': 'the builder containing the reserved attributes'})
+    def __set_reserved(self, **kwargs):
+        """Set the reserved attributes from the builder as attributes on the HDF5 Group or Dataset."""
+        obj, builder = getargs('obj', 'builder', kwargs)
+        if builder.reserved:
+            self.logger.debug("Setting %s '%s' reserved attributes" % (builder.__class__.__name__, builder.name))
+            obj.attrs[self.__namespace_key] = builder.namespace
+            obj.attrs[self.__data_type_key] = builder.data_type
+            if builder.object_id:
+                obj.attrs[self.__object_id_key] = builder.object_id
 
     def _make_attr_ref_filler(self, obj, key, value):
         '''
@@ -765,6 +804,7 @@ class HDF5IO(HDMFIO):
                 self.write_link(group, sub_builder)
         attributes = builder.attributes
         self.set_attributes(group, attributes)
+        self.__set_reserved(group, builder)
         builder.written = True
         return group
 
@@ -881,6 +921,7 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                self.__set_reserved(dset, builder)
                 builder.written = True
                 self.logger.debug("Queueing set attribute on dataset '%s' containing references. attributes: %s"
                                   % (name, list(attributes.keys())))
@@ -908,6 +949,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar data region reference dataset
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
+                self.__set_reserved(dset, builder)
                 builder.written = True
                 self.logger.debug("Queueing set attribute on dataset '%s' containing a region reference. "
                                   "attributes: %s" % (name, list(attributes.keys())))
@@ -921,6 +963,7 @@ class HDF5IO(HDMFIO):
             # Write a scalar object reference dataset
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
+                self.__set_reserved(dset, builder)
                 builder.written = True
                 self.logger.debug("Queueing set attribute on dataset '%s' containing an object reference. "
                                   "attributes: %s" % (name, list(attributes.keys())))
@@ -936,6 +979,7 @@ class HDF5IO(HDMFIO):
                 # Write a array of region references
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
+                    self.__set_reserved(dset, builder)
                     builder.written = True
                     self.logger.debug("Queueing set attribute on dataset '%s' containing region references. "
                                       "attributes: %s" % (name, list(attributes.keys())))
@@ -951,6 +995,7 @@ class HDF5IO(HDMFIO):
                 # Write array of object references
                 else:
                     dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, ** options['io_settings'])
+                    self.__set_reserved(dset, builder)
                     builder.written = True
                     self.logger.debug("Queueing set attribute on dataset '%s' containing object references. "
                                       "attributes: %s" % (name, list(attributes.keys())))
@@ -982,6 +1027,7 @@ class HDF5IO(HDMFIO):
         # Create the attributes on the dataset only if we are the primary and not just a Soft/External link
         if link is None:
             self.set_attributes(dset, attributes)
+            self.__set_reserved(dset, builder)
         # Validate the attributes on the linked dataset
         elif len(attributes) > 0:
             pass
