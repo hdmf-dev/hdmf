@@ -197,10 +197,12 @@ class BaseBuilder(Builder):
 
 
 class GroupBuilder(BaseBuilder):
+    # keys in self (dict)
     __link = 'links'
     __group = 'groups'
     __dataset = 'datasets'
-    __attribute = 'attributes'
+    __attribute = 'attributes'  # should match BaseBuilder.__attribute
+    __reserved = 'reserved'  # should match BaseBuilder.__reserved
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
             {'name': 'groups', 'type': (dict, list), 'doc': 'a dictionary of subgroups to create in this group',
@@ -418,7 +420,8 @@ class GroupBuilder(BaseBuilder):
         '''
         if (len(super().__getitem__(GroupBuilder.__dataset)) or
                 len(super().__getitem__(GroupBuilder.__attribute)) or
-                len(super().__getitem__(GroupBuilder.__link))):
+                len(super().__getitem__(GroupBuilder.__link)) or
+                len(super().__getitem__(GroupBuilder.__reserved))):
             return False
         elif len(super().__getitem__(GroupBuilder.__group)):
             return all(g.is_empty() for g in super().__getitem__(GroupBuilder.__group).values())
@@ -467,7 +470,8 @@ class GroupBuilder(BaseBuilder):
         return _itertools.chain(super().__getitem__(GroupBuilder.__group).items(),
                                 super().__getitem__(GroupBuilder.__dataset).items(),
                                 super().__getitem__(GroupBuilder.__attribute).items(),
-                                super().__getitem__(GroupBuilder.__link).items())
+                                super().__getitem__(GroupBuilder.__link).items(),
+                                super().__getitem__(GroupBuilder.__reserved).items())
 
     def keys(self):
         '''Like dict.keys, but iterates over keys in groups, datasets,
@@ -476,7 +480,8 @@ class GroupBuilder(BaseBuilder):
         return _itertools.chain(super().__getitem__(GroupBuilder.__group).keys(),
                                 super().__getitem__(GroupBuilder.__dataset).keys(),
                                 super().__getitem__(GroupBuilder.__attribute).keys(),
-                                super().__getitem__(GroupBuilder.__link).keys())
+                                super().__getitem__(GroupBuilder.__link).keys(),
+                                super().__getitem__(GroupBuilder.__reserved).keys())
 
     def values(self):
         '''Like dict.values, but iterates over values in groups, datasets,
@@ -485,7 +490,8 @@ class GroupBuilder(BaseBuilder):
         return _itertools.chain(super().__getitem__(GroupBuilder.__group).values(),
                                 super().__getitem__(GroupBuilder.__dataset).values(),
                                 super().__getitem__(GroupBuilder.__attribute).values(),
-                                super().__getitem__(GroupBuilder.__link).values())
+                                super().__getitem__(GroupBuilder.__link).values(),
+                                super().__getitem__(GroupBuilder.__reserved).values())
 
 
 class DatasetBuilder(BaseBuilder):
