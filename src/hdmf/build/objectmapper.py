@@ -217,7 +217,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret_dtype = tmp_dtype
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
+            if spec_dtype_type is _unicode:
+                ret_dtype = "utf8"
+            elif spec_dtype_type is _ascii:
+                ret_dtype = "ascii"
+            else:
+                ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
             if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
@@ -242,7 +247,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 np.issubdtype(value_dtype, np.integer)):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
-    @classmethod
+    @classmethod  # noqa: C901
     def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
         Check edge cases in converting data to a dtype

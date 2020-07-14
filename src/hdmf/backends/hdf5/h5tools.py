@@ -7,7 +7,7 @@ import logging
 import warnings
 
 from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 from ...data_utils import AbstractDataChunkIterator
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
@@ -956,7 +956,7 @@ class HDF5IO(HDMFIO):
         self.__set_written(builder)
         return link_obj
 
-    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
+    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},  # noqa: C901
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
@@ -1223,6 +1223,9 @@ class HDF5IO(HDMFIO):
                 io_settings['dtype'] = options['dtype']
             else:
                 io_settings['dtype'] = data.dtype
+            if isinstance(io_settings['dtype'], str):
+                # map to real dtype if we were given a string
+                io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
@@ -1404,3 +1407,21 @@ class HDF5IO(HDMFIO):
         Return the HDF5 file mode. One of ("w", "r", "r+", "a", "w-", "x").
         """
         return self.__mode
+
+    @classmethod
+    @docval(*get_docval(H5DataIO.__init__))
+    def set_dataio(cls, **kwargs):
+        """
+        Wrap the given Data object with an H5DataIO.
+
+        This method is provided merely for convenience. It is the equivalent
+        of the following:
+
+        ```
+        from hdmf.backends.hdf5 import H5DataIO
+        data = ...
+        data = H5DataIO(data)
+        ```
+        """
+        cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
+        return H5DataIO(*cargs, **ckwargs)
