@@ -218,9 +218,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
             else:
                 if parent_container is None:
                     raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))
-                # TODO this assumes isinstance(parent_container, Proxy) but
-                # circular import if we try to do that. Proxy would need to move
-                # or Container extended with this functionality in build/map.py
+                # NOTE this assumes isinstance(parent_container, Proxy) but we get a circular import
+                # if we try to do that
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
                     parent_container.__children.append(self)
@@ -232,6 +231,18 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+
+    def _remove_child(self, child):
+        """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
+        if not isinstance(child, AbstractContainer):
+            raise ValueError('Cannot remove non-AbstractContainer object from children.')
+        if child not in self.children:
+            raise ValueError("%s '%s' is not a child of %s '%s'." % (child.__class__.__name__, child.name,
+                                                                     self.__class__.__name__, self.name))
+        child.__parent = None
+        self.__children.remove(child)
+        child.set_modified()
+        self.set_modified()
 
 
 class Container(AbstractContainer):
