@@ -70,7 +70,10 @@ After exporting a container, the object IDs of the container and its child conta
 IDs of the read container and its child containers. The object ID of a container uniquely identifies the container
 within a file, but should *not* be used to distinguish between two different files.
 
-You can change this behavior so that after exporting a container, the object IDs of the container and its child
-containers will be different from the object IDs of the read container and its child containers. To do so, pass the
-keyword argument ``keep_object_ids=False`` to
-:py:meth:`HDF5IO.export <hdmf.backends.hdf5.h5tools.HDF5IO.export>`.
+If you would like all object IDs to change on export, then first call the method
+:py:meth:`generate_new_id <hdmf.container.AbstractContainer.generate_new_id>` on the root container to generate
+a new set of IDs for the root container and all of its children, recursively. Then export the container with its
+new IDs. Note: calling the :py:meth:`generate_new_id <hdmf.container.AbstractContainer.generate_new_id>` method 
+changes the object IDs of the containers in memory. These changes are not reflected in the original file from
+which the containers were read unless the :py:meth:`HDF5IO.write <hdmf.backends.hdf5.h5tools.HDF5IO.write>`
+method is subsequently called.
