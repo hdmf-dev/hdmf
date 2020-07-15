@@ -118,6 +118,54 @@ class TestContainer(TestCase):
         self.assertEqual(Container.type_hierarchy(), (Container, AbstractContainer, object))
         self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, AbstractContainer, object))
 
+    def test_generate_new_id_parent(self):
+        """Test that generate_new_id sets a new ID on the container and its children and sets modified on all."""
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        old_parent_id = parent_obj.object_id
+        old_child_id = child_obj.object_id
+
+        parent_obj.set_modified(False)
+        child_obj.set_modified(False)
+        parent_obj.generate_new_id()
+        self.assertNotEqual(old_parent_id, parent_obj.object_id)
+        self.assertNotEqual(old_child_id, child_obj.object_id)
+        self.assertTrue(parent_obj.modified)
+        self.assertTrue(child_obj.modified)
+
+    def test_generate_new_id_child(self):
+        """Test that generate_new_id sets a new ID on the container and not its parent and sets modified on both."""
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        old_parent_id = parent_obj.object_id
+        old_child_id = child_obj.object_id
+
+        parent_obj.set_modified(False)
+        child_obj.set_modified(False)
+        child_obj.generate_new_id()
+        self.assertEqual(old_parent_id, parent_obj.object_id)
+        self.assertNotEqual(old_child_id, child_obj.object_id)
+        self.assertTrue(parent_obj.modified)
+        self.assertTrue(child_obj.modified)
+
+    def test_generate_new_id_parent_no_recurse(self):
+        """Test that generate_new_id(recurse=False) sets a new ID on the container and not its children."""
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        old_parent_id = parent_obj.object_id
+        old_child_id = child_obj.object_id
+
+        parent_obj.set_modified(False)
+        child_obj.set_modified(False)
+        parent_obj.generate_new_id(recurse=False)
+        self.assertNotEqual(old_parent_id, parent_obj.object_id)
+        self.assertEqual(old_child_id, child_obj.object_id)
+        self.assertTrue(parent_obj.modified)
+        self.assertFalse(child_obj.modified)
+
 
 class TestData(TestCase):
 
