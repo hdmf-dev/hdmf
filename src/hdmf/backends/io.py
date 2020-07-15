@@ -76,7 +76,7 @@ class HDMFIO(metaclass=ABCMeta):
                 new_io.export(old_io)
         """
         src_io, container, write_args, keep_object_ids = getargs('src_io', 'container', 'write_args', 'keep_object_ids',
-                                                                kwargs)
+                                                                 kwargs)
         if container is not None:
             # check that manager exists, container was built from manager, and container is root of hierarchy
             if src_io.manager is None:
