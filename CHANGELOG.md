@@ -9,6 +9,7 @@
 - Users can use the new export functionality to read data from one source, modify the data in-memory, and then write the
   modified data to a new file. Modifications can include additions and removals. To facilitate removals,
   `AbstractContainer` contains a new `_remove_child` method and `BuildManager` contains a new `purge_outdated` method.
+   @rly (#388)
 
 ### Breaking changes
 - `Builder` objects no longer have the `written` field which was used by `HDF5IO` to mark the object as written. This
@@ -16,7 +17,16 @@
 - `HDMFIO.write` and `HDMFIO.write_builder` no longer have the keyword argument `exhaust_dcis`. This remains present in
   `HDF5IO.write` and `HDF5IO.write_builder`. @rly (#388)
 - The class method `HDF5IO.copy_file` is no longer supported and may be removed in a future version. Please use the
-  `HDF5IO.export` method or `h5py.File.copy` method instead.
+  `HDF5IO.export` method or `h5py.File.copy` method instead. @rly (#388)
+- `HDF5IO` will raise an error when trying to write a builder attribute with a reserved name ('namespace',
+  'data_type', or 'object_id'). Note: if the loaded namespace has a different data type key or object ID key (e.g.,
+  'neurodata_type'), then that is used as the reserved name. @rly (#400)
+- Both 'namespace' and 'data_type' are now required for all typed groups and datasets. You cannot set one without
+  the other. Previously you could have one without the other. 'object_id' is optional because older files may not
+  have object ids. @rly (#400)
+- Previously it was possible for the `GroupSpec.type_key` to be different from `DatasetSpec.type_key` (e.g.,
+  "data_type" or "neurodata_type"). This should not happen and now raises an error. Same for `GroupSpec.id_key` and
+  `DatasetSpec.id_key`. @rly (#400)
 
 ## HDMF 1.6.4 (June 26, 2020)
 
