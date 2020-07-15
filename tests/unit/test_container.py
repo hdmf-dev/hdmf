@@ -118,8 +118,41 @@ class TestContainer(TestCase):
         self.assertEqual(Container.type_hierarchy(), (Container, AbstractContainer, object))
         self.assertEqual(Subcontainer.type_hierarchy(), (Subcontainer, Container, AbstractContainer, object))
 
+    def test_remove_child(self):
+        """Test that removing a child removes only the child.
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj3 = Container('obj3')
+        child_obj.parent = parent_obj
+        child_obj3.parent = parent_obj
+        parent_obj._remove_child(child_obj)
+        self.assertTupleEqual(parent_obj.children, (child_obj3, ))
+        self.assertTrue(parent_obj.modified)
+        self.assertTrue(child_obj.modified)
+
+    def test_remove_child_noncontainer(self):
+        """Test that removing a non-Container child raises an error.
+        """
+        msg = "Cannot remove non-AbstractContainer object from children."
+        with self.assertRaisesWith(ValueError, msg):
+            Container('obj1')._remove_child(object())
+
+    def test_remove_child_nonchild(self):
+        """Test that removing a non-Container child raises an error.
+        """
+        msg = "Container 'dummy' is not a child of Container 'obj1'."
+        with self.assertRaisesWith(ValueError, msg):
+            Container('obj1')._remove_child(Container('dummy'))
+
 
 class TestData(TestCase):
+
+    def test_constructor_scalar(self):
+        """Test that constructor works correctly on scalar data
+        """
+        data_obj = Data('my_data', 'foobar')
+        self.assertEqual(data_obj.data, 'foobar')
 
     def test_bool_true(self):
         """Test that __bool__ method works correctly on data with len

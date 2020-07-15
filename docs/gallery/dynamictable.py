@@ -359,6 +359,79 @@ table['col4'][:2]  # get a list of the 0th and 1st list elements
 #   not recommended because they interact with the internal list of columns.
 
 ###############################################################################
+# Nested ragged array columns
+# ---------------------------
+# Each element within a column can be an n-dimensional array, and this is true
+# for ragged array columns as well.
+
+col5 = VectorData(
+    name='col5',
+    description='column #5',
+    data=[['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i']],
+)
+col5_ind = VectorIndex(
+    name='col5_index',
+    target=col5,
+    data=[2, 3],
+)
+
+###############################################################################
+# The ragged array column above has two rows. The first row has two elements,
+# where each element has 3 sub-elements. This can be thought of as a 2x3 array.
+# The second row has one element with 3 sub-elements, or a 1x3 array. This
+# works only if the data for ``col5`` is a rectangular array, that is, each row
+# element contains the same number of sub-elements. If each row element does
+# not contain the same number of sub-elements, then a nested ragged array
+# approach must be used instead.
+#
+# A :py:class:`~hdmf.common.table.VectorIndex` object can index another
+# :py:class:`~hdmf.common.table.VectorIndex` object. For example, the first row
+# of a table might be a 2x3 array, the second row might be a 3x2 array, and the
+# third row might be a 1x1 array. This cannot be represented by a singly
+# indexed column, but can be represented by a nested ragged array column.
+
+col6 = VectorData(
+    name='col6',
+    description='column #6',
+    data=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'],
+)
+col6_ind = VectorIndex(
+    name='col6_index',
+    target=col6,
+    data=[3, 6, 8, 10, 12, 13],
+)
+col6_ind_ind = VectorIndex(
+    name='col6_index_index',
+    target=col6_ind,
+    data=[2, 5, 6],
+)
+
+# All indices must be added to the table
+table_double_ragged_col = DynamicTable(
+    name='my table',
+    description='an example table',
+    columns=[col6, col6_ind, col6_ind_ind],
+)
+
+###############################################################################
+# Access the first row using the same syntax as before, except now a list of
+# lists is returned. You can then index the resulting list of lists to access
+# the individual elements.
+
+table_double_ragged_col[0, 'col6']  # returns [['a', 'b', 'c'], ['d', 'e', 'f']]
+table_double_ragged_col['col6'][0]  # same as line above
+table_double_ragged_col['col6'][0][1]  # returns ['d', 'e', 'f']
+
+###############################################################################
+# Accessing the column named 'col6' using square bracket notation will return
+# the top-level :py:class:`~hdmf.common.table.VectorIndex` for the column.
+# Accessing the column named 'col6' using dot notation will return the
+# :py:class:`~hdmf.common.table.VectorData` object
+
+table_double_ragged_col['col6']  # returns col6_ind_ind
+table_double_ragged_col.col6  # returns col6
+
+###############################################################################
 # Referencing rows of a DynamicTable
 # ----------------------------------
 # TODO
