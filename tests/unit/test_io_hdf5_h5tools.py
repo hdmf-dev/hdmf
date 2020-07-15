@@ -2663,8 +2663,31 @@ class TestExport(TestCase):
                 with self.assertRaisesWith(UnsupportedOperation, msg):
                     export_io.export(src_io=read_io)
 
-    def test_new_object_id(self):
-        """Test that exporting a written container with new_object_ids=True (default) changes the object ID."""
+    def test_keep_object_id_false(self):
+        """Test that exporting a written container with keep_object_ids=False changes the object ID."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+            old_id = read_foofile.object_id
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile, keep_object_ids=False)
+
+            # check that object_id of in-memory container does not change on export
+            self.assertEqual(old_id, read_foofile.object_id)
+
+        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+            self.assertNotEqual(old_id, read_foofile.object_id)
+
+    def test_keep_object_id_true(self):
+        """Test that exporting a written container with keep_object_ids=True (default) does not change the object ID."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
@@ -2678,29 +2701,6 @@ class TestExport(TestCase):
 
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
-
-            # check that object_id of in-memory container does not change on export
-            self.assertEqual(old_id, read_foofile.object_id)
-
-        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
-            read_foofile = read_io.read()
-            self.assertNotEqual(old_id, read_foofile.object_id)
-
-    def test_new_object_id_false(self):
-        """Test that exporting a written container with new_object_ids=False does not change the object ID."""
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
-            write_io.write(foofile)
-
-        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
-            read_foofile = read_io.read()
-            old_id = read_foofile.object_id
-
-            with HDF5IO(self.paths[1], mode='w') as export_io:
-                export_io.export(src_io=read_io, container=read_foofile, new_object_ids=False)
 
         with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
             read_foofile = read_io.read()

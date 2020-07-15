@@ -51,7 +51,7 @@ class HDMFIO(metaclass=ABCMeta):
              'default': None},
             {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
              'default': dict()},
-            {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+            {'name': 'keep_object_ids', 'type': bool, 'doc': 'whether to keep existing object IDs or generate new IDs',
              'default': True})
     def export(self, **kwargs):
         """Export from one backend to the backend represented by this class.
@@ -75,7 +75,7 @@ class HDMFIO(metaclass=ABCMeta):
             with HDF5IO('new_copy.nwb', 'w') as new_io:
                 new_io.export(old_io)
         """
-        src_io, container, write_args, new_object_ids = getargs('src_io', 'container', 'write_args', 'new_object_ids',
+        src_io, container, write_args, keep_object_ids = getargs('src_io', 'container', 'write_args', 'keep_object_ids',
                                                                 kwargs)
         if container is not None:
             # check that manager exists, container was built from manager, and container is root of hierarchy
@@ -94,7 +94,7 @@ class HDMFIO(metaclass=ABCMeta):
             bldr = src_io.manager.build(container, source=self.__source, export=True)
         else:
             bldr = src_io.read_builder()
-        self.write_builder(builder=bldr, new_object_ids=new_object_ids, **write_args)
+        self.write_builder(builder=bldr, keep_object_ids=keep_object_ids, **write_args)
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
@@ -104,7 +104,7 @@ class HDMFIO(metaclass=ABCMeta):
 
     @abstractmethod
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'},
-            {'name': 'new_object_ids', 'type': bool, 'doc': 'whether to generate new object IDs',
+            {'name': 'keep_object_ids', 'type': bool, 'doc': 'whether to keep existing object IDs or generate new IDs',
              'default': True},
             allow_extra=True)
     def write_builder(self, **kwargs):
