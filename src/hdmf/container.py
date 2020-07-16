@@ -150,6 +150,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
             self.__object_id = str(uuid4())
         return self.__object_id
 
+    @docval({'name': 'recurse', 'type': bool,
+             'doc': "whether or not to change the object ID of this container's children", 'default': True})
+    def generate_new_id(self, **kwargs):
+        """Changes the object ID of this Container and all of its children to a new UUID string."""
+        recurse = getargs('recurse', kwargs)
+        self.__object_id = str(uuid4())
+        self.set_modified()
+        if recurse:
+            for c in self.children:
+                c.generate_new_id(**kwargs)
+
     @property
     def modified(self):
         return self.__modified
