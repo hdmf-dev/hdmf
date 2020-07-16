@@ -310,6 +310,7 @@ class BaseStorageSpec(Spec):
 
     __inc_key = 'data_type_inc'
     __def_key = 'data_type_def'
+    __namespace_key = 'namespace'
     __type_key = 'data_type'
     __id_key = 'object_id'
 
@@ -433,7 +434,8 @@ class BaseStorageSpec(Spec):
 
     @classmethod
     def get_namespace_spec(cls):
-        return AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
+        return AttributeSpec(cls.namespace_key(), 'the namespace for the data type of this object', 'text',
+                             required=False)
 
     @property
     def attributes(self):
@@ -444,6 +446,19 @@ class BaseStorageSpec(Spec):
     def linkable(self):
         ''' True if object can be a link, False otherwise '''
         return self.get('linkable', True)
+
+    @classmethod
+    def reserved_attrs(cls):
+        ''' Get the names of the reserved attributes '''
+        return (cls.__namespace_key, cls.__type_key, cls.__id_key)
+
+    @classmethod
+    def namespace_key(cls):
+        ''' Get the key used to store namespace on an instance
+
+        Override this method to use a different name for 'namespace'
+        '''
+        return cls.__namespace_key
 
     @classmethod
     def id_key(cls):

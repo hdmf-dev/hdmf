@@ -93,6 +93,25 @@ class TestBasicSpec(ValidatorTestBase):
         result = validator.validate(builder)
         self.assertEqual(len(result), 0)
 
+    def test_unknown_data_type(self):
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                               datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
+        validator = self.vmap.get_validator('Bar')
+        msg = "data type 'Foo' not found in namespace test_core"
+        with self.assertRaisesWith(ValueError, msg):
+            validator.validate(builder)
+
+    def test_extra_attribute(self):
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute', 'attr2': -1},
+                               datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
+        validator = self.vmap.get_validator('Bar')
+        result = validator.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], SuperfluousWarning)  # noqa: F405
+        self.assertEqual(result[0].name, 'attr2')
+
 
 class TestDateTimeInSpec(ValidatorTestBase):
 

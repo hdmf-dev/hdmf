@@ -11,7 +11,8 @@ __all__ = [
     "ShapeError",
     "MissingDataType",
     "IllegalLinkError",
-    "IncorrectDataType"
+    "IncorrectDataType",
+    "SuperfluousWarning",
 ]
 
 

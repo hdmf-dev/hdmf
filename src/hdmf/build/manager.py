@@ -663,7 +663,7 @@ class TypeMap:
         builder = getargs('builder', kwargs)
         if isinstance(builder, LinkBuilder):
             builder = builder.builder
-        ret = builder.attributes.get('namespace')
+        ret = builder.attributes.get(self.namespace_catalog.group_spec_cls.namespace_key())
         return ret
 
     @docval({'name': 'builder', 'type': Builder,
@@ -770,7 +770,7 @@ class TypeMap:
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))
         setattr(container_cls, spec.type_key(), data_type)
-        setattr(container_cls, 'namespace', namespace)
+        setattr(container_cls, spec.namespace_key(), namespace)
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
@@ -806,7 +806,7 @@ class TypeMap:
 
         # add additional attributes (namespace, data_type, object_id) to builder
         namespace, data_type = self.get_container_ns_dt(container)
-        builder.set_attribute('namespace', namespace)
+        builder.set_attribute(obj_mapper.spec.namespace_key(), namespace)
         builder.set_attribute(self.__type_key(obj_mapper.spec), data_type)
         builder.set_attribute(obj_mapper.spec.id_key(), container.object_id)
         return builder

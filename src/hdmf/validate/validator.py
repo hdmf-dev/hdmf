@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from copy import copy
 import re
 from itertools import chain
+import uuid
 
 from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
@@ -230,7 +231,7 @@ class ValidatorMap:
     def validate(self, **kwargs):
         """Validate a builder against a Spec
 
-        ``builder`` must have the attribute used to specifying data type
+        ``builder`` must have the attribute used to specify data type
         by the namespace used to construct this ValidatorMap.
         """
         builder = getargs('builder', kwargs)
@@ -352,7 +353,7 @@ class BaseStorageValidator(Validator):
         #     print(builder.links)
         ret = list()
         for attr, validator in self.__attribute_validators.items():
-            attr_val = attributes.pop(attr, None)
+            attr_val = attributes.get(attr)
             if attr_val is None:
                 if validator.spec.required:
                     ret.append(MissingError(self.get_spec_loc(validator.spec),
@@ -363,9 +364,31 @@ class BaseStorageValidator(Validator):
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
 
-        for x in attributes:
+        ret.extend(self.validate_reserved(attributes))
+        extra_attrs = set(attributes.keys()) - set(self.__attribute_validators.keys()) - set(self.spec.reserved_attrs())
+        for x in extra_attrs:
             ret.append(SuperfluousWarning(x, location=self.get_builder_loc(builder)))
-        # print("type {}, remaining attributes {}, specloc {}".format(self.spec.type_key(), list(attributes.keys()), self.get_spec_loc(self.spec)))
+        return ret
+
+    def validate_reserved(self, attributes):
+        dt = attributes.get(self.spec.type_key())
+        if dt is not None:
+            self.vmap.get_validator(dt)  # check valid data type
+
+        ret = list()
+        namespace = attributes.get(self.spec.namespace_key())
+        if namespace and namespace != self.vmap.namespace.name:
+            msg = ("if %s attribute is present in builder, it must match the spec namespace '%s', not '%s'"
+                   % (self.__namespace_key, self.vmap.namespace.name, namespace))
+            ret.append(ValueError(msg))
+
+        object_id = attributes.get(self.spec.id_key())
+        if object_id:
+            try:
+                uuid.UUID(str(object_id))
+            except ValueError:
+                msg = "builder must have valid uuid defined with attribute '%s'" % self.__id_key
+                ret.append(ValueError(msg))
         return ret
 
 
@@ -428,10 +451,6 @@ class GroupValidator(BaseStorageValidator):
 
         for spec in self.spec.links:
             self.__include_dts[spec.data_type_inc] = spec
-
-        self.include_dts = self.__include_dts
-        self.dataset_validators = self.__dataset_validators
-        self.group_validators = self.__group_validators
 
     @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
             returns='a list of Errors', rtype=list)
@@ -514,6 +533,4 @@ class GroupValidator(BaseStorageValidator):
         for x in it:
             ret.append(SuperfluousWarning(x, location=self.get_spec_loc(self.spec)))
 
-        # print("remaining data types {}, specloc {}".format(list(data_types.keys()), self.get_spec_loc(self.spec)))
-        # print("remaining non data types {}, specloc {}".format(list(non_data_types.keys()), self.get_spec_loc(self.spec)))
         return ret
