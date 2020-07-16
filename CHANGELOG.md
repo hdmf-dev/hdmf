@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 1.6.4 (Upcoming)
+## HDMF 1.6.4 (June 26, 2020)
 
 ### Internal improvements
 - Add ability to close open links. @rly (#383)
@@ -10,6 +10,10 @@
 - Fix issue with constructing `DynamicTable` with empty array colnames. @rly (#379)
 - Fix `TestCase.assertContainerEqual` passing wrong arguments. @rly (#385)
 - Fix 'link_data' argument not being used when writing non-root level datasets. @rly (#384)
+- Fix handling of ASCII numpy array. @rly (#387)
+- Fix error when optional attribute reference is missing. @rly (#392)
+- Improve testing for `get_data_shape` and fix issue with sets. @rly (#394)
+- Fix inability to write references to HDF5 when the root builder is not named "root". @rly (#395)
 
 ## HDMF 1.6.3 (June 9, 2020)
 

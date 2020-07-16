@@ -8,7 +8,7 @@ from enum import Enum
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, bytes],
 }
 
 # code to signify how to handle positional arguments in docval
@@ -742,14 +742,17 @@ def get_data_shape(data, strict_no_data_load=False):
     """
     Helper function used to determine the shape of the given array.
 
+    In order to determine the shape of nested tuples, lists, and sets, this function
+    recursively inspects elements along the dimensions, assuming that the data has a regular,
+    rectangular shape. In the case of out-of-core iterators, this means that the first item
+    along each dimension would potentially be loaded into memory. Set strict_no_data_load=True
+    to enforce that this does not happen, at the cost that we may not be able to determine
+    the shape of the array.
+
     :param data: Array for which we should determine the shape.
     :type data: List, numpy.ndarray, DataChunkIterator, any object that support __len__ or .shape.
-    :param strict_no_data_load: In order to determine the shape of nested tuples and lists, this function
-                recursively inspects elements along the dimensions, assuming that the data has a regular,
-                rectangular shape. In the case of out-of-core iterators this means that the first item
-                along each dimensions would potentially be loaded into memory. By setting this option
-                we enforce that this does not happen, at the cost that we may not be able to determine
-                the shape of the array.
+    :param strict_no_data_load: If True and data is an out-of-core iterator, None may be returned. If False (default),
+                                the first element of data may be loaded into memory.
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """
@@ -757,22 +760,23 @@ def get_data_shape(data, strict_no_data_load=False):
         shape = list()
         if hasattr(local_data, '__len__'):
             shape.append(len(local_data))
-            if len(local_data) and not isinstance(local_data[0], (str, bytes)):
-                shape.extend(__get_shape_helper(local_data[0]))
+            if len(local_data):
+                el = next(iter(local_data))
+                if not isinstance(el, (str, bytes)):
+                    shape.extend(__get_shape_helper(el))
         return tuple(shape)
+
+    # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    elif hasattr(data, 'shape'):
+    if hasattr(data, 'shape'):
         return data.shape
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         return None
-    elif hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
-        if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
+    if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
+        if not strict_no_data_load or isinstance(data, (list, tuple, set)):
             return __get_shape_helper(data)
-        else:
-            return None
-    else:
-        return None
+    return None
 
 
 def pystr(s):

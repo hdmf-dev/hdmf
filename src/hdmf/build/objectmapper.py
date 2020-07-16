@@ -217,7 +217,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret_dtype = tmp_dtype
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
+            if spec_dtype_type is _unicode:
+                ret_dtype = "utf8"
+            elif spec_dtype_type is _ascii:
+                ret_dtype = "ascii"
+            else:
+                ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
             if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
@@ -242,7 +247,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 np.issubdtype(value_dtype, np.integer)):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
-    @classmethod
+    @classmethod  # noqa: C901
     def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
         Check edge cases in converting data to a dtype
@@ -750,14 +755,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     attr_value = spec.default_value
 
             attr_value = self.__check_ref_resolver(attr_value)
+
+            if attr_value is None:
+                if spec.required:
+                    msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
+                    warnings.warn(msg, MissingRequiredWarning)
+                continue
+
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
-                    if attr_value is None:
-                        msg = ("object of data_type %s not found on %s '%s'" %
-                               (spec.dtype.target_type, type(container).__name__, container.name))
-                    else:
-                        msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
-                               % (spec.name, type(attr_value)))
+                    msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
+                           % (spec.name, type(attr_value)))
                     raise ValueError(msg)
                 target_builder = build_manager.build(attr_value, source=source)
                 attr_value = ReferenceBuilder(target_builder)
@@ -769,12 +777,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
                         raise Exception(msg) from ex
 
-            # do not write empty or null valued objects
-            if attr_value is None:
-                if spec.required:
-                    msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
-                    warnings.warn(msg, MissingRequiredWarning)
-                continue
+                    # do not write empty or null valued objects
+                    if attr_value is None:
+                        if spec.required:
+                            msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
+                            warnings.warn(msg, MissingRequiredWarning)
+                        continue
 
             builder.set_attribute(spec.name, attr_value)
 

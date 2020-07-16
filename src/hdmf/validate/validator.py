@@ -433,7 +433,7 @@ class GroupValidator(BaseStorageValidator):
         self.dataset_validators = self.__dataset_validators
         self.group_validators = self.__group_validators
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
+    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
