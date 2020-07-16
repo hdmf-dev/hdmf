@@ -9,6 +9,8 @@
 - Users can use the new export functionality to read data from one source, modify the data in-memory, and then write the
   modified data to a new file. Modifications can include additions and removals. To facilitate removals,
   `AbstractContainer` contains a new `_remove_child` method and `BuildManager` contains a new `purge_outdated` method.
+- Users can now call `Container.generate_new_id` to generate new object IDs for the container and all of its children.
+  @rly (#401)
 
 ### Breaking changes
 - `Builder` objects no longer have the `written` field which was used by `HDF5IO` to mark the object as written. This
