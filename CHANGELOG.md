@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 2.0.0 (Upcoming)
+## HDMF 2.0.0 (July 17, 2020)
 
 ### New features
 - Users can now call `HDF5IO.export` and `HDF5IO.export_io` to write data that was read from one source to a new HDF5
@@ -9,6 +9,7 @@
 - Users can use the new export functionality to read data from one source, modify the data in-memory, and then write the
   modified data to a new file. Modifications can include additions and removals. To facilitate removals,
   `AbstractContainer` contains a new `_remove_child` method and `BuildManager` contains a new `purge_outdated` method.
+  @rly (#388)
 - Users can now call `Container.generate_new_id` to generate new object IDs for the container and all of its children.
   @rly (#401)
 
@@ -18,7 +19,7 @@
 - `HDMFIO.write` and `HDMFIO.write_builder` no longer have the keyword argument `exhaust_dcis`. This remains present in
   `HDF5IO.write` and `HDF5IO.write_builder`. @rly (#388)
 - The class method `HDF5IO.copy_file` is no longer supported and may be removed in a future version. Please use the
-  `HDF5IO.export` method or `h5py.File.copy` method instead.
+  `HDF5IO.export` method or `h5py.File.copy` method instead. @rly (#388)
 
 ## HDMF 1.6.4 (June 26, 2020)
 
