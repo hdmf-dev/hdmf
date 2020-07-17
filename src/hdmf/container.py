@@ -150,6 +150,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
             self.__object_id = str(uuid4())
         return self.__object_id
 
+    @docval({'name': 'recurse', 'type': bool,
+             'doc': "whether or not to change the object ID of this container's children", 'default': True})
+    def generate_new_id(self, **kwargs):
+        """Changes the object ID of this Container and all of its children to a new UUID string."""
+        recurse = getargs('recurse', kwargs)
+        self.__object_id = str(uuid4())
+        self.set_modified()
+        if recurse:
+            for c in self.children:
+                c.generate_new_id(**kwargs)
+
     @property
     def modified(self):
         return self.__modified
@@ -218,9 +229,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
             else:
                 if parent_container is None:
                     raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))
-                # TODO this assumes isinstance(parent_container, Proxy) but
-                # circular import if we try to do that. Proxy would need to move
-                # or Container extended with this functionality in build/map.py
+                # NOTE this assumes isinstance(parent_container, Proxy) but we get a circular import
+                # if we try to do that
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
                     parent_container.__children.append(self)
@@ -232,6 +242,18 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+
+    def _remove_child(self, child):
+        """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
+        if not isinstance(child, AbstractContainer):
+            raise ValueError('Cannot remove non-AbstractContainer object from children.')
+        if child not in self.children:
+            raise ValueError("%s '%s' is not a child of %s '%s'." % (child.__class__.__name__, child.name,
+                                                                     self.__class__.__name__, self.name))
+        child.__parent = None
+        self.__children.remove(child)
+        child.set_modified()
+        self.set_modified()
 
 
 class Container(AbstractContainer):
