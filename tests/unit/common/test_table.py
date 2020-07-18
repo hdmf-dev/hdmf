@@ -1,8 +1,7 @@
 import unittest
-from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, DynamicTableRegion, VocabData,
-                         get_manager)
+from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, DynamicTableRegion, VocabData
 from hdmf.testing import TestCase, H5RoundTripMixin
-from hdmf.backends.hdf5 import H5DataIO, HDF5IO
+from hdmf.backends.hdf5 import H5DataIO
 
 from collections import OrderedDict
 import h5py
