@@ -1,9 +1,13 @@
 # HDMF Changelog
 
-## HDMF 2.0.1 (Upcoming)
+## HDMF 2.0.1 (July 20, 2020)
 
 ### Internal improvements
 - Add tests for writing table columns with DataIO data, e.g., chunked, compressed data. @rly (#402)
+- Add CI to check for breakpoints and print statements. @rly (#403)
+
+### Bug fixes:
+- Remove breakpoint. @rly (#403)
 
 ## HDMF 2.0.0 (July 17, 2020)
 
