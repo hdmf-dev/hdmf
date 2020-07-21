@@ -79,10 +79,10 @@ class TestLabelledDict(TestCase):
 
     def test_add_value_missing_key(self):
         """Test that add raises an error if the value being set does not have the attribute key_attr."""
-        ld = LabelledDict(label='all_objects', key_attr='prop3')
+        ld = LabelledDict(label='all_objects', key_attr='unknown_key')
         obj1 = MyTestClass('a', 'b')
 
-        err_msg = r"Cannot set value '<.*>' in LabelledDict\. Value must have attribute 'prop3'\."
+        err_msg = r"Cannot set value '<.*>' in LabelledDict\. Value must have attribute 'unknown_key'\."
         with self.assertRaisesRegex(ValueError, err_msg):
             ld.add(obj1)
 
@@ -95,10 +95,10 @@ class TestLabelledDict(TestCase):
 
     def test_setitem_value_missing_key(self):
         """Test that setitem raises an error if the value being set does not have the attribute key_attr."""
-        ld = LabelledDict(label='all_objects', key_attr='prop3')
+        ld = LabelledDict(label='all_objects', key_attr='unknown_key')
         obj1 = MyTestClass('a', 'b')
 
-        err_msg = r"Cannot set value '<.*>' in LabelledDict\. Value must have attribute 'prop3'\."
+        err_msg = r"Cannot set value '<.*>' in LabelledDict\. Value must have attribute 'unknown_key'\."
         with self.assertRaisesRegex(ValueError, err_msg):
             ld['a'] = obj1
 
@@ -110,6 +110,18 @@ class TestLabelledDict(TestCase):
         err_msg = r"Key 'b' must equal attribute 'prop1' of '<.*>'\."
         with self.assertRaisesRegex(KeyError, err_msg):
             ld['b'] = obj1
+
+    def test_setitem_value_duplicate_key(self):
+        """Test that setitem raises an error if the key already exists in the dict."""
+        ld = LabelledDict(label='all_objects', key_attr='prop1')
+        obj1 = MyTestClass('a', 'b')
+        obj2 = MyTestClass('a', 'c')
+
+        ld['a'] = obj1
+
+        err_msg = "Key 'a' is already in this dict. Cannot reset items in a LabelledDict."
+        with self.assertRaisesWith(TypeError, err_msg):
+            ld['a'] = obj2
 
     def test_add_callable(self):
         """Test that add properly adds the object and calls the add_callable function."""
