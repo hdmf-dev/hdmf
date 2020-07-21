@@ -111,6 +111,32 @@ class TestLabelledDict(TestCase):
         with self.assertRaisesRegex(KeyError, err_msg):
             ld['b'] = obj1
 
+    def test_add_callable(self):
+        """Test that add properly adds the object and calls the add_callable function."""
+        self.signal = None
+
+        def func(v):
+            self.signal = v
+
+        ld = LabelledDict(label='all_objects', key_attr='prop1', add_callable=func)
+        obj1 = MyTestClass('a', 'b')
+        ld.add(obj1)
+        self.assertIs(ld['a'], obj1)
+        self.assertIs(self.signal, obj1)
+
+    def test_setitem_callable(self):
+        """Test that setitem properly sets the object and calls the add_callable function."""
+        self.signal = None
+
+        def func(v):
+            self.signal = v
+
+        ld = LabelledDict(label='all_objects', key_attr='prop1', add_callable=func)
+        obj1 = MyTestClass('a', 'b')
+        ld['a'] = obj1
+        self.assertIs(ld['a'], obj1)
+        self.assertIs(self.signal, obj1)
+
     def test_getitem_eqeq_nonempty(self):
         """Test that dict[key_attr == val] returns the single matching object."""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
@@ -159,7 +185,7 @@ class TestLabelledDict(TestCase):
         def func(v):
             self.signal = v
 
-        ld = LabelledDict(label='all_objects', key_attr='prop1', pop_callable=func)
+        ld = LabelledDict(label='all_objects', key_attr='prop1', remove_callable=func)
         obj1 = MyTestClass('a', 'b')
         ld.add(obj1)
 
@@ -183,7 +209,7 @@ class TestLabelledDict(TestCase):
         def func(v):
             self.signal = v
 
-        ld = LabelledDict(label='all_objects', key_attr='prop1', pop_callable=func)
+        ld = LabelledDict(label='all_objects', key_attr='prop1', remove_callable=func)
         obj1 = MyTestClass('a', 'b')
         ld.add(obj1)
 
@@ -202,18 +228,18 @@ class TestLabelledDict(TestCase):
         self.assertEqual(ld, dict())
 
     def test_clear_callback(self):
-        self.signal = list()
+        self.signal = set()
 
         def func(v):
-            self.signal.append(v)
+            self.signal.add(v)
 
-        ld = LabelledDict(label='all_objects', key_attr='prop1', pop_callable=func)
+        ld = LabelledDict(label='all_objects', key_attr='prop1', remove_callable=func)
         obj1 = MyTestClass('a', 'b')
         obj2 = MyTestClass('d', 'b')
         ld.add(obj1)
         ld.add(obj2)
         ld.clear()
-        self.assertListEqual(self.signal, [obj2, obj1])
+        self.assertSetEqual(self.signal, {obj2, obj1})
         self.assertEqual(ld, dict())
 
     def test_delitem_nocallback(self):
@@ -230,7 +256,7 @@ class TestLabelledDict(TestCase):
         def func(v):
             self.signal = v
 
-        ld = LabelledDict(label='all_objects', key_attr='prop1', pop_callable=func)
+        ld = LabelledDict(label='all_objects', key_attr='prop1', remove_callable=func)
         obj1 = MyTestClass('a', 'b')
         ld.add(obj1)
 

@@ -808,8 +808,12 @@ class LabelledDict(dict):
     __setitem__ on keys that already exist in the dict. The __delitem__, setdefault, and update methods are not
     supported. A TypeError will be raised when these are called.
 
-    A callable function may be passed to the constructor to be run on the result of pop and popitem, and each removed
-    item from clear.
+    A callable function may be passed to the constructor to be run on an item after adding it to this dict using
+    the __setitem__ and add methods.
+
+    A callable function may be passed to the constructor to be run on an item after removing it from this dict using
+    the __delitem__ (the del operator), pop, and popitem methods. It will also be run on each removed item when using
+    the clear method.
 
     Usage:
       LabelledDict(label='my_objects', key_attr='name')
@@ -830,13 +834,20 @@ class LabelledDict(dict):
 
     @docval({'name': 'label', 'type': str, 'doc': 'the label on this dictionary'},
             {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'},
-            {'name': 'pop_callable', 'type': types.FunctionType,
-             'doc': 'function to call on an element returned from the pop method', 'default': None})
+            {'name': 'add_callable', 'type': types.FunctionType,
+             'doc': 'function to call on an element after adding it to this dict using the add or __setitem__ methods',
+             'default': None},
+            {'name': 'remove_callable', 'type': types.FunctionType,
+             'doc': ('function to call on an element after removing it from this dict using the pop, popitem, clear, '
+                     'or __delitem__ methods'),
+             'default': None})
     def __init__(self, **kwargs):
-        label, key_attr, pop_callable = getargs('label', 'key_attr', 'pop_callable', kwargs)
+        label, key_attr, add_callable, remove_callable = getargs('label', 'key_attr', 'add_callable', 'remove_callable',
+                                                                 kwargs)
         self.__label = label
         self.__key_attr = key_attr
-        self.__pop_callable = pop_callable
+        self.__add_callable = add_callable
+        self.__remove_callable = remove_callable
 
     @property
     def label(self):
@@ -890,6 +901,8 @@ class LabelledDict(dict):
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
         super().__setitem__(key, value)
+        if self.__add_callable:
+            self.__add_callable(value)
 
     def add(self, value):
         """Add a value to the dict with the key value.key_attr.
@@ -905,33 +918,38 @@ class LabelledDict(dict):
                              % (value, self.__class__.__name__, self.key_attr))
 
     def pop(self, k):
-        """Remove an item that matches the key. If pop_callable was initialized, call that on the returned value."""
+        """Remove an item that matches the key. If remove_callable was initialized, call that on the returned value."""
         ret = super().pop(k)
-        if self.__pop_callable:
-            self.__pop_callable(ret)
+        if self.__remove_callable:
+            self.__remove_callable(ret)
         return ret
 
     def popitem(self):
-        """Remove the last added item. If pop_callable was initialized, call that on the returned value.
+        """Remove the last added item. If remove_callable was initialized, call that on the returned value.
 
-        Note: popitem returns a tuple (key, value) but the pop_callable will be called only on the value.
+        Note: popitem returns a tuple (key, value) but the remove_callable will be called only on the value.
+
+        Note: in Python 3.5, dictionaries and not ordered, so popitem removes an arbitrary item.
         """
         ret = super().popitem()
-        if self.__pop_callable:
-            self.__pop_callable(ret[1])  # execute callable only on dict value
+        if self.__remove_callable:
+            self.__remove_callable(ret[1])  # execute callable only on dict value
         return ret
 
     def clear(self):
-        """Remove all items. If pop_callable was initialized, call that on each returned value."""
+        """Remove all items. If remove_callable was initialized, call that on each returned value.
+
+        The order of removal depends on the popitem method.
+        """
         while len(self):
             self.popitem()
 
     def __delitem__(self, k):
-        """Remove an item that matches the key. If pop_callable was initialized, call that on the matching value."""
+        """Remove an item that matches the key. If remove_callable was initialized, call that on the matching value."""
         item = self[k]
         super().__delitem__(k)
-        if self.__pop_callable:
-            self.__pop_callable(item)
+        if self.__remove_callable:
+            self.__remove_callable(item)
 
     def setdefault(self, k):
         """setdefault is not supported. A TypeError will be raised."""
