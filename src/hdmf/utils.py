@@ -929,7 +929,7 @@ class LabelledDict(dict):
 
         Note: popitem returns a tuple (key, value) but the remove_callable will be called only on the value.
 
-        Note: in Python 3.5, dictionaries and not ordered, so popitem removes an arbitrary item.
+        Note: in Python 3.5 and earlier, dictionaries are not ordered, so popitem removes an arbitrary item.
         """
         ret = super().popitem()
         if self.__remove_callable:
