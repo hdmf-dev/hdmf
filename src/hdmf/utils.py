@@ -4,6 +4,7 @@ import collections
 import h5py
 import numpy as np
 import warnings
+import types
 from enum import Enum
 
 __macros = {
@@ -790,7 +791,7 @@ def pystr(s):
 
 
 class LabelledDict(dict):
-    """A dict wrapper class with a label and which allows retrieval of values based on an attribute of the values
+    """A dict wrapper that allows querying by an attribute of the values and running a callable on removed items.
 
     For example, if the key attribute is set as 'name' in __init__, then all objects added to the LabelledDict must have
     a 'name' attribute and a particular object in the LabelledDict can be accessed using the syntax ['object_name'] if
@@ -803,8 +804,15 @@ class LabelledDict(dict):
     condition, a KeyError is raised. Note that if 'attr' equals the key attribute, then the single matching value is
     returned, not a set.
 
+    LabelledDict does not support changing items that have already been set. A TypeError will be raised when using
+    __setitem__ on keys that already exist in the dict. The __delitem__, setdefault, and update methods are not
+    supported. A TypeError will be raised when these are called.
+
+    A callable function may be passed to the constructor to be run on the result of pop and popitem, and each removed
+    item from clear.
+
     Usage:
-      LabelledDict(label='my_objects', def_key_name = 'name')
+      LabelledDict(label='my_objects', key_attr='name')
       my_dict[obj.name] = obj
       my_dict.add(obj)  # simpler syntax
 
@@ -821,11 +829,14 @@ class LabelledDict(dict):
     """
 
     @docval({'name': 'label', 'type': str, 'doc': 'the label on this dictionary'},
-            {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'})
+            {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'},
+            {'name': 'pop_callable', 'type': types.FunctionType,
+             'doc': 'function to call on an element returned from the pop method', 'default': None})
     def __init__(self, **kwargs):
-        label, key_attr = getargs('label', 'key_attr', kwargs)
+        label, key_attr, pop_callable = getargs('label', 'key_attr', 'pop_callable', kwargs)
         self.__label = label
         self.__key_attr = key_attr
+        self.__pop_callable = pop_callable
 
     @property
     def label(self):
@@ -841,9 +852,9 @@ class LabelledDict(dict):
         """Get a value from the LabelledDict with the given key.
 
         Supports syntax my_dict['attr == val'], which returns a set of objects in the LabelledDict which have an
-        attribute 'attr' with a string value 'val'. If no objects match that condition, a KeyError is raised.
-
-        Note that if 'attr' equals the key attribute, then the single matching value is returned, not a set.
+        attribute 'attr' with a string value 'val'. If no objects match that condition, an empty set is returned.
+        Note that if 'attr' equals the key attribute of this LabelledDict, then the single matching value is
+        returned, not a set.
         """
         key = args
         if '==' in args:
@@ -859,19 +870,22 @@ class LabelledDict(dict):
                 for item in self.values():
                     if getattr(item, key, None) == val:
                         ret.add(item)
-                if len(ret):
-                    return ret
-                else:
-                    raise KeyError(val)
-            # if key == self.key_attr, then call __getitem__ normally on val
-            key = val
-        return super().__getitem__(key)
+                return ret
+            else:
+                return super().__getitem__(val)
+        else:
+            return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         """Set a value in the LabelledDict with the given key. The key must equal value.key_attr.
 
-        See LabelledDict.add for simpler syntax. Raises ValueError if value does not have attribute key_attr.
+        See LabelledDict.add for a simpler syntax since the key is redundant.
+        Raises TypeError is key already exists.
+        Raises ValueError if value does not have attribute key_attr.
         """
+        if key in self:
+            raise TypeError("Key '%s' is already in this dict. Cannot reset items in a %s."
+                            % (key, self.__class__.__name__))
         self.__check_value(value)
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
@@ -887,5 +901,39 @@ class LabelledDict(dict):
 
     def __check_value(self, value):
         if not hasattr(value, self.key_attr):
-            raise ValueError("Cannot set value '%s' in LabelledDict. Value must have key '%s'."
-                             % (value, self.key_attr))
+            raise ValueError("Cannot set value '%s' in %s. Value must have attribute '%s'."
+                             % (value, self.__class__.__name__, self.key_attr))
+
+    def pop(self, k):
+        """Remove an item that matches the key. If pop_callable was initialized, call that on the returned value."""
+        ret = super().pop(k)
+        if self.__pop_callable:
+            self.__pop_callable(ret)
+        return ret
+
+    def popitem(self):
+        """Remove the last added item. If pop_callable was initialized, call that on the returned value.
+
+        Note: popitem returns a tuple (key, value) but the pop_callable will be called only on the value.
+        """
+        ret = super().popitem()
+        if self.__pop_callable:
+            self.__pop_callable(ret[1])  # execute callable only on dict value
+        return ret
+
+    def clear(self):
+        """Remove all items. If pop_callable was initialized, call that on each returned value."""
+        while len(self):
+            self.popitem()
+
+    def __delitem__(self, k):
+        """__delitem__ is not supported. A TypeError will be raised."""
+        raise TypeError('__delitem__ is not supported for %s' % self.__class__.__name__)
+
+    def setdefault(self, k):
+        """setdefault is not supported. A TypeError will be raised."""
+        raise TypeError('setdefault is not supported for %s' % self.__class__.__name__)
+
+    def update(self, other):
+        """update is not supported. A TypeError will be raised."""
+        raise TypeError('update is not supported for %s' % self.__class__.__name__)
