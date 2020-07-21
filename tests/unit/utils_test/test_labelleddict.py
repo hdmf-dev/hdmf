@@ -192,6 +192,15 @@ class TestLabelledDict(TestCase):
         self.assertEqual(self.signal, obj1)
         self.assertEqual(ld, dict())
 
+    def test_clear_nocallback(self):
+        ld = LabelledDict(label='all_objects', key_attr='prop1')
+        obj1 = MyTestClass('a', 'b')
+        obj2 = MyTestClass('d', 'b')
+        ld.add(obj1)
+        ld.add(obj2)
+        ld.clear()
+        self.assertEqual(ld, dict())
+
     def test_clear_callback(self):
         self.signal = list()
 
@@ -207,13 +216,27 @@ class TestLabelledDict(TestCase):
         self.assertListEqual(self.signal, [obj2, obj1])
         self.assertEqual(ld, dict())
 
-    def test_delitem_callback(self):
+    def test_delitem_nocallback(self):
         ld = LabelledDict(label='all_objects', key_attr='prop1')
         obj1 = MyTestClass('a', 'b')
         ld.add(obj1)
 
-        with self.assertRaisesWith(TypeError, "__delitem__ is not supported for LabelledDict"):
-            del ld['a']
+        del ld['a']
+        self.assertEqual(ld, dict())
+
+    def test_delitem_callback(self):
+        self.signal = None
+
+        def func(v):
+            self.signal = v
+
+        ld = LabelledDict(label='all_objects', key_attr='prop1', pop_callable=func)
+        obj1 = MyTestClass('a', 'b')
+        ld.add(obj1)
+
+        del ld['a']
+        self.assertEqual(self.signal, obj1)
+        self.assertEqual(ld, dict())
 
     def test_update_callback(self):
         ld = LabelledDict(label='all_objects', key_attr='prop1')

@@ -927,8 +927,11 @@ class LabelledDict(dict):
             self.popitem()
 
     def __delitem__(self, k):
-        """__delitem__ is not supported. A TypeError will be raised."""
-        raise TypeError('__delitem__ is not supported for %s' % self.__class__.__name__)
+        """Remove an item that matches the key. If pop_callable was initialized, call that on the matching value."""
+        item = self[k]
+        super().__delitem__(k)
+        if self.__pop_callable:
+            self.__pop_callable(item)
 
     def setdefault(self, k):
         """setdefault is not supported. A TypeError will be raised."""
