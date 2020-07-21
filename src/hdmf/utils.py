@@ -805,8 +805,8 @@ class LabelledDict(dict):
     returned, not a set.
 
     LabelledDict does not support changing items that have already been set. A TypeError will be raised when using
-    __setitem__ on keys that already exist in the dict. The __delitem__, setdefault, and update methods are not
-    supported. A TypeError will be raised when these are called.
+    __setitem__ on keys that already exist in the dict. The setdefault and update methods are not supported. A
+    TypeError will be raised when these are called.
 
     A callable function may be passed to the constructor to be run on an item after adding it to this dict using
     the __setitem__ and add methods.
