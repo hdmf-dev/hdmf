@@ -498,12 +498,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         name = args[0]
         remaining_args = tuple(args[1:])
         if name in self.constructor_args:
+            self.logger.debug("        Calling override function for constructor argument %s" % name)
             func = self.constructor_args[name]
             return func(self, *remaining_args)
         return None
 
     def __get_override_attr(self, name, container, manager):
         if name in self.obj_attrs:
+            self.logger.debug("        Calling override function for attribute %s" % name)
             func = self.obj_attrs[name]
             return func(self, container, manager)
         return None
@@ -765,6 +767,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if spec.required:
                     msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
                     warnings.warn(msg, MissingRequiredWarning)
+                    self.logger.debug('MissingRequiredWarning: ' + msg)
+                self.logger.debug("        Skipping empty attribute")
                 continue
 
             if isinstance(spec.dtype, RefSpec):
@@ -787,6 +791,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         if spec.required:
                             msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
                             warnings.warn(msg, MissingRequiredWarning)
+                            self.logger.debug('MissingRequiredWarning: ' + msg)
+                        self.logger.debug("        Skipping empty attribute")
                         continue
 
             builder.set_attribute(spec.name, attr_value)
@@ -797,11 +803,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (container.__class__.__name__, container.name,
                                  builder.__class__.__name__, builder.name))
         for spec in links:
-            attr_value = self.get_attr_value(spec, container, build_manager)
-            if not attr_value:
-                continue
             self.logger.debug("    Adding link for spec name: %s, target_type: %s"
                               % (repr(spec.name), repr(spec.target_type)))
+            attr_value = self.get_attr_value(spec, container, build_manager)
+            if not attr_value:
+                self.logger.debug("        Skipping link - no attribute value")
+                continue
             self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
 
     def __add_datasets(self, builder, datasets, container, build_manager, source, export):
@@ -810,14 +817,18 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (container.__class__.__name__, container.name,
                                  builder.__class__.__name__, builder.name))
         for spec in datasets:
+            self.logger.debug("    Adding dataset for spec name: %s (dtype: %s)"
+                              % (repr(spec.name), spec.dtype.__class__.__name__))
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
+                self.logger.debug("        Skipping dataset - no attribute value")
                 continue
             attr_value = self.__check_ref_resolver(attr_value)
             if isinstance(attr_value, DataIO) and attr_value.data is None:
+                self.logger.debug("        Skipping dataset - attribute is dataio or has no data")
                 continue
             if isinstance(attr_value, Builder):
-                self.logger.debug("    Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
+                self.logger.debug("        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
                                   % (attr_value.name, attr_value.__class__.__name__,
                                      repr(spec.name),
                                      spec.def_key(), repr(spec.data_type_def),
@@ -826,10 +837,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif spec.data_type_def is None and spec.data_type_inc is None:  # untyped, named dataset
                 if spec.name in builder.datasets:
                     sub_builder = builder.datasets[spec.name]
-                    self.logger.debug("    Retrieving existing DatasetBuilder '%s' for spec name %s and adding "
+                    self.logger.debug("        Retrieving existing DatasetBuilder '%s' for spec name %s and adding "
                                       "attributes" % (sub_builder.name, repr(spec.name)))
                 else:
-                    self.logger.debug("    Converting untyped dataset for spec name %s to spec dtype %s"
+                    self.logger.debug("        Converting untyped dataset for spec name %s to spec dtype %s"
                                       % (repr(spec.name), repr(spec.dtype)))
                     try:
                         data, dtype = self.convert_dtype(spec, attr_value)
@@ -837,12 +848,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         msg = 'could not convert \'%s\' for %s \'%s\''
                         msg = msg % (spec.name, type(container).__name__, container.name)
                         raise Exception(msg) from ex
-                    self.logger.debug("    Adding untyped dataset for spec name %s and adding attributes"
+                    self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
                     sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
             else:
-                self.logger.debug("    Adding typed dataset for spec name: %s, %s: %s, %s: %s"
+                self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
                                   % (repr(spec.name),
                                      spec.def_key(), repr(spec.data_type_def),
                                      spec.inc_key(), repr(spec.data_type_inc)))
