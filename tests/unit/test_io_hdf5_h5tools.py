@@ -11,7 +11,7 @@ from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
-from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
+from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
                             RefSpec, DtypeSpec)
@@ -62,7 +62,8 @@ class FooFile(Container):
 
     def remove_bucket(self, bucket_name):
         bucket = self.__buckets.pop(bucket_name)
-        self._remove_child(bucket)
+        if bucket.parent is self:
+            self._remove_child(bucket)
         return bucket
 
     @property
@@ -2302,6 +2303,25 @@ class TestExport(TestCase):
 
         # check that file size of file 2 is smaller
         self.assertTrue(os.path.getsize(self.paths[0]) > os.path.getsize(self.paths[1]))
+
+    def test_pop_linked_group(self):
+        """Test that exporting a written container after removing a linked element from it works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket], foo_link=foo1)
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+            read_foofile.buckets['bucket1'].remove_foo('foo1')  # remove child group
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                msg = ("links (links): Linked Foo 'foo1' has no parent. Remove the link or ensure the linked "
+                       "container is added properly.")
+                with self.assertRaisesWith(OrphanContainerBuildError, msg):
+                    export_io.export(src_io=read_io, container=read_foofile)
 
     def test_append_data(self):
         """Test that exporting a written container after adding groups, links, and references to it works."""
