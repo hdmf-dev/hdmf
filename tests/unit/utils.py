@@ -71,6 +71,12 @@ class FooBucket(Container):
     def foos(self):
         return self.__foos
 
+    def remove_foo(self, foo_name):
+        foo = self.__foos.pop(foo_name)
+        if foo.parent is self:
+            self._remove_child(foo)
+        return foo
+
 
 def get_temp_filepath():
     # On Windows, h5py cannot truncate an open file in write mode.
