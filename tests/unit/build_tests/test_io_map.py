@@ -1,6 +1,6 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
-                        ReferenceBuilder, MissingRequiredWarning)
+                        ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator
@@ -9,6 +9,7 @@ from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import unittest
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -63,6 +64,10 @@ class Bar(Container):
     @property
     def foo(self):
         return self.__foo
+
+    def remove_foo(self):
+        if self is self.__foo.parent:
+            self._remove_child(self.__foo)
 
 
 class Foo(Container):
@@ -603,6 +608,31 @@ class TestLinkedContainer(TestCase):
         self.assertDictEqual(foo_builder, foo_expected)
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
+
+    @unittest.expectedFailure
+    def test_build_broken_link_parent(self):
+        ''' Test that building a container with a broken link that has a parent raises an error. '''
+        foo_inst = Foo('my_foo')
+        Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)  # foo_inst.parent is this bar
+        # bar_inst2.foo should link to bar_inst1.foo
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10, foo=foo_inst)
+
+        # TODO bar_inst.foo.parent exists but is never built - this is a tricky edge case that should raise an error
+        with self.assertRaises(OrphanContainerBuildError):
+            self.bar_mapper.build(bar_inst2, self.manager)
+
+    def test_build_broken_link_no_parent(self):
+        ''' Test that building a container with a broken link that has no parent raises an error. '''
+        foo_inst = Foo('my_foo')
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)  # foo_inst.parent is this bar
+        # bar_inst2.foo should link to bar_inst1.foo
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10, foo=foo_inst)
+        bar_inst1.remove_foo()
+
+        msg = ("my_bar2 (my_bar2): Linked Foo 'my_foo' has no parent. Remove the link or ensure the linked container "
+               "is added properly.")
+        with self.assertRaisesWith(OrphanContainerBuildError, msg):
+            self.bar_mapper.build(bar_inst2, self.manager)
 
 
 class TestReference(TestCase):

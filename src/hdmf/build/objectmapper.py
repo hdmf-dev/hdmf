@@ -13,8 +13,9 @@ from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
+from .errors import OrphanContainerBuildError
 from .manager import Proxy, BuildManager
-from .warnings import OrphanContainerWarning, MissingRequiredWarning, DtypeConversionWarning
+from .warnings import MissingRequiredWarning, DtypeConversionWarning
 
 
 _const_arg = '__constructor_arg'
@@ -906,12 +907,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (value.__class__.__name__, value.name,
                                  parent_container.__class__.__name__, parent_container.name,
                                  builder.__class__.__name__, builder.name))
-            if value.parent is None and build_manager.get_builder(value) is None:
-                # parent may not have been set in API or because value was read from an external link
-                msg = ("'%s' (%s) for '%s' (%s)"
-                       % (value.name, getattr(value, self.spec.type_key()), builder.name, self.spec.data_type_def))
-                warnings.warn(msg, OrphanContainerWarning)
-                self.logger.warning('OrphanContainerWarning: %s' % msg)
+            if value.parent is None:
+                if (value.container_source == parent_container.container_source or
+                        build_manager.get_builder(value) is None):
+                    # value was removed (or parent not set) and there is a link to it in same file
+                    # or value was read from an external link
+                    raise OrphanContainerBuildError(builder, value)
 
             if value.modified or export:
                 # writing a newly instantiated container (modified is False only after read) or as if it is newly
