@@ -125,14 +125,14 @@ class NestedBaseMixin(metaclass=ABCMeta):
                                         list(range(10)),
                                         attributes={'attr2': 10})},
                                     attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                                                'object_id': self.foo_bucket.foos[0].object_id}),
+                                                'object_id': self.foo_bucket.foos['my_foo1'].object_id}),
             'my_foo2': GroupBuilder('my_foo2', datasets={'my_data':
                                                          DatasetBuilder(
                                                              'my_data',
                                                              list(range(10, 20)),
                                                              attributes={'attr2': 20})},
                                     attributes={'attr1': 'value2', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
-                                                'object_id': self.foo_bucket.foos[1].object_id})
+                                                'object_id': self.foo_bucket.foos['my_foo2'].object_id})
         }
         self.setUpBucketBuilder()
         self.setUpBucketSpec()

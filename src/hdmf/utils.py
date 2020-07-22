@@ -8,7 +8,7 @@ from enum import Enum
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, bytes],
 }
 
 # code to signify how to handle positional arguments in docval
@@ -313,7 +313,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
                     fmt_val = (argname, valshape, arg['shape'])
                     value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
-            if 'enum' in arg:
+            if 'enum' in arg and argval is not None:
                 err = __check_enum(argval, arg)
                 if err:
                     value_errors.append(err)
