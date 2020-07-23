@@ -541,14 +541,20 @@ class MultiContainerInterface(Container):
 
     @docval(*get_docval(Container.__init__))
     def __init__(self, **kwargs):
-        call_docval_func(super(MultiContainerInterface, self).__init__, kwargs)
+        call_docval_func(super().__init__, kwargs)
+
+        # call this function whenever a container is removed from the dictionary
+        def _remove_child(child):
+            if child.parent is self:
+                self._remove_child(child)
+
         if isinstance(self.__clsconf__, dict):
             attr_name = self.__clsconf__['attr']
-            self.fields[attr_name] = LabelledDict(attr_name)
+            self.fields[attr_name] = LabelledDict(attr_name, remove_callable=_remove_child)
         else:
             for d in self.__clsconf__:
                 attr_name = d['attr']
-                self.fields[attr_name] = LabelledDict(attr_name)
+                self.fields[attr_name] = LabelledDict(attr_name, remove_callable=_remove_child)
 
     @staticmethod
     def __add_article(noun):
