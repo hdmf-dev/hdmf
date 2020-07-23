@@ -78,32 +78,40 @@ class AbstractContainer(metaclass=ExtenderMeta):
             tmp = {'name': tmp}
         return tmp
 
+    @classmethod
+    def _get_fields(cls):
+        return getattr(cls, cls._fieldsname)
+
+    @classmethod
+    def _set_fields(cls, value):
+        return setattr(cls, cls._fieldsname, value)
+
     @ExtenderMeta.pre_init
     def __gather_fields(cls, name, bases, classdict):
         '''
         This classmethod will be called during class declaration in the metaclass to automatically
         create setters and getters for fields that need to be exported
         '''
-        fields = getattr(cls, cls._fieldsname)
+        fields = cls._get_fields()
         if not isinstance(fields, tuple):
             msg = "'%s' must be of type tuple" % cls._fieldsname
             raise TypeError(msg)
 
         if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
-                and getattr(bases[-1], bases[-1]._fieldsname) is not fields:
+                and bases[-1]._get_fields() is not fields:
             new_fields = list(fields)
-            new_fields[0:0] = getattr(bases[-1], bases[-1]._fieldsname)
-            setattr(cls, cls._fieldsname, tuple(new_fields))
+            new_fields[0:0] = bases[-1]._get_fields()
+            cls._set_fields(tuple(new_fields))
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
-        for f in getattr(cls, cls._fieldsname):
+        for f in cls._get_fields():
             pconf = cls._check_field_spec(f)
             pname = pconf['name']
             pconf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
                 setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
             new_fields.append(pname)
-        setattr(cls, cls._fieldsname, tuple(new_fields))
+        cls._set_fields(tuple(new_fields))
 
     def __new__(cls, *args, **kwargs):
         inst = super().__new__(cls)
