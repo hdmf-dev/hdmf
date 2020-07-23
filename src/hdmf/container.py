@@ -1,8 +1,8 @@
 import numpy as np
 from abc import abstractmethod
 from uuid import uuid4
-from .utils import docval, get_docval, call_docval_func, getargs, \
-    ExtenderMeta, get_data_shape, fmt_docval_args, popargs, LabelledDict
+from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
+                    popargs, LabelledDict)
 from .data_utils import DataIO
 from warnings import warn
 import h5py
@@ -262,19 +262,23 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
 
 class Container(AbstractContainer):
+    """A container that can contain other containers and has special functionality for printing."""
 
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
     @classmethod
     def _setter(cls, field):
+        """Returns a list of setter functions for the given field to be added to the class during class declaration."""
         super_setter = AbstractContainer._setter(field)
         ret = [super_setter]
         if isinstance(field, dict):
+            # check keys
             for k in field.keys():
                 if k not in cls._pconf_allowed_keys:
-                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" %\
-                           (k, field['name'], cls.__name__)
+                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" % (k, field['name'], cls.__name__)
                     raise ValueError(msg)
+
+            # create setter with check for required name
             if field.get('required_name', None) is not None:
                 name = field['required_name']
                 idx1 = len(ret) - 1
@@ -286,6 +290,8 @@ class Container(AbstractContainer):
                     ret[idx1](self, val)
 
                 ret.append(container_setter)
+
+            # create setter that accepts a value or tuple, list, or dict or values and sets the value's parent to self
             if field.get('child', False):
                 idx2 = len(ret) - 1
 
@@ -515,20 +521,15 @@ class DataRegion(Data):
 
 
 class MultiContainerInterface(Container):
+    """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
-    '''
-    A class for dynamically defining a API classes that
-    represent NWBDataInterfaces that contain multiple Containers
-    of the same type
-    To use, extend this class, and create a dictionary as a class
-    attribute with the following keys:
+    To use, extend this class and create a dictionary as a class attribute with any of the following keys:
     * 'add' to name the method for adding Container instances
     * 'create' to name the method fo creating Container instances
     * 'get' to name the method for getting Container instances
     * 'attr' to name the attribute that stores the Container instances
     * 'type' to provide the Container object type
-    See LFP or Position for an example of how to use this.
-    '''
+    """
 
     @docval(*get_docval(Container.__init__))
     def __init__(self, **kwargs):
