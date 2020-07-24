@@ -9,10 +9,6 @@ import h5py
 import types
 
 
-def _not_parent(arg):
-    return arg['name'] != 'parent'
-
-
 class AbstractContainer(metaclass=ExtenderMeta):
 
     # The name of the class attribute that subclasses use to autogenerate properties
@@ -528,20 +524,31 @@ class DataRegion(Data):
         pass
 
 
+def _not_parent(arg):
+    return arg['name'] != 'parent'
+
+
 class MultiContainerInterface(Container):
     """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
     To use, extend this class and create a dictionary as a class attribute with any of the following keys:
     * 'add' to name the method for adding Container instances
-    * 'create' to name the method fo creating Container instances
-    * 'get' to name the method for getting Container instances
     * 'attr' to name the attribute that stores the Container instances
-    * 'type' to provide the Container object type
+    * 'type' to provide the Container object type (type or list/tuple of types, type can be a docval macro)
+    * 'create' to name the method for creating Container instances (only if a single type is specified)
+    * 'get' to name the method for getting Container instances
+
+    The keys 'add', 'attr', and 'type' are required.
     """
 
     @docval(*get_docval(Container.__init__))
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
+
+        if not hasattr(self.__class__, '__clsconf__'):
+            # either the API was incorrectly defined or only a subclass with __clsconf__ can be initialized
+            raise TypeError("Cannot initialize an instance of MultiContainerInterface subclass '%s'."
+                            % self.__class__.__name__)
 
         # call this function whenever a container is removed from the dictionary
         def _remove_child(child):
@@ -568,14 +575,26 @@ class MultiContainerInterface(Container):
 
     @staticmethod
     def __join(argtype):
+        """Return a grammatical string representation of a list or tuple of classes or text.
+
+        Examples:
+        cls.__join(Container) returns "Container"
+        cls.__join((Container, )) returns "Container"
+        cls.__join((Container, Data)) returns "Container or Data"
+        cls.__join((Container, Data, Subcontainer)) returns "Container, Data, or Subcontainer"
+        """
+
         def tostr(x):
             return x.__name__ if isinstance(x, type) else x
+
         if isinstance(argtype, (list, tuple)):
-            args = [tostr(x) for x in argtype]
-            if len(args) == 1:
-                return args[0].__name__
+            args_str = [tostr(x) for x in argtype]
+            if len(args_str) == 1:
+                return args_str[0]
+            if len(args_str) == 2:
+                return " or ".join(tostr(x) for x in args_str)
             else:
-                ", ".join(tostr(x) for x in args[:-1]) + ' or ' + args[-1]
+                return ", ".join(tostr(x) for x in args_str[:-1]) + ', or ' + args_str[-1]
         else:
             return tostr(argtype)
 
@@ -593,19 +612,52 @@ class MultiContainerInterface(Container):
             ret = None
             if name is None:
                 if len(d) > 1:
-                    msg = "more than one element in %s of %s '%s' -- must specify a name" % \
-                          (attr_name, cls.__name__, self.name)
+                    msg = ("More than one element in %s of %s '%s' -- must specify a name."
+                           % (attr_name, cls.__name__, self.name))
                     raise ValueError(msg)
                 elif len(d) == 0:
-                    msg = "%s of %s '%s' is empty" % (attr_name, cls.__name__, self.name)
+                    msg = "%s of %s '%s' is empty." % (attr_name, cls.__name__, self.name)
                     raise ValueError(msg)
-                elif len(d) == 1:
+                else:  # only one item in dict
                     for v in d.values():
                         ret = v
             else:
                 ret = d.get(name)
                 if ret is None:
-                    msg = "'%s' not found in %s of %s '%s'" % (name, attr_name, cls.__name__, self.name)
+                    msg = "'%s' not found in %s of %s '%s'." % (name, attr_name, cls.__name__, self.name)
+                    raise KeyError(msg)
+            return ret
+
+        return _func
+
+    @classmethod
+    def __make_getitem(cls, attr_name, container_type):
+        doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
+
+        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+                 'default': None},
+                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
+                func_name='__getitem__', doc=doc)
+        def _func(self, **kwargs):
+            # NOTE this is the same code as the getter but with different error messages
+            name = getargs('name', kwargs)
+            d = getattr(self, attr_name)
+            ret = None
+            if name is None:
+                if len(d) > 1:
+                    msg = ("More than one %s in %s '%s' -- must specify a name."
+                           % (cls.__join(container_type), cls.__name__, self.name))
+                    raise ValueError(msg)
+                elif len(d) == 0:
+                    msg = "%s '%s' is empty." % (cls.__name__, self.name)
+                    raise ValueError(msg)
+                else:  # only one item in dict
+                    for v in d.values():
+                        ret = v
+            else:
+                ret = d.get(name)
+                if ret is None:
+                    msg = "'%s' not found in %s '%s'." % (name, cls.__name__, self.name)
                     raise KeyError(msg)
             return ret
 
@@ -632,7 +684,7 @@ class MultiContainerInterface(Container):
                     tmp.parent = self
                 # else, the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
                 if tmp.name in d:
-                    msg = "'%s' already exists in '%s'" % (tmp.name, self.name)
+                    msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
                     raise ValueError(msg)
                 d[tmp.name] = tmp
             return container
@@ -674,46 +726,16 @@ class MultiContainerInterface(Container):
         return _func
 
     @classmethod
-    def __make_getitem(cls, attr_name, container_type):
-        doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
-
-        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
-                 'default': None},
-                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
-                func_name='__getitem__', doc=doc)
-        def _func(self, **kwargs):
-            name = getargs('name', kwargs)
-            d = getattr(self, attr_name)
-            if len(d) == 0:
-                msg = "%s '%s' is empty" % (cls.__name__, self.name)
-                raise ValueError(msg)
-            if len(d) > 1 and name is None:
-                msg = "more than one %s in this %s -- must specify a name" % cls.__join(container_type), cls.__name__
-                raise ValueError(msg)
-            ret = None
-            if len(d) == 1:
-                for v in d.values():
-                    ret = v
-            else:
-                ret = d.get(name)
-                if ret is None:
-                    msg = "'%s' not found in %s '%s'" % (name, cls.__name__, self.name)
-                    raise KeyError(msg)
-            return ret
-
-        return _func
-
-    @classmethod
     def __make_setter(cls, nwbfield, add_name):
 
         @docval({'name': 'val', 'type': (list, tuple, dict), 'doc': 'the sub items to add', 'default': None})
-        def nwbbt_setter(self, **kwargs):
+        def _func(self, **kwargs):
             val = getargs('val', kwargs)
             if val is None:
                 return
             getattr(self, add_name)(val)
 
-        return nwbbt_setter
+        return _func
 
     @ExtenderMeta.pre_init
     def __build_class(cls, name, bases, classdict):
@@ -730,57 +752,72 @@ class MultiContainerInterface(Container):
             multi = True
             clsconf = cls.__clsconf__
         else:
-            raise TypeError("'__clsconf__' must be a dict or a list of dicts")
+            raise TypeError("'__clsconf__' for MultiContainerInterface subclass '%s' must be a dict or a list of "
+                            "dicts." % cls.__name__)
 
-        for i, d in enumerate(clsconf):
-            # get add method name
-            add = d.get('add')
-            if add is None:
-                msg = "MultiContainerInterface subclass '%s' is missing 'add' key in __clsconf__" % cls.__name__
-                if multi:
-                    msg += " at element %d" % i
-                raise ValueError(msg)
+        for conf_index, conf_dict in enumerate(clsconf):
+            cls.__build_conf_methods(conf_dict, conf_index, multi)
 
-            # get container attribute name
-            attr = d.get('attr')
-            if attr is None:
-                msg = "MultiContainerInterface subclass '%s' is missing 'attr' key in __clsconf__" % cls.__name__
-                if multi:
-                    msg += " at element %d" % i
-                raise ValueError(msg)
-
-            # get container type
-            container_type = d.get('type')
-            if container_type is None:
-                msg = "MultiContainerInterface subclass '%s' is missing 'type' key in __clsconf__" % cls.__name__
-                if multi:
-                    msg += " at element %d" % i
-                raise ValueError(msg)
-
-            # create property with the name given in 'attr'
-            if not hasattr(cls, attr):
-                aconf = cls._check_field_spec(attr)
-                getter = cls._getter(aconf)
-                doc = "a dictionary containing the %s in this %s container" % \
-                      (cls.__join(container_type), cls.__name__)
-                setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
-
-            # create the add method
-            setattr(cls, add, cls.__make_add(add, attr, container_type))
-
-            # get create method name
-            create = d.get('create')
-            if create is not None:
-                setattr(cls, create, cls.__make_create(create, add, container_type))
-
-            get = d.get('get')
-            if get is not None:
-                setattr(cls, get, cls.__make_get(get, attr, container_type))
-
+        # make __getitem__ (square bracket access) only if one conf type is defined
         if len(clsconf) == 1:
+            attr = clsconf[0].get('attr')
+            container_type = clsconf[0].get('type')
             setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
 
         # create the constructor, only if it has not been overridden
         # i.e. it is the same method as the parent class constructor
         if cls.__init__ == MultiContainerInterface.__init__:
             setattr(cls, '__init__', cls.__make_constructor(clsconf))
+
+    @classmethod
+    def __build_conf_methods(cls, conf_dict, conf_index, multi):
+        # get add method name
+        add = conf_dict.get('add')
+        if add is None:
+            msg = "MultiContainerInterface subclass '%s' is missing 'add' key in __clsconf__" % cls.__name__
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        # get container attribute name
+        attr = conf_dict.get('attr')
+        if attr is None:
+            msg = "MultiContainerInterface subclass '%s' is missing 'attr' key in __clsconf__" % cls.__name__
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        # get container type
+        container_type = conf_dict.get('type')
+        if container_type is None:
+            msg = "MultiContainerInterface subclass '%s' is missing 'type' key in __clsconf__" % cls.__name__
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        # create property with the name given in 'attr'
+        if not hasattr(cls, attr):
+            aconf = cls._check_field_spec(attr)
+            getter = cls._getter(aconf)
+            doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
+            setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
+
+        # create the add method
+        setattr(cls, add, cls.__make_add(add, attr, container_type))
+
+        # create the create method, only if a single container type is specified
+        create = conf_dict.get('create')
+        if create is not None:
+            if isinstance(container_type, type):
+                setattr(cls, create, cls.__make_create(create, add, container_type))
+            else:
+                msg = ("Cannot specify 'create' key in __clsconf__ for MultiContainerInterface subclass '%s' "
+                       "when 'type' key is not a single type") % cls.__name__
+                if multi:
+                    msg += " at index %d" % conf_index
+                raise ValueError(msg)
+
+        # create the get method
+        get = conf_dict.get('get')
+        if get is not None:
+            setattr(cls, get, cls.__make_get(get, attr, container_type))
