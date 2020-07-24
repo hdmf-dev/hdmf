@@ -48,12 +48,13 @@ class FooSingle(MultiContainerInterface):
 
 class Baz(MultiContainerInterface):
 
+    __containers = dict()
+
     __clsconf__ = [
         {
             'attr': 'containers',
             'add': 'add_container',
             'type': Container,
-            'create': 'create_container',
             'get': 'get_container',
         },
     ]
@@ -62,7 +63,15 @@ class Baz(MultiContainerInterface):
     def __init__(self, name, other_arg, my_containers):
         super().__init__(name=name)
         self.other_arg = other_arg
-        self.containers = my_containers
+        self.containers = {'my ' + v.name: v for v in my_containers}
+
+    @property
+    def containers(self):
+        return self.__containers
+
+    @containers.setter
+    def containers(self, value):
+        self.__containers = value
 
 
 class TestBasic(TestCase):
@@ -301,12 +310,18 @@ class TestOverrideInit(TestCase):
         containers = [obj1, obj2]
 
         baz = Baz(name='test_baz', other_arg=1, my_containers=containers)
-        self.assertDictEqual(baz.containers, {'obj1': obj1, 'obj2': obj2})
         self.assertEqual(baz.name, 'test_baz')
         self.assertEqual(baz.other_arg, 1)
-        self.assertIs(baz.get_container('obj1'), obj1)
-        obj3 = baz.create_container('obj3')
-        self.assertEqual(baz.get_container('obj3'), obj3)
+
+    def test_override_property(self):
+        """Test that overriding the attribute property works."""
+        obj1 = Container('obj1')
+        obj2 = Container('obj2')
+        containers = [obj1, obj2]
+        baz = Baz(name='test_baz', other_arg=1, my_containers=containers)
+        self.assertDictEqual(baz.containers, {'my obj1': obj1, 'my obj2': obj2})
+        self.assertFalse(isinstance(baz.containers, LabelledDict))
+        self.assertIs(baz.get_container('my obj1'), obj1)
 
 
 class TestNoClsConf(TestCase):
@@ -411,23 +426,6 @@ class TestBadClsConf(TestCase):
                     'create': 'create_data',
                 }
 
-    def test_attribute_exists(self):
-        """Test that an error is raised if __clsconf__ specifies 'attr' key that already exists."""
-
-        msg = ("Attribute 'containers' already exists in MultiContainerInterface subclass Bar. Cannot use it as "
-               "'attr' key in __clsconf__")
-        with self.assertRaisesWith(ValueError, msg):
-
-            class Bar(MultiContainerInterface):
-
-                __fields__ = ('containers', )
-
-                __clsconf__ = {
-                    'add': 'add_container',
-                    'attr': 'containers',
-                    'type': (Container, ),
-                }
-
     def test_missing_add_multi(self):
         """Test that an error is raised if one item of a __clsconf__ list is missing the add key."""
 
@@ -504,29 +502,5 @@ class TestBadClsConf(TestCase):
                         'attr': 'containers',
                         'type': (Container, ),
                         'create': 'create_container',
-                    }
-                ]
-
-    def test_attribute_exists_multi(self):
-        """Test that an error is raised if one item of a __clsconf__ list specifies 'attr' key that already exists."""
-
-        msg = ("Attribute 'containers' already exists in MultiContainerInterface subclass Bar. Cannot use it as "
-               "'attr' key in __clsconf__ at index 1")
-        with self.assertRaisesWith(ValueError, msg):
-
-            class Bar(MultiContainerInterface):
-
-                __fields__ = ('containers', )
-
-                __clsconf__ = [
-                    {
-                        'attr': 'data',
-                        'add': 'add_data',
-                        'type': (Data, ),
-                    },
-                    {
-                        'add': 'add_container',
-                        'attr': 'containers',
-                        'type': (Container, ),
                     }
                 ]

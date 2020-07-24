@@ -538,6 +538,8 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
     * 'create' to name the method for creating Container instances (only if a single type is specified)
     * 'get' to name the method for getting Container instances
 
+    If the attribute does not exist in the class, it will be generated. If it does exist, it should behave like a dict.
+
     The keys 'add', 'attr', and 'type' are required.
     """
 
@@ -739,10 +741,8 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
 
     @ExtenderMeta.pre_init
     def __build_class(cls, name, bases, classdict):
-        '''
-        This classmethod will be called during class declaration in the metaclass to automatically
-        create setters and getters for NWB fields that need to be exported
-        '''
+        """This will be called during class declaration in the metaclass to automatically create methods."""
+
         if not hasattr(cls, '__clsconf__'):
             return
         multi = False
@@ -796,17 +796,11 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
             raise ValueError(msg)
 
         # create property with the name given in 'attr' only if the attribute is not already defined
-        if hasattr(cls, attr):
-            msg = ("Attribute '%s' already exists in MultiContainerInterface subclass %s. Cannot use it as 'attr' key "
-                   "in __clsconf__" % (attr, cls.__name__))
-            if multi:
-                msg += " at index %d" % conf_index
-            raise ValueError(msg)
-
-        aconf = cls._check_field_spec(attr)
-        getter = cls._getter(aconf)
-        doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
-        setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
+        if not hasattr(cls, attr):
+            aconf = cls._check_field_spec(attr)
+            getter = cls._getter(aconf)
+            doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
+            setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
 
         # create the add method
         setattr(cls, add, cls.__make_add(add, attr, container_type))
