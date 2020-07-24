@@ -1,5 +1,5 @@
 import numpy as np
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from uuid import uuid4
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
@@ -528,7 +528,7 @@ def _not_parent(arg):
     return arg['name'] != 'parent'
 
 
-class MultiContainerInterface(Container):
+class MultiContainerInterface(Container, metaclass=ABCMeta):
     """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
     To use, extend this class and create a dictionary as a class attribute with any of the following keys:
@@ -547,7 +547,7 @@ class MultiContainerInterface(Container):
 
         if not hasattr(self.__class__, '__clsconf__'):
             # either the API was incorrectly defined or only a subclass with __clsconf__ can be initialized
-            raise TypeError("Cannot initialize an instance of MultiContainerInterface subclass '%s'."
+            raise TypeError("Cannot initialize an instance of MultiContainerInterface subclass %s."
                             % self.__class__.__name__)
 
         # call this function whenever a container is removed from the dictionary
@@ -752,7 +752,7 @@ class MultiContainerInterface(Container):
             multi = True
             clsconf = cls.__clsconf__
         else:
-            raise TypeError("'__clsconf__' for MultiContainerInterface subclass '%s' must be a dict or a list of "
+            raise TypeError("'__clsconf__' for MultiContainerInterface subclass %s must be a dict or a list of "
                             "dicts." % cls.__name__)
 
         for conf_index, conf_dict in enumerate(clsconf):
@@ -774,7 +774,7 @@ class MultiContainerInterface(Container):
         # get add method name
         add = conf_dict.get('add')
         if add is None:
-            msg = "MultiContainerInterface subclass '%s' is missing 'add' key in __clsconf__" % cls.__name__
+            msg = "MultiContainerInterface subclass %s is missing 'add' key in __clsconf__" % cls.__name__
             if multi:
                 msg += " at index %d" % conf_index
             raise ValueError(msg)
@@ -782,7 +782,7 @@ class MultiContainerInterface(Container):
         # get container attribute name
         attr = conf_dict.get('attr')
         if attr is None:
-            msg = "MultiContainerInterface subclass '%s' is missing 'attr' key in __clsconf__" % cls.__name__
+            msg = "MultiContainerInterface subclass %s is missing 'attr' key in __clsconf__" % cls.__name__
             if multi:
                 msg += " at index %d" % conf_index
             raise ValueError(msg)
@@ -790,17 +790,23 @@ class MultiContainerInterface(Container):
         # get container type
         container_type = conf_dict.get('type')
         if container_type is None:
-            msg = "MultiContainerInterface subclass '%s' is missing 'type' key in __clsconf__" % cls.__name__
+            msg = "MultiContainerInterface subclass %s is missing 'type' key in __clsconf__" % cls.__name__
             if multi:
                 msg += " at index %d" % conf_index
             raise ValueError(msg)
 
-        # create property with the name given in 'attr'
-        if not hasattr(cls, attr):
-            aconf = cls._check_field_spec(attr)
-            getter = cls._getter(aconf)
-            doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
-            setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
+        # create property with the name given in 'attr' only if the attribute is not already defined
+        if hasattr(cls, attr):
+            msg = ("Attribute '%s' already exists in MultiContainerInterface subclass %s. Cannot use it as 'attr' key "
+                   "in __clsconf__" % (attr, cls.__name__))
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        aconf = cls._check_field_spec(attr)
+        getter = cls._getter(aconf)
+        doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
+        setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
 
         # create the add method
         setattr(cls, add, cls.__make_add(add, attr, container_type))
@@ -811,7 +817,7 @@ class MultiContainerInterface(Container):
             if isinstance(container_type, type):
                 setattr(cls, create, cls.__make_create(create, add, container_type))
             else:
-                msg = ("Cannot specify 'create' key in __clsconf__ for MultiContainerInterface subclass '%s' "
+                msg = ("Cannot specify 'create' key in __clsconf__ for MultiContainerInterface subclass %s "
                        "when 'type' key is not a single type") % cls.__name__
                 if multi:
                     msg += " at index %d" % conf_index
