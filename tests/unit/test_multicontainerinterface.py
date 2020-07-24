@@ -322,6 +322,8 @@ class TestOverrideInit(TestCase):
         self.assertDictEqual(baz.containers, {'my obj1': obj1, 'my obj2': obj2})
         self.assertFalse(isinstance(baz.containers, LabelledDict))
         self.assertIs(baz.get_container('my obj1'), obj1)
+        baz.containers = {}
+        self.assertDictEqual(baz.containers, {})
 
 
 class TestNoClsConf(TestCase):
