@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 2.0.1 (July 20, 2020)
+## HDMF 2.0.1 (July 22, 2020)
 
 ### Internal improvements
 - Add tests for writing table columns with DataIO data, e.g., chunked, compressed data. @rly (#402)
@@ -8,6 +8,10 @@
 
 ### Bug fixes:
 - Remove breakpoint. @rly (#403)
+- Allow passing None for docval enum arguments with default value None. @rly (#409)
+- If a file is written with an orphan container, e.g., a link to a container that is not written, then an
+  `OrphanContainerBuildError` will be raised. This replaces the `OrphanContainerWarning` that was previously raised.
+  @rly (#407)  
 
 ## HDMF 2.0.0 (July 17, 2020)
 
