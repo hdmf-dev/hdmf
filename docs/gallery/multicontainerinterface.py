@@ -2,7 +2,7 @@
 MultiContainerInterface
 ========================
 
-This is a guide to building custom API classes with the MultiContainerInterface class.
+This is a guide to creating custom API classes with the ``MultiContainerInterface`` class.
 
 """
 
