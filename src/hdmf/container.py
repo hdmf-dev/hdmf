@@ -532,15 +532,15 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
     """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
     To use, extend this class and create a dictionary as a class attribute with any of the following keys:
-    * 'add' to name the method for adding Container instances
     * 'attr' to name the attribute that stores the Container instances
     * 'type' to provide the Container object type (type or list/tuple of types, type can be a docval macro)
-    * 'create' to name the method for creating Container instances (only if a single type is specified)
+    * 'add' to name the method for adding Container instances
     * 'get' to name the method for getting Container instances
+    * 'create' to name the method for creating Container instances (only if a single type is specified)
 
     If the attribute does not exist in the class, it will be generated. If it does exist, it should behave like a dict.
 
-    The keys 'add', 'attr', and 'type' are required.
+    The keys 'attr', 'type', and 'add' are required.
     """
 
     @docval(*get_docval(Container.__init__))
