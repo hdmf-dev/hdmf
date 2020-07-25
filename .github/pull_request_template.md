@@ -9,6 +9,7 @@ Show how to reproduce the new behavior (can be a bug fix or a new feature)
 
 ## Checklist
 
+- [ ] Did you update CHANGELOG.md with your changes?
 - [ ] Have you checked our [Contributing](https://github.com/hdmf-dev/hdmf/blob/dev/docs/CONTRIBUTING.rst) document?
 - [ ] Have you ensured the PR clearly describes the problem and the solution?
 - [ ] Is your contribution compliant with our coding style? This can be checked running `flake8` from the source directory.
