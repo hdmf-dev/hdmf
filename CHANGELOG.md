@@ -1,12 +1,21 @@
 # HDMF Changelog
 
+## HDMF 3.0.0 (Upcoming)
+
+### New features
+- Users can now use the `MultiContainerInterface` class to generate custom API classes that contain collections of
+  containers of a specified type. See the user guide
+  https://hdmf.readthedocs.io/en/stable/tutorials/multicontainerinterface.html for more information.
+
+### Internal improvements
+- Add ability to pass callable functions to run when adding or removing items from a ``LabelledDict``.
+  An error is now raised when using unsupported functionality in ``LabelledDict``. @rly (#405)
+
 ## HDMF 2.0.1 (July 22, 2020)
 
 ### Internal improvements
 - Add tests for writing table columns with DataIO data, e.g., chunked, compressed data. @rly (#402)
 - Add CI to check for breakpoints and print statements. @rly (#403)
-- Add ability to pass a callable function to run when removing items from a LabelledDict. Raise an error when using
-  unsupported functionality in LabelledDict. @rly (#405)
 
 ### Bug fixes:
 - Remove breakpoint. @rly (#403)
