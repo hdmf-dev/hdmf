@@ -2,7 +2,7 @@
 DynamicTable
 ============
 
-This is a user guide to working with the :py:class:`~hdmf.common.table.DynamicTable` class.
+This is a user guide to interacting with ``DynamicTable`` objects.
 
 """
 
