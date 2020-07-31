@@ -10,14 +10,13 @@
 ### Internal improvements
 - Add ability to pass callable functions to run when adding or removing items from a ``LabelledDict``.
   An error is now raised when using unsupported functionality in ``LabelledDict``. @rly (#405)
+- Raise a warning when building a container that is missing a required dataset. @rly (#413)
 
 ## HDMF 2.0.1 (July 22, 2020)
 
 ### Internal improvements
 - Add tests for writing table columns with DataIO data, e.g., chunked, compressed data. @rly (#402)
 - Add CI to check for breakpoints and print statements. @rly (#403)
-- Add ability to pass a callable function to run when removing items from a LabelledDict. Raise an error when using
-  unsupported functionality in LabelledDict. @rly (#405)
 
 ### Bug fixes:
 - Remove breakpoint. @rly (#403)

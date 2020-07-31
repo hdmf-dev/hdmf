@@ -125,11 +125,8 @@ class TestTypeMap(TestCase):
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        # self.build_manager = BuildManager(self.type_map)
 
     def test_get_map_unique_mappers(self):
-        self.type_map.register_map(Bar, ObjectMapper)
-        self.type_map.register_map(Foo, ObjectMapper)
         bar_inst = Bar('my_bar', list(range(10)), 'value1', 10)
         foo_inst = Foo(name='my_foo')
         bar_mapper = self.type_map.get_map(bar_inst)
@@ -137,7 +134,6 @@ class TestTypeMap(TestCase):
         self.assertIsNot(bar_mapper, foo_mapper)
 
     def test_get_map(self):
-        self.type_map.register_map(Bar, ObjectMapper)
         container_inst = Bar('my_bar', list(range(10)), 'value1', 10)
         mapper = self.type_map.get_map(container_inst)
         self.assertIsInstance(mapper, ObjectMapper)
@@ -235,7 +231,6 @@ class TestDynamicContainer(TestCase):
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
@@ -426,7 +421,6 @@ class ObjectMapperMixin(metaclass=ABCMeta):
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
@@ -573,8 +567,6 @@ class TestLinkedContainer(TestCase):
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Foo, ObjectMapper)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.foo_mapper = ObjectMapper(self.foo_spec)
         self.bar_mapper = ObjectMapper(self.bar_spec)
@@ -659,8 +651,6 @@ class TestReference(TestCase):
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Foo, ObjectMapper)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.foo_mapper = ObjectMapper(self.foo_spec)
         self.bar_mapper = ObjectMapper(self.bar_spec)
@@ -709,7 +699,7 @@ class TestReference(TestCase):
 class TestMissingRequiredAttribute(TestCase):
 
     def test_required_attr_missing(self):
-        ''' Test mapping when one container is missing a required attribute reference
+        ''' Test mapping when one container is missing a required attribute
         '''
         bar_spec = GroupSpec('A test group specification with a data type Bar',
                              data_type_def='Bar',
@@ -728,7 +718,6 @@ class TestMissingRequiredAttribute(TestCase):
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
         type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        type_map.register_map(Bar, ObjectMapper)
         manager = BuildManager(type_map)
         bar_mapper = ObjectMapper(bar_spec)
 
@@ -759,13 +748,42 @@ class TestMissingRequiredAttribute(TestCase):
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
         type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        type_map.register_map(Bar, ObjectMapper)
         manager = BuildManager(type_map)
         bar_mapper = ObjectMapper(bar_spec)
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
 
         msg = "attribute 'foo' for 'my_bar1' (Bar)"
+        with self.assertWarnsWith(MissingRequiredWarning, msg):
+            bar_mapper.build(bar_inst1, manager)
+
+
+class TestMissingRequiredDataset(TestCase):
+
+    def test_required_dataset_missing(self):
+        ''' Test mapping when one container is missing a required dataset
+        '''
+        bar_spec = GroupSpec('A test group specification with a data type Bar',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'int', name='data')])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        manager = BuildManager(type_map)
+        bar_mapper = ObjectMapper(bar_spec)
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__data = None  # make data dataset None
+
+        msg = "dataset 'data' for 'my_bar1' (Bar)"
         with self.assertWarnsWith(MissingRequiredWarning, msg):
             bar_mapper.build(bar_inst1, manager)
 

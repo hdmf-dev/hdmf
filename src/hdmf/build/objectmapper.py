@@ -821,6 +821,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (repr(spec.name), spec.dtype.__class__.__name__))
             attr_value = self.get_attr_value(spec, container, build_manager)
             if attr_value is None:
+                if spec.required:
+                    msg = "dataset '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
+                    warnings.warn(msg, MissingRequiredWarning)
+                    self.logger.debug('MissingRequiredWarning: ' + msg)
                 self.logger.debug("        Skipping dataset - no attribute value")
                 continue
             attr_value = self.__check_ref_resolver(attr_value)

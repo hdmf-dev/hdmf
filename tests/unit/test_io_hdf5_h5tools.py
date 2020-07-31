@@ -2793,8 +2793,8 @@ def _get_baz_manager():
         doc='A test group specification for a data type containing data type',
         data_type_def='BazBucket',
         groups=[baz_holder_spec],
-        datasets=[DatasetSpec(doc='doc', data_type_inc='BazData'),
-                  DatasetSpec(doc='doc', data_type_inc='BazCpdData')],
+        datasets=[DatasetSpec(doc='doc', data_type_inc='BazData', quantity=ZERO_OR_ONE),
+                  DatasetSpec(doc='doc', data_type_inc='BazCpdData', quantity=ZERO_OR_ONE)],
     )
 
     spec_catalog = SpecCatalog()
