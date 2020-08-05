@@ -2,14 +2,14 @@
 The Hierarchical Data Modeling Framework
 ========================================
 
-The Hierarchical Data Modeling Framework, or *HDMF* is a Python package for working with hierarchical data.
+The Hierarchical Data Modeling Framework, or *HDMF*, is a Python package for working with hierarchical data.
 It provides APIs for specifying data models, reading and writing data to different storage backends, and
 representing data with Python object.
 
 Documentation of HDMF can be found at https://hdmf.readthedocs.io
 
 Latest Release
---------------
+==============
 
 .. image:: https://badge.fury.io/py/hdmf.svg
      :target: https://badge.fury.io/py/hdmf
@@ -19,27 +19,26 @@ Latest Release
 
 
 Build Status
-------------
+============
 
 .. table::
 
-  +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
-  | Linux                                                               | macOS                                                          | Windows                                                                               |
-  +=====================================================================+================================================================+=======================================================================================+
-  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://travis-ci.com/hdmf-dev/hdmf.svg?branch=dev  | .. image:: https://ci.appveyor.com/api/projects/status/oi06lb719n2mkdby?svg=true      |
-  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://travis-ci.com/hdmf-dev/hdmf               |     :target: https://ci.appveyor.com/project/hdmf-dev/hdmf                            |
-  +---------------------------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------+
+  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
+  | Linux                                                               | Windows and macOS                                                                                |
+  +=====================================================================+==================================================================================================+
+  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://dev.azure.com/hdmf-dev/hdmf/_apis/build/status/hdmf-dev.hdmf?branchName=dev   |
+  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://dev.azure.com/hdmf-dev/hdmf/_build/latest?definitionId=1&branchName=dev     |
+  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
 
 
 **Conda**
 
-
 .. image:: https://circleci.com/gh/conda-forge/hdmf-feedstock.svg?style=shield
-     :target: https://circleci.com/gh/conda-forge/hdmf-feedstocks
+     :target: https://circleci.com/gh/conda-forge/hdmf-feedstock
 
 
 Overall Health
---------------
+==============
 
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
@@ -60,17 +59,17 @@ See the HDMF documentation for details http://hdmf.readthedocs.io/en/latest/gett
 Code of Conduct
 ===============
 
-This project and everyone participating in it is governed by our `code of conduct guidelines <docs/CODE_OF_CONDUCT.rst>`_ . By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our `code of conduct guidelines <.github/CODE_OF_CONDUCT.md>`_. By participating, you are expected to uphold this code.
 
 Contributing
 ============
 
-For details on how to contribute to HDMF see our `contribution guidelines <docs/CONTRIBUTING.rst>`_ .
+For details on how to contribute to HDMF see our `contribution guidelines <docs/CONTRIBUTING.rst>`_.
 
 LICENSE
 =======
 
-"hdmf" Copyright (c) 2017, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 (1) Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -86,7 +85,7 @@ You are under no obligation whatsoever to provide any bug fixes, patches, or upg
 COPYRIGHT
 =========
 
-"hdmf" Copyright (c) 2017, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
-If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships ce at  IPO@lbl.gov.
+"hdmf" Copyright (c) 2017-2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
 
 NOTICE.  This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so.

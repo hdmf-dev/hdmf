@@ -1,14 +1,12 @@
 from collections import OrderedDict
 from datetime import datetime
-from copy import deepcopy, copy
+from copy import copy
 import ruamel.yaml as yaml
 import os.path
 import string
 from warnings import warn
 from itertools import chain
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass, raise_from
-
 
 from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 from .catalog import SpecCatalog
@@ -38,11 +36,13 @@ class SpecNamespace(dict):
 
     __types_key = 'data_types'
 
-    @docval(*deepcopy(_namespace_args))
+    UNVERSIONED = None  # value representing missing version
+
+    @docval(*_namespace_args)
     def __init__(self, **kwargs):
         doc, full_name, name, version, date, author, contact, schema, catalog = \
             popargs('doc', 'full_name', 'name', 'version', 'date', 'author', 'contact', 'schema', 'catalog', kwargs)
-        super(SpecNamespace, self).__init__()
+        super().__init__()
         self['doc'] = doc
         self['schema'] = schema
         if any(c in string.whitespace for c in name):
@@ -50,8 +50,17 @@ class SpecNamespace(dict):
         self['name'] = name
         if full_name is not None:
             self['full_name'] = full_name
-        if version is not None:
-            self['version'] = version
+        if version == str(SpecNamespace.UNVERSIONED):
+            # the unversioned version may be written to file as a string and read from file as a string
+            warn("Loaded namespace '%s' is unversioned. Please notify the extension author." % name)
+            version = SpecNamespace.UNVERSIONED
+        if version is None:
+            # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
+            # be able to read older files with extensions that are missing the version key.
+            warn(("Loaded namespace '%s' is missing the required key 'version'. Version will be set to '%s'. "
+                  "Please notify the extension author.") % (name, SpecNamespace.UNVERSIONED))
+            version = SpecNamespace.UNVERSIONED
+        self['version'] = version
         if date is not None:
             self['date'] = date
         if author is not None:
@@ -80,13 +89,16 @@ class SpecNamespace(dict):
 
     @property
     def author(self):
-        """String or list of strings with the authors or  None"""
+        """String or list of strings with the authors or None"""
         return self.get('author', None)
 
     @property
     def version(self):
-        """String, list, or tuple with the version or None """
-        return self.get('version', None)
+        """
+        String, list, or tuple with the version or SpecNamespace.UNVERSIONED
+        if the version is missing or empty
+        """
+        return self.get('version', None) or SpecNamespace.UNVERSIONED
 
     @property
     def date(self):
@@ -162,7 +174,7 @@ class SpecNamespace(dict):
         return cls(*args, **kwargs)
 
 
-class SpecReader(with_metaclass(ABCMeta, object)):
+class SpecReader(metaclass=ABCMeta):
 
     @docval({'name': 'source', 'type': str, 'doc': 'the source from which this reader reads from'})
     def __init__(self, **kwargs):
@@ -186,7 +198,7 @@ class YAMLSpecReader(SpecReader):
     @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
     def __init__(self, **kwargs):
         super_kwargs = {'source': kwargs['indir']}
-        call_docval_func(super(YAMLSpecReader, self).__init__, super_kwargs)
+        call_docval_func(super().__init__, super_kwargs)
 
     def read_namespace(self, namespace_path):
         namespaces = None
@@ -211,7 +223,7 @@ class YAMLSpecReader(SpecReader):
         return os.path.join(self.source, spec_path)
 
 
-class NamespaceCatalog(object):
+class NamespaceCatalog:
 
     @docval({'name': 'group_spec_cls', 'type': type,
              'doc': 'the class to use for group specifications', 'default': GroupSpec},
@@ -243,6 +255,10 @@ class NamespaceCatalog(object):
         ret.__included_sources = copy(self.__included_sources)
         return ret
 
+    def merge(self, ns_catalog):
+        for name, namespace in ns_catalog.__namespaces.items():
+            self.add_namespace(name, namespace)
+
     @property
     @docval(returns='a tuple of the available namespaces', rtype=tuple)
     def namespaces(self):
@@ -268,9 +284,6 @@ class NamespaceCatalog(object):
             {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
     def add_namespace(self, **kwargs):
         """Add a namespace to this catalog"""
-        msg = ("NamespaceCatalog.add_namespace has been deprecated. "
-               "SpecNamespaces should be added with load_namespaces.")
-        warn(msg, DeprecationWarning)
         name, namespace = getargs('name', 'namespace', kwargs)
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
@@ -348,11 +361,11 @@ class NamespaceCatalog(object):
             raise ValueError("spec source '%s' already loaded" % spec_source)
 
         def __reg_spec(spec_cls, spec_dict):
-            dt_def = spec_dict.get(spec_cls.def_key())
+            parent_cls = GroupSpec if issubclass(spec_cls, GroupSpec) else DatasetSpec
+            dt_def = spec_dict.get(spec_cls.def_key(), spec_dict.get(parent_cls.def_key()))
             if dt_def is None:
-                msg = 'skipping spec in %s, no %s found' % (spec_source, spec_cls.def_key())
-                warn(msg)
-                return
+                msg = 'no %s or %s found in spec %s' % (spec_cls.def_key(), parent_cls.def_key(), spec_source)
+                raise ValueError(msg)
             if dtypes and dt_def not in dtypes:
                 return
             if resolve:
@@ -407,7 +420,7 @@ class NamespaceCatalog(object):
                 try:
                     inc_ns = self.get_namespace(s['namespace'])
                 except KeyError as e:
-                    raise_from(ValueError("Could not load namespace '%s'" % s['namespace']), e)
+                    raise ValueError("Could not load namespace '%s'" % s['namespace']) from e
                 if types_key in s:
                     types = s[types_key]
                 else:
@@ -415,10 +428,15 @@ class NamespaceCatalog(object):
                 for ndt in types:
                     spec = inc_ns.get_spec(ndt)
                     spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+                    if isinstance(spec, DatasetSpec):
+                        spec = self.dataset_spec_cls.build_spec(spec)
+                    else:
+                        spec = self.group_spec_cls.build_spec(spec)
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types)
         # construct namespace
-        self.__namespaces[ns_name] = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        self.__namespaces[ns_name] = ns
         return included_types
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},

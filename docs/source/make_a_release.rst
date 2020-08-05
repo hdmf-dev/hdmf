@@ -16,9 +16,32 @@ A core developer should use the following steps to create a release `X.Y.Z` of *
 Prerequisites
 -------------
 
-* All CI tests are passing on `AppVeyor`_, `CircleCI`_ and `Travis CI`_.
+* All CI tests are passing on `CircleCI`_ and `Azure Pipelines`_.
 
 * You have a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
+
+* Dependency versions in requirements.txt, requirements-dev.txt, requirements-doc.txt, requirements-min.txt are
+  up-to-date.
+
+* Legal information and copyright dates are up-to-date in Legal.txt, license.txt, README.rst, docs/source/conf.py, and
+  any other files.
+
+* Package information in setup.py is up-to-date.
+
+* README.rst information is up-to-date.
+
+* The hdmf-common-schema submodule is up-to-date. The version number should be checked manually in case syncing the
+  git submodule does not work as expected.
+
+* Documentation reflects any new features and changes in HDMF functionality.
+
+* Documentation builds locally.
+
+* Documentation builds on ReadTheDocs on the 'latest' build.
+
+* Release notes have been prepared.
+
+* An appropriate new version number has been selected.
 
 -------------------------
 Documentation conventions
@@ -66,7 +89,7 @@ Setting up environment
 PyPI: Step-by-step
 ------------------
 
-1. Make sure that all CI tests are passing on `AppVeyor`_, `CircleCI`_ and `Travis CI`_.
+1. Make sure that all CI tests are passing on `CircleCI`_ and `Azure Pipelines`_.
 
 
 2. List all tags sorted by version
@@ -92,7 +115,7 @@ PyPI: Step-by-step
 
   .. code::
 
-    $ cd /tmp && git clone git@github.com:hdmf-dev/hdmf && cd hdmf
+    $ cd /tmp && git clone --recurse-submodules git@github.com:hdmf-dev/hdmf && cd hdmf
 
 
 5. Tag the release
@@ -118,7 +141,7 @@ PyPI: Step-by-step
       and source distribution on `PyPI`_.
 
 
-7. Check the status of the builds on `AppVeyor`_, `CircleCI`_ and `Travis CI`_.
+7. Check the status of the builds on `CircleCI`_ and `Azure Pipelines`_.
 
 
 8. Once the builds are completed, check that the distributions are available on `PyPI`_ and that
@@ -138,6 +161,7 @@ PyPI: Step-by-step
       If the ``mkvirtualenv`` command is not available, this means you do not have `virtualenvwrapper`_
       installed, in that case, you could either install it or directly use `virtualenv`_ or `venv`_.
 
+
 10. Cleanup
 
   .. code::
@@ -151,9 +175,8 @@ PyPI: Step-by-step
 .. _virtualenv: http://virtualenv.readthedocs.io
 .. _venv: https://docs.python.org/3/library/venv.html
 
-.. _AppVeyor: https://ci.appveyor.com/project/hdmf-dev/hdmf/history
 .. _CircleCI: https://circleci.com/gh/hdmf-dev/hdmf
-.. _Travis CI: https://travis-ci.org/hdmf-dev/hdmf/builds
+.. _Azure Pipelines: https://dev.azure.com/hdmf-dev/hdmf/_build
 
 .. _PyPI: https://pypi.org/project/hdmf
 
@@ -164,7 +187,7 @@ Conda: Step-by-step
 .. warning::
 
    Publishing on conda requires you to have corresponding package version uploaded on
-   `PyPI`_. So you have to do the PypI and Github release before you do the conda release.
+   `PyPI`_. So you have to do the PyPI and Github release before you do the conda release.
 
 In order to release a new version on conda-forge, follow the steps below:
 
@@ -173,6 +196,7 @@ In order to release a new version on conda-forge, follow the steps below:
   .. code::
 
     $ release=X.Y.Z
+
 
 2. Fork hdmf-feedstock
 
@@ -195,6 +219,7 @@ In order to release a new version on conda-forge, follow the steps below:
 
     $ cd /tmp && \
       wget https://github.com/hdmf-dev/hdmf/releases/download/$release/hdmf-$release.tar.gz
+
 
 5. Create a new branch
 
@@ -227,6 +252,7 @@ In order to release a new version on conda-forge, follow the steps below:
       $ sha=$(openssl sha256 /tmp/hdmf-$release.tar.gz | awk '{print $2}')
       $ sed -i -- "3s/.*/{$ set sha256 = \"$sha\" %}/" recipe/meta.yaml
 
+  If requirements-min.txt was changed, the changes should be reflected in the requirements/run list.
 
 
 7. Push the changes
@@ -235,7 +261,8 @@ In order to release a new version on conda-forge, follow the steps below:
 
       $ git push origin $release
 
+
 8. Create a Pull Request
 
-   Create a pull request against the `main repository <https://github.com/conda-forge/hdmf-feedstock/pulls>`_. If the tests are passed
-   a new release will be published on Anaconda cloud.
+   Create a pull request against the `main repository <https://github.com/conda-forge/hdmf-feedstock/pulls>`_. If the
+   tests pass, merge the PR, and a new release will be published on Anaconda cloud.

@@ -10,7 +10,14 @@ with open('README.rst', 'r') as fp:
 pkgs = find_packages('src', exclude=['data'])
 print('found these packages:', pkgs)
 
-schema_dir = 'data'
+schema_dir = 'common/hdmf-common-schema/common'
+
+with open('requirements-min.txt', 'r') as fp:
+    # replace == with >= and remove trailing comments and spaces
+    reqs = [x.replace('==', '>=').split('#')[0].strip() for x in fp]
+    reqs = [x for x in reqs if x]  # remove empty strings
+
+print(reqs)
 
 setup_args = {
     'name': 'hdmf',
@@ -23,25 +30,18 @@ setup_args = {
     'author_email': 'ajtritt@lbl.gov',
     'url': 'https://github.com/hdmf-dev/hdmf',
     'license': "BSD",
-    'install_requires':
-    [
-        'numpy',
-        'pandas',
-        'h5py',
-        'ruamel.yaml',
-        'python-dateutil',
-        'six',
-        'requests'
-    ],
+    'install_requires': reqs,
     'packages': pkgs,
     'package_dir': {'': 'src'},
+    'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
     'classifiers': [
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: BSD License",
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Operating System :: Microsoft :: Windows",
@@ -58,7 +58,10 @@ setup_args = {
                 'open-source '
                 'open-science '
                 'reproducible-research ',
-    'zip_safe': False
+    'zip_safe': False,
+    'entry_points': {
+        'console_scripts': ['validate_hdmf_spec=hdmf.testing.validate_spec:main'],
+    }
 }
 
 if __name__ == '__main__':

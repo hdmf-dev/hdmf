@@ -12,7 +12,7 @@ from hdmf.backends.zarr import ZarrDataIO
 from tests.unit.test_io_hdf5_h5tools import _get_manager, FooFile
 from hdmf.data_utils import DataChunkIterator
 
-from tests.unit.test_utils import Foo, FooBucket, CacheSpecTestHelper
+from tests.unit.utils import Foo, FooBucket, CacheSpecTestHelper
 
 
 class GroupBuilderTestCase(unittest.TestCase):

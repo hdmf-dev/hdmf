@@ -2,8 +2,8 @@ import copy
 import json
 import ruamel.yaml as yaml
 import os.path
+import warnings
 from collections import OrderedDict
-from six import with_metaclass
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
 
@@ -14,7 +14,7 @@ from .catalog import SpecCatalog
 from ..utils import docval, getargs, popargs
 
 
-class SpecWriter(with_metaclass(ABCMeta, object)):
+class SpecWriter(metaclass=ABCMeta):
 
     @abstractmethod
     def write_spec(self, spec_file_dict, path):
@@ -45,9 +45,14 @@ class YAMLSpecWriter(SpecWriter):
             yaml.dump(sorted_data, fd_write, Dumper=yaml.dumper.RoundTripDumper)
 
     def write_namespace(self, namespace, path):
+        """Write the given namespace key-value pairs as YAML to the given path.
+
+        :param namespace: SpecNamespace holding the key-value pairs that define the namespace
+        :param path: File path to write the namespace to as YAML under the key 'namespaces'
+        """
         with open(os.path.join(self.__outdir, path), 'w') as stream:
-            ns = namespace
             # Convert the date to a string if necessary
+            ns = namespace
             if 'date' in namespace and isinstance(namespace['date'], datetime):
                 ns = copy.copy(ns)  # copy the namespace to avoid side-effects
                 ns['date'] = ns['date'].isoformat()
@@ -55,7 +60,7 @@ class YAMLSpecWriter(SpecWriter):
 
     def reorder_yaml(self, path):
         """
-        Open a YAML file, load it as python data, sort the data, and write it back out to the
+        Open a YAML file, load it as python data, sort the data alphabetically, and write it back out to the
         same path.
         """
         with open(path, 'rb') as fd_read:
@@ -69,7 +74,8 @@ class YAMLSpecWriter(SpecWriter):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
-        order = ['neurodata_type_def', 'neurodata_type_inc', 'name', 'default_name',
+        order = ['neurodata_type_def', 'neurodata_type_inc', 'data_type_def', 'data_type_inc',
+                 'name', 'default_name',
                  'dtype', 'target_type', 'dims', 'shape', 'default_value', 'value', 'doc',
                  'required', 'quantity', 'attributes', 'datasets', 'groups', 'links']
         if isinstance(obj, dict):
@@ -92,7 +98,7 @@ class YAMLSpecWriter(SpecWriter):
             return obj
 
 
-class NamespaceBuilder(object):
+class NamespaceBuilder:
     ''' A class for building namespace and spec files '''
 
     @docval({'name': 'doc', 'type': str, 'doc': 'Description about what the namespace represents'},
@@ -108,6 +114,11 @@ class NamespaceBuilder(object):
             {'name': 'namespace_cls', 'type': type, 'doc': 'the SpecNamespace type', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         ns_cls = popargs('namespace_cls', kwargs)
+        if kwargs['version'] is None:
+            # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
+            # without a verison
+            raise ValueError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+                             % kwargs['name'])
         self.__ns_args = copy.deepcopy(kwargs)
         self.__namespaces = OrderedDict()
         self.__sources = OrderedDict()
@@ -218,3 +229,28 @@ class SpecFileBuilder(dict):
             self.setdefault('groups', list()).append(spec)
         elif isinstance(spec, DatasetSpec):
             self.setdefault('datasets', list()).append(spec)
+
+
+def export_spec(ns_builder, new_data_types, output_dir):
+    """
+    Create YAML specification files for a new namespace and extensions with
+    the given data type specs.
+
+    Args:
+        ns_builder - NamespaceBuilder instance used to build the
+                     namespace and extension
+        new_data_types - Iterable of specs that represent new data types
+                         to be added
+    """
+
+    if len(new_data_types) == 0:
+        warnings.warn('No data types specified. Exiting.')
+        return
+
+    ns_path = ns_builder.name + '.namespace.yaml'
+    ext_path = ns_builder.name + '.extensions.yaml'
+
+    for data_type in new_data_types:
+        ns_builder.add_spec(ext_path, data_type)
+
+    ns_builder.export(ns_path, outdir=output_dir)

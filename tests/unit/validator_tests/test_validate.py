@@ -1,26 +1,25 @@
-import unittest2 as unittest
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
-from six import text_type as text
 from datetime import datetime
 from dateutil.tz import tzlocal
+import numpy as np
 
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
 from hdmf.build import GroupBuilder, DatasetBuilder
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import *  # noqa: F403
+from hdmf.testing import TestCase
 
 CORE_NAMESPACE = 'test_core'
 
 
-class ValidatorTestBase(with_metaclass(ABCMeta, unittest.TestCase)):
+class ValidatorTestBase(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         spec_catalog = SpecCatalog()
         for spec in self.getSpecs():
             spec_catalog.register_spec(spec, 'test.yaml')
         self.namespace = SpecNamespace(
-            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], catalog=spec_catalog)
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
         self.vmap = ValidatorMap(self.namespace)
 
     @abstractmethod
@@ -41,9 +40,9 @@ class TestEmptySpec(ValidatorTestBase):
 
     def test_invalid_missing_req_type(self):
         builder = GroupBuilder('my_bar')
-        err_msg = "builder must have data type defined with attribute '[A-Za-z_]+'"
+        err_msg = r"builder must have data type defined with attribute '[A-Za-z_]+'"
         with self.assertRaisesRegex(ValueError, err_msg):
-            result = self.vmap.validate(builder)  # noqa: F841
+            self.vmap.validate(builder)
 
 
 class TestBasicSpec(ValidatorTestBase):
@@ -88,7 +87,7 @@ class TestBasicSpec(ValidatorTestBase):
 
     def test_valid(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
@@ -111,7 +110,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
 
     def test_valid_isodatetime(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
                                          DatasetBuilder('time',
                                                         datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
@@ -123,7 +122,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
 
     def test_invalid_isodatetime(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
                                          DatasetBuilder('time', 100),
                                          DatasetBuilder('time_array',
@@ -136,7 +135,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
 
     def test_invalid_isodatetime_array(self):
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
                                          DatasetBuilder('time',
                                                         datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
@@ -157,7 +156,7 @@ class TestNestedTypes(ValidatorTestBase):
                         datasets=[DatasetSpec('an example dataset', 'int', name='data',
                                               attributes=[AttributeSpec('attr2', 'an example integer attribute',
                                                                         'int')])],
-                        attributes=[AttributeSpec('attr1', text('an example string attribute'), 'text')])
+                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         foo = GroupSpec('A test group that contains a data type',
                         data_type_def='Foo',
                         groups=[GroupSpec('A Bar group for Foos', name='my_bar', data_type_inc='Bar')],
@@ -166,9 +165,9 @@ class TestNestedTypes(ValidatorTestBase):
 
         return (bar, foo)
 
-    def test_invalid_missing_req_type(self):
+    def test_invalid_missing_req_group(self):
         foo_builder = GroupBuilder('my_foo', attributes={'data_type': 'Foo',
-                                                         'foo_attr': text('example Foo object')})
+                                                         'foo_attr': 'example Foo object'})
         results = self.vmap.validate(foo_builder)
         self.assertIsInstance(results[0], MissingDataType)  # noqa: F405
         self.assertEqual(results[0].name, 'Foo')
@@ -180,7 +179,7 @@ class TestNestedTypes(ValidatorTestBase):
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
 
         foo_builder = GroupBuilder('my_foo',
-                                   attributes={'data_type': 'Foo', 'foo_attr': text('example Foo object')},
+                                   attributes={'data_type': 'Foo', 'foo_attr': 'example Foo object'},
                                    groups=[bar_builder])
 
         results = self.vmap.validate(foo_builder)
@@ -190,11 +189,11 @@ class TestNestedTypes(ValidatorTestBase):
 
     def test_valid(self):
         bar_builder = GroupBuilder('my_bar',
-                                   attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
 
         foo_builder = GroupBuilder('my_foo',
-                                   attributes={'data_type': 'Foo', 'foo_attr': text('example Foo object')},
+                                   attributes={'data_type': 'Foo', 'foo_attr': 'example Foo object'},
                                    groups=[bar_builder])
 
         results = self.vmap.validate(foo_builder)
@@ -202,7 +201,7 @@ class TestNestedTypes(ValidatorTestBase):
 
     def test_valid_wo_opt_attr(self):
         bar_builder = GroupBuilder('my_bar',
-                                   attributes={'data_type': 'Bar', 'attr1': text('a string attribute')},
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
         foo_builder = GroupBuilder('my_foo',
                                    attributes={'data_type': 'Foo'},
@@ -210,3 +209,137 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 0)
+
+
+class TestDtypeValidation(TestCase):
+
+    def set_up_spec(self, dtype):
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec('an example dataset', dtype, name='data')],
+                         attributes=[AttributeSpec('attr1', 'an example attribute', dtype)])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_ascii_for_utf8(self):
+        """Test that validator allows ASCII data where UTF8 is specified."""
+        self.set_up_spec('text')
+        value = b'an ascii string'
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_utf8_for_ascii(self):
+        """Test that validator does not allow UTF8 where ASCII is specified."""
+        self.set_up_spec('bytes')
+        value = 'a utf8 string'
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'bytes', got 'utf'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'bytes', got 'utf'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_int64_for_int8(self):
+        """Test that validator allows int64 data where int8 is specified."""
+        self.set_up_spec('int8')
+        value = np.int64(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_int8_for_int64(self):
+        """Test that validator does not allow int8 data where int64 is specified."""
+        self.set_up_spec('int64')
+        value = np.int8(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'int64', got 'int8'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'int64', got 'int8'"}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_int64_for_numeric(self):
+        """Test that validator allows int64 data where numeric is specified."""
+        self.set_up_spec('numeric')
+        value = np.int64(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_bool_for_numeric(self):
+        """Test that validator does not allow bool data where numeric is specified."""
+        self.set_up_spec('numeric')
+        value = np.bool(1)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'numeric', got 'bool'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'numeric', got 'bool'"}
+        self.assertEqual(result_strings, expected_errors)
+
+
+class Test1DArrayValidation(TestCase):
+
+    def set_up_spec(self, dtype):
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec('an example dataset', dtype, name='data', shape=(None, ))],
+                         attributes=[AttributeSpec('attr1', 'an example attribute', dtype, shape=(None, ))])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_scalar(self):
+        """Test that validator does not allow a scalar where an array is specified."""
+        self.set_up_spec('text')
+        value = 'a string'
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {("Bar/attr1 (my_bar.attr1): incorrect shape - expected an array of shape '(None,)', "
+                            "got non-array data 'a string'"),
+                           ("Bar/data (my_bar/data): incorrect shape - expected an array of shape '(None,)', "
+                            "got non-array data 'a string'")}
+        self.assertEqual(result_strings, expected_errors)
+
+    def test_empty_list(self):
+        """Test that validator allows an empty list where an array is specified."""
+        self.set_up_spec('text')
+        value = []
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_empty_nparray(self):
+        """Test that validator allows an empty numpy array where an array is specified."""
+        self.set_up_spec('text')
+        value = np.array([])  # note: dtype is float64
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    # TODO test shape validation more completely

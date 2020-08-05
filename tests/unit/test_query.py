@@ -1,34 +1,33 @@
-import unittest2 as unittest
 import os
 from h5py import File
 import numpy as np
+from abc import ABCMeta, abstractmethod
 
 from hdmf.query import HDMFDataset, Query
 from hdmf.array import SortedArray, LinSpace
-
-from six import with_metaclass
-from abc import ABCMeta
+from hdmf.testing import TestCase
 
 
-class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
+class AbstractQueryMixin(metaclass=ABCMeta):
 
+    @abstractmethod
     def getDataset(self):
-        raise unittest.SkipTest('getDataset must be implemented')
+        raise NotImplementedError('Cannot run test unless getDataset is implemented')
 
     def setUp(self):
         self.dset = self.getDataset()
-        self.wrapper = HDMFDataset(self.dset)  # noqa: F405
+        self.wrapper = HDMFDataset(self.dset)
 
     def test_get_dataset(self):
         array = self.wrapper.dataset
-        self.assertIsInstance(array, SortedArray)  # noqa: F405
+        self.assertIsInstance(array, SortedArray)
 
     def test___gt__(self):
         '''
         Test wrapper greater than magic method
         '''
         q = self.wrapper > 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [False, False, False, False, False,
                     False, True, True, True, True]
@@ -40,7 +39,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper greater than or equal magic method
         '''
         q = self.wrapper >= 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [False, False, False, False, False,
                     True, True, True, True, True]
@@ -52,7 +51,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper less than magic method
         '''
         q = self.wrapper < 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [True, True, True, True, True,
                     False, False, False, False, False]
@@ -64,7 +63,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper less than or equal magic method
         '''
         q = self.wrapper <= 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [True, True, True, True, True,
                     True, False, False, False, False]
@@ -76,7 +75,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper equals magic method
         '''
         q = self.wrapper == 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [False, False, False, False, False,
                     True, False, False, False, False]
@@ -88,7 +87,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         Test wrapper not equal magic method
         '''
         q = self.wrapper != 5
-        self.assertIsInstance(q, Query)  # noqa: F405
+        self.assertIsInstance(q, Query)
         result = q.evaluate()
         expected = [True, True, True, True, True,
                     False, True, True, True, True]
@@ -113,7 +112,7 @@ class AbstractQueryTest(with_metaclass(ABCMeta, unittest.TestCase)):
         self.assertTrue(np.array_equal(result, expected))
 
 
-class SortedQueryTest(AbstractQueryTest):
+class SortedQueryTest(AbstractQueryMixin, TestCase):
 
     path = 'SortedQueryTest.h5'
 
@@ -121,7 +120,7 @@ class SortedQueryTest(AbstractQueryTest):
         self.f = File(self.path, 'w')
         self.input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         self.d = self.f.create_dataset('dset', data=self.input)
-        return SortedArray(self.d)  # noqa: F405
+        return SortedArray(self.d)
 
     def tearDown(self):
         self.f.close()
@@ -129,15 +128,15 @@ class SortedQueryTest(AbstractQueryTest):
             os.remove(self.path)
 
 
-class LinspaceQueryTest(AbstractQueryTest):
+class LinspaceQueryTest(AbstractQueryMixin, TestCase):
 
     path = 'LinspaceQueryTest.h5'
 
     def getDataset(self):
-        return LinSpace(0, 10, 1)  # noqa: F405
+        return LinSpace(0, 10, 1)
 
 
-class CompoundQueryTest(unittest.TestCase):
+class CompoundQueryTest(TestCase):
 
     def getM(self):
         return SortedArray(np.arange(10, 20, 1))
@@ -149,14 +148,14 @@ class CompoundQueryTest(unittest.TestCase):
         self.m = HDMFDataset(self.getM())
         self.n = HDMFDataset(self.getN())
 
-    @unittest.skip('not implemented')
-    def test_map(self):
-        q = self.m == (12, 16)                # IN operation
-        q.evaluate()                          # [2,3,4,5]
-        q.evaluate(False)                     # RangeResult(2,6)
-        r = self.m[q]                         # noqa: F841
-        r = self.m[q.evaluate()]              # noqa: F841
-        r = self.m[q.evaluate(False)]         # noqa: F841
+    # TODO: test not completed
+    # def test_map(self):
+    #     q = self.m == (12, 16)                # IN operation
+    #     q.evaluate()                          # [2,3,4,5]
+    #     q.evaluate(False)                     # RangeResult(2,6)
+    #     r = self.m[q]                         # noqa: F841
+    #     r = self.m[q.evaluate()]              # noqa: F841
+    #     r = self.m[q.evaluate(False)]         # noqa: F841
 
     def tearDown(self):
         pass

@@ -10,7 +10,7 @@ import os.path
 import os
 import sys
 import traceback
-import unittest2 as unittest
+import unittest
 from tests.coloredtestrunner import ColoredTestRunner, ColoredTestResult
 
 flags = {'hdmf': 1, 'integration': 3, 'example': 4}
@@ -89,9 +89,9 @@ def main():
 
     # set up logger
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.INFO)
     formatter = logging.Formatter('======================================================================\n'
                                   '%(asctime)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)

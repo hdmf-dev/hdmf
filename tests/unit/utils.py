@@ -1,3 +1,5 @@
+import tempfile
+
 from hdmf.utils import docval, getargs
 from hdmf.container import Container
 
@@ -26,7 +28,7 @@ class Foo(Container):
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14})
     def __init__(self, **kwargs):
         name, my_data, attr1, attr2, attr3 = getargs('name', 'my_data', 'attr1', 'attr2', 'attr3', kwargs)
-        super(Foo, self).__init__(name=name)
+        super().__init__(name=name)
         self.__data = my_data
         self.__attr1 = attr1
         self.__attr2 = attr2
@@ -66,18 +68,31 @@ class FooBucket(Container):
             {'name': 'foos', 'type': list, 'doc': 'the Foo objects in this bucket', 'default': list()})
     def __init__(self, **kwargs):
         name, foos = getargs('name', 'foos', kwargs)
-        super(FooBucket, self).__init__(name=name)
-        self.__foos = foos
-        for f in self.__foos:
+        super().__init__(name=name)
+        self.__foos = {f.name: f for f in foos}  # note: collections of groups are unordered in HDF5
+        for f in foos:
             f.parent = self
 
     def __eq__(self, other):
-        return self.name == other.name and set(self.foos) == set(other.foos)
+        return self.name == other.name and self.foos == other.foos
 
     def __str__(self):
-        foo_str = "[" + ",".join(str(f) for f in self.foos) + "]"
-        return 'name=%s, foos=%s' % (self.name, foo_str)
+        return 'name=%s, foos=%s' % (self.name, self.foos)
 
     @property
     def foos(self):
         return self.__foos
+
+    def remove_foo(self, foo_name):
+        foo = self.__foos.pop(foo_name)
+        if foo.parent is self:
+            self._remove_child(foo)
+        return foo
+
+
+def get_temp_filepath():
+    # On Windows, h5py cannot truncate an open file in write mode.
+    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name

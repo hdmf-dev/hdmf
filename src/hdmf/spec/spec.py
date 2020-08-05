@@ -1,4 +1,4 @@
-import abc
+from abc import ABCMeta
 from copy import deepcopy
 from collections import OrderedDict
 import re
@@ -17,11 +17,11 @@ FLAGS = {
     'one_or_many': ONE_OR_MANY
 }
 
-from six import with_metaclass  # noqa: E402
-
 
 class DtypeHelper():
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
+    # this is also used in the validator
+    # if this list is updated, also update hdmf.build.manager.TypeMap._spec_dtype_map
     primary_dtype_synonyms = {
             'float': ["float", "float32"],
             'double': ["double", "float64"],
@@ -39,7 +39,7 @@ class DtypeHelper():
             'object': ['object'],
             'region': ['region'],
             'numeric': ['numeric'],
-            'isodatetime': ["isodatetime", "datetime", "datetime64"]
+            'isodatetime': ["isodatetime", "datetime"]
         }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
@@ -69,7 +69,7 @@ class DtypeHelper():
         return ret
 
 
-class ConstructableDict(with_metaclass(abc.ABCMeta, dict)):
+class ConstructableDict(dict, metaclass=ABCMeta):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''
@@ -82,7 +82,6 @@ class ConstructableDict(with_metaclass(abc.ABCMeta, dict)):
         args = list()
         kwargs = dict()
         try:
-
             for x in get_docval(cls.__init__):
                 if not x['name'] in vargs:
                     continue
@@ -105,7 +104,7 @@ class Spec(ConstructableDict):
             {'name': 'parent', 'type': 'Spec', 'doc': 'the parent of this spec', 'default': None})
     def __init__(self, **kwargs):
         name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
-        super(Spec, self).__init__()
+        super().__init__()
         if name is not None:
             self['name'] = name
         if doc is not None:
@@ -139,7 +138,7 @@ class Spec(ConstructableDict):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(Spec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'doc' not in ret:
             msg = "'doc' missing: %s" % str(spec_dict)
             raise ValueError(msg)
@@ -147,6 +146,20 @@ class Spec(ConstructableDict):
 
     def __hash__(self):
         return id(self)
+
+    @property
+    def path(self):
+        stack = list()
+        tmp = self
+        while tmp is not None:
+            name = tmp.name
+            if name is None:
+                name = tmp.data_type_def
+                if name is None:
+                    name = tmp.data_type_inc
+            stack.append(name)
+            tmp = tmp.parent
+        return "/".join(reversed(stack))
 
 #    def __eq__(self, other):
 #        return id(self) == id(other)
@@ -210,7 +223,7 @@ class AttributeSpec(Spec):
     def __init__(self, **kwargs):
         name, dtype, doc, dims, shape, required, parent, value, default_value = getargs(
             'name', 'dtype', 'doc', 'dims', 'shape', 'required', 'parent', 'value', 'default_value', kwargs)
-        super(AttributeSpec, self).__init__(doc, name=name, required=required, parent=parent)
+        super().__init__(doc, name=name, required=required, parent=parent)
         if isinstance(dtype, RefSpec):
             self['dtype'] = dtype
         else:
@@ -270,7 +283,7 @@ class AttributeSpec(Spec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(AttributeSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'dtype' in ret:
             if isinstance(ret['dtype'], dict):
                 ret['dtype'] = RefSpec.build_spec(ret['dtype'])
@@ -300,15 +313,14 @@ class BaseStorageSpec(Spec):
     __type_key = 'data_type'
     __id_key = 'object_id'
 
-    @docval(*deepcopy(_attrbl_args))
+    @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        name, doc, parent, quantity, attributes, linkable, data_type_def, data_type_inc =\
-             getargs('name', 'doc', 'parent', 'quantity', 'attributes',
-                     'linkable', 'data_type_def', 'data_type_inc', kwargs)
+        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc =\
+             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
-            raise ValueError("Cannot create Group or Dataset spec with wildcard name \
-            without specifying 'data_type_def' and/or 'data_type_inc'")
-        super(BaseStorageSpec, self).__init__(doc, name=name, parent=parent)
+            raise ValueError("Cannot create Group or Dataset spec with wildcard name "
+                             "without specifying 'data_type_def' and/or 'data_type_inc'")
+        super().__init__(doc, name=name)
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
@@ -480,7 +492,7 @@ class BaseStorageSpec(Spec):
         ''' The number of times the object being specified should be present '''
         return self.get('quantity', DEF_QUANTITY)
 
-    @docval(*deepcopy(_attr_args))
+    @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
         pargs, pkwargs = fmt_docval_args(AttributeSpec.__init__, kwargs)
@@ -519,7 +531,7 @@ class BaseStorageSpec(Spec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(BaseStorageSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'attributes' in ret:
             ret['attributes'] = [AttributeSpec.build_spec(sub_spec) for sub_spec in ret['attributes']]
         return ret
@@ -588,7 +600,7 @@ class DtypeSpec(ConstructableDict):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(DtypeSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if isinstance(ret['dtype'], list):
             ret['dtype'] = list(map(cls.build_const_args, ret['dtype']))
         elif isinstance(ret['dtype'], dict):
@@ -621,7 +633,7 @@ class DatasetSpec(BaseStorageSpec):
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*_dataset_args)
     def __init__(self, **kwargs):
         doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
         if shape is not None:
@@ -648,7 +660,7 @@ class DatasetSpec(BaseStorageSpec):
                 if self['dtype'] not in DtypeHelper.valid_primary_dtypes:
                     raise ValueError('dtype %s not a valid primary data type %s' %
                                      (self['dtype'], str(DtypeHelper.valid_primary_dtypes)))
-        super(DatasetSpec, self).__init__(doc, **kwargs)
+        super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value
         if self.name is not None:
@@ -705,7 +717,7 @@ class DatasetSpec(BaseStorageSpec):
                         raise ValueError(msg)
                 order[name] = dt
             self['dtype'] = list(order.values())
-        super(DatasetSpec, self).resolve_spec(inc_spec)
+        super().resolve_spec(inc_spec)
 
     @property
     def dims(self):
@@ -743,7 +755,7 @@ class DatasetSpec(BaseStorageSpec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(DatasetSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'dtype' in ret:
             if isinstance(ret['dtype'], list):
                 ret['dtype'] = list(map(cls.dtype_spec_cls().build_spec, ret['dtype']))
@@ -765,7 +777,7 @@ class LinkSpec(Spec):
     @docval(*_link_args)
     def __init__(self, **kwargs):
         doc, target_type, name, quantity = popargs('doc', _target_type_key, 'name', 'quantity', kwargs)
-        super(LinkSpec, self).__init__(doc, name, **kwargs)
+        super().__init__(doc, name, **kwargs)
         self[_target_type_key] = target_type
         if quantity != 1:
             self['quantity'] = quantity
@@ -814,7 +826,7 @@ class GroupSpec(BaseStorageSpec):
     ''' Specification for groups
     '''
 
-    @docval(*deepcopy(_group_args))
+    @docval(*_group_args)
     def __init__(self, **kwargs):
         doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
         self.__data_types = dict()
@@ -834,7 +846,7 @@ class GroupSpec(BaseStorageSpec):
         self.__overridden_links = set()
         self.__new_groups = set(self.__groups.keys())
         self.__overridden_groups = set()
-        super(GroupSpec, self).__init__(doc, **kwargs)
+        super().__init__(doc, **kwargs)
 
     @docval({'name': 'inc_spec', 'type': 'GroupSpec', 'doc': 'the data type this specification represents'})
     def resolve_spec(self, **kwargs):
@@ -892,7 +904,7 @@ class GroupSpec(BaseStorageSpec):
                     self.set_group(dt_spec)
                 else:
                     self.set_link(dt_spec)
-        super(GroupSpec, self).resolve_spec(inc_spec)
+        super().resolve_spec(inc_spec)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
             raises="ValueError, if 'name' is not part of this spec")
@@ -970,7 +982,7 @@ class GroupSpec(BaseStorageSpec):
         elif spec in self.__data_types:
             return self.is_inherited_type(spec)
         else:
-            if super(GroupSpec, self).is_inherited_spec(spec):
+            if super().is_inherited_spec(spec):
                 return True
             else:
                 for s in self.__datasets:
@@ -1007,7 +1019,7 @@ class GroupSpec(BaseStorageSpec):
         elif spec in self.__data_types:
             return self.is_overridden_type(spec)
         else:
-            if super(GroupSpec, self).is_overridden_spec(spec):  # check if overridden attribute
+            if super().is_overridden_spec(spec):  # check if overridden attribute
                 return True
             else:
                 for s in self.__datasets:
@@ -1098,7 +1110,7 @@ class GroupSpec(BaseStorageSpec):
         ''' The links specificed in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
-    @docval(*deepcopy(_group_args))
+    @docval(*_group_args)
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
         doc = kwargs.pop('doc')
@@ -1130,7 +1142,7 @@ class GroupSpec(BaseStorageSpec):
         name = getargs('name', kwargs)
         return self.__groups.get(name, self.__links.get(name))
 
-    @docval(*deepcopy(_dataset_args))
+    @docval(*_dataset_args)
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
         doc = kwargs.pop('doc')
@@ -1213,7 +1225,7 @@ class GroupSpec(BaseStorageSpec):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
-        ret = super(GroupSpec, cls).build_const_args(spec_dict)
+        ret = super().build_const_args(spec_dict)
         if 'datasets' in ret:
             ret['datasets'] = list(map(cls.dataset_spec_cls().build_spec, ret['datasets']))
         if 'groups' in ret:

@@ -15,7 +15,7 @@ from ..io import HDMFIO
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper
-from ...data_utils import get_shape  # , AbstractDataChunkIterator,
+from ...utils import get_data_shape # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
 from ..hdf5.h5tools import NamespaceIOHelper
@@ -154,7 +154,8 @@ class ZarrIO(HDMFIO):
         builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
         exists_on_disk = os.path.exists(builder_path)
         # Check if exists because if the file was previously written to an HDF5 file then we need to create the group
-        return builder.written and exists_on_disk
+        # return builder.written and exists_on_disk
+        return exists_on_disk
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
@@ -185,7 +186,7 @@ class ZarrIO(HDMFIO):
 
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        builder.written = True
+        # builder.written = True
         return group
 
     @docval({'name': 'obj', 'type': (Group, Array), 'doc': 'the Zarr object to add attributes to'},
@@ -324,19 +325,21 @@ class ZarrIO(HDMFIO):
         target_builder = builder.builder
         zarr_ref = self.__get_ref(target_builder)
         self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
-        builder.written = True
+        # builder.written = True
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},  # noqa
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True},
-            returns='the Zarr that was created', rtype=Array)
+            {'name': 'force_data', 'type': None, 'doc': 'Used internally to force the data being used when we have to load the data', 'default': None},
+            returns='the Zarr array that was created', rtype=Array)
     def write_dataset(self, **kwargs):
         parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
+        force_data = getargs('force_data', kwargs)
         if self.__builder_written_to_zarr(builder, parent):
             return None
         name = builder.name
-        data = builder.data
+        data = builder.data if force_data is None else force_data
         options = dict()
         if isinstance(data, ZarrDataIO):
             options['io_settings'] = data.io_settings
@@ -353,16 +356,17 @@ class ZarrIO(HDMFIO):
         linked = False
 
         # Write a regular Zarr array
+        dset = None
         if isinstance(data, Array):
             # copy the dataset
             if link_data:
                 self.__add_link__(parent, data.store.path, data.name, name)
                 linked = True
+                dset = None
             else:
                 zarr.copy(data, parent, name=name)
                 dset = parent[name]
         # When converting data between backends we may see an HDMFDataset, e.g., a H55ReferenceDataset, with references
-        # TODO Conversion from HDMFDataset for builders should happen outside to be usable across backends
         elif isinstance(data, HDMFDataset):
             # If we have a dataset of containers we need to make the references to the containers
             if len(data) > 0 and isinstance(data[0], Container):
@@ -377,13 +381,18 @@ class ZarrIO(HDMFIO):
                                               **options['io_settings'])
                 dset.attrs['zarr_dtype'] = type_str
                 dset[:] = ref_data
-                builder.written = True
+                # builder.written = True
             # If we have a regular dataset, then load the data and write the builder after load
             else:
-                cp_builder = deepcopy(builder)
-                cp_builder.data = data[:]
-                self.write_dataset(parent, cp_builder, link_data)
-                builder.written = True
+                # TODO This code path is also exercised when data is a hdmf.backends.hdf5.h5_utils.BuilderH5ReferenceDataset (aka.  ReferenceResolver) check that this is indeed the right thing to do here
+                # We can/should not update the data in the builder itself so we load the data here and instead
+                # force write_dataset when we call it recursively to use the data we loaded, rather than the
+                # dataset that is set on the builder
+                dset = self.write_dataset(parent=parent,
+                                          builder=builder,
+                                          link_data=link_data,
+                                          force_data=data[:])
+                # builder.written = True
         # Write a compound dataset
         elif isinstance(options['dtype'], list):
 
@@ -410,7 +419,7 @@ class ZarrIO(HDMFIO):
                                               compressor=None,
                                               object_codec=numcodecs.JSON(),
                                               **options['io_settings'])
-                builder.written = True
+                # builder.written = True
                 dset.attrs['zarr_dtype'] = type_str
                 for j, item in enumerate(data):
                     new_item = list(item)
@@ -445,7 +454,7 @@ class ZarrIO(HDMFIO):
                                           compressor=None,
                                           object_codec=numcodecs.JSON(),
                                           **options['io_settings'])
-            builder.written = True
+            # builder.written = True
             dset.attrs['zarr_dtype'] = type_str
             if hasattr(refs, '__len__'):
                 dset[:] = refs
@@ -461,8 +470,8 @@ class ZarrIO(HDMFIO):
                 dset = self.__scalar_fill__(parent, name, data, options)
         if not linked:
             self.set_attributes(dset, attributes)
-        builder.written = True
-        return
+        # builder.written = True
+        return dset
 
     __dtypes = {
         "float": np.float32,
@@ -573,7 +582,7 @@ class ZarrIO(HDMFIO):
             data_shape = io_settings.pop('shape')
         # If we have a numeric numpy array then use its shape
         elif isinstance(dtype, np.dtype) and np.issubdtype(dtype, np.number) or dtype == np.bool_:
-            data_shape = get_shape(data)
+            data_shape = get_data_shape(data)
         # Deal with object dtype
         elif isinstance(dtype, np.dtype):
             data = data[:]  # load the data in case we come from HDF5
@@ -584,16 +593,16 @@ class ZarrIO(HDMFIO):
             if len(data) > 0 and isinstance(data, np.ndarray):
                 if isinstance(data.item(0), bytes):
                     dtype = bytes
-                    data_shape = get_shape(data)
+                    data_shape = get_data_shape(data)
                 elif isinstance(data.item(0), str):
                     dtype = str
-                    data_shape = get_shape(data)
+                    data_shape = get_data_shape(data)
             # Set encoding for objects
             if dtype == object:
                 io_settings['object_codec'] = numcodecs.JSON()
         # Determine the shape from the data if all other cases have not been hit
         else:
-            data_shape = get_shape(data)
+            data_shape = get_data_shape(data)
 
         # Create the dataset
         dset = parent.require_dataset(name, shape=data_shape, dtype=dtype, compressor=None, **io_settings)
@@ -702,12 +711,12 @@ class ZarrIO(HDMFIO):
                 else:
                     builder = self.__read_dataset(target_zarr_obj, target_name)
                 link_builder = LinkBuilder(builder, l_name, source=self.__path)
-                link_builder.written = True
+                # link_builder.written = True
                 kwargs['links'][target_name] = link_builder
 
         kwargs['source'] = self.__path
         ret = GroupBuilder(name, **kwargs)
-        ret.written = True
+        # ret.written = True
         self.__set_built(zarr_obj, ret)
         return ret
 
@@ -767,7 +776,7 @@ class ZarrIO(HDMFIO):
         if name is None:
             name = str(os.path.basename(zarr_obj.name))
         ret = DatasetBuilder(name, **kwargs)
-        ret.written = True
+        # ret.written = True
         self.__set_built(zarr_obj, ret)
         return ret
 
