@@ -1,7 +1,6 @@
 import copy as _copy
 from abc import ABCMeta
 import collections
-import zarr
 import h5py
 import numpy as np
 import warnings
@@ -9,9 +8,16 @@ import types
 from enum import Enum
 
 __macros = {
-    'array_data': [np.ndarray, list, tuple, h5py.Dataset, zarr.Array],
+    'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float, bytes],
 }
+
+# Import Zarr if available
+try:
+    import zarr
+    __macros['array_data'].append(zarr.Array)
+except ImportError:
+    warnings.warn("Could not import Zarr.")
 
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
