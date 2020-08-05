@@ -3,5 +3,5 @@ numpy==1.18.5
 scipy==1.4.1
 pandas==0.25.3
 ruamel.yaml==0.16.10
-zarr==2.3.2
+zarr==2.4.0
 numcodecs==0.6.3
