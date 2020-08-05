@@ -416,7 +416,6 @@ class HDF5IO(HDMFIO):
         with HDF5IO(path=path, comm=comm, mode='w') as write_io:
             write_io.export(**kwargs)
 
-
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."

@@ -15,7 +15,7 @@ from ..io import HDMFIO
 from ...utils import docval, getargs, popargs, call_docval_func
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper
-from ...utils import get_data_shape # , AbstractDataChunkIterator,
+from ...utils import get_data_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
 from ..hdf5.h5tools import NamespaceIOHelper
@@ -25,11 +25,10 @@ from ...container import Container
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
 
-# TODO We should 1) update the objectids when copying data between the backends,
-# TODO We should 2) reset builder.source before write (or create new set of builders),
-# TODO We should 3) reset builder.written (or create new set of builders),
-# TODO We should 4) resolve reference stored in datasets to the containers
-# TODO We should 5) add support for AbstractDataChunkIterator
+# TODO Update tracking of build status from using builder.written to the new approach used in HDF5IO
+# TODO We should resolve reference stored in datasets to the containers
+# TODO We should add support for AbstractDataChunkIterator
+# TODO We should add support for RegionReferences (or at least raise a NotImplemented error and mention it in the docs)
 
 
 class ZarrIO(HDMFIO):
@@ -214,7 +213,7 @@ class ZarrIO(HDMFIO):
                                      for i in value])
                         obj.attrs[key] = tmp
                         write_ok = True
-                    except:  # noqa: E272
+                    except:  # noqa: E722
                         pass
                     if not write_ok:
                         raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
@@ -248,7 +247,7 @@ class ZarrIO(HDMFIO):
                             else val
                         obj.attrs[key] = val
                         write_ok = True
-                    except:  # noqa: E272
+                    except:  # noqa: E722
                         pass
                     if not write_ok:
                         raise TypeError(str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value))
@@ -331,7 +330,8 @@ class ZarrIO(HDMFIO):
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True},
-            {'name': 'force_data', 'type': None, 'doc': 'Used internally to force the data being used when we have to load the data', 'default': None},
+            {'name': 'force_data', 'type': None,
+             'doc': 'Used internally to force the data being used when we have to load the data', 'default': None},
             returns='the Zarr array that was created', rtype=Array)
     def write_dataset(self, **kwargs):
         parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
@@ -384,7 +384,10 @@ class ZarrIO(HDMFIO):
                 # builder.written = True
             # If we have a regular dataset, then load the data and write the builder after load
             else:
-                # TODO This code path is also exercised when data is a hdmf.backends.hdf5.h5_utils.BuilderH5ReferenceDataset (aka.  ReferenceResolver) check that this is indeed the right thing to do here
+                # TODO This code path is also exercised when data is a
+                # hdmf.backends.hdf5.h5_utils.BuilderH5ReferenceDataset (aka.  ReferenceResolver)
+                # check that this is indeed the right thing to do here
+
                 # We can/should not update the data in the builder itself so we load the data here and instead
                 # force write_dataset when we call it recursively to use the data we loaded, rather than the
                 # dataset that is set on the builder
