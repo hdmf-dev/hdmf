@@ -533,29 +533,29 @@ class TypeMap:
 
         # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
-            if not f == 'help':  # (legacy) do not all help to any part of class object
-                # build docval arguments for generated constructor
-                dtype = self.__get_type(field_spec)
-                if dtype is None:
-                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec))
+            if f == 'help':  # (legacy) do not add help to any part of class object
+                continue
+            # build docval arguments for generated constructor
+            dtype = self.__get_type(field_spec)
+            if dtype is None:
+                raise ValueError("Got \"None\" for field specification: {}".format(field_spec))
 
-                docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
-                if hasattr(field_spec, 'shape') and field_spec.shape is not None:
-                    docval_arg.update(shape=field_spec.shape)
-                    # docval_arg['shape'] = field_spec.shape
-                if not field_spec.required:
-                    docval_arg['default'] = getattr(field_spec, 'default_value', None)
-                docval_args.append(docval_arg)
+            docval_arg = {'name': f, 'type': dtype, 'doc': field_spec.doc}
+            if getattr(field_spec, 'shape', None) is not None:
+                docval_arg.update(shape=field_spec.shape)
+            if not field_spec.required:
+                docval_arg['default'] = getattr(field_spec, 'default_value', None)
+            docval_args.append(docval_arg)
 
-                # auto-initialize arguments not found in superclass
-                if f not in existing_args:
-                    new_args.append(f)
+            # auto-initialize arguments not found in superclass
+            if f not in existing_args:
+                new_args.append(f)
 
-                # add arguments not found in superclass to fields for getter/setter generation
-                if self.__ischild(dtype):
-                    fields.append({'name': f, 'child': True})
-                else:
-                    fields.append(f)
+            # add arguments not found in superclass to fields for getter/setter generation
+            if self.__ischild(dtype):
+                fields.append({'name': f, 'child': True})
+            else:
+                fields.append(f)
 
         # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
         # be passed for a name positional or keyword arg
