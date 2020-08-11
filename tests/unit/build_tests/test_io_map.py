@@ -406,6 +406,28 @@ class TestDynamicContainer(TestCase):
                 self.assertTupleEqual(arg['type'], (float, np.float32, np.float64, np.int8, np.int16, np.int32,
                                                     np.int64, int, np.uint8, np.uint16, np.uint32, np.uint64))
 
+    def test_multi_container_spec(self):
+        multi_spec = GroupSpec('A test extension that contains a multi',
+                               data_type_def='Multi',
+                               groups=[GroupSpec(
+                                   data_type_inc=self.bar_spec,
+                                   doc='test multi',
+                                   quantity='*')]
+                               )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
+        assert Multi.__clsconf__[0] == dict(
+            attr='bars',
+            type=Bar,
+            add='add_bars',
+            get='get_bars',
+            create='create_bars'
+        )
+
+        multi = Multi(bars=[Bar('my_bar', list(range(10)), 'value1', 10)])
+        assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+
 
 class ObjectMapperMixin(metaclass=ABCMeta):
 
