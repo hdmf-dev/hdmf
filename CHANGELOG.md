@@ -1,11 +1,12 @@
 # HDMF Changelog
 
-## HDMF 3.0.0 (Upcoming)
+## HDMF 2.1.0 (August 10, 2020)
 
 ### New features
 - Users can now use the `MultiContainerInterface` class to generate custom API classes that contain collections of
-  containers of a specified type. See the user guide
-  https://hdmf.readthedocs.io/en/stable/tutorials/multicontainerinterface.html for more information.
+  containers of a specified type. @bendichter @rly (#399)
+  - See the user guide
+    https://hdmf.readthedocs.io/en/stable/tutorials/multicontainerinterface.html for more information.
 
 ### Internal improvements
 - Add ability to pass callable functions to run when adding or removing items from a ``LabelledDict``.
@@ -37,6 +38,11 @@
   @rly (#388)
 - Users can now call `Container.generate_new_id` to generate new object IDs for the container and all of its children.
   @rly (#401)
+- Use hdmf-common-schema 1.2.0. @ajtritt @rly (#397)
+  - `VectorIndex` now extends `VectorData` instead of `Index`. This change allows `VectorIndex` to index other `VectorIndex` types.
+  - The `Index` data type is now unused and has been removed.
+  - Fix missing dtype for `VectorIndex`.
+  - Add new `VocabData` data type.
 
 ### Breaking changes
 - `Builder` objects no longer have the `written` field which was used by `HDF5IO` to mark the object as written. This
