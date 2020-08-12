@@ -497,12 +497,45 @@ class TypeMap:
 
     @staticmethod
     def __set_default_name(docval_args, default_name):
-        new_docval_args = []
-        for x in docval_args:
-            if x['name'] == 'name':
-                x['default'] = default_name
-            new_docval_args.append(x)
-        return new_docval_args
+        if default_name is not None:
+            for x in docval_args:
+                if x['name'] == 'name':
+                    x['default'] = default_name
+
+    def build_docval(self, base, addl_fields, name=None, default_name=None):
+        docval_args = list(get_docval(base.__init__))
+        for f, field_spec in addl_fields.items():
+            docval_arg = dict(name=f, doc=field_spec.doc)
+            if getattr(field_spec, 'quantity', None) in ('*', '?'):
+                docval_arg.update(type=(list, tuple))
+            else:
+                dtype = self.__get_type(field_spec)
+                if dtype is None:
+                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec))
+                docval_arg.update(type=dtype)
+                if getattr(field_spec, 'shape', None) is not None:
+                    docval_arg.update(shape=field_spec.shape)
+            if not field_spec.required:
+                docval_arg['default'] = getattr(field_spec, 'default_value', None)
+
+            # if argument already exists, overwrite it. If not, append it to list.
+            inserted = False
+            for i, x in enumerate(docval_args):
+                if x['name'] == f:
+                    docval_args[i] = docval_arg
+                    inserted = True
+            if not inserted:
+                docval_args.append(docval_arg)
+
+        # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
+        # be passed for a name positional or keyword arg
+        if name is not None:  # fixed name is specified in spec, remove it from docval args
+            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
+
+        # set default name if provided
+        self.__set_default_name(docval_args, default_name)
+
+        return docval_args
 
     def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
         """
@@ -515,21 +548,11 @@ class TypeMap:
         # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
-        existing_args = set()
-        docval_args = list()
         new_args = list()
         fields = list()
 
         # copy docval args from superclass
-        for arg in get_docval(base.__init__):
-            existing_args.add(arg['name'])
-            if arg['name'] in addl_fields:
-                continue
-            docval_args.append(arg)
-
-        # set default name if provided
-        if default_name is not None:
-            docval_args = self.__set_default_name(docval_args, default_name)
+        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
 
         clsconf = list()
         # add new fields to docval and class fields
@@ -537,8 +560,6 @@ class TypeMap:
             if f == 'help':  # (legacy) do not add help to any part of class object
                 continue
 
-            # build docval arguments for generated constructor
-            docval_arg = dict(name=f, doc=field_spec.doc)
             if getattr(field_spec, 'quantity', None) in ('*', '?'):
                 # if its a MultiContainerInterface, also build clsconf
                 clsconf.append(dict(
@@ -548,40 +569,24 @@ class TypeMap:
                     get='get_{}'.format(f),
                     create='create_{}'.format(f)
                 ))
-                docval_arg.update(type=(list, tuple))
             else:
-
+                # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
-                if dtype is None:
-                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec))
-                docval_arg.update(type=dtype)
-                if getattr(field_spec, 'shape', None) is not None:
-                    docval_arg.update(shape=field_spec.shape)
-
-                # add arguments to fields for getter/setter generation
                 if self.__ischild(dtype):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)
 
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
-
-            docval_args.append(docval_arg)
-
             # auto-initialize arguments not found in superclass
             if f not in existing_args:
                 new_args.append(f)
-
-        # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
-        # be passed for a name positional or keyword arg
-        if name is not None:  # fixed name is specified in spec, remove it from docval args
-            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
 
         classdict = dict()
 
         if len(fields):
             classdict.update({base._fieldsname: tuple(fields)})
+
+        docval_args = self.build_docval(base, addl_fields, name, default_name)
 
         if len(fields) or name is not None:
             @docval(*docval_args)
