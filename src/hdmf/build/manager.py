@@ -503,6 +503,14 @@ class TypeMap:
                     x['default'] = default_name
 
     def build_docval(self, base, addl_fields, name=None, default_name=None):
+        """Build docval for new class
+
+        :param base: The base class of the new class
+        :param addl_fields: Dict of additional fields that are not in the base class
+        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
+        :param default_name: Default name of instances of this class, or None if not specified
+        :return:
+        """
         docval_args = list(get_docval(base.__init__))
         for f, field_spec in addl_fields.items():
             docval_arg = dict(name=f, doc=field_spec.doc)
