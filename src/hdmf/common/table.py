@@ -744,7 +744,7 @@ class DynamicTable(Container):
                     col = self.__df_cols[self.__colids[name]]
                     if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
                         ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
-                    elif isinstance(col.data, np.ndarray):
+                    elif isinstance(col.data, (list, np.ndarray)):
                         ret[name] = col.get(arg, df=df, **kwargs)
                     else:
                         ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
