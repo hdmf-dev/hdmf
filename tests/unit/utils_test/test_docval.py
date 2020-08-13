@@ -46,7 +46,7 @@ class MyTestSubclass(MyTestClass):
             {'name': 'arg3', 'type': bool, 'doc': 'argument3 is a bool. it defaults to False', 'default': False},
             {'name': 'arg4', 'type': str, 'doc': 'argument4 is a str'},
             {'name': 'arg5', 'type': 'float', 'doc': 'argument5 is a float'},
-            {'name': 'arg6', 'type': bool, 'doc': 'argument6 is a bool. it defaults to False', 'default': None})
+            {'name': 'arg6', 'type': bool, 'doc': 'argument6 is a bool. it defaults to None', 'default': None})
     def basic_add2_kw(self, **kwargs):
         return kwargs
 
@@ -715,6 +715,14 @@ class TestDocValidator(TestCase):
                "forbidden value for 'arg1' (got 'c', expected ['a', 'b'])")
         with self.assertRaisesWith(ValueError, msg):
             method(self, 'c')
+
+    def test_enum_str_none_default(self):
+        """Test that docval with an enum check on strings and a None default value works"""
+        @docval({'name': 'arg1', 'type': str, 'doc': 'an arg', 'default': None, 'enum': ['a', 'b']})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        self.assertIsNone(method(self))
 
     def test_enum_forbidden_values(self):
         """Test that docval with enum values that include a forbidden type fails"""

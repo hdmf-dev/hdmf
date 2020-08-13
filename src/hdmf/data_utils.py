@@ -145,7 +145,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     self.__maxshape = self.data.shape
                     self.__data_iter = iter(self.data)
             # Try to get an accurate idea of __maxshape for other Python data structures if possible.
-            # Don't just callget_shape for a generator as that would potentially trigger loading of all the data
+            # Don't just call get_data_shape for a generator as that would potentially trigger loading of all the data
             elif isinstance(self.data, list) or isinstance(self.data, tuple):
                 self.__maxshape = get_data_shape(self.data, strict_no_data_load=True)
 

@@ -1,5 +1,83 @@
 # HDMF Changelog
 
+## HDMF 2.1.0 (August 10, 2020)
+
+### New features
+- Users can now use the `MultiContainerInterface` class to generate custom API classes that contain collections of
+  containers of a specified type. @bendichter @rly (#399)
+  - See the user guide
+    https://hdmf.readthedocs.io/en/stable/tutorials/multicontainerinterface.html for more information.
+
+### Internal improvements
+- Add ability to pass callable functions to run when adding or removing items from a ``LabelledDict``.
+  An error is now raised when using unsupported functionality in ``LabelledDict``. @rly (#405)
+- Raise a warning when building a container that is missing a required dataset. @rly (#413)
+
+## HDMF 2.0.1 (July 22, 2020)
+
+### Internal improvements
+- Add tests for writing table columns with DataIO data, e.g., chunked, compressed data. @rly (#402)
+- Add CI to check for breakpoints and print statements. @rly (#403)
+
+### Bug fixes:
+- Remove breakpoint. @rly (#403)
+- Allow passing None for docval enum arguments with default value None. @rly (#409)
+- If a file is written with an orphan container, e.g., a link to a container that is not written, then an
+  `OrphanContainerBuildError` will be raised. This replaces the `OrphanContainerWarning` that was previously raised.
+  @rly (#407)  
+
+## HDMF 2.0.0 (July 17, 2020)
+
+### New features
+- Users can now call `HDF5IO.export` and `HDF5IO.export_io` to write data that was read from one source to a new HDF5
+  file. Developers can implement the `export` method in classes that extend `HDMFIO` to customize the export
+  functionality. See https://hdmf.readthedocs.io/en/latest/export.html for more details. @rly (#388)
+- Users can use the new export functionality to read data from one source, modify the data in-memory, and then write the
+  modified data to a new file. Modifications can include additions and removals. To facilitate removals,
+  `AbstractContainer` contains a new `_remove_child` method and `BuildManager` contains a new `purge_outdated` method.
+  @rly (#388)
+- Users can now call `Container.generate_new_id` to generate new object IDs for the container and all of its children.
+  @rly (#401)
+- Use hdmf-common-schema 1.2.0. @ajtritt @rly (#397)
+  - `VectorIndex` now extends `VectorData` instead of `Index`. This change allows `VectorIndex` to index other `VectorIndex` types.
+  - The `Index` data type is now unused and has been removed.
+  - Fix missing dtype for `VectorIndex`.
+  - Add new `VocabData` data type.
+
+### Breaking changes
+- `Builder` objects no longer have the `written` field which was used by `HDF5IO` to mark the object as written. This
+  is replaced by `HDF5IO.get_written`. @rly (#381)
+- `HDMFIO.write` and `HDMFIO.write_builder` no longer have the keyword argument `exhaust_dcis`. This remains present in
+  `HDF5IO.write` and `HDF5IO.write_builder`. @rly (#388)
+- The class method `HDF5IO.copy_file` is no longer supported and may be removed in a future version. Please use the
+  `HDF5IO.export` method or `h5py.File.copy` method instead. @rly (#388)
+
+## HDMF 1.6.4 (June 26, 2020)
+
+### Internal improvements
+- Add ability to close open links. @rly (#383)
+
+### Bug fixes:
+- Fix validation of empty arrays and scalar attributes. @rly (#377)
+- Fix issue with constructing `DynamicTable` with empty array colnames. @rly (#379)
+- Fix `TestCase.assertContainerEqual` passing wrong arguments. @rly (#385)
+- Fix 'link_data' argument not being used when writing non-root level datasets. @rly (#384)
+- Fix handling of ASCII numpy array. @rly (#387)
+- Fix error when optional attribute reference is missing. @rly (#392)
+- Improve testing for `get_data_shape` and fix issue with sets. @rly (#394)
+- Fix inability to write references to HDF5 when the root builder is not named "root". @rly (#395)
+
+## HDMF 1.6.3 (June 9, 2020)
+
+### Internal improvements
+- Improve documentation of `DynamicTable`. @rly (#371)
+- Add user guide / tutorial for `DynamicTable`. @rly (#372)
+- Improve logging of build and write processes. @rly (#373)
+
+### Bug fixes:
+- Fix adding of optional predefined columns to `DynamicTable`. @rly (#371)
+- Use dtype from dataset data_type definition when extended spec lacks dtype. @rly (#364)
+
 ## HDMF 1.6.2 (May 26, 2020)
 
 ### Internal improvements:

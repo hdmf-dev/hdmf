@@ -58,12 +58,12 @@ class TestCase(unittest.TestCase):
             with self.subTest(field=field, container_type=type1.__name__):
                 f1 = getattr(container1, field)
                 f2 = getattr(container2, field)
-                self._assert_field_equal(f1, f2, ignore_hdmf_attrs)
+                self._assert_field_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_field_equal(self, f1, f2, ignore_hdmf_attrs=False):
         if (isinstance(f1, (tuple, list, np.ndarray, h5py.Dataset))
                 or isinstance(f2, (tuple, list, np.ndarray, h5py.Dataset))):
-            self._assert_array_equal(f1, f2, ignore_hdmf_attrs)
+            self._assert_array_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, dict) and len(f1) and isinstance(f1.values()[0], Container):
             self.assertIsInstance(f2, dict)
             f1_keys = set(f1.keys())
@@ -71,11 +71,11 @@ class TestCase(unittest.TestCase):
             self.assertSetEqual(f1_keys, f2_keys)
             for k in f1_keys:
                 with self.subTest(module_name=k):
-                    self.assertContainerEqual(f1[k], f2[k], ignore_hdmf_attrs)
+                    self.assertContainerEqual(f1[k], f2[k], ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, Container):
-            self.assertContainerEqual(f1, f2, ignore_hdmf_attrs)
+            self.assertContainerEqual(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, Data):
-            self._assert_data_equal(f1, f2, ignore_hdmf_attrs)
+            self._assert_data_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, (float, np.floating)):
             np.testing.assert_equal(f1, f2)
         else:
@@ -84,7 +84,7 @@ class TestCase(unittest.TestCase):
     def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False):
         self.assertEqual(type(data1), type(data2))
         self.assertEqual(len(data1), len(data2))
-        self._assert_array_equal(data1.data, data2.data, ignore_hdmf_attrs)
+        self._assert_array_equal(data1.data, data2.data, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False):
         if isinstance(arr1, (h5py.Dataset, HDMFDataset)):
@@ -107,11 +107,11 @@ class TestCase(unittest.TestCase):
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
-                        self.assertContainerEqual(sub1, sub2, ignore_hdmf_attrs)
+                        self.assertContainerEqual(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
                     elif isinstance(sub1, Data):
-                        self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs)
+                        self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
                     else:
-                        self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs)
+                        self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
 
 class H5RoundTripMixin(metaclass=ABCMeta):
@@ -136,61 +136,86 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         self.container = self.setUpContainer()
         self.container_type = self.container.__class__.__name__
         self.filename = 'test_%s.h5' % self.container_type
+        self.export_filename = 'test_export_%s.h5' % self.container_type
         self.writer = None
         self.reader = None
+        self.export_reader = None
 
     def tearDown(self):
         if self.writer is not None:
             self.writer.close()
         if self.reader is not None:
             self.reader.close()
-        if os.path.exists(self.filename) and os.getenv("CLEAN_HDMF", '1') not in ('0', 'false', 'FALSE', 'False'):
-            os.remove(self.filename)
+        if self.export_reader is not None:
+            self.export_reader.close()
 
-    @property
-    def manager(self):
-        """ The build manager """
-        return self.__manager
+        if os.getenv("CLEAN_HDMF", '1') not in ('0', 'false', 'FALSE', 'False'):
+            if os.path.exists(self.filename):
+                os.remove(self.filename)
+            if os.path.exists(self.export_filename):
+                os.remove(self.export_filename)
 
     @abstractmethod
     def setUpContainer(self):
-        """ Should return the Container to read/write """
+        """Return the Container to read/write."""
         raise NotImplementedError('Cannot run test unless setUpContainer is implemented')
 
     def test_roundtrip(self):
-        """
-        Test whether the test Container read from file has the same contents the original Container and validate the
-        file
-        """
-        self.read_container = self.roundtripContainer()
+        """Test whether the container read from a written file is the same as the original file."""
+        read_container = self.roundtripContainer()
+        self._test_roundtrip(read_container, export=False)
+
+    def test_roundtrip_export(self):
+        """Test whether the container read from a written and then exported file is the same as the original file."""
+        read_container = self.roundtripExportContainer()
+        self._test_roundtrip(read_container, export=True)
+
+    def _test_roundtrip(self, read_container, export=False):
         self.assertIsNotNone(str(self.container))  # added as a test to make sure printing works
-        self.assertIsNotNone(str(self.read_container))
+        self.assertIsNotNone(str(read_container))
         # make sure we get a completely new object
-        self.assertNotEqual(id(self.container), id(self.read_container))
+        self.assertNotEqual(id(self.container), id(read_container))
         # the name of the root container of a file is always 'root' (see h5tools.py ROOT_NAME)
         # thus, ignore the name of the container when comparing original container vs read container
-        self.assertContainerEqual(self.read_container, self.container, ignore_name=True)
-        self.reader.close()
+        if not export:
+            self.assertContainerEqual(read_container, self.container, ignore_name=True)
+        else:
+            self.assertContainerEqual(read_container, self.container, ignore_name=True, ignore_hdmf_attrs=True)
+
         self.validate()
 
     def roundtripContainer(self, cache_spec=False):
-        """ Write just the Container to an HDF5 file, read the container from the file, and return it """
-        self.writer = HDF5IO(self.filename, manager=self.manager, mode='w')
-        self.writer.write(self.container, cache_spec=cache_spec)
-        self.writer.close()
+        """Write the container to an HDF5 file, read the container from the file, and return it."""
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
+            write_io.write(self.container, cache_spec=cache_spec)
 
-        self.reader = HDF5IO(self.filename, manager=self.manager, mode='r')
-        try:
-            return self.reader.read()
-        except Exception as e:
-            self.reader.close()
-            self.reader = None
-            raise e
+        self.reader = HDF5IO(self.filename, manager=get_manager(), mode='r')
+        return self.reader.read()
+
+    def roundtripExportContainer(self, cache_spec=False):
+        """Write the container to an HDF5 file, read it, export it to a new file, read that file, and return it."""
+        self.roundtripContainer(cache_spec=cache_spec)
+
+        HDF5IO.export_io(
+            src_io=self.reader,
+            path=self.export_filename,
+            cache_spec=cache_spec,
+        )
+
+        self.export_reader = HDF5IO(self.export_filename, manager=get_manager(), mode='r')
+        return self.export_reader.read()
 
     def validate(self):
-        """ Validate the created file """
+        """Validate the written and exported files, if they exist."""
         if os.path.exists(self.filename):
-            with HDF5IO(self.filename, manager=self.manager, mode='r') as io:
+            with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
+                errors = common_validate(io)
+                if errors:
+                    for err in errors:
+                        raise Exception(err)
+
+        if os.path.exists(self.export_filename):
+            with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
                 errors = common_validate(io)
                 if errors:
                     for err in errors:
