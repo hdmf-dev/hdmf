@@ -49,6 +49,7 @@ class VectorData(Data):
     def get(self, key, **kwargs):
         return super().get(key)
 
+
 @register_class('VectorIndex')
 class VectorIndex(VectorData):
     """

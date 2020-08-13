@@ -1400,15 +1400,6 @@ class HDF5IO(HDMFIO):
                 ret.append(elem)
         return ret
 
-    @classmethod
-    @docval(*get_docval(H5DataIO.__init__))
-    def set_dataio(cls, **kwargs):
-        """
-        A convenience method for getting an H5DataIO object
-        """
-        cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
-        return H5DataIO(*cargs, **ckwargs)
-
     @property
     def mode(self):
         """
