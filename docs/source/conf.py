@@ -70,10 +70,11 @@ sphinx_gallery_conf = {
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.8', None),
-    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'scipy': ('http://docs.scipy.org/doc/scipy/reference', None),
-    'matplotlib': ('http://matplotlib.org', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
+    'matplotlib': ('https://matplotlib.org', None),
     'h5py': ('http://docs.h5py.org/en/latest/', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -324,5 +325,5 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
-    app.add_stylesheet("theme_overrides.css")  # overrides for wide tables in RTD theme
+    app.add_css_file("theme_overrides.css")  # overrides for wide tables in RTD theme
     app.connect("autodoc-skip-member", skip)

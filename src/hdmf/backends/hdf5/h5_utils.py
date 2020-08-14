@@ -67,6 +67,16 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
             self.__inverted = cls(**kwargs)
         return self.__inverted
 
+    def _get_ref(self, ref):
+        return self.get_object(self.dataset.file[ref])
+
+    def __iter__(self):
+        for ref in super().__iter__():
+            yield self._get_ref(ref)
+
+    def __next__(self):
+        return self._get_ref(super().__next__())
+
 
 class BuilderResolverMixin(BuilderResolver):
     """
@@ -108,7 +118,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
             if t is RegionReference:
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
-                self.__refgetters[i] = self.__get_ref
+                self.__refgetters[i] = self._get_ref
         self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
@@ -152,15 +162,16 @@ class AbstractH5TableDataset(DatasetOfReferences):
             getref = self.__refgetters[i]
             row[i] = getref(row[i])
 
-    def __get_ref(self, ref):
-        return self.get_object(self.dataset.file[ref])
-
     def __get_regref(self, ref):
-        obj = self.__get_ref(ref)
+        obj = self._get_ref(ref)
         return obj[ref]
 
     def resolve(self, manager):
         return self[0:len(self)]
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
 
 
 class AbstractH5ReferenceDataset(DatasetOfReferences):
@@ -168,9 +179,9 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
     def __getitem__(self, arg):
         ref = super().__getitem__(arg)
         if isinstance(ref, np.ndarray):
-            return [self.get_object(self.dataset.file[x]) for x in ref]
+            return [self._get_ref(x) for x in ref]
         else:
-            return self.get_object(self.dataset.file[ref])
+            return self._get_ref(ref)
 
     @property
     def dtype(self):
@@ -273,7 +284,7 @@ class H5SpecWriter(SpecWriter):
     def __write(self, d, name):
         data = self.stringify(d)
         # create spec group if it does not exist. otherwise, do not overwrite existing spec
-        dset = self.__group.require_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
+        dset = self.__group.create_dataset(name, shape=tuple(), data=data, dtype=self.__str_type)
         return dset
 
     def write_spec(self, spec, path):
@@ -389,7 +400,7 @@ class H5DataIO(DataIO):
             )
     def __init__(self, **kwargs):
         # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in['data', 'link_data', 'allow_plugin_filters']]
+        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters']]
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
@@ -427,8 +438,10 @@ class H5DataIO(DataIO):
         # Confirm that the compressor is supported by h5py
         if not self.filter_available(self.__iosettings.get('compression', None),
                                      self.__allow_plugin_filters):
-            raise ValueError("%s compression not support by this version of h5py." %
-                             str(self.__iosettings['compression']))
+            msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
+            if not self.__allow_plugin_filters:
+                msg += "Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
+            raise ValueError(msg)
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():

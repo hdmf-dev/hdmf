@@ -7,8 +7,9 @@ from copy import deepcopy
 CORE_NAMESPACE = 'hdmf-common'
 
 from ..spec import NamespaceCatalog  # noqa: E402
-from ..utils import docval, getargs, call_docval_func  # noqa: E402
+from ..utils import docval, getargs, call_docval_func, get_docval, fmt_docval_args  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
+from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
 
@@ -117,6 +118,7 @@ VectorData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorData')
 VectorIndex = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorIndex')
 ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdentifiers')
 DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
+VocabData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VocabData')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
 
 
@@ -193,3 +195,15 @@ def validate(**kwargs):
     builder = io.read_builder()
     validator = ValidatorMap(io.manager.namespace_catalog.get_namespace(name=namespace))
     return validator.validate(builder)
+
+
+@docval(*get_docval(HDF5IO.__init__), is_method=False)
+def get_hdf5io(**kwargs):
+    """
+    A convenience method for getting an HDF5IO object
+    """
+    manager = getargs('manager', kwargs)
+    if manager is None:
+        kwargs['manager'] = get_manager()
+    cargs, ckwargs = fmt_docval_args(HDF5IO.__init__, kwargs)
+    return HDF5IO(*cargs, **ckwargs)

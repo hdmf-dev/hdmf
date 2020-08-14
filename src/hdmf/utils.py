@@ -4,15 +4,30 @@ import collections
 import h5py
 import numpy as np
 import warnings
+import types
 from enum import Enum
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float],
+    'scalar_data': [str, int, float, bytes],
 }
 
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
+
+__supported_bool_types = (bool, np.bool_)
+__supported_uint_types = (np.uint8, np.uint16, np.uint32, np.uint64)
+__supported_int_types = (int, np.int8, np.int16, np.int32, np.int64)
+__supported_float_types = [float, np.float16, np.float32, np.float64]
+if hasattr(np, "float128"):  # pragma: no cover
+    __supported_float_types.append(np.float128)
+if hasattr(np, "longdouble"):  # pragma: no cover
+    # on windows python<=3.5, h5py floats resolve float64s as either np.float64 or np.longdouble
+    # non-deterministically. a future version of h5py will fix this. see #112
+    __supported_float_types.append(np.longdouble)
+__supported_float_types = tuple(__supported_float_types)
+__allowed_enum_types = (__supported_bool_types + __supported_uint_types + __supported_int_types
+                        + __supported_float_types + (str, ))
 
 
 def docval_macro(macro):
@@ -47,6 +62,8 @@ def __type_okay(value, argtype, allow_none=False):
     if isinstance(argtype, str):
         if argtype in __macros:
             return __type_okay(value, __macros[argtype], allow_none=allow_none)
+        elif argtype == 'uint':
+            return __is_uint(value)
         elif argtype == 'int':
             return __is_int(value)
         elif argtype == 'float':
@@ -85,23 +102,20 @@ def __shape_okay(value, argshape):
     return True
 
 
+def __is_uint(value):
+    return isinstance(value, __supported_uint_types)
+
+
 def __is_int(value):
-    return any(isinstance(value, i) for i in (int, np.int8, np.int16, np.int32, np.int64))
+    return isinstance(value, __supported_int_types)
 
 
 def __is_float(value):
-    SUPPORTED_FLOAT_TYPES = [float, np.float16, np.float32, np.float64]
-    if hasattr(np, "float128"):
-        SUPPORTED_FLOAT_TYPES.append(np.float128)
-    if hasattr(np, "longdouble"):
-        # on windows python<=3.5, h5py floats resolve float64s as either np.float64 or np.longdouble
-        # non-deterministically. a future version of h5py will fix this. see #112
-        SUPPORTED_FLOAT_TYPES.append(np.longdouble)
-    return any(isinstance(value, i) for i in SUPPORTED_FLOAT_TYPES)
+    return isinstance(value, __supported_float_types)
 
 
 def __is_bool(value):
-    return isinstance(value, bool) or isinstance(value, np.bool_)
+    return isinstance(value, __supported_bool_types)
 
 
 def __format_type(argtype):
@@ -119,6 +133,29 @@ def __format_type(argtype):
         return "any type"
     else:
         raise ValueError("argtype must be a type, str, list, or tuple")
+
+
+def __check_enum(argval, arg):
+    """
+    Helper function to check whether the given argument value validates against the enum specification.
+
+    :param argval: argument value passed to the function/method
+    :param arg: argument validator - the specification dictionary for this argument
+
+    :return: None if the value validates successfully, error message if the value does not.
+    """
+    if argval not in arg['enum']:
+        return "forbidden value for '{}' (got {}, expected {})".format(arg['name'], __fmt_str_quotes(argval),
+                                                                       arg['enum'])
+
+
+def __fmt_str_quotes(x):
+    """Return a string or list of strings where the input string or list of strings have single quotes around strings"""
+    if isinstance(x, (list, tuple)):
+        return '{}'.format(x)
+    if isinstance(x, str):
+        return "'%s'" % x
+    return str(x)
 
 
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
@@ -185,12 +222,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         it = iter(validator)
         arg = next(it)
 
-        # catch unsupported keys
-        allowable_terms = ('name', 'doc', 'type', 'shape', 'default', 'help')
-        unsupported_terms = set(arg.keys()) - set(allowable_terms)
-        if unsupported_terms:
-            raise ValueError('docval for {}: {} are not supported by docval'.format(arg['name'],
-                                                                                    sorted(unsupported_terms)))
         # process positional arguments of the docval specification (no default value)
         extras = dict(kwargs)
         while True:
@@ -238,6 +269,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
                         fmt_val = (argname, valshape, arg['shape'])
                         value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                if 'enum' in arg:
+                    err = __check_enum(argval, arg)
+                    if err:
+                        value_errors.append(err)
+
                 ret[argname] = argval
             argsi += 1
             arg = next(it)
@@ -278,6 +314,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
                     fmt_val = (argname, valshape, arg['shape'])
                     value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+            if 'enum' in arg and argval is not None:
+                err = __check_enum(argval, arg)
+                if err:
+                    value_errors.append(err)
+
             arg = next(it)
     except StopIteration:
         pass
@@ -388,7 +429,14 @@ def __resolve_type(t):
         raise ValueError(msg)
 
 
-def docval(*validator, **options):
+def __check_enum_argtype(argtype):
+    """Return True/False whether the given argtype or list/tuple of argtypes is a supported docval enum type"""
+    if isinstance(argtype, (list, tuple)):
+        return all(x in __allowed_enum_types for x in argtype)
+    return argtype in __allowed_enum_types
+
+
+def docval(*validator, **options):  # noqa: C901
     '''A decorator for documenting and enforcing type for instance method arguments.
 
     This decorator takes a list of dictionaries that specify the method parameters. These
@@ -444,11 +492,33 @@ def docval(*validator, **options):
         pos = list()
         kw = list()
         for a in validator:
+            # catch unsupported keys
+            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
+            unsupported_terms = set(a.keys()) - set(allowable_terms)
+            if unsupported_terms:
+                raise Exception('docval for {}: keys {} are not supported by docval'.format(a['name'],
+                                                                                            sorted(unsupported_terms)))
+            # check that arg type is valid
             try:
                 a['type'] = __resolve_type(a['type'])
             except Exception as e:
-                msg = "error parsing '%s' argument' : %s" % (a['name'], e.args[0])
+                msg = "docval for %s: error parsing argument type: %s" % (a['name'], e.args[0])
                 raise Exception(msg)
+            if 'enum' in a:
+                # check that value for enum key is a list or tuple (cannot have only one allowed value)
+                if not isinstance(a['enum'], (list, tuple)):
+                    msg = ('docval for %s: enum value must be a list or tuple (received %s)'
+                           % (a['name'], type(a['enum'])))
+                    raise Exception(msg)
+                # check that arg type is compatible with enum
+                if not __check_enum_argtype(a['type']):
+                    msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(a['name'], a['type'])
+                    raise Exception(msg)
+                # check that enum allowed values are allowed by arg type
+                if any([not __type_okay(x, a['type']) for x in a['enum']]):
+                    msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
+                           'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
+                    raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:
@@ -573,31 +643,60 @@ def __googledoc(func, validator, returns=None, rtype=None):
 
 
 def getargs(*argnames):
-    '''getargs(*argnames, argdict)
-    Convenience function to retrieve arguments from a dictionary in batch
-    '''
+    """getargs(*argnames, argdict)
+    Convenience function to retrieve arguments from a dictionary in batch.
+
+    The last argument should be a dictionary, and the other arguments should be the keys (argument names) for which
+    to retrieve the values.
+
+    :raises ValueError: if a argument name is not found in the dictionary or there is only one argument passed to this
+        function or the last argument is not a dictionary
+    :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
+    """
     if len(argnames) < 2:
         raise ValueError('Must supply at least one key and a dict')
     if not isinstance(argnames[-1], dict):
-        raise ValueError('last argument must be dict')
+        raise ValueError('Last argument must be a dict')
     kwargs = argnames[-1]
     if len(argnames) == 2:
+        if argnames[0] not in kwargs:
+            raise ValueError("Argument not found in dict: '%s'" % argnames[0])
         return kwargs.get(argnames[0])
-    return [kwargs.get(arg) for arg in argnames[:-1]]
+    ret = []
+    for arg in argnames[:-1]:
+        if arg not in kwargs:
+            raise ValueError("Argument not found in dict: '%s'" % arg)
+        ret.append(kwargs.get(arg))
+    return ret
 
 
 def popargs(*argnames):
-    '''popargs(*argnames, argdict)
-    Convenience function to retrieve and remove arguments from a dictionary in batch
-    '''
+    """popargs(*argnames, argdict)
+    Convenience function to retrieve and remove arguments from a dictionary in batch.
+
+    The last argument should be a dictionary, and the other arguments should be the keys (argument names) for which
+    to retrieve the values.
+
+    :raises ValueError: if a argument name is not found in the dictionary or there is only one argument passed to this
+        function or the last argument is not a dictionary
+    :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
+    """
     if len(argnames) < 2:
         raise ValueError('Must supply at least one key and a dict')
     if not isinstance(argnames[-1], dict):
-        raise ValueError('last argument must be dict')
+        raise ValueError('Last argument must be a dict')
     kwargs = argnames[-1]
     if len(argnames) == 2:
-        return kwargs.pop(argnames[0])
-    return [kwargs.pop(arg) for arg in argnames[:-1]]
+        try:
+            ret = kwargs.pop(argnames[0])
+        except KeyError as ke:
+            raise ValueError('Argument not found in dict: %s' % str(ke))
+        return ret
+    try:
+        ret = [kwargs.pop(arg) for arg in argnames[:-1]]
+    except KeyError as ke:
+        raise ValueError('Argument not found in dict: %s' % str(ke))
+    return ret
 
 
 class ExtenderMeta(ABCMeta):
@@ -644,14 +743,17 @@ def get_data_shape(data, strict_no_data_load=False):
     """
     Helper function used to determine the shape of the given array.
 
+    In order to determine the shape of nested tuples, lists, and sets, this function
+    recursively inspects elements along the dimensions, assuming that the data has a regular,
+    rectangular shape. In the case of out-of-core iterators, this means that the first item
+    along each dimension would potentially be loaded into memory. Set strict_no_data_load=True
+    to enforce that this does not happen, at the cost that we may not be able to determine
+    the shape of the array.
+
     :param data: Array for which we should determine the shape.
     :type data: List, numpy.ndarray, DataChunkIterator, any object that support __len__ or .shape.
-    :param strict_no_data_load: In order to determine the shape of nested tuples and lists, this function
-                recursively inspects elements along the dimensions, assuming that the data has a regular,
-                rectangular shape. In the case of out-of-core iterators this means that the first item
-                along each dimensions would potentially be loaded into memory. By setting this option
-                we enforce that this does not happen, at the cost that we may not be able to determine
-                the shape of the array.
+    :param strict_no_data_load: If True and data is an out-of-core iterator, None may be returned. If False (default),
+                                the first element of data may be loaded into memory.
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """
@@ -659,22 +761,23 @@ def get_data_shape(data, strict_no_data_load=False):
         shape = list()
         if hasattr(local_data, '__len__'):
             shape.append(len(local_data))
-            if len(local_data) and not isinstance(local_data[0], (str, bytes)):
-                shape.extend(__get_shape_helper(local_data[0]))
+            if len(local_data):
+                el = next(iter(local_data))
+                if not isinstance(el, (str, bytes)):
+                    shape.extend(__get_shape_helper(el))
         return tuple(shape)
+
+    # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    elif hasattr(data, 'shape'):
+    if hasattr(data, 'shape'):
         return data.shape
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         return None
-    elif hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
-        if not strict_no_data_load or (isinstance(data, list) or isinstance(data, tuple) or isinstance(data, set)):
+    if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
+        if not strict_no_data_load or isinstance(data, (list, tuple, set)):
             return __get_shape_helper(data)
-        else:
-            return None
-    else:
-        return None
+    return None
 
 
 def pystr(s):
@@ -688,7 +791,7 @@ def pystr(s):
 
 
 class LabelledDict(dict):
-    """A dict wrapper class with a label and which allows retrieval of values based on an attribute of the values
+    """A dict wrapper that allows querying by an attribute of the values and running a callable on removed items.
 
     For example, if the key attribute is set as 'name' in __init__, then all objects added to the LabelledDict must have
     a 'name' attribute and a particular object in the LabelledDict can be accessed using the syntax ['object_name'] if
@@ -701,8 +804,19 @@ class LabelledDict(dict):
     condition, a KeyError is raised. Note that if 'attr' equals the key attribute, then the single matching value is
     returned, not a set.
 
+    LabelledDict does not support changing items that have already been set. A TypeError will be raised when using
+    __setitem__ on keys that already exist in the dict. The setdefault and update methods are not supported. A
+    TypeError will be raised when these are called.
+
+    A callable function may be passed to the constructor to be run on an item after adding it to this dict using
+    the __setitem__ and add methods.
+
+    A callable function may be passed to the constructor to be run on an item after removing it from this dict using
+    the __delitem__ (the del operator), pop, and popitem methods. It will also be run on each removed item when using
+    the clear method.
+
     Usage:
-      LabelledDict(label='my_objects', def_key_name = 'name')
+      LabelledDict(label='my_objects', key_attr='name')
       my_dict[obj.name] = obj
       my_dict.add(obj)  # simpler syntax
 
@@ -719,11 +833,21 @@ class LabelledDict(dict):
     """
 
     @docval({'name': 'label', 'type': str, 'doc': 'the label on this dictionary'},
-            {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'})
+            {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'},
+            {'name': 'add_callable', 'type': types.FunctionType,
+             'doc': 'function to call on an element after adding it to this dict using the add or __setitem__ methods',
+             'default': None},
+            {'name': 'remove_callable', 'type': types.FunctionType,
+             'doc': ('function to call on an element after removing it from this dict using the pop, popitem, clear, '
+                     'or __delitem__ methods'),
+             'default': None})
     def __init__(self, **kwargs):
-        label, key_attr = getargs('label', 'key_attr', kwargs)
+        label, key_attr, add_callable, remove_callable = getargs('label', 'key_attr', 'add_callable', 'remove_callable',
+                                                                 kwargs)
         self.__label = label
         self.__key_attr = key_attr
+        self.__add_callable = add_callable
+        self.__remove_callable = remove_callable
 
     @property
     def label(self):
@@ -739,9 +863,9 @@ class LabelledDict(dict):
         """Get a value from the LabelledDict with the given key.
 
         Supports syntax my_dict['attr == val'], which returns a set of objects in the LabelledDict which have an
-        attribute 'attr' with a string value 'val'. If no objects match that condition, a KeyError is raised.
-
-        Note that if 'attr' equals the key attribute, then the single matching value is returned, not a set.
+        attribute 'attr' with a string value 'val'. If no objects match that condition, an empty set is returned.
+        Note that if 'attr' equals the key attribute of this LabelledDict, then the single matching value is
+        returned, not a set.
         """
         key = args
         if '==' in args:
@@ -757,23 +881,28 @@ class LabelledDict(dict):
                 for item in self.values():
                     if getattr(item, key, None) == val:
                         ret.add(item)
-                if len(ret):
-                    return ret
-                else:
-                    raise KeyError(val)
-            # if key == self.key_attr, then call __getitem__ normally on val
-            key = val
-        return super().__getitem__(key)
+                return ret
+            else:
+                return super().__getitem__(val)
+        else:
+            return super().__getitem__(key)
 
     def __setitem__(self, key, value):
         """Set a value in the LabelledDict with the given key. The key must equal value.key_attr.
 
-        See LabelledDict.add for simpler syntax. Raises ValueError if value does not have attribute key_attr.
+        See LabelledDict.add for a simpler syntax since the key is redundant.
+        Raises TypeError is key already exists.
+        Raises ValueError if value does not have attribute key_attr.
         """
+        if key in self:
+            raise TypeError("Key '%s' is already in this dict. Cannot reset items in a %s."
+                            % (key, self.__class__.__name__))
         self.__check_value(value)
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
         super().__setitem__(key, value)
+        if self.__add_callable:
+            self.__add_callable(value)
 
     def add(self, value):
         """Add a value to the dict with the key value.key_attr.
@@ -785,5 +914,47 @@ class LabelledDict(dict):
 
     def __check_value(self, value):
         if not hasattr(value, self.key_attr):
-            raise ValueError("Cannot set value '%s' in LabelledDict. Value must have key '%s'."
-                             % (value, self.key_attr))
+            raise ValueError("Cannot set value '%s' in %s. Value must have attribute '%s'."
+                             % (value, self.__class__.__name__, self.key_attr))
+
+    def pop(self, k):
+        """Remove an item that matches the key. If remove_callable was initialized, call that on the returned value."""
+        ret = super().pop(k)
+        if self.__remove_callable:
+            self.__remove_callable(ret)
+        return ret
+
+    def popitem(self):
+        """Remove the last added item. If remove_callable was initialized, call that on the returned value.
+
+        Note: popitem returns a tuple (key, value) but the remove_callable will be called only on the value.
+
+        Note: in Python 3.5 and earlier, dictionaries are not ordered, so popitem removes an arbitrary item.
+        """
+        ret = super().popitem()
+        if self.__remove_callable:
+            self.__remove_callable(ret[1])  # execute callable only on dict value
+        return ret
+
+    def clear(self):
+        """Remove all items. If remove_callable was initialized, call that on each returned value.
+
+        The order of removal depends on the popitem method.
+        """
+        while len(self):
+            self.popitem()
+
+    def __delitem__(self, k):
+        """Remove an item that matches the key. If remove_callable was initialized, call that on the matching value."""
+        item = self[k]
+        super().__delitem__(k)
+        if self.__remove_callable:
+            self.__remove_callable(item)
+
+    def setdefault(self, k):
+        """setdefault is not supported. A TypeError will be raised."""
+        raise TypeError('setdefault is not supported for %s' % self.__class__.__name__)
+
+    def update(self, other):
+        """update is not supported. A TypeError will be raised."""
+        raise TypeError('update is not supported for %s' % self.__class__.__name__)

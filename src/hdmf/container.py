@@ -1,10 +1,12 @@
 import numpy as np
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from uuid import uuid4
-from .utils import docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape
+from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
+                    popargs, LabelledDict)
 from .data_utils import DataIO
 from warnings import warn
 import h5py
+import types
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -72,32 +74,40 @@ class AbstractContainer(metaclass=ExtenderMeta):
             tmp = {'name': tmp}
         return tmp
 
+    @classmethod
+    def _get_fields(cls):
+        return getattr(cls, cls._fieldsname)
+
+    @classmethod
+    def _set_fields(cls, value):
+        return setattr(cls, cls._fieldsname, value)
+
     @ExtenderMeta.pre_init
     def __gather_fields(cls, name, bases, classdict):
         '''
         This classmethod will be called during class declaration in the metaclass to automatically
         create setters and getters for fields that need to be exported
         '''
-        fields = getattr(cls, cls._fieldsname)
+        fields = cls._get_fields()
         if not isinstance(fields, tuple):
             msg = "'%s' must be of type tuple" % cls._fieldsname
             raise TypeError(msg)
 
         if len(bases) and 'Container' in globals() and issubclass(bases[-1], Container) \
-                and getattr(bases[-1], bases[-1]._fieldsname) is not fields:
+                and bases[-1]._get_fields() is not fields:
             new_fields = list(fields)
-            new_fields[0:0] = getattr(bases[-1], bases[-1]._fieldsname)
-            setattr(cls, cls._fieldsname, tuple(new_fields))
+            new_fields[0:0] = bases[-1]._get_fields()
+            cls._set_fields(tuple(new_fields))
         new_fields = list()
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
-        for f in getattr(cls, cls._fieldsname):
+        for f in cls._get_fields():
             pconf = cls._check_field_spec(f)
             pname = pconf['name']
             pconf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
                 setattr(cls, pname, property(cls._getter(pconf), cls._setter(pconf)))
             new_fields.append(pname)
-        setattr(cls, cls._fieldsname, tuple(new_fields))
+        cls._set_fields(tuple(new_fields))
 
     def __new__(cls, *args, **kwargs):
         inst = super().__new__(cls)
@@ -148,6 +158,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
         if self.__object_id is None:
             self.__object_id = str(uuid4())
         return self.__object_id
+
+    @docval({'name': 'recurse', 'type': bool,
+             'doc': "whether or not to change the object ID of this container's children", 'default': True})
+    def generate_new_id(self, **kwargs):
+        """Changes the object ID of this Container and all of its children to a new UUID string."""
+        recurse = getargs('recurse', kwargs)
+        self.__object_id = str(uuid4())
+        self.set_modified()
+        if recurse:
+            for c in self.children:
+                c.generate_new_id(**kwargs)
 
     @property
     def modified(self):
@@ -217,9 +238,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
             else:
                 if parent_container is None:
                     raise ValueError("Got None for parent of '%s' - cannot overwrite Proxy with NoneType" % repr(self))
-                # TODO this assumes isinstance(parent_container, Proxy) but
-                # circular import if we try to do that. Proxy would need to move
-                # or Container extended with this functionality in build/map.py
+                # NOTE this assumes isinstance(parent_container, Proxy) but we get a circular import
+                # if we try to do that
                 if self.parent.matches(parent_container):
                     self.__parent = parent_container
                     parent_container.__children.append(self)
@@ -232,21 +252,37 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
 
+    def _remove_child(self, child):
+        """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
+        if not isinstance(child, AbstractContainer):
+            raise ValueError('Cannot remove non-AbstractContainer object from children.')
+        if child not in self.children:
+            raise ValueError("%s '%s' is not a child of %s '%s'." % (child.__class__.__name__, child.name,
+                                                                     self.__class__.__name__, self.name))
+        child.__parent = None
+        self.__children.remove(child)
+        child.set_modified()
+        self.set_modified()
+
 
 class Container(AbstractContainer):
+    """A container that can contain other containers and has special functionality for printing."""
 
     _pconf_allowed_keys = {'name', 'child', 'required_name', 'doc', 'settable'}
 
     @classmethod
     def _setter(cls, field):
+        """Returns a list of setter functions for the given field to be added to the class during class declaration."""
         super_setter = AbstractContainer._setter(field)
         ret = [super_setter]
         if isinstance(field, dict):
+            # check keys
             for k in field.keys():
                 if k not in cls._pconf_allowed_keys:
-                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" %\
-                           (k, field['name'], cls.__name__)
+                    msg = "Unrecognized key '%s' in __field__ config '%s' on %s" % (k, field['name'], cls.__name__)
                     raise ValueError(msg)
+
+            # create setter with check for required name
             if field.get('required_name', None) is not None:
                 name = field['required_name']
                 idx1 = len(ret) - 1
@@ -258,6 +294,8 @@ class Container(AbstractContainer):
                     ret[idx1](self, val)
 
                 ret.append(container_setter)
+
+            # create setter that accepts a value or tuple, list, or dict or values and sets the value's parent to self
             if field.get('child', False):
                 idx2 = len(ret) - 1
 
@@ -339,20 +377,20 @@ class Container(AbstractContainer):
             return str(v)
 
     @staticmethod
-    def __smart_str_list(l, num_indent, left_br):
+    def __smart_str_list(str_list, num_indent, left_br):
         if left_br == '(':
             right_br = ')'
         if left_br == '{':
             right_br = '}'
-        if len(l) == 0:
+        if len(str_list) == 0:
             return left_br + ' ' + right_br
         indent = num_indent * 2 * ' '
         indent_in = (num_indent + 1) * 2 * ' '
         out = left_br
-        for v in l[:-1]:
+        for v in str_list[:-1]:
             out += '\n' + indent_in + Container.__smart_str(v, num_indent + 1) + ','
-        if l:
-            out += '\n' + indent_in + Container.__smart_str(l[-1], num_indent + 1)
+        if str_list:
+            out += '\n' + indent_in + Container.__smart_str(str_list[-1], num_indent + 1)
         out += '\n' + indent + right_br
         return out
 
@@ -380,7 +418,7 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self.__data = getargs('data', kwargs)
@@ -407,14 +445,34 @@ class Data(AbstractContainer):
         dataio.data = self.__data
         self.__data = dataio
 
+    @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
+    def transform(self, **kwargs):
+        """
+        Transform data from the current underlying state.
+
+        This function can be used to permanently load data from disk, or convert to a different
+        representation, such as a torch.Tensor
+        """
+        func = getargs('func', kwargs)
+        self.__data = func(self.__data)
+        return self
+
     def __bool__(self):
-        return len(self.data) != 0
+        if self.data is not None:
+            if isinstance(self.data, (np.ndarray, tuple, list)):
+                return len(self.data) != 0
+            if self.data:
+                return True
+        return False
 
     def __len__(self):
         return len(self.__data)
 
     def __getitem__(self, args):
-        if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list)):
+        return self.get(args)
+
+    def get(self, args):
+        if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list, np.ndarray)):
             return [self.data[i] for i in args]
         return self.data[args]
 
@@ -464,3 +522,302 @@ class DataRegion(Data):
         The region that indexes into data e.g. slice or list of indices
         '''
         pass
+
+
+def _not_parent(arg):
+    return arg['name'] != 'parent'
+
+
+class MultiContainerInterface(Container, metaclass=ABCMeta):
+    """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
+
+    To use, extend this class and create a dictionary as a class attribute with any of the following keys:
+    * 'attr' to name the attribute that stores the Container instances
+    * 'type' to provide the Container object type (type or list/tuple of types, type can be a docval macro)
+    * 'add' to name the method for adding Container instances
+    * 'get' to name the method for getting Container instances
+    * 'create' to name the method for creating Container instances (only if a single type is specified)
+
+    If the attribute does not exist in the class, it will be generated. If it does exist, it should behave like a dict.
+
+    The keys 'attr', 'type', and 'add' are required.
+    """
+
+    @docval(*get_docval(Container.__init__))
+    def __init__(self, **kwargs):
+        call_docval_func(super().__init__, kwargs)
+
+        if not hasattr(self.__class__, '__clsconf__'):
+            # either the API was incorrectly defined or only a subclass with __clsconf__ can be initialized
+            raise TypeError("Cannot initialize an instance of MultiContainerInterface subclass %s."
+                            % self.__class__.__name__)
+
+        # call this function whenever a container is removed from the dictionary
+        def _remove_child(child):
+            if child.parent is self:
+                self._remove_child(child)
+
+        if isinstance(self.__clsconf__, dict):
+            attr_name = self.__clsconf__['attr']
+            self.fields[attr_name] = LabelledDict(attr_name, remove_callable=_remove_child)
+        else:
+            for d in self.__clsconf__:
+                attr_name = d['attr']
+                self.fields[attr_name] = LabelledDict(attr_name, remove_callable=_remove_child)
+
+    @staticmethod
+    def __add_article(noun):
+        if isinstance(noun, tuple):
+            noun = noun[0]
+        if isinstance(noun, type):
+            noun = noun.__name__
+        if noun[0] in ('aeiouAEIOU'):
+            return 'an %s' % noun
+        return 'a %s' % noun
+
+    @staticmethod
+    def __join(argtype):
+        """Return a grammatical string representation of a list or tuple of classes or text.
+
+        Examples:
+        cls.__join(Container) returns "Container"
+        cls.__join((Container, )) returns "Container"
+        cls.__join((Container, Data)) returns "Container or Data"
+        cls.__join((Container, Data, Subcontainer)) returns "Container, Data, or Subcontainer"
+        """
+
+        def tostr(x):
+            return x.__name__ if isinstance(x, type) else x
+
+        if isinstance(argtype, (list, tuple)):
+            args_str = [tostr(x) for x in argtype]
+            if len(args_str) == 1:
+                return args_str[0]
+            if len(args_str) == 2:
+                return " or ".join(tostr(x) for x in args_str)
+            else:
+                return ", ".join(tostr(x) for x in args_str[:-1]) + ', or ' + args_str[-1]
+        else:
+            return tostr(argtype)
+
+    @classmethod
+    def __make_get(cls, func_name, attr_name, container_type):
+        doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
+
+        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+                 'default': None},
+                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
+                func_name=func_name, doc=doc)
+        def _func(self, **kwargs):
+            name = getargs('name', kwargs)
+            d = getattr(self, attr_name)
+            ret = None
+            if name is None:
+                if len(d) > 1:
+                    msg = ("More than one element in %s of %s '%s' -- must specify a name."
+                           % (attr_name, cls.__name__, self.name))
+                    raise ValueError(msg)
+                elif len(d) == 0:
+                    msg = "%s of %s '%s' is empty." % (attr_name, cls.__name__, self.name)
+                    raise ValueError(msg)
+                else:  # only one item in dict
+                    for v in d.values():
+                        ret = v
+            else:
+                ret = d.get(name)
+                if ret is None:
+                    msg = "'%s' not found in %s of %s '%s'." % (name, attr_name, cls.__name__, self.name)
+                    raise KeyError(msg)
+            return ret
+
+        return _func
+
+    @classmethod
+    def __make_getitem(cls, attr_name, container_type):
+        doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
+
+        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+                 'default': None},
+                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
+                func_name='__getitem__', doc=doc)
+        def _func(self, **kwargs):
+            # NOTE this is the same code as the getter but with different error messages
+            name = getargs('name', kwargs)
+            d = getattr(self, attr_name)
+            ret = None
+            if name is None:
+                if len(d) > 1:
+                    msg = ("More than one %s in %s '%s' -- must specify a name."
+                           % (cls.__join(container_type), cls.__name__, self.name))
+                    raise ValueError(msg)
+                elif len(d) == 0:
+                    msg = "%s '%s' is empty." % (cls.__name__, self.name)
+                    raise ValueError(msg)
+                else:  # only one item in dict
+                    for v in d.values():
+                        ret = v
+            else:
+                ret = d.get(name)
+                if ret is None:
+                    msg = "'%s' not found in %s '%s'." % (name, cls.__name__, self.name)
+                    raise KeyError(msg)
+            return ret
+
+        return _func
+
+    @classmethod
+    def __make_add(cls, func_name, attr_name, container_type):
+        doc = "Add %s to this %s" % (cls.__add_article(container_type), cls.__name__)
+
+        @docval({'name': attr_name, 'type': (list, tuple, dict, container_type),
+                 'doc': 'the %s to add' % cls.__join(container_type)},
+                func_name=func_name, doc=doc)
+        def _func(self, **kwargs):
+            container = getargs(attr_name, kwargs)
+            if isinstance(container, container_type):
+                containers = [container]
+            elif isinstance(container, dict):
+                containers = container.values()
+            else:
+                containers = container
+            d = getattr(self, attr_name)
+            for tmp in containers:
+                if not isinstance(tmp.parent, Container):
+                    tmp.parent = self
+                # else, the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                if tmp.name in d:
+                    msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
+                    raise ValueError(msg)
+                d[tmp.name] = tmp
+            return container
+        return _func
+
+    @classmethod
+    def __make_create(cls, func_name, add_name, container_type):
+        doc = "Create %s and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
+
+        @docval(*filter(_not_parent, get_docval(container_type.__init__)), func_name=func_name, doc=doc,
+                returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
+        def _func(self, **kwargs):
+            cargs, ckwargs = fmt_docval_args(container_type.__init__, kwargs)
+            ret = container_type(*cargs, **ckwargs)
+            getattr(self, add_name)(ret)
+            return ret
+        return _func
+
+    @classmethod
+    def __make_constructor(cls, clsconf):
+        args = list()
+        for conf in clsconf:
+            attr_name = conf['attr']
+            container_type = conf['type']
+            args.append({'name': attr_name, 'type': (list, tuple, dict, container_type),
+                         'doc': '%s to store in this interface' % cls.__join(container_type), 'default': dict()})
+
+        args.append({'name': 'name', 'type': str, 'doc': 'the name of this container', 'default': cls.__name__})
+
+        @docval(*args, func_name='__init__')
+        def _func(self, **kwargs):
+            call_docval_func(super(cls, self).__init__, kwargs)
+            for conf in clsconf:
+                attr_name = conf['attr']
+                add_name = conf['add']
+                container = popargs(attr_name, kwargs)
+                add = getattr(self, add_name)
+                add(container)
+        return _func
+
+    @classmethod
+    def __make_setter(cls, nwbfield, add_name):
+
+        @docval({'name': 'val', 'type': (list, tuple, dict), 'doc': 'the sub items to add', 'default': None})
+        def _func(self, **kwargs):
+            val = getargs('val', kwargs)
+            if val is None:
+                return
+            getattr(self, add_name)(val)
+
+        return _func
+
+    @ExtenderMeta.pre_init
+    def __build_class(cls, name, bases, classdict):
+        """This will be called during class declaration in the metaclass to automatically create methods."""
+
+        if not hasattr(cls, '__clsconf__'):
+            return
+        multi = False
+        if isinstance(cls.__clsconf__, dict):
+            clsconf = [cls.__clsconf__]
+        elif isinstance(cls.__clsconf__, list):
+            multi = True
+            clsconf = cls.__clsconf__
+        else:
+            raise TypeError("'__clsconf__' for MultiContainerInterface subclass %s must be a dict or a list of "
+                            "dicts." % cls.__name__)
+
+        for conf_index, conf_dict in enumerate(clsconf):
+            cls.__build_conf_methods(conf_dict, conf_index, multi)
+
+        # make __getitem__ (square bracket access) only if one conf type is defined
+        if len(clsconf) == 1:
+            attr = clsconf[0].get('attr')
+            container_type = clsconf[0].get('type')
+            setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
+
+        # create the constructor, only if it has not been overridden
+        # i.e. it is the same method as the parent class constructor
+        if cls.__init__ == MultiContainerInterface.__init__:
+            setattr(cls, '__init__', cls.__make_constructor(clsconf))
+
+    @classmethod
+    def __build_conf_methods(cls, conf_dict, conf_index, multi):
+        # get add method name
+        add = conf_dict.get('add')
+        if add is None:
+            msg = "MultiContainerInterface subclass %s is missing 'add' key in __clsconf__" % cls.__name__
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        # get container attribute name
+        attr = conf_dict.get('attr')
+        if attr is None:
+            msg = "MultiContainerInterface subclass %s is missing 'attr' key in __clsconf__" % cls.__name__
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        # get container type
+        container_type = conf_dict.get('type')
+        if container_type is None:
+            msg = "MultiContainerInterface subclass %s is missing 'type' key in __clsconf__" % cls.__name__
+            if multi:
+                msg += " at index %d" % conf_index
+            raise ValueError(msg)
+
+        # create property with the name given in 'attr' only if the attribute is not already defined
+        if not hasattr(cls, attr):
+            aconf = cls._check_field_spec(attr)
+            getter = cls._getter(aconf)
+            doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
+            setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
+
+        # create the add method
+        setattr(cls, add, cls.__make_add(add, attr, container_type))
+
+        # create the create method, only if a single container type is specified
+        create = conf_dict.get('create')
+        if create is not None:
+            if isinstance(container_type, type):
+                setattr(cls, create, cls.__make_create(create, add, container_type))
+            else:
+                msg = ("Cannot specify 'create' key in __clsconf__ for MultiContainerInterface subclass %s "
+                       "when 'type' key is not a single type") % cls.__name__
+                if multi:
+                    msg += " at index %d" % conf_index
+                raise ValueError(msg)
+
+        # create the get method
+        get = conf_dict.get('get')
+        if get is not None:
+            setattr(cls, get, cls.__make_get(get, attr, container_type))

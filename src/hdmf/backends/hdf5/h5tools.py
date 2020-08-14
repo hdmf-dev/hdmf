@@ -3,17 +3,18 @@ import numpy as np
 import os.path
 from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
+import logging
 import warnings
 
 from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 from ...data_utils import AbstractDataChunkIterator
-from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
-                     RegionBuilder, ReferenceBuilder, TypeMap, ObjectMapper
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+                      ReferenceBuilder, TypeMap, ObjectMapper)
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
 
-from .h5_utils import BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset,\
-                      H5DataIO, H5SpecReader, H5SpecWriter
+from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
+                       H5SpecReader, H5SpecWriter)
 
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
@@ -32,15 +33,16 @@ class HDF5IO(HDMFIO):
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
-             'doc': 'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x")'},
+             'doc': ('the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). '
+                     'See `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>`_ for '
+                     'more details.')},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
     def __init__(self, **kwargs):
-        '''Open an HDF5 file for IO
-
-        For `mode`, see `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>_`.
-        '''
+        """Open an HDF5 file for IO.
+        """
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
@@ -62,7 +64,6 @@ class HDF5IO(HDMFIO):
             manager = BuildManager(manager)
         self.__comm = comm
         self.__mode = mode
-        self.__path = path
         self.__file = file_obj
         super().__init__(manager, source=path)
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
@@ -70,9 +71,12 @@ class HDF5IO(HDMFIO):
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
+        self._written_builders = dict()  # keep track of which builders were written (or read) by this IO object
+        self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
     def comm(self):
+        """The MPI communicator to use for parallel I/O."""
         return self.__comm
 
     @property
@@ -80,63 +84,84 @@ class HDF5IO(HDMFIO):
         return self.__file
 
     @classmethod
-    @docval({'name': 'namespace_catalog',
-             'type': (NamespaceCatalog, TypeMap),
+    @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
-    def load_namespaces(cls, namespace_catalog, path, namespaces=None):
-        '''
-        Load cached namespaces from a file.
-        '''
+    def load_namespaces(cls, **kwargs):
+        """Load cached namespaces from a file.
 
+        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
+        namespaces will be read, and the File object will be closed. If `file` is supplied, then
+        the given File object will be read from and not closed.
+        """
+        namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
+                                                                kwargs)
+
+        if path is None and file_obj is None:
+            raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
+
+        if path is not None and file_obj is not None:  # consistency check
+            if os.path.abspath(file_obj.filename) != os.path.abspath(path):
+                msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
+                       % (path, file_obj.filename))
+                raise ValueError(msg)
+
+        if file_obj is None:
+            with File(path, 'r') as f:
+                return cls.__load_namespaces(namespace_catalog, namespaces, f)
+        else:
+            return cls.__load_namespaces(namespace_catalog, namespaces, file_obj)
+
+    @classmethod
+    def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
         d = {}
 
-        with File(path, 'r') as f:
-            if SPEC_LOC_ATTR not in f.attrs:
-                msg = "No cached namespaces found in %s" % path
-                warnings.warn(msg)
-                return d
-
-            spec_group = f[f.attrs[SPEC_LOC_ATTR]]
-
-            if namespaces is None:
-                namespaces = list(spec_group.keys())
-
-            readers = dict()
-            deps = dict()
-            for ns in namespaces:
-                ns_group = spec_group[ns]
-                # NOTE: by default, objects within groups are iterated in alphanumeric order
-                version_names = list(ns_group.keys())
-                if len(version_names) > 1:
-                    # prior to HDMF 1.6.1, extensions without a version were written under the group name "unversioned"
-                    # make sure that if there is another group representing a newer version, that is read instead
-                    if 'unversioned' in version_names:
-                        version_names.remove('unversioned')
-                if len(version_names) > 1:
-                    # as of HDMF 1.6.1, extensions without a version are written under the group name "None"
-                    # make sure that if there is another group representing a newer version, that is read instead
-                    if 'None' in version_names:
-                        version_names.remove('None')
-                latest_version = version_names[-1]
-                ns_group = ns_group[latest_version]
-                reader = H5SpecReader(ns_group)
-                readers[ns] = reader
-                for spec_ns in reader.read_namespace('namespace'):
-                    deps[ns] = list()
-                    for s in spec_ns['schema']:
-                        dep = s.get('namespace')
-                        if dep is not None:
-                            deps[ns].append(dep)
-
-            order = cls._order_deps(deps)
-            for ns in order:
-                reader = readers[ns]
-                d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
-
+        if SPEC_LOC_ATTR not in file_obj.attrs:
+            msg = "No cached namespaces found in %s" % file_obj.filename
+            warnings.warn(msg)
             return d
+
+        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
+
+        if namespaces is None:
+            namespaces = list(spec_group.keys())
+
+        readers = dict()
+        deps = dict()
+        for ns in namespaces:
+            ns_group = spec_group[ns]
+            # NOTE: by default, objects within groups are iterated in alphanumeric order
+            version_names = list(ns_group.keys())
+            if len(version_names) > 1:
+                # prior to HDMF 1.6.1, extensions without a version were written under the group name "unversioned"
+                # make sure that if there is another group representing a newer version, that is read instead
+                if 'unversioned' in version_names:
+                    version_names.remove('unversioned')
+            if len(version_names) > 1:
+                # as of HDMF 1.6.1, extensions without a version are written under the group name "None"
+                # make sure that if there is another group representing a newer version, that is read instead
+                if 'None' in version_names:
+                    version_names.remove('None')
+            latest_version = version_names[-1]
+            ns_group = ns_group[latest_version]
+            reader = H5SpecReader(ns_group)
+            readers[ns] = reader
+            for spec_ns in reader.read_namespace('namespace'):
+                deps[ns] = list()
+                for s in spec_ns['schema']:
+                    dep = s.get('namespace')
+                    if dep is not None:
+                        deps[ns].append(dep)
+
+        order = cls._order_deps(deps)
+        for ns in order:
+            reader = readers[ns]
+            d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
+
+        return d
 
     @classmethod
     def _order_deps(cls, deps):
@@ -236,11 +261,22 @@ class HDF5IO(HDMFIO):
         """
         Convenience function to copy an HDF5 file while allowing external links to be resolved.
 
-        NOTE: The source file will be opened in 'r' mode and the destination file will be opened in 'w' mode
-              using h5py. To avoid possible collisions, care should be taken that, e.g., the source file is
-              not opened already when calling this function.
+        .. warning::
+
+            As of HDMF 2.0, this method is no longer supported and may be removed in a future version.
+            Please use the export method or h5py.File.copy method instead.
+
+        .. note::
+
+            The source file will be opened in 'r' mode and the destination file will be opened in 'w' mode
+            using h5py. To avoid possible collisions, care should be taken that, e.g., the source file is
+            not opened already when calling this function.
 
         """
+
+        warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
+                      "HDMF. Please use the export method or h5py.File.copy method instead.", DeprecationWarning)
+
         source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
                                                                                             'dest_filename',
                                                                                             'expand_external',
@@ -265,50 +301,126 @@ class HDF5IO(HDMFIO):
         dest_file.close()
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': True},
+            {'name': 'cache_spec', 'type': bool,
+             'doc': ('If True (default), cache specification to file (highly recommended). If False, do not cache '
+                     'specification to file. The appropriate specification will then need to be loaded prior to '
+                     'reading the file.'),
+             'default': True},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
+             'doc': 'If True (default), create external links to HDF5 Datasets. If False, copy HDF5 Datasets.',
+             'default': True},
             {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
+             'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
+             'default': True})
     def write(self, **kwargs):
+        """Write the container to an HDF5 file."""
         if self.__mode == 'r':
             raise UnsupportedOperation(("Cannot write to file %s in mode '%s'. "
                                         "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
-                                       % (self.__path, self.__mode))
+                                       % (self.source, self.__mode))
 
         cache_spec = popargs('cache_spec', kwargs)
         call_docval_func(super().write, kwargs)
         if cache_spec:
-            ref = self.__file.attrs.get(SPEC_LOC_ATTR)
-            spec_group = None
-            if ref is not None:
-                spec_group = self.__file[ref]
-            else:
-                path = 'specifications'  # do something to figure out where the specifications should go
-                spec_group = self.__file.require_group(path)
-                self.__file.attrs[SPEC_LOC_ATTR] = spec_group.ref
-            ns_catalog = self.manager.namespace_catalog
-            for ns_name in ns_catalog.namespaces:
-                ns_builder = self.__convert_namespace(ns_catalog, ns_name)
-                namespace = ns_catalog.get_namespace(ns_name)
-                group_name = '%s/%s' % (ns_name, namespace.version)
-                ns_group = spec_group.require_group(group_name)
-                writer = H5SpecWriter(ns_group)
-                ns_builder.export('namespace', writer=writer)
+            self.__cache_spec()
+
+    def __cache_spec(self):
+        ref = self.__file.attrs.get(SPEC_LOC_ATTR)
+        spec_group = None
+        if ref is not None:
+            spec_group = self.__file[ref]
+        else:
+            path = 'specifications'  # do something to figure out where the specifications should go
+            spec_group = self.__file.require_group(path)
+            self.__file.attrs[SPEC_LOC_ATTR] = spec_group.ref
+        ns_catalog = self.manager.namespace_catalog
+        for ns_name in ns_catalog.namespaces:
+            ns_builder = self.__convert_namespace(ns_catalog, ns_name)
+            namespace = ns_catalog.get_namespace(ns_name)
+            group_name = '%s/%s' % (ns_name, namespace.version)
+            if group_name in spec_group:
+                continue
+            ns_group = spec_group.create_group(group_name)
+            writer = H5SpecWriter(ns_group)
+            ns_builder.export('namespace', writer=writer)
+
+    _export_args = (
+        {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+        {'name': 'container', 'type': Container,
+         'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
+                 'exported'),
+         'default': None},
+        {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
+         'default': dict()},
+        {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
+         'default': True}
+    )
+
+    @docval(*_export_args)
+    def export(self, **kwargs):
+        """Export data read from a file from any backend to HDF5.
+
+        See :py:meth:`hdmf.backends.io.HDMFIO.export` for more details.
+        """
+        if self.__mode != 'w':
+            raise UnsupportedOperation("Cannot export to file %s in mode '%s'. Please use mode 'w'."
+                                       % (self.source, self.__mode))
+
+        src_io = getargs('src_io', kwargs)
+        write_args, cache_spec = popargs('write_args', 'cache_spec', kwargs)
+
+        if not isinstance(src_io, HDF5IO) and write_args.get('link_data', True):
+            raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write argument "
+                                       "link_data=True." % src_io.__class__.__name__)
+
+        write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
+        ckwargs = kwargs.copy()
+        ckwargs['write_args'] = write_args
+        call_docval_func(super().export, ckwargs)
+        if cache_spec:
+            self.__cache_spec()
+
+    @classmethod
+    @docval({'name': 'path', 'type': str, 'doc': 'the path to the destination HDF5 file'},
+            {'name': 'comm', 'type': 'Intracomm', 'doc': 'the MPI communicator to use for parallel I/O',
+             'default': None},
+            *_export_args)  # NOTE: src_io is required and is the second positional argument
+    def export_io(self, **kwargs):
+        """Export from one backend to HDF5 (class method).
+
+        Convenience function for :py:meth:`export` where you do not need to
+        instantiate a new `HDF5IO` object for writing. An `HDF5IO` object is created with mode 'w' and the given
+        arguments.
+
+        Example usage:
+
+        .. code-block:: python
+
+            old_io = HDF5IO('old.h5', 'r')
+            HDF5IO.export_io(path='new_copy.h5', src_io=old_io)
+
+        See :py:meth:`export` for more details.
+        """
+        path, comm = popargs('path', 'comm', kwargs)
+
+        with HDF5IO(path=path, comm=comm, mode='w') as write_io:
+            write_io.export(**kwargs)
 
     def read(self, **kwargs):
         if self.__mode == 'w' or self.__mode == 'w-' or self.__mode == 'x':
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
-                                       % (self.__path, self.__mode))
+                                       % (self.source, self.__mode))
         try:
             return call_docval_func(super().read, kwargs)
         except UnsupportedOperation as e:
-            if str(e) == 'Cannot build data. There are no values.':
+            if str(e) == 'Cannot build data. There are no values.':  # pragma: no cover
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
-                                           % (self.__path, self.__mode))
+                                           % (self.source, self.__mode))
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
+        if not self.__file:
+            raise UnsupportedOperation("Cannot read data from closed HDF5 file '%s'" % self.source)
         f_builder = self.__read.get(self.__file)
         # ignore cached specs when reading builder
         ignore = set()
@@ -319,6 +431,33 @@ class HDF5IO(HDMFIO):
             f_builder = self.__read_group(self.__file, ROOT_NAME, ignore=ignore)
             self.__read[self.__file] = f_builder
         return f_builder
+
+    def __set_written(self, builder):
+        """
+        Mark this builder as written.
+
+        :param builder: Builder object to be marked as written
+        :type builder: Builder
+        """
+        # currently all values in self._written_builders are True, so this could be a set but is a dict for
+        # future flexibility
+        builder_id = self.__builderhash(builder)
+        self._written_builders[builder_id] = True
+
+    def get_written(self, builder):
+        """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
+
+        :param builder: Builder object to get the written flag for
+        :type builder: Builder
+
+        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
+        """
+        builder_id = self.__builderhash(builder)
+        return self._written_builders.get(builder_id, False)
+
+    def __builderhash(self, obj):
+        """Return the ID of a builder for use as a unique hash."""
+        return id(obj)
 
     def __set_built(self, fpath, id, builder):
         """
@@ -403,21 +542,24 @@ class HDF5IO(HDMFIO):
                     # Reading links might be better suited in its own function
                     # get path of link (the key used for tracking what's been built)
                     target_path = link_type.path
+                    target_obj = sub_h5obj.file[target_path]
                     builder_name = os.path.basename(target_path)
                     parent_loc = os.path.dirname(target_path)
                     # get builder if already read, else build it
-                    builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.file[target_path].id)
+                    builder = self.__get_built(sub_h5obj.file.filename, target_obj.id)
                     if builder is None:
                         # NOTE: all links must have absolute paths
-                        if isinstance(sub_h5obj, Dataset):
-                            builder = self.__read_dataset(sub_h5obj, builder_name)
+                        if isinstance(target_obj, Dataset):
+                            builder = self.__read_dataset(target_obj, builder_name)
                         else:
-                            builder = self.__read_group(sub_h5obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename,  sub_h5obj.file[target_path].id, builder)
+                            builder = self.__read_group(target_obj, builder_name, ignore=ignore)
+                        self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
                     builder.location = parent_loc
                     link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
-                    link_builder.written = True
+                    self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
+                    if isinstance(link_type, ExternalLink):
+                        self.__open_links.append(sub_h5obj)
                 else:
                     builder = self.__get_built(sub_h5obj.file.filename, sub_h5obj.id)
                     obj_type = None
@@ -438,7 +580,7 @@ class HDF5IO(HDMFIO):
                 continue
         kwargs['source'] = h5obj.file.filename
         ret = GroupBuilder(name, **kwargs)
-        ret.written = True
+        self.__set_written(ret)
         return ret
 
     def __read_dataset(self, h5obj, name=None):
@@ -466,32 +608,44 @@ class HDF5IO(HDMFIO):
                 target_builder = self.__read_dataset(target)
                 self.__set_built(target.file.filename, target.id, target_builder)
                 if isinstance(scalar, RegionReference):
-                    kwargs['data'] = RegionBuilder(scalar, target_builder)
+                    d = RegionBuilder(scalar, target_builder)
                 else:
-                    kwargs['data'] = ReferenceBuilder(target_builder)
+                    d = ReferenceBuilder(target_builder)
+                kwargs['data'] = d
+                kwargs['dtype'] = d.dtype
             else:
                 kwargs["data"] = scalar
         elif ndims == 1:
             d = None
-            if h5obj.dtype.kind == 'O':
+            if h5obj.dtype.kind == 'O' and len(h5obj) > 0:
                 elem1 = h5obj[0]
                 if isinstance(elem1, (str, bytes)):
                     d = h5obj
                 elif isinstance(elem1, RegionReference):  # read list of references
                     d = BuilderH5RegionDataset(h5obj, self)
+                    kwargs['dtype'] = d.dtype
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
-            elif h5obj.dtype.kind == 'V':    # table
+                    kwargs['dtype'] = d.dtype
+            elif h5obj.dtype.kind == 'V':    # table / compound data type
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
+                kwargs['dtype'] = HDF5IO.__compound_dtype_to_list(h5obj.dtype, d.dtype)
             else:
                 d = h5obj
             kwargs["data"] = d
         else:
             kwargs["data"] = h5obj
         ret = DatasetBuilder(name, **kwargs)
-        ret.written = True
+        self.__set_written(ret)
+        return ret
+
+    @classmethod
+    def __compound_dtype_to_list(cls, h5obj_dtype, dset_dtype):
+        ret = []
+        for name, dtype in zip(h5obj_dtype.fields, dset_dtype):
+            ret.append({'name': name, 'dtype': dtype})
         return ret
 
     def __read_attrs(self, h5obj):
@@ -527,28 +681,48 @@ class HDF5IO(HDMFIO):
                 kwargs = {'driver': 'mpio', 'comm': self.comm}
             else:
                 kwargs = {}
-            self.__file = File(self.__path, open_flag, **kwargs)
+            self.__file = File(self.source, open_flag, **kwargs)
 
     def close(self):
         if self.__file is not None:
             self.__file.close()
 
+    def close_linked_files(self):
+        """Close all opened, linked-to files.
+
+        MacOS and Linux automatically releases the linked-to file after the linking file is closed, but Windows does
+        not, which prevents the linked-to file from being deleted or truncated. Use this method to close all opened,
+        linked-to files.
+        """
+        for obj in self.__open_links:
+            if obj:
+                obj.file.close()
+        self.__open_links = []
+
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True})
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
+             'default': True},
+            {'name': 'export_source', 'type': str,
+             'doc': 'The source of the builders when exporting', 'default': None})
     def write_builder(self, **kwargs):
-        f_builder, link_data, exhaust_dci = getargs('builder', 'link_data', 'exhaust_dci', kwargs)
+        f_builder = popargs('builder', kwargs)
+        link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
+        self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
+                          % (f_builder.name, self.source, kwargs))
         for name, gbldr in f_builder.groups.items():
-            self.write_group(self.__file, gbldr, exhaust_dci=exhaust_dci)
+            self.write_group(self.__file, gbldr, **kwargs)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, link_data, exhaust_dci=exhaust_dci)
+            self.write_dataset(self.__file, dbldr, **kwargs)
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
         self.__exhaust_dcis()
+        self.__set_written(f_builder)
+        self.logger.debug("Done writing GroupBuilder '%s' to path '%s'" % (f_builder.name, self.source))
 
     def __add_refs(self):
         '''
@@ -562,11 +736,14 @@ class HDF5IO(HDMFIO):
         failed = set()
         while len(self.__ref_queue) > 0:
             call = self.__ref_queue.popleft()
+            self.logger.debug("Adding reference with call id %d from queue (length %d)"
+                              % (id(call), len(self.__ref_queue)))
             try:
                 call()
             except KeyError:
                 if id(call) in failed:
                     raise RuntimeError('Unable to resolve reference')
+                self.logger.debug("Adding reference with call id %d failed. Appending call to queue" % id(call))
                 failed.add(id(call))
                 self.__ref_queue.append(call)
 
@@ -575,6 +752,7 @@ class HDF5IO(HDMFIO):
         Read and write from any queued DataChunkIterators in a round-robin fashion
         """
         while len(self.__dci_queue) > 0:
+            self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self.__dci_queue))
             dset, data = self.__dci_queue.popleft()
             if self.__write_chunk__(dset, data):
                 self.__dci_queue.append((dset, data))
@@ -642,6 +820,9 @@ class HDF5IO(HDMFIO):
             return cls.__dtypes.get(dtype)
         elif isinstance(dtype, dict):
             return cls.__dtypes.get(dtype['reftype'])
+        elif isinstance(dtype, np.dtype):
+            # NOTE: some dtypes may not be supported, but we need to support writing of read-in compound types
+            return dtype
         else:
             return np.dtype([(x['name'], cls.__resolve_dtype_helper__(x['dtype'])) for x in dtype])
 
@@ -663,16 +844,22 @@ class HDF5IO(HDMFIO):
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
                         value = np.array(value)
+                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
+                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
                 self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
             else:
+                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
+                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                 obj.attrs[key] = value                   # a regular scalar
 
     def _make_attr_ref_filler(self, obj, key, value):
         '''
             Make the callable for setting references to attributes
         '''
+        self.logger.debug("Queueing set %s '%s' attribute '%s' to %s"
+                          % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
         if isinstance(value, (tuple, list)):
             def _filler():
                 ret = list()
@@ -686,13 +873,18 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
+            {'name': 'link_data', 'type': bool,
+             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
+             'default': True},
+            {'name': 'export_source', 'type': str,
+             'doc': 'The source of the builders when exporting', 'default': None},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
-
-        parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
-        if builder.written:
+        parent, builder = popargs('parent', 'builder', kwargs)
+        self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
+        if self.get_written(builder):
             group = parent[builder.name]
         else:
             group = parent.create_group(builder.name)
@@ -701,12 +893,12 @@ class HDF5IO(HDMFIO):
         if subgroups:
             for subgroup_name, sub_builder in subgroups.items():
                 # do not create an empty group without attributes or links
-                self.write_group(group, sub_builder, exhaust_dci=exhaust_dci)
+                self.write_group(group, sub_builder, **kwargs)
         # write all datasets
         datasets = builder.datasets
         if datasets:
             for dset_name, sub_builder in datasets.items():
-                self.write_dataset(group, sub_builder, exhaust_dci=exhaust_dci)
+                self.write_dataset(group, sub_builder, **kwargs)
         # write all links
         links = builder.links
         if links:
@@ -714,13 +906,17 @@ class HDF5IO(HDMFIO):
                 self.write_link(group, sub_builder)
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        builder.written = True
+        self.__set_written(builder)
         return group
 
     def __get_path(self, builder):
+        """Get the path to the builder.
+
+        Note that the root of the file has no name - it is just "/". Thus, the name of the root container is ignored.
+        """
         curr = builder
         names = list()
-        while curr is not None and curr.name != ROOT_NAME:
+        while curr.parent is not None:
             names.append(curr.name)
             curr = curr.parent
         delim = "/"
@@ -732,43 +928,54 @@ class HDF5IO(HDMFIO):
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        if builder.written:
+        self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
+        if self.get_written(builder):
             return None
         name = builder.name
         target_builder = builder.builder
         path = self.__get_path(target_builder)
         # source will indicate target_builder's location
-        if parent.file.filename == target_builder.source:
+        if builder.source == target_builder.source:
             link_obj = SoftLink(path)
+            self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                              % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
             parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
             if target_builder.location is not None:
-                path = target_builder.location + path
+                path = target_builder.location + "/" + target_builder.name
             link_obj = ExternalLink(relative_path, path)
+            self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                              % (parent.name, name, link_obj.filename, link_obj.path))
         else:
             msg = 'cannot create external link to %s' % path
             raise ValueError(msg)
         parent[name] = link_obj
-        builder.written = True
+        self.__set_written(builder)
         return link_obj
 
-    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
+    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},  # noqa: C901
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
-             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently', 'default': True},
+             'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
+             'default': True},
+            {'name': 'export_source', 'type': str,
+             'doc': 'The source of the builders when exporting', 'default': None},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
 
         The function uses other dataset-dependent write functions, e.g,
-        __scalar_fill__, __list_fill__ and __setup_chunked_dset__ to write the data.
+        `__scalar_fill__`, `__list_fill__`, and `__setup_chunked_dset__` to write the data.
         """
-        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
-        if builder.written:
+        parent, builder = popargs('parent', 'builder', kwargs)
+        link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
+        self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
+        if self.get_written(builder):
+            self.logger.debug("    DatasetBuilder '%s' is already written" % builder.name)
             return None
         name = builder.name
         data = builder.data
@@ -786,17 +993,30 @@ class HDF5IO(HDMFIO):
 
         # The user provided an existing h5py dataset as input and asked to create a link to the dataset
         if isinstance(data, Dataset):
-            # Create a Soft/External link to the dataset
-            if link_data:
-                data_filename = os.path.abspath(data.file.filename)
+            data_filename = os.path.abspath(data.file.filename)
+            if export_source is not None:
+                export_source = os.path.abspath(export_source)
+            # if exporting and dset is in same file as export source, then the current dset could be linked or the
+            # actual dset in the right location
+            if link_data and (data_filename != export_source or parent.name != data.parent.name):
+                # Create a Soft/External link to the dataset
                 parent_filename = os.path.abspath(parent.file.filename)
-                if data_filename != parent_filename:
-                    link = ExternalLink(os.path.relpath(data_filename, os.path.dirname(parent_filename)), data.name)
+                if data_filename != parent_filename and data_filename != export_source:
+                    relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
+                    link = ExternalLink(relative_path, data.name)
+                    self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                                      % (parent.name, name, link.filename, link.path))
                 else:
                     link = SoftLink(data.name)
+                    self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                                      % (parent.name, name, link.path))
                 parent[name] = link
             # Copy the dataset
+            # TODO add option for case where there are multiple links to the same dataset within a file:
+            # instead of copying the dset N times, copy it once and create soft links to it within the file
             else:
+                self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
+                                  % (data.file.filename, data.name, parent.name, name))
                 parent.copy(source=data,
                             dest=parent,
                             name=name,
@@ -820,10 +1040,16 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                builder.written = True
+                self.__set_written(builder)
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                  "object references. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
+                    self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
                     ret = list()
                     for item in data:
                         new_item = list(item)
@@ -833,6 +1059,7 @@ class HDF5IO(HDMFIO):
                     dset = parent[name]
                     dset[:] = ret
                     self.set_attributes(dset, attributes)
+
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
             else:
@@ -844,10 +1071,16 @@ class HDF5IO(HDMFIO):
             # Write a scalar data region reference dataset
             if isinstance(data, RegionBuilder):
                 dset = parent.require_dataset(name, shape=(), dtype=_dtype)
-                builder.written = True
+                self.__set_written(builder)
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing a "
+                                  "region reference. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
+                    self.logger.debug("Resolving region reference and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
                     ref = self.__get_ref(data.builder, data.region)
                     dset = parent[name]
                     dset[()] = ref
@@ -855,10 +1088,16 @@ class HDF5IO(HDMFIO):
             # Write a scalar object reference dataset
             elif isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
-                builder.written = True
+                self.__set_written(builder)
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing an "
+                                  "object reference. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
                 @self.__queue_ref
                 def _filler():
+                    self.logger.debug("Resolving object reference and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
                     ref = self.__get_ref(data.builder)
                     dset = parent[name]
                     dset[()] = ref
@@ -868,10 +1107,16 @@ class HDF5IO(HDMFIO):
                 # Write a array of region references
                 if options['dtype'] == 'region':
                     dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
-                    builder.written = True
+                    self.__set_written(builder)
+                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                      "region references. attributes: %s"
+                                      % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
+                        self.logger.debug("Resolving region references and setting attribute on dataset '%s' "
+                                          "containing attributes: %s"
+                                          % (name, list(attributes.keys())))
                         refs = list()
                         for item in data:
                             refs.append(self.__get_ref(item.builder, item.region))
@@ -880,11 +1125,17 @@ class HDF5IO(HDMFIO):
                         self.set_attributes(dset, attributes)
                 # Write array of object references
                 else:
-                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, ** options['io_settings'])
-                    builder.written = True
+                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                    self.__set_written(builder)
+                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                      "object references. attributes: %s"
+                                      % (name, list(attributes.keys())))
 
                     @self.__queue_ref
                     def _filler():
+                        self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
+                                          "containing attributes: %s"
+                                          % (name, list(attributes.keys())))
                         refs = list()
                         for item in data:
                             refs.append(self.__get_ref(item))
@@ -913,10 +1164,9 @@ class HDF5IO(HDMFIO):
         # Validate the attributes on the linked dataset
         elif len(attributes) > 0:
             pass
-        builder.written = True
+        self.__set_written(builder)
         if exhaust_dci:
             self.__exhaust_dcis()
-        return
 
     @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):
@@ -972,6 +1222,9 @@ class HDF5IO(HDMFIO):
                 io_settings['dtype'] = options['dtype']
             else:
                 io_settings['dtype'] = data.dtype
+            if isinstance(io_settings['dtype'], str):
+                # map to real dtype if we were given a string
+                io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
@@ -1086,15 +1339,19 @@ class HDF5IO(HDMFIO):
         if container is None:
             return None
         if isinstance(container, Builder):
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             if isinstance(container, LinkBuilder):
                 builder = container.target_builder
             else:
                 builder = container
         elif isinstance(container, ReferenceBuilder):
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.builder.name))
             builder = container.builder
         else:
+            self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
         path = self.__get_path(builder)
+        self.logger.debug("Getting reference at path '%s'" % path)
         if isinstance(container, RegionBuilder):
             region = container.region
         if region is not None:
@@ -1110,6 +1367,8 @@ class HDF5IO(HDMFIO):
             return self.__is_ref(dtype.dtype)
         if isinstance(dtype, RefSpec):
             return True
+        if isinstance(dtype, dict):  # may be dict from reading a compound dataset
+            return self.__is_ref(dtype['dtype'])
         if isinstance(dtype, str):
             return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
         return False
@@ -1130,9 +1389,9 @@ class HDF5IO(HDMFIO):
         # dependency
         self.__ref_queue.append(func)
 
-    def __rec_get_ref(self, l):
+    def __rec_get_ref(self, ref_list):
         ret = list()
-        for elem in l:
+        for elem in ref_list:
             if isinstance(elem, (list, tuple)):
                 ret.append(self.__rec_get_ref(elem))
             elif isinstance(elem, (Builder, Container)):
@@ -1147,3 +1406,21 @@ class HDF5IO(HDMFIO):
         Return the HDF5 file mode. One of ("w", "r", "r+", "a", "w-", "x").
         """
         return self.__mode
+
+    @classmethod
+    @docval(*get_docval(H5DataIO.__init__))
+    def set_dataio(cls, **kwargs):
+        """
+        Wrap the given Data object with an H5DataIO.
+
+        This method is provided merely for convenience. It is the equivalent
+        of the following:
+
+        ```
+        from hdmf.backends.hdf5 import H5DataIO
+        data = ...
+        data = H5DataIO(data)
+        ```
+        """
+        cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
+        return H5DataIO(*cargs, **ckwargs)

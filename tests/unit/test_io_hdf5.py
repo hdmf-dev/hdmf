@@ -21,7 +21,7 @@ class HDF5Encoder(json.JSONEncoder):
                 try:
                     ret = t(obj)
                     break
-                except:  # noqa: F722
+                except:  # noqa: E722
                     pass
             if ret is None:
                 return obj
@@ -219,15 +219,6 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io.write_builder(self.builder)
         builder = io.read_builder()
         self.assertBuilderEqual(builder, self.builder)
-        io.close()
-
-    def test_overwrite_written(self):
-        self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
-        io.write_builder(self.builder)
-        builder = io.read_builder()
-        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
-            builder.written = False
         io.close()
 
     def test_dataset_shape(self):

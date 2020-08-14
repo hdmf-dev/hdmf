@@ -1,5 +1,7 @@
-codecov==2.0.15
-coverage==5.0.2
-flake8==3.7.9
+codecov==2.1.8
+coverage==5.2
+flake8==3.8.3
+flake8-debugger==3.1.0
+flake8-print==3.1.4
 python-dateutil==2.8.1
-tox==3.14.3
+tox==3.17.1

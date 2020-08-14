@@ -28,7 +28,6 @@ class Builder(dict, metaclass=ABCMeta):
             self.__source = parent.source
         else:
             self.__source = None
-        self.__written = False
 
     @property
     def path(self):
@@ -41,17 +40,6 @@ class Builder(dict, metaclass=ABCMeta):
             s.append(c.name)
             c = c.parent
         return "/".join(s[::-1])
-
-    @property
-    def written(self):
-        ''' The source of this Builder '''
-        return self.__written
-
-    @written.setter
-    def written(self, s):
-        if self.__written and not s:
-            raise ValueError("cannot change written to not written")
-        self.__written = s
 
     @property
     def name(self):
@@ -197,15 +185,15 @@ class GroupBuilder(BaseBuilder):
         source when this source is set
         '''
         super(GroupBuilder, self.__class__).source.fset(self, s)
-        for g in self.groups.values():
-            if g.source is None:
-                g.source = s
-        for d in self.datasets.values():
-            if d.source is None:
-                d.source = s
-        for l in self.links.values():
-            if l.source is None:
-                l.source = s
+        for group in self.groups.values():
+            if group.source is None:
+                group.source = s
+        for dset in self.datasets.values():
+            if dset.source is None:
+                dset.source = s
+        for link in self.links.values():
+            if link.source is None:
+                link.source = s
 
     @property
     def groups(self):
