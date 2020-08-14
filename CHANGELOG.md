@@ -1,5 +1,13 @@
 # HDMF Changelog
 
+## HDMF 2.2.0 (August 14, 2020)
+
+### New features
+- Add ability to get list of tuples when indexing a DynamicTable. i.e. disable conversion to pandas.DataFrame @ajtritt (#418)
+
+### Internal improvements
+- Fix error when constructing DynamicTable with DataChunkIterators as columns @ajtritt (#418)
+
 ## HDMF 2.1.0 (August 10, 2020)
 
 ### New features

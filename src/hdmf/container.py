@@ -472,7 +472,7 @@ class Data(AbstractContainer):
         return self.get(args)
 
     def get(self, args):
-        if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list)):
+        if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list, np.ndarray)):
             return [self.data[i] for i in args]
         return self.data[args]
 
