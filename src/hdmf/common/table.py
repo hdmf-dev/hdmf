@@ -6,6 +6,7 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 from h5py import Dataset
 import numpy as np
 import pandas as pd
+import re
 from collections import OrderedDict
 from warnings import warn
 
@@ -721,42 +722,58 @@ class DynamicTable(Container):
             # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
             # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
-            if np.issubdtype(type(arg), np.integer):
-                ret = OrderedDict()
-                ret['id'] = self.id.data[arg]
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    ret[name] = col.get(arg, df=df, **kwargs)
-            # index with a python slice (or single integer) to select one or multiple rows
-            elif isinstance(arg, slice):
-                ret = OrderedDict()
-                ret['id'] = self.id.data[arg]
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+            try:
+                if np.issubdtype(type(arg), np.integer):
+                    ret = OrderedDict()
+                    ret['id'] = self.id.data[arg]
+                    for name in self.colnames:
+                        col = self.__df_cols[self.__colids[name]]
                         ret[name] = col.get(arg, df=df, **kwargs)
-                    else:
-                        currdata = col.get(arg, df=df, **kwargs)
-                        ret[name] = currdata
-            # index by a list of ints, return multiple rows
-            elif isinstance(arg, (tuple, list, np.ndarray)):
-                if isinstance(arg, np.ndarray):
-                    if len(arg.shape) != 1:
-                        raise ValueError("cannot index DynamicTable with multiple dimensions")
-                ret = OrderedDict()
-                ret['id'] = (self.id.data[arg]
-                             if isinstance(self.id.data, np.ndarray)
-                             else [self.id.data[i] for i in arg])
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
-                    elif isinstance(col.data, (list, np.ndarray)):
-                        ret[name] = col.get(arg, df=df, **kwargs)
-                    else:
-                        ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
-            else:
-                raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+                # index with a python slice (or single integer) to select one or multiple rows
+                elif isinstance(arg, slice):
+                    ret = OrderedDict()
+                    ret['id'] = self.id.data[arg]
+                    for name in self.colnames:
+                        col = self.__df_cols[self.__colids[name]]
+                        if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                            ret[name] = col.get(arg, df=df, **kwargs)
+                        else:
+                            currdata = col.get(arg, df=df, **kwargs)
+                            ret[name] = currdata
+                # index by a list of ints, return multiple rows
+                elif isinstance(arg, (tuple, list, np.ndarray)):
+                    if isinstance(arg, np.ndarray):
+                        if len(arg.shape) != 1:
+                            raise ValueError("cannot index DynamicTable with multiple dimensions")
+                    ret = OrderedDict()
+                    ret['id'] = (self.id.data[arg]
+                                 if isinstance(self.id.data, np.ndarray)
+                                 else [self.id.data[i] for i in arg])
+                    for name in self.colnames:
+                        col = self.__df_cols[self.__colids[name]]
+                        if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                            ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
+                        elif isinstance(col.data, (list, np.ndarray)):
+                            ret[name] = col.get(arg, df=df, **kwargs)
+                        else:
+                            ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
+                else:
+                    raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+            except ValueError as ve:
+                x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
+                if x:
+                    msg = ("Row index %s out of range for %s '%s' (length %d)."
+                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                    raise IndexError(msg)
+                else:  # pragma: no cover
+                    raise ve
+            except IndexError as ie:
+                if str(ie) == 'list index out of range':
+                    msg = ("Row index out of range for %s '%s' (length %d)."
+                           % (self.__class__.__name__, self.name, len(self)))
+                    raise IndexError(msg)
+                else:  # pragma: no cover
+                    raise ie
 
             if df:
                 # reformat objects to fit into a pandas DataFrame
