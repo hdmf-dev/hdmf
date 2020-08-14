@@ -458,6 +458,12 @@ Fields:
         self.assertTupleEqual(table.colnames, tuple())
         self.assertTupleEqual(table.columns, tuple())
 
+    def test_iter(self):
+        table = self.with_columns_and_data()
+        for i, row in enumerate(table):
+            self.assertTrue(isinstance(row, pd.DataFrame))
+            self.assertTrue(table[i].equals(row))
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -471,6 +477,12 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
         return table
+
+    def test_iter(self):
+        table = self.roundtripContainer()
+        for i, row in enumerate(table):
+            self.assertTrue(isinstance(row, pd.DataFrame))
+            self.assertTrue(table[i].equals(row))
 
 
 class TestEmptyDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
