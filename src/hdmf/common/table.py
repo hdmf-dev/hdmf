@@ -471,10 +471,6 @@ class DynamicTable(Container):
         """Number of rows in the table"""
         return len(self.id)
 
-    def iter_rows(self):
-        for i in range(len(self)):
-            yield i, self[i]
-
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
