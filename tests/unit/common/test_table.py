@@ -464,6 +464,12 @@ Fields:
             self.assertTrue(isinstance(row, pd.DataFrame))
             self.assertTrue(table[i].equals(row))
 
+    def test_index_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        msg = "Row index out of range for DynamicTable 'with_columns_and_data' (length 5)."
+        with self.assertRaisesWith(IndexError, msg):
+            table[5]
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -483,6 +489,12 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         for i, row in enumerate(table):
             self.assertTrue(isinstance(row, pd.DataFrame))
             self.assertTrue(table[i].equals(row))
+
+    def test_index_out_of_bounds(self):
+        table = self.roundtripContainer()
+        msg = "Row index 5 out of range for DynamicTable 'root' (length 2)."
+        with self.assertRaisesWith(IndexError, msg):
+            table[5]
 
 
 class TestEmptyDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
