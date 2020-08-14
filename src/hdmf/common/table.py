@@ -133,6 +133,12 @@ class VectorIndex(VectorData):
         return self.target.get(slice(start, end), **kwargs)
 
     def __getitem__(self, arg):
+        """
+        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+
+        :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
+        :return: Scalar or list of values retrieved
+        """
         return self.get(arg)
 
     def get(self, arg, **kwargs):
