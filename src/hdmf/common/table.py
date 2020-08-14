@@ -471,9 +471,9 @@ class DynamicTable(Container):
         """Number of rows in the table"""
         return len(self.id)
 
-    def __iter__(self):
+    def iter_rows(self):
         for i in range(len(self)):
-            yield self[i]
+            yield i, self[i]
 
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},

@@ -458,9 +458,9 @@ Fields:
         self.assertTupleEqual(table.colnames, tuple())
         self.assertTupleEqual(table.columns, tuple())
 
-    def test_iter(self):
+    def test_iterrows(self):
         table = self.with_columns_and_data()
-        for i, row in enumerate(table):
+        for i, row in table.iter_rows():
             self.assertTrue(isinstance(row, pd.DataFrame))
             self.assertTrue(table[i].equals(row))
 
@@ -486,7 +486,7 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
     def test_iter(self):
         table = self.roundtripContainer()
-        for i, row in enumerate(table):
+        for i, row in table.iter_rows():
             self.assertTrue(isinstance(row, pd.DataFrame))
             self.assertTrue(table[i].equals(row))
 
