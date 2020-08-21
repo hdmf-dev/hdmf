@@ -503,7 +503,7 @@ class TypeMap:
                     x['default'] = default_name
 
     def build_docval(self, base, addl_fields, name=None, default_name=None):
-        """Build docval for new class
+        """Build docval for auto-generated class
 
         :param base: The base class of the new class
         :param addl_fields: Dict of additional fields that are not in the base class
