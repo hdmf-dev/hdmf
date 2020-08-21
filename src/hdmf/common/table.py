@@ -6,6 +6,7 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 from h5py import Dataset
 import numpy as np
 import pandas as pd
+import re
 from collections import OrderedDict
 from warnings import warn
 
@@ -45,6 +46,9 @@ class VectorData(Data):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
         self.append(val)
+
+    def get(self, key, **kwargs):
+        return super().get(key)
 
 
 @register_class('VectorIndex')
@@ -122,7 +126,8 @@ class VectorIndex(VectorData):
         Internal helper function used by __getitem__ to retrieve a data value from self.target
 
         :param arg: Integer index into this VectorIndex indicating the element we want to retrieve from the target
-        :param kwargs: keyword arguments to pass into *self.target.get*
+        :param kwargs: any additional arguments to *get* method of the self.target VectorData
+        :return: Scalar or list of values retrieved
         """
         start = 0 if arg == 0 else self.data[arg-1]
         end = self.data[arg]
@@ -142,7 +147,7 @@ class VectorIndex(VectorData):
         Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
-        :param kwargs: keyword arguments to pass into *target.get*
+        :param kwargs: any additional arguments to *get* method of the self.target VectorData
         :return: Scalar or list of values retrieved
         """
         if np.isscalar(arg):
@@ -299,7 +304,9 @@ class DynamicTable(Container):
             lens = [len(c) for c in colset.values()]
             if not all(i == lens[0] for i in lens):
                 raise ValueError("columns must be the same length")
-            if lens[0] != len(id):
+            if len(lens) > 0 and lens[0] != len(id):
+                # the first part of this conditional is needed in the
+                # event that all columns are AbstractDataChunkIterators
                 if len(id) > 0:
                     raise ValueError("must provide same number of ids as length of columns")
                 else:  # set ids to: 0 to length of columns - 1
@@ -715,42 +722,58 @@ class DynamicTable(Container):
             # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
             # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
-            if np.issubdtype(type(arg), np.integer):
-                ret = OrderedDict()
-                ret['id'] = self.id.data[arg]
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    ret[name] = col[arg]
-            # index with a python slice (or single integer) to select one or multiple rows
-            elif isinstance(arg, slice):
-                ret = OrderedDict()
-                ret['id'] = self.id.data[arg]
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        ret[name] = col[arg]
-                    else:
-                        currdata = col[arg]
-                        ret[name] = currdata
-            # index by a list of ints, return multiple rows
-            elif isinstance(arg, (tuple, list, np.ndarray)):
-                if isinstance(arg, np.ndarray):
-                    if len(arg.shape) != 1:
-                        raise ValueError("cannot index DynamicTable with multiple dimensions")
-                ret = OrderedDict()
-                ret['id'] = (self.id.data[arg]
-                             if isinstance(self.id.data, np.ndarray)
-                             else [self.id.data[i] for i in arg])
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                        ret[name] = [x for x in col[arg]]
-                    elif isinstance(col.data, np.ndarray):
-                        ret[name] = col[arg]
-                    else:
-                        ret[name] = [col[i] for i in arg]
-            else:
-                raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+            try:
+                if np.issubdtype(type(arg), np.integer):
+                    ret = OrderedDict()
+                    ret['id'] = self.id.data[arg]
+                    for name in self.colnames:
+                        col = self.__df_cols[self.__colids[name]]
+                        ret[name] = col.get(arg, df=df, **kwargs)
+                # index with a python slice (or single integer) to select one or multiple rows
+                elif isinstance(arg, slice):
+                    ret = OrderedDict()
+                    ret['id'] = self.id.data[arg]
+                    for name in self.colnames:
+                        col = self.__df_cols[self.__colids[name]]
+                        if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                            ret[name] = col.get(arg, df=df, **kwargs)
+                        else:
+                            currdata = col.get(arg, df=df, **kwargs)
+                            ret[name] = currdata
+                # index by a list of ints, return multiple rows
+                elif isinstance(arg, (tuple, list, np.ndarray)):
+                    if isinstance(arg, np.ndarray):
+                        if len(arg.shape) != 1:
+                            raise ValueError("cannot index DynamicTable with multiple dimensions")
+                    ret = OrderedDict()
+                    ret['id'] = (self.id.data[arg]
+                                 if isinstance(self.id.data, np.ndarray)
+                                 else [self.id.data[i] for i in arg])
+                    for name in self.colnames:
+                        col = self.__df_cols[self.__colids[name]]
+                        if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                            ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
+                        elif isinstance(col.data, (list, np.ndarray)):
+                            ret[name] = col.get(arg, df=df, **kwargs)
+                        else:
+                            ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
+                else:
+                    raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+            except ValueError as ve:
+                x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
+                if x:
+                    msg = ("Row index %s out of range for %s '%s' (length %d)."
+                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                    raise IndexError(msg)
+                else:  # pragma: no cover
+                    raise ve
+            except IndexError as ie:
+                if str(ie) == 'list index out of range':
+                    msg = ("Row index out of range for %s '%s' (length %d)."
+                           % (self.__class__.__name__, self.name, len(self)))
+                    raise IndexError(msg)
+                else:  # pragma: no cover
+                    raise ie
 
             if df:
                 # reformat objects to fit into a pandas DataFrame
@@ -967,7 +990,7 @@ class DynamicTableRegion(VectorData):
     def __getitem__(self, arg):
         return self.get(arg)
 
-    def get(self, arg, index=False):
+    def get(self, arg, index=False, **kwargs):
         """
         Subset the DynamicTableRegion
 
@@ -988,7 +1011,7 @@ class DynamicTableRegion(VectorData):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
             if not index:
-                ret = self.table[self.data[arg]]
+                ret = self.table.get(ret, **kwargs)
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
@@ -1086,7 +1109,26 @@ class VocabData(VectorData):
     def __getitem__(self, arg):
         return self.get(arg, index=False)
 
-    def get(self, arg, index=False, join=False):
+    def _get_helper(self, idx, index=False, join=False, **kwargs):
+        """
+        A helper function for getting vocabulary elements
+
+        This helper function contains the post-processing of retrieve indices. By separating this,
+        it allows customizing processing of indices before resolving the vocabulary elements
+        """
+        if index:
+            return idx
+        if not np.isscalar(idx):
+            orig_shape = idx.shape
+            ret = self.vocabulary[idx.ravel()]
+            ret = ret.reshape(orig_shape)
+            if join:
+                ret = ''.join(ret.ravel())
+        else:
+            ret = self.vocabulary[idx]
+        return ret
+
+    def get(self, arg, index=False, join=False, **kwargs):
         """
         Return vocabulary elements for the given argument.
 
@@ -1099,17 +1141,7 @@ class VocabData(VectorData):
             elements if *join* is True.
         """
         idx = self.data[arg]
-        if index:
-            return idx
-        if not np.isscalar(idx):
-            orig_shape = idx.shape
-            ret = self.vocabulary[idx.ravel()]
-            ret = ret.reshape(orig_shape)
-            if join:
-                ret = ''.join(ret.ravel())
-        else:
-            ret = self.vocabulary[idx]
-        return ret
+        return self._get_helper(idx, index=index, join=join, **kwargs)
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'},
             {'name': 'index', 'type': bool, 'doc': 'whether or not the value being added is an index',

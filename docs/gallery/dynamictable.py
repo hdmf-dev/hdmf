@@ -290,6 +290,20 @@ table[np.s_[0:10:2]]  # equivalent to table[0:10:2, 'col1']
 #   the second element.
 
 ###############################################################################
+# Iterating over rows
+# --------------------
+# To iterate over the rows of a :py:class:`~hdmf.common.table.DynamicTable`,
+# first convert the :py:class:`~hdmf.common.table.DynamicTable` to a
+# :py:class:`~pandas.DataFrame` using
+# :py:meth:`DynamicTable.to_dataframe <hdmf.common.table.DynamicTable>`.
+# For more information on iterating over a :py:class:`~pandas.DataFrame`,
+# see https://pandas.pydata.org/pandas-docs/stable/user_guide/basics.html#iteration
+
+df = table.to_dataframe()
+for row in df.itertuples():
+    print(row)
+
+###############################################################################
 # Accessing the column data types
 # -------------------------------
 # To access the :py:class:`~hdmf.common.table.VectorData` or
