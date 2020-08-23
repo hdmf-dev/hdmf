@@ -569,7 +569,7 @@ class TypeMap:
             if f == 'help':  # (legacy) do not add help to any part of class object
                 continue
 
-            if getattr(field_spec, 'quantity', None) in ('*', '?'):
+            if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
                 # if its a MultiContainerInterface, also build clsconf
                 clsconf.append(dict(
                     attr=f,
