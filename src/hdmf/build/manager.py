@@ -6,9 +6,8 @@ import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
-from ..spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader,
-                   ZERO_OR_MANY, ONE_OR_MANY)
-from ..spec.spec import BaseStorageSpec
+from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader
+from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 
 
@@ -594,6 +593,8 @@ class TypeMap:
 
         if len(fields):
             classdict.update({base._fieldsname: tuple(fields)})
+        if len(clsconf):
+            classdict.update(__clsconf__=clsconf)
 
         docval_args = self.build_docval(base, addl_fields, name, default_name)
 
@@ -612,8 +613,6 @@ class TypeMap:
 
             classdict.update(__init__=__init__)
 
-        if len(clsconf):
-            classdict.update(__clsconf__=clsconf)
         return classdict
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
