@@ -514,7 +514,7 @@ class TypeMap:
         docval_args = list(get_docval(base.__init__))
         for f, field_spec in addl_fields.items():
             docval_arg = dict(name=f, doc=field_spec.doc)
-            if getattr(field_spec, 'quantity', None) in ('*', '?'):
+            if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
                 docval_arg.update(type=(list, tuple))
             else:
                 dtype = self.__get_type(field_spec)
