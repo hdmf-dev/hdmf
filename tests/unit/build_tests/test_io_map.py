@@ -406,6 +406,17 @@ class TestDynamicContainer(TestCase):
                 self.assertTupleEqual(arg['type'], (float, np.float32, np.float64, np.int8, np.int16, np.int32,
                                                     np.int64, int, np.uint8, np.uint16, np.uint32, np.uint64))
 
+    def test_dynamic_container_shape(self):
+        baz_spec = GroupSpec('A test extension with no Container class',
+                             data_type_def='Baz', data_type_inc=self.bar_spec,
+                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'numeric',
+                                                       shape=[None])])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        for arg in get_docval(cls.__init__):
+            if arg['name'] == 'attr3':
+                self.assertListEqual(arg['shape'], [None])
+
     def test_multi_container_spec(self):
         multi_spec = GroupSpec('A test extension that contains a multi',
                                data_type_def='Multi',
