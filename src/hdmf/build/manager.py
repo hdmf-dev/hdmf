@@ -518,8 +518,6 @@ class TypeMap:
                 docval_arg.update(type=(list, tuple, dict, self.__get_type(field_spec)))
             else:
                 dtype = self.__get_type(field_spec)
-                if dtype is None:
-                    raise ValueError("Got \"None\" for field specification: {}".format(field_spec))
                 docval_arg.update(type=dtype)
                 if getattr(field_spec, 'shape', None) is not None:
                     docval_arg.update(shape=field_spec.shape)
