@@ -417,6 +417,20 @@ class TestDynamicContainer(TestCase):
             if arg['name'] == 'attr3':
                 self.assertListEqual(arg['shape'], [None])
 
+    def test_dynamic_container_default(self):
+        """Test that dynamic class generation for an extended type with an overridden default value works."""
+        baz_spec = GroupSpec('A test extension with no Container class',
+                             data_type_def='Baz', data_type_inc=self.bar_spec,
+                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                                       required=False, default_value=10.0)])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        Baz = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        for arg in get_docval(Baz.__init__):
+            if arg['name'] == 'attr3':
+                self.assertEqual(arg['default'], 10.0)
+        obj = Baz('My Bar', [1, 2, 3, 4], 'string attribute', attr2=1000)
+        self.assertEqual(obj.attr3, 10.0)
+
     def test_multi_container_spec(self):
         multi_spec = GroupSpec('A test extension that contains a multi',
                                data_type_def='Multi',
