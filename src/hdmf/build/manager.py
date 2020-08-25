@@ -502,7 +502,7 @@ class TypeMap:
                 if x['name'] == 'name':
                     x['default'] = default_name
 
-    def build_docval(self, base, addl_fields, name=None, default_name=None):
+    def _build_docval(self, base, addl_fields, name=None, default_name=None):
         """Build docval for auto-generated class
 
         :param base: The base class of the new class
@@ -594,7 +594,7 @@ class TypeMap:
         if len(clsconf):
             classdict.update(__clsconf__=clsconf)
 
-        docval_args = self.build_docval(base, addl_fields, name, default_name)
+        docval_args = self._build_docval(base, addl_fields, name, default_name)
 
         if len(fields) or name is not None:
             @docval(*docval_args)
