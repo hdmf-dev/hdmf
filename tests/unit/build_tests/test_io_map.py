@@ -1,6 +1,7 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
                         ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
+from hdmf.container import MultiContainerInterface
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator
@@ -9,6 +10,7 @@ from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import h5py
 import unittest
 
 from tests.unit.utils import CORE_NAMESPACE
@@ -453,6 +455,33 @@ class TestDynamicContainer(TestCase):
 
         multi = Multi(bars=[Bar('my_bar', list(range(10)), 'value1', 10)])
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+
+    def test_build_docval(self):
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(
+            attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
+            attr4=AttributeSpec('attr4', 'another example float attribute', 'float')
+        )
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        assert list(docval) == [
+            {'name': 'data',
+             'type': (
+                 hdmf.data_utils.DataIO, np.ndarray, list, tuple, h5py.Dataset,
+                 hdmf.query.HDMFDataset, hdmf.data_utils.AbstractDataChunkIterator),
+             'doc': 'some data'},
+            {'name': 'attr1', 'type': str,
+             'doc': 'an attribute'},
+            {'name': 'attr2', 'type': int,
+             'doc': 'another attribute'},
+            {'name': 'attr3', 'doc': 'an example numeric attribute',
+             'type': (float, np.float32, np.float64, np.int8, np.int16,
+                      np.int32, np.int64, int, np.uint8, np.uint16,
+                      np.uint32, np.uint64)},
+            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
+            {'name': 'attr4', 'doc': 'another example float attribute',
+             'type': (float, np.float32, np.float64)}
+        ]
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
