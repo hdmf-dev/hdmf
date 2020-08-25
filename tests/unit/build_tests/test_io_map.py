@@ -4,9 +4,10 @@ from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager
 from hdmf.container import MultiContainerInterface
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
+from hdmf.query import HDMFDataset
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
@@ -464,11 +465,11 @@ class TestDynamicContainer(TestCase):
         )
         docval = self.type_map._build_docval(Bar, addl_fields)
 
-        assert list(docval) == [
+        self.assertEqual(list(docval), [
+            {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
             {'name': 'data',
-             'type': (
-                 hdmf.data_utils.DataIO, np.ndarray, list, tuple, h5py.Dataset,
-                 hdmf.query.HDMFDataset, hdmf.data_utils.AbstractDataChunkIterator),
+             'type': (DataIO, np.ndarray, list, tuple, h5py.Dataset,
+                      HDMFDataset, AbstractDataChunkIterator),
              'doc': 'some data'},
             {'name': 'attr1', 'type': str,
              'doc': 'an attribute'},
@@ -481,7 +482,7 @@ class TestDynamicContainer(TestCase):
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
             {'name': 'attr4', 'doc': 'another example float attribute',
              'type': (float, np.float32, np.float64)}
-        ]
+        ])
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
