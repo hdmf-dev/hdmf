@@ -563,7 +563,8 @@ class TypeMap:
         clsconf = list()
         # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
-            if f == 'help':  # (legacy) do not add help to any part of class object
+            if f == 'help':  # pragma: no cover
+                # (legacy) do not add field named 'help' to any part of class object
                 continue
 
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
