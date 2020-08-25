@@ -442,6 +442,7 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
+        assert issubclass(Multi, MultiContainerInterface)
         assert Multi.__clsconf__[0] == dict(
             attr='bars',
             type=Bar,
