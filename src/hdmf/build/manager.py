@@ -607,8 +607,7 @@ class TypeMap:
 
                 for f in new_args:
                     arg_val = kwargs.get(f, None)
-                    if arg_val is not None:
-                        setattr(self, f, arg_val)
+                    setattr(self, f, arg_val)
 
             classdict.update(__init__=__init__)
 
