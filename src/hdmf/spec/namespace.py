@@ -467,7 +467,10 @@ class NamespaceCatalog:
         to_load = list()
         for ns in namespaces:
             if ns['name'] in self.__namespaces:
-                warn("ignoring namespace '%s' because it already exists" % ns['name'])
+                if ns['version'] != self.__namespaces.get(ns['name'])['version']:
+                    # warn if the cached namespace differs from the already loaded namespace
+                    warn("Ignoring cached namespace '%s' version %s because version %s is already loaded."
+                         % (ns['name'], ns['version'], self.__namespaces.get(ns['name'])['version']))
             else:
                 to_load.append(ns)
         # now load specs into namespace
