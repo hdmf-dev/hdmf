@@ -12,6 +12,9 @@ from ...spec import SpecWriter, SpecReader
 
 
 class ZarrSpecWriter(SpecWriter):
+    """
+    Class used to write format specs to Zarr
+    """
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the Zarr file to write specs to'})
     def __init__(self, **kwargs):
@@ -19,9 +22,9 @@ class ZarrSpecWriter(SpecWriter):
 
     @staticmethod
     def stringify(spec):
-        '''
+        """
         Converts a spec into a JSON string to write to a dataset
-        '''
+        """
         return json.dumps(spec, separators=(',', ':'))
 
     def __write(self, d, name):
@@ -36,13 +39,18 @@ class ZarrSpecWriter(SpecWriter):
         return dset
 
     def write_spec(self, spec, path):
+        """Write a spec to the given path"""
         return self.__write(spec, path)
 
     def write_namespace(self, namespace, path):
+        """Write a namespace to the given path"""
         return self.__write({'namespaces': [namespace]}, path)
 
 
 class ZarrSpecReader(SpecReader):
+    """
+    Class to read format specs from Zarr
+    """
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the Zarr file to read specs from'},
             {'name': 'source', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
@@ -57,9 +65,11 @@ class ZarrSpecReader(SpecReader):
         return d
 
     def read_spec(self, spec_path):
+        """Read a spec from the given path"""
         return self.__read(spec_path)
 
     def read_namespace(self, ns_path):
+        """Read a namespace from the given path"""
         ret = self.__read(ns_path)
         ret = ret['namespaces']
         return ret
