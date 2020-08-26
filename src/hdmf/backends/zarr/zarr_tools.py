@@ -376,7 +376,6 @@ class ZarrIO(HDMFIO):
                 dset = parent.require_dataset(name,
                                               shape=shape,
                                               dtype=object,
-                                              compressor=None,
                                               object_codec=numcodecs.JSON(),
                                               **options['io_settings'])
                 dset.attrs['zarr_dtype'] = type_str
@@ -419,7 +418,6 @@ class ZarrIO(HDMFIO):
                 dset = parent.require_dataset(name,
                                               shape=(len(data), ),
                                               dtype=object,
-                                              compressor=None,
                                               object_codec=numcodecs.JSON(),
                                               **options['io_settings'])
                 # builder.written = True
@@ -454,7 +452,6 @@ class ZarrIO(HDMFIO):
             dset = parent.require_dataset(name,
                                           shape=shape,
                                           dtype=object,
-                                          compressor=None,
                                           object_codec=numcodecs.JSON(),
                                           **options['io_settings'])
             # builder.written = True
@@ -608,7 +605,7 @@ class ZarrIO(HDMFIO):
             data_shape = get_data_shape(data)
 
         # Create the dataset
-        dset = parent.require_dataset(name, shape=data_shape, dtype=dtype, compressor=None, **io_settings)
+        dset = parent.require_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
         dset.attrs['zarr_dtype'] = type_str
 
         # Write the data to file
@@ -644,7 +641,7 @@ class ZarrIO(HDMFIO):
         if dtype == object:
             io_settings['object_codec'] = numcodecs.JSON()
 
-        dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, compressor=None, **io_settings)
+        dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, **io_settings)
         dset[:] = data
         type_str = 'scalar'
         dset.attrs['zarr_dtype'] = type_str

@@ -92,6 +92,14 @@ class ZarrDataIO(DataIO):
              'type': None,
              'doc': 'Value to be returned when reading uninitialized parts of the dataset',
              'default': None},
+            {'name': 'compression',
+             'type': None,
+             'doc': 'Zarr compression filter to be used',
+             'default': None},
+            {'name': 'filters',
+             'type': None,
+             'doc': 'One or more Zarr-supported codecs used to transform data prior to compression.',
+             'default': None},
             {'name': 'link_data',
              'type': bool,
              'doc': 'If data is an zarr.Array should it be linked to or copied. NOTE: This parameter is only ' +
@@ -100,7 +108,8 @@ class ZarrDataIO(DataIO):
             )
     def __init__(self, **kwargs):
         # TODO Need to add error checks and warnings to ZarrDataIO to check for parameter collisions and add tests
-        data, chunks, fill_value, self.__link_data = getargs('data', 'chunks', 'fillvalue', 'link_data', kwargs)
+        data, chunks, fill_value, compression, filters, self.__link_data = getargs(
+            'data', 'chunks', 'fillvalue', 'link_data', 'compression', 'filters', kwargs)
         call_docval_func(super(ZarrDataIO, self).__init__, kwargs)
         if not isinstance(data, zarr.Array) and self.__link_data:
             self.__link_data = False
@@ -109,6 +118,10 @@ class ZarrDataIO(DataIO):
             self.__iosettings['chunks'] = chunks
         if fill_value is not None:
             self.__iosettings['fill_value'] = fill_value
+        if compression is not None:
+            self.__iosettings['compressor'] = compression
+        if filters is not None:
+            self.__iosettings['filters'] = filters
 
     @property
     def link_data(self):
