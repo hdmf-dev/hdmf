@@ -666,6 +666,6 @@ class TestZarrWriteUnit(unittest.TestCase):
         self.assertTupleEqual(dset.shape, (0,))
 
     def test_list_fill_empty_no_dtype(self):
-        with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
+        with self.assertRaisesRegex(Exception, r"cannot add .. - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
     """
