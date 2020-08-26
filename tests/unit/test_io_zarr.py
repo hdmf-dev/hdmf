@@ -231,7 +231,7 @@ class TestZarrWriter(unittest.TestCase):
         reader = ZarrIO(self.path, manager=self.manager, mode='r')
         self.root = reader.read_builder()
         read_link = self.root['test_bucket/dataset_link']
-        read_link_data = read_link['builder']['data'][:]
+        read_link_data = read_link['data'][:]
         self.assertTrue(np.all(data == read_link_data))
 
     def test_write_reference(self):
