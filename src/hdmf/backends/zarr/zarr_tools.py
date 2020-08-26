@@ -272,7 +272,6 @@ class ZarrIO(HDMFIO):
         else:
             return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
 
-    # TODO Haven't implemented RegionReference
     @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference'},
             {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
              'default': None},
@@ -296,15 +295,9 @@ class ZarrIO(HDMFIO):
         # if isinstance(container, RegionBuilder):
         #    region = container.region
 
-        # TODO When converting from HDF5 to Zarr the builder.source will already be set to the HDF5 file.
-        #      However, we can't link to that from Zarr. I.e., we need to force to change the path to Zarr.
-        # TODO The issue of the bad builder.source should be fixed in the builders or BuildManager
-        #      prior to write to be useful across backends
-        if os.path.isdir(builder.source):
-            source = builder.source
-        else:
-            source = self.__path
-
+        # by checking os.isdir makes sure we have a valid link path to a dir for Zarr. For conversion
+        # between backends a user should always use export which takes care of creating a clean set of builders.
+        source = builder.source if os.path.isdir(builder.source) else self.__path
         return ZarrReference(source, path)
 
     def __add_link__(self, parent, target_source, target_path, link_name):

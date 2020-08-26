@@ -16,7 +16,6 @@ Currently, the Zarr backend supports:
 The following features available in :py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` are not yet supported
 by :py:class:`~hdmf.backends.zarr.zarr_tools.ZarrIO` backend:
 
-- Compression
 - Region reference (see ``ZarrIO.__get_ref``)
 - Iterative data write using AbstractDataChunkIterator
 
@@ -42,3 +41,22 @@ by :py:class:`~hdmf.backends.zarr.zarr_tools.ZarrIO` backend:
 .. note::
 
     For specific TODO items relate to the Zarr backend see ``hdmf/backends/zarr/zarr_tools.py
+
+Converting from HDF5 to Zarr
+============================
+
+.. code-block:: python
+
+    from hdmf.backends.hdf5 import HDF5IO
+    infile = "test_hdmf_file.h5"
+    outfile = "test_hdmf_file.zarr"
+
+    # convert from hdf5 to zarr
+    with HDF5IO(infile , 'r') as read_io:  # read from HDF5
+        with NWBZarrIO(outfile, mode='w') as export_io:  # export to Zarr
+            export_io.export(src_io=read_io)  # use export!
+
+    # read the zarrfile
+    zr = NWBZarrIO(outfile, 'r')
+    zf = zr.read()
+
