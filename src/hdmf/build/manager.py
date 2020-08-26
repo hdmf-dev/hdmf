@@ -1,6 +1,6 @@
 import numpy as np
 from collections import OrderedDict
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime
 import logging
 
@@ -511,7 +511,7 @@ class TypeMap:
         :param default_name: Default name of instances of this class, or None if not specified
         :return:
         """
-        docval_args = list(get_docval(base.__init__))
+        docval_args = list(deepcopy(get_docval(base.__init__)))
         for f, field_spec in addl_fields.items():
             docval_arg = dict(name=f, doc=field_spec.doc)
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):

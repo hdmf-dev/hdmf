@@ -256,10 +256,11 @@ class TestDynamicContainer(TestCase):
         self.assertTrue(issubclass(cls, Bar))
 
     def test_dynamic_container_default_name(self):
-        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz')
+        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz',
+                             attributes=[AttributeSpec('attr4', 'another example float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        inst = cls()
+        inst = cls(attr4=10.)
         self.assertEqual(inst.name, 'bingo')
 
     def test_dynamic_container_creation_defaults(self):
@@ -386,53 +387,14 @@ class TestDynamicContainer(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
-    def test_dynamic_container_uint(self):
+    def test_dynamic_container_fixed_name(self):
+        """Test that dynamic class generation for an extended type with a fixed name works."""
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example uint16 attribute', 'uint16'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
-        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
-            if arg['name'] == 'attr3':
-                self.assertTupleEqual(arg['type'], (np.uint16, np.uint32, np.uint64))
-
-    def test_dynamic_container_numeric(self):
-        baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
-        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
-            if arg['name'] == 'attr3':
-                self.assertTupleEqual(arg['type'], (float, np.float32, np.float64, np.int8, np.int16, np.int32,
-                                                    np.int64, int, np.uint8, np.uint16, np.uint32, np.uint64))
-
-    def test_dynamic_container_shape(self):
-        baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'numeric',
-                                                       shape=[None])])
-        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
-            if arg['name'] == 'attr3':
-                self.assertListEqual(arg['shape'], [None])
-
-    def test_dynamic_container_default(self):
-        """Test that dynamic class generation for an extended type with an overridden default value works."""
-        baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'float',
-                                                       required=False, default_value=10.0)])
+                             data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         Baz = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(Baz.__init__):
-            if arg['name'] == 'attr3':
-                self.assertEqual(arg['default'], 10.0)
-        obj = Baz('My Bar', [1, 2, 3, 4], 'string attribute', attr2=1000)
-        self.assertEqual(obj.attr3, 10.0)
+        obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
+        self.assertEqual(obj.name, 'Baz')
 
     def test_multi_container_spec(self):
         multi_spec = GroupSpec('A test extension that contains a multi',
@@ -465,7 +427,7 @@ class TestDynamicContainer(TestCase):
         )
         docval = self.type_map._build_docval(Bar, addl_fields)
 
-        self.assertEqual(list(docval), [
+        expected = [
             {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
             {'name': 'data',
              'type': (DataIO, np.ndarray, list, tuple, h5py.Dataset,
@@ -482,7 +444,59 @@ class TestDynamicContainer(TestCase):
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
             {'name': 'attr4', 'doc': 'another example float attribute',
              'type': (float, np.float32, np.float64)}
-        ])
+        ]
+
+        self.assertListEqual(docval, expected)
+
+    def test_build_docval_shape(self):
+        """Test that docval generation for a class with shape has the shape set."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric', shape=[None]))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertListEqual(arg['shape'], [None])
+
+    def test_build_docval_default_value(self):
+        """Test that docval generation for a class with an additional optional field has the default value set."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                               required=False, default_value=10.0))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertEqual(arg['default'], 10.0)
+
+    def test_build_docval_default_value_none(self):
+        """Test that docval generation for a class with an additional optional field has default: None."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                               required=False))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertIsNone(arg['default'])
+
+    def test_build_docval_fixed_name(self):
+        """Test that docval generation for a class with a fixed name does not contain a docval arg for name."""
+        docval = self.type_map._build_docval(Bar, {}, name='Baz')
+
+        found = False
+        for arg in docval:
+            if arg['name'] == 'name':
+                found = True
+        self.assertFalse(found)
+
+    def test_build_docval_default_name(self):
+        """Test that docval generation for a class with a default name has the default value for name set."""
+        docval = self.type_map._build_docval(Bar, {}, default_name='MyBaz')
+
+        for arg in docval:
+            if arg['name'] == 'name':
+                self.assertEqual(arg['default'], 'MyBaz')
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
