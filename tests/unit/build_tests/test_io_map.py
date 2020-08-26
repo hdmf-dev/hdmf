@@ -1,14 +1,17 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
                         ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
+from hdmf.container import MultiContainerInterface
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
+from hdmf.query import HDMFDataset
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import h5py
 import unittest
 
 from tests.unit.utils import CORE_NAMESPACE
@@ -253,10 +256,11 @@ class TestDynamicContainer(TestCase):
         self.assertTrue(issubclass(cls, Bar))
 
     def test_dynamic_container_default_name(self):
-        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz')
+        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz',
+                             attributes=[AttributeSpec('attr4', 'another example float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        inst = cls()
+        inst = cls(attr4=10.)
         self.assertEqual(inst.name, 'bingo')
 
     def test_dynamic_container_creation_defaults(self):
@@ -383,28 +387,116 @@ class TestDynamicContainer(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
-    def test_dynamic_container_uint(self):
+    def test_dynamic_container_fixed_name(self):
+        """Test that dynamic class generation for an extended type with a fixed name works."""
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example uint16 attribute', 'uint16'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
-            if arg['name'] == 'attr3':
-                self.assertTupleEqual(arg['type'], (np.uint16, np.uint32, np.uint64))
+        Baz = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
+        self.assertEqual(obj.name, 'Baz')
 
-    def test_dynamic_container_numeric(self):
-        baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
-        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
+    def test_multi_container_spec(self):
+        multi_spec = GroupSpec('A test extension that contains a multi',
+                               data_type_def='Multi',
+                               groups=[GroupSpec(
+                                   data_type_inc=self.bar_spec,
+                                   doc='test multi',
+                                   quantity='*')]
+                               )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
+        assert issubclass(Multi, MultiContainerInterface)
+        assert Multi.__clsconf__[0] == dict(
+            attr='bars',
+            type=Bar,
+            add='add_bars',
+            get='get_bars',
+            create='create_bars'
+        )
+
+        multi = Multi(bars=[Bar('my_bar', list(range(10)), 'value1', 10)])
+        assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+
+    def test_build_docval(self):
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(
+            attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
+            attr4=AttributeSpec('attr4', 'another example float attribute', 'float')
+        )
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        expected = [
+            {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
+            {'name': 'data',
+             'type': (DataIO, np.ndarray, list, tuple, h5py.Dataset,
+                      HDMFDataset, AbstractDataChunkIterator),
+             'doc': 'some data'},
+            {'name': 'attr1', 'type': str,
+             'doc': 'an attribute'},
+            {'name': 'attr2', 'type': int,
+             'doc': 'another attribute'},
+            {'name': 'attr3', 'doc': 'an example numeric attribute',
+             'type': (float, np.float32, np.float64, np.int8, np.int16,
+                      np.int32, np.int64, int, np.uint8, np.uint16,
+                      np.uint32, np.uint64)},
+            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
+            {'name': 'attr4', 'doc': 'another example float attribute',
+             'type': (float, np.float32, np.float64)}
+        ]
+
+        self.assertListEqual(docval, expected)
+
+    def test_build_docval_shape(self):
+        """Test that docval generation for a class with shape has the shape set."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric', shape=[None]))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
             if arg['name'] == 'attr3':
-                self.assertTupleEqual(arg['type'], (float, np.float32, np.float64, np.int8, np.int16, np.int32,
-                                                    np.int64, int, np.uint8, np.uint16, np.uint32, np.uint64))
+                self.assertListEqual(arg['shape'], [None])
+
+    def test_build_docval_default_value(self):
+        """Test that docval generation for a class with an additional optional field has the default value set."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                               required=False, default_value=10.0))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertEqual(arg['default'], 10.0)
+
+    def test_build_docval_default_value_none(self):
+        """Test that docval generation for a class with an additional optional field has default: None."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                               required=False))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertIsNone(arg['default'])
+
+    def test_build_docval_fixed_name(self):
+        """Test that docval generation for a class with a fixed name does not contain a docval arg for name."""
+        docval = self.type_map._build_docval(Bar, {}, name='Baz')
+
+        found = False
+        for arg in docval:
+            if arg['name'] == 'name':
+                found = True
+        self.assertFalse(found)
+
+    def test_build_docval_default_name(self):
+        """Test that docval generation for a class with a default name has the default value for name set."""
+        docval = self.type_map._build_docval(Bar, {}, default_name='MyBaz')
+
+        for arg in docval:
+            if arg['name'] == 'name':
+                self.assertEqual(arg['default'], 'MyBaz')
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
