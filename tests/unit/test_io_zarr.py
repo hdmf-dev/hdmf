@@ -4,6 +4,11 @@ import numpy as np
 import shutil
 from six import text_type
 import zarr
+try:
+    from numcodecs import Blosc, Delta
+    DISABLE_ZARR_COMPRESSION_TESTS = False
+except ImportError:
+    DISABLE_ZARR_COMPRESSION_TESTS = True
 
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ReferenceBuilder  # , LinkBuilder
@@ -231,7 +236,7 @@ class TestZarrWriter(unittest.TestCase):
         reader = ZarrIO(self.path, manager=self.manager, mode='r')
         self.root = reader.read_builder()
         read_link = self.root['test_bucket/dataset_link']
-        read_link_data = read_link['data'][:]
+        read_link_data = read_link['builder']['data'][:]
         self.assertTrue(np.all(data == read_link_data))
 
     def test_write_reference(self):
@@ -369,22 +374,22 @@ class TestZarrWriteUnit(unittest.TestCase):
             shutil.rmtree(self.path)
 
     #############################################
-    #  H5DataIO general
+    #  ZarrDataIO general
     #############################################
     def test_h5dataio_array_conversion_numpy(self):
-        # Test that H5DataIO.__array__ is working when wrapping an ndarray
+        # Test that ZarrDataIO.__array__ is working when wrapping an ndarray
         test_speed = np.array([10., 20.])
         data = ZarrDataIO((test_speed))
         self.assertTrue(np.all(np.isfinite(data)))  # Force call of ZarrDataIO.__array__
 
     def test_h5dataio_array_conversion_list(self):
-        # Test that H5DataIO.__array__ is working when wrapping a python list
+        # Test that ZarrDataIO.__array__ is working when wrapping a python list
         test_speed = [10., 20.]
         data = ZarrDataIO(test_speed)
         self.assertTrue(np.all(np.isfinite(data)))  # Force call of ZarrDataIO.__array__
 
     def test_h5dataio_array_conversion_datachunkiterator(self):
-        # Test that H5DataIO.__array__ is working when wrapping a python list
+        # Test that ZarrDataIO.__array__ is working when wrapping a python list
         test_speed = DataChunkIterator(data=[10., 20.])
         data = ZarrDataIO(test_speed)
         with self.assertRaises(NotImplementedError):
@@ -431,40 +436,34 @@ class TestZarrWriteUnit(unittest.TestCase):
         self.assertTrue(np.all(dset[:] == a.data))
         self.assertEqual(dset.fill_value, -1)
 
-    """def test_write_dataset_list_compress(self):
+    @unittest.skipIf(DISABLE_ZARR_COMPRESSION_TESTS, 'Skip test due to numcodec compressor not available')
+    def test_write_dataset_list_compress(self):
+        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
         a = ZarrDataIO(np.arange(30).reshape(5, 2, 3),
-                        compression=True)
+                       compressor=compressor)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a.data))
-        self.assertEqual(dset.compression, 'gzip')
-        self.assertEqual(dset.compression_opts, 5)
-        self.assertEqual(dset.shuffle, True)
-        self.assertEqual(dset.fletcher32, True)
+        self.assertTrue(dset.compressor == compressor)
+
+    @unittest.skipIf(DISABLE_ZARR_COMPRESSION_TESTS, 'Skip test due to numcodec compressor not available')
+    def test_write_dataset_list_compress_and_filter(self):
+        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+        filters = [Delta(dtype='i4')]
+        a = ZarrDataIO(np.arange(30, dtype='i4').reshape(5, 2, 3),
+                       compressor=compressor,
+                       filters=filters)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertTrue(dset.compressor == compressor)
+        self.assertListEqual(dset.filters, filters)
 
     def test_write_dataset_list_enable_default_compress(self):
-        a = H5DataIO(np.arange(30).reshape(5, 2, 3),
-                     compression=True)
-        self.assertEqual(a.io_settings['compression'], 'gzip')
-        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
-        dset = self.f['test_dataset']
-        self.assertTrue(np.all(dset[:] == a.data))
-        self.assertEqual(dset.compression, 'gzip')
-
-    def test_write_dataset_list_disable_default_compress(self):
-        with warnings.catch_warnings(record=True) as w:
-            a = H5DataIO(np.arange(30).reshape(5, 2, 3),
-                         compression=False,
-                         compression_opts=5)
-            self.assertEqual(len(w), 1)  # We expect a warning that compression options are being ignored
-            self.assertFalse('compression_ops' in a.io_settings)
-            self.assertFalse('compression' in a.io_settings)
-
-        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
-        dset = self.f['test_dataset']
-        self.assertTrue(np.all(dset[:] == a.data))
-        self.assertEqual(dset.compression, None)
-    """
+        """Default compression is not supported, but we test the error message"""
+        with self.assertRaises(TypeError):
+            _ = ZarrDataIO(np.arange(30).reshape(5, 2, 3),
+                           compressor=True)
 
     ##########################################
     #  write_dataset tests: Iterable
