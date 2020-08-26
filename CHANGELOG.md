@@ -1,5 +1,13 @@
 # HDMF Changelog
 
+## HDMF 2.3.0 (Upcoming)
+
+### New features
+- Add support for dynamic class generation (`get_class`) for `MultiContainerInterface` types. @bendichter, @rly (#421)
+
+### Internal improvements
+- Improve warning about cached namespace when loading namespaces from file. @rly (#422)
+
 ## HDMF 2.2.0 (August 14, 2020)
 
 ### New features
