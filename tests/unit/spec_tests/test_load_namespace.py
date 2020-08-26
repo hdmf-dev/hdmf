@@ -1,9 +1,11 @@
 import ruamel.yaml as yaml
 import json
 import os
+from tempfile import gettempdir
+import warnings
 
-from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog
-from hdmf.testing import TestCase
+from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
+from hdmf.testing import TestCase, remove_test_file
 
 
 class TestSpecLoad(TestCase):
@@ -127,10 +129,8 @@ class TestSpecLoadEdgeCase(TestCase):
             yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
 
     def tearDown(self):
-        if os.path.exists(self.namespace_path):
-            os.remove(self.namespace_path)
-        if os.path.exists(self.specs_path):
-            os.remove(self.specs_path)
+        remove_test_file(self.namespace_path)
+        remove_test_file(self.specs_path)
 
     def test_build_namespace_missing_version(self):
         """Test that building/creating a SpecNamespace without a version works but raises a warning."""
@@ -223,3 +223,47 @@ class TestSpecLoadEdgeCase(TestCase):
         namespace['version'] = None  # work around lack of setter to remove version key
 
         self.assertEqual(namespace.version, SpecNamespace.UNVERSIONED)
+
+
+class TestCatchDupNS(TestCase):
+
+    def setUp(self):
+        self.tempdir = gettempdir()
+        self.ext_source1 = 'extension1.yaml'
+        self.ns_path1 = 'namespace1.yaml'
+        self.ext_source2 = 'extension2.yaml'
+        self.ns_path2 = 'namespace2.yaml'
+
+    def tearDown(self):
+        for f in (self.ext_source1, self.ns_path1, self.ext_source2, self.ns_path2):
+            remove_test_file(os.path.join(self.tempdir, f))
+
+    def test_catch_dup_name(self):
+        ns_builder1 = NamespaceBuilder('Extension doc', "test_ext", version='0.1.0')
+        ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder1.export(self.ns_path1, outdir=self.tempdir)
+        ns_builder2 = NamespaceBuilder('Extension doc', "test_ext", version='0.2.0')
+        ns_builder2.add_spec(self.ext_source2, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder2.export(self.ns_path2, outdir=self.tempdir)
+
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+
+        msg = "Ignoring cached namespace 'test_ext' version 0.2.0 because version 0.1.0 is already loaded."
+        with self.assertWarnsRegex(UserWarning, msg):
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
+
+    def test_catch_dup_name_same_version(self):
+        ns_builder1 = NamespaceBuilder('Extension doc', "test_ext", version='0.1.0')
+        ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder1.export(self.ns_path1, outdir=self.tempdir)
+        ns_builder2 = NamespaceBuilder('Extension doc', "test_ext", version='0.1.0')
+        ns_builder2.add_spec(self.ext_source2, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder2.export(self.ns_path2, outdir=self.tempdir)
+
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+
+        with warnings.catch_warnings(record=True) as ws:
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
+        self.assertEqual(len(ws), 0)
