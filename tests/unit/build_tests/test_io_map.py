@@ -3,15 +3,13 @@ from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager
                         ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
 from hdmf.container import MultiContainerInterface
 from hdmf import Container
-from hdmf.utils import docval, getargs, get_docval
-from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
+from hdmf.utils import docval, getargs, get_docval, __get_docval_macros as get_docval_macros
+from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
-from hdmf.query import HDMFDataset
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
-import h5py
 import unittest
 
 from tests.unit.utils import CORE_NAMESPACE
@@ -427,11 +425,11 @@ class TestDynamicContainer(TestCase):
         )
         docval = self.type_map._build_docval(Bar, addl_fields)
 
+        expected_type = tuple(get_docval_macros()['data'] + get_docval_macros()['array_data'])
         expected = [
             {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
             {'name': 'data',
-             'type': (DataIO, np.ndarray, list, tuple, h5py.Dataset,
-                      HDMFDataset, AbstractDataChunkIterator),
+             'type': expected_type,
              'doc': 'some data'},
             {'name': 'attr1', 'type': str,
              'doc': 'an attribute'},

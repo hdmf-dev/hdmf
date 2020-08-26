@@ -19,6 +19,14 @@ try:
 except ImportError:
     warnings.warn("Could not import Zarr.")
 
+
+def __get_docval_macros():
+    """
+    Return a deepcopy of __macros. Used in the test-suite to avoid hardcoding in the tests
+    """
+    return _copy.deepcopy(__macros)
+
+
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 
