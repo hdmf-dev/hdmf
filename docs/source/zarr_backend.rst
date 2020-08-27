@@ -54,9 +54,13 @@ Converting from HDF5 to Zarr
     # convert from hdf5 to zarr
     with HDF5IO(infile , 'r') as read_io:  # read from HDF5
         with NWBZarrIO(outfile, mode='w') as export_io:  # export to Zarr
-            export_io.export(src_io=read_io)  # use export!
+            export_io.export(src_io=read_io, write_args=dict(link_data=False))  # use export!
 
     # read the zarrfile
     zr = NWBZarrIO(outfile, 'r')
     zf = zr.read()
 
+.. note::
+
+   When converting between backends we need to set ``link_data=False`` as linking from Zarr to HDF5 and
+   vice-versa is not supported.
