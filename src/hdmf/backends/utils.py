@@ -1,8 +1,44 @@
-"""Module with utility functions and classes used for implementation of backends"""
-
+"""Module with utility functions and classes used for implementation of I/O backends"""
 import os
 from ..spec import NamespaceCatalog, GroupSpec, NamespaceBuilder
 from ..utils import docval,  popargs
+
+
+class WriteStatusTracker(dict):
+    """
+    Helper class used for tracking the write status of builders. I.e., to track whether a
+    builder has been written or not.
+    """
+    def __init__(self):
+        pass
+
+    def __builderhash(self, obj):
+        """Return the ID of a builder for use as a unique hash."""
+        return id(obj)
+
+    def set_written(self, builder):
+        """
+        Mark this builder as written.
+
+        :param builder: Builder object to be marked as written
+        :type builder: Builder
+        """
+        # currently all values in self._written_builders are True, so this could be a set but is a dict for
+        # future flexibility
+        builder_id = self.__builderhash(builder)
+        self[builder_id] = True
+
+    def get_written(self, builder):
+        """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
+
+        :param builder: Builder object to get the written flag for
+        :type builder: Builder
+
+        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
+        """
+        builder_id = self.__builderhash(builder)
+        return self.get(builder_id, False)
+
 
 class NamespaceToBuilderHelper(object):
     """Helper class used in HDF5IO (and possibly elsewhere) to convert a namespace to a builder for I/O"""

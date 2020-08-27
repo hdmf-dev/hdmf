@@ -18,7 +18,7 @@ from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, Builde
 
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
-from ..utils import NamespaceToBuilderHelper
+from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -74,7 +74,7 @@ class HDF5IO(HDMFIO):
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
-        self._written_builders = dict()  # keep track of which builders were written (or read) by this IO object
+        self._written_builders = WriteStatusTracker()  # keep track of which builders were written (or read) by this IO object
         self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
@@ -380,18 +380,6 @@ class HDF5IO(HDMFIO):
             self.__read[self.__file] = f_builder
         return f_builder
 
-    def __set_written(self, builder):
-        """
-        Mark this builder as written.
-
-        :param builder: Builder object to be marked as written
-        :type builder: Builder
-        """
-        # currently all values in self._written_builders are True, so this could be a set but is a dict for
-        # future flexibility
-        builder_id = self.__builderhash(builder)
-        self._written_builders[builder_id] = True
-
     def get_written(self, builder):
         """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
 
@@ -400,12 +388,11 @@ class HDF5IO(HDMFIO):
 
         :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
         """
-        builder_id = self.__builderhash(builder)
-        return self._written_builders.get(builder_id, False)
+        return self._written_builders.get_written(builder)
 
-    def __builderhash(self, obj):
-        """Return the ID of a builder for use as a unique hash."""
-        return id(obj)
+    def __set_written(self, builder):
+        """Helper function used to set the written status for builders"""
+        self._written_builders.set_written(builder)
 
     def __set_built(self, fpath, id, builder):
         """
