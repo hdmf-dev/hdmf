@@ -25,10 +25,10 @@ from ...container import Container
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
 
-# TODO Update tracking of build status from using builder.written to the new approach used in HDF5IO
+
 # TODO We should resolve reference stored in datasets to the containers
 # TODO We should add support for AbstractDataChunkIterator
-# TODO We should add support for RegionReferences (or at least raise a NotImplemented error and mention it in the docs)
+# TODO We should add support for RegionReferences
 # TODO HDF5IO uses export_source argument on export. Need to check with Ryan if we need it here as well.
 
 
@@ -201,7 +201,7 @@ class ZarrIO(HDMFIO):
     def write_group(self, **kwargs):
         """Write a GroupBuider to file"""
         parent, builder = getargs('parent', 'builder', kwargs)
-        if self.get_written(builder):  #self.__builder_written_to_zarr(builder, parent):
+        if self.get_written(builder):
             group = parent[builder.name]
         else:
             group = parent.require_group(builder.name)
@@ -350,7 +350,7 @@ class ZarrIO(HDMFIO):
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'})
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        if self.get_written(builder):  #  self.__builder_written_to_zarr(builder, parent):
+        if self.get_written(builder):
             return
         name = builder.name
         target_builder = builder.builder
@@ -368,7 +368,7 @@ class ZarrIO(HDMFIO):
     def write_dataset(self, **kwargs):  # noqa: C901
         parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
         force_data = getargs('force_data', kwargs)
-        if self.get_written(builder):  #  self.__builder_written_to_zarr(builder, parent):
+        if self.get_written(builder):
             return None
         name = builder.name
         data = builder.data if force_data is None else force_data
