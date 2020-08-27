@@ -349,7 +349,7 @@ class ZarrIO(HDMFIO):
         self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         # builder.written = True
 
-    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},  # noqa
+    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},  # noqa: C901
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True},

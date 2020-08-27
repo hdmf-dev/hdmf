@@ -28,8 +28,6 @@ H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
 
-
-
 class HDF5IO(HDMFIO):
 
     @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
@@ -74,7 +72,7 @@ class HDF5IO(HDMFIO):
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
-        self._written_builders = WriteStatusTracker()  # keep track of which builders were written (or read) by this IO object
+        self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
         self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
