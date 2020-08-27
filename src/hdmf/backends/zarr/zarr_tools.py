@@ -18,7 +18,7 @@ from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildMa
 from ...utils import get_data_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
-from ..utils import NamespaceToBuilderHelper
+from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 from ...query import HDMFDataset
 from ...container import Container
 
@@ -50,6 +50,7 @@ class ZarrIO(HDMFIO):
         self.__path = path
         self.__file = None
         self.__built = dict()
+        self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
         self.__chunking = chunking
         super(ZarrIO, self).__init__(manager, source=path)
         warn_msg = '\033[91m' + 'The ZarrIO backend is experimental. It is under active ' + \
@@ -163,6 +164,25 @@ class ZarrIO(HDMFIO):
         if cache_spec:
             self.__cache_spec()
 
+    def get_written(self, builder, check_on_disk=False):
+        """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
+
+        :param builder: Builder object to get the written flag for
+        :type builder: Builder
+        :param check_on_disk: Check that the builder has been physically written to disk not just flagged as written
+                              by this I/O backend
+        :type check_on_disk: bool
+
+        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
+        """
+        return self._written_builders.get_written(builder)
+
+    def get_builder_exists_on_disk(self, builder, parent):
+        """Convenience function to check whether a given builder exists on disk"""
+        builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
+        exists_on_disk = os.path.exists(builder_path)
+        return exists_on_disk
+
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the NWBFile'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True})
@@ -175,24 +195,13 @@ class ZarrIO(HDMFIO):
             self.write_dataset(self.__file, dbldr, link_data)
         self.set_attributes(self.__file, f_builder.attributes)
 
-    def __builder_written_to_zarr(self, builder, parent):
-        """Check whether a given builder has been written to disk"""
-        # TODO Ideally we should only have to check builder.written. However, when copying between backends
-        #      builder.written will be set to True because it was written on the other backend. This should
-        #      be fixed in the Builders or BuildManager prior to write to be useful across backends.
-        builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
-        exists_on_disk = os.path.exists(builder_path)
-        # Check if exists because if the file was previously written to an HDF5 file then we need to create the group
-        # return builder.written and exists_on_disk
-        return exists_on_disk
-
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         """Write a GroupBuider to file"""
         parent, builder = getargs('parent', 'builder', kwargs)
-        if self.__builder_written_to_zarr(builder, parent):
+        if self.get_written(builder):  #self.__builder_written_to_zarr(builder, parent):
             group = parent[builder.name]
         else:
             group = parent.require_group(builder.name)
@@ -215,7 +224,7 @@ class ZarrIO(HDMFIO):
 
         attributes = builder.attributes
         self.set_attributes(group, attributes)
-        # builder.written = True
+        self._written_builders.set_written(builder)  # record that the builder has been written
         return group
 
     @docval({'name': 'obj', 'type': (Group, Array), 'doc': 'the Zarr object to add attributes to'},
@@ -341,13 +350,13 @@ class ZarrIO(HDMFIO):
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'})
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
-        if self.__builder_written_to_zarr(builder, parent):
+        if self.get_written(builder):  #  self.__builder_written_to_zarr(builder, parent):
             return
         name = builder.name
         target_builder = builder.builder
         zarr_ref = self.__get_ref(target_builder)
         self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
-        # builder.written = True
+        self._written_builders.set_written(builder)  # record that the builder has been written
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},  # noqa: C901
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
@@ -359,7 +368,7 @@ class ZarrIO(HDMFIO):
     def write_dataset(self, **kwargs):  # noqa: C901
         parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
         force_data = getargs('force_data', kwargs)
-        if self.__builder_written_to_zarr(builder, parent):
+        if self.get_written(builder):  #  self.__builder_written_to_zarr(builder, parent):
             return None
         name = builder.name
         data = builder.data if force_data is None else force_data
@@ -403,7 +412,7 @@ class ZarrIO(HDMFIO):
                                               **options['io_settings'])
                 dset.attrs['zarr_dtype'] = type_str
                 dset[:] = ref_data
-                # builder.written = True
+                self._written_builders.set_written(builder)  # record that the builder has been written
             # If we have a regular dataset, then load the data and write the builder after load
             else:
                 # TODO This code path is also exercised when data is a
@@ -417,7 +426,7 @@ class ZarrIO(HDMFIO):
                                           builder=builder,
                                           link_data=link_data,
                                           force_data=data[:])
-                # builder.written = True
+                self._written_builders.set_written(builder)  # record that the builder has been written
         # Write a compound dataset
         elif isinstance(options['dtype'], list):
 
@@ -443,7 +452,7 @@ class ZarrIO(HDMFIO):
                                               dtype=object,
                                               object_codec=numcodecs.JSON(),
                                               **options['io_settings'])
-                # builder.written = True
+                self._written_builders.set_written(builder)  # record that the builder has been written
                 dset.attrs['zarr_dtype'] = type_str
                 for j, item in enumerate(data):
                     new_item = list(item)
@@ -477,7 +486,7 @@ class ZarrIO(HDMFIO):
                                           dtype=object,
                                           object_codec=numcodecs.JSON(),
                                           **options['io_settings'])
-            # builder.written = True
+            self._written_builders.set_written(builder)  # record that the builder has been written
             dset.attrs['zarr_dtype'] = type_str
             if hasattr(refs, '__len__'):
                 dset[:] = refs
@@ -493,7 +502,7 @@ class ZarrIO(HDMFIO):
                 dset = self.__scalar_fill__(parent, name, data, options)
         if not linked:
             self.set_attributes(dset, attributes)
-        # builder.written = True
+        self._written_builders.set_written(builder)  # record that the builder has been written
         return dset
 
     __dtypes = {
@@ -734,12 +743,12 @@ class ZarrIO(HDMFIO):
                 else:
                     builder = self.__read_dataset(target_zarr_obj, target_name)
                 link_builder = LinkBuilder(builder, l_name, source=self.__path)
-                # link_builder.written = True
+                self._written_builders.set_written(link_builder)  # record that the builder has been written
                 kwargs['links'][target_name] = link_builder
 
         kwargs['source'] = self.__path
         ret = GroupBuilder(name, **kwargs)
-        # ret.written = True
+        self._written_builders.set_written(ret)  # record that the builder has been written
         self.__set_built(zarr_obj, ret)
         return ret
 
@@ -799,7 +808,7 @@ class ZarrIO(HDMFIO):
         if name is None:
             name = str(os.path.basename(zarr_obj.name))
         ret = DatasetBuilder(name, **kwargs)
-        # ret.written = True
+        self._written_builders.set_written(ret)  # record that the builder has been written
         self.__set_built(zarr_obj, ret)
         return ret
 
