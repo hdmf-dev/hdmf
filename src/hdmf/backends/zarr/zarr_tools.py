@@ -11,8 +11,8 @@ import zarr
 import tempfile
 from six import raise_from, string_types, binary_type, text_type
 from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter, ZarrSpecReader
-from ..io import HDMFIO
-from ...utils import docval, getargs, popargs, call_docval_func
+from ..io import HDMFIO, UnsupportedOperation
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper
 from ...utils import get_data_shape  # , AbstractDataChunkIterator,
@@ -29,6 +29,7 @@ SPEC_LOC_ATTR = '.specloc'
 # TODO We should resolve reference stored in datasets to the containers
 # TODO We should add support for AbstractDataChunkIterator
 # TODO We should add support for RegionReferences (or at least raise a NotImplemented error and mention it in the docs)
+# TODO HDF5IO uses export_source argument on export. Need to check with Ryan if we need it here as well.
 
 
 class ZarrIO(HDMFIO):
@@ -113,25 +114,54 @@ class ZarrIO(HDMFIO):
         cache_spec = popargs('cache_spec', kwargs)
         call_docval_func(super(ZarrIO, self).write, kwargs)
         if cache_spec:
-            ref = self.__file.attrs.get(SPEC_LOC_ATTR)
-            spec_group = None
-            if ref is not None:
-                spec_group = self.__file[ref]
+            self.__cache_spec()
+
+    def __cache_spec(self):
+        """Interanl function used to cache the spec in the current file"""
+        ref = self.__file.attrs.get(SPEC_LOC_ATTR)
+        spec_group = None
+        if ref is not None:
+            spec_group = self.__file[ref]
+        else:
+            path = 'specifications'  # do something to figure out where the specifications should go
+            spec_group = self.__file.require_group(path)
+            self.__file.attrs[SPEC_LOC_ATTR] = path
+        ns_catalog = self.manager.namespace_catalog
+        for ns_name in ns_catalog.namespaces:
+            ns_builder = NamespaceIOHelper.convert_namespace(ns_catalog, ns_name)
+            namespace = ns_catalog.get_namespace(ns_name)
+            if namespace.version is None:
+                group_name = '%s/unversioned' % ns_name
             else:
-                path = 'specifications'  # do something to figure out where the specifications should go
-                spec_group = self.__file.require_group(path)
-                self.__file.attrs[SPEC_LOC_ATTR] = path
-            ns_catalog = self.manager.namespace_catalog
-            for ns_name in ns_catalog.namespaces:
-                ns_builder = NamespaceIOHelper.convert_namespace(ns_catalog, ns_name)
-                namespace = ns_catalog.get_namespace(ns_name)
-                if namespace.version is None:
-                    group_name = '%s/unversioned' % ns_name
-                else:
-                    group_name = '%s/%s' % (ns_name, namespace.version)
-                ns_group = spec_group.require_group(group_name)
-                writer = ZarrSpecWriter(ns_group)
-                ns_builder.export('namespace', writer=writer)
+                group_name = '%s/%s' % (ns_name, namespace.version)
+            ns_group = spec_group.require_group(group_name)
+            writer = ZarrSpecWriter(ns_group)
+            ns_builder.export('namespace', writer=writer)
+
+    @docval(*get_docval(HDMFIO.export),
+            {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file', 'default': True})
+    def export(self, **kwargs):
+        """Export data read from a file from any backend to HDF5.
+
+        See :py:meth:`hdmf.backends.io.HDMFIO.export` for more details.
+        """
+        if self.__mode != 'w':
+            raise UnsupportedOperation("Cannot export to file %s in mode '%s'. Please use mode 'w'."
+                                       % (self.source, self.__mode))
+
+        src_io = getargs('src_io', kwargs)
+        write_args, cache_spec = popargs('write_args', 'cache_spec', kwargs)
+
+        if not isinstance(src_io, ZarrIO) and write_args.get('link_data', True):
+            raise UnsupportedOperation("Cannot export from non-Zarr backend %s to Zarr with write argument "
+                                       "link_data=True." % src_io.__class__.__name__)
+
+        # write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
+        ckwargs = kwargs.copy()
+        # ckwargs['write_args'] = write_args
+        call_docval_func(super().export, ckwargs)
+        if cache_spec:
+            self.__cache_spec()
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the NWBFile'},
             {'name': 'link_data', 'type': bool,
