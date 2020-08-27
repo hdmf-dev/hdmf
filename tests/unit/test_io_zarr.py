@@ -3,7 +3,12 @@ import os
 import numpy as np
 import shutil
 from six import text_type
-import zarr
+
+try:
+    import zarr
+    DISABLE_ALL_ZARR_TESTS = False
+except ImportError:
+    DISABLE_ALL_ZARR_TESTS = True
 try:
     from numcodecs import Blosc, Delta
     DISABLE_ZARR_COMPRESSION_TESTS = False
@@ -77,7 +82,7 @@ class GroupBuilderTestCase(TestCase):
             reasons.append("dataset '%s' not equal" % a.name)
         return reasons
 
-
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
 class TestZarrWriter(TestCase):
     """Test writing of builder with Zarr"""
 
@@ -375,9 +380,10 @@ class TestZarrWriter(TestCase):
 
 
 # TODO Port tests from H5IOTest to here. We have copied the test cases in comments here but they are not all working yet
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriteUnit because Zarr is not installed")
 class TestZarrWriteUnit(TestCase):
     """
-    Unit test for individul write functions
+    Unit test for individual write functions
     """
     def setUp(self):
         self.path = "test_io.zarr"
@@ -685,7 +691,7 @@ class TestZarrWriteUnit(TestCase):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
     """
 
-
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestExportZarrToZarr because Zarr is not installed")
 class TestExportZarrToZarr(TestCase):
     """Test exporting Zarr to Zarr."""
 
