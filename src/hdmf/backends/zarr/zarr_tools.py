@@ -9,7 +9,6 @@ import warnings
 
 import zarr
 import tempfile
-from six import raise_from, string_types, binary_type, text_type
 from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter, ZarrSpecReader
 from ..io import HDMFIO, UnsupportedOperation
 from ...utils import docval, getargs, popargs, call_docval_func, get_docval
@@ -494,7 +493,7 @@ class ZarrIO(HDMFIO):
                 dset[0] = refs
         # write a 'regular' dataset without DatasetIO info
         else:
-            if isinstance(data, (text_type, binary_type)):
+            if isinstance(data, (str, bytes)):
                 dset = self.__scalar_fill__(parent, name, data, options)
             elif hasattr(data, '__len__'):
                 dset = self.__list_fill__(parent, name, data, options)
@@ -519,14 +518,14 @@ class ZarrIO(HDMFIO):
         "int8": np.int8,
         "bool": np.bool_,
         "bool_": np.bool_,
-        "text": binary_type,
-        "utf": text_type,
-        "utf8": text_type,
-        "utf-8": text_type,
-        "ascii": binary_type,
-        "str": binary_type,
-        "isodatetime": binary_type,
-        "string_": binary_type,
+        "text": bytes,
+        "utf": str,
+        "utf8": str,
+        "utf-8": str,
+        "ascii": bytes,
+        "str": bytes,
+        "isodatetime": bytes,
+        "string_": bytes,
         "uint32": np.uint32,
         "uint16": np.uint16,
         "uint8": np.uint8,
@@ -577,7 +576,7 @@ class ZarrIO(HDMFIO):
 
     @classmethod
     def get_type(cls, data):
-        if isinstance(data, (text_type, string_types)):
+        if isinstance(data, str):
             return str
         elif not hasattr(data, '__len__'):
             return type(data)
@@ -604,7 +603,7 @@ class ZarrIO(HDMFIO):
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
-                raise_from(Exception(msg), exc)
+                raise Exception(msg) from exc
 
         # Set the type_str
         type_str = cls.__serial_dtype__(dtype)
@@ -669,7 +668,7 @@ class ZarrIO(HDMFIO):
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
-                raise_from(Exception(msg), exc)
+                raise Exception(msg) from exc
         if dtype == object:
             io_settings['object_codec'] = numcodecs.JSON()
 
