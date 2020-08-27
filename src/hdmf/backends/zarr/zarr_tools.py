@@ -18,7 +18,7 @@ from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildMa
 from ...utils import get_data_shape  # , AbstractDataChunkIterator,
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
-from ..hdf5.h5tools import NamespaceIOHelper
+from ..utils import NamespaceToBuilderHelper
 from ...query import HDMFDataset
 from ...container import Container
 
@@ -84,7 +84,7 @@ class ZarrIO(HDMFIO):
     @docval({'name': 'namespace_catalog',
              'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+            {'name': 'path', 'type': str, 'doc': 'the path to the Zarr file'},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None})
     def load_namespaces(cls, namespace_catalog, path, namespaces=None):
         '''
@@ -108,7 +108,7 @@ class ZarrIO(HDMFIO):
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': False},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) HDF5 Datasets', 'default': True})
+             'doc': 'If not specified otherwise link (True) or copy (False) Datasets', 'default': True})
     def write(self, **kwargs):
         """Overwrite the write method to add support for caching the specification"""
         cache_spec = popargs('cache_spec', kwargs)
@@ -128,7 +128,7 @@ class ZarrIO(HDMFIO):
             self.__file.attrs[SPEC_LOC_ATTR] = path
         ns_catalog = self.manager.namespace_catalog
         for ns_name in ns_catalog.namespaces:
-            ns_builder = NamespaceIOHelper.convert_namespace(ns_catalog, ns_name)
+            ns_builder = NamespaceToBuilderHelper.convert_namespace(ns_catalog, ns_name)
             namespace = ns_catalog.get_namespace(ns_name)
             if namespace.version is None:
                 group_name = '%s/unversioned' % ns_name
@@ -141,7 +141,7 @@ class ZarrIO(HDMFIO):
     @docval(*get_docval(HDMFIO.export),
             {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file', 'default': True})
     def export(self, **kwargs):
-        """Export data read from a file from any backend to HDF5.
+        """Export data read from a file from any backend to Zarr.
 
         See :py:meth:`hdmf.backends.io.HDMFIO.export` for more details.
         """
@@ -337,7 +337,7 @@ class ZarrIO(HDMFIO):
         zarr_link.append({'source': target_source, 'path': target_path, 'name': link_name})
         parent.attrs['zarr_link'] = zarr_link
 
-    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
+    @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'})
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
@@ -608,7 +608,7 @@ class ZarrIO(HDMFIO):
             data_shape = get_data_shape(data)
         # Deal with object dtype
         elif isinstance(dtype, np.dtype):
-            data = data[:]  # load the data in case we come from HDF5
+            data = data[:]  # load the data in case we come from HDF5 or another data source
             data_shape = (len(data), )
             dtype = object
             # sometimes bytes and strings can hide as object in numpy array so lets try
