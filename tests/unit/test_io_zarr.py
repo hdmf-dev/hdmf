@@ -6,6 +6,8 @@ from six import text_type
 
 try:
     import zarr
+    from hdmf.backends.zarr.zarr_tools import ZarrIO
+    from hdmf.backends.zarr.zarr_utils import ZarrDataIO
     DISABLE_ALL_ZARR_TESTS = False
 except ImportError:
     DISABLE_ALL_ZARR_TESTS = True
@@ -17,8 +19,6 @@ except ImportError:
 
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ReferenceBuilder, OrphanContainerBuildError
-from hdmf.backends.zarr import ZarrIO
-from hdmf.backends.zarr import ZarrDataIO
 from tests.unit.test_io_hdf5_h5tools import _get_manager, FooFile
 # Baz, BazData, BazBucket, _get_baz_manager, BazCpdData
 from hdmf.data_utils import DataChunkIterator
