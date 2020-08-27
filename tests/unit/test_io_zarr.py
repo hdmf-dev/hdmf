@@ -82,6 +82,7 @@ class GroupBuilderTestCase(TestCase):
             reasons.append("dataset '%s' not equal" % a.name)
         return reasons
 
+
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
 class TestZarrWriter(TestCase):
     """Test writing of builder with Zarr"""
@@ -644,7 +645,6 @@ class TestZarrWriteUnit(TestCase):
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
 
-
     #############################################
     #  Copy/Link h5py.Dataset object
     #############################################
@@ -690,6 +690,7 @@ class TestZarrWriteUnit(TestCase):
         with self.assertRaisesRegex(Exception, r"cannot add .. - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
     """
+
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestExportZarrToZarr because Zarr is not installed")
 class TestExportZarrToZarr(TestCase):

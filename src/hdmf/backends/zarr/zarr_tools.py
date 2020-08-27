@@ -356,7 +356,7 @@ class ZarrIO(HDMFIO):
             {'name': 'force_data', 'type': None,
              'doc': 'Used internally to force the data being used when we have to load the data', 'default': None},
             returns='the Zarr array that was created', rtype=Array)
-    def write_dataset(self, **kwargs):
+    def write_dataset(self, **kwargs):  # noqa: C901
         parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
         force_data = getargs('force_data', kwargs)
         if self.__builder_written_to_zarr(builder, parent):
