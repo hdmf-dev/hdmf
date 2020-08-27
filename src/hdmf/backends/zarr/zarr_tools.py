@@ -37,14 +37,19 @@ class ZarrIO(HDMFIO):
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': 'the mode to open the Zarr file with, one of ("w", "r", "r+", "a", "w-")'},
-            {'name': 'comm', 'type': 'Intracomm',
-             'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
+            {'name': 'synchronizer', 'type': (zarr.ProcessSynchronizer, zarr.ThreadSynchronizer, bool) ,
+             'doc': 'Zarr synchronizer to use for parallel I/O. If set to True a ProcessSynchronizer is used.',
+              'default': None},
             {'name': 'chunking', 'type': bool, 'doc': "Enable chunking of datasets by default", 'default': True})
     def __init__(self, **kwargs):
-        path, manager, mode, comm, chunking = popargs('path', 'manager', 'mode', 'comm', 'chunking', kwargs)
+        path, manager, mode, synchronizer, chunking = popargs('path', 'manager', 'mode', 'synchronizer', 'chunking', kwargs)
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
-        self.__comm = comm
+        if isinstance(synchronizer, bool):
+            sync_path = tempfile.mkdtemp()
+            self.__synchronizer = zarr.ProcessSynchronizer(sync_path)
+        else:
+            self.__synchronizer = synchronizer
         self.__mode = mode
         self.__path = path
         self.__file = None
@@ -61,16 +66,14 @@ class ZarrIO(HDMFIO):
         return self.__chunking
 
     @property
-    def comm(self):
-        return self.__comm
+    def synchronizer(self):
+        return self.__synchronizer
 
     def open(self):
         """Open the Zarr file"""
         if self.__file is None:
-            if self.__comm:
-                sync_path = tempfile.mkdtemp()
-                synchronizer = zarr.ProcessSynchronizer(sync_path)
-                kwargs = {'synchronizer': synchronizer}
+            if self.__synchronizer:
+                kwargs = {'synchronizer': self.__synchronizer}
             else:
                 kwargs = {}
             self.__file = zarr.open(self.__path, self.__mode, **kwargs)
