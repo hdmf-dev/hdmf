@@ -449,7 +449,7 @@ class H5DataIO(DataIO):
 
     def get_io_params(self):
         """
-        Returns a dict with the I/O parameters specifiedin in this DataIO.
+        Returns a dict with the I/O parameters specified in this DataIO.
         """
         ret = dict(self.__iosettings)
         ret['link_data'] = self.__link_data
