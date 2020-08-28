@@ -826,7 +826,7 @@ class ZarrIO(HDMFIO):
                     l_path = os.path.join(link['source'], link['path'].lstrip("/"))
 
                 if not os.path.exists(l_path):
-                    raise ValueError("Found bad link %s to %s" % (l_name, l_path))
+                    raise ValueError("Found bad link %s in %s to %s" % (l_name, self.__path, l_path))
 
                 target_name = str(os.path.basename(l_path))
                 target_zarr_obj = zarr.open(l_path, mode='r')
