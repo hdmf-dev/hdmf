@@ -42,6 +42,9 @@ SPEC_LOC_ATTR = '.specloc'
 class ZarrIODataChunkIteratorQueue(deque):
     """
     Helper class used by ZarrIO to manage the write for DataChunkIterators
+
+    Each queue element must be a tupple of two elements:
+    1) the dataset to write to and 2) the AbstractDataChunkIterator with the data
     """
     def __init__(self):
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
@@ -94,8 +97,19 @@ class ZarrIODataChunkIteratorQueue(deque):
         while len(self) > 0:
             dset, data = self.popleft()
             if self.__write_chunk(dset, data):
-                self.append((dset, data))
+                self.append(dataset=dset, data=data)
         self.logger.debug("Exhausted DataChunkIterator from queue (length %d)" % len(self))
+
+    def append(self, dataset, data):
+        """
+        Append a value to the queue
+
+        :param dataset: The dataset where the DataChunkIterator is written to
+        :type dataset: Zarr array
+        :param data: DataChunkIterator with the data to be written
+        :type data: AbstractDataChunkIterator
+        """
+        super().append((dataset, data))
 
 
 class ZarrIO(HDMFIO):
@@ -643,7 +657,7 @@ class ZarrIO(HDMFIO):
             # Iterative write of a data chunk iterator
             elif isinstance(data, AbstractDataChunkIterator):
                 dset = self.__setup_chunked_dataset__(parent, name, data, options)
-                self.__dci_queue.append((dset, data))
+                self.__dci_queue.append(dataset=dset, data=data)
             elif hasattr(data, '__len__'):
                 dset = self.__list_fill__(parent, name, data, options)
             else:
