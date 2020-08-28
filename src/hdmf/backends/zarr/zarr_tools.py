@@ -83,11 +83,9 @@ class ZarrIO(HDMFIO):
     def open(self):
         """Open the Zarr file"""
         if self.__file is None:
-            if self.__synchronizer:
-                kwargs = {'synchronizer': self.__synchronizer}
-            else:
-                kwargs = {}
-            self.__file = zarr.open(self.__path, self.__mode, **kwargs)
+            self.__file = zarr.open(store=self.__path,
+                                    mode=self.__mode,
+                                    synchronizer=self.__synchronizer)
 
     def close(self):
         """Close the Zarr file"""
