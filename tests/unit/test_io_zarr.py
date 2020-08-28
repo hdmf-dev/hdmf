@@ -585,41 +585,52 @@ class TestZarrWriteUnit(TestCase):
         self.assertEqual(dset.chunks, (5, 1, 1))
         self.assertTrue(dset.compressor == compressor)
 
-    """
     #############################################
     #  Copy/Link h5py.Dataset object
     #############################################
-    def test_link_h5py_dataset_input(self):
-        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
-        self.io.write_dataset(self.f, DatasetBuilder('test_softlink', self.f['test_dataset'], attributes={}))
-        self.assertTrue(isinstance(self.f.get('test_softlink', getlink=True), SoftLink))
+    def test_link_zarr_dataset_input(self):
+        dset = DatasetBuilder('test_dataset', np.arange(10), attributes={})
+        self.io.write_dataset(self.f, builder=dset)
+        softlink = DatasetBuilder('test_softlink', self.f['test_dataset'], attributes={})
+        self.io.write_dataset(self.f, builder=softlink)
+        tempf = zarr.open(store=self.path, mode='r')
+        expected_link = {'name': 'test_softlink',
+                         'path': '/test_dataset',
+                         'source': '/Users/oruebel/Devel/nwb/zarr/hdmf/test_io.zarr'}
+        self.assertEqual(len(tempf.attrs['zarr_link']), 1)
+        self.assertDictEqual(tempf.attrs['zarr_link'][0], expected_link)
 
-    def test_copy_h5py_dataset_input(self):
+    def test_copy_zarr_dataset_input(self):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
         self.io.write_dataset(self.f,
                               DatasetBuilder('test_copy', self.f['test_dataset'], attributes={}),
                               link_data=False)
-        self.assertTrue(isinstance(self.f.get('test_copy', getlink=True), HardLink))
+        # NOTE: In HDF5 this would be a HardLink. Since Zarr does not support links, this will be a copy instead.
         self.assertListEqual(self.f['test_dataset'][:].tolist(),
                              self.f['test_copy'][:].tolist())
 
-    def test_link_h5py_dataset_h5dataio_input(self):
+    def test_link_dataset_zarrdataio_input(self):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
         self.io.write_dataset(self.f, DatasetBuilder('test_softlink',
-                                                     H5DataIO(data=self.f['test_dataset'],
-                                                              link_data=True),
+                                                     ZarrDataIO(data=self.f['test_dataset'],
+                                                                link_data=True),
                                                      attributes={}))
-        self.assertTrue(isinstance(self.f.get('test_softlink', getlink=True), SoftLink))
+        tempf = zarr.open(store=self.path, mode='r')
+        expected_link = {'name': 'test_softlink',
+                         'path': '/test_dataset',
+                         'source': '/Users/oruebel/Devel/nwb/zarr/hdmf/test_io.zarr'}
+        self.assertEqual(len(tempf.attrs['zarr_link']), 1)
+        self.assertDictEqual(tempf.attrs['zarr_link'][0], expected_link)
 
-    def test_copy_h5py_dataset_h5dataio_input(self):
+    def test_copy_dataset_zarrdataio_input(self):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
         self.io.write_dataset(self.f,
                               DatasetBuilder('test_copy',
-                                             H5DataIO(data=self.f['test_dataset'],
-                                                      link_data=False),  # Force dataset copy
+                                             ZarrDataIO(data=self.f['test_dataset'],
+                                                        link_data=False),  # Force dataset copy
                                              attributes={}),
                               link_data=True)  # Make sure the default behavior is set to link the data
-        self.assertTrue(isinstance(self.f.get('test_copy', getlink=True), HardLink))
+        # NOTE: In HDF5 this would be a HardLink. Since Zarr does not support links, this will be a copy instead.
         self.assertListEqual(self.f['test_dataset'][:].tolist(),
                              self.f['test_copy'][:].tolist())
 
@@ -628,9 +639,8 @@ class TestZarrWriteUnit(TestCase):
         self.assertTupleEqual(dset.shape, (0,))
 
     def test_list_fill_empty_no_dtype(self):
-        with self.assertRaisesRegex(Exception, r"cannot add .. - could not determine type"):
+        with self.assertRaisesRegex(Exception, r"cannot add empty_dataset to / - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
-    """
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestExportZarrToZarr because Zarr is not installed")
