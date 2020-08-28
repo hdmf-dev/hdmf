@@ -1,3 +1,4 @@
+"""Module for build error definitions"""
 from .builders import Builder
 from ..container import AbstractContainer
 from ..utils import docval, getargs
