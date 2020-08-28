@@ -783,7 +783,7 @@ class TestExportZarrToZarr(TestCase):
 
     def test_soft_link_group(self):
         """Test that exporting a written file with soft linked groups keeps links within the file."""
-        #pass  # TODO this test currently fails.
+        pass  # TODO this test currently fails.
         # The problem  may be: 1) foo1 is linked instead of copied, 2) links point to the orginal source rather than
         #    to the new file
         """
@@ -805,7 +805,6 @@ class TestExportZarrToZarr(TestCase):
             # make sure the linked group is within the same file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
         """
-
 
     def test_soft_link_dataset(self):
         """Test that exporting a written file with soft linked datasets keeps links within the file."""
