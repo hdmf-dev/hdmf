@@ -398,19 +398,19 @@ class TestZarrWriteUnit(TestCase):
     #############################################
     #  ZarrDataIO general
     #############################################
-    def test_h5dataio_array_conversion_numpy(self):
+    def test_zarrdataio_array_conversion_numpy(self):
         # Test that ZarrDataIO.__array__ is working when wrapping an ndarray
         test_speed = np.array([10., 20.])
         data = ZarrDataIO((test_speed))
         self.assertTrue(np.all(np.isfinite(data)))  # Force call of ZarrDataIO.__array__
 
-    def test_h5dataio_array_conversion_list(self):
+    def test_zarrdataio_array_conversion_list(self):
         # Test that ZarrDataIO.__array__ is working when wrapping a python list
         test_speed = [10., 20.]
         data = ZarrDataIO(test_speed)
         self.assertTrue(np.all(np.isfinite(data)))  # Force call of ZarrDataIO.__array__
 
-    def test_h5dataio_array_conversion_datachunkiterator(self):
+    def test_zarrdataio_array_conversion_datachunkiterator(self):
         # Test that ZarrDataIO.__array__ is working when wrapping a python list
         test_speed = DataChunkIterator(data=[10., 20.])
         data = ZarrDataIO(test_speed)
@@ -495,38 +495,10 @@ class TestZarrWriteUnit(TestCase):
         dset = self.f['test_dataset']
         self.assertListEqual(dset[:].tolist(), list(range(10)))
 
-    """
-    def test_write_dataset_iterable_multidimensional_array(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        aiter = iter(a)
-        daiter = DataChunkIterator.from_iterable(aiter, buffer_size=2)
-        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', daiter, attributes={}))
-        dset = self.f['test_dataset']
-        self.assertListEqual(dset[:].tolist(), a.tolist())
-
-    def test_write_dataset_iterable_multidimensional_array_compression(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        aiter = iter(a)
-        daiter = DataChunkIterator.from_iterable(aiter, buffer_size=2)
-        wrapped_daiter = H5DataIO(data=daiter,
-                                  compression='gzip',
-                                  compression_opts=5,
-                                  shuffle=True,
-                                  fletcher32=True)
-        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', wrapped_daiter, attributes={}))
-        dset = self.f['test_dataset']
-        self.assertEqual(dset.shape, a.shape)
-        self.assertListEqual(dset[:].tolist(), a.tolist())
-        self.assertEqual(dset.compression, 'gzip')
-        self.assertEqual(dset.compression_opts, 5)
-        self.assertEqual(dset.shuffle, True)
-        self.assertEqual(dset.fletcher32, True)
-    """
-
-    """
     ##########################################
     #  write_dataset tests: tables
     ##########################################
+    """
     def test_write_table(self):
         cmpd_dt = np.dtype([('a', np.int32), ('b', np.float64)])
         data = np.zeros(10, dtype=cmpd_dt)
@@ -556,53 +528,31 @@ class TestZarrWriteUnit(TestCase):
         self.assertEqual(dset['b'].tolist(), data['b'].tolist())
     """
 
-    """
-    ##########################################
-    #  __chunked_iter_fill__(...) tests
-    ##########################################
-    def test__chunked_iter_fill_iterator_matched_buffer_size(self):
-        dci = DataChunkIterator(data=range(10), buffer_size=2)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertListEqual(my_dset[:].tolist(), list(range(10)))
-
-    def test__chunked_iter_fill_iterator_unmatched_buffer_size(self):
-        dci = DataChunkIterator(data=range(10), buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertListEqual(my_dset[:].tolist(), list(range(10)))
-
-    def test__chunked_iter_fill_numpy_matched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a, buffer_size=1)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_numpy_unmatched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a, buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_list_matched_buffer_size(self):
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a.tolist(), buffer_size=1)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-
-    def test__chunked_iter_fill_numpy_unmatched_buffer_size(self):  # noqa: F811
-        a = np.arange(30).reshape(5, 2, 3)
-        dci = DataChunkIterator(data=a.tolist(), buffer_size=3)
-        my_dset = HDF5IO.__chunked_iter_fill__(self.f, 'test_dataset', dci)
-        self.assertTrue(np.all(my_dset[:] == a))
-        self.assertTupleEqual(my_dset.shape, a.shape)
-    """
-
-    """
     #############################################
     #  write_dataset tests: data chunk iterator
     #############################################
+    def test_write_dataset_iterable_multidimensional_array(self):
+        a = np.arange(30).reshape(5, 2, 3)
+        aiter = iter(a)
+        daiter = DataChunkIterator.from_iterable(aiter, buffer_size=2)
+        self.io.write_dataset(parent=self.f,
+                              builder=DatasetBuilder('test_dataset', daiter, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertListEqual(dset[:].tolist(), a.tolist())
+
+    def test_write_dataset_iterable_multidimensional_array_compression(self):
+        a = np.arange(30).reshape(5, 2, 3)
+        aiter = iter(a)
+        daiter = DataChunkIterator.from_iterable(aiter, buffer_size=2)
+        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+        wrapped_daiter = ZarrDataIO(data=daiter,
+                                    compressor=compressor)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', wrapped_daiter, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertEqual(dset.shape, a.shape)
+        self.assertListEqual(dset[:].tolist(), a.tolist())
+        self.assertTrue(dset.compressor == compressor)
+
     def test_write_dataset_data_chunk_iterator(self):
         dci = DataChunkIterator(data=np.arange(10), buffer_size=2)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', dci, attributes={}))
@@ -611,19 +561,14 @@ class TestZarrWriteUnit(TestCase):
 
     def test_write_dataset_data_chunk_iterator_with_compression(self):
         dci = DataChunkIterator(data=np.arange(10), buffer_size=2)
-        wrapped_dci = H5DataIO(data=dci,
-                               compression='gzip',
-                               compression_opts=5,
-                               shuffle=True,
-                               fletcher32=True,
-                               chunks=(2,))
+        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+        wrapped_dci = ZarrDataIO(data=dci,
+                                 compressor=compressor,
+                                 chunks=(2,))
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', wrapped_dci, attributes={}))
         dset = self.f['test_dataset']
         self.assertListEqual(dset[:].tolist(), list(range(10)))
-        self.assertEqual(dset.compression, 'gzip')
-        self.assertEqual(dset.compression_opts, 5)
-        self.assertEqual(dset.shuffle, True)
-        self.assertEqual(dset.fletcher32, True)
+        self.assertTrue(dset.compressor == compressor)
         self.assertEqual(dset.chunks, (2,))
 
     def test_pass_through_of_recommended_chunks(self):
@@ -632,19 +577,15 @@ class TestZarrWriteUnit(TestCase):
             def recommended_chunk_shape(self):
                 return (5, 1, 1)
         dci = DC(data=np.arange(30).reshape(5, 2, 3))
-        wrapped_dci = H5DataIO(data=dci,
-                               compression='gzip',
-                               compression_opts=5,
-                               shuffle=True,
-                               fletcher32=True)
+        compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
+        wrapped_dci = ZarrDataIO(data=dci,
+                                 compressor=compressor)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', wrapped_dci, attributes={}))
         dset = self.f['test_dataset']
         self.assertEqual(dset.chunks, (5, 1, 1))
-        self.assertEqual(dset.compression, 'gzip')
-        self.assertEqual(dset.compression_opts, 5)
-        self.assertEqual(dset.shuffle, True)
-        self.assertEqual(dset.fletcher32, True)
+        self.assertTrue(dset.compressor == compressor)
 
+    """
     #############################################
     #  Copy/Link h5py.Dataset object
     #############################################

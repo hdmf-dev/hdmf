@@ -9,15 +9,16 @@ Currently, the Zarr backend supports:
 
 - Write/Read of basic datatypes, strings and compound data types
 - Chunking
+- Compression and I/O filters
 - Links
 - Object references
 - Writing/loading namespaces/specifications
+- Iterative data write using AbstractDataChunkIterator
 
 The following features available in :py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` are not yet supported
 by :py:class:`~hdmf.backends.zarr.zarr_tools.ZarrIO` backend:
 
 - Region reference (see ``ZarrIO.__get_ref``)
-- Iterative data write using AbstractDataChunkIterator
 
 .. warning::
 

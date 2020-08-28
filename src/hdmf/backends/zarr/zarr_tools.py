@@ -1,34 +1,101 @@
-import numpy as np
-from zarr.hierarchy import Group
-from zarr.core import Array
-import numcodecs
+"""Module with the Zarr-based I/O-backend for HDMF"""
+# Python imports
 import os
 import itertools
 from copy import deepcopy
 import warnings
-
-import zarr
+import numpy as np
+from collections import deque
 import tempfile
+import logging
+
+# Zarr imports
+import zarr
+from zarr.hierarchy import Group
+from zarr.core import Array
+import numcodecs
+
+# HDMF imports
 from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter, ZarrSpecReader
 from ..io import HDMFIO, UnsupportedOperation
 from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper
-from ...utils import get_data_shape  # , AbstractDataChunkIterator,
+from ...utils import get_data_shape
+from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 from ...query import HDMFDataset
 from ...container import Container
 
+# Module variables
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
 
 
 # TODO We should resolve reference stored in datasets to the containers
-# TODO We should add support for AbstractDataChunkIterator
 # TODO We should add support for RegionReferences
 # TODO HDF5IO uses export_source argument on export. Need to check with Ryan if we need it here as well.
+
+
+class ZarrIODataChunkIteratorQueue(deque):
+    """
+    Helper class used by ZarrIO to manage the write for DataChunkIterators
+    """
+    def __init__(self):
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
+        super().__init__()
+
+    def __write_chunk(cls, dset, data):
+        """
+        Internal helper function used to read a chunk from the given DataChunkIterator
+        and write it to the given Dataset
+
+        :param dset: The Dataset to write to
+        :param data: The DataChunkIterator to read from
+        :return: True of a chunk was written, False otherwise
+        :rtype: bool
+        """
+        # Read the next data block
+        try:
+            chunk_i = next(data)
+        except StopIteration:
+            return False
+        # Determine the minimum array size required to store the chunk
+        min_bounds = chunk_i.get_min_bounds()
+        resize_required = False
+        min_shape = list(dset.shape)
+        if len(min_bounds) > len(dset.shape):
+            raise ValueError("Shape of data chunk does not match the shape of the dataset")
+        else:
+            for si, sv in enumerate(dset.shape):
+                if si < len(min_bounds):
+                    if sv < min_bounds[si]:
+                        min_shape[si] = min_bounds[si]
+                        resize_required = True
+                else:
+                    break
+
+        # Expand the dataset if needed
+        if resize_required:
+            dset.resize(min_shape)
+        # Write the data
+        dset[chunk_i.selection] = chunk_i.data
+        # Chunk written and we need to continue
+        return True
+
+    def exhaust_queue(self):
+        """
+        Read and write from any queued DataChunkIterators in a round-robin fashion
+        """
+        # Iterate through our queue and write data chunks in a round-robin fashion until all iterators are exhausted
+        self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self))
+        while len(self) > 0:
+            dset, data = self.popleft()
+            if self.__write_chunk(dset, data):
+                self.append((dset, data))
+        self.logger.debug("Exhausted DataChunkIterator from queue (length %d)" % len(self))
 
 
 class ZarrIO(HDMFIO):
@@ -37,12 +104,14 @@ class ZarrIO(HDMFIO):
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': 'the mode to open the Zarr file with, one of ("w", "r", "r+", "a", "w-")'},
-            {'name': 'synchronizer', 'type': (zarr.ProcessSynchronizer, zarr.ThreadSynchronizer, bool) ,
+            {'name': 'synchronizer', 'type': (zarr.ProcessSynchronizer, zarr.ThreadSynchronizer, bool),
              'doc': 'Zarr synchronizer to use for parallel I/O. If set to True a ProcessSynchronizer is used.',
-              'default': None},
+             'default': None},
             {'name': 'chunking', 'type': bool, 'doc': "Enable chunking of datasets by default", 'default': True})
     def __init__(self, **kwargs):
-        path, manager, mode, synchronizer, chunking = popargs('path', 'manager', 'mode', 'synchronizer', 'chunking', kwargs)
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
+        path, manager, mode, synchronizer, chunking = popargs('path', 'manager', 'mode',
+                                                              'synchronizer', 'chunking', kwargs)
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
         if isinstance(synchronizer, bool):
@@ -55,8 +124,9 @@ class ZarrIO(HDMFIO):
         self.__file = None
         self.__built = dict()
         self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
+        self.__dci_queue = ZarrIODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         self.__chunking = chunking
-        super(ZarrIO, self).__init__(manager, source=path)
+        super().__init__(manager, source=path)
         warn_msg = '\033[91m' + 'The ZarrIO backend is experimental. It is under active ' + \
                    'development and backward compatibility is not guaranteed for the backend.' + '\033[0m'
         warnings.warn(warn_msg)
@@ -111,7 +181,11 @@ class ZarrIO(HDMFIO):
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': False},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) Datasets', 'default': True})
+             'doc': 'If not specified otherwise link (True) or copy (False) Datasets', 'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, add ' +
+                    'them to the internal queue self.__dci_queue and exhaust them concurrently at the end',
+             'default': True},)
     def write(self, **kwargs):
         """Overwrite the write method to add support for caching the specification"""
         cache_spec = popargs('cache_spec', kwargs)
@@ -187,22 +261,39 @@ class ZarrIO(HDMFIO):
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the NWBFile'},
             {'name': 'link_data', 'type': bool,
-             'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True})
+             'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, add ' +
+                    'them to the internal queue self.__dci_queue and exhaust them concurrently at the end',
+             'default': True})
     def write_builder(self, **kwargs):
         """Write a builder to disk"""
-        f_builder, link_data = getargs('builder', 'link_data', kwargs)
+        f_builder, link_data, exhaust_dci = getargs('builder', 'link_data', 'exhaust_dci', kwargs)
         for name, gbldr in f_builder.groups.items():
-            self.write_group(self.__file, gbldr)
+            self.write_group(parent=self.__file,
+                             builder=gbldr,
+                             exhaust_dci=exhaust_dci)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, link_data)
+            self.write_dataset(parent=self.__file,
+                               builder=dbldr,
+                               link_data=link_data,
+                               exhaust_dci=exhaust_dci)
         self.set_attributes(self.__file, f_builder.attributes)
+        self.__dci_queue.exhaust_queue()  # Write all DataChunkIterators that have been queued
+        self._written_builders.set_written(f_builder)
+        self.logger.debug("Done writing %s '%s' to path '%s'" %
+                          (f_builder.__class__.__qualname__, f_builder.name, self.source))
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, add ' +
+                    'them to the internal queue self.__dci_queue and exhaust them concurrently at the end',
+             'default': True},
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         """Write a GroupBuider to file"""
-        parent, builder = getargs('parent', 'builder', kwargs)
+        parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
         if self.get_written(builder):
             group = parent[builder.name]
         else:
@@ -211,12 +302,16 @@ class ZarrIO(HDMFIO):
         subgroups = builder.groups
         if subgroups:
             for subgroup_name, sub_builder in subgroups.items():
-                self.write_group(group, sub_builder)
+                self.write_group(parent=group,
+                                 builder=sub_builder,
+                                 exhaust_dci=exhaust_dci)
 
         datasets = builder.datasets
         if datasets:
             for dset_name, sub_builder in datasets.items():
-                self.write_dataset(group, sub_builder)
+                self.write_dataset(parent=group,
+                                   builder=sub_builder,
+                                   exhaust_dci=exhaust_dci)
 
         # write all links (haven implemented)
         links = builder.links
@@ -360,15 +455,60 @@ class ZarrIO(HDMFIO):
         self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         self._written_builders.set_written(builder)  # record that the builder has been written
 
+    @classmethod
+    def __setup_chunked_dataset__(cls, parent, name, data, options=None):
+        """
+        Setup a dataset for writing to one-chunk-at-a-time based on the given DataChunkIterator. This
+        is a helper function for write_dataset()
+
+        :param parent: The parent object to which the dataset should be added
+        :type parent: Zarr Group or File
+        :param name: The name of the dataset
+        :type name: str
+        :param data: The data to be written.
+        :type data: AbstractDataChunkIterator
+        :param options: Dict with options for creating a dataset. available options are 'dtype' and 'io_settings'
+        :type options: dict
+
+        """
+        io_settings = {}
+        if options is not None:
+            if 'io_settings' in options:
+                io_settings = options.get('io_settings')
+        # Define the chunking options if the user has not set them explicitly. We need chunking for the iterative write.
+        if 'chunks' not in io_settings:
+            recommended_chunks = data.recommended_chunk_shape()
+            io_settings['chunks'] = True if recommended_chunks is None else recommended_chunks
+        # Define the shape of the data if not provided by the user
+        if 'shape' not in io_settings:
+            io_settings['shape'] = data.recommended_data_shape()
+        if 'dtype' not in io_settings:
+            if (options is not None) and ('dtype' in options):
+                io_settings['dtype'] = options['dtype']
+            else:
+                io_settings['dtype'] = data.dtype
+            if isinstance(io_settings['dtype'], str):
+                # map to real dtype if we were given a string
+                io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
+        try:
+            dset = parent.create_dataset(name, **io_settings)
+        except Exception as exc:
+            raise Exception("Could not create dataset %s in %s" % (name, parent.name)) from exc
+        return dset
+
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},  # noqa: C901
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'the DatasetBuilder to write'},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True},
+            {'name': 'exhaust_dci', 'type': bool,
+             'doc': 'exhaust DataChunkIterators one at a time. If False, add ' +
+                    'them to the internal queue self.__dci_queue and exhaust them concurrently at the end',
+             'default': True},
             {'name': 'force_data', 'type': None,
              'doc': 'Used internally to force the data being used when we have to load the data', 'default': None},
             returns='the Zarr array that was created', rtype=Array)
     def write_dataset(self, **kwargs):  # noqa: C901
-        parent, builder, link_data = getargs('parent', 'builder', 'link_data', kwargs)
+        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
         force_data = getargs('force_data', kwargs)
         if self.get_written(builder):
             return None
@@ -381,7 +521,9 @@ class ZarrIO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
-        if 'chunks' not in options['io_settings']:
+        # Enable/Disable chunking for all datasets if not set. Ignore in case of a DataChunkIterator
+        # as those datasets will always be chunked and need to set their own chunking
+        if 'chunks' not in options['io_settings'] and not isinstance(data, AbstractDataChunkIterator):
             options['io_settings']['chunks'] = self.chunking
 
         attributes = builder.attributes
@@ -498,13 +640,22 @@ class ZarrIO(HDMFIO):
         else:
             if isinstance(data, (str, bytes)):
                 dset = self.__scalar_fill__(parent, name, data, options)
+            # Iterative write of a data chunk iterator
+            elif isinstance(data, AbstractDataChunkIterator):
+                dset = self.__setup_chunked_dataset__(parent, name, data, options)
+                self.__dci_queue.append((dset, data))
             elif hasattr(data, '__len__'):
                 dset = self.__list_fill__(parent, name, data, options)
             else:
                 dset = self.__scalar_fill__(parent, name, data, options)
         if not linked:
             self.set_attributes(dset, attributes)
-        self._written_builders.set_written(builder)  # record that the builder has been written
+        # record that the builder has been written
+        self._written_builders.set_written(builder)
+        # Exhaust the DataChunkIterator if the dataset was given this way. Note this is a no-op
+        # if the self.__dci_queue is empty
+        if exhaust_dci:
+            self.__dci_queue.exhaust_queue()
         return dset
 
     __dtypes = {
