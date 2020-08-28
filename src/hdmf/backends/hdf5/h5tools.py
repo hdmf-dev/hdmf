@@ -655,7 +655,8 @@ class HDF5IO(HDMFIO):
         self.__add_refs()
         self.__exhaust_dcis()
         self.__set_written(f_builder)
-        self.logger.debug("Done writing GroupBuilder '%s' to path '%s'" % (f_builder.name, self.source))
+        self.logger.debug("Done writing %s '%s' to path '%s'" %
+                          (f_builder.__class__.__qualname__, f_builder.name, self.source))
 
     def __add_refs(self):
         '''
@@ -1177,12 +1178,12 @@ class HDF5IO(HDMFIO):
         :rtype: bool
 
         """
-        # Reach the next data block
+        # Read the next data block
         try:
             chunk_i = next(data)
         except StopIteration:
             return False
-        # Determin the minimum array size required to store the chunk
+        # Determine the minimum array size required to store the chunk
         max_bounds = chunk_i.get_min_bounds()
         # Expand the dataset if needed
         dset.id.extend(max_bounds)
