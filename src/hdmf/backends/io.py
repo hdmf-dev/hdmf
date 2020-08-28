@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from ..build import BuildManager, GroupBuilder
 from ..utils import docval, getargs, popargs
 from ..container import Container
+from .errors import UnsupportedOperation
 
 
 class HDMFIO(metaclass=ABCMeta):
@@ -121,7 +122,3 @@ class HDMFIO(metaclass=ABCMeta):
 
     def __exit__(self, type, value, traceback):
         self.close()
-
-
-class UnsupportedOperation(ValueError):
-    pass

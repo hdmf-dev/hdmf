@@ -16,7 +16,8 @@ import numcodecs
 
 # HDMF imports
 from .zarr_utils import ZarrDataIO, ZarrReference, ZarrSpecWriter, ZarrSpecReader, ZarrIODataChunkIteratorQueue
-from ..io import HDMFIO, UnsupportedOperation
+from ..io import HDMFIO
+from ..errors import UnsupportedOperation
 from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...build import Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,\
                      RegionBuilder, ReferenceBuilder, TypeMap  # , ObjectMapper

@@ -16,7 +16,8 @@ from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter,  HDF5IODataChunkIteratorQueue)
 
-from ..io import HDMFIO, UnsupportedOperation
+from ..io import HDMFIO
+from ..errors import UnsupportedOperation
 from ..warnings import BrokenLinkWarning
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 

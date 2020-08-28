@@ -32,12 +32,14 @@
     - Removed ``HDF5IO.__write_chunk__(...)`` (now part of ``HDF5IODataChunkIteratorQueue``)
     - Changed ``HDFIO.__dci_queue`` to use ``HDF5IODataChunkIteratorQueue`` instead of a standard ``deque``
 
+- Added new ``hdmf/backends/error.py`` module for I/O errors.
 
 ### Bug fixes
 - ...
 
 ### Breaking changes
 - Add optional dependencies for ``Zarr`` and ``numcodecs`` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new ``hdmf/backends/zarr`` I/O backend) will function without these dependencies.  @oruebel (#98)
+- Moved ``UnsupportedOperation`` error class from ``hdmf.backends.io`` to the new ``hdmf.backends.errors`` module.  @oruebel (#98)
 
 
 ## HDMF 2.2.0 (August 14, 2020)
