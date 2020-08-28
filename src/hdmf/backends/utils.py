@@ -12,9 +12,12 @@ class WriteStatusTracker(dict):
     def __init__(self):
         pass
 
-    def __builderhash(self, obj):
+    def __builderhash(self, builder):
         """Return the ID of a builder for use as a unique hash."""
-        return id(obj)
+        # NOTE: id may not be sufficient if builders are created inline in the function call, in which
+        #       case the id is the id of the functions parameter, so it can be the same for different
+        #       builders. This should typically only happen in unit testing, but just to be safe.
+        return str(id(builder)) + "_" + str(builder.name)
 
     def set_written(self, builder):
         """
