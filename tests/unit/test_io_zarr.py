@@ -596,7 +596,7 @@ class TestZarrWriteUnit(TestCase):
         tempf = zarr.open(store=self.path, mode='r')
         expected_link = {'name': 'test_softlink',
                          'path': '/test_dataset',
-                         'source': '/Users/oruebel/Devel/nwb/zarr/hdmf/test_io.zarr'}
+                         'source': os.path.abspath(self.path)}
         self.assertEqual(len(tempf.attrs['zarr_link']), 1)
         self.assertDictEqual(tempf.attrs['zarr_link'][0], expected_link)
 
@@ -618,7 +618,7 @@ class TestZarrWriteUnit(TestCase):
         tempf = zarr.open(store=self.path, mode='r')
         expected_link = {'name': 'test_softlink',
                          'path': '/test_dataset',
-                         'source': '/Users/oruebel/Devel/nwb/zarr/hdmf/test_io.zarr'}
+                         'source': os.path.abspath(self.path)}
         self.assertEqual(len(tempf.attrs['zarr_link']), 1)
         self.assertDictEqual(tempf.attrs['zarr_link'][0], expected_link)
 
