@@ -14,7 +14,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
-                       H5SpecReader, H5SpecWriter)
+                       H5SpecReader, H5SpecWriter,  HDF5IODataChunkIteratorQueue)
 
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
@@ -70,7 +70,7 @@ class HDF5IO(HDMFIO):
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
         self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
-        self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
+        self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
         self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
         self.__open_links = []      # keep track of other files opened from links in this file
@@ -653,7 +653,7 @@ class HDF5IO(HDMFIO):
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
-        self.__exhaust_dcis()
+        self.__dci_queue.exhaust_queue()
         self.__set_written(f_builder)
         self.logger.debug("Done writing %s '%s' to path '%s'" %
                           (f_builder.__class__.__qualname__, f_builder.name, self.source))
@@ -680,16 +680,6 @@ class HDF5IO(HDMFIO):
                 self.logger.debug("Adding reference with call id %d failed. Appending call to queue" % id(call))
                 failed.add(id(call))
                 self.__ref_queue.append(call)
-
-    def __exhaust_dcis(self):
-        """
-        Read and write from any queued DataChunkIterators in a round-robin fashion
-        """
-        while len(self.__dci_queue) > 0:
-            self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self.__dci_queue))
-            dset, data = self.__dci_queue.popleft()
-            if self.__write_chunk__(dset, data):
-                self.__dci_queue.append((dset, data))
 
     @classmethod
     def get_type(cls, data):
@@ -1085,7 +1075,7 @@ class HDF5IO(HDMFIO):
             # Iterative write of a data chunk iterator
             elif isinstance(data, AbstractDataChunkIterator):
                 dset = self.__setup_chunked_dset__(parent, name, data, options)
-                self.__dci_queue.append((dset, data))
+                self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
             elif hasattr(data, '__len__'):
                 dset = self.__list_fill__(parent, name, data, options)
@@ -1100,7 +1090,7 @@ class HDF5IO(HDMFIO):
             pass
         self.__set_written(builder)
         if exhaust_dci:
-            self.__exhaust_dcis()
+            self.__dci_queue.exhaust_queue()
 
     @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):
@@ -1166,33 +1156,6 @@ class HDF5IO(HDMFIO):
         return dset
 
     @classmethod
-    def __write_chunk__(cls, dset, data):
-        """
-        Read a chunk from the given DataChunkIterator and write it to the given Dataset
-
-        :param dset: The Dataset to write to
-        :type dset: Dataset
-        :param data: The DataChunkIterator to read from
-        :type data: AbstractDataChunkIterator
-        :return: True of a chunk was written, False otherwise
-        :rtype: bool
-
-        """
-        # Read the next data block
-        try:
-            chunk_i = next(data)
-        except StopIteration:
-            return False
-        # Determine the minimum array size required to store the chunk
-        max_bounds = chunk_i.get_min_bounds()
-        # Expand the dataset if needed
-        dset.id.extend(max_bounds)
-        # Write the data
-        dset[chunk_i.selection] = chunk_i.data
-
-        return True
-
-    @classmethod
     def __chunked_iter_fill__(cls, parent, name, data, options=None):
         """
         Write data to a dataset one-chunk-at-a-time based on the given DataChunkIterator
@@ -1210,7 +1173,7 @@ class HDF5IO(HDMFIO):
         dset = cls.__setup_chunked_dset__(parent, name, data, options=options)
         read = True
         while read:
-            read = cls.__write_chunk__(dset, data)
+            read = HDF5IODataChunkIteratorQueue._write_chunk(dset, data)
         return dset
 
     @classmethod

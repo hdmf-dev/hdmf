@@ -1,5 +1,6 @@
 from copy import copy
 from collections.abc import Iterable
+from collections import deque
 from abc import ABCMeta, abstractmethod
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
@@ -7,6 +8,7 @@ import json
 import numpy as np
 import warnings
 import os
+import logging
 
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
@@ -14,6 +16,66 @@ from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
+
+
+class HDF5IODataChunkIteratorQueue(deque):
+    """
+    Helper class used by HDF5IO to manage the write for DataChunkIterators
+
+    Each queue element must be a tupple of two elements:
+    1) the dataset to write to and 2) the AbstractDataChunkIterator with the data
+    """
+    def __init__(self):
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
+        super().__init__()
+
+    @classmethod
+    def _write_chunk(cls, dset, data):
+        """
+        Read a chunk from the given DataChunkIterator and write it to the given Dataset
+
+        :param dset: The Dataset to write to
+        :type dset: Dataset
+        :param data: The DataChunkIterator to read from
+        :type data: AbstractDataChunkIterator
+        :return: True of a chunk was written, False otherwise
+        :rtype: bool
+
+        """
+        # Read the next data block
+        try:
+            chunk_i = next(data)
+        except StopIteration:
+            return False
+        # Determine the minimum array size required to store the chunk
+        max_bounds = chunk_i.get_min_bounds()
+        # Expand the dataset if needed
+        dset.id.extend(max_bounds)
+        # Write the data
+        dset[chunk_i.selection] = chunk_i.data
+
+        return True
+
+    def exhaust_queue(self):
+        """
+        Read and write from any queued DataChunkIterators in a round-robin fashion
+        """
+        while len(self) > 0:
+            self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self))
+            dset, data = self.popleft()
+            if self._write_chunk(dset, data):
+                self.append(dataset=dset, data=data)
+
+    def append(self, dataset, data):
+        """
+        Append a value to the queue
+
+        :param dataset: The dataset where the DataChunkIterator is written to
+        :type dataset: Zarr array
+        :param data: DataChunkIterator with the data to be written
+        :type data: AbstractDataChunkIterator
+        """
+        super().append((dataset, data))
 
 
 class H5Dataset(HDMFDataset):

@@ -23,7 +23,8 @@ class ZarrIODataChunkIteratorQueue(deque):
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         super().__init__()
 
-    def __write_chunk(cls, dset, data):
+    @classmethod
+    def __write_chunk__(cls, dset, data):
         """
         Internal helper function used to read a chunk from the given DataChunkIterator
         and write it to the given Dataset
@@ -69,7 +70,7 @@ class ZarrIODataChunkIteratorQueue(deque):
         self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self))
         while len(self) > 0:
             dset, data = self.popleft()
-            if self.__write_chunk(dset, data):
+            if self.__write_chunk__(dset, data):
                 self.append(dataset=dset, data=data)
         self.logger.debug("Exhausted DataChunkIterator from queue (length %d)" % len(self))
 
