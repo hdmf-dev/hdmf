@@ -2,13 +2,87 @@ from zarr.hierarchy import Group
 import zarr
 import numcodecs
 import numpy as np
-from collections import Iterable
+from collections import Iterable, deque
 import json
+import logging
 
 from ...data_utils import DataIO
 from ...utils import docval, getargs, call_docval_func  # , popargs
 
 from ...spec import SpecWriter, SpecReader
+
+
+class ZarrIODataChunkIteratorQueue(deque):
+    """
+    Helper class used by ZarrIO to manage the write for DataChunkIterators
+
+    Each queue element must be a tupple of two elements:
+    1) the dataset to write to and 2) the AbstractDataChunkIterator with the data
+    """
+    def __init__(self):
+        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
+        super().__init__()
+
+    def __write_chunk(cls, dset, data):
+        """
+        Internal helper function used to read a chunk from the given DataChunkIterator
+        and write it to the given Dataset
+
+        :param dset: The Dataset to write to
+        :param data: The DataChunkIterator to read from
+        :return: True of a chunk was written, False otherwise
+        :rtype: bool
+        """
+        # Read the next data block
+        try:
+            chunk_i = next(data)
+        except StopIteration:
+            return False
+        # Determine the minimum array size required to store the chunk
+        min_bounds = chunk_i.get_min_bounds()
+        resize_required = False
+        min_shape = list(dset.shape)
+        if len(min_bounds) > len(dset.shape):
+            raise ValueError("Shape of data chunk does not match the shape of the dataset")
+        else:
+            for si, sv in enumerate(dset.shape):
+                if si < len(min_bounds):
+                    if sv < min_bounds[si]:
+                        min_shape[si] = min_bounds[si]
+                        resize_required = True
+                else:
+                    break
+
+        # Expand the dataset if needed
+        if resize_required:
+            dset.resize(min_shape)
+        # Write the data
+        dset[chunk_i.selection] = chunk_i.data
+        # Chunk written and we need to continue
+        return True
+
+    def exhaust_queue(self):
+        """
+        Read and write from any queued DataChunkIterators in a round-robin fashion
+        """
+        # Iterate through our queue and write data chunks in a round-robin fashion until all iterators are exhausted
+        self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self))
+        while len(self) > 0:
+            dset, data = self.popleft()
+            if self.__write_chunk(dset, data):
+                self.append(dataset=dset, data=data)
+        self.logger.debug("Exhausted DataChunkIterator from queue (length %d)" % len(self))
+
+    def append(self, dataset, data):
+        """
+        Append a value to the queue
+
+        :param dataset: The dataset where the DataChunkIterator is written to
+        :type dataset: Zarr array
+        :param data: DataChunkIterator with the data to be written
+        :type data: AbstractDataChunkIterator
+        """
+        super().append((dataset, data))
 
 
 class ZarrSpecWriter(SpecWriter):
