@@ -1,45 +1,45 @@
 # HDMF Changelog
 
-## HDMF 3.0.0 (???)
+## HDMF 3.0.0 (Upcoming)
 
 ### New Features
-- Added new, optional ``hdmf.backends.zarr`` I/O backend for writing files using Zarr's ``zarr.store.``DirectoryStore`` backend, including support for iterative write, chunking ,compression, simple and compound data types, links, object references, namespace and spec I/O. @oruebel, @donghekang  (#98)
+- Added new, optional `hdmf.backends.zarr` I/O backend for writing files using Zarr's `zarr.store.DirectoryStore` backend, including support for iterative write, chunking, compression, simple and compound data types, links, object references, namespace and spec I/O. @oruebel, @donghekang  (#98)
 
-- Added new ``hdfm/io/utils.py`` module for utility functions and classes useful for implementation of I/O backend. This eases reuse of functionality across I/O backends. @oruebel (#98)
+- Added new `hdmf/io/utils.py` module for utility functions and classes useful for implementation of I/O backend. This eases reuse of functionality across I/O backends. @oruebel (#98)
 
-    - Added ``WriteStatusTracker`` class as simple data structure for tracking the write status of ``Builders``
-    - Added ``NamespaceToBuilderHelper`` class to help with converting a namespace to a ``Builder`` for I/O
+    - Added `WriteStatusTracker` class as simple data structure for tracking the write status of `Builders`
+    - Added `NamespaceToBuilderHelper` class to help with converting a namespace to a `Builder` for I/O
 
-- Added ``get_min_bounds()`` function to ``hdmf.data_utils.DataChunk`` . This functionality was originally part of ``HDF5IO.__write_chunk__()`` and has been moved here to enable reuse of the code across data backends. @oruebel (#98)
+- Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#98)
 
 ### Internal improvements
-- Updated ``HDF5IO`` to use the new ``NamespaceToBuilderHelper`` class instead. @oruebel (#98)
+- Updated `HDF5IO` to use the new `NamespaceToBuilderHelper` class instead. @oruebel (#98)
 
-    - Removed ``HDF5IO.__convert_namespace(...)``; now ``NamespaceToBuilderHelper.convert_namespace(...)``
-    - Removed ``HDF5IO.__get_name(...)``; now ``NamespaceToBuilderHelper.get_source_name(...)``
-    - Removed ``HDF5IO.__copy_spec(...)``; now ``NamespaceToBuilderHelper.__copy_spec(...)``
-    - Removed ``HDF5IO.__get_new_specs((...)``; now ``NamespaceToBuilderHelper.__get_new_specs(...)``
+    - Replaced `HDF5IO.__convert_namespace(...)` with `NamespaceToBuilderHelper.convert_namespace(...)`
+    - Replaced `HDF5IO.__get_name(...)` with `NamespaceToBuilderHelper.get_source_name(...)`
+    - Replaced `HDF5IO.__copy_spec(...)` with `NamespaceToBuilderHelper.__copy_spec(...)`
+    - Replaced `HDF5IO.__get_new_specs(...)` with `NamespaceToBuilderHelper.__get_new_specs(...)`
 
 - Updated ``HDF5IO`` to use the new ``WriteStatusTracker`` class. @oruebel (#98)
 
-    - Changed ``HDF5IO._written_builders`` to use ``WriteStatusTracker`` instead of a standard ``deque``
-    - Removed ``HDF5IO.__set_written(...)`` to use  ``WriteStatusTracker.set_written``
-    - Removed ``HDF5IO.__builderhash``, now ``WriteStatusTracker.__builderhash`` instead.
+    - Changed `HDF5IO._written_builders` to use `WriteStatusTracker` instead of a standard `deque`
+    - Removed `HDF5IO.__set_written(...)` to use  `WriteStatusTracker.set_written`
+    - Replaced `HDF5IO.__builderhash` with `WriteStatusTracker.__builderhash`.
 
-- Added ``HDF5IODataChunkIteratorQueue`` class to ``hdmf.backends.hdf5.h5_utils`` for managing iterative write of ``DataChunkIterators`` in ``HDF5IO``, to improve modularity, readability, and consistency of the code. @oruebel (#98)
+- Added `HDF5IODataChunkIteratorQueue` class to `hdmf.backends.hdf5.h5_utils` for managing iterative write of `DataChunkIterators` in `HDF5IO`, to improve modularity, readability, and consistency of the code. @oruebel (#98)
 
-    - Removed ``HDF5IO.__exhaust_dcis()`` (now part of ``HDF5IODataChunkIteratorQueue``)
-    - Removed ``HDF5IO.__write_chunk__(...)`` (now part of ``HDF5IODataChunkIteratorQueue``)
-    - Changed ``HDFIO.__dci_queue`` to use ``HDF5IODataChunkIteratorQueue`` instead of a standard ``deque``
+    - Removed `HDF5IO.__exhaust_dcis()` (now part of `HDF5IODataChunkIteratorQueue`)
+    - Removed `HDF5IO.__write_chunk__(...)` (now part of `HDF5IODataChunkIteratorQueue`)
+    - Changed `HDFIO.__dci_queue` to use `HDF5IODataChunkIteratorQueue` instead of a standard `deque`
 
-- Added new ``hdmf/backends/error.py`` module for I/O errors.
+- Added new `hdmf/backends/error.py` module for I/O errors.
 
 ### Bug fixes
 - ...
 
 ### Breaking changes
-- Add optional dependencies for ``Zarr`` and ``numcodecs`` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new ``hdmf/backends/zarr`` I/O backend) will function without these dependencies.  @oruebel (#98)
-- Moved ``UnsupportedOperation`` error class from ``hdmf.backends.io`` to the new ``hdmf.backends.errors`` module.  @oruebel (#98)
+- Add optional dependencies for `Zarr` and `numcodecs` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new `hdmf/backends/zarr` I/O backend) will function without these dependencies.  @oruebel (#98)
+- Moved `UnsupportedOperation` error class from `hdmf.backends.io` to the new `hdmf.backends.errors` module.  @oruebel (#98)
 
 
 ## HDMF 2.2.0 (August 14, 2020)
