@@ -333,14 +333,36 @@ class ZarrIO(HDMFIO):
                         raise TypeError(str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value))
 
     def __get_path(self, builder):
-        """Get the path to the builder."""
-        curr = builder
-        names = list()
-        while curr is not None and curr.name != ROOT_NAME:
-            names.append(curr.name)
-            curr = curr.parent
-        delim = "/"
-        path = "%s%s" % (delim, delim.join(reversed(names)))
+        """Get the path to the builder.
+
+        If builder.location is set then it is used as the path, otherwise the function
+        determines the path by constructing it iteratively from the parents of the
+        builder.
+        """
+        if builder.location is not None:
+            path = os.path.join(builder.location, builder.name)
+        else:
+            curr = builder
+            names = list()
+            while curr is not None and curr.name != ROOT_NAME:
+                names.append(curr.name)
+                curr = curr.parent
+            delim = "/"
+            path = "%s%s" % (delim, delim.join(reversed(names)))
+        return path
+
+    def __get_zarr_parent_location(selfs, zarr_object, filepath):
+        """
+        Get the location of the parent of a zarr_object with the file
+
+        :param zarr_object: Object for which we are looking up the path
+        :type zarr_object: Zarr Group or Array
+        :return: String with the path
+        """
+        # In Zarr the path is a combination of the path of the store and the path of the object. So we first need to
+        # merge those two paths, then remove the path of the file, add the missing leading "/" and then compute the
+        # directory name to get the path of the parent
+        path = os.path.dirname("/"+os.path.relpath(os.path.join(zarr_object.store.path, zarr_object.path), filepath))
         return path
 
     def __is_ref(self, dtype):
@@ -362,7 +384,7 @@ class ZarrIO(HDMFIO):
         :returns: ZarrReference object
 
         """
-        if isinstance(ref_object, RegionBuilder): # or region is not None:
+        if isinstance(ref_object, RegionBuilder):  # or region is not None: TODO: Add to support regions
             raise NotImplementedError("Region references are currently not supported by ZarrIO")
         if isinstance(ref_object, Builder):
             if isinstance(ref_object, LinkBuilder):
@@ -415,36 +437,15 @@ class ZarrIO(HDMFIO):
         name = builder.name
         target_builder = builder.builder
         zarr_ref = self.__get_ref(target_builder)
+        # if the target and source are both the same, then we need to ALWAYS use ourselves as a source
+        # When exporting from one source to another, the LinkBuilders.source are not updated, i.e,. the
+        # builder.source and target_builder.source are not being updated and point to the old file, but
+        # for internal links (a.k.a, SoftLinks) they will be the same and our target will be part of
+        # our new file, so we can savely replace the source
+        if builder.source == target_builder.source:
+            zarr_ref.source = self.__path
         self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         self._written_builders.set_written(builder)  # record that the builder has been written
-        """
-        # source will indicate target_builder's location.
-        # If both are builders have the same source, then we create an internal link within the same Zarr file
-        if builder.source == target_builder.source:
-            zarr_ref = self.__get_ref(target_builder)
-            self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
-            self.logger.debug("    Created SoftLink '%s/%s' to '%s'" % (parent.name, name, zarr_ref.source))
-        # Link to an external Zarr file
-        elif target_builder.source is not None:
-            target_filename = os.path.abspath(target_builder.source)
-            parent_filename = os.path.abspath(parent.file.filename)
-            target_source = os.path.relpath(target_filename, os.path.dirname(parent_filename))
-            target_path =  self.__get_path(builder)
-            if target_builder.location is not None:
-                target_path = target_builder.location + "/" + target_builder.name
-            self.__add_link__(parent=parent,
-                              target_source=target_source,
-                              target_path=target_path ,
-                              link_name=name)
-            self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
-                              % (parent.name, name, target_source, target_path))
-        else:
-            msg = 'cannot create external link to %s' % str(target_builder)
-            raise ValueError(msg)
-
-        self._written_builders.set_written(builder)  # record that the builder has been written
-        """
-
 
     @classmethod
     def __setup_chunked_dataset__(cls, parent, name, data, options=None):
@@ -835,66 +836,82 @@ class ZarrIO(HDMFIO):
         self.__built.setdefault(path, builder)
 
     def __get_built(self, zarr_obj):
+        """
+        Look up a builder for the given zarr object
+
+        :param zarr_obj: The Zarr object to be built
+        :type zarr_obj: Zarr Group or Dataset
+
+        :return: Builder in the self.__built cache or None
+        """
         fpath = zarr_obj.store.path
         path = zarr_obj.path
         path = os.path.join(fpath, path)
-        return self.__built.get(path)
+        return self.__built.get(path, None)
 
     def __read_group(self, zarr_obj, name=None):
         ret = self.__get_built(zarr_obj)
         if ret is not None:
             return ret
 
-        kwargs = {
-            "attributes": self.__read_attrs(zarr_obj),
-            "groups": dict(),
-            "datasets": dict(),
-            "links": dict()
-        }
-
         if name is None:
             name = str(os.path.basename(zarr_obj.name))
+
+        # Create the GroupBuilder
+        attributes = self.__read_attrs(zarr_obj)
+        ret = GroupBuilder(name=name, source=self.__path, attributes=attributes)
+        ret.location = self.__get_zarr_parent_location(zarr_obj, self.__path)
 
         # read sub groups
         for sub_name, sub_group in zarr_obj.groups():
             sub_builder = self.__read_group(sub_group, sub_name)
-            kwargs['groups'][sub_builder.name] = sub_builder
+            ret.set_group(sub_builder)
 
         # read sub datasets
         for sub_name, sub_array in zarr_obj.arrays():
             sub_builder = self.__read_dataset(sub_array, sub_name)
-            kwargs['datasets'][sub_builder.name] = sub_builder
+            ret.set_dataset(sub_builder)
 
+        # read the links
+        self.__read_links(zarr_obj=zarr_obj, parent=ret)
+
+        self._written_builders.set_written(ret)  # record that the builder has been written
+        self.__set_built(zarr_obj, ret)
+        return ret
+
+    def __read_links(self, zarr_obj, parent):
+        """
+        Read the links associated with a zarr group
+        :param zarr_obj: The Zarr group we should read links from
+        :type zarr_obj: zarr.hiearchy.Group
+        :param parent: GroupBuilder with which the links need to be associated
+        :type parent: GroupBuilder
+        """
         # read links
         if 'zarr_link' in zarr_obj.attrs:
             links = zarr_obj.attrs['zarr_link']
             for link in links:
-                l_name = link['name']
+                link_name = link['name']
                 if link['source'] is None:
                     l_path = str(link['path'])
                 elif link['path'] is None:
                     l_path = str(link['source'])
                 else:
                     l_path = os.path.join(link['source'], link['path'].lstrip("/"))
-
                 if not os.path.exists(l_path):
-                    raise ValueError("Found bad link %s in %s to %s" % (l_name, self.__path, l_path))
+                    raise ValueError("Found bad link %s in %s to %s" % (link_name, self.__path, l_path))
 
                 target_name = str(os.path.basename(l_path))
                 target_zarr_obj = zarr.open(l_path, mode='r')
+                # NOTE: __read_group and __read_dataset return the cached builders if the target has already been built
                 if isinstance(target_zarr_obj, Group):
                     builder = self.__read_group(target_zarr_obj, target_name)
                 else:
                     builder = self.__read_dataset(target_zarr_obj, target_name)
-                link_builder = LinkBuilder(builder, l_name, source=self.__path)
+                link_builder = LinkBuilder(builder=builder, name=link_name, source=self.__path)
+                link_builder.location = os.path.join(parent.location, parent.name)
                 self._written_builders.set_written(link_builder)  # record that the builder has been written
-                kwargs['links'][target_name] = link_builder
-
-        kwargs['source'] = self.__path
-        ret = GroupBuilder(name, **kwargs)
-        self._written_builders.set_written(ret)  # record that the builder has been written
-        self.__set_built(zarr_obj, ret)
-        return ret
+                parent.set_link(link_builder)
 
     def __read_dataset(self, zarr_obj, name):
         ret = self.__get_built(zarr_obj)
@@ -952,6 +969,7 @@ class ZarrIO(HDMFIO):
         if name is None:
             name = str(os.path.basename(zarr_obj.name))
         ret = DatasetBuilder(name, **kwargs)
+        ret.location = self.__get_zarr_parent_location(zarr_obj, self.__path)
         self._written_builders.set_written(ret)  # record that the builder has been written
         self.__set_built(zarr_obj, ret)
         return ret

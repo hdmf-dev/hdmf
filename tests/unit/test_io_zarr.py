@@ -782,32 +782,31 @@ class TestExportZarrToZarr(TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.paths[1], 'specifications')))
 
     def test_soft_link_group(self):
-        """Test that exporting a written file with soft linked groups keeps links within the file."""
-        pass  # TODO this test currently fails.
-        # The problem  may be: 1) foo1 is linked instead of copied, 2) links point to the orginal source rather than
-        #    to the new file
         """
+        Test that exporting a written file with soft linked groups keeps links within the file." ,i.e, we have
+        a group that links to a group in the same file and the new file after export should then have a link to the
+        same group but in the new file """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foo_link=foo1)
-
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
             write_io.write(foofile)
-
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
-                export_io.export(src_io=read_io, write_args=dict(link_data=True))
-
+                export_io.export(src_io=read_io, write_args=dict(link_data=False))
         with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
-            #print(os.listdir(self.paths[0]), self.paths[0])
-            #print(os.listdir(self.paths[1]), self.paths[1])
             read_foofile2 = read_io.read()
             # make sure the linked group is within the same file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
-        """
+            zarr_linkspec1 = zarr.open(self.paths[0])['links'].attrs.asdict()['zarr_link'][0]
+            zarr_linkspec2 = zarr.open(self.paths[1])['links'].attrs.asdict()['zarr_link'][0]
+            self.assertEqual(zarr_linkspec1.pop('source'), self.paths[0])
+            self.assertEqual(zarr_linkspec2.pop('source'), self.paths[1])
+            self.assertDictEqual(zarr_linkspec1, zarr_linkspec2)
 
     def test_soft_link_dataset(self):
         """Test that exporting a written file with soft linked datasets keeps links within the file."""
+        """Link to a dataset in the same file should have a link to the same new dataset in the new file """
         pass  # TODO this test currently fails
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -831,6 +830,7 @@ class TestExportZarrToZarr(TestCase):
 
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
+        """External links remain"""
         pass  # TODO this test currently fails
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -937,6 +937,7 @@ class TestExportZarrToZarr(TestCase):
 
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""
+        """Attribute with object reference needs to point to the new object in the new file"""
         pass  # TODO this test currently fails
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
