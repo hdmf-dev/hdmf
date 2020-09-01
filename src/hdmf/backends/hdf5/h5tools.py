@@ -478,7 +478,6 @@ class HDF5IO(HDMFIO):
                     target_path = link_type.path
                     target_obj = sub_h5obj.file[target_path]
                     builder_name = os.path.basename(target_path)
-                    parent_loc = os.path.dirname(target_path)
                     # get builder if already read, else build it
                     builder = self.__get_built(sub_h5obj.file.filename, target_obj.id)
                     if builder is None:
@@ -488,8 +487,8 @@ class HDF5IO(HDMFIO):
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
                         self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
-                    builder.location = parent_loc
-                    link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
+                    link_builder = LinkBuilder(builder=builder, name=k, source=h5obj.file.filename)
+                    link_builder.location = h5obj.name
                     self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
                     if isinstance(link_type, ExternalLink):
@@ -514,6 +513,7 @@ class HDF5IO(HDMFIO):
                 continue
         kwargs['source'] = h5obj.file.filename
         ret = GroupBuilder(name, **kwargs)
+        ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
         return ret
 
@@ -572,6 +572,7 @@ class HDF5IO(HDMFIO):
         else:
             kwargs["data"] = h5obj
         ret = DatasetBuilder(name, **kwargs)
+        ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
         return ret
 
@@ -838,14 +839,20 @@ class HDF5IO(HDMFIO):
         """Get the path to the builder.
 
         Note that the root of the file has no name - it is just "/". Thus, the name of the root container is ignored.
+        If builder.location is set then it is used as the path, otherwise the function
+        determines the path by constructing it iteratively from the parents of the
+        builder.
         """
-        curr = builder
-        names = list()
-        while curr.parent is not None:
-            names.append(curr.name)
-            curr = curr.parent
-        delim = "/"
-        path = "%s%s" % (delim, delim.join(reversed(names)))
+        if builder.location is not None:
+            path = os.path.join(builder.location, builder.name)
+        else:
+            curr = builder
+            names = list()
+            while curr.parent is not None:
+                names.append(curr.name)
+                curr = curr.parent
+            delim = "/"
+            path = "%s%s" % (delim, delim.join(reversed(names)))
         return path
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},

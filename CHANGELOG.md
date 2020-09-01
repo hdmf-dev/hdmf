@@ -26,6 +26,10 @@
     - Removed `HDF5IO.__set_written(...)` to use  `WriteStatusTracker.set_written`
     - Replaced `HDF5IO.__builderhash` with `WriteStatusTracker.__builderhash`.
 
+- Updated ``HDF5IO.__read_group`` and ``HDF5IO.__read_dataset`` to make sure the ``location`` attribute of all ``GroupBuilders``, `` DatasetBuilders``, and ``LinkBuilders`` is set on read, not just for object that are used for linking
+
+- Updated ``HDF5IO.__get_path`` to use the ``location`` attribute of ``Builders`` directly if set
+
 - Added `HDF5IODataChunkIteratorQueue` class to `hdmf.backends.hdf5.h5_utils` for managing iterative write of `DataChunkIterators` in `HDF5IO`, to improve modularity, readability, and consistency of the code. @oruebel (#98)
 
     - Removed `HDF5IO.__exhaust_dcis()` (now part of `HDF5IODataChunkIteratorQueue`)
