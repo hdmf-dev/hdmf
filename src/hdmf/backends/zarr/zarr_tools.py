@@ -174,7 +174,7 @@ class ZarrIO(HDMFIO):
 
         # write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
         ckwargs = kwargs.copy()
-        # ckwargs['write_args'] = write_args
+        ckwargs['write_args'] = write_args
         call_docval_func(super().export, ckwargs)
         if cache_spec:
             self.__cache_spec()
@@ -211,6 +211,7 @@ class ZarrIO(HDMFIO):
         for name, gbldr in f_builder.groups.items():
             self.write_group(parent=self.__file,
                              builder=gbldr,
+                             link_data=link_data,
                              exhaust_dci=exhaust_dci)
         for name, dbldr in f_builder.datasets.items():
             self.write_dataset(parent=self.__file,
@@ -225,6 +226,8 @@ class ZarrIO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent Zarr object'},
             {'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder to write'},
+            {'name': 'link_data', 'type': bool,
+             'doc': 'If not specified otherwise link (True) or copy (False) Zarr Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'exhaust DataChunkIterators one at a time. If False, add ' +
                     'them to the internal queue self.__dci_queue and exhaust them concurrently at the end',
@@ -232,7 +235,7 @@ class ZarrIO(HDMFIO):
             returns='the Group that was created', rtype='Group')
     def write_group(self, **kwargs):
         """Write a GroupBuider to file"""
-        parent, builder, exhaust_dci = getargs('parent', 'builder', 'exhaust_dci', kwargs)
+        parent, builder, link_data, exhaust_dci = getargs('parent', 'builder', 'link_data', 'exhaust_dci', kwargs)
         if self.get_written(builder):
             group = parent[builder.name]
         else:
@@ -243,6 +246,7 @@ class ZarrIO(HDMFIO):
             for subgroup_name, sub_builder in subgroups.items():
                 self.write_group(parent=group,
                                  builder=sub_builder,
+                                 link_data=link_data,
                                  exhaust_dci=exhaust_dci)
 
         datasets = builder.datasets
@@ -250,6 +254,7 @@ class ZarrIO(HDMFIO):
             for dset_name, sub_builder in datasets.items():
                 self.write_dataset(parent=group,
                                    builder=sub_builder,
+                                   link_data=link_data,
                                    exhaust_dci=exhaust_dci)
 
         # write all links (haven implemented)
@@ -328,6 +333,7 @@ class ZarrIO(HDMFIO):
                         raise TypeError(str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value))
 
     def __get_path(self, builder):
+        """Get the path to the builder."""
         curr = builder
         names = list()
         while curr is not None and curr.name != ROOT_NAME:
@@ -347,28 +353,32 @@ class ZarrIO(HDMFIO):
         else:
             return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
 
-    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference'},
-            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
-             'default': None},
-            returns='the reference', rtype=ZarrReference)
-    def __get_ref(self, **kwargs):
-        """Create a ZarrReference object that points to the given container"""
-        container, region = getargs('container', 'region', kwargs)
-        if isinstance(container, RegionBuilder) or region is not None:
+    def __get_ref(self, ref_object):
+        """
+        Create a ZarrReference object that points to the given container
+
+        :param ref_object: the object to be referenced
+        :type ref_object: Builder, Container, ReferenceBuilder
+        :returns: ZarrReference object
+
+        """
+        if isinstance(ref_object, RegionBuilder): # or region is not None:
             raise NotImplementedError("Region references are currently not supported by ZarrIO")
-        if isinstance(container, Builder):
-            if isinstance(container, LinkBuilder):
-                builder = container.target_builder
+        if isinstance(ref_object, Builder):
+            if isinstance(ref_object, LinkBuilder):
+                builder = ref_object.target_builder
             else:
-                builder = container
-        elif isinstance(container, ReferenceBuilder):
-            builder = container.builder
+                builder = ref_object
+        elif isinstance(ref_object, ReferenceBuilder):
+            builder = ref_object.builder
         else:
-            builder = self.manager.build(container)
+            builder = self.manager.build(ref_object)
         path = self.__get_path(builder)
-        # TODO Add to get region for region references
-        # if isinstance(container, RegionBuilder):
-        #    region = container.region
+        # TODO Add to get region for region references.
+        #      Also add  {'name': 'region', 'type': (slice, list, tuple),
+        #      'doc': 'the region reference indexing object',  'default': None},
+        # if isinstance(ref_object, RegionBuilder):
+        #    region = ref_object.region
 
         # by checking os.isdir makes sure we have a valid link path to a dir for Zarr. For conversion
         # between backends a user should always use export which takes care of creating a clean set of builders.
@@ -376,6 +386,17 @@ class ZarrIO(HDMFIO):
         return ZarrReference(source, path)
 
     def __add_link__(self, parent, target_source, target_path, link_name):
+        """
+        Add a link to the file
+
+        :param parent: The parent Zarr group containing the link
+        :type parent: zarr.hierarchy.Group
+        :param target_source: Source path within the Zarr file to the linked object
+        :type target_source: str
+        :param target_path: Path to the Zarr file containing the linked object
+        :param link_name: Name of the link
+        :type link_name: str
+        """
         if 'zarr_link' not in parent.attrs:
             parent.attrs['zarr_link'] = []
         zarr_link = list(parent.attrs['zarr_link'])
@@ -387,12 +408,43 @@ class ZarrIO(HDMFIO):
     def write_link(self, **kwargs):
         parent, builder = getargs('parent', 'builder', kwargs)
         if self.get_written(builder):
+            self.logger.debug("Skipping LinkBuilder '%s' already written to parent group '%s'"
+                              % (builder.name, parent.name))
             return
+        self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         name = builder.name
         target_builder = builder.builder
         zarr_ref = self.__get_ref(target_builder)
         self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         self._written_builders.set_written(builder)  # record that the builder has been written
+        """
+        # source will indicate target_builder's location.
+        # If both are builders have the same source, then we create an internal link within the same Zarr file
+        if builder.source == target_builder.source:
+            zarr_ref = self.__get_ref(target_builder)
+            self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
+            self.logger.debug("    Created SoftLink '%s/%s' to '%s'" % (parent.name, name, zarr_ref.source))
+        # Link to an external Zarr file
+        elif target_builder.source is not None:
+            target_filename = os.path.abspath(target_builder.source)
+            parent_filename = os.path.abspath(parent.file.filename)
+            target_source = os.path.relpath(target_filename, os.path.dirname(parent_filename))
+            target_path =  self.__get_path(builder)
+            if target_builder.location is not None:
+                target_path = target_builder.location + "/" + target_builder.name
+            self.__add_link__(parent=parent,
+                              target_source=target_source,
+                              target_path=target_path ,
+                              link_name=name)
+            self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                              % (parent.name, name, target_source, target_path))
+        else:
+            msg = 'cannot create external link to %s' % str(target_builder)
+            raise ValueError(msg)
+
+        self._written_builders.set_written(builder)  # record that the builder has been written
+        """
+
 
     @classmethod
     def __setup_chunked_dataset__(cls, parent, name, data, options=None):
