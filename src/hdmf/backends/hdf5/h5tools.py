@@ -844,7 +844,7 @@ class HDF5IO(HDMFIO):
         builder.
         """
         if builder.location is not None:
-            path = os.path.join(builder.location, builder.name)
+            path = os.path.normpath(os.path.join(builder.location, builder.name)).replace("\\", "/")
         else:
             curr = builder
             names = list()
