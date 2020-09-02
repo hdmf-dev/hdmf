@@ -363,7 +363,7 @@ class ZarrIO(HDMFIO):
         # merge those two paths, then remove the path of the file, add the missing leading "/" and then compute the
         # directory name to get the path of the parent
         path = os.path.dirname("/" + os.path.normpath(
-            os.path.relpath(os.path.join(zarr_object.store.path, zarr_object.path), filepath)))
+            os.path.relpath(os.path.join(zarr_object.store.path, zarr_object.path), filepath))).replace("\\", "/")
         return path
 
     def __is_ref(self, dtype):
