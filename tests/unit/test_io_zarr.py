@@ -807,18 +807,22 @@ class TestExportZarrToZarr(TestCase):
     def test_soft_link_dataset(self):
         """Test that exporting a written file with soft linked datasets keeps links within the file."""
         """Link to a dataset in the same file should have a link to the same new dataset in the new file """
-        pass  # TODO this test currently fails
+        pass  # TODO this test currently fails. It does not create a SoftLink in the original file.
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket], foofile_data=foo1.my_data)
 
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
-            write_io.write(foofile)
+            write_io.write(foofile, link_data=True)
+        print ("WRITE DONE")
 
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
-                export_io.export(src_io=read_io)
+                export_io.export(src_io=read_io, write_args=dict(link_data=False))
+
+        print(zarr.open(self.paths[0]).tree())
+        print(zarr.open(self.paths[1]).tree())
 
         with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
             read_foofile2 = read_io.read()

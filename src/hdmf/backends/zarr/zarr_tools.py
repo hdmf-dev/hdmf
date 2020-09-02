@@ -362,7 +362,8 @@ class ZarrIO(HDMFIO):
         # In Zarr the path is a combination of the path of the store and the path of the object. So we first need to
         # merge those two paths, then remove the path of the file, add the missing leading "/" and then compute the
         # directory name to get the path of the parent
-        path = os.path.dirname("/"+os.path.relpath(os.path.join(zarr_object.store.path, zarr_object.path), filepath))
+        path = os.path.dirname("/" + os.path.normpath(
+            os.path.relpath(os.path.join(zarr_object.store.path, zarr_object.path), filepath)))
         return path
 
     def __is_ref(self, dtype):
