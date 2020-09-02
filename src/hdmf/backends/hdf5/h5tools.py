@@ -366,6 +366,13 @@ class HDF5IO(HDMFIO):
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
+        """
+        Read data and return the GroupBuilder representing it.
+
+        NOTE: On read the Builder.source may will usually not be set of the Builders.
+        NOTE: The Builder.location is used internally to ensure correct handling of links (in particular on export)
+              and shoudl be set on read for all GroupBuilder, DatasetBuilder, and LinkBuilder
+        """
         if not self.__file:
             raise UnsupportedOperation("Cannot read data from closed HDF5 file '%s'" % self.source)
         f_builder = self.__read.get(self.__file)
