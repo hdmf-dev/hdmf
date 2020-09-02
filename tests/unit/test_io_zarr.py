@@ -746,7 +746,7 @@ class TestExportZarrToZarr(TestCase):
         foofile = FooFile([foobucket])
 
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
-            write_io.write(foofile)
+            write_io.write(foofile, cache_spec=False)
 
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
             read_foofile = read_io.read()
@@ -835,33 +835,42 @@ class TestExportZarrToZarr(TestCase):
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
         """External links remain"""
-        pass  # TODO this test currently fails
+        pass  # TODO this test currently fails. The external link is changed to point to File 2 instead of File 1
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile([foobucket])
 
+        # Create File 1 with the full data
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as read_io:
             read_io.write(foofile)
 
+        # Create file 2 with an external link to File 1
         manager = _get_manager()
         with ZarrIO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
             # make external link to existing group
             foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
-
+            print("-------------------Write File 2----------------------------")
             with ZarrIO(self.paths[1], manager=manager, mode='w') as write_io:
                 write_io.write(foofile2)
+            self.assertDictEqual(zarr.open(self.paths[1])['links'].attrs.asdict(),
+                                 {'zarr_link': [{'name': 'foo_link',
+                                                 'path': '/buckets/bucket1/foo_holder/foo1',
+                                                 'source': self.paths[0]}]})
 
+        # Export File 2 to a new File 3 and make sure the external link from File 2 is being preserved
         with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
-            read_foofile2 = read_io.read()
-
-            with ZarrIO(self.paths[2], mode='w') as export_io:
+             with ZarrIO(self.paths[2], mode='w') as export_io:
+                print("-------------------Write File 3----------------------------")
                 export_io.export(src_io=read_io)
+
+        #print()
+        print(zarr.open(self.paths[1])['links'].attrs.asdict())
+        print(zarr.open(self.paths[2])['links'].attrs.asdict())
 
         with ZarrIO(self.paths[2], manager=_get_manager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
-
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[0])
         """
@@ -942,7 +951,7 @@ class TestExportZarrToZarr(TestCase):
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""
         """Attribute with object reference needs to point to the new object in the new file"""
-        pass  # TODO this test currently fails
+        pass  # TODO this test currently fails because the paths in the attribute still points to the first file
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
@@ -952,20 +961,20 @@ class TestExportZarrToZarr(TestCase):
             read_io.write(foofile)
 
         with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
-
             with ZarrIO(self.paths[1], mode='w') as export_io:
-                export_io.export(src_io=read_io)
+                export_io.export(src_io=read_io,  write_args=dict(link_data=False))
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
-            read_foofile2 = read_io.read()
-
+        #with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        #    read_foofile2 = read_io.read()
+            #self.assertTupleEqual(ZarrIO.get_zarr_paths(read_foofile2.foo_ref_attr.my_data),
+            #                     (self.paths[1], '/buckets/bucket1/foo_holder/foo1/my_data'))
             # make sure the attribute reference resolves to the container within the same file
-            self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets['bucket1'].foos['foo1'])
+            #self.assertIs(read_foofile2.foo_ref_attr, read_foofile2.buckets['bucket1'].foos['foo1'])
 
-        os.listdir(self.paths[1]+"/buckets/bucket1")
-
-        #with File(self.paths[1], 'r') as f:
-        #    self.assertIsInstance(f.attrs['foo_ref_attr'], h5py.Reference)
+        expected_ref = {'value': {'path': '/buckets/bucket1/foo_holder/foo1', 'source': self.paths[1]},
+                        'zarr_dtype': 'object'}
+        real_ref = zarr.open(self.paths[1]).attrs['foo_ref_attr']
+        self.assertDictEqual(real_ref, expected_ref)
         """
 
     def test_pop_data(self):
@@ -1016,7 +1025,7 @@ class TestExportZarrToZarr(TestCase):
 
     def test_append_data(self):
         """Test that exporting a written container after adding groups, links, and references to it works."""
-        pass  # TODO: This test currently fails
+        pass  # TODO: This test currently fails because I do not understand how the link to my_data is expected to be created here and currently fails. I.e,. it fails in list_fill but instead we should actually create an external link instead
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
@@ -1030,7 +1039,7 @@ class TestExportZarrToZarr(TestCase):
 
             # create a foo with link to existing dataset my_data, add the foo to new foobucket
             # this should make a soft link within the exported file
-            foo2 = Foo('foo2', read_foofile.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foo2 = Foo('foo2', read_foofile.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)  # TODO Assigning my_data is the problem. Which in turn causes the export to fail because the Zarr DataType is not being understood
             foobucket2 = FooBucket('bucket2', [foo2])
             read_foofile.add_bucket(foobucket2)
 
@@ -1047,7 +1056,6 @@ class TestExportZarrToZarr(TestCase):
                 export_io.export(src_io=read_io, container=read_foofile)
 
         with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
-            self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile2 = read_io.read()
 
             # test new soft link to dataset in file
