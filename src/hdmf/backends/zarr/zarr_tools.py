@@ -118,7 +118,7 @@ class ZarrIO(HDMFIO):
                 namespace_catalog.load_namespaces('namespace', reader=reader)
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': False},
+            {'name': 'cache_spec', 'type': bool, 'doc': 'cache specification to file', 'default': True},
             {'name': 'link_data', 'type': bool,
              'doc': 'If not specified otherwise link (True) or copy (False) Datasets', 'default': True},
             {'name': 'exhaust_dci', 'type': bool,
@@ -351,20 +351,41 @@ class ZarrIO(HDMFIO):
             path = "%s%s" % (delim, delim.join(reversed(names)))
         return path
 
-    def __get_zarr_parent_location(selfs, zarr_object, filepath):
+    def __get_zarr_paths(self, zarr_object):
         """
-        Get the location of the parent of a zarr_object with the file
+        For a Zarr object find 1) the path to the main zarr file it is in and 2) the path to the object within the file
+
+        :param zarr_object: Object for which we are looking up the path
+        :type zarr_object: Zarr Group or Array
+        :return: Tuple of two string with: 1) path of the Zarr file and 2) full path within the zarr file to the object
+        """
+        # In Zarr the path is a combination of the path of the store and the path of the object. So we first need to
+        # merge those two paths, then remove the path of the file, add the missing leading "/" and then compute the
+        # directory name to get the path of the parent
+        fullpath = os.path.normpath(os.path.join(zarr_object.store.path, zarr_object.path)).replace("\\", "/")
+        # To determine the filepath we now iterate over the path and check if the .zgroup object exists at
+        # a level, indicating that we are still within the Zarr file. The first level we hit where the parent
+        # directory does not have a .zgroup means we have found the main file
+        filepath = fullpath
+        while os.path.exists(os.path.join(os.path.dirname(filepath), ".zgroup")):
+            filepath = os.path.dirname(filepath)
+        # From the fullpath and filepath we can now compute the objectpath within the zarr file as the relative
+        # path from the filepath to the object
+        objectpath = "/"  + os.path.relpath(fullpath, filepath)
+        # return the result
+        return filepath, objectpath
+
+    def __get_zarr_parent_path(self, zarr_object):
+        """
+        Get the location of the parent of a zarr_object within the file
 
         :param zarr_object: Object for which we are looking up the path
         :type zarr_object: Zarr Group or Array
         :return: String with the path
         """
-        # In Zarr the path is a combination of the path of the store and the path of the object. So we first need to
-        # merge those two paths, then remove the path of the file, add the missing leading "/" and then compute the
-        # directory name to get the path of the parent
-        path = os.path.dirname("/" + os.path.normpath(
-            os.path.relpath(os.path.join(zarr_object.store.path, zarr_object.path), filepath))).replace("\\", "/")
-        return path
+        filepath, objectpath = self.__get_zarr_paths(zarr_object)
+        parentpath = os.path.dirname(objectpath)
+        return parentpath
 
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):
@@ -861,7 +882,7 @@ class ZarrIO(HDMFIO):
         # Create the GroupBuilder
         attributes = self.__read_attrs(zarr_obj)
         ret = GroupBuilder(name=name, source=self.__path, attributes=attributes)
-        ret.location = self.__get_zarr_parent_location(zarr_obj, self.__path)
+        ret.location = self.__get_zarr_parent_path(zarr_obj)
 
         # read sub groups
         for sub_name, sub_group in zarr_obj.groups():
@@ -970,7 +991,7 @@ class ZarrIO(HDMFIO):
         if name is None:
             name = str(os.path.basename(zarr_obj.name))
         ret = DatasetBuilder(name, **kwargs)
-        ret.location = self.__get_zarr_parent_location(zarr_obj, self.__path)
+        ret.location = self.__get_zarr_parent_path(zarr_obj)
         self._written_builders.set_written(ret)  # record that the builder has been written
         self.__set_built(zarr_obj, ret)
         return ret
