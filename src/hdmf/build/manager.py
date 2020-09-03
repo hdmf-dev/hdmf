@@ -604,6 +604,8 @@ class TypeMap:
                     kwargs.update(name=name)
                 pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
                 base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+                if len(clsconf):
+                    MultiContainerInterface.__init__(self, *pargs, **pkwargs)
 
                 for f in new_args:
                     arg_val = kwargs.get(f, None)
