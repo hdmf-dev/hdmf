@@ -543,7 +543,7 @@ class TestDynamicTableRegion(TestCase):
     def test_dynamic_table_region_to_dataframe_exclude_cols(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
-        res = dynamic_table_region.to_dataframe(exclude=set(['baz', 'foo']))
+        res = dynamic_table_region.to_dataframe(exclude={'baz', 'foo'})
         self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
         self.assertEqual(len(res.columns), 1)
         self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
@@ -1160,6 +1160,45 @@ class TestDoubleIndexRoundtrip(H5RoundTripMixin, TestCase):
 
 
 class TestDataIOColumns(H5RoundTripMixin, TestCase):
+    def setUpContainer(self):
+        self.chunked_data = H5DataIO(
+            data=[i for i in range(10)],
+            chunks=(3,),
+            fillvalue=-1,
+        )
+        self.compressed_data = H5DataIO(
+            data=np.arange(10),
+            compression=1,
+            shuffle=True,
+            fletcher32=True,
+            allow_plugin_filters=True,
+        )
+        foo = VectorData(name='foo', description='chunked column', data=self.chunked_data)
+        bar = VectorData(name='bar', description='chunked column', data=self.compressed_data)
+
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo, bar])
+        table.add_row(foo=1, bar=1)
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            chunked_dset = f['foo']
+            self.assertTrue(np.all(chunked_dset[:] == self.chunked_data.data))
+            self.assertEqual(chunked_dset.chunks, (3,))
+            self.assertEqual(chunked_dset.fillvalue, -1)
+
+            compressed_dset = f['bar']
+            self.assertTrue(np.all(compressed_dset[:] == self.compressed_data.data))
+            self.assertEqual(compressed_dset.compression, 'gzip')
+            self.assertEqual(compressed_dset.shuffle, True)
+            self.assertEqual(compressed_dset.fletcher32, True)
+
+
+class TestDataIOIndexedColumns(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         self.chunked_data = H5DataIO(

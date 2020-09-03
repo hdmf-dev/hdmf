@@ -3,8 +3,43 @@ from collections.abc import Iterable
 import numpy as np
 from warnings import warn
 import copy
+import h5py
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
+
+
+def append_data(data, arg):
+    if isinstance(data, (list, DataIO)):
+        data.append(arg)
+        return data
+    elif isinstance(data, np.ndarray):
+        return np.append(data, [arg])
+    elif isinstance(data, h5py.Dataset):
+        shape = list(data.shape)
+        shape[0] += 1
+        data.resize(shape)
+        data[-1] = arg
+        return data
+    else:
+        msg = "Data cannot append to object of type '%s'" % type(data)
+        raise ValueError(msg)
+
+
+def extend_data(data, arg):
+    if isinstance(data, (list, DataIO)):
+        data.extend(arg)
+        return data
+    elif isinstance(data, np.ndarray):
+        return np.append(data, [arg])
+    elif isinstance(data, h5py.Dataset):
+        shape = list(data.shape)
+        shape[0] += len(arg)
+        data.resize(shape)
+        data[-len(arg):] = arg
+        return data
+    else:
+        msg = "Data cannot extend object of type '%s'" % type(data)
+        raise ValueError(msg)
 
 
 @docval_macro('array_data')
@@ -601,6 +636,12 @@ class DataIO:
         """
         newobj = DataIO(data=self.data)
         return newobj
+
+    def append(self, arg):
+        self.__data = append_data(self.__data, arg)
+
+    def extend(self, arg):
+        self.__data = extend_data(self.__data, arg)
 
     def __deepcopy__(self, memo):
         """
