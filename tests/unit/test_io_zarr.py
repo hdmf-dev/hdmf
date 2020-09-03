@@ -19,13 +19,12 @@ except ImportError:
 
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ReferenceBuilder, OrphanContainerBuildError
-from tests.unit.test_io_hdf5_h5tools import _get_manager, FooFile
 # Baz, BazData, BazBucket, _get_baz_manager, BazCpdData
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 
-from tests.unit.utils import Foo, FooBucket, CacheSpecTestHelper, get_temp_filepath
+from tests.unit.utils import Foo, FooBucket, FooFile, CacheSpecTestHelper, get_temp_filepath, get_foo_buildmanager
 
 
 def total_directory_size(source):
@@ -88,7 +87,7 @@ class TestZarrWriter(TestCase):
     """Test writing of builder with Zarr"""
 
     def setUp(self):
-        self.manager = _get_manager()
+        self.manager = get_foo_buildmanager()
         self.path = "test_io.zarr"
 
     def tearDown(self):
@@ -172,7 +171,7 @@ class TestZarrWriter(TestCase):
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
         foobucket = FooBucket('test_bucket', [foo1, foo2])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
         # Write the first file
         self.io.write(foofile, cache_spec=True)
@@ -661,19 +660,19 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting a written container works between Zarr and Zarr."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io)
 
         self.assertTrue(os.path.exists(self.paths[1]))
         self.assertEqual(foofile.container_source, self.paths[0])
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
             self.assertEqual(read_foofile.container_source, self.paths[1])
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
@@ -682,21 +681,20 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting a written container, passing in the container arg, works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
-
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
 
         self.assertTrue(os.path.exists(self.paths[1]))
         self.assertEqual(foofile.container_source, self.paths[0])
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
             self.assertEqual(read_foofile.container_source, self.paths[1])
             self.assertContainerEqual(foofile, read_foofile, ignore_hdmf_attrs=True)
@@ -705,14 +703,13 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting a part of a written container raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
-
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 msg = ("The provided container must be the root of the hierarchy of the source used to read the "
                        "container.")
@@ -723,15 +720,14 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting a container that did not come from the src_io object raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
-
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
-                dummy_file = FooFile([])
+                dummy_file = FooFile(buckets=[])
                 msg = "The provided container must have been read by the provided src_io."
                 with self.assertRaisesWith(ValueError, msg):
                     export_io.export(src_io=read_io, container=dummy_file)
@@ -740,42 +736,38 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting with cache_spec disabled works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile, cache_spec=False)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
 
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(
                     src_io=read_io,
                     container=read_foofile,
-                    cache_spec=False,
-                )
-
+                    cache_spec=False)
         self.assertFalse(os.path.exists(os.path.join(self.paths[1], 'specifications')))
 
     def test_cache_spec_enabled(self):
         """Test that exporting with cache_spec works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
 
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(
                     src_io=read_io,
                     container=read_foofile,
-                    cache_spec=True,
-                )
-
+                    cache_spec=True)
         self.assertTrue(os.path.exists(os.path.join(self.paths[1], 'specifications')))
 
     def test_soft_link_group(self):
@@ -785,13 +777,13 @@ class TestExportZarrToZarr(TestCase):
         same group but in the new file """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket], foo_link=foo1)
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, write_args=dict(link_data=False))
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
             # make sure the linked group is within the same file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
@@ -808,20 +800,20 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket], foofile_data=foo1.my_data)
+        foofile = FooFile(buckets=[foobucket], foofile_data=foo1.my_data)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile, link_data=True)
         print ("WRITE DONE")
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, write_args=dict(link_data=False))
 
         print(zarr.open(self.paths[0]).tree())
         print(zarr.open(self.paths[1]).tree())
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
             # make sure the linked dataset is within the same file
@@ -836,14 +828,14 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
         # Create File 1 with the full data
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as read_io:
             read_io.write(foofile)
 
         # Create file 2 with an external link to File 1
-        manager = _get_manager()
+        manager = get_foo_buildmanager()
         with ZarrIO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
             # make external link to existing group
@@ -857,7 +849,7 @@ class TestExportZarrToZarr(TestCase):
                                                  'source': self.paths[0]}]})
 
         # Export File 2 to a new File 3 and make sure the external link from File 2 is being preserved
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
              with ZarrIO(self.paths[2], mode='w') as export_io:
                 print("-------------------Write File 3----------------------------")
                 export_io.export(src_io=read_io)
@@ -866,7 +858,7 @@ class TestExportZarrToZarr(TestCase):
         print(zarr.open(self.paths[1])['links'].attrs.asdict())
         print(zarr.open(self.paths[2])['links'].attrs.asdict())
 
-        with ZarrIO(self.paths[2], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[0])
@@ -878,26 +870,27 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket], foofile_data=[1, 2, 3])
+        foofile = FooFile(buckets=[foobucket], foofile_data=[1, 2, 3])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        manager = _get_manager()
+        manager = get_foo_buildmanager()
         with ZarrIO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
-            foofile2 = FooFile(foofile_data=read_foofile.foofile_data)  # make external link to existing dataset
+            # make external link to existing dataset
+            foofile2 = FooFile(foofile_data=read_foofile.foofile_data)
 
             with ZarrIO(self.paths[1], manager=manager, mode='w') as write_io:
                 write_io.write(foofile2)
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             self.ios.append(read_io)  # track IO objects for tearDown
 
             with ZarrIO(self.paths[2], mode='w') as export_io:
                 export_io.export(src_io=read_io)
 
-        with ZarrIO(self.paths[2], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io:
             self.ios.append(read_io)  # track IO objects for tearDown
             read_foofile2 = read_io.read()
 
@@ -911,12 +904,12 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        manager = _get_manager()
+        manager = get_foo_buildmanager()
         with ZarrIO(self.paths[0], manager=manager, mode='r') as read_io:
             read_foofile = read_io.read()
             # make external link to existing group
@@ -925,20 +918,21 @@ class TestExportZarrToZarr(TestCase):
             with ZarrIO(self.paths[1], manager=manager, mode='w') as write_io:
                 write_io.write(foofile2)
 
-        manager = _get_manager()
+        manager = get_foo_buildmanager()
         with ZarrIO(self.paths[1], manager=manager, mode='r') as read_io:
             read_foofile2 = read_io.read()
-            foofile3 = FooFile(foo_link=read_foofile2.foo_link)  # make external link to external link
+            # make external link to external link
+            foofile3 = FooFile(foo_link=read_foofile2.foo_link)
 
             with ZarrIO(self.paths[2], manager=manager, mode='w') as write_io:
                 write_io.write(foofile3)
 
-        with ZarrIO(self.paths[2], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io:
 
             with ZarrIO(self.paths[3], mode='w') as export_io:
                 export_io.export(src_io=read_io)
 
-        with ZarrIO(self.paths[3], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[3], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile3 = read_io.read()
 
             # make sure the linked group is read from the first file
@@ -952,16 +946,16 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket], foo_ref_attr=foo1)
+        foofile = FooFile(buckets=[foobucket], foo_ref_attr=foo1)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as read_io:
             read_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io,  write_args=dict(link_data=False))
 
-        #with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        #with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
         #    read_foofile2 = read_io.read()
             #self.assertTupleEqual(ZarrIO.get_zarr_paths(read_foofile2.foo_ref_attr.my_data),
             #                     (self.paths[1], '/buckets/bucket1/foo_holder/foo1/my_data'))
@@ -978,19 +972,19 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting a written container after removing an element from it works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
             read_foofile.remove_bucket('bucket1')  # remove child group
 
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
             # make sure the read foofile has no buckets
@@ -1005,12 +999,12 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting a written container after removing a linked element from it works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket], foo_link=foo1)
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
             read_foofile.buckets['bucket1'].remove_foo('foo1')  # remove child group
 
@@ -1029,12 +1023,12 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile = read_io.read()
 
             # create a foo with link to existing dataset my_data, add the foo to new foobucket
@@ -1057,7 +1051,7 @@ class TestExportZarrToZarr(TestCase):
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_foofile)
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             read_foofile2 = read_io.read()
 
             # test new soft link to dataset in file
@@ -1084,17 +1078,17 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        foofile2 = FooFile([])
+        foofile2 = FooFile(buckets=[])
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile2)
 
-        manager = _get_manager()
+        manager = get_foo_buildmanager()
         with ZarrIO(self.paths[0], manager=manager, mode='r') as read_io1:
             read_foofile1 = read_io1.read()
 
@@ -1114,11 +1108,11 @@ class TestExportZarrToZarr(TestCase):
                 with ZarrIO(self.paths[2], mode='w') as export_io:
                     export_io.export(src_io=read_io2, container=read_foofile2)
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io1:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
             self.ios.append(read_io1)  # track IO objects for tearDown
             read_foofile3 = read_io1.read()
 
-            with ZarrIO(self.paths[2], manager=_get_manager(), mode='r') as read_io2:
+            with ZarrIO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
                 read_foofile4 = read_io2.read()
 
                 self.assertEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
@@ -1139,17 +1133,17 @@ class TestExportZarrToZarr(TestCase):
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        foofile2 = FooFile([])
+        foofile2 = FooFile(buckets=[])
 
-        with ZarrIO(self.paths[1], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile2)
 
-        manager = _get_manager()
+        manager = get_foo_buildmanager()
         with ZarrIO(self.paths[0], manager=manager, mode='r') as read_io1:
             read_foofile1 = read_io1.read()
 
@@ -1169,10 +1163,10 @@ class TestExportZarrToZarr(TestCase):
                 with ZarrIO(self.paths[2], mode='w') as export_io:
                     export_io.export(src_io=read_io2, container=read_foofile2, write_args={'link_data': False})
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='r') as read_io1:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
             read_foofile3 = read_io1.read()
 
-            with ZarrIO(self.paths[2], manager=_get_manager(), mode='r') as read_io2:
+            with ZarrIO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
                 read_foofile4 = read_io2.read()
 
                 # check that file can be read
@@ -1270,9 +1264,9 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting with a src_io without a manager raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
         class OtherIO(HDMFIO):
@@ -1299,9 +1293,9 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting with a src_io without a manager raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
         class OtherIO(HDMFIO):
@@ -1321,7 +1315,7 @@ class TestExportZarrToZarr(TestCase):
             def close(self):
                 pass
 
-        with OtherIO(manager=_get_manager()) as read_io:
+        with OtherIO(manager=get_foo_buildmanager()) as read_io:
             with ZarrIO(self.paths[1], mode='w') as export_io:
                 msg = "Cannot export from non-Zarr backend OtherIO to Zarr with write argument link_data=True."
                 with self.assertRaisesWith(UnsupportedOperation, msg):
@@ -1331,9 +1325,9 @@ class TestExportZarrToZarr(TestCase):
         """Test that exporting with a src_io without a manager raises an error."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
+        foofile = FooFile(buckets=[foobucket])
 
-        with ZarrIO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+        with ZarrIO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
         with ZarrIO(self.paths[0], mode='r') as read_io:

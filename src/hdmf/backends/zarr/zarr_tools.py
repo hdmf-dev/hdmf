@@ -757,7 +757,7 @@ class ZarrIO(HDMFIO):
 
     __reserve_attribute = ('zarr_dtype', 'zarr_link')
 
-    @classmethod
+    @classmethod  # noqa: C901
     def __list_fill__(cls, parent, name, data, options=None):
         dtype = None
         io_settings = dict()
