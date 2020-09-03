@@ -1,22 +1,21 @@
+"""Test module to validate that HDF5IO is working"""
 import os
 import unittest
 import warnings
 import numpy as np
 import h5py
+from h5py import SoftLink, HardLink, ExternalLink, File
+from h5py import filters as h5py_filters
 from io import BytesIO
 
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
-from hdmf.backends.hdf5.h5tools import HDF5IO
-from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.io import HDMFIO, UnsupportedOperation
+from hdmf.backends.hdf5 import H5DataIO, HDF5IO
+from hdmf.backends.io import HDMFIO
+from hdmf.backends.errors import UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.build import GroupBuilder, DatasetBuilder, OrphanContainerBuildError
-from hdmf.spec.namespace import NamespaceCatalog
-from hdmf.spec.namespace import SpecNamespace
+from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.testing import TestCase
-
-from h5py import SoftLink, HardLink, ExternalLink, File
-from h5py import filters as h5py_filters
 
 from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,

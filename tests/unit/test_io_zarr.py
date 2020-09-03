@@ -1,9 +1,11 @@
+"""Test module to validate the ZarrIO is working"""
 import unittest
 import os
 import numpy as np
 import shutil
 from six import text_type
 
+# Try to import Zarr and disable tests if Zarr is not available
 try:
     import zarr
     from hdmf.backends.zarr.zarr_tools import ZarrIO
@@ -11,6 +13,7 @@ try:
     DISABLE_ALL_ZARR_TESTS = False
 except ImportError:
     DISABLE_ALL_ZARR_TESTS = True
+# Try to import numcodecs and disable compression tests if it is not available
 try:
     from numcodecs import Blosc, Delta
     DISABLE_ZARR_COMPRESSION_TESTS = False
