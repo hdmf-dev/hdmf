@@ -1025,7 +1025,10 @@ class TestExportZarrToZarr(TestCase):
 
     def test_append_data(self):
         """Test that exporting a written container after adding groups, links, and references to it works."""
-        pass  # TODO: This test currently fails because I do not understand how the link to my_data is expected to be created here and currently fails. I.e,. it fails in list_fill but instead we should actually create an external link instead
+        # TODO: This test currently fails because I do not understand how the link to my_data is expected to be
+        #       created here and currently fails. I.e,. it fails in list_fill but instead we should actually
+        #       create an external link instead
+        pass
         """
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
@@ -1039,7 +1042,9 @@ class TestExportZarrToZarr(TestCase):
 
             # create a foo with link to existing dataset my_data, add the foo to new foobucket
             # this should make a soft link within the exported file
-            foo2 = Foo('foo2', read_foofile.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)  # TODO Assigning my_data is the problem. Which in turn causes the export to fail because the Zarr DataType is not being understood
+            # TODO Assigning my_data is the problem. Which in turn causes the export to fail because the Zarr
+            # DataType is not being understood. This is where the External link should be cerated instead?
+            foo2 = Foo('foo2', read_foofile.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
             foobucket2 = FooBucket('bucket2', [foo2])
             read_foofile.add_bucket(foobucket2)
 

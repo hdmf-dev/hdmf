@@ -372,7 +372,7 @@ class ZarrIO(HDMFIO):
             filepath = os.path.dirname(filepath)
         # From the fullpath and filepath we can now compute the objectpath within the zarr file as the relative
         # path from the filepath to the object
-        objectpath = "/"  + os.path.relpath(fullpath, filepath)
+        objectpath = "/" + os.path.relpath(fullpath, filepath)
         # return the result
         return filepath, objectpath
 
