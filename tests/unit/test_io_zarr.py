@@ -19,12 +19,13 @@ except ImportError:
 
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.build import GroupBuilder, DatasetBuilder, ReferenceBuilder, OrphanContainerBuildError
-# Baz, BazData, BazBucket, _get_baz_manager, BazCpdData
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 
-from tests.unit.utils import Foo, FooBucket, FooFile, CacheSpecTestHelper, get_temp_filepath, get_foo_buildmanager
+from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
+                              # Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
+                              CacheSpecTestHelper, get_temp_filepath)
 
 
 def total_directory_size(source):

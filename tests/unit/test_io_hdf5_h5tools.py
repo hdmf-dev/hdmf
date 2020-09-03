@@ -5,25 +5,21 @@ import numpy as np
 import h5py
 from io import BytesIO
 
-from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
-from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError
+from hdmf.build import GroupBuilder, DatasetBuilder, OrphanContainerBuildError
 from hdmf.spec.namespace import NamespaceCatalog
-from hdmf.spec.spec import (DatasetSpec, GroupSpec, ONE_OR_MANY, ZERO_OR_ONE,
-                            RefSpec, DtypeSpec)
 from hdmf.spec.namespace import SpecNamespace
-from hdmf.spec.catalog import SpecCatalog
-from hdmf.container import Container, Data
 from hdmf.testing import TestCase
 
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 
 from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
+                              Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper)
 
 
@@ -2335,10 +2331,10 @@ class TestExport(TestCase):
         baz_data = BazData(name='baz_data1', data=bazs)
         bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
 
-        with HDF5IO(self.paths[0], manager=_get_baz_manager(), mode='w') as write_io:
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
 
-        with HDF5IO(self.paths[0], manager=_get_baz_manager(), mode='r') as read_io:
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket1 = read_io.read()
 
             # NOTE: reference IDs might be the same between two identical files
@@ -2349,7 +2345,7 @@ class TestExport(TestCase):
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_bucket1)
 
-        with HDF5IO(self.paths[1], manager=_get_baz_manager(), mode='r') as read_io:
+        with HDF5IO(self.paths[1], manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket2 = read_io.read()
 
             # remove and check the appended child, then compare the read container with the original
@@ -2373,10 +2369,10 @@ class TestExport(TestCase):
         baz_cpd_data = BazCpdData(name='baz_cpd_data1', data=baz_pairs)
         bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_cpd_data=baz_cpd_data)
 
-        with HDF5IO(self.paths[0], manager=_get_baz_manager(), mode='w') as write_io:
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
 
-        with HDF5IO(self.paths[0], manager=_get_baz_manager(), mode='r') as read_io:
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket1 = read_io.read()
 
             # NOTE: reference IDs might be the same between two identical files
@@ -2387,7 +2383,7 @@ class TestExport(TestCase):
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 export_io.export(src_io=read_io, container=read_bucket1)
 
-        with HDF5IO(self.paths[1], manager=_get_baz_manager(), mode='r') as read_io:
+        with HDF5IO(self.paths[1], manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket2 = read_io.read()
 
             # remove and check the appended child, then compare the read container with the original
@@ -2488,10 +2484,10 @@ class TestDatasetRefs(TestCase):
         baz_data = BazData(name='baz_data1', data=bazs)
         bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
 
-        with HDF5IO(self.path, manager=_get_baz_manager(), mode='w') as write_io:
+        with HDF5IO(self.path, manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
 
-        with HDF5IO(self.path, manager=_get_baz_manager(), mode='r') as read_io:
+        with HDF5IO(self.path, manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket = read_io.read()
 
             self.assertContainerEqual(bucket, read_bucket, ignore_name=True)
@@ -2514,10 +2510,10 @@ class TestCpdDatasetRefs(TestCase):
         baz_cpd_data = BazCpdData(name='baz_cpd_data1', data=baz_pairs)
         bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_cpd_data=baz_cpd_data)
 
-        with HDF5IO(self.path, manager=_get_baz_manager(), mode='w') as write_io:
+        with HDF5IO(self.path, manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
 
-        with HDF5IO(self.path, manager=_get_baz_manager(), mode='r') as read_io:
+        with HDF5IO(self.path, manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket = read_io.read()
 
             self.assertContainerEqual(bucket, read_bucket, ignore_name=True)
@@ -2525,132 +2521,3 @@ class TestCpdDatasetRefs(TestCase):
                 baz_name = 'baz%d' % i
                 self.assertEqual(read_bucket.baz_cpd_data.data[i][0], i)
                 self.assertIs(read_bucket.baz_cpd_data.data[i][1], read_bucket.bazs[baz_name])
-
-
-class Baz(Container):
-
-    pass
-
-
-class BazData(Data):
-
-    pass
-
-
-class BazCpdData(Data):
-
-    pass
-
-
-class BazBucket(Container):
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this bucket'},
-            {'name': 'bazs', 'type': list, 'doc': 'the Baz objects in this bucket'},
-            {'name': 'baz_data', 'type': BazData, 'doc': 'dataset of Baz references', 'default': None},
-            {'name': 'baz_cpd_data', 'type': BazCpdData, 'doc': 'dataset of Baz references', 'default': None})
-    def __init__(self, **kwargs):
-        name, bazs, baz_data, baz_cpd_data = getargs('name', 'bazs', 'baz_data', 'baz_cpd_data', kwargs)
-        super().__init__(name=name)
-        self.__bazs = {b.name: b for b in bazs}  # note: collections of groups are unordered in HDF5
-        for b in bazs:
-            b.parent = self
-        self.__baz_data = baz_data
-        if self.__baz_data is not None:
-            self.__baz_data.parent = self
-        self.__baz_cpd_data = baz_cpd_data
-        if self.__baz_cpd_data is not None:
-            self.__baz_cpd_data.parent = self
-
-    @property
-    def bazs(self):
-        return self.__bazs
-
-    @property
-    def baz_data(self):
-        return self.__baz_data
-
-    @property
-    def baz_cpd_data(self):
-        return self.__baz_cpd_data
-
-    def add_baz(self, baz):
-        self.__bazs[baz.name] = baz
-        baz.parent = self
-
-    def remove_baz(self, baz_name):
-        baz = self.__bazs.pop(baz_name)
-        self._remove_child(baz)
-        return baz
-
-
-def _get_baz_manager():
-    baz_spec = GroupSpec(
-        doc='A test group specification with a data type',
-        data_type_def='Baz',
-    )
-
-    baz_data_spec = DatasetSpec(
-        doc='A test dataset of references specification with a data type',
-        name='baz_data',
-        data_type_def='BazData',
-        dtype=RefSpec('Baz', 'object'),
-        shape=[None],
-    )
-
-    baz_cpd_data_spec = DatasetSpec(
-        doc='A test compound dataset with references specification with a data type',
-        name='baz_cpd_data',
-        data_type_def='BazCpdData',
-        dtype=[DtypeSpec(name='part1', doc='doc', dtype='int'),
-               DtypeSpec(name='part2', doc='doc', dtype=RefSpec('Baz', 'object'))],
-        shape=[None],
-    )
-
-    baz_holder_spec = GroupSpec(
-        doc='group of bazs',
-        name='bazs',
-        groups=[GroupSpec(doc='Baz', data_type_inc='Baz', quantity=ONE_OR_MANY)],
-    )
-
-    baz_bucket_spec = GroupSpec(
-        doc='A test group specification for a data type containing data type',
-        data_type_def='BazBucket',
-        groups=[baz_holder_spec],
-        datasets=[DatasetSpec(doc='doc', data_type_inc='BazData', quantity=ZERO_OR_ONE),
-                  DatasetSpec(doc='doc', data_type_inc='BazCpdData', quantity=ZERO_OR_ONE)],
-    )
-
-    spec_catalog = SpecCatalog()
-    spec_catalog.register_spec(baz_spec, 'test.yaml')
-    spec_catalog.register_spec(baz_data_spec, 'test.yaml')
-    spec_catalog.register_spec(baz_cpd_data_spec, 'test.yaml')
-    spec_catalog.register_spec(baz_bucket_spec, 'test.yaml')
-
-    namespace = SpecNamespace(
-        'a test namespace',
-        CORE_NAMESPACE,
-        [{'source': 'test.yaml'}],
-        version='0.1.0',
-        catalog=spec_catalog)
-
-    namespace_catalog = NamespaceCatalog()
-    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-
-    type_map = TypeMap(namespace_catalog)
-    type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
-    type_map.register_container_type(CORE_NAMESPACE, 'BazData', BazData)
-    type_map.register_container_type(CORE_NAMESPACE, 'BazCpdData', BazCpdData)
-    type_map.register_container_type(CORE_NAMESPACE, 'BazBucket', BazBucket)
-
-    class BazBucketMapper(ObjectMapper):
-        def __init__(self, spec):
-            super().__init__(spec)
-            baz_holder_spec = spec.get_group('bazs')
-            self.unmap(baz_holder_spec)
-            baz_spec = baz_holder_spec.get_data_type('Baz')
-            self.map_spec('bazs', baz_spec)
-
-    type_map.register_map(BazBucket, BazBucketMapper)
-
-    manager = BuildManager(type_map)
-    return manager

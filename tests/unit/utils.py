@@ -1,8 +1,8 @@
 import tempfile
 
 from hdmf.utils import (docval, getargs)
-from hdmf.container import Container
-from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec,
+from hdmf.container import Container, Data
+from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec, DtypeSpec,
                             ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE)
 from hdmf.spec.namespace import (NamespaceCatalog, SpecNamespace)
 from hdmf.build import (ObjectMapper, TypeMap, BuildManager)
@@ -24,6 +24,17 @@ class CacheSpecTestHelper(object):
         return types
 
 
+def get_temp_filepath():
+    # On Windows, h5py cannot truncate an open file in write mode.
+    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file.close()
+    return temp_file.name
+
+
+############################################
+#  Foo example data containers and specs
+###########################################
 class Foo(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
@@ -275,9 +286,133 @@ def get_foo_buildmanager():
     return manager
 
 
-def get_temp_filepath():
-    # On Windows, h5py cannot truncate an open file in write mode.
-    # The temp file will be closed before h5py truncates it and will be removed during the tearDown step.
-    temp_file = tempfile.NamedTemporaryFile()
-    temp_file.close()
-    return temp_file.name
+############################################
+#  Baz example data containers and specs
+###########################################
+class Baz(Container):
+
+    pass
+
+
+class BazData(Data):
+
+    pass
+
+
+class BazCpdData(Data):
+
+    pass
+
+
+class BazBucket(Container):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this bucket'},
+            {'name': 'bazs', 'type': list, 'doc': 'the Baz objects in this bucket'},
+            {'name': 'baz_data', 'type': BazData, 'doc': 'dataset of Baz references', 'default': None},
+            {'name': 'baz_cpd_data', 'type': BazCpdData, 'doc': 'dataset of Baz references', 'default': None})
+    def __init__(self, **kwargs):
+        name, bazs, baz_data, baz_cpd_data = getargs('name', 'bazs', 'baz_data', 'baz_cpd_data', kwargs)
+        super().__init__(name=name)
+        self.__bazs = {b.name: b for b in bazs}  # note: collections of groups are unordered in HDF5
+        for b in bazs:
+            b.parent = self
+        self.__baz_data = baz_data
+        if self.__baz_data is not None:
+            self.__baz_data.parent = self
+        self.__baz_cpd_data = baz_cpd_data
+        if self.__baz_cpd_data is not None:
+            self.__baz_cpd_data.parent = self
+
+    @property
+    def bazs(self):
+        return self.__bazs
+
+    @property
+    def baz_data(self):
+        return self.__baz_data
+
+    @property
+    def baz_cpd_data(self):
+        return self.__baz_cpd_data
+
+    def add_baz(self, baz):
+        self.__bazs[baz.name] = baz
+        baz.parent = self
+
+    def remove_baz(self, baz_name):
+        baz = self.__bazs.pop(baz_name)
+        self._remove_child(baz)
+        return baz
+
+
+def get_baz_buildmanager():
+    baz_spec = GroupSpec(
+        doc='A test group specification with a data type',
+        data_type_def='Baz',
+    )
+
+    baz_data_spec = DatasetSpec(
+        doc='A test dataset of references specification with a data type',
+        name='baz_data',
+        data_type_def='BazData',
+        dtype=RefSpec('Baz', 'object'),
+        shape=[None],
+    )
+
+    baz_cpd_data_spec = DatasetSpec(
+        doc='A test compound dataset with references specification with a data type',
+        name='baz_cpd_data',
+        data_type_def='BazCpdData',
+        dtype=[DtypeSpec(name='part1', doc='doc', dtype='int'),
+               DtypeSpec(name='part2', doc='doc', dtype=RefSpec('Baz', 'object'))],
+        shape=[None],
+    )
+
+    baz_holder_spec = GroupSpec(
+        doc='group of bazs',
+        name='bazs',
+        groups=[GroupSpec(doc='Baz', data_type_inc='Baz', quantity=ONE_OR_MANY)],
+    )
+
+    baz_bucket_spec = GroupSpec(
+        doc='A test group specification for a data type containing data type',
+        data_type_def='BazBucket',
+        groups=[baz_holder_spec],
+        datasets=[DatasetSpec(doc='doc', data_type_inc='BazData', quantity=ZERO_OR_ONE),
+                  DatasetSpec(doc='doc', data_type_inc='BazCpdData', quantity=ZERO_OR_ONE)],
+    )
+
+    spec_catalog = SpecCatalog()
+    spec_catalog.register_spec(baz_spec, 'test.yaml')
+    spec_catalog.register_spec(baz_data_spec, 'test.yaml')
+    spec_catalog.register_spec(baz_cpd_data_spec, 'test.yaml')
+    spec_catalog.register_spec(baz_bucket_spec, 'test.yaml')
+
+    namespace = SpecNamespace(
+        'a test namespace',
+        CORE_NAMESPACE,
+        [{'source': 'test.yaml'}],
+        version='0.1.0',
+        catalog=spec_catalog)
+
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+
+    type_map = TypeMap(namespace_catalog)
+    type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
+    type_map.register_container_type(CORE_NAMESPACE, 'BazData', BazData)
+    type_map.register_container_type(CORE_NAMESPACE, 'BazCpdData', BazCpdData)
+    type_map.register_container_type(CORE_NAMESPACE, 'BazBucket', BazBucket)
+
+    class BazBucketMapper(ObjectMapper):
+        def __init__(self, spec):
+            super().__init__(spec)
+            baz_holder_spec = spec.get_group('bazs')
+            self.unmap(baz_holder_spec)
+            baz_spec = baz_holder_spec.get_data_type('Baz')
+            self.map_spec('bazs', baz_spec)
+
+    type_map.register_map(BazBucket, BazBucketMapper)
+
+    manager = BuildManager(type_map)
+    return manager

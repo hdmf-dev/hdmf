@@ -44,8 +44,12 @@
 ### Breaking changes
 - Add optional dependencies for `Zarr` and `numcodecs` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new `hdmf/backends/zarr` I/O backend) will function without these dependencies.  @oruebel (#98)
 - Moved `UnsupportedOperation` error class from `hdmf.backends.io` to the new `hdmf.backends.errors` module.  @oruebel (#98)
-- Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and for consistency
+- Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and to consolidate the `Foo` test data classes in one module.
+
+#### Breaking changes in tests
+
 - Moved `tests.unit.test_io_hdf5_h5tools._get_manager` to `tests.unit.utils.get_foo_buildmanager` to ease reuse
+- Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move.
 
 
 ## HDMF 2.2.0 (August 14, 2020)
