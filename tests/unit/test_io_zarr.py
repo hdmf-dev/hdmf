@@ -415,6 +415,25 @@ class TestZarrWriteUnit(TestCase):
         with self.assertRaises(NotImplementedError):
             np.isfinite(data)  # Force call of H5DataIO.__array__
 
+    def test_get_builder_exists_on_disk(self):
+        """Test that get_builder_exists_on_disk finds the existing builder"""
+        dset_builder = DatasetBuilder('test_dataset', 10, attributes={})
+        self.assertFalse(self.io.get_builder_exists_on_disk(dset_builder))  # Make sure False is returned before write
+        self.io.write_dataset(self.f, dset_builder)
+        self.assertTrue(self.io.get_builder_exists_on_disk(dset_builder))   # Make sure True is returned after write
+
+    def test_get_written(self):
+        """Test that get_builder_exists_on_disk finds the existing builder"""
+        dset_builder = DatasetBuilder('test_dataset', 10, attributes={})
+        self.assertFalse(self.io.get_written(dset_builder))  # Make sure False is returned before write
+        self.io.write_dataset(self.f, dset_builder)
+        self.assertTrue(self.io.get_written(dset_builder))   # Make sure True is returned after write
+        self.assertTrue(self.io.get_written(dset_builder, check_on_disk=True))   # Make sure its also on disk
+        # Now delete it from disk and check again
+        shutil.rmtree(self.io.get_builder_disk_path(dset_builder))
+        self.assertTrue(self.io.get_written(dset_builder))   # The written flag should still be true
+        self.assertFalse(self.io.get_written(dset_builder, check_on_disk=True))   # But with check on disk should fail
+
     ##########################################
     #  write_dataset tests: scalars
     ##########################################

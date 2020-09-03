@@ -188,15 +188,32 @@ class ZarrIO(HDMFIO):
                               by this I/O backend
         :type check_on_disk: bool
 
-        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
+        :return: True if the builder is found in self._written_builders using the builder ID, False otherwise. If
+                 check_on_disk is enabled then the function cals get_builder_exists_on_disk in addtion to verify
+                 that the builder has indeed been written to disk.
         """
-        return self._written_builders.get_written(builder)
+        written = self._written_builders.get_written(builder)
+        if written and check_on_disk:
+            written = written and self.get_builder_exists_on_disk(builder=builder, filepath=self.__path)
+        return written
 
-    def get_builder_exists_on_disk(self, builder, parent):
+    @docval({'name': 'builder', 'type': Builder, 'doc': 'The builder of interest'},
+            {'name': 'filepath', 'type': str,
+             'doc': 'The path to the Zarr file or None for this file', 'default': None})
+    def get_builder_exists_on_disk(self, **kwargs):
         """Convenience function to check whether a given builder exists on disk"""
-        builder_path = os.path.join(self.__path, os.path.join(parent.name, builder.name).lstrip('/'))
+        builder_path = self.get_builder_disk_path(**kwargs)
         exists_on_disk = os.path.exists(builder_path)
         return exists_on_disk
+
+    @docval({'name': 'builder', 'type': Builder, 'doc': 'The builder of interest'},
+            {'name': 'filepath', 'type': str,
+             'doc': 'The path to the Zarr file or None for this file', 'default': None})
+    def get_builder_disk_path(self, **kwargs):
+        builder, filepath = getargs('builder', 'filepath', kwargs)
+        basepath = filepath if filepath is not None else self.__path
+        builder_path = os.path.join(basepath, self.__get_path(builder).lstrip("/"))
+        return builder_path
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the NWBFile'},
             {'name': 'link_data', 'type': bool,
@@ -758,7 +775,7 @@ class ZarrIO(HDMFIO):
     __reserve_attribute = ('zarr_dtype', 'zarr_link')
 
     @classmethod  # noqa: C901
-    def __list_fill__(cls, parent, name, data, options=None):
+    def __list_fill__(cls, parent, name, data, options=None):  # noqa: C901
         dtype = None
         io_settings = dict()
         if options is not None:
