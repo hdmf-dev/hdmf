@@ -235,7 +235,7 @@ class ZarrIO(HDMFIO):
                                builder=dbldr,
                                link_data=link_data,
                                exhaust_dci=exhaust_dci)
-        self.set_attributes(self.__file, f_builder.attributes)
+        self.write_attributes(self.__file, f_builder.attributes)
         self.__dci_queue.exhaust_queue()  # Write all DataChunkIterators that have been queued
         self._written_builders.set_written(f_builder)
         self.logger.debug("Done writing %s '%s' to path '%s'" %
@@ -281,7 +281,7 @@ class ZarrIO(HDMFIO):
                 self.write_link(group, sub_builder)
 
         attributes = builder.attributes
-        self.set_attributes(group, attributes)
+        self.write_attributes(group, attributes)
         self._written_builders.set_written(builder)  # record that the builder has been written
         return group
 
@@ -289,18 +289,24 @@ class ZarrIO(HDMFIO):
             {'name': 'attributes',
              'type': dict,
              'doc': 'a dict containing the attributes on the Group or Dataset, indexed by attribute name'})
-    def set_attributes(self, **kwargs):
+    def write_attributes(self, **kwargs):
+        """
+        Set (i.e., write) the attributes on a given Zarr Group or Array
+        """
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
             # Case 1: list, set, tuple type attributes
             if isinstance(value, (set, list, tuple)) or (isinstance(value, np.ndarray) and np.ndim(value) != 0):
-                tmp = tuple(value)
+                # Convert to tuple for writing (e.g., numpy arrays are not JSON serializable)
+                if isinstance(value, np.ndarray):
+                    tmp = tuple(value.tolist())
+                else:
+                    tmp = tuple(value)
                 # Attempt write of the attribute
                 try:
                     obj.attrs[key] = tmp
-                # Numpy scalars abd bytes are not JSON serializable. Try to convert to a serializable type instead
+                # Numpy scalars and bytes are not JSON serializable. Try to convert to a serializable type instead
                 except TypeError as e:
-                    write_ok = False
                     try:
                         tmp = tuple([i.item()
                                      if (isinstance(i, np.generic) and not isinstance(i, np.bytes_))
@@ -309,17 +315,14 @@ class ZarrIO(HDMFIO):
                                      else i
                                      for i in value])
                         obj.attrs[key] = tmp
-                        write_ok = True
                     except:  # noqa: E722
-                        pass
-                    if not write_ok:
-                        raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value))
+                        raise TypeError(str(e) + " type=" + str(type(value)) + "  data=" + str(value)) from e
             # Case 2: References
             elif isinstance(value, (Container, Builder, ReferenceBuilder)):
                 if isinstance(value, RegionBuilder):
                     type_str = 'region'
                     refs = self.__get_ref(value.builder)
-                elif isinstance(value, ReferenceBuilder) or isinstance(value, Container) or isinstance(value, Builder):
+                elif isinstance(value, (ReferenceBuilder, Container, Builder)):
                     type_str = 'object'
                     if isinstance(value, Builder):
                         refs = self.__get_ref(value)
@@ -334,7 +337,6 @@ class ZarrIO(HDMFIO):
                     obj.attrs[key] = value
                 # Numpy scalars and bytes are not JSON serializable. Try to convert to a serializable type instead
                 except TypeError as e:
-                    write_ok = False
                     try:
                         val = value.item if isinstance(value, np.ndarray) else value
                         val = value.item() \
@@ -343,11 +345,9 @@ class ZarrIO(HDMFIO):
                             if isinstance(value, (bytes, np.bytes_)) \
                             else val
                         obj.attrs[key] = val
-                        write_ok = True
                     except:  # noqa: E722
-                        pass
-                    if not write_ok:
-                        raise TypeError(str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value))
+                        msg = str(e) + "key=" + key + " type=" + str(type(value)) + "  data=" + str(value)
+                        raise TypeError(msg) from e
 
     def __get_path(self, builder):
         """Get the path to the builder.
@@ -445,7 +445,9 @@ class ZarrIO(HDMFIO):
 
         # by checking os.isdir makes sure we have a valid link path to a dir for Zarr. For conversion
         # between backends a user should always use export which takes care of creating a clean set of builders.
-        source = builder.source if os.path.isdir(builder.source) else self.__path
+        source = (builder.source
+                  if (builder.source is not None and os.path.isdir(builder.source))
+                  else self.__path)
         return ZarrReference(source, path)
 
     def __add_link__(self, parent, target_source, target_path, link_name):
@@ -682,7 +684,7 @@ class ZarrIO(HDMFIO):
             else:
                 dset = self.__scalar_fill__(parent, name, data, options)
         if not linked:
-            self.set_attributes(dset, attributes)
+            self.write_attributes(dset, attributes)
         # record that the builder has been written
         self._written_builders.set_written(builder)
         # Exhaust the DataChunkIterator if the dataset was given this way. Note this is a no-op

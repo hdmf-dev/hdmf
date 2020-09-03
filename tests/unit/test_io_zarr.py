@@ -86,7 +86,6 @@ class GroupBuilderTestCase(TestCase):
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
 class TestZarrWriter(TestCase):
     """Test writing of builder with Zarr"""
-
     def setUp(self):
         self.manager = get_foo_buildmanager()
         self.path = "test_io.zarr"
@@ -440,6 +439,105 @@ class TestZarrWriteUnit(TestCase):
         shutil.rmtree(self.io.get_builder_disk_path(dset_builder))
         self.assertTrue(self.io.get_written(dset_builder))   # The written flag should still be true
         self.assertFalse(self.io.get_written(dset_builder, check_on_disk=True))   # But with check on disk should fail
+
+    ##########################################
+    #  write_attributes
+    ##########################################
+    def __write_attribute_test_helper(self, name, value, assert_value=True):
+        """
+        Helper function to write a single attribute and check its value for correctness
+        :param name: Name of the attribute
+        :param value: Value of the attribute
+        :param assert_value: Boolean indicating whether we should check correctness of the returned value
+        :returns: the value read from disk so we can do our own tests if needed
+        """
+        # write the attribute
+        testgroup = self.io._ZarrIO__file  # For testing we just use our file and create some attributes
+        attr = {name: value}
+        self.io.write_attributes(testgroup, attr)
+        # read the attribute
+        read_val = testgroup.attrs[name]
+        # assert that the read value matches the expected value
+        if assert_value:
+            if isinstance(value, (list, tuple, set)):
+                self.assertTupleEqual(read_val, tuple(value))
+            elif isinstance(value, np.ndarray):
+                self.assertListEqual(list(read_val), value.tolist())
+            else:
+                self.assertEqual(testgroup.attrs[name], value)
+        return read_val
+
+    def test_write_attributes_write_scalar_int(self):
+        self.__write_attribute_test_helper('intattr', np.int(5))
+        self.__write_attribute_test_helper('intattr', 10)
+
+    def test_write_attributes_write_scalar_float(self):
+        self.__write_attribute_test_helper('floatattr', np.float(50.))
+        self.__write_attribute_test_helper('floatattr', 50.2)
+
+    def test_write_attributes_write_scalar_str(self):
+        self.__write_attribute_test_helper('strattr', "a")
+        self.__write_attribute_test_helper('strattr', "Hello World")
+
+    def test_write_attributes_write_unsupported_scalar_type(self):
+        with self.assertRaises(TypeError):
+            self.__write_attribute_test_helper('strattr', np.int)
+
+    def test_write_attributes_write_list_of_ints(self):
+        self.__write_attribute_test_helper('attr', list(range(10)))
+        self.__write_attribute_test_helper('attr', list(range(100)))
+
+    def test_write_attributes_write_list_of_strings(self):
+        self.__write_attribute_test_helper('attr', ['a', 'b', 'c', 'd'])
+        self.__write_attribute_test_helper('attr', ['e', 'f', 'g'])
+
+    def test_write_attributes_write_set_of_strings(self):
+        self.__write_attribute_test_helper('attr', set(['a', 'b', 'c', 'd']))
+        self.__write_attribute_test_helper('attr', set(['e', 'f', 'g']))
+
+    def test_write_attributes_write_tuple_of_strings(self):
+        self.__write_attribute_test_helper('attr', tuple(['a', 'b', 'c', 'd']))
+        self.__write_attribute_test_helper('attr', tuple(['e', 'f', 'g']))
+
+    def test_write_attribute_write_unsupported_list_of_types(self):
+        """Test that writing a list of types fails"""
+        with self.assertRaises(TypeError):
+            self.__write_attribute_test_helper('attr', [np.int, np.float])
+
+    def test_write_attributes_write_list_of_bytes(self):
+        """
+        Test writing of lists of bytes. Bytes are not JSON serializable and therefore cover a differnt code path.
+        Note, bytes are here encoded as strings to the return value does not match exactly but the data type changes.
+        """
+        val = self.__write_attribute_test_helper('attr', [b'a', b'b', b'c', b'd'], assert_value=False)
+        self.assertTupleEqual(val, tuple(['a', 'b', 'c', 'd']))
+        val = self.__write_attribute_test_helper('attr', [b'e', b'f', b'g'], assert_value=False)
+        self.assertTupleEqual(val, tuple(['e', 'f', 'g']))
+
+    def test_write_attributes_write_1Darray_of_floats(self):
+        self.__write_attribute_test_helper('attr', np.arange(10).astype('float') + 0.1)
+
+    def test_write_attributes_write_3Darray_of_floats(self):
+        self.__write_attribute_test_helper('attr', np.arange(18).astype('float').reshape((2, 3, 3)) + 0.1)
+
+    def test_write_attributes_write_reference_to_datasetbuilder(self):
+        data_1 = np.arange(100, 200, 10).reshape(2, 5)
+        dataset_1 = DatasetBuilder('dataset_1', data_1)
+        testgroup = self.io._ZarrIO__file  # For testing we just use our file and create some attributes
+        attr = {'attr1': dataset_1}
+        self.io.write_attributes(testgroup, attr)
+        expected_value = {'attr1': {'zarr_dtype': 'object', 'value': {'source': self.path, 'path': '/dataset_1'}}}
+        self.assertDictEqual(testgroup.attrs.asdict(), expected_value)
+
+    def test_write_attributes_write_reference_to_referencebuilder(self):
+        data_1 = np.arange(100, 200, 10).reshape(2, 5)
+        dataset_1 = DatasetBuilder('dataset_1', data_1)
+        ref1 = ReferenceBuilder(dataset_1)
+        testgroup = self.io._ZarrIO__file  # For testing we just use our file and create some attributes
+        attr = {'attr1': ref1}
+        self.io.write_attributes(testgroup, attr)
+        expected_value = {'attr1': {'zarr_dtype': 'object', 'value': {'source': self.path, 'path': '/dataset_1'}}}
+        self.assertDictEqual(testgroup.attrs.asdict(), expected_value)
 
     ##########################################
     #  write_dataset tests: scalars
