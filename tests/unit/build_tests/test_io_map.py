@@ -424,6 +424,7 @@ class TestDynamicContainer(TestCase):
                       bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
                       attr3=5.)
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.attr3 == 5.
 
     def test_build_docval(self):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
