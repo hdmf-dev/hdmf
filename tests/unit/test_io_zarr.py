@@ -205,7 +205,7 @@ class TestZarrWriter(TestCase):
                 (3, 'Mike'),
                 (4, 'Jenny')] if test_data is None else test_data
         data_type = [{'name': 'id', 'dtype': 'int'},
-                     {'name': 'name', 'dtype': 'str'}]
+                     {'name': 'name', 'dtype': str}]
         self.__dataset_builder = DatasetBuilder('my_data', data, dtype=data_type)
         self.createGroupBuilder()
         writer = ZarrIO(self.path, manager=self.manager, mode='a')
@@ -377,10 +377,8 @@ class TestZarrWriter(TestCase):
         self.read()
         self.assertFalse(self.root["ref_dataset"].data[0][2] == self.root['ref_dataset'].data[1][2])
         self.assertTrue(self.root["ref_dataset"].data[0][2] == self.root['ref_dataset'].data[2][2])
-        #  print(self.root['ref_dataset'])
 
 
-# TODO Port tests from H5IOTest to here. We have copied the test cases in comments here but they are not all working yet
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriteUnit because Zarr is not installed")
 class TestZarrWriteUnit(TestCase):
     """
@@ -495,11 +493,10 @@ class TestZarrWriteUnit(TestCase):
         dset = self.f['test_dataset']
         self.assertListEqual(dset[:].tolist(), list(range(10)))
 
-    ##########################################
-    #  write_dataset tests: tables
-    ##########################################
-    """
-    def test_write_table(self):
+    ##############################################
+    #  write_dataset tests: compound data tables
+    #############################################
+    def test_write_structured_array_table(self):
         cmpd_dt = np.dtype([('a', np.int32), ('b', np.float64)])
         data = np.zeros(10, dtype=cmpd_dt)
         data['a'][1] = 101
@@ -511,7 +508,7 @@ class TestZarrWriteUnit(TestCase):
         self.assertEqual(dset['a'].tolist(), data['a'].tolist())
         self.assertEqual(dset['b'].tolist(), data['b'].tolist())
 
-    def test_write_table_nested(self):
+    def test_write_nested_structured_array_table(self):
         b_cmpd_dt = np.dtype([('c', np.int32), ('d', np.float64)])
         cmpd_dt = np.dtype([('a', np.int32), ('b', b_cmpd_dt)])
         data = np.zeros(10, dtype=cmpd_dt)
@@ -524,9 +521,9 @@ class TestZarrWriteUnit(TestCase):
               {'name': 'b', 'dtype': b_dt, 'doc': 'b column'}]
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', data, attributes={}, dtype=dt))
         dset = self.f['test_dataset']
-        self.assertEqual(dset['a'].tolist(), data['a'].tolist())
-        self.assertEqual(dset['b'].tolist(), data['b'].tolist())
-    """
+        # Test that all elements match. dset return np.void types so we just compare strings for simplicity
+        for i in range(10):
+            self.assertEqual(str(dset[i]), str(data[i]))
 
     #############################################
     #  write_dataset tests: data chunk iterator

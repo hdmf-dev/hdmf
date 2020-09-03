@@ -766,7 +766,6 @@ class ZarrIO(HDMFIO):
             io_settings = options.get('io_settings')
             if io_settings is None:
                 io_settings = dict()
-
         # Determine the dtype
         if not isinstance(dtype, type):
             try:
@@ -786,12 +785,21 @@ class ZarrIO(HDMFIO):
             data_shape = get_data_shape(data)
         # Deal with object dtype
         elif isinstance(dtype, np.dtype):
-            data = data[:]  # load the data in case we come from HDF5 or another data source
+            data = data[:]  # load the data in case we come from HDF5 or another on-disk data source we don't know
             data_shape = (len(data), )
-            dtype = object
+            # if we have a compound data type
+            if dtype.names:
+                data_shape = get_data_shape(data)
+                # If strings are part of our compound type then we need to use Object type instead
+                # otherwise we try to keep the native compound datatype that numpy is using
+                for substype in dtype.fields.items():
+                    if np.issubdtype(substype[1][0], np.flexible) or np.issubdtype(substype[1][0], np.object_):
+                        dtype = object
+                        io_settings['object_codec'] = numcodecs.pickles.Pickle()
+                        break
             # sometimes bytes and strings can hide as object in numpy array so lets try
-            # to write those as strings and bytes rathern than as objects
-            if len(data) > 0 and isinstance(data, np.ndarray):
+            # to write those as strings and bytes rather than as objects
+            elif len(data) > 0 and isinstance(data, np.ndarray):
                 if isinstance(data.item(0), bytes):
                     dtype = bytes
                     data_shape = get_data_shape(data)
@@ -799,8 +807,9 @@ class ZarrIO(HDMFIO):
                     dtype = str
                     data_shape = get_data_shape(data)
             # Set encoding for objects
-            if dtype == object:
-                io_settings['object_codec'] = numcodecs.JSON()
+            else:
+                dtype = object
+                io_settings['object_codec'] = numcodecs.pickles.Pickle()
         # Determine the shape from the data if all other cases have not been hit
         else:
             data_shape = get_data_shape(data)
@@ -820,8 +829,13 @@ class ZarrIO(HDMFIO):
             return dset
         # standard write
         else:
-            dset[:] = data  # If data is an h5py.Dataset then this will copy the data
-
+            try:
+                dset[:] = data  # If data is an h5py.Dataset then this will copy the data
+            # For compound data types containing strings Zarr sometimes does not like wirting multiple values
+            # try to write them one-at-a-time instead then
+            except ValueError:
+                for i in range(len(data)):
+                    dset[i] = data[i]
         return dset
 
     @classmethod
