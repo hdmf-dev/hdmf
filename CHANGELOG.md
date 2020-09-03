@@ -24,7 +24,7 @@
 
     - Changed `HDF5IO._written_builders` to use `WriteStatusTracker` instead of a standard `deque`
     - Removed `HDF5IO.__set_written(...)` to use  `WriteStatusTracker.set_written`
-    - Replaced `HDF5IO.__builderhash` with `WriteStatusTracker.__builderhash`.
+    - Replaced `HDF5IO.__builderhash` with `WriteStatusTracker.__builderhash` and updated the hash function to help avoid  possible ambiguity due to same ids when creating Builders directly in function calls as part of testing.
 
 - Updated ``HDF5IO.__read_group`` and ``HDF5IO.__read_dataset`` to make sure the ``location`` attribute of all ``GroupBuilders``, `` DatasetBuilders``, and ``LinkBuilders`` is set on read, not just for object that are used for linking
 
@@ -36,20 +36,21 @@
     - Removed `HDF5IO.__write_chunk__(...)` (now part of `HDF5IODataChunkIteratorQueue`)
     - Changed `HDFIO.__dci_queue` to use `HDF5IODataChunkIteratorQueue` instead of a standard `deque`
 
-- Added new `hdmf/backends/error.py` module for I/O errors.
+- Added new `hdmf/backends/error.py` module for I/O errors.  @oruebel (#98)
 
 ### Bug fixes
-- ...
+-  Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#98)
+- Updated `HDF5IO.__get_path` to use `Builder.location` if available.  @oruebel (#98)
 
 ### Breaking changes
 - Add optional dependencies for `Zarr` and `numcodecs` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new `hdmf/backends/zarr` I/O backend) will function without these dependencies.  @oruebel (#98)
 - Moved `UnsupportedOperation` error class from `hdmf.backends.io` to the new `hdmf.backends.errors` module.  @oruebel (#98)
-- Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and to consolidate the `Foo` test data classes in one module.
+- Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and to consolidate the `Foo` test data classes in one module.  @oruebel (#98)
 
 #### Breaking changes in tests
 
-- Moved `tests.unit.test_io_hdf5_h5tools._get_manager` to `tests.unit.utils.get_foo_buildmanager` to ease reuse
-- Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move.
+- Moved `tests.unit.test_io_hdf5_h5tools._get_manager` to `tests.unit.utils.get_foo_buildmanager` to ease reuse.  @oruebel (#98)
+- Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#98)
 
 
 ## HDMF 2.2.0 (August 14, 2020)
