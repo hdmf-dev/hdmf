@@ -396,20 +396,27 @@ class TestZarrWriteUnit(TestCase):
     #############################################
     #  ZarrDataIO general
     #############################################
+    def test_synchronizer_constructor_arg_bool(self):
+        """Test that setting the synchronizer argument to True/False works in ZarrIO"""
+        self.assertIsNone(self.io.synchronizer)
+        self.io.close()
+        self.io = ZarrIO(self.path, mode='w', synchronizer=True)
+        self.assertTrue(isinstance(self.io.synchronizer, zarr.ProcessSynchronizer))
+
     def test_zarrdataio_array_conversion_numpy(self):
-        # Test that ZarrDataIO.__array__ is working when wrapping an ndarray
+        """Test that ZarrDataIO.__array__ is working when wrapping an ndarray"""
         test_speed = np.array([10., 20.])
         data = ZarrDataIO((test_speed))
         self.assertTrue(np.all(np.isfinite(data)))  # Force call of ZarrDataIO.__array__
 
     def test_zarrdataio_array_conversion_list(self):
-        # Test that ZarrDataIO.__array__ is working when wrapping a python list
+        """Test that ZarrDataIO.__array__ is working when wrapping a python list"""
         test_speed = [10., 20.]
         data = ZarrDataIO(test_speed)
         self.assertTrue(np.all(np.isfinite(data)))  # Force call of ZarrDataIO.__array__
 
     def test_zarrdataio_array_conversion_datachunkiterator(self):
-        # Test that ZarrDataIO.__array__ is working when wrapping a python list
+        """Test that ZarrDataIO.__array__ is working when wrapping a python list"""
         test_speed = DataChunkIterator(data=[10., 20.])
         data = ZarrDataIO(test_speed)
         with self.assertRaises(NotImplementedError):
