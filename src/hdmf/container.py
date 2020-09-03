@@ -5,7 +5,6 @@ from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta,
                     popargs, LabelledDict)
 from .data_utils import DataIO, append_data, extend_data
 from warnings import warn
-import h5py
 import types
 
 
