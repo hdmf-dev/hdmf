@@ -48,11 +48,13 @@ class ZarrIO(HDMFIO):
             {'name': 'synchronizer', 'type': (zarr.ProcessSynchronizer, zarr.ThreadSynchronizer, bool),
              'doc': 'Zarr synchronizer to use for parallel I/O. If set to True a ProcessSynchronizer is used.',
              'default': None},
-            {'name': 'chunking', 'type': bool, 'doc': "Enable chunking of datasets by default", 'default': True})
+            {'name': 'chunking', 'type': bool, 'doc': "Enable chunking of datasets by default", 'default': True},
+            {'name': 'object_codec_class', 'type': None,
+             'doc': "Set the numcodec object codec class to be used to encode objects", 'default': None})
     def __init__(self, **kwargs):
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, synchronizer, chunking = popargs('path', 'manager', 'mode',
-                                                              'synchronizer', 'chunking', kwargs)
+        path, manager, mode, synchronizer, chunking, object_codec_class = popargs(
+            'path', 'manager', 'mode', 'synchronizer', 'chunking', 'object_codec_class', kwargs)
         if manager is None:
             manager = BuildManager(TypeMap(NamespaceCatalog()))
         if isinstance(synchronizer, bool):
@@ -67,6 +69,8 @@ class ZarrIO(HDMFIO):
         self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
         self.__dci_queue = ZarrIODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         self.__chunking = chunking
+        # Codec class to be used. Alternates, e.g., =numcodecs.JSON
+        self.__codec_cls = numcodecs.pickles.Pickle if object_codec_class is None else object_codec_class
         super().__init__(manager, source=path)
         warn_msg = '\033[91m' + 'The ZarrIO backend is experimental. It is under active ' + \
                    'development and backward compatibility is not guaranteed for the backend.' + '\033[0m'
@@ -79,6 +83,10 @@ class ZarrIO(HDMFIO):
     @property
     def synchronizer(self):
         return self.__synchronizer
+
+    @property
+    def object_codec_class(self):
+        return self.__codec_cls
 
     def open(self):
         """Open the Zarr file"""
@@ -587,7 +595,7 @@ class ZarrIO(HDMFIO):
                 dset = parent.require_dataset(name,
                                               shape=shape,
                                               dtype=object,
-                                              object_codec=numcodecs.JSON(),
+                                              object_codec=self.__codec_cls(),
                                               **options['io_settings'])
                 dset.attrs['zarr_dtype'] = type_str
                 dset[:] = ref_data
@@ -629,7 +637,7 @@ class ZarrIO(HDMFIO):
                 dset = parent.require_dataset(name,
                                               shape=(len(data), ),
                                               dtype=object,
-                                              object_codec=numcodecs.JSON(),
+                                              object_codec=self.__codec_cls(),
                                               **options['io_settings'])
                 self._written_builders.set_written(builder)  # record that the builder has been written
                 dset.attrs['zarr_dtype'] = type_str
@@ -663,7 +671,7 @@ class ZarrIO(HDMFIO):
             dset = parent.require_dataset(name,
                                           shape=shape,
                                           dtype=object,
-                                          object_codec=numcodecs.JSON(),
+                                          object_codec=self.__codec_cls(),
                                           **options['io_settings'])
             self._written_builders.set_written(builder)  # record that the builder has been written
             dset.attrs['zarr_dtype'] = type_str
@@ -776,8 +784,7 @@ class ZarrIO(HDMFIO):
 
     __reserve_attribute = ('zarr_dtype', 'zarr_link')
 
-    @classmethod  # noqa: C901
-    def __list_fill__(cls, parent, name, data, options=None):  # noqa: C901
+    def __list_fill__(self, parent, name, data, options=None):  # noqa: C901
         dtype = None
         io_settings = dict()
         if options is not None:
@@ -788,13 +795,13 @@ class ZarrIO(HDMFIO):
         # Determine the dtype
         if not isinstance(dtype, type):
             try:
-                dtype = cls.__resolve_dtype__(dtype, data)
+                dtype = self.__resolve_dtype__(dtype, data)
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)  # noqa: F821
                 raise Exception(msg) from exc
 
         # Set the type_str
-        type_str = cls.__serial_dtype__(dtype)
+        type_str = self.__serial_dtype__(dtype)
 
         # Determine the shape and update the dtype if necessary when dtype==object
         if 'shape' in io_settings:  # Use the shape set by the user
@@ -814,7 +821,7 @@ class ZarrIO(HDMFIO):
                 for substype in dtype.fields.items():
                     if np.issubdtype(substype[1][0], np.flexible) or np.issubdtype(substype[1][0], np.object_):
                         dtype = object
-                        io_settings['object_codec'] = numcodecs.pickles.Pickle()
+                        io_settings['object_codec'] = self.__codec_cls()
                         break
             # sometimes bytes and strings can hide as object in numpy array so lets try
             # to write those as strings and bytes rather than as objects
@@ -828,7 +835,7 @@ class ZarrIO(HDMFIO):
             # Set encoding for objects
             else:
                 dtype = object
-                io_settings['object_codec'] = numcodecs.pickles.Pickle()
+                io_settings['object_codec'] = self.__codec_cls()
         # Determine the shape from the data if all other cases have not been hit
         else:
             data_shape = get_data_shape(data)
@@ -857,8 +864,7 @@ class ZarrIO(HDMFIO):
                     dset[i] = data[i]
         return dset
 
-    @classmethod
-    def __scalar_fill__(cls, parent, name, data, options=None):
+    def __scalar_fill__(self, parent, name, data, options=None):
         dtype = None
         io_settings = dict()
         if options is not None:
@@ -868,12 +874,12 @@ class ZarrIO(HDMFIO):
                 io_settings = dict()
         if not isinstance(dtype, type):
             try:
-                dtype = cls.__resolve_dtype__(dtype, data)
+                dtype = self.__resolve_dtype__(dtype, data)
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise Exception(msg) from exc
         if dtype == object:
-            io_settings['object_codec'] = numcodecs.JSON()
+            io_settings['object_codec'] = self.__codec_cls()
 
         dset = parent.require_dataset(name, shape=(1, ), dtype=dtype, **io_settings)
         dset[:] = data

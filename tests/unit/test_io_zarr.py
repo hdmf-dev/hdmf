@@ -14,7 +14,7 @@ except ImportError:
     DISABLE_ALL_ZARR_TESTS = True
 # Try to import numcodecs and disable compression tests if it is not available
 try:
-    from numcodecs import Blosc, Delta
+    from numcodecs import Blosc, Delta, JSON
     DISABLE_ZARR_COMPRESSION_TESTS = False
 except ImportError:
     DISABLE_ZARR_COMPRESSION_TESTS = True
@@ -354,6 +354,12 @@ class TestZarrWriteUnit(TestCase):
     #############################################
     #  ZarrDataIO general
     #############################################
+    def test_set_object_codec(self):
+        # Test that the default codec is the Pickle store
+        self.assertEqual(self.io.object_codec_class.__qualname__, 'Pickle')
+        temp_io = ZarrIO(self.path, mode='w', object_codec_class=JSON)
+        self.assertEqual(temp_io.object_codec_class.__qualname__, 'JSON')
+
     def test_synchronizer_constructor_arg_bool(self):
         """Test that setting the synchronizer argument to True/False works in ZarrIO"""
         self.assertIsNone(self.io.synchronizer)
