@@ -3,7 +3,6 @@ import unittest
 import os
 import numpy as np
 import shutil
-from six import text_type
 
 # Try to import Zarr and disable tests if Zarr is not available
 try:
@@ -41,49 +40,6 @@ def total_directory_size(source):
         elif os.path.isdir(itempath):
             dsize += total_directory_size(itempath)
     return dsize
-
-
-class GroupBuilderTestCase(TestCase):
-    '''
-    A TestCase class for comparing GroupBuilders.
-    '''
-
-    def __is_scalar(self, obj):
-        if hasattr(obj, 'shape'):
-            return len(obj.shape) == 0
-        else:
-            if any(isinstance(obj, t) for t in (int, str, float, bytes, text_type)):
-                return True
-        return False
-
-    # def __convert_h5_scalar(self, obj):
-    #    if isinstance(obj, Dataset):
-    #        return obj[...]
-    #    return obj
-
-    def __compare_attr_dicts(self, a, b):
-        reasons = list()
-        b_keys = set(b.keys())
-        for k in a:
-            if k not in b:
-                reasons.append("'%s' attribute missing from second dataset" % k)
-            else:
-                if a[k] != b[k]:
-                    reasons.append("'%s' attribute on datasets not equal" % k)
-                b_keys.remove(k)
-        for k in b_keys:
-            reasons.append("'%s' attribute missing from first dataset" % k)
-        return reasons
-
-    def __compare_data(self, a, b):
-        return False
-
-    def __compare_dataset(self, a, b):
-        attrs = [dict(a.attrs), dict(b.attrs)]
-        reasons = self.__compare_attr_dicts(attrs[0], attrs[1])
-        if not self.__compare_data(a.data, b.data):
-            reasons.append("dataset '%s' not equal" % a.name)
-        return reasons
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
