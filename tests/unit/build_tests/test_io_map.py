@@ -395,13 +395,17 @@ class TestDynamicContainer(TestCase):
         self.assertEqual(obj.name, 'Baz')
 
     def test_multi_container_spec(self):
-        multi_spec = GroupSpec('A test extension that contains a multi',
-                               data_type_def='Multi',
-                               groups=[GroupSpec(
-                                   data_type_inc=self.bar_spec,
-                                   doc='test multi',
-                                   quantity='*')]
-                               )
+        multi_spec = GroupSpec(
+            'A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(
+                    data_type_inc=self.bar_spec,
+                    doc='test multi',
+                    quantity='*')],
+            attributes=[
+                AttributeSpec('attr3', 'an example float attribute', 'float')]
+        )
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
@@ -414,8 +418,11 @@ class TestDynamicContainer(TestCase):
             create='create_bars'
         )
 
-        multi = Multi(bars=[Bar('my_bar', list(range(10)), 'value1', 10)])
+        multi = Multi(name='my_multi',
+                      bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+                      attr3=5.)
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.attr3 == 5.
 
     def test_build_docval(self):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
