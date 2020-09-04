@@ -30,6 +30,7 @@ from hdmf.common import get_manager as get_hdmfcommon_manager
 from hdmf.testing import TestCase
 from hdmf.common import DynamicTable
 from hdmf.common import CSRMatrix
+from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager)
 
 # Try to import Zarr and disable tests if Zarr is not available
 try:
@@ -104,7 +105,10 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
         # TODO May need to add further asserts here
 
 
-class TestHDF5toZarrMixin():
+############################################
+# HDMF Common test harness
+###########################################
+class TestHDF5ToZarrMixin():
     """
     Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from HDF5 to Zarr.
     This class only defines the roundtripExportContainer and get_manager functions for the test.
@@ -168,9 +172,7 @@ class TestDynamicTableContainerMixin():
     TABLE_TYPE = 0
 
     def setUpContainer(self):
-        ttype = self.TABLE_TYPE
-
-        if ttype == 0:
+        if self.TABLE_TYPE == 0:
             table = DynamicTable('table0', 'an example table')
             table.add_column('foo', 'an int column')
             table.add_column('bar', 'a float column')
@@ -179,7 +181,7 @@ class TestDynamicTableContainerMixin():
             table.add_row(foo=27, bar=28.0, qux=True, quux='a')
             table.add_row(foo=37, bar=38.0, qux=False, quux='b')
             return table
-        elif ttype == 1:
+        elif self.TABLE_TYPE == 1:
             table = DynamicTable('table0', 'an example table')
             table.add_column('foo', 'an int column')
             table.add_column('bar', 'a float column')
@@ -190,7 +192,7 @@ class TestDynamicTableContainerMixin():
             table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
             return table
         else:
-            raise NotImplementedError("Table type %i not implemented in test" % self.table_type)
+            raise NotImplementedError("TABLE_TYPE %i not implemented in test" % self.TABLE_TYPE)
 
 
 class TestCSRMatrixMixin():
@@ -208,13 +210,72 @@ class TestCSRMatrixMixin():
         return CSRMatrix(data, indices, indptr, (3, 3))
 
 
+#########################################
+# HDMF Foo test container test harness
+#########################################
+class TestZarrToHDF5FooMixin(TestZarrToHDF5Mixin):
+    """
+    Convert mixin for Zarr to HDF5 but using the BuildManager for the Foo test containers
+    """
+    def get_manager(self):
+        return get_foo_buildmanager()
+
+
+class TestHDF5ToZarrFooMixin(TestHDF5ToZarrMixin):
+    """
+    Convert mixin for HDF5 to Zarr but using the BuildManager for the Foo test containers
+    """
+    def get_manager(self):
+        return get_foo_buildmanager()
+
+
+class TestFooMixin():
+    """
+    Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests that
+    test export of a variety of Foo container classes. This class only defines the setUpContainer
+    function for the test. The roundtripExportContainer and get_manager function required for
+    the test needs to be defined separately, e.g., by another mixin for Foo test cases, e.g.,
+    TestZarrToHDF5FooMixin or TestHDF5ToZarrFooMixin.
+
+
+    This mixin adds the class variable, FOO_TYPE  which is an int to select between different
+    container types for testing:
+
+    FOO_TYPE=0 : File with two Foo buckets storing integer datasets
+    FOO_TYPE=1 : File with one Foo buckets storing integer dataset and a SoftLink to it
+    """
+    FOO_TYPE = 0
+    FOO_TYPES = {'int_data': 0,
+                 'link_data': 1,
+                 'str_data': 2}
+
+    def setUpContainer(self):
+        if self.FOO_TYPE == 0:
+            foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+            foo2 = Foo('foo2', [5, 6, 7, 8, 9], "I am foo2", 34, 6.28)
+            foobucket = FooBucket('bucket1', [foo1, foo2])
+            foofile = FooFile(buckets=[foobucket])
+            return foofile
+        elif self.FOO_TYPE == 1:
+            foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+            foobucket = FooBucket('bucket1', [foo1])
+            foofile = FooFile(buckets=[foobucket], foo_link=foo1)  # create soft link
+            return foofile
+        else:
+            raise NotImplementedError("FOO_TYPE %i not implemented in test" % self.FOO_TYPE)
+
+
+########################################
+# Actual test cases for conversion
+########################################
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestHDF5toZarrDynamicTableC0(TestDynamicTableContainerMixin,
-                                   TestHDF5toZarrMixin,
+class TestHDF5ToZarrDynamicTableC0(TestDynamicTableContainerMixin,
+                                   TestHDF5ToZarrMixin,
                                    TestCaseConvertMixin,
                                    TestCase):
     """
     Test the conversion of DynamicTable containers from HDF5 to Zarr.
+    See TestDynamicTableContainerMixin.setUpContainer for the container spec.
     """
     IGNORE_NAME = True
     IGNORE_HDMF_ATTRS = True
@@ -223,12 +284,13 @@ class TestHDF5toZarrDynamicTableC0(TestDynamicTableContainerMixin,
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestZarrtoHDF5DynamicTableC0(TestDynamicTableContainerMixin,
+class TestZarrToHDF5DynamicTableC0(TestDynamicTableContainerMixin,
                                    TestZarrToHDF5Mixin,
                                    TestCaseConvertMixin,
                                    TestCase):
     """
     Test the conversion of DynamicTable containers from Zarr to HDF5.
+    See TestDynamicTableContainerMixin.setUpContainer for the container spec.
     """
     IGNORE_NAME = True
     IGNORE_HDMF_ATTRS = True
@@ -237,12 +299,13 @@ class TestZarrtoHDF5DynamicTableC0(TestDynamicTableContainerMixin,
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestHDF5toZarrDynamicTableC1(TestDynamicTableContainerMixin,
-                                   TestHDF5toZarrMixin,
+class TestHDF5ToZarrDynamicTableC1(TestDynamicTableContainerMixin,
+                                   TestHDF5ToZarrMixin,
                                    TestCaseConvertMixin,
                                    TestCase):
     """
     Test the conversion of DynamicTable containers from HDF5 to Zarr.
+    See TestDynamicTableContainerMixin.setUpContainer for the container spec.
     """
     IGNORE_NAME = True
     IGNORE_HDMF_ATTRS = True
@@ -251,12 +314,13 @@ class TestHDF5toZarrDynamicTableC1(TestDynamicTableContainerMixin,
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestZarrtoHDF5DynamicTableC1(TestDynamicTableContainerMixin,
+class TestZarrToHDF5DynamicTableC1(TestDynamicTableContainerMixin,
                                    TestZarrToHDF5Mixin,
                                    TestCaseConvertMixin,
                                    TestCase):
     """
     Test the conversion of DynamicTable containers from Zarr to HDF5.
+    See TestDynamicTableContainerMixin.setUpContainer for the container spec.
     """
     IGNORE_NAME = True
     IGNORE_HDMF_ATTRS = True
@@ -265,8 +329,8 @@ class TestZarrtoHDF5DynamicTableC1(TestDynamicTableContainerMixin,
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestHDF5toZarrCSRMatrix(TestCSRMatrixMixin,
-                              TestHDF5toZarrMixin,
+class TestHDF5ToZarrCSRMatrix(TestCSRMatrixMixin,
+                              TestHDF5ToZarrMixin,
                               TestCaseConvertMixin,
                               TestCase):
     """
@@ -275,11 +339,10 @@ class TestHDF5toZarrCSRMatrix(TestCSRMatrixMixin,
     IGNORE_NAME = True
     IGNORE_HDMF_ATTRS = True
     IGNORE_STRING_TO_BYTE = False
-    pass
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestZarrtoHDF5CSRMatrix(TestCSRMatrixMixin,
+class TestZarrToHDF5CSRMatrix(TestCSRMatrixMixin,
                               TestZarrToHDF5Mixin,
                               TestCaseConvertMixin,
                               TestCase):
@@ -289,4 +352,63 @@ class TestZarrtoHDF5CSRMatrix(TestCSRMatrixMixin,
     IGNORE_NAME = True
     IGNORE_HDMF_ATTRS = True
     IGNORE_STRING_TO_BYTE = False
-    pass
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestZarrToHDF5FooCase1(TestFooMixin,
+                             TestZarrToHDF5FooMixin,
+                             TestCaseConvertMixin,
+                             TestCase):
+    """
+    Test the conversion of a simple Foo container with two buckets of datasets from Zarr to HDF5
+    See TestFooMixin.setUpContainer for the container spec used.
+    """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = True
+    FOO_TYPE = TestFooMixin.FOO_TYPES['int_data']
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestHDF5toZarrFooCase1(TestFooMixin,
+                             TestHDF5ToZarrFooMixin,
+                             TestCaseConvertMixin,
+                             TestCase):
+    """
+    Test the conversion of a simple Foo container with two buckets of datasets from Zarr to HDF5
+    See TestFooMixin.setUpContainer for the container spec used.
+    """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = True
+    FOO_TYPE = TestFooMixin.FOO_TYPES['int_data']
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestZarrToHDF5FooCase2(TestFooMixin,
+                             TestZarrToHDF5FooMixin,
+                             TestCaseConvertMixin,
+                             TestCase):
+    """
+    Test the conversion of a simple Foo container with two buckets of datasets from Zarr to HDF5
+    See TestFooMixin.setUpContainer for the container spec used.
+    """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = True
+    FOO_TYPE = TestFooMixin.FOO_TYPES['link_data']
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestHDF5toZarrFooCase2(TestFooMixin,
+                             TestHDF5ToZarrFooMixin,
+                             TestCaseConvertMixin,
+                             TestCase):
+    """
+    Test the conversion of a simple Foo container with two buckets of datasets from Zarr to HDF5
+    See TestFooMixin.setUpContainer for the container spec used.
+    """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = True
+    FOO_TYPE = TestFooMixin.FOO_TYPES['link_data']
