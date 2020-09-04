@@ -9,20 +9,20 @@ from hdmf.backends.hdf5 import HDF5IO
 from hdmf.common import get_manager
 from hdmf.testing import TestCase
 from hdmf.common import DynamicTable
-#from hdmf.common import CSRMatrix
+from hdmf.common import CSRMatrix
 
 # Try to import Zarr and disable tests if Zarr is not available
 try:
-    import zarr
     from hdmf.backends.zarr.zarr_tools import ZarrIO
-    from hdmf.backends.zarr.zarr_utils import ZarrDataIO
     DISABLE_ALL_ZARR_TESTS = False
 except ImportError:
     DISABLE_ALL_ZARR_TESTS = True
 
 
-
 class TestCaseConvertMixin(metaclass=ABCMeta):
+    """
+    Mixin class used to define the basic structure for a conversion test.
+    """
 
     def setUp(self):
         self.__manager = get_manager()
@@ -76,6 +76,11 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
 
 
 class TestHDF5toZarrMixin(TestCaseConvertMixin):
+    """
+    Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from HDF5 to Zarr.
+    This class only defines the roundtripExportContainer function for the test. The setUpContainer function
+    required for the test needs to be defined separately (e.g., by another mixin or the test class itself)
+    """
 
     def roundtripExportContainer(self):
         with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
@@ -92,6 +97,11 @@ class TestHDF5toZarrMixin(TestCaseConvertMixin):
 
 
 class TestZarrToHDF5Mixin(TestCaseConvertMixin):
+    """
+    Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from Zarr to HDF5.
+    This class only defines the roundtripExportContainer function for the test. The setUpContainer function
+    required for the test needs to be defined separately (e.g., by another mixin or the test class itself)
+    """
 
     def roundtripExportContainer(self):
         with ZarrIO(self.filename, manager=get_manager(), mode='w') as write_io:
@@ -106,7 +116,14 @@ class TestZarrToHDF5Mixin(TestCaseConvertMixin):
         exportContainer = read_io.read()
         return exportContainer
 
+
 class TestDynamicTableContainerMixin():
+    """
+    Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests that
+    test export of DynamicTable container classes. This class only defines the setUpContainer function for the test.
+    The roundtripExportContainer function required for the test needs to be defined separately
+    (e.g., by another mixin or the test class itself)
+    """
 
     def setUpContainer(self):
         table = DynamicTable('table0', 'an example table')
@@ -132,6 +149,12 @@ class TestDynamicTableContainerMixin():
 
 
 class TestCSRMatrixMixin():
+    """
+    Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests that
+    test export of CSRMatrix container classes. This class only defines the setUpContainer function for the test.
+    The roundtripExportContainer function required for the test needs to be defined separately
+    (e.g., by another mixin or the test class itself)
+    """
 
     def setUpContainer(self):
         data = np.array([1, 2, 3, 4, 5, 6])
@@ -142,9 +165,21 @@ class TestCSRMatrixMixin():
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
 class TestHDF5toZarrDynamicTable(TestDynamicTableContainerMixin, TestHDF5toZarrMixin, TestCase):
+    """
+    Test the conversion of DynamicTable containers from HDF5 to Zarr.
+
+    NOTE: The tests are defined by the combination of the mixin classes, so that this class
+          may seem empty but actually runs tests ;-)
+    """
     pass
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
 class TestZarrtoHDF5DynamicTable(TestDynamicTableContainerMixin, TestZarrToHDF5Mixin, TestCase):
+    """
+    Test the conversion of DynamicTable containers from Zarr to HDF5.
+
+    NOTE: The tests are defined by the combination of the mixin classes, so that this class
+          may seem empty but actually runs tests ;-)
+    """
     pass
