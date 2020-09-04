@@ -130,7 +130,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         g = np.dtype(given)
         s = np.dtype(specified)
-        if g is s:
+        if g == s:
             return s.type, None
         if g.itemsize <= s.itemsize:  # given type has precision < precision of specified type
             # note: this allows float32 -> int32, bool -> int8, int16 -> uint16 which may involve buffer overflows,
