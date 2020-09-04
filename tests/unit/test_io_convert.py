@@ -26,7 +26,7 @@ from abc import ABCMeta, abstractmethod
 import unittest
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import get_manager
+from hdmf.common import get_manager as get_hdmfcommon_manager
 from hdmf.testing import TestCase
 from hdmf.common import DynamicTable
 from hdmf.common import CSRMatrix
@@ -47,8 +47,11 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
     IGNORE_HDMF_ATTRS = False
     IGNORE_STRING_TO_BYTE = False
 
+    def get_manager(self):
+        raise NotImplementedError('Cannot run test unless get_manger  is implemented')
+
     def setUp(self):
-        self.__manager = get_manager()
+        self.__manager = self.get_manager()
         self.container = self.setUpContainer()
         self.container_type = self.container.__class__.__name__
         self.filename = 'test_%s.hdmf' % self.container_type
@@ -104,19 +107,22 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
 class TestHDF5toZarrMixin():
     """
     Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from HDF5 to Zarr.
-    This class only defines the roundtripExportContainer function for the test. The setUpContainer function
-    required for the test needs to be defined separately (e.g., by another mixin or the test class itself)
+    This class only defines the roundtripExportContainer and get_manager functions for the test.
+    The setUpContainer function required for the test needs to be defined separately
+    (e.g., by another mixin or the test class itself).
     """
+    def get_manager(self):
+        return get_hdmfcommon_manager()
 
     def roundtripExportContainer(self):
-        with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
+        with HDF5IO(self.filename, manager=self.get_manager(), mode='w') as write_io:
             write_io.write(self.container, cache_spec=True)
 
-        with HDF5IO(self.filename, manager=get_manager(), mode='r') as read_io:
+        with HDF5IO(self.filename, manager=self.get_manager(), mode='r') as read_io:
             with ZarrIO(self.export_filename, mode='w') as export_io:
                 export_io.export(src_io=read_io, write_args={'link_data': False})
 
-        read_io = ZarrIO(self.export_filename, manager=get_manager(), mode='r')
+        read_io = ZarrIO(self.export_filename, manager=self.get_manager(), mode='r')
         self.ios.append(read_io)
         exportContainer = read_io.read()
         return exportContainer
@@ -125,19 +131,22 @@ class TestHDF5toZarrMixin():
 class TestZarrToHDF5Mixin():
     """
     Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from Zarr to HDF5.
-    This class only defines the roundtripExportContainer function for the test. The setUpContainer function
-    required for the test needs to be defined separately (e.g., by another mixin or the test class itself)
+    This class only defines the roundtripExportContainer and get_manager functions for the test.
+    The setUpContainer function required for the test needs to be defined separately
+    (e.g., by another mixin or the test class itself)
     """
+    def get_manager(self):
+        return get_hdmfcommon_manager()
 
     def roundtripExportContainer(self):
-        with ZarrIO(self.filename, manager=get_manager(), mode='w') as write_io:
+        with ZarrIO(self.filename, manager=self.get_manager(), mode='w') as write_io:
             write_io.write(self.container, cache_spec=True)
 
-        with ZarrIO(self.filename, manager=get_manager(), mode='r') as read_io:
+        with ZarrIO(self.filename, manager=self.get_manager(), mode='r') as read_io:
             with HDF5IO(self.export_filename, mode='w') as export_io:
                 export_io.export(src_io=read_io, write_args={'link_data': False})
 
-        read_io = HDF5IO(self.export_filename, manager=get_manager(), mode='r')
+        read_io = HDF5IO(self.export_filename, manager=self.get_manager(), mode='r')
         self.ios.append(read_io)
         exportContainer = read_io.read()
         return exportContainer
