@@ -43,6 +43,9 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
     """
     Mixin class used to define the basic structure for a conversion test.
     """
+    IGNORE_NAME = False
+    IGNORE_HDMF_ATTRS = False
+    IGNORE_STRING_TO_BYTE = False
 
     def setUp(self):
         self.__manager = get_manager()
@@ -91,7 +94,10 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
         self.assertNotEqual(id(self.container), id(exported_container))
         # the name of the root container of a file is always 'root' (see h5tools.py ROOT_NAME)
         # thus, ignore the name of the container when comparing original container vs read container
-        self.assertContainerEqual(self.container, exported_container, ignore_name=True, ignore_hdmf_attrs=True)
+        self.assertContainerEqual(self.container, exported_container,
+                                  ignore_name=self.IGNORE_NAME,
+                                  ignore_hdmf_attrs=self.IGNORE_HDMF_ATTRS,
+                                  ignore_string_to_byte=self.IGNORE_STRING_TO_BYTE)
         # TODO May need to add further asserts here
 
 
@@ -143,29 +149,39 @@ class TestDynamicTableContainerMixin():
     test export of DynamicTable container classes. This class only defines the setUpContainer function for the test.
     The roundtripExportContainer function required for the test needs to be defined separately
     (e.g., by another mixin or the test class itself)
+
+    This mixin adds the class variable, TABLE_TYPE  which is an int to select between different
+    container types for testing:
+
+    TABLE_TYPE=0 : Table of int, float, bool, vocabulary
+    TABLE_TYPE=1 : Table of int, float, str, bool, vocabulary
     """
+    TABLE_TYPE = 0
 
     def setUpContainer(self):
-        table = DynamicTable('table0', 'an example table')
-        table.add_column('foo', 'an int column')
-        table.add_column('bar', 'a float column')
-        table.add_column('qux', 'a boolean column')
-        table.add_column('quux', 'a vocab column', vocab=True)
-        table.add_row(foo=27, bar=28.0, qux=True, quux='a')
-        table.add_row(foo=37, bar=38.0, qux=False, quux='b')
-        return table
-        # TODO: Comparison of string columns fails from Zarr-to-HDF5 because the data type changes from byte to str
-        """
-        table = DynamicTable('table0', 'an example table')
-        table.add_column('foo', 'an int column')
-        table.add_column('bar', 'a float column')
-        table.add_column('baz', 'a string column')
-        table.add_column('qux', 'a boolean column')
-        table.add_column('quux', 'a vocab column', vocab=True)
-        table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
-        table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
-        return table
-        """
+        ttype = self.TABLE_TYPE
+
+        if ttype == 0:
+            table = DynamicTable('table0', 'an example table')
+            table.add_column('foo', 'an int column')
+            table.add_column('bar', 'a float column')
+            table.add_column('qux', 'a boolean column')
+            table.add_column('quux', 'a vocab column', vocab=True)
+            table.add_row(foo=27, bar=28.0, qux=True, quux='a')
+            table.add_row(foo=37, bar=38.0, qux=False, quux='b')
+            return table
+        elif ttype == 1:
+            table = DynamicTable('table0', 'an example table')
+            table.add_column('foo', 'an int column')
+            table.add_column('bar', 'a float column')
+            table.add_column('baz', 'a string column')
+            table.add_column('qux', 'a boolean column')
+            table.add_column('quux', 'a vocab column', vocab=True)
+            table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
+            table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
+            return table
+        else:
+            raise NotImplementedError("Table type %i not implemented in test" % self.table_type)
 
 
 class TestCSRMatrixMixin():
@@ -184,32 +200,84 @@ class TestCSRMatrixMixin():
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestHDF5toZarrDynamicTable(TestDynamicTableContainerMixin, TestHDF5toZarrMixin, TestCaseConvertMixin, TestCase):
+class TestHDF5toZarrDynamicTableC0(TestDynamicTableContainerMixin,
+                                   TestHDF5toZarrMixin,
+                                   TestCaseConvertMixin,
+                                   TestCase):
     """
     Test the conversion of DynamicTable containers from HDF5 to Zarr.
     """
-    pass
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
+    TABLE_TYPE = 0
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestZarrtoHDF5DynamicTable(TestDynamicTableContainerMixin, TestZarrToHDF5Mixin, TestCaseConvertMixin, TestCase):
+class TestZarrtoHDF5DynamicTableC0(TestDynamicTableContainerMixin,
+                                   TestZarrToHDF5Mixin,
+                                   TestCaseConvertMixin,
+                                   TestCase):
     """
     Test the conversion of DynamicTable containers from Zarr to HDF5.
     """
-    pass
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
+    TABLE_TYPE = 0
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestHDF5toZarrCSRMatrix(TestCSRMatrixMixin, TestHDF5toZarrMixin, TestCaseConvertMixin, TestCase):
+class TestHDF5toZarrDynamicTableC1(TestDynamicTableContainerMixin,
+                                   TestHDF5toZarrMixin,
+                                   TestCaseConvertMixin,
+                                   TestCase):
+    """
+    Test the conversion of DynamicTable containers from HDF5 to Zarr.
+    """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
+    TABLE_TYPE = 1
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestZarrtoHDF5DynamicTableC1(TestDynamicTableContainerMixin,
+                                   TestZarrToHDF5Mixin,
+                                   TestCaseConvertMixin,
+                                   TestCase):
+    """
+    Test the conversion of DynamicTable containers from Zarr to HDF5.
+    """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = True   # Need to ignore conversion of strings to bytes
+    TABLE_TYPE = 1
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestHDF5toZarrCSRMatrix(TestCSRMatrixMixin,
+                              TestHDF5toZarrMixin,
+                              TestCaseConvertMixin,
+                              TestCase):
     """
     Test the conversion of CSRMatrix containers from HDF5 to Zarr.
     """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
     pass
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestZarrtoHDF5CSRMatrix(TestCSRMatrixMixin, TestZarrToHDF5Mixin, TestCaseConvertMixin, TestCase):
+class TestZarrtoHDF5CSRMatrix(TestCSRMatrixMixin,
+                              TestZarrToHDF5Mixin,
+                              TestCaseConvertMixin,
+                              TestCase):
     """
     Test the conversion of CSRMatrix containers from Zarr to HDF5.
     """
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
     pass

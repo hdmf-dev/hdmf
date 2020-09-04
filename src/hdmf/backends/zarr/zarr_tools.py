@@ -616,7 +616,6 @@ class ZarrIO(HDMFIO):
                 self._written_builders.set_written(builder)  # record that the builder has been written
         # Write a compound dataset
         elif isinstance(options['dtype'], list):
-
             refs = list()
             type_str = list()
             for i, dts in enumerate(options['dtype']):
@@ -991,9 +990,9 @@ class ZarrIO(HDMFIO):
                   "source": self.__path}
         dtype = kwargs['dtype']
 
-        # data = deepcopy(zarr_obj[:])
+        # By default, use the zarr.core.Array as data for lazy data load
         data = zarr_obj
-        # kwargs['data'] = zarr_obj[:]
+
         # Read scalar dataset
         if dtype == 'scalar':
             data = zarr_obj[0]
@@ -1023,6 +1022,7 @@ class ZarrIO(HDMFIO):
 
         if has_reference:
             try:
+                # TODO Should implement a lazy way to evaluate references for Zarr
                 data = deepcopy(data[:])
                 self.__parse_ref(kwargs['maxshape'], obj_refs, reg_refs, data)
             except ValueError as e:
