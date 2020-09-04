@@ -38,6 +38,8 @@
 
 - Added new `hdmf/backends/error.py` module for I/O errors.  @oruebel (#98)
 
+- Updated `hdmf.common.sparse.CSRMatrix` to allow use of `array_data` types (i.e., including lists) as input constructor arguments. This change removes the need to import h5py directly in CSRMatrix and makes CSRMatrix compatible with `ZarrIO`. Also added unit tests for `CSRMatrix` to improve coverage. @oruebel (#98)
+
 ### Bug fixes
 -  Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#98)
 - Updated `HDF5IO.__get_path` to use `Builder.location` if available.  @oruebel (#98)

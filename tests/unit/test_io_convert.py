@@ -1,4 +1,24 @@
-"""Module for testing conversion of data between different I/O backends"""
+"""
+Module for testing conversion of data between different I/O backends
+
+To reduce the amount of code needed, the tests use a series of mixin classes to
+construct a test case:
+
+- TestCaseConvertMixin is the base mixin class for conversion tests and
+  requires that the setUpContainer and roundtripExportContainer functions
+  are defined. The setUpContainer defines the container (and hence the problem case)
+  to be written to file. And the rountripExportContainer defined the process
+  for writing, exporting, and then reading the container again.
+- TestXYZContainerMixin classes define the setUpContainer function
+- TestX1toX2Mixin defines the rountripExportContainer process
+- TestCase is the base test class for HDMF
+
+A test case is then constructed by defining a class that inherits from the
+corresponding (usually 4) base classes, a mixin that define setUpContainer,
+a mixin that define roundtripExportContainer, TestCaseConvertMixin, and TestCase.
+I.e., even though a particular test class may look empty, it is the combination
+of the mixin classes that creates the particular test problem.
+"""
 import os
 import shutil
 import numpy as np
@@ -75,7 +95,7 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
         # TODO May need to add further asserts here
 
 
-class TestHDF5toZarrMixin(TestCaseConvertMixin):
+class TestHDF5toZarrMixin():
     """
     Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from HDF5 to Zarr.
     This class only defines the roundtripExportContainer function for the test. The setUpContainer function
@@ -96,7 +116,7 @@ class TestHDF5toZarrMixin(TestCaseConvertMixin):
         return exportContainer
 
 
-class TestZarrToHDF5Mixin(TestCaseConvertMixin):
+class TestZarrToHDF5Mixin():
     """
     Mixin class used in conjunction with TestCaseConvertMixin to create conversion tests from Zarr to HDF5.
     This class only defines the roundtripExportContainer function for the test. The setUpContainer function
@@ -164,22 +184,32 @@ class TestCSRMatrixMixin():
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestHDF5toZarrDynamicTable(TestDynamicTableContainerMixin, TestHDF5toZarrMixin, TestCase):
+class TestHDF5toZarrDynamicTable(TestDynamicTableContainerMixin, TestHDF5toZarrMixin, TestCaseConvertMixin, TestCase):
     """
     Test the conversion of DynamicTable containers from HDF5 to Zarr.
-
-    NOTE: The tests are defined by the combination of the mixin classes, so that this class
-          may seem empty but actually runs tests ;-)
     """
     pass
 
 
 @unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
-class TestZarrtoHDF5DynamicTable(TestDynamicTableContainerMixin, TestZarrToHDF5Mixin, TestCase):
+class TestZarrtoHDF5DynamicTable(TestDynamicTableContainerMixin, TestZarrToHDF5Mixin, TestCaseConvertMixin, TestCase):
     """
     Test the conversion of DynamicTable containers from Zarr to HDF5.
+    """
+    pass
 
-    NOTE: The tests are defined by the combination of the mixin classes, so that this class
-          may seem empty but actually runs tests ;-)
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestHDF5toZarrCSRMatrix(TestCSRMatrixMixin, TestHDF5toZarrMixin, TestCaseConvertMixin, TestCase):
+    """
+    Test the conversion of CSRMatrix containers from HDF5 to Zarr.
+    """
+    pass
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestZarrtoHDF5CSRMatrix(TestCSRMatrixMixin, TestZarrToHDF5Mixin, TestCaseConvertMixin, TestCase):
+    """
+    Test the conversion of CSRMatrix containers from Zarr to HDF5.
     """
     pass
