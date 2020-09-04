@@ -20,11 +20,14 @@ except ImportError:  # pragma: no cover
     warnings.warn("Could not import Zarr.")  # pragma: no cover
 
 
-def __get_docval_macros():
+def __get_docval_macros(key=None):
     """
     Return a deepcopy of __macros. Used in the test-suite to avoid hardcoding in the tests
     """
-    return _copy.deepcopy(__macros)
+    if key is None:
+        return _copy.deepcopy(__macros)
+    else:
+        return __macros[key]
 
 
 # code to signify how to handle positional arguments in docval

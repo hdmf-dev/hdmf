@@ -12,6 +12,8 @@
 
 - Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#98)
 
+- Updated `hmdf.testing.testcase.TestCase` to use the `hdmf.utils.__get_docval_macros` function to determine array types to remove dependency on h5py and allow support for Zarr arrays in testing. Added the `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently.
+
 ### Internal improvements
 - Updated `HDF5IO` to use the new `NamespaceToBuilderHelper` class instead. @oruebel (#98)
 
@@ -39,6 +41,8 @@
 - Added new `hdmf/backends/error.py` module for I/O errors.  @oruebel (#98)
 
 - Updated `hdmf.common.sparse.CSRMatrix` to allow use of `array_data` types (i.e., including lists) as input constructor arguments. This change removes the need to import h5py directly in CSRMatrix and makes CSRMatrix compatible with `ZarrIO`. Also added unit tests for `CSRMatrix` to improve coverage. @oruebel (#98)
+
+- Added `hdmf.utils.__get_docval_macros(...)` function to allow the test harness to access the list of allowable array data types. This is useful to remove direct dependency on array types from data backends.
 
 ### Bug fixes
 -  Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#98)
