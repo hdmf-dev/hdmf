@@ -57,14 +57,14 @@ class TestCaseConvertMixin(metaclass=ABCMeta):
         self.container_type = self.container.__class__.__name__
         self.filename = 'test_%s.hdmf' % self.container_type
         self.export_filename = 'test_export_%s.hdmf' % self.container_type
+        self.filenames = [self.filename, self.export_filename]
         self.ios = []
 
     def tearDown(self):
         for io in self.ios:
             if io is not None:
                 io.close()
-        filenames = [self.filename, self. export_filename]
-        for fn in filenames:
+        for fn in self.filenames:
             if fn is not None and os.path.exists(fn):
                 if os.path.isdir(fn):
                     shutil.rmtree(fn)
@@ -412,3 +412,48 @@ class TestHDF5toZarrFooCase2(TestFooMixin,
     IGNORE_HDMF_ATTRS = True
     IGNORE_STRING_TO_BYTE = True
     FOO_TYPE = TestFooMixin.FOO_TYPES['link_data']
+
+
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestFooExternalLinkHDF5ToZarr(TestCaseConvertMixin, TestCase):
+
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
+
+    def get_manager(self):
+        return get_foo_buildmanager()
+
+    def setUpContainer(self):
+        # Create the first file container. We will overwrite this later with the external link container
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('bucket1', [foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+        return foofile1
+
+    def roundtripExportContainer(self):
+        # Write the HDF5 file
+        first_filename = 'test_firstfile_%s.hdmf' % self.container_type
+        self.filenames.append(first_filename)
+        with HDF5IO(first_filename, manager=self.get_manager(), mode='w') as write_io:
+            write_io.write(self.container, cache_spec=True)
+
+        # Create the second file with an external link added (which is the file we use as reference_
+        with HDF5IO(first_filename, manager=self.get_manager(), mode='r') as read_io:
+            read_foo = read_io.read()
+            foo2 = Foo('foo2', read_foo.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 34, 6.28)
+            bucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile(buckets=[bucket2])
+            self.container = foofile2  # This is what we need to compare against
+            with HDF5IO(self.filename, manager=self.get_manager(), mode='w') as write_io:
+                write_io.write(foofile2, cache_spec=True)
+
+        # Export the file with the external link to Zarr
+        with HDF5IO(self.filename, manager=self.get_manager(), mode='r') as read_io:
+            with ZarrIO(self.export_filename, mode='w') as export_io:
+                export_io.export(src_io=read_io, write_args={'link_data': False})
+
+        read_io = ZarrIO(self.export_filename, manager=self.get_manager(), mode='r')
+        self.ios.append(read_io)
+        exportContainer = read_io.read()
+        return exportContainer

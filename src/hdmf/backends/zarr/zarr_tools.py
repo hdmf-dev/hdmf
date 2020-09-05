@@ -2,7 +2,7 @@
 # Python imports
 import os
 import itertools
-from copy import deepcopy
+from copy import deepcopy, copy
 import warnings
 import numpy as np
 import tempfile
@@ -414,6 +414,19 @@ class ZarrIO(HDMFIO):
         parentpath = os.path.dirname(objectpath)
         return parentpath
 
+    @staticmethod
+    def is_zarr_file(path):
+        """
+        Check if the given path defines a Zarr file
+        :param path: Full path to main directory
+        :return: Bool
+        """
+        if os.path.exists(path):
+            if os.path.isdir(path):
+                if os.path.exists(os.path.join(path, ".zgroup")):
+                    return True
+        return False
+
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):
             return self.__is_ref(dtype.dtype)
@@ -487,7 +500,9 @@ class ZarrIO(HDMFIO):
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         name = builder.name
         target_builder = builder.builder
+        # Get the reference
         zarr_ref = self.__get_ref(target_builder)
+        # EXPORT WITH LINKS: Fix link source
         # if the target and source are both the same, then we need to ALWAYS use ourselves as a source
         # When exporting from one source to another, the LinkBuilders.source are not updated, i.e,. the
         # builder.source and target_builder.source are not being updated and point to the old file, but
@@ -495,7 +510,34 @@ class ZarrIO(HDMFIO):
         # our new file, so we can savely replace the source
         if builder.source == target_builder.source:
             zarr_ref.source = self.__path
-        self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
+        # EXPORT WITH LINKS: Make sure target is written. If is not then if the target points to a
+        #                    non-Zarr source, then we need to copy the data instead of writing a
+        #                    link to the data
+        # When exporting from a different backend, then we may encounter external links to
+        # other datasets, groups (or links) in another file. Since they are from another
+        # backend, we must ensure that those targets are copied as well, so we check here
+        # if our target_builder has been written and write it if it doesn't
+        # TODO: Review that this logic is correct
+        skip_link = False
+        if not self.get_written(target_builder):
+            if not self.is_zarr_file(target_builder.source):
+                # We need to copy the target in place of the link so we need to
+                # change the name of target_builder to match the link instead
+                temp = copy(target_builder)
+                temp._Builder__name = name
+                # Skip writing the link since we copied the data into place
+                skip_link = True
+                if isinstance(temp, DatasetBuilder):
+                    self.write_dataset(parent=parent, builder=temp)
+                elif isinstance(temp, GroupBuilder):
+                    self.write_group(parent=parent, builder=temp)
+                elif isinstance(temp, LinkBuilder):
+                    self.write_link(parent=parent, builder=temp)
+        # REGULAR LINK I/O:
+        # Write the actual link as we should in most cases. Skip it only if we copied the
+        # data from an external source in place instead
+        if not skip_link:
+            self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         self._written_builders.set_written(builder)  # record that the builder has been written
 
     @classmethod
