@@ -457,3 +457,51 @@ class TestFooExternalLinkHDF5ToZarr(TestCaseConvertMixin, TestCase):
         self.ios.append(read_io)
         exportContainer = read_io.read()
         return exportContainer
+
+
+"""
+# TODO: Fails because ZarrIO fails to properly create the external link
+@unittest.skipIf(DISABLE_ALL_ZARR_TESTS, "Skipping TestZarrWriter because Zarr is not installed")
+class TestFooExternalLinkZarrToHDF5(TestCaseConvertMixin, TestCase):
+
+    IGNORE_NAME = True
+    IGNORE_HDMF_ATTRS = True
+    IGNORE_STRING_TO_BYTE = False
+
+    def get_manager(self):
+        return get_foo_buildmanager()
+
+    def setUpContainer(self):
+        # Create the first file container. We will overwrite this later with the external link container
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('bucket1', [foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+        return foofile1
+
+    def roundtripExportContainer(self):
+        # Write the HDF5 file
+        first_filename = 'test_firstfile_%s.hdmf' % self.container_type
+        self.filenames.append(first_filename)
+        with ZarrIO(first_filename, manager=self.get_manager(), mode='w') as write_io:
+            write_io.write(self.container, cache_spec=True)
+
+        # Create the second file with an external link added (which is the file we use as reference_
+        with ZarrIO(first_filename, manager=self.get_manager(), mode='r') as read_io:
+            read_foo = read_io.read()
+            foo2 = Foo('foo2', read_foo.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 34, 6.28)
+            bucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile(buckets=[bucket2])
+            self.container = foofile2  # This is what we need to compare against
+            with ZarrIO(self.filename, manager=self.get_manager(), mode='w') as write_io:
+                write_io.write(foofile2, cache_spec=True)
+
+        # Export the file with the external link to Zarr
+        with ZarrIO(self.filename, manager=self.get_manager(), mode='r') as read_io:
+            with HDF5IO(self.export_filename, mode='w') as export_io:
+                export_io.export(src_io=read_io, write_args={'link_data': False})
+
+        read_io = HDF5IO(self.export_filename, manager=self.get_manager(), mode='r')
+        self.ios.append(read_io)
+        exportContainer = read_io.read()
+        return exportContainer
+"""
