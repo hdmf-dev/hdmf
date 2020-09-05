@@ -2,7 +2,7 @@
 # Python imports
 import os
 import itertools
-from copy import deepcopy, copy
+from copy import deepcopy
 import warnings
 import numpy as np
 import tempfile
@@ -517,27 +517,31 @@ class ZarrIO(HDMFIO):
         # other datasets, groups (or links) in another file. Since they are from another
         # backend, we must ensure that those targets are copied as well, so we check here
         # if our target_builder has been written and write it if it doesn't
-        # TODO: Review that this logic is correct
+        # TODO: Review the logic for when we need to copy data and when to link it. We may need the export_source?
+        """
         skip_link = False
         if not self.get_written(target_builder):
             if not self.is_zarr_file(target_builder.source):
                 # We need to copy the target in place of the link so we need to
                 # change the name of target_builder to match the link instead
-                temp = copy(target_builder)
-                temp._Builder__name = name
+                temp = copy(target_builder.name)
+                target_builder._Builder__name = name
                 # Skip writing the link since we copied the data into place
                 skip_link = True
-                if isinstance(temp, DatasetBuilder):
-                    self.write_dataset(parent=parent, builder=temp)
-                elif isinstance(temp, GroupBuilder):
-                    self.write_group(parent=parent, builder=temp)
-                elif isinstance(temp, LinkBuilder):
-                    self.write_link(parent=parent, builder=temp)
+                if isinstance(target_builder, DatasetBuilder):
+                    self.write_dataset(parent=parent, builder=target_builder)
+                elif isinstance(target_builder, GroupBuilder):
+                    self.write_group(parent=parent, builder=target_builder)
+                elif isinstance(target_builder, LinkBuilder):
+                    self.write_link(parent=parent, builder=target_builder)
+                target_builder._Builder__name = temp
         # REGULAR LINK I/O:
         # Write the actual link as we should in most cases. Skip it only if we copied the
         # data from an external source in place instead
         if not skip_link:
             self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
+        """
+        self.__add_link__(parent, zarr_ref.source, zarr_ref.path, name)
         self._written_builders.set_written(builder)  # record that the builder has been written
 
     @classmethod
