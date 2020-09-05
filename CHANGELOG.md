@@ -45,8 +45,9 @@
 - Added `hdmf.utils.__get_docval_macros(...)` function to allow the test harness to access the list of allowable array data types. This is useful to remove direct dependency on array types from data backends.
 
 ### Bug fixes
--  Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#98)
+- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#98)
 - Updated `HDF5IO.__get_path` to use `Builder.location` if available.  @oruebel (#98)
+- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#98)
 
 ### Breaking changes
 - Add optional dependencies for `Zarr` and `numcodecs` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new `hdmf/backends/zarr` I/O backend) will function without these dependencies.  @oruebel (#98)

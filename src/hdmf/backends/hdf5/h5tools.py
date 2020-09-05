@@ -694,6 +694,8 @@ class HDF5IO(HDMFIO):
     def get_type(cls, data):
         if isinstance(data, str):
             return H5_TEXT
+        elif isinstance(data, bytes):
+            return H5_BINARY
         elif isinstance(data, Container):
             return H5_REF
         elif not hasattr(data, '__len__'):
@@ -1214,6 +1216,7 @@ class HDF5IO(HDMFIO):
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
+
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
