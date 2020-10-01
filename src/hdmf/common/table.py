@@ -553,7 +553,7 @@ class DynamicTable(Container):
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
             {'name': 'table', 'type': (bool, 'DynamicTable'),
              'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
-            {'name': 'index', 'type': (bool, VectorIndex, 'array_data'),
+            {'name': 'index', 'type': (bool, VectorIndex, 'array_data', int),
              'doc': 'whether or not this column should be indexed', 'default': False},
             {'name': 'vocab', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a '
@@ -630,6 +630,15 @@ class DynamicTable(Container):
                 if len(col) > 0:
                     raise ValueError("cannot pass empty index with non-empty data to index")
                 col_index = VectorIndex(name + "_index", list(), col)
+            elif isinstance(index, int):
+                assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
+                index_name = name
+                for i in range(index):
+                    index_name = index_name + "_index"
+                    col_index = VectorIndex(index_name, list(), col)
+                    if i < index - 1:
+                        columns.insert(0, col_index)
+                        col = col_index
             else:                                # make VectorIndex with supplied data
                 if len(col) == 0:
                     raise ValueError("cannot pass non-empty index with empty data to index")

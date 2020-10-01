@@ -205,6 +205,24 @@ class TestDynamicTable(TestCase):
         with self.assertWarnsWith(FutureWarning, msg):
             table.add_column(name='bad', description='bad column', index=ind)
 
+    def test_add_column_multi_index(self):
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column', index=2)
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2, 3],
+                            [1, 2, 3, 4]
+                      ])
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2]
+                      ]
+                      )
+        table[0, 'qux']
+        table[:, 'qux']
+        table['qux'][0]
+        table['qux'][:]
+
     def test_getitem_row_num(self):
         table = self.with_spec()
         self.add_rows(table)
