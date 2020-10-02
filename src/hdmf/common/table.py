@@ -85,7 +85,11 @@ class VectorIndex(VectorData):
         Add the given data value to the target VectorData and append the corresponding index to this VectorIndex
         :param arg: The data value to be added to self.target
         """
-        self.target.extend(arg)
+        if isinstance(self.target, VectorIndex):
+            for a in arg:
+                self.target.add_vector(a)
+        else:
+            self.target.extend(arg)
         self.append(self.__check_precision(len(self.target)))
 
     def __check_precision(self, idx):
@@ -626,16 +630,20 @@ class DynamicTable(Container):
         if index is not False:
             if isinstance(index, VectorIndex):
                 col_index = index
+                self.__add_column_index_helper(col_index)
             elif isinstance(index, bool):        # make empty VectorIndex
                 if len(col) > 0:
                     raise ValueError("cannot pass empty index with non-empty data to index")
                 col_index = VectorIndex(name + "_index", list(), col)
+                self.__add_column_index_helper(col_index)
             elif isinstance(index, int):
+                assert index > 0, ValueError("integer index value must be greater than 0")
                 assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
                 index_name = name
                 for i in range(index):
                     index_name = index_name + "_index"
                     col_index = VectorIndex(index_name, list(), col)
+                    self.__add_column_index_helper(col_index)
                     if i < index - 1:
                         columns.insert(0, col_index)
                         col = col_index
@@ -643,15 +651,9 @@ class DynamicTable(Container):
                 if len(col) == 0:
                     raise ValueError("cannot pass non-empty index with empty data to index")
                 col_index = VectorIndex(name + "_index", index, col)
+                self.__add_column_index_helper(col_index)
             columns.insert(0, col_index)
-            if not isinstance(col_index.parent, Container):
-                col_index.parent = self
-            # else, the ObjectMapper will create a link from self (parent) to col_index (child with existing parent)
             col = col_index
-            self.__indices[col_index.name] = col_index
-            self.__set_table_attr(col_index)
-            if col_index in self.__uninit_cols:
-                self.__uninit_cols.pop(col_index)
 
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
@@ -659,6 +661,15 @@ class DynamicTable(Container):
         self.fields['colnames'] = tuple(list(self.colnames)+[name])
         self.fields['columns'] = tuple(list(self.columns)+columns)
         self.__df_cols.append(col)
+
+    def __add_column_index_helper(self, col_index):
+        if not isinstance(col_index.parent, Container):
+            col_index.parent = self
+        # else, the ObjectMapper will create a link from self (parent) to col_index (child with existing parent)
+        self.__indices[col_index.name] = col_index
+        self.__set_table_attr(col_index)
+        if col_index in self.__uninit_cols:
+            self.__uninit_cols.pop(col_index)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the DynamicTableRegion object'},
             {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the indices of the table'},
