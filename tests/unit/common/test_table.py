@@ -218,10 +218,6 @@ class TestDynamicTable(TestCase):
                             [1, 2]
                       ]
                       )
-        table[0, 'qux']
-        table[:, 'qux']
-        table['qux'][0]
-        table['qux'][:]
 
     def test_getitem_row_num(self):
         table = self.with_spec()
