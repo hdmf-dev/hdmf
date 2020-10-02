@@ -1214,13 +1214,17 @@ class TestDataIOIndexedColumns(H5RoundTripMixin, TestCase):
             allow_plugin_filters=True,
         )
         foo = VectorData(name='foo', description='chunked column', data=self.chunked_data)
-        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=H5DataIO([2, 3, 4], chunks=True))
         bar = VectorData(name='bar', description='chunked column', data=self.compressed_data)
-        bar_ind = VectorIndex(name='bar_index', target=bar, data=[2, 3, 4])
+        bar_ind = VectorIndex(name='bar_index', target=bar, data=H5DataIO([2, 3, 4], chunks=True))
 
         # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
         # for proper comparison of the columns list
         table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar])
+
+        # check for add_row
+        table.add_row(foo=np.arange(30).reshape(5, 2, 3), bar=np.arange(30).reshape(5, 2, 3))
+
         return table
 
     def test_roundtrip(self):
