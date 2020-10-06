@@ -1,5 +1,18 @@
 # HDMF Changelog
 
+## HDMF 2.3.0 (Upcoming)
+
+### New features
+- Allow auto-generating `MultiContainerInterface` classes using `get_class`. @bendichter (#420)
+
+### Internal improvements
+- Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
+- Fix package dependency issues in CI. @rly (#431)
+- Update CI to account for upcoming rate limiting. @rly (#432)
+
+### Bug fixes
+- Fix auto-generation of `MultiContainerInterface` classes with additional attributes. @bendichter (#425)
+
 ## HDMF 2.2.0 (August 14, 2020)
 
 ### New features
