@@ -195,10 +195,7 @@ jobs:
 
   python35-min-req:
     docker:
-      - image: circleci/python:3.5.9-stretch
-        auth:
-          username: rly1
-          password: $DOCKERHUB_PASSWORD
+      - <<: *py35
     environment:
      - TEST_TOX_ENV: "py35-min-req"
      - COVERAGE_TOX_ENV: ""
