@@ -1,12 +1,5 @@
 version: 2.1
 
-workflows:
-  my-workflow:
-    jobs:
-      - build:
-          context:
-            - docker-hub-creds
-
 references:
 
   run-style-check: &run-style-check
@@ -121,6 +114,10 @@ references:
           # exclude tags created by "ci_addons publish_github_release"
           - /^latest$/
           - /^latest-tmp$/
+
+  base_context: &base_context
+    context:
+      - docker-hub-creds
 
 jobs:
   flake8:
@@ -400,34 +397,48 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
+          <<: *base_context
       - python35:
           <<: *no_filters
+          <<: *base_context
       - python36:
           <<: *no_filters
+          <<: *base_context
       - python37:
           <<: *no_filters
+          <<: *base_context
       - python38:
           <<: *no_filters
+          <<: *base_context
       - python35-min-req:
           <<: *no_filters
+          <<: *base_context
       - miniconda35:
           <<: *no_filters
+          <<: *base_context
       - miniconda36:
           <<: *no_filters
+          <<: *base_context
       - miniconda37:
           <<: *no_filters
+          <<: *base_context
       - miniconda38:
           <<: *no_filters
+          <<: *base_context
       - gallery35:
           <<: *no_filters
+          <<: *base_context
       - gallery36:
           <<: *no_filters
+          <<: *base_context
       - gallery37:
           <<: *no_filters
+          <<: *base_context
       - gallery38:
           <<: *no_filters
       - gallery35-min-req:
           <<: *no_filters
+          <<: *base_context
       - deploy-dev:
           requires:
             - flake8
@@ -453,6 +464,7 @@ workflows:
                 - /^latest-tmp$/
             branches:
               only: dev
+          <<: *base_context
       - deploy-release:
           requires:
             - flake8
@@ -475,7 +487,9 @@ workflows:
               only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
             branches:
               ignore: /.*/
+          <<: *base_context
       - pynwb-dev-python38:
           filters:
             branches:
               ignore: dev
+          <<: *base_context
