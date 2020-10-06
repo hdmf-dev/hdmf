@@ -2,6 +2,9 @@
 
 ## HDMF 2.3.0 (Upcoming)
 
+### New features
+- Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
+  `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
 
 ## HDMF 2.2.0 (August 14, 2020)
 
