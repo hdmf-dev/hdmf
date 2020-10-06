@@ -1,5 +1,12 @@
 version: 2.1
 
+workflows:
+  my-workflow:
+    jobs:
+      - build:
+          context:
+            - docker-hub-creds
+
 references:
 
   run-style-check: &run-style-check
@@ -119,6 +126,9 @@ jobs:
   flake8:
     docker:
       - image: circleci/python:3.8.1-buster
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     steps:
       - checkout
       - run:
@@ -129,6 +139,9 @@ jobs:
   python35:
     docker:
       - image: circleci/python:3.5.9-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "py35"
      - COVERAGE_TOX_ENV: ""
@@ -139,6 +152,9 @@ jobs:
   python36:
     docker:
       - image: circleci/python:3.6.10-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "py36"
      - COVERAGE_TOX_ENV: ""
@@ -149,6 +165,9 @@ jobs:
   python37:
     docker:
       - image: circleci/python:3.7.6-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "py37"
      - COVERAGE_TOX_ENV: ""
@@ -159,6 +178,9 @@ jobs:
   python38:
     docker:
       - image: circleci/python:3.8.1-buster
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "py38"
      - COVERAGE_TOX_ENV: "coverage"
@@ -170,6 +192,9 @@ jobs:
   python35-min-req:
     docker:
       - image: circleci/python:3.5.9-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "py35-min-req"
      - COVERAGE_TOX_ENV: ""
@@ -180,6 +205,9 @@ jobs:
   miniconda35:
     docker:
       - image: continuumio/miniconda3:4.3.27p0
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
       - CONDA_PYTHON_VER: "3.5"
       - TEST_TOX_ENV: "py35"
@@ -190,6 +218,9 @@ jobs:
   miniconda36:
     docker:
       - image: continuumio/miniconda3:4.7.12
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
       - CONDA_PYTHON_VER: "3.6"
       - TEST_TOX_ENV: "py36"
@@ -200,6 +231,9 @@ jobs:
   miniconda37:
     docker:
       - image: continuumio/miniconda3:4.7.12
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
       - CONDA_PYTHON_VER: "3.7"
       - TEST_TOX_ENV: "py37"
@@ -210,6 +244,9 @@ jobs:
   miniconda38:
     docker:
       - image: continuumio/miniconda3:4.7.12
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
       - CONDA_PYTHON_VER: "3.8"
       - TEST_TOX_ENV: "py38"
@@ -220,6 +257,9 @@ jobs:
   gallery35:
     docker:
       - image: circleci/python:3.5.9-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "gallery-py35"
     <<: *gallery-steps
@@ -227,6 +267,9 @@ jobs:
   gallery36:
     docker:
       - image: circleci/python:3.6.10-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "gallery-py36"
     <<: *gallery-steps
@@ -234,6 +277,9 @@ jobs:
   gallery37:
     docker:
       - image: circleci/python:3.7.6-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "gallery-py37"
     <<: *gallery-steps
@@ -241,6 +287,9 @@ jobs:
   gallery38:
     docker:
       - image: circleci/python:3.8.1-buster
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "gallery-py38"
     <<: *gallery-steps
@@ -248,6 +297,9 @@ jobs:
   gallery35-min-req:
     docker:
       - image: circleci/python:3.5.9-stretch
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     environment:
      - TEST_TOX_ENV: "gallery-py35-min-req"
     <<: *gallery-steps
@@ -255,6 +307,9 @@ jobs:
   deploy-dev:
     docker:
       - image: circleci/python:3.8.1-buster
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     steps:
       - checkout
       - attach_workspace:
@@ -277,6 +332,9 @@ jobs:
   deploy-release:
     docker:
       - image: circleci/python:3.8.1-buster
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     steps:
       - attach_workspace:
           at: ./
@@ -302,6 +360,9 @@ jobs:
   pynwb-dev-python38:
     docker:
       - image: circleci/python:3.8.1-buster
+        auth:
+          username: rly
+          password: $DOCKERHUB_PASSWORD
     steps:
       - checkout
       - run: git submodule sync
