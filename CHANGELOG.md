@@ -1,5 +1,8 @@
 # HDMF Changelog
 
+## HDMF 2.3.0 (Upcoming)
+
+
 ## HDMF 2.2.0 (August 14, 2020)
 
 ### New features
