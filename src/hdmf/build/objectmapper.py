@@ -209,7 +209,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
-                return value, spec_dtype_type
+                if spec_dtype_type == _ascii:
+                    ret_dtype = 'ascii'
+                elif spec_dtype_type == _unicode:
+                    ret_dtype = 'utf8'
+                else:
+                    ret_dtype = spec_dtype_type
+                return value, ret_dtype
             ret = list()
             for elem in value:
                 tmp, tmp_dtype = cls.convert_dtype(spec, elem, spec_dtype)
