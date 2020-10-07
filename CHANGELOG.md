@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 2.3.0 (Upcoming)
+
+### Bug fixes
+- Fix handling of empty lists against a spec with text/bytes dtype. @rly (#434)
+
 ## HDMF 2.2.0 (August 14, 2020)
 
 ### New features
