@@ -1163,6 +1163,11 @@ class TestConvertDtype(TestCase):
         np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
         self.assertEqual(ret_dtype, 'utf8')
 
+        value = []
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
+
     def test_ascii_spec(self):
         spec_type = 'ascii'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
@@ -1193,6 +1198,11 @@ class TestConvertDtype(TestCase):
         value = np.array(['a', 'b'], dtype='S1')
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = []
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
         self.assertEqual(ret_dtype, 'ascii')
 
     def test_no_spec(self):
