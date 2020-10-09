@@ -697,6 +697,7 @@ class SubTable(DynamicTable):
         {'name': 'col6', 'description': 'optional region', 'table': True},
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
+        {'name': 'col10', 'description': 'required, indexed vocab column', 'index': True, 'class': VocabData},
     )
 
 
@@ -730,6 +731,8 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertIsNone(table.col6)
         self.assertIsNone(table.col8)
         self.assertIsNone(table.col8_index)
+        self.assertIsNone(table.col10)
+        self.assertIsNone(table.col10_index)
 
         # uninitialized optional predefined columns cannot be accessed in this manner
         with self.assertRaisesWith(KeyError, "'col2'"):
@@ -777,6 +780,9 @@ class TestDynamicTableClassColumns(TestCase):
 
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
+
+        table.add_column(name='col10', description='column #10', index=True, col_cls=VocabData)
+        self.assertIsInstance(table.col10, VocabData)
 
     def test_add_opt_column_mismatched_table_true(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
@@ -827,6 +833,20 @@ class TestDynamicTableClassColumns(TestCase):
             table.add_column(name='col2', description='column #2', data=[1, 2, 3], index=[1, 2])
         self.assertEqual(table.col2.description, 'column #2')
         self.assertEqual(type(table.get('col2')), VectorIndex)  # not VectorData
+
+    def test_add_opt_column_mismatched_col_cls(self):
+        """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
+        table = SubTable(name='subtable', description='subtable description')
+        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.VocabData'> "
+               "which does not match the entered col_cls "
+               "argument. The predefined class spec will be ignored. "
+               "Please ensure the new column complies with the spec. "
+               "This will raise an error in a future version of HDMF.")
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col10', description='column #10', index=True)
+        self.assertEqual(table.col10.description, 'column #10')
+        self.assertEqual(type(table.col10), VectorData)
+        self.assertEqual(type(table.get('col10')), VectorIndex)
 
     def test_add_opt_column_twice(self):
         """Test that adding an optional column from __columns__ twice fails the second time."""
