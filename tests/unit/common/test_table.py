@@ -1,5 +1,6 @@
 import unittest
-from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, DynamicTableRegion, VocabData, get_manager
+from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, \
+    DynamicTableRegion, VocabData, get_manager
 from hdmf.testing import TestCase, H5RoundTripMixin
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 
@@ -1299,7 +1300,6 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
         bar = VectorData(name='bar', description='chunked column', data=self.compressed_data)
         bar_ind = VectorIndex(name='bar_index', target=bar, data=self.compressed_index_data)
 
-
         # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
         # for proper comparison of the columns list
         table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar],
@@ -1323,4 +1323,3 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
         read_table.add_row(foo=data, bar=data)
 
         np.testing.assert_array_equal(read_table['foo'][-1], data)
-
