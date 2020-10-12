@@ -91,7 +91,7 @@ class VectorIndex(VectorData):
     def __check_precision(self, idx):
         """
         Check precision of current dataset and, if
-        necessary, adjust precision to accomodate new value.
+        necessary, adjust precision to accommodate new value.
 
         Returns:
             unsigned integer encoding of idx
