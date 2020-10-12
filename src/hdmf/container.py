@@ -3,9 +3,8 @@ from abc import ABCMeta, abstractmethod
 from uuid import uuid4
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
-from .data_utils import DataIO
+from .data_utils import DataIO, append_data, extend_data
 from warnings import warn
-import h5py
 import types
 
 
@@ -477,32 +476,10 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
-        if isinstance(self.data, list):
-            self.data.append(arg)
-        elif isinstance(self.data, np.ndarray):
-            self.__data = np.append(self.__data, [arg])
-        elif isinstance(self.data, h5py.Dataset):
-            shape = list(self.__data.shape)
-            shape[0] += 1
-            self.__data.resize(shape)
-            self.__data[-1] = arg
-        else:
-            msg = "Data cannot append to object of type '%s'" % type(self.__data)
-            raise ValueError(msg)
+        self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
-        if isinstance(self.data, list):
-            self.data.extend(arg)
-        elif isinstance(self.data, np.ndarray):
-            self.__data = np.append(self.__data, [arg])
-        elif isinstance(self.data, h5py.Dataset):
-            shape = list(self.__data.shape)
-            shape[0] += len(arg)
-            self.__data.resize(shape)
-            self.__data[-len(arg):] = arg
-        else:
-            msg = "Data cannot extend object of type '%s'" % type(self.__data)
-            raise ValueError(msg)
+        self.__data = extend_data(self.__data, arg)
 
 
 class DataRegion(Data):
