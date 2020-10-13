@@ -115,7 +115,7 @@ class TestDataMapScalar(TestCase):
                             'object_id': expected.object_id},
             )
             container = self.mapper.construct(builder, self.manager)
-            self.assertEqual(type(container.data), np.int32)  # as opposed to h5py.Dataset
+            self.assertTrue(np.issubdtype(type(container.data), np.integer))  # as opposed to h5py.Dataset
             self.assertContainerEqual(container, expected)
         os.remove('test.h5')
 
