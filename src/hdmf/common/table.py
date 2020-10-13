@@ -562,7 +562,12 @@ class DynamicTable(Container):
             {'name': 'table', 'type': (bool, 'DynamicTable'),
              'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data', int),
-             'doc': 'whether or not this column should be indexed', 'default': False},
+             'doc': 'False (default): do not generate a VectorIndex \n'
+                    'True: generate one empty VectorIndex \n'
+                    'VectorIndex: Use the supplied VectorIndex \n'
+                    'array-like of ints: Create a VectorIndex and use these values as the data \n'
+                    'int: Recursively create `n` VectorIndex objects for a multi-ragged array \n',
+             'default': False},
             {'name': 'vocab', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a '
                      'controlled vocabulary or the controlled vocabulary')},

@@ -220,6 +220,32 @@ class TestDynamicTable(TestCase):
                       ]
                       )
 
+    def test_auto_multi_index(self):
+
+        class TestTable(DynamicTable):
+            __columns__ = (dict(name='qux', description='qux column', index=2),)
+
+        table = TestTable('table_name', 'table_description')
+        table.add_row(qux=[
+                          [1, 2, 3],
+                          [1, 2, 3, 4]
+                      ])
+        table.add_row(qux=[
+                          [1, 2]
+                      ]
+                      )
+
+        np.testing.assert_array_equal(table['qux'][:],
+                                      [
+                                          [
+                                              [1, 2, 3],
+                                              [1, 2, 3, 4]
+                                          ],
+                                          [
+                                              [1, 2]
+                                          ]
+                                      ])
+
     def test_getitem_row_num(self):
         table = self.with_spec()
         self.add_rows(table)
