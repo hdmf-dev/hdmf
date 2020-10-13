@@ -206,6 +206,46 @@ class TestDynamicTable(TestCase):
         with self.assertWarnsWith(FutureWarning, msg):
             table.add_column(name='bad', description='bad column', index=ind)
 
+    def test_add_column_multi_index(self):
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column', index=2)
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2, 3],
+                            [1, 2, 3, 4]
+                      ])
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2]
+                      ]
+                      )
+
+    def test_auto_multi_index(self):
+
+        class TestTable(DynamicTable):
+            __columns__ = (dict(name='qux', description='qux column', index=2),)
+
+        table = TestTable('table_name', 'table_description')
+        table.add_row(qux=[
+                          [1, 2, 3],
+                          [1, 2, 3, 4]
+                      ])
+        table.add_row(qux=[
+                          [1, 2]
+                      ]
+                      )
+
+        np.testing.assert_array_equal(table['qux'][:],
+                                      [
+                                          [
+                                              [1, 2, 3],
+                                              [1, 2, 3, 4]
+                                          ],
+                                          [
+                                              [1, 2]
+                                          ]
+                                      ])
+
     def test_getitem_row_num(self):
         table = self.with_spec()
         self.add_rows(table)
@@ -1081,6 +1121,24 @@ class TestDoubleIndex(TestCase):
         self.assertListEqual(foo_ind[2], ['b11'])
         self.assertListEqual(foo_ind_ind[0], [['a11', 'a12'], ['a21']])
         self.assertListEqual(foo_ind_ind[1], [['b11']])
+
+    def test_add_vector(self):
+        # row 1 has three entries
+        # the first entry has two sub-entries
+        # the first sub-entry has two values, the second sub-entry has one value
+        # the second entry has one sub-entry, which has one value
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        foo_ind_ind.add_vector([['c11', 'c12', 'c13'], ['c21', 'c22']])
+
+        self.assertListEqual(foo.data, ['a11', 'a12', 'a21', 'b11', 'c11', 'c12', 'c13', 'c21', 'c22'])
+        self.assertListEqual(foo_ind.data, [2, 3, 4, 7, 9])
+        self.assertListEqual(foo_ind[3], ['c11', 'c12', 'c13'])
+        self.assertListEqual(foo_ind[4], ['c21', 'c22'])
+        self.assertListEqual(foo_ind_ind.data, [2, 3, 5])
+        self.assertListEqual(foo_ind_ind[2], [['c11', 'c12', 'c13'], ['c21', 'c22']])
 
 
 class TestDTDoubleIndex(TestCase):
