@@ -1,7 +1,8 @@
 import unittest
-from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, DynamicTableRegion, VocabData
+from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, \
+    DynamicTableRegion, VocabData, get_manager
 from hdmf.testing import TestCase, H5RoundTripMixin
-from hdmf.backends.hdf5 import H5DataIO
+from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 
 from collections import OrderedDict
 import h5py
@@ -204,6 +205,46 @@ class TestDynamicTable(TestCase):
                "deprecated in a future version of HDMF.")
         with self.assertWarnsWith(FutureWarning, msg):
             table.add_column(name='bad', description='bad column', index=ind)
+
+    def test_add_column_multi_index(self):
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column', index=2)
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2, 3],
+                            [1, 2, 3, 4]
+                      ])
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2]
+                      ]
+                      )
+
+    def test_auto_multi_index(self):
+
+        class TestTable(DynamicTable):
+            __columns__ = (dict(name='qux', description='qux column', index=2),)
+
+        table = TestTable('table_name', 'table_description')
+        table.add_row(qux=[
+                          [1, 2, 3],
+                          [1, 2, 3, 4]
+                      ])
+        table.add_row(qux=[
+                          [1, 2]
+                      ]
+                      )
+
+        np.testing.assert_array_equal(table['qux'][:],
+                                      [
+                                          [
+                                              [1, 2, 3],
+                                              [1, 2, 3, 4]
+                                          ],
+                                          [
+                                              [1, 2]
+                                          ]
+                                      ])
 
     def test_getitem_row_num(self):
         table = self.with_spec()
@@ -543,7 +584,7 @@ class TestDynamicTableRegion(TestCase):
     def test_dynamic_table_region_to_dataframe_exclude_cols(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
-        res = dynamic_table_region.to_dataframe(exclude=set(['baz', 'foo']))
+        res = dynamic_table_region.to_dataframe(exclude={'baz', 'foo'})
         self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
         self.assertEqual(len(res.columns), 1)
         self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
@@ -683,6 +724,7 @@ class SubTable(DynamicTable):
         {'name': 'col6', 'description': 'optional region', 'table': True},
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
+        {'name': 'col10', 'description': 'required, indexed vocab column', 'index': True, 'class': VocabData},
     )
 
 
@@ -716,6 +758,8 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertIsNone(table.col6)
         self.assertIsNone(table.col8)
         self.assertIsNone(table.col8_index)
+        self.assertIsNone(table.col10)
+        self.assertIsNone(table.col10_index)
 
         # uninitialized optional predefined columns cannot be accessed in this manner
         with self.assertRaisesWith(KeyError, "'col2'"):
@@ -763,6 +807,9 @@ class TestDynamicTableClassColumns(TestCase):
 
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
+
+        table.add_column(name='col10', description='column #10', index=True, col_cls=VocabData)
+        self.assertIsInstance(table.col10, VocabData)
 
     def test_add_opt_column_mismatched_table_true(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
@@ -813,6 +860,20 @@ class TestDynamicTableClassColumns(TestCase):
             table.add_column(name='col2', description='column #2', data=[1, 2, 3], index=[1, 2])
         self.assertEqual(table.col2.description, 'column #2')
         self.assertEqual(type(table.get('col2')), VectorIndex)  # not VectorData
+
+    def test_add_opt_column_mismatched_col_cls(self):
+        """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
+        table = SubTable(name='subtable', description='subtable description')
+        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.VocabData'> "
+               "which does not match the entered col_cls "
+               "argument. The predefined class spec will be ignored. "
+               "Please ensure the new column complies with the spec. "
+               "This will raise an error in a future version of HDMF.")
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col10', description='column #10', index=True)
+        self.assertEqual(table.col10.description, 'column #10')
+        self.assertEqual(type(table.col10), VectorData)
+        self.assertEqual(type(table.get('col10')), VectorIndex)
 
     def test_add_opt_column_twice(self):
         """Test that adding an optional column from __columns__ twice fails the second time."""
@@ -1061,6 +1122,24 @@ class TestDoubleIndex(TestCase):
         self.assertListEqual(foo_ind_ind[0], [['a11', 'a12'], ['a21']])
         self.assertListEqual(foo_ind_ind[1], [['b11']])
 
+    def test_add_vector(self):
+        # row 1 has three entries
+        # the first entry has two sub-entries
+        # the first sub-entry has two values, the second sub-entry has one value
+        # the second entry has one sub-entry, which has one value
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        foo_ind_ind.add_vector([['c11', 'c12', 'c13'], ['c21', 'c22']])
+
+        self.assertListEqual(foo.data, ['a11', 'a12', 'a21', 'b11', 'c11', 'c12', 'c13', 'c21', 'c22'])
+        self.assertListEqual(foo_ind.data, [2, 3, 4, 7, 9])
+        self.assertListEqual(foo_ind[3], ['c11', 'c12', 'c13'])
+        self.assertListEqual(foo_ind[4], ['c21', 'c22'])
+        self.assertListEqual(foo_ind_ind.data, [2, 3, 5])
+        self.assertListEqual(foo_ind_ind[2], [['c11', 'c12', 'c13'], ['c21', 'c22']])
+
 
 class TestDTDoubleIndex(TestCase):
 
@@ -1160,6 +1239,45 @@ class TestDoubleIndexRoundtrip(H5RoundTripMixin, TestCase):
 
 
 class TestDataIOColumns(H5RoundTripMixin, TestCase):
+    def setUpContainer(self):
+        self.chunked_data = H5DataIO(
+            data=[i for i in range(10)],
+            chunks=(3,),
+            fillvalue=-1,
+        )
+        self.compressed_data = H5DataIO(
+            data=np.arange(10),
+            compression=1,
+            shuffle=True,
+            fletcher32=True,
+            allow_plugin_filters=True,
+        )
+        foo = VectorData(name='foo', description='chunked column', data=self.chunked_data)
+        bar = VectorData(name='bar', description='chunked column', data=self.compressed_data)
+
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo, bar])
+        table.add_row(foo=1, bar=1)
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            chunked_dset = f['foo']
+            self.assertTrue(np.all(chunked_dset[:] == self.chunked_data.data))
+            self.assertEqual(chunked_dset.chunks, (3,))
+            self.assertEqual(chunked_dset.fillvalue, -1)
+
+            compressed_dset = f['bar']
+            self.assertTrue(np.all(compressed_dset[:] == self.compressed_data.data))
+            self.assertEqual(compressed_dset.compression, 'gzip')
+            self.assertEqual(compressed_dset.shuffle, True)
+            self.assertEqual(compressed_dset.fletcher32, True)
+
+
+class TestDataIOIndexedColumns(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         self.chunked_data = H5DataIO(
@@ -1182,6 +1300,10 @@ class TestDataIOColumns(H5RoundTripMixin, TestCase):
         # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
         # for proper comparison of the columns list
         table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar])
+
+        # check for add_row
+        table.add_row(foo=np.arange(30).reshape(5, 2, 3), bar=np.arange(30).reshape(5, 2, 3))
+
         return table
 
     def test_roundtrip(self):
@@ -1207,11 +1329,13 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
             data=np.arange(30).reshape(5, 2, 3),
             chunks=(1, 1, 3),
             fillvalue=-1,
+            maxshape=(None, 2, 3)
         )
         self.chunked_index_data = H5DataIO(
             data=np.array([2, 3, 5], dtype=np.uint),
             chunks=(2, ),
             fillvalue=np.uint(10),
+            maxshape=(None,)
         )
         self.compressed_data = H5DataIO(
             data=np.arange(30).reshape(5, 2, 3),
@@ -1219,13 +1343,15 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
             shuffle=True,
             fletcher32=True,
             allow_plugin_filters=True,
+            maxshape=(None, 2, 3)
         )
         self.compressed_index_data = H5DataIO(
-            data=np.array([2, 3, 5], dtype=np.uint),
+            data=np.array([2, 4, 5], dtype=np.uint),
             compression=1,
             shuffle=True,
             fletcher32=False,
             allow_plugin_filters=True,
+            maxshape=(None,)
         )
         foo = VectorData(name='foo', description='chunked column', data=self.chunked_data)
         foo_ind = VectorIndex(name='foo_index', target=foo, data=self.chunked_index_data)
@@ -1234,20 +1360,24 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
 
         # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
         # for proper comparison of the columns list
-        table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar])
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar],
+                             id=H5DataIO(data=[0, 1, 2], chunks=True, maxshape=(None,)))
+
+        # check for add_row
+        table.add_row(foo=np.arange(30).reshape(5, 2, 3),
+                      bar=np.arange(30).reshape(5, 2, 3))
+
         return table
 
-    def test_roundtrip(self):
-        super().test_roundtrip()
+    def test_append(self, cache_spec=False):
+        """Write the container to an HDF5 file, read the container from the file, and append to it."""
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
+            write_io.write(self.container, cache_spec=cache_spec)
 
-        with h5py.File(self.filename, 'r') as f:
-            chunked_dset = f['foo_index']
-            self.assertTrue(np.all(chunked_dset[:] == self.chunked_index_data.data))
-            self.assertEqual(chunked_dset.chunks, (2, ))
-            self.assertEqual(chunked_dset.fillvalue, 10)
+        self.reader = HDF5IO(self.filename, manager=get_manager(), mode='a')
+        read_table = self.reader.read()
 
-            compressed_dset = f['bar_index']
-            self.assertTrue(np.all(compressed_dset[:] == self.compressed_index_data.data))
-            self.assertEqual(compressed_dset.compression, 'gzip')
-            self.assertEqual(compressed_dset.shuffle, True)
-            self.assertEqual(compressed_dset.fletcher32, False)
+        data = np.arange(30, 60).reshape(5, 2, 3)
+        read_table.add_row(foo=data, bar=data)
+
+        np.testing.assert_array_equal(read_table['foo'][-1], data)

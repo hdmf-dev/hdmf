@@ -209,7 +209,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
-                return value, spec_dtype_type
+                if spec_dtype_type == _ascii:
+                    ret_dtype = 'ascii'
+                elif spec_dtype_type == _unicode:
+                    ret_dtype = 'utf8'
+                else:
+                    ret_dtype = spec_dtype_type
+                return value, ret_dtype
             ret = list()
             for elem in value:
                 tmp, tmp_dtype = cls.convert_dtype(spec, elem, spec_dtype)
@@ -1037,8 +1043,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
-            if spec.shape is None and getattr(builder.data, 'shape', None) == (1, ):
-                # if a scalar dataset is expected and a 1-element dataset is given, then read the dataset
+            if (spec.shape is None and getattr(builder.data, 'shape', None) == (1, ) and
+                    type(builder.data[0]) != np.void):
+                # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)
         return ret

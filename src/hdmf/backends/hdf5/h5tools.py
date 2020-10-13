@@ -994,27 +994,51 @@ class HDF5IO(HDMFIO):
         # The user provided an existing h5py dataset as input and asked to create a link to the dataset
         if isinstance(data, Dataset):
             data_filename = os.path.abspath(data.file.filename)
-            if export_source is not None:
-                export_source = os.path.abspath(export_source)
-            # if exporting and dset is in same file as export source, then the current dset could be linked or the
-            # actual dset in the right location
-            if link_data and (data_filename != export_source or parent.name != data.parent.name):
-                # Create a Soft/External link to the dataset
-                parent_filename = os.path.abspath(parent.file.filename)
-                if data_filename != parent_filename and data_filename != export_source:
-                    relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
-                    link = ExternalLink(relative_path, data.name)
-                    self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
-                                      % (parent.name, name, link.filename, link.path))
-                else:
-                    link = SoftLink(data.name)
-                    self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
-                                      % (parent.name, name, link.path))
-                parent[name] = link
-            # Copy the dataset
-            # TODO add option for case where there are multiple links to the same dataset within a file:
-            # instead of copying the dset N times, copy it once and create soft links to it within the file
+            if link_data:
+                if export_source is None:  # not exporting
+                    parent_filename = os.path.abspath(parent.file.filename)
+                    if data_filename != parent_filename:  # create external link to data
+                        relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
+                        link = ExternalLink(relative_path, data.name)
+                        self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                                          % (parent.name, name, link.filename, link.path))
+                    else:  # create soft link to dataset already in this file -- possible if mode == 'r+'
+                        link = SoftLink(data.name)
+                        self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                                          % (parent.name, name, link.path))
+                    parent[name] = link
+                else:  # exporting
+                    export_source = os.path.abspath(export_source)
+                    parent_filename = os.path.abspath(parent.file.filename)
+                    if data_filename != export_source:  # dataset is in different file than export source
+                        # possible if user adds a link to a dataset in a different file after reading export source
+                        # to memory
+                        relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
+                        link = ExternalLink(relative_path, data.name)
+                        self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                                          % (parent.name, name, link.filename, link.path))
+                        parent[name] = link
+                    elif parent.name != data.parent.name:  # dataset is in export source and has different path
+                        # so create a soft link to the dataset in this file
+                        # possible if user adds a link to a dataset in export source after reading to memory
+                        link = SoftLink(data.name)
+                        self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                                          % (parent.name, name, link.path))
+                        parent[name] = link
+                    else:  # dataset is in export source and has same path as the builder, so copy the dataset
+                        self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
+                                          % (data.file.filename, data.name, parent.name, name))
+                        parent.copy(source=data,
+                                    dest=parent,
+                                    name=name,
+                                    expand_soft=False,
+                                    expand_external=False,
+                                    expand_refs=False,
+                                    without_attrs=True)
+                        dset = parent[name]
             else:
+                # TODO add option for case where there are multiple links to the same dataset within a file:
+                # instead of copying the dset N times, copy it once and create soft links to it within the file
                 self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
                                   % (data.file.filename, data.name, parent.name, name))
                 parent.copy(source=data,
@@ -1025,6 +1049,7 @@ class HDF5IO(HDMFIO):
                             expand_refs=False,
                             without_attrs=True)
                 dset = parent[name]
+
         #  Write a compound dataset, i.e, a dataset with compound data type
         elif isinstance(options['dtype'], list):
             # do some stuff to figure out what data is a reference
