@@ -989,7 +989,6 @@ class DynamicTableRegion(VectorData):
 
     __fields__ = (
         'table',
-        'description'
     )
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
