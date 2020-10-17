@@ -579,7 +579,7 @@ class TypeMap:
             else:
                 # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
-                if self.__ischild(dtype):
+                if self.__ischild(dtype) and issubclass(base, Container):
                     fields.append({'name': f, 'child': True})
                 else:
                     fields.append(f)

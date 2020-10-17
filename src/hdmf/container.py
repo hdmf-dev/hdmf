@@ -82,7 +82,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def _check_field_spec_keys(cls, field_conf):
         for k in field_conf:
             if k not in cls._pconf_allowed_keys:
-                msg = "Unrecognized key '%s' in __fields__ config '%s' on %s" % (k, field_conf['name'], cls.__name__)
+                msg = ("Unrecognized key '%s' in %s config '%s' on %s"
+                       % (k, cls._fieldsname, field_conf['name'], cls.__name__))
                 raise ValueError(msg)
 
     @classmethod
