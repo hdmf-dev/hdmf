@@ -276,7 +276,7 @@ class TestAbstractContainerFieldsConf(TestCase):
                 self.field2 = kwargs['field2']
 
         self.assertTupleEqual(NamedFields.__fields__, ('field1', 'field2'))
-        self.assertTupleEqual(NamedFields._get_fields(), ('field1', 'field2'))
+        self.assertIs(NamedFields._get_fields(), NamedFields.__fields__)
 
         expected = ({'doc': None, 'name': 'field1'},
                     {'doc': 'field2 doc', 'name': 'field2'})
@@ -357,7 +357,7 @@ class TestAbstractContainerFieldsConf(TestCase):
             __fields__ = ({'name': 'field2'}, )
 
         self.assertTupleEqual(NamedFieldsChild.__fields__, ('field1', 'field2'))
-        self.assertTupleEqual(NamedFieldsChild._get_fields(), ('field1', 'field2'))
+        self.assertIs(NamedFieldsChild._get_fields(), NamedFieldsChild.__fields__)
 
         expected = ({'doc': 'field1 doc', 'name': 'field1', 'settable': False},
                     {'doc': None, 'name': 'field2'})
@@ -431,3 +431,48 @@ class TestContainerFieldsConf(TestCase):
 
         obj2 = ContainerWithChild()
         self.assertIsNone(obj2.field1)
+
+
+class TestChangeFieldsName(TestCase):
+
+    def test_fields(self):
+        class ContainerNewFields(Container):
+            _fieldsname = '__newfields__'
+            __newfields__ = ({'name': 'field1', 'doc': 'field1 doc'}, )
+
+            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+            def __init__(self, **kwargs):
+                super().__init__('test name')
+                self.field1 = kwargs['field1']
+
+        self.assertTupleEqual(ContainerNewFields.__newfields__, ('field1', ))
+        self.assertIs(ContainerNewFields._get_fields(), ContainerNewFields.__newfields__)
+
+        expected = ({'doc': 'field1 doc', 'name': 'field1'}, )
+        self.assertTupleEqual(ContainerNewFields.get_fields_conf(), expected)
+
+    def test_fields_inheritance(self):
+        class ContainerOldFields(Container):
+            __fields__ = ({'name': 'field1', 'doc': 'field1 doc'}, )
+
+            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+            def __init__(self, **kwargs):
+                super().__init__('test name')
+                self.field1 = kwargs['field1']
+
+        class ContainerNewFields(ContainerOldFields):
+            _fieldsname = '__newfields__'
+            __newfields__ = ({'name': 'field2', 'doc': 'field2 doc'}, )
+
+            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None},
+                    {'name': 'field2', 'doc': 'field2 doc', 'type': None, 'default': None})
+            def __init__(self, **kwargs):
+                super().__init__(kwargs['field1'])
+                self.field2 = kwargs['field2']
+
+        self.assertTupleEqual(ContainerNewFields.__newfields__, ('field1', 'field2'))
+        self.assertIs(ContainerNewFields._get_fields(), ContainerNewFields.__newfields__)
+
+        expected = ({'doc': 'field1 doc', 'name': 'field1'},
+                    {'doc': 'field2 doc', 'name': 'field2'}, )
+        self.assertTupleEqual(ContainerNewFields.get_fields_conf(), expected)
