@@ -15,6 +15,7 @@ def _check_id(table, id):
 
 @register_class('ResourceIdentiferMap')
 class ResourceIdentiferMap(Table):
+    """A table for mapping user terms (i.e. keys) to resource entities."""
 
     __defaultname__ = 'resource_map'
 
@@ -34,7 +35,15 @@ class ResourceIdentiferMap(Table):
 
 @register_class('ResourceReferences')
 class ResourceReferences(Table):
-
+    """
+    A table for identifying which objects in a file contain
+    values that correspond to external resource references. An
+    external resource reference takes the form of an *id*, which
+    is resolvable within a reference. Some of examples are
+    GO:0005524, an entry in the Genome Ontology, ABE-0008876, an entry
+    in the ASAP microbial genome database, or MGI:88294, an entry in the
+    Mouse Genome Informatics database.
+    """
     __defaultname__ = 'references'
 
     __columns__ = (
@@ -53,13 +62,16 @@ class ResourceReferences(Table):
         if item >= 0:
             kwargs['item'] = np.uint64(item)
         else:
-            raise ValueError('item must be a non-negative integer: %d' % id)
+            raise ValueError('item must be a non-negative integer: %d' % item)
         return super().add_row(kwargs)
 
 
 @register_class('ExternalResources')
 class ExternalResources(Container):
-
+    """
+    Container containing a ResourceReferences and ResourceReferenceMap table for
+    tracking external resource references in a file.
+    """
     __defaultname__ = 'external_resources'
 
     __fields__ = (
@@ -84,8 +96,9 @@ class ExternalResources(Container):
             self.resource_map = resource_map
             self.references = references or ResourceReferences()
 
-    def get_crid(self, object_id, field, key):
-        """Return the CRIDs (tuple of (resource, URI) tuples) associated with the given object_id, field, and key.
+    def get_resource_identifier(self, object_id, field, key):
+        """Return the resource identifiers (a.k.a. CRID)  associated with the given object_id, field, and key.
+            :returns: Tuple of (resource, URI) tuples
         """
 
         # get the values in the item column where the values in the object_id and field columns match the arguments

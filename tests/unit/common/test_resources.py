@@ -29,14 +29,14 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_add_reference(self):
         ExternalResources()
 
-    def test_get_crid(self):
+    def test_get_resource_identifier(self):
         rrmap, resrefs = TestResourceReferences.build_tables()
         er = ExternalResources(rrmap, resrefs)
-        result = er.get_crid('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo', 'ATP Binding')
+        result = er.get_resource_identifier('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo', 'ATP Binding')
         self.assertEqual(result[0][0], 'Gene Ontology')
         self.assertEqual(result[0][1], 'http://amigo.geneontology.org/amigo/term/GO:0005524')
 
-        result = er.get_crid('da85e056-caff-4ddd-838c-5f5463e313e6', 'baz', 'Cacna1s')
+        result = er.get_resource_identifier('da85e056-caff-4ddd-838c-5f5463e313e6', 'baz', 'Cacna1s')
         self.assertEqual(result[0][0], 'Mouse Genome Informatics')
         self.assertEqual(result[0][1], 'http://www.informatics.jax.org/marker/MGI:88294')
 
