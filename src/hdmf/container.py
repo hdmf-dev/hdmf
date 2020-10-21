@@ -9,7 +9,6 @@ from warnings import warn
 import types
 
 import pandas as pd
-from h5py import RegionReference
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -1015,36 +1014,3 @@ class Table(Data):
         if name is None:
             return cls(data=data)
         return cls(name=name, data=data)
-
-
-class TableRegion(DataRegion):
-    '''
-    A class for representing regions i.e. slices or indices into an Table
-    '''
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'table', 'type': Table, 'doc': 'the Table this region applies to'},
-            {'name': 'region', 'type': (slice, list, tuple, RegionReference), 'doc': 'the indices of the table'})
-    def __init__(self, **kwargs):
-        table, region = getargs('table', 'region', kwargs)
-        self.__table = table
-        self.__region = region
-        name = getargs('name', kwargs)
-        super(TableRegion, self).__init__(name, table)
-        self.__regionslicer = get_region_slicer(self.__table.data, self.__region)
-
-    @property
-    def table(self):
-        '''The Table this region applies to'''
-        return self.__table
-
-    @property
-    def region(self):
-        '''The indices into table'''
-        return self.__region
-
-    def __len__(self):
-        return len(self.__regionslicer)
-
-    def __getitem__(self, idx):
-        return self.__regionslicer[idx]
