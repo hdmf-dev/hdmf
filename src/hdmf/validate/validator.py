@@ -40,7 +40,6 @@ for dt, dt_syn in __synonyms.items():
         __allowable[syn] = allow
 __allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable if 'int' in k or 'float' in k))
 
-
 def check_type(expected, received):
     '''
     *expected* should come from the spec
@@ -116,6 +115,8 @@ def get_type(data):
         return type(data).__name__
     else:
         if hasattr(data, 'dtype'):
+            if isinstance(data.dtype, list):
+                return [get_type(data[0][i]) for i in range(len(data.dtype))]
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
                 return get_type(data[0])
             return data.dtype
