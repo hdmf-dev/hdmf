@@ -120,18 +120,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         # check whether this class overrides __fields__
         if len(bases):
             # find highest base class that is an AbstractContainer (parent is higher than children)
-            base_container_ind = -1
-            while base_container_ind*-1 <= len(bases) and not issubclass(bases[base_container_ind], AbstractContainer):
-                base_container_ind = base_container_ind - 1
-            base_fields = bases[base_container_ind]._get_fields()  # tuple of field names from base class
+            base_cls = None
+            for base_cls in reversed(bases):
+                if issubclass(base_cls, AbstractContainer):
+                    break
+            base_fields = base_cls._get_fields()  # tuple of field names from base class
             if base_fields is not fields:
                 # check whether new fields spec already exists in base class
                 for field_name in fields_dict:
                     if field_name in base_fields:
                         raise ValueError("Field '%s' cannot be defined in %s. It already exists on base class %s."
-                                         % (field_name, cls.__name__, bases[base_container_ind].__name__))
+                                         % (field_name, cls.__name__, base_cls.__name__))
                 # prepend field specs from base class to fields list of this class
-                all_fields_conf[0:0] = bases[base_container_ind].get_fields_conf()
+                all_fields_conf[0:0] = base_cls.get_fields_conf()
 
         # create getter and setter if attribute does not already exist
         # if 'doc' not specified in __fields__, use doc from docval of __init__
