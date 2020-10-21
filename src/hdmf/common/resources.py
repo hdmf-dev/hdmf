@@ -6,6 +6,14 @@ from ..container import Table, Container
 from ..utils import docval, get_docval, call_docval_func, popargs
 
 
+def _check_id(table, id):
+    if id >= 0 and len(table.which(id=id)) == 0:
+        return np.uint64(id)
+    else:
+        raise ValueError('id must be a non-negative integer that is not already in the table: %d' % id)
+
+
+
 @register_class('ResourceReferenceMap')
 class ResourceReferenceMap(Table):
 
@@ -21,7 +29,7 @@ class ResourceReferenceMap(Table):
     @docval(*__columns__)
     def add_row(self, **kwargs):
         id = popargs('id', kwargs)
-        kwargs['id'] = self._check_id(id)
+        kwargs['id'] = _check_id(self, id)
         return super().add_row(kwargs)
 
 
@@ -42,7 +50,7 @@ class ResourceReferences(Table):
     @docval(*__columns__)
     def add_row(self, **kwargs):
         id, item = popargs('id', 'item', kwargs)
-        kwargs['id'] = self._check_id(id)
+        kwargs['id'] = _check_id(self, id)
         if item >= 0:
             kwargs['item'] = np.uint64(item)
         else:
