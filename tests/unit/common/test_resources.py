@@ -25,10 +25,9 @@ class TestResourceReferences(TestCase):
 
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
-#class TestExternalResources(TestCase):
 
     def test_add_reference(self):
-        er = ExternalResources()
+        ExternalResources()
 
     def test_get_crid(self):
         rrmap, resrefs = TestResourceReferences.build_tables()

@@ -1023,7 +1023,7 @@ class TableRegion(DataRegion):
     '''
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'table', 'type': Table, 'doc': 'the ElectrodeTable this region applies to'},
+            {'name': 'table', 'type': Table, 'doc': 'the Table this region applies to'},
             {'name': 'region', 'type': (slice, list, tuple, RegionReference), 'doc': 'the indices of the table'})
     def __init__(self, **kwargs):
         table, region = getargs('table', 'region', kwargs)
@@ -1035,7 +1035,7 @@ class TableRegion(DataRegion):
 
     @property
     def table(self):
-        '''The ElectrodeTable this region applies to'''
+        '''The Table this region applies to'''
         return self.__table
 
     @property
