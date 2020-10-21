@@ -793,6 +793,7 @@ class HDF5IO(HDMFIO):
         "ascii": H5_BINARY,
         "str": H5_BINARY,
         "isodatetime": H5_TEXT,
+        "uint": np.uint32,
         "uint32": np.uint32,
         "uint16": np.uint16,
         "uint8": np.uint8,
