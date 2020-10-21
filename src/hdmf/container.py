@@ -8,6 +8,9 @@ from .data_utils import DataIO, append_data, extend_data
 from warnings import warn
 import types
 
+import pandas as pd
+from h5py import RegionReference
+
 
 class AbstractContainer(metaclass=ExtenderMeta):
 
@@ -1015,7 +1018,7 @@ class Table(Data):
 
 
 # diamond inheritance
-class TableRegion(Data, DataRegion):
+class TableRegion(DataRegion):
     '''
     A class for representing regions i.e. slices or indices into an Table
     '''
