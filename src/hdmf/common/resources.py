@@ -13,8 +13,8 @@ def _check_id(table, id):
         raise ValueError('id must be a non-negative integer that is not already in the table: %d' % id)
 
 
-@register_class('ResourceReferenceMap')
-class ResourceReferenceMap(Table):
+@register_class('ResourceIdentiferMap')
+class ResourceIdentiferMap(Table):
 
     __defaultname__ = 'resource_map'
 
@@ -43,7 +43,7 @@ class ResourceReferences(Table):
         {'name': 'field', 'type': str,
          'doc': 'The field from the object (specified by object_id) that uses this ontological term.'},
         {'name': 'item', 'type': (int, np.uint64),
-         'doc': 'An index into the ResourceReferenceMap that contains the term.'},
+         'doc': 'An index into the ResourceIdentiferMap that contains the term.'},
     )
 
     @docval(*__columns__)
@@ -67,7 +67,7 @@ class ExternalResources(Container):
         {'name': 'references', 'child': True},
     )
 
-    @docval({'name': 'resource_map', 'type': ResourceReferenceMap,
+    @docval({'name': 'resource_map', 'type': ResourceIdentiferMap,
              'doc': 'the resource reference map for external resources', 'default': None},
             {'name': 'references', 'type': ResourceReferences,
              'doc': 'the references used in this file', 'default': None},
@@ -77,7 +77,7 @@ class ExternalResources(Container):
         kwargs['name'] = kwargs['name'] or self.__defaultname__
         call_docval_func(super().__init__, kwargs)
         if resource_map is None:
-            self.resource_map = ResourceReferenceMap()
+            self.resource_map = ResourceIdentiferMap()
             if references is not None:
                 raise ValueError('Cannot specify references without specifying the accompanying resource map')
         else:
@@ -100,9 +100,9 @@ class ExternalResources(Container):
                 item_val = row[item_col_idx]
                 terms_indices.append(item_val)
 
-        key_col_idx = ResourceReferenceMap.__colidx__.get('key')
-        resource_col_idx = ResourceReferenceMap.__colidx__.get('resource')
-        uri_col_idx = ResourceReferenceMap.__colidx__.get('uri')
+        key_col_idx = ResourceIdentiferMap.__colidx__.get('key')
+        resource_col_idx = ResourceIdentiferMap.__colidx__.get('resource')
+        uri_col_idx = ResourceIdentiferMap.__colidx__.get('uri')
 
         ret = list()
         for i in terms_indices:

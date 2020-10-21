@@ -1,4 +1,4 @@
-from hdmf.common.resources import ResourceReferences, ResourceReferenceMap, ExternalResources
+from hdmf.common.resources import ResourceReferences, ResourceIdentiferMap, ExternalResources
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
@@ -6,7 +6,7 @@ class TestResourceReferences(TestCase):
 
     @classmethod
     def build_tables(cls):
-        rrmap = ResourceReferenceMap()
+        rrmap = ResourceIdentiferMap()
         resrefs = ResourceReferences()
 
         rrmap.add_row(0, 'ATP Binding', 'Gene Ontology', 'http://amigo.geneontology.org/amigo/term/GO:0005524')
