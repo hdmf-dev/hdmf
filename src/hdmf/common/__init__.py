@@ -121,8 +121,6 @@ ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdenti
 DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
 VocabData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VocabData')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
-#ResourceReferences = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ResourceReferences')
-#ResourceReferenceMap = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ResourceReferenceMap')
 ExternalResources = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ExternalResources')
 
 

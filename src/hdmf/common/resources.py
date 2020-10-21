@@ -3,7 +3,7 @@ import numpy as np
 from . import register_class
 from ..container import Table, Container
 
-from ..utils import docval, get_docval, call_docval_func, popargs
+from ..utils import docval, call_docval_func, popargs
 
 
 def _check_id(table, id):
@@ -11,7 +11,6 @@ def _check_id(table, id):
         return np.uint64(id)
     else:
         raise ValueError('id must be a non-negative integer that is not already in the table: %d' % id)
-
 
 
 @register_class('ResourceReferenceMap')
@@ -38,13 +37,13 @@ class ResourceReferences(Table):
 
     __defaultname__ = 'references'
 
-
     __columns__ = (
         {'name': 'id', 'type': (int, np.uint64), 'doc': 'The unique identifier in this table.'},
         {'name': 'object_id', 'type': str, 'doc': 'The UUID for the object that uses this ontology term.'},
         {'name': 'field', 'type': str,
          'doc': 'The field from the object (specified by object_id) that uses this ontological term.'},
-        {'name': 'item', 'type': (int, np.uint64), 'doc': 'An index into the ResourceReferenceMap that contains the term.'},
+        {'name': 'item', 'type': (int, np.uint64),
+         'doc': 'An index into the ResourceReferenceMap that contains the term.'},
     )
 
     @docval(*__columns__)
@@ -57,6 +56,7 @@ class ResourceReferences(Table):
             raise ValueError('item must be a non-negative integer: %d' % id)
         return super().add_row(kwargs)
 
+
 @register_class('ExternalResources')
 class ExternalResources(Container):
 
@@ -67,8 +67,10 @@ class ExternalResources(Container):
         {'name': 'references', 'child': True},
     )
 
-    @docval({'name': 'resource_map', 'type': ResourceReferenceMap, 'doc': 'the resource reference map for external resources', 'default': None},
-            {'name': 'references', 'type': ResourceReferences, 'doc': 'the references used in this file', 'default': None},
+    @docval({'name': 'resource_map', 'type': ResourceReferenceMap,
+             'doc': 'the resource reference map for external resources', 'default': None},
+            {'name': 'references', 'type': ResourceReferences,
+             'doc': 'the references used in this file', 'default': None},
             {'name': 'name', 'type': str, 'doc': 'the name of this ExternalResources object', 'default': None})
     def __init__(self, **kwargs):
         resource_map, references = popargs('resource_map', 'references', kwargs)
@@ -112,6 +114,3 @@ class ExternalResources(Container):
                 ret.append((resource_val, uri_val))
 
         return tuple(ret)
-
-
-

@@ -1017,7 +1017,6 @@ class Table(Data):
         return cls(name=name, data=data)
 
 
-# diamond inheritance
 class TableRegion(DataRegion):
     '''
     A class for representing regions i.e. slices or indices into an Table
@@ -1049,5 +1048,3 @@ class TableRegion(DataRegion):
 
     def __getitem__(self, idx):
         return self.__regionslicer[idx]
-
-
