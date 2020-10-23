@@ -722,7 +722,7 @@ class DynamicTable(Container):
         ret = self.get(key)
         if ret is None:
             raise KeyError(key)
-        return self.get(key)
+        return ret
 
     def get(self, key, default=None, df=True, **kwargs):  # noqa: C901
         """
@@ -794,7 +794,7 @@ class DynamicTable(Container):
                         col = self.__df_cols[self.__colids[name]]
                         if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
                             ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
-                        elif isinstance(col.data, (list, np.ndarray)):
+                        elif isinstance(col.data, (list, np.ndarray, Dataset)):
                             ret[name] = col.get(arg, df=df, **kwargs)
                         else:
                             ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
@@ -815,7 +815,6 @@ class DynamicTable(Container):
                     raise IndexError(msg)
                 else:  # pragma: no cover
                     raise ie
-
             if df:
                 # reformat objects to fit into a pandas DataFrame
                 id_index = ret.pop('id')
@@ -852,7 +851,6 @@ class DynamicTable(Container):
                             retdf[newcolname] = ret[k][col].values
                     else:
                         retdf[k] = ret[k]
-
                 ret = pd.DataFrame(retdf, index=pd.Index(name=self.id.name, data=id_index))
             else:
                 ret = list(ret.values())
@@ -1030,7 +1028,7 @@ class DynamicTableRegion(VectorData):
     def __getitem__(self, arg):
         return self.get(arg)
 
-    def get(self, arg, index=False, **kwargs):
+    def get(self, arg, index=False, df=True, **kwargs):
         """
         Subset the DynamicTableRegion
 
@@ -1046,12 +1044,18 @@ class DynamicTableRegion(VectorData):
             arg1 = arg[0]
             arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
-        elif isinstance(arg, slice) or np.issubdtype(type(arg), np.integer):
+        elif isinstance(arg, slice) or np.issubdtype(type(arg), np.integer) or isinstance(arg, (list, np.ndarray)):
             if np.issubdtype(type(arg), np.integer) and arg >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
             if not index:
-                ret = self.table.get(ret, **kwargs)
+                uniq = np.unique(ret)
+                lut = {val: i for i, val in enumerate(uniq)}
+                values = self.table.get(uniq, df=df, **kwargs)
+                if df:
+                    ret = values.iloc[[lut[i] for i in ret]]
+                else:
+                    ret = [values[lut[i]] for i in ret]
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
