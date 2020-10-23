@@ -205,7 +205,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = "ascii"
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
-                ret = np.asarray(value).astype(dtype_func)
+                if value.dtype == dtype_func:
+                    ret = value
+                else:
+                    ret = value.astype(dtype_func)
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
