@@ -1,6 +1,7 @@
 import numpy as np
 
-from hdmf.utils import docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional
+from hdmf.utils import (docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
+                        docval_macro)
 from hdmf.testing import TestCase
 
 
@@ -968,3 +969,21 @@ class TestPopargs(TestCase):
         msg = "Argument not found in dict: 'c'"
         with self.assertRaisesWith(ValueError, msg):
             popargs('a', 'c', kwargs)
+
+
+class TestMacro(TestCase):
+
+    def test_macro(self):
+        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes))
+
+        @docval_macro('scalar_data')
+        class Dummy1:
+            pass
+
+        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, Dummy1))
+
+        @docval_macro('dummy')
+        class Dummy2:
+            pass
+
+        self.assertTupleEqual(get_docval_macro('dummy'), (Dummy2, ))

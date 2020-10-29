@@ -41,6 +41,10 @@ def docval_macro(macro):
     return _dec
 
 
+def get_docval_macro(macro):
+    return tuple(__macros[macro])
+
+
 def __type_okay(value, argtype, allow_none=False):
     """Check a value against a type
 
