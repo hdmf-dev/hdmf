@@ -378,6 +378,32 @@ class TestAbstractContainerFieldsConf(TestCase):
             class NamedFieldsChild(NamedFields):
                 __fields__ = ({'name': 'field1', 'settable': True}, )
 
+    def test_mult_inheritance_base_mixin(self):
+        class NamedFields(AbstractContainer):
+            __fields__ = ({'name': 'field1', 'doc': 'field1 doc', 'settable': False}, )
+
+        class BlankMixin:
+            pass
+
+        class NamedFieldsChild(NamedFields, BlankMixin):
+            __fields__ = ({'name': 'field2'}, )
+
+        self.assertTupleEqual(NamedFieldsChild.__fields__, ('field1', 'field2'))
+        self.assertIs(NamedFieldsChild._get_fields(), NamedFieldsChild.__fields__)
+
+    def test_mult_inheritance_base_container(self):
+        class NamedFields(AbstractContainer):
+            __fields__ = ({'name': 'field1', 'doc': 'field1 doc', 'settable': False}, )
+
+        class BlankMixin:
+            pass
+
+        class NamedFieldsChild(BlankMixin, NamedFields):
+            __fields__ = ({'name': 'field2'}, )
+
+        self.assertTupleEqual(NamedFieldsChild.__fields__, ('field1', 'field2'))
+        self.assertIs(NamedFieldsChild._get_fields(), NamedFieldsChild.__fields__)
+
 
 class TestContainerFieldsConf(TestCase):
 
