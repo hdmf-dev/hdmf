@@ -3,13 +3,22 @@
 ## HDMF 2.3.0 (Upcoming)
 
 ### New features
+- Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
 - Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
   `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
+- Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
+  @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
 
+### Internal improvements
+- Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
+
 ### Bug fixes
+- Fix development package dependency issues. @rly (#431)
 - Fix handling of empty lists against a spec with text/bytes dtype. @rly (#434)
 - Fix handling of 1-element datasets with compound dtype against a scalar spec with text/bytes dtype. @rly (#438)
+- Fix convert dtype when writing numpy array from `h5py.Dataset`. @rly (#427)
+- Fix inheritance when non-`AbstractContainer` is base class. @rly (#444)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
