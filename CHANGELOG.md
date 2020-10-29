@@ -6,6 +6,8 @@
 - Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
   `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
 - Add capability to add a row to a column after IO. @bendichter (#426)
+- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
+  and 'scalar_data'. @rly (#456)
 
 ### Bug fixes
 - Fix handling of empty lists against a spec with text/bytes dtype. @rly (#434)
