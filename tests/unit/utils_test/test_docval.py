@@ -974,6 +974,7 @@ class TestPopargs(TestCase):
 class TestMacro(TestCase):
 
     def test_macro(self):
+        self.assertTrue(isinstance(get_docval_macro(), dict))
         self.assertSetEqual(set(get_docval_macro().keys()), {'array_data', 'scalar_data', 'data'})
 
         self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes))
