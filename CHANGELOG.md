@@ -9,6 +9,8 @@
 - Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
   @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
+- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
+  and 'scalar_data'. @rly (#456)
 
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
