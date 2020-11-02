@@ -374,7 +374,7 @@ class BaseStorageSpec(Spec):
     def resolve_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
         for attribute in inc_spec.attributes:
-            self.__new_attributes.discard(attribute)
+            self.__new_attributes.discard(attribute.name)
             if attribute.name in self.__attributes:
                 self.__overridden_attributes.add(attribute.name)
                 continue
