@@ -129,8 +129,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 # check whether new fields spec already exists in base class
                 for field_name in fields_dict:
                     if field_name in base_fields:
-                        raise ValueError("Field '%s' cannot be defined in %s. It already exists on base class %s."
-                                         % (field_name, cls.__name__, base_cls.__name__))
+                        warn("Field '%s' should not be defined in %s. It already exists on base class %s."
+                             % (field_name, cls.__name__, base_cls.__name__))
                 # prepend field specs from base class to fields list of this class
                 all_fields_conf[0:0] = base_cls.get_fields_conf()
 
