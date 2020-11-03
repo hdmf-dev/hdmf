@@ -736,48 +736,46 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         with self.assertRaisesRegex(KeyError, 'boo'):
             self._getitem('boo')
 
+    def _assert_two_elem_df(self, rec):
+        columns = ['foo', 'bar', 'baz', 'dtr_id', 'dtr_qux', 'dtr_quz']
+        data = [[1, 10.0, 'cat', 0, 'qux_1', 'quz_1'],
+                [2, 20.0, 'dog', 1, 'qux_2', 'quz_2']]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def _assert_one_elem_df(self, rec):
+        columns = ['foo', 'bar', 'baz', 'dtr_id', 'dtr_qux', 'dtr_quz']
+        data = [[1, 10.0, 'cat', 0, 'qux_1', 'quz_1']]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    ### tests DynamicTableRegion.__getitem__
     def test_getitem_int(self):
         rec = self._getitem(0)
-        data = {'foo': 1, 'bar': 10.0, 'baz': 'cat',
-                'dtr_id': 0, 'dtr_qux': 'qux_1', 'dtr_quz': 'quz_1'}
-        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0]))
-        pd.testing.assert_frame_equal(rec, exp)
+        self._assert_one_elem_df(rec)
 
     def test_getitem_list(self):
         rec = self._getitem([0, 1])
-        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
-                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
-        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
-        pd.testing.assert_frame_equal(rec, exp)
+        self._assert_two_elem_df(rec)
 
     def test_getitem_slice(self):
         rec = self._getitem(slice(0, 2, None))
-        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
-                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
-        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
-        pd.testing.assert_frame_equal(rec, exp)
+        self._assert_two_elem_df(rec)
 
+    ### tests DynamicTableRegion.get, return a DataFrame
     def test_get_int(self):
         rec = self._get(0)
-        data = {'foo': 1, 'bar': 10.0, 'baz': 'cat',
-                'dtr_id': 0, 'dtr_qux': 'qux_1', 'dtr_quz': 'quz_1'}
-        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0]))
-        pd.testing.assert_frame_equal(rec, exp)
+        self._assert_one_elem_df(rec)
 
     def test_get_list(self):
         rec = self._get([0, 1])
-        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
-                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
-        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
-        pd.testing.assert_frame_equal(rec, exp)
+        self._assert_two_elem_df(rec)
 
     def test_get_slice(self):
         rec = self._get(slice(0, 2, None))
-        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
-                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
-        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
-        pd.testing.assert_frame_equal(rec, exp)
+        self._assert_two_elem_df(rec)
 
+    ### tests DynamicTableRegion.get, DO NOT return a DataFrame
     def test_get_nodf_int(self):
         rec = self._get_nodf(0)
         exp = [0, 1, 10.0, 'cat', [0, 'qux_1', 'quz_1']]
