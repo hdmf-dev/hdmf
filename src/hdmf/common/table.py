@@ -782,7 +782,7 @@ class DynamicTable(Container):
                             currdata = col.get(arg, df=df, **kwargs)
                             ret[name] = currdata
                 # index by a list of ints, return multiple rows
-                elif isinstance(arg, (tuple, list, np.ndarray)):
+                elif isinstance(arg, (list, np.ndarray)):
                     if isinstance(arg, np.ndarray):
                         if len(arg.shape) != 1:
                             raise ValueError("cannot index DynamicTable with multiple dimensions")
