@@ -306,10 +306,11 @@ class BuildManager:
 
     @docval({'name': 'builder', 'type': (GroupBuilder, DatasetBuilder), 'doc': 'the builder to check'},
             {'name': 'parent_data_type', 'type': (str, type), 'doc': 'the potential parent data_type'},
-            returns="a tuple with the type hierarchy", rtype=tuple)
+            returns="True if data_type of *builder* is a sub-data_type of *parent_data_type*, False otherwise",
+            rtype=bool)
     def is_sub_data_type(self, **kwargs):
         '''
-        Return True if data_type of *builder* is a sub-data_type of *parent_data_type*, False otherwise
+        Return whether or not data_type of *builder* is a sub-data_type of *parent_data_type*
         '''
         builder, parent_dt = getargs('builder', 'parent_data_type', kwargs)
         dt = self.get_builder_dt(builder)

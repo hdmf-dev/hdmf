@@ -330,10 +330,10 @@ class NamespaceCatalog:
     @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace containing the data_type'},
             {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to check'},
             {'name': 'parent_data_type', 'type': (str, type), 'doc': 'the potential parent data_type'},
-            returns="a tuple with the type hierarchy", rtype=tuple)
+            returns="True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise", rtype=bool)
     def is_sub_data_type(self, **kwargs):
         '''
-        Return True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise
+        Return whether or not *data_type* is a sub `data_type` of *parent_data_type*
         '''
         ns, dt, parent_dt = getargs('namespace', 'data_type', 'parent_data_type', kwargs)
         spec_ns = self.__namespaces.get(ns)
