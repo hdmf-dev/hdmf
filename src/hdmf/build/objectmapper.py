@@ -172,8 +172,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         cls.__no_convert.add(obj_type)
 
-    @classmethod
-    def convert_dtype(cls, spec, value, spec_dtype=None):
+    @classmethod  # noqa: C901
+    def convert_dtype(cls, spec, value, spec_dtype=None):  # noqa: C901
         """
         Convert values to the specified dtype. For example, if a literal int
         is passed in to a field that is specified as a unsigned integer, this function
@@ -920,7 +920,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                       % (repr(spec.name),
                                          spec.def_key(), repr(spec.data_type_def),
                                          spec.inc_key(), repr(spec.data_type_inc)))
-                    attr_name = self.get_attribute(spec)
                     attr_value = self.get_attr_value(spec, container, build_manager)
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)

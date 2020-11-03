@@ -1044,10 +1044,27 @@ class DynamicTableRegion(VectorData):
             arg1 = arg[0]
             arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
-        elif isinstance(arg, slice) or np.issubdtype(type(arg), np.integer) or isinstance(arg, (list, np.ndarray)):
-            if np.issubdtype(type(arg), np.integer) and arg >= len(self.data):
+        elif np.issubdtype(type(arg), np.integer):
+            if arg >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
+            if not index:
+                ret = self.table.get(ret, df=df, **kwargs)
+            return ret
+        elif isinstance(arg, slice) or isinstance(arg, (list, np.ndarray)):
+            idx = arg
+
+            # ensure a list/ndarray if indices
+            if isinstance(idx, slice):
+                idx = list(range(*idx.indices(len(self.data))))
+
+            # get the data at the specified indices
+            if isinstance(self.data, list):
+                ret = [self.data[i] for i in idx]
+            else:
+                ret = self.data[idx]
+
+            # dereference them if necessary
             if not index:
                 uniq = np.unique(ret)
                 lut = {val: i for i, val in enumerate(uniq)}
@@ -1056,6 +1073,7 @@ class DynamicTableRegion(VectorData):
                     ret = values.iloc[[lut[i] for i in ret]]
                 else:
                     ret = [values[lut[i]] for i in ret]
+
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
