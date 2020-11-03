@@ -788,7 +788,7 @@ class DynamicTable(Container):
                             raise ValueError("cannot index DynamicTable with multiple dimensions")
                     ret = OrderedDict()
                     ret['id'] = (self.id.data[arg]
-                                 if isinstance(self.id.data, np.ndarray)
+                                 if isinstance(self.id.data, (np.ndarray, Dataset))
                                  else [self.id.data[i] for i in arg])
                     for name in self.colnames:
                         col = self.__df_cols[self.__colids[name]]
@@ -1054,29 +1054,53 @@ class DynamicTableRegion(VectorData):
         elif isinstance(arg, slice) or isinstance(arg, (list, np.ndarray)):
             idx = arg
 
-            # ensure a list/ndarray if indices
-            if isinstance(idx, slice):
-                idx = list(range(*idx.indices(len(self.data))))
-
             # get the data at the specified indices
-            if isinstance(self.data, list):
+            if isinstance(self.data, list) and isinstance(idx, list):
                 ret = [self.data[i] for i in idx]
             else:
                 ret = self.data[idx]
 
             # dereference them if necessary
             if not index:
+                # These lines are needed because indexing Dataset with a list/ndarray
+                # of ints requires the list to be sorted.
+                #
+                # First get the unique elements, retrieve them from the table, and then
+                # reorder the result according to the original index that the user passed in.
+                #
+                # When not returning a DataFrame, we need to recursively sort the subelements
+                # of the list we are returning. This is carried out by the recursive method _index_lol
                 uniq = np.unique(ret)
                 lut = {val: i for i, val in enumerate(uniq)}
                 values = self.table.get(uniq, df=df, **kwargs)
                 if df:
                     ret = values.iloc[[lut[i] for i in ret]]
                 else:
-                    ret = [values[lut[i]] for i in ret]
+                    ret = self._index_lol(values, ret, lut)
 
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
+
+    def _index_lol(self, result, index, lut):
+        """
+        This is a helper function for indexing a list of lists/ndarrays. When not returning a
+        DataFrame, indexing a DynamicTable will return a list of lists and ndarrays. To sort
+        the result of a DynamicTable index according to the order of the indices passed in by the
+        user, we have to recursively sort the sub-lists/sub-ndarrays.
+        """
+        ret = list()
+        for col in result:
+            if isinstance(col, list):
+                if isinstance(col[0], list):
+                    ret.append(self._index_lol(col, index, lut))
+                else:
+                    ret.append([col[lut[i]] for i in index])
+            elif isinstance(col, np.ndarray):
+                ret.append(np.array([col[lut[i]] for i in index], dtype=col.dtype))
+            else:
+                raise ValueError(f'unrecognized column type: {type(col)}. Expected list or np.ndarray')
+        return ret
 
     def to_dataframe(self, **kwargs):
         """

@@ -713,6 +713,99 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         multi_container = SimpleMultiContainer('multi', [self.table, self.target_table])
         return multi_container
 
+    def _get(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg)
+
+    def _get_nodf(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg, df=False)
+
+    def _getitem(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table[arg]
+
+    def test_getitem_oor(self):
+        with self.assertRaisesRegex(IndexError, 'Row index 12 out of range'):
+            self._getitem(12)
+
+    def test_getitem_badcol(self):
+        with self.assertRaisesRegex(KeyError, 'boo'):
+            self._getitem('boo')
+
+    def test_getitem_int(self):
+        rec = self._getitem(0)
+        data = {'foo': 1, 'bar': 10.0, 'baz': 'cat',
+                'dtr_id': 0, 'dtr_qux': 'qux_1', 'dtr_quz': 'quz_1'}
+        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def test_getitem_list(self):
+        rec = self._getitem([0, 1])
+        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
+                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
+        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def test_getitem_slice(self):
+        rec = self._getitem(slice(0, 2, None))
+        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
+                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
+        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def test_get_int(self):
+        rec = self._get(0)
+        data = {'foo': 1, 'bar': 10.0, 'baz': 'cat',
+                'dtr_id': 0, 'dtr_qux': 'qux_1', 'dtr_quz': 'quz_1'}
+        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def test_get_list(self):
+        rec = self._get([0, 1])
+        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
+                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
+        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def test_get_slice(self):
+        rec = self._get(slice(0, 2, None))
+        data = {'foo': [1, 2], 'bar': [10.0, 20.0], 'baz': ['cat', 'dog'],
+                'dtr_id': [0, 1], 'dtr_qux': ['qux_1', 'qux_2'], 'dtr_quz': ['quz_1', 'quz_2']}
+        exp = pd.DataFrame(data=data, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def test_get_nodf_int(self):
+        rec = self._get_nodf(0)
+        exp = [0, 1, 10.0, 'cat', [0, 'qux_1', 'quz_1']]
+        self.assertListEqual(rec, exp)
+
+    def _assert_list_of_ndarray_equal(self, l1, l2):
+        """
+        This is a helper function for test_get_nodf_list and test_get_nodf_slice.
+        It compares ndarrays from a list of ndarrays
+        """
+        for a1, a2 in zip(l1, l2):
+            if isinstance(a1, list):
+                self._assert_list_of_ndarray_equal(a1, a2)
+            else:
+                np.testing.assert_array_equal(a1, a2)
+
+    def test_get_nodf_list(self):
+        rec = self._get_nodf([0, 1])
+        exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']),
+               [np.array([0, 1]), np.array(['qux_1', 'qux_2']), np.array(['quz_1', 'quz_2'])]]
+        self._assert_list_of_ndarray_equal(exp, rec)
+
+    def test_get_nodf_slice(self):
+        rec = self._get_nodf(slice(0, 2, None))
+        exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']),
+               [np.array([0, 1]), np.array(['qux_1', 'qux_2']), np.array(['quz_1', 'quz_2'])]]
+        self._assert_list_of_ndarray_equal(exp, rec)
+
 
 class TestElementIdentifiers(TestCase):
 
