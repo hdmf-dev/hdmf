@@ -1051,7 +1051,7 @@ class DynamicTableRegion(VectorData):
             if not index:
                 ret = self.table.get(ret, df=df, **kwargs)
             return ret
-        elif isinstance(arg, slice) or isinstance(arg, (list, np.ndarray)):
+        elif isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
 
             # get the data at the specified indices
