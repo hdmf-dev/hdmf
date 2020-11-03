@@ -1099,7 +1099,7 @@ class DynamicTableRegion(VectorData):
             elif isinstance(col, np.ndarray):
                 ret.append(np.array([col[lut[i]] for i in index], dtype=col.dtype))
             else:
-                raise ValueError(f'unrecognized column type: {type(col)}. Expected list or np.ndarray')
+                raise ValueError('unrecognized column type: %s. Expected list or np.ndarray' % type(col))
         return ret
 
     def to_dataframe(self, **kwargs):
