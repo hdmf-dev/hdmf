@@ -741,15 +741,16 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         data = [[1, 10.0, 'cat', 0, 'qux_1', 'quz_1'],
                 [2, 20.0, 'dog', 1, 'qux_2', 'quz_2']]
         exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0, 1]))
-        pd.testing.assert_frame_equal(rec, exp)
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
 
     def _assert_one_elem_df(self, rec):
         columns = ['foo', 'bar', 'baz', 'dtr_id', 'dtr_qux', 'dtr_quz']
         data = [[1, 10.0, 'cat', 0, 'qux_1', 'quz_1']]
         exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0]))
-        pd.testing.assert_frame_equal(rec, exp)
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
 
-    ### tests DynamicTableRegion.__getitem__
+    #####################
+    # tests DynamicTableRegion.__getitem__
     def test_getitem_int(self):
         rec = self._getitem(0)
         self._assert_one_elem_df(rec)
@@ -762,7 +763,8 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         rec = self._getitem(slice(0, 2, None))
         self._assert_two_elem_df(rec)
 
-    ### tests DynamicTableRegion.get, return a DataFrame
+    #####################
+    # tests DynamicTableRegion.get, return a DataFrame
     def test_get_int(self):
         rec = self._get(0)
         self._assert_one_elem_df(rec)
@@ -775,7 +777,8 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         rec = self._get(slice(0, 2, None))
         self._assert_two_elem_df(rec)
 
-    ### tests DynamicTableRegion.get, DO NOT return a DataFrame
+    #####################
+    # tests DynamicTableRegion.get, DO NOT return a DataFrame
     def test_get_nodf_int(self):
         rec = self._get_nodf(0)
         exp = [0, 1, 10.0, 'cat', [0, 'qux_1', 'quz_1']]
