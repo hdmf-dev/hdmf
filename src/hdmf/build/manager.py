@@ -304,6 +304,18 @@ class BuildManager:
         builder = getargs('builder', kwargs)
         return self.__type_map.get_builder_dt(builder)
 
+    @docval({'name': 'builder', 'type': (GroupBuilder, DatasetBuilder), 'doc': 'the builder to check'},
+            {'name': 'parent_data_type', 'type': (str, type), 'doc': 'the potential parent data_type'},
+            returns="a tuple with the type hierarchy", rtype=tuple)
+    def is_sub_data_type(self, **kwargs):
+        '''
+        Return True if data_type of *builder* is a sub-data_type of *parent_data_type*, False otherwise
+        '''
+        builder, parent_dt = getargs('builder', 'parent_data_type', kwargs)
+        dt = self.get_builder_dt(builder)
+        ns = self.get_builder_ns(builder)
+        return self.namespace_catalog.is_sub_data_type(ns, dt, parent_dt)
+
 
 class TypeSource:
     '''A class to indicate the source of a data_type in a namespace.
