@@ -3,7 +3,7 @@ from hdmf.common import SimpleMultiContainer
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
-class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
+class SimpleMultiContainerRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         containers = [
