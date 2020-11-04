@@ -783,9 +783,7 @@ class DynamicTable(Container):
                         if len(arg.shape) != 1:
                             raise ValueError("cannot index DynamicTable with multiple dimensions")
                     ret = OrderedDict()
-                    ret['id'] = (self.id.data[arg]
-                                 if isinstance(self.id.data, (np.ndarray, Dataset))
-                                 else [self.id.data[i] for i in arg])
+                    ret['id'] = self.id[arg]
                     for name in self.colnames:
                         col = self.__df_cols[self.__colids[name]]
                         ret[name] = col.get(arg, df=df, **kwargs)
