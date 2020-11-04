@@ -729,11 +729,12 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         return table[arg]
 
     def test_getitem_oor(self):
-        with self.assertRaisesRegex(IndexError, 'Row index 12 out of range'):
+        msg = 'Row index 12 out of range for DynamicTable \'table_with_dtr\' (length 5).'
+        with self.assertRaisesWith(IndexError, msg):
             self._getitem(12)
 
     def test_getitem_badcol(self):
-        with self.assertRaisesRegex(KeyError, 'boo'):
+        with self.assertRaisesWith(KeyError, '\'boo\''):
             self._getitem('boo')
 
     def _assert_two_elem_df(self, rec):
