@@ -776,11 +776,7 @@ class DynamicTable(Container):
                     ret['id'] = self.id.data[arg]
                     for name in self.colnames:
                         col = self.__df_cols[self.__colids[name]]
-                        if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                            ret[name] = col.get(arg, df=df, **kwargs)
-                        else:
-                            currdata = col.get(arg, df=df, **kwargs)
-                            ret[name] = currdata
+                        ret[name] = col.get(arg, df=df, **kwargs)
                 # index by a list of ints, return multiple rows
                 elif isinstance(arg, (list, np.ndarray)):
                     if isinstance(arg, np.ndarray):
@@ -792,12 +788,7 @@ class DynamicTable(Container):
                                  else [self.id.data[i] for i in arg])
                     for name in self.colnames:
                         col = self.__df_cols[self.__colids[name]]
-                        if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                            ret[name] = [x for x in col.get(arg, df=df, **kwargs)]
-                        elif isinstance(col.data, (list, np.ndarray, Dataset)):
-                            ret[name] = col.get(arg, df=df, **kwargs)
-                        else:
-                            ret[name] = [col.get(arg, df=df, **kwargs) for i in arg]
+                        ret[name] = col.get(arg, df=df, **kwargs)
                 else:
                     raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
             except ValueError as ve:
