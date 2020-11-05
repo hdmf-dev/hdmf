@@ -327,6 +327,21 @@ class NamespaceCatalog:
             raise KeyError("'%s' not a namespace" % namespace)
         return spec_ns.get_hierarchy(data_type)
 
+    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace containing the data_type'},
+            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to check'},
+            {'name': 'parent_data_type', 'type': (str, type), 'doc': 'the potential parent data_type'},
+            returns="True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise", rtype=bool)
+    def is_sub_data_type(self, **kwargs):
+        '''
+        Return whether or not *data_type* is a sub `data_type` of *parent_data_type*
+        '''
+        ns, dt, parent_dt = getargs('namespace', 'data_type', 'parent_data_type', kwargs)
+        spec_ns = self.__namespaces.get(ns)
+        if spec_ns is None:
+            raise KeyError("'%s' not a namespace" % ns)
+        hier = spec_ns.get_hierarchy(dt)
+        return parent_dt in hier
+
     @docval(rtype=tuple)
     def get_sources(self, **kwargs):
         '''
