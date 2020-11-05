@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 import h5py
 from io import BytesIO
+from pathlib import Path
 
 from hdmf.utils import docval, getargs
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
@@ -850,6 +851,20 @@ class TestRoundTrip(TestCase):
             read_foofile = io.read()
             self.assertDictEqual({}, read_foofile.buckets['bucket1'].foos)
 
+    def test_roundtrip_pathlib_path(self):
+        pathlib_path = Path(self.path)
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(pathlib_path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(pathlib_path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
 
 class TestHDF5IO(TestCase):
 
@@ -884,6 +899,11 @@ class TestHDF5IO(TestCase):
                    % (self.path, self.file_obj.filename))
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
+
+    def test_pathlib_path(self):
+        pathlib_path = Path(self.path)
+        with HDF5IO(pathlib_path, mode='w') as io:
+            self.assertEqual(io.source, self.path)
 
 
 class TestCacheSpec(TestCase):
@@ -1987,6 +2007,22 @@ class TestLoadNamespaces(TestCase):
             HDF5IO.load_namespaces(ns_catalog, path='different_path', file=file_obj)
 
         file_obj.close()
+
+    def test_load_namespaces_with_pathlib_path(self):
+        """Test that loading a namespace using a valid pathlib Path is OK and returns the correct dictionary."""
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        pathlib_path = Path(self.path)
+        ns_catalog = NamespaceCatalog()
+        d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
+        self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
 
 
 class TestExport(TestCase):
