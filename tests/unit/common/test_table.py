@@ -1,6 +1,6 @@
 import unittest
 from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, \
-    DynamicTableRegion, VocabData, get_manager
+    DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer
 from hdmf.testing import TestCase, H5RoundTripMixin
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 
@@ -664,6 +664,149 @@ class TestDynamicTableRegion(TestCase):
 """
         expected = expected % (id(dynamic_table_region), id(table))
         self.assertEqual(str(dynamic_table_region), expected)
+
+
+class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
+
+    def make_tables(self):
+        self.spec2 = [
+            {'name': 'qux', 'description': 'qux column'},
+            {'name': 'quz', 'description': 'quz column'},
+        ]
+        self.data2 = [
+            ['qux_1', 'qux_2'],
+            ['quz_1', 'quz_2'],
+        ]
+
+        target_columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec2, self.data2)
+        ]
+        target_table = DynamicTable("target_table", 'example table to target with a DynamicTableRegion',
+                                    columns=target_columns)
+
+        self.spec1 = [
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
+            {'name': 'dtr', 'description': 'DTR'},
+        ]
+        self.data1 = [
+            [1, 2, 3, 4, 5],
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
+        ]
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec1, self.data1)
+        ]
+        columns.append(DynamicTableRegion(name='dtr', description='example DynamicTableRegion',
+                                          data=[0, 1, 1, 0, 1], table=target_table))
+        table = DynamicTable("table_with_dtr", 'a test table that has a DynamicTableRegion', columns=columns)
+        return table, target_table
+
+    def setUp(self):
+        self.table, self.target_table = self.make_tables()
+        super().setUp()
+
+    def setUpContainer(self):
+        multi_container = SimpleMultiContainer('multi', [self.table, self.target_table])
+        return multi_container
+
+    def _get(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg)
+
+    def _get_nodf(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg, df=False)
+
+    def _getitem(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table[arg]
+
+    def test_getitem_oor(self):
+        msg = 'Row index 12 out of range for DynamicTable \'table_with_dtr\' (length 5).'
+        with self.assertRaisesWith(IndexError, msg):
+            self._getitem(12)
+
+    def test_getitem_badcol(self):
+        with self.assertRaisesWith(KeyError, '\'boo\''):
+            self._getitem('boo')
+
+    def _assert_two_elem_df(self, rec):
+        columns = ['foo', 'bar', 'baz', 'dtr_id', 'dtr_qux', 'dtr_quz']
+        data = [[1, 10.0, 'cat', 0, 'qux_1', 'quz_1'],
+                [2, 20.0, 'dog', 1, 'qux_2', 'quz_2']]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
+
+    def _assert_one_elem_df(self, rec):
+        columns = ['foo', 'bar', 'baz', 'dtr_id', 'dtr_qux', 'dtr_quz']
+        data = [[1, 10.0, 'cat', 0, 'qux_1', 'quz_1']]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0]))
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
+
+    #####################
+    # tests DynamicTableRegion.__getitem__
+    def test_getitem_int(self):
+        rec = self._getitem(0)
+        self._assert_one_elem_df(rec)
+
+    def test_getitem_list(self):
+        rec = self._getitem([0, 1])
+        self._assert_two_elem_df(rec)
+
+    def test_getitem_slice(self):
+        rec = self._getitem(slice(0, 2, None))
+        self._assert_two_elem_df(rec)
+
+    #####################
+    # tests DynamicTableRegion.get, return a DataFrame
+    def test_get_int(self):
+        rec = self._get(0)
+        self._assert_one_elem_df(rec)
+
+    def test_get_list(self):
+        rec = self._get([0, 1])
+        self._assert_two_elem_df(rec)
+
+    def test_get_slice(self):
+        rec = self._get(slice(0, 2, None))
+        self._assert_two_elem_df(rec)
+
+    #####################
+    # tests DynamicTableRegion.get, DO NOT return a DataFrame
+    def test_get_nodf_int(self):
+        rec = self._get_nodf(0)
+        exp = [0, 1, 10.0, 'cat', [0, 'qux_1', 'quz_1']]
+        self.assertListEqual(rec, exp)
+
+    def _assert_list_of_ndarray_equal(self, l1, l2):
+        """
+        This is a helper function for test_get_nodf_list and test_get_nodf_slice.
+        It compares ndarrays from a list of ndarrays
+        """
+        for a1, a2 in zip(l1, l2):
+            if isinstance(a1, list):
+                self._assert_list_of_ndarray_equal(a1, a2)
+            else:
+                np.testing.assert_array_equal(a1, a2)
+
+    def test_get_nodf_list(self):
+        rec = self._get_nodf([0, 1])
+        exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']),
+               [np.array([0, 1]), np.array(['qux_1', 'qux_2']), np.array(['quz_1', 'quz_2'])]]
+        self._assert_list_of_ndarray_equal(exp, rec)
+
+    def test_get_nodf_slice(self):
+        rec = self._get_nodf(slice(0, 2, None))
+        exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']),
+               [np.array([0, 1]), np.array(['qux_1', 'qux_2']), np.array(['quz_1', 'quz_2'])]]
+        self._assert_list_of_ndarray_equal(exp, rec)
 
 
 class TestElementIdentifiers(TestCase):
