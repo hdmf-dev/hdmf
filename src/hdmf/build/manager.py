@@ -184,14 +184,6 @@ class BuildManager:
             self.__add_refs()
         return result
 
-    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"})
-    def get_builder(self, **kwargs):
-        """Return the already-built Builder for the given Container, or None if it has not yet been built."""
-        container = getargs('container', kwargs)
-        container_id = self.__conthash__(container)
-        result = self.__builders.get(container_id)
-        return result
-
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
             {'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the Builder representation of the given container'})

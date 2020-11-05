@@ -108,15 +108,16 @@ class BaseBuilder(Builder):
 
     @property
     def placed(self):
-        ''' Whether this Builder has been placed in its correct position in the builder hierarchy
-        The Builder may have been built because another Builder links to it, but the original Builder has not
-        yet been built in its home (unlinked) location in the builder hierarchy.'''
+        """Whether this Builder has been placed in its correct position in the builder hierarchy.
+        If False, then this Builder was built because another Builder links to it or references it, but this Builder
+        has not yet been built in its true location in the builder hierarchy.
+        """
         return self.__placed
 
     @placed.setter
     def placed(self, s):
         if self.__placed and not s:
-            raise ValueError("cannot change placed to not placed")
+            raise ValueError("Cannot change placed to not placed.")
         self.__placed = s
 
     @property
