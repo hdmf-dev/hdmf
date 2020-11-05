@@ -221,15 +221,6 @@ class TestHDF5Writer(GroupBuilderTestCase):
         self.assertBuilderEqual(builder, self.builder)
         io.close()
 
-    def test_overwrite_written(self):
-        self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
-        io.write_builder(self.builder)
-        builder = io.read_builder()
-        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
-            builder.written = False
-        io.close()
-
     def test_dataset_shape(self):
         self.maxDiff = None
         io = HDF5IO(self.path, manager=self.manager, mode='a')

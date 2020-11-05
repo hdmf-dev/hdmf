@@ -3,8 +3,43 @@ from collections.abc import Iterable
 import numpy as np
 from warnings import warn
 import copy
+import h5py
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
+
+
+def append_data(data, arg):
+    if isinstance(data, (list, DataIO)):
+        data.append(arg)
+        return data
+    elif isinstance(data, np.ndarray):
+        return np.append(data, [arg])
+    elif isinstance(data, h5py.Dataset):
+        shape = list(data.shape)
+        shape[0] += 1
+        data.resize(shape)
+        data[-1] = arg
+        return data
+    else:
+        msg = "Data cannot append to object of type '%s'" % type(data)
+        raise ValueError(msg)
+
+
+def extend_data(data, arg):
+    if isinstance(data, (list, DataIO)):
+        data.extend(arg)
+        return data
+    elif isinstance(data, np.ndarray):
+        return np.vstack((data, arg))
+    elif isinstance(data, h5py.Dataset):
+        shape = list(data.shape)
+        shape[0] += len(arg)
+        data.resize(shape)
+        data[-len(arg):] = arg
+        return data
+    else:
+        msg = "Data cannot extend object of type '%s'" % type(data)
+        raise ValueError(msg)
 
 
 @docval_macro('array_data')
@@ -157,6 +192,10 @@ class DataChunkIterator(AbstractDataChunkIterator):
         if self.__next_chunk.data is not None:
             self.__dtype = self.__next_chunk.data.dtype
             self.__first_chunk_shape = get_data_shape(self.__next_chunk.data)
+
+        # This should be done as a last resort only
+        if self.__first_chunk_shape is None and self.__maxshape is not None:
+            self.__first_chunk_shape = tuple(1 if i is None else i for i in self.__maxshape)
 
         if self.__dtype is None:
             raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
@@ -598,6 +637,12 @@ class DataIO:
         newobj = DataIO(data=self.data)
         return newobj
 
+    def append(self, arg):
+        self.__data = append_data(self.__data, arg)
+
+    def extend(self, arg):
+        self.__data = extend_data(self.__data, arg)
+
     def __deepcopy__(self, memo):
         """
         Define a custom copy method for deep copy.
@@ -620,7 +665,11 @@ class DataIO:
         return len(self.data)
 
     def __bool__(self):
-        return self.valid and len(self) > 0
+        if self.valid:
+            if isinstance(self.data, AbstractDataChunkIterator):
+                return True
+            return len(self) > 0
+        return False
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""

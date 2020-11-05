@@ -1,14 +1,18 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
-                        ReferenceBuilder, MissingRequiredWarning)
+                        ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
+from hdmf.container import MultiContainerInterface
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.testing import TestCase
+from hdmf.query import HDMFDataset
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import h5py
+import unittest
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -63,6 +67,10 @@ class Bar(Container):
     @property
     def foo(self):
         return self.__foo
+
+    def remove_foo(self):
+        if self is self.__foo.parent:
+            self._remove_child(self.__foo)
 
 
 class Foo(Container):
@@ -120,11 +128,8 @@ class TestTypeMap(TestCase):
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        # self.build_manager = BuildManager(self.type_map)
 
     def test_get_map_unique_mappers(self):
-        self.type_map.register_map(Bar, ObjectMapper)
-        self.type_map.register_map(Foo, ObjectMapper)
         bar_inst = Bar('my_bar', list(range(10)), 'value1', 10)
         foo_inst = Foo(name='my_foo')
         bar_mapper = self.type_map.get_map(bar_inst)
@@ -132,7 +137,6 @@ class TestTypeMap(TestCase):
         self.assertIsNot(bar_mapper, foo_mapper)
 
     def test_get_map(self):
-        self.type_map.register_map(Bar, ObjectMapper)
         container_inst = Bar('my_bar', list(range(10)), 'value1', 10)
         mapper = self.type_map.get_map(container_inst)
         self.assertIsInstance(mapper, ObjectMapper)
@@ -230,7 +234,6 @@ class TestDynamicContainer(TestCase):
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
@@ -253,10 +256,11 @@ class TestDynamicContainer(TestCase):
         self.assertTrue(issubclass(cls, Bar))
 
     def test_dynamic_container_default_name(self):
-        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz')
+        baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz',
+                             attributes=[AttributeSpec('attr4', 'another example float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        inst = cls()
+        inst = cls(attr4=10.)
         self.assertEqual(inst.name, 'bingo')
 
     def test_dynamic_container_creation_defaults(self):
@@ -383,28 +387,123 @@ class TestDynamicContainer(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
-    def test_dynamic_container_uint(self):
+    def test_dynamic_container_fixed_name(self):
+        """Test that dynamic class generation for an extended type with a fixed name works."""
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example uint16 attribute', 'uint16'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
-            if arg['name'] == 'attr3':
-                self.assertTupleEqual(arg['type'], (np.uint16, np.uint32, np.uint64))
+        Baz = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
+        self.assertEqual(obj.name, 'Baz')
 
-    def test_dynamic_container_numeric(self):
-        baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
-        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
-        for arg in get_docval(cls.__init__):
+    def test_multi_container_spec(self):
+        multi_spec = GroupSpec(
+            'A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(
+                    data_type_inc=self.bar_spec,
+                    doc='test multi',
+                    quantity='*')],
+            attributes=[
+                AttributeSpec('attr3', 'an example float attribute', 'float')]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
+        assert issubclass(Multi, MultiContainerInterface)
+        assert Multi.__clsconf__[0] == dict(
+            attr='bars',
+            type=Bar,
+            add='add_bars',
+            get='get_bars',
+            create='create_bars'
+        )
+
+        multi = Multi(name='my_multi',
+                      bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+                      attr3=5.)
+        assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.attr3 == 5.
+
+    def test_build_docval(self):
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(
+            attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
+            attr4=AttributeSpec('attr4', 'another example float attribute', 'float')
+        )
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        expected = [
+            {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
+            {'name': 'data',
+             'type': (DataIO, np.ndarray, list, tuple, h5py.Dataset,
+                      HDMFDataset, AbstractDataChunkIterator),
+             'doc': 'some data'},
+            {'name': 'attr1', 'type': str,
+             'doc': 'an attribute'},
+            {'name': 'attr2', 'type': int,
+             'doc': 'another attribute'},
+            {'name': 'attr3', 'doc': 'an example numeric attribute',
+             'type': (float, np.float32, np.float64, np.int8, np.int16,
+                      np.int32, np.int64, int, np.uint8, np.uint16,
+                      np.uint32, np.uint64)},
+            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
+            {'name': 'attr4', 'doc': 'another example float attribute',
+             'type': (float, np.float32, np.float64)}
+        ]
+
+        self.assertListEqual(docval, expected)
+
+    def test_build_docval_shape(self):
+        """Test that docval generation for a class with shape has the shape set."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric', shape=[None]))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
             if arg['name'] == 'attr3':
-                self.assertTupleEqual(arg['type'], (float, np.float32, np.float64, np.int8, np.int16, np.int32,
-                                                    np.int64, int, np.uint8, np.uint16, np.uint32, np.uint64))
+                self.assertListEqual(arg['shape'], [None])
+
+    def test_build_docval_default_value(self):
+        """Test that docval generation for a class with an additional optional field has the default value set."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                               required=False, default_value=10.0))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertEqual(arg['default'], 10.0)
+
+    def test_build_docval_default_value_none(self):
+        """Test that docval generation for a class with an additional optional field has default: None."""
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
+                                               required=False))
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertIsNone(arg['default'])
+
+    def test_build_docval_fixed_name(self):
+        """Test that docval generation for a class with a fixed name does not contain a docval arg for name."""
+        docval = self.type_map._build_docval(Bar, {}, name='Baz')
+
+        found = False
+        for arg in docval:
+            if arg['name'] == 'name':
+                found = True
+        self.assertFalse(found)
+
+    def test_build_docval_default_name(self):
+        """Test that docval generation for a class with a default name has the default value for name set."""
+        docval = self.type_map._build_docval(Bar, {}, default_name='MyBaz')
+
+        for arg in docval:
+            if arg['name'] == 'name':
+                self.assertEqual(arg['default'], 'MyBaz')
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
@@ -421,7 +520,6 @@ class ObjectMapperMixin(metaclass=ABCMeta):
         self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
@@ -568,8 +666,6 @@ class TestLinkedContainer(TestCase):
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Foo, ObjectMapper)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.foo_mapper = ObjectMapper(self.foo_spec)
         self.bar_mapper = ObjectMapper(self.bar_spec)
@@ -604,6 +700,31 @@ class TestLinkedContainer(TestCase):
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
 
+    @unittest.expectedFailure
+    def test_build_broken_link_parent(self):
+        ''' Test that building a container with a broken link that has a parent raises an error. '''
+        foo_inst = Foo('my_foo')
+        Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)  # foo_inst.parent is this bar
+        # bar_inst2.foo should link to bar_inst1.foo
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10, foo=foo_inst)
+
+        # TODO bar_inst.foo.parent exists but is never built - this is a tricky edge case that should raise an error
+        with self.assertRaises(OrphanContainerBuildError):
+            self.bar_mapper.build(bar_inst2, self.manager)
+
+    def test_build_broken_link_no_parent(self):
+        ''' Test that building a container with a broken link that has no parent raises an error. '''
+        foo_inst = Foo('my_foo')
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)  # foo_inst.parent is this bar
+        # bar_inst2.foo should link to bar_inst1.foo
+        bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10, foo=foo_inst)
+        bar_inst1.remove_foo()
+
+        msg = ("my_bar2 (my_bar2): Linked Foo 'my_foo' has no parent. Remove the link or ensure the linked container "
+               "is added properly.")
+        with self.assertRaisesWith(OrphanContainerBuildError, msg):
+            self.bar_mapper.build(bar_inst2, self.manager)
+
 
 class TestReference(TestCase):
 
@@ -629,8 +750,6 @@ class TestReference(TestCase):
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
         self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Foo, ObjectMapper)
-        self.type_map.register_map(Bar, ObjectMapper)
         self.manager = BuildManager(self.type_map)
         self.foo_mapper = ObjectMapper(self.foo_spec)
         self.bar_mapper = ObjectMapper(self.bar_spec)
@@ -683,7 +802,7 @@ class TestReference(TestCase):
 class TestMissingRequiredAttribute(TestCase):
 
     def test_required_attr_missing(self):
-        ''' Test mapping when one container is missing a required attribute reference
+        ''' Test mapping when one container is missing a required attribute
         '''
         bar_spec = GroupSpec('A test group specification with a data type Bar',
                              data_type_def='Bar',
@@ -702,7 +821,6 @@ class TestMissingRequiredAttribute(TestCase):
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
         type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        type_map.register_map(Bar, ObjectMapper)
         manager = BuildManager(type_map)
         bar_mapper = ObjectMapper(bar_spec)
 
@@ -733,13 +851,42 @@ class TestMissingRequiredAttribute(TestCase):
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
         type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        type_map.register_map(Bar, ObjectMapper)
         manager = BuildManager(type_map)
         bar_mapper = ObjectMapper(bar_spec)
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
 
         msg = "attribute 'foo' for 'my_bar1' (Bar)"
+        with self.assertWarnsWith(MissingRequiredWarning, msg):
+            bar_mapper.build(bar_inst1, manager)
+
+
+class TestMissingRequiredDataset(TestCase):
+
+    def test_required_dataset_missing(self):
+        ''' Test mapping when one container is missing a required dataset
+        '''
+        bar_spec = GroupSpec('A test group specification with a data type Bar',
+                             data_type_def='Bar',
+                             datasets=[DatasetSpec('an example dataset', 'int', name='data')])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        manager = BuildManager(type_map)
+        bar_mapper = ObjectMapper(bar_spec)
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__data = None  # make data dataset None
+
+        msg = "dataset 'data' for 'my_bar1' (Bar)"
         with self.assertWarnsWith(MissingRequiredWarning, msg):
             bar_mapper.build(bar_inst1, manager)
 
@@ -1020,6 +1167,11 @@ class TestConvertDtype(TestCase):
         np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
         self.assertEqual(ret_dtype, 'utf8')
 
+        value = []
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
+
     def test_ascii_spec(self):
         spec_type = 'ascii'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
@@ -1050,6 +1202,11 @@ class TestConvertDtype(TestCase):
         value = np.array(['a', 'b'], dtype='S1')
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         np.testing.assert_array_equal(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
+
+        value = []
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(ret, value)
         self.assertEqual(ret_dtype, 'ascii')
 
     def test_no_spec(self):

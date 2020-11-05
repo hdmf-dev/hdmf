@@ -28,7 +28,6 @@ class Builder(dict, metaclass=ABCMeta):
             self.__source = parent.source
         else:
             self.__source = None
-        self.__written = False
 
     @property
     def path(self):
@@ -41,17 +40,6 @@ class Builder(dict, metaclass=ABCMeta):
             s.append(c.name)
             c = c.parent
         return "/".join(s[::-1])
-
-    @property
-    def written(self):
-        ''' The source of this Builder '''
-        return self.__written
-
-    @written.setter
-    def written(self, s):
-        if self.__written and not s:
-            raise ValueError("cannot change written to not written")
-        self.__written = s
 
     @property
     def name(self):

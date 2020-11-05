@@ -1,6 +1,7 @@
 import numpy as np
 
-from hdmf.utils import docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional
+from hdmf.utils import (docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
+                        docval_macro)
 from hdmf.testing import TestCase
 
 
@@ -46,7 +47,7 @@ class MyTestSubclass(MyTestClass):
             {'name': 'arg3', 'type': bool, 'doc': 'argument3 is a bool. it defaults to False', 'default': False},
             {'name': 'arg4', 'type': str, 'doc': 'argument4 is a str'},
             {'name': 'arg5', 'type': 'float', 'doc': 'argument5 is a float'},
-            {'name': 'arg6', 'type': bool, 'doc': 'argument6 is a bool. it defaults to False', 'default': None})
+            {'name': 'arg6', 'type': bool, 'doc': 'argument6 is a bool. it defaults to None', 'default': None})
     def basic_add2_kw(self, **kwargs):
         return kwargs
 
@@ -716,6 +717,14 @@ class TestDocValidator(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             method(self, 'c')
 
+    def test_enum_str_none_default(self):
+        """Test that docval with an enum check on strings and a None default value works"""
+        @docval({'name': 'arg1', 'type': str, 'doc': 'an arg', 'default': None, 'enum': ['a', 'b']})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        self.assertIsNone(method(self))
+
     def test_enum_forbidden_values(self):
         """Test that docval with enum values that include a forbidden type fails"""
         msg = ("docval for arg1: enum values are of types not allowed by arg type "
@@ -960,3 +969,24 @@ class TestPopargs(TestCase):
         msg = "Argument not found in dict: 'c'"
         with self.assertRaisesWith(ValueError, msg):
             popargs('a', 'c', kwargs)
+
+
+class TestMacro(TestCase):
+
+    def test_macro(self):
+        self.assertTrue(isinstance(get_docval_macro(), dict))
+        self.assertSetEqual(set(get_docval_macro().keys()), {'array_data', 'scalar_data', 'data'})
+
+        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes))
+
+        @docval_macro('scalar_data')
+        class Dummy1:
+            pass
+
+        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, Dummy1))
+
+        @docval_macro('dummy')
+        class Dummy2:
+            pass
+
+        self.assertTupleEqual(get_docval_macro('dummy'), (Dummy2, ))
