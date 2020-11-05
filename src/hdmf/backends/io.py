@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
 from ..utils import docval, getargs, popargs
@@ -8,12 +9,16 @@ from ..container import Container
 class HDMFIO(metaclass=ABCMeta):
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
-            {"name": "source", "type": str,
+            {"name": "source", "type": (str, Path),
              "doc": "the source of container being built i.e. file path", 'default': None})
     def __init__(self, **kwargs):
-        self.__manager = getargs('manager', kwargs)
+        manager, source = getargs('manager', 'source', kwargs)
+        if isinstance(source, Path):
+            source = str(source)
+
+        self.__manager = manager
         self.__built = dict()
-        self.__source = getargs('source', kwargs)
+        self.__source = source
         self.open()
 
     @property
