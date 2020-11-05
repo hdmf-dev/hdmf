@@ -9,10 +9,9 @@ class TestResourceReferences(TestCase):
         rrmap = ResourceIdentiferMap()
         resrefs = ResourceReferences()
 
-        rrmap.add_row(0, 'ATP Binding', 'Gene Ontology', 'http://amigo.geneontology.org/amigo/term/GO:0005524')
-        rrmap.add_row(1, 'Cacna1s', 'Mouse Genome Informatics', 'http://www.informatics.jax.org/marker/MGI:88294')
-        rrmap.add_row(2, 'recA', 'A Systematic Annotation Package for Community Analysis of Genomes',
-                      'https://asap.genetics.wisc.edu/asap/feature_info.php?FeatureID=ABE-0008876')
+        rrmap.add_row(0, 'ATP Binding', 'Gene Ontology', 'GO:0005524')
+        rrmap.add_row(1, 'Cacna1s', 'Mouse Genome Informatics', 'MGI:88294')
+        rrmap.add_row(2, 'recA', 'A Systematic Annotation Package for Community Analysis of Genomes', 'ABE-0008876')
 
         resrefs.add_row(0, 'ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo', 0)
         resrefs.add_row(1, 'e455bf5a-cbc5-48b1-b686-4b4e31f62a53', 'bar', 2)
