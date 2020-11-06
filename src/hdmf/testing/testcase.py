@@ -80,7 +80,7 @@ class TestCase(unittest.TestCase):
         elif isinstance(f1, Data):
             self._assert_data_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, (float, np.floating)):
-            np.testing.assert_equal(f1, f2)
+            np.testing.assert_allclose(f1, f2)
         else:
             self.assertEqual(f1, f2)
 
@@ -98,7 +98,7 @@ class TestCase(unittest.TestCase):
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
             if isinstance(arr1, (float, np.floating)):
-                np.testing.assert_equal(arr1, arr2)
+                np.testing.assert_allclose(arr1, arr2)
             else:
                 self.assertEqual(arr1, arr2)  # scalar
         else:
@@ -108,7 +108,7 @@ class TestCase(unittest.TestCase):
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
-                np.testing.assert_array_equal(arr1, arr2)
+                np.testing.assert_allclose(arr1, arr2)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
