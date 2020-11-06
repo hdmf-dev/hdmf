@@ -862,10 +862,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("Setting reference attribute on %s '%s' attribute '%s' to %s"
                               % (builder.__class__.__name__, builder.name, spec.name,
                                  attr_value.__class__.__name__))
-            target_builder = build_manager.get_builder(attr_value)
-            if target_builder is None:
-                raise Exception("Could not find already-built Builder for %s '%s' in BuildManager"
-                                % (attr_value.__class__.__name__, attr_value.name))
+            target_builder = self.__get_target_builder(attr_value, build_manager, builder)
             ref_attr_value = ReferenceBuilder(target_builder)
             builder.set_attribute(spec.name, ref_attr_value)
         return _filler
