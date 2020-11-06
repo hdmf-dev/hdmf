@@ -1004,40 +1004,40 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # instantianted (export=True)
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
-                    rendered_obj = build_manager.build(value, source=source, spec_ext=spec, export=export)
+                    new_builder = build_manager.build(value, source=source, spec_ext=spec, export=export)
                 else:
-                    rendered_obj = build_manager.build(value, source=source, export=export)
+                    new_builder = build_manager.build(value, source=source, export=export)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
                     self.logger.debug("    Adding link to %s '%s' in %s '%s'"
-                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                      % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
-                    builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
+                    builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
-                    if rendered_obj.dtype is None and spec.dtype is not None:
+                    if new_builder.dtype is None and spec.dtype is not None:
                         self.logger.debug("    Converting dataset %s '%s' to spec dtype '%s'"
-                                          % (rendered_obj.__class__.__name__, rendered_obj.name, spec.dtype))
-                        val, dtype = self.convert_dtype(spec, rendered_obj.data)
-                        rendered_obj.dtype = dtype
+                                          % (new_builder.__class__.__name__, new_builder.name, spec.dtype))
+                        val, dtype = self.convert_dtype(spec, new_builder.data)
+                        new_builder.dtype = dtype
                     self.logger.debug("    Adding dataset %s '%s' to %s '%s'"
-                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                      % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
-                    builder.set_dataset(rendered_obj)
+                    builder.set_dataset(new_builder)
                 else:
                     self.logger.debug("    Adding subgroup %s '%s' to %s '%s'"
-                                      % (rendered_obj.__class__.__name__, rendered_obj.name,
+                                      % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
-                    builder.set_group(rendered_obj)
+                    builder.set_group(new_builder)
             elif value.container_source:  # make a link to an existing container
                 if (value.container_source != parent_container.container_source
                         or value.parent is not parent_container):
                     self.logger.debug("    Building %s '%s' (container source: %s) and adding a link to it"
                                       % (value.__class__.__name__, value.name, value.container_source))
                     if isinstance(spec, BaseStorageSpec):
-                        rendered_obj = build_manager.build(value, source=source, spec_ext=spec, export=export)
+                        new_builder = build_manager.build(value, source=source, spec_ext=spec, export=export)
                     else:
-                        rendered_obj = build_manager.build(value, source=source, export=export)
-                    builder.set_link(LinkBuilder(rendered_obj, name=spec.name, parent=builder))
+                        new_builder = build_manager.build(value, source=source, export=export)
+                    builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
                 else:
                     self.logger.debug("    Skipping build for %s '%s' because both it and its parents were read "
                                       "from the same source."
