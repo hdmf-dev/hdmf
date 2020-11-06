@@ -3,7 +3,6 @@ from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 from hdmf.container import Container
-from hdmf.utils import docval, call_docval_func
 
 from abc import ABCMeta, abstractmethod
 
@@ -274,10 +273,7 @@ class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
 
 
 class Bar(Container):
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'})
-    def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+    pass
 
 
 class TestNestedContainersSubgroupWrongType(NestedBaseMixin, TestBase):
@@ -334,7 +330,7 @@ class TestNestedContainersSubgroupWrongType(NestedBaseMixin, TestBase):
         """Test construct when the builder data type does not match the data type of the Container field."""
         # TODO: a warning should be raised
         container = self.manager.construct(self.bucket_builder)
-        self.assertListEqual(container.foos, [])
+        self.assertDictEqual(container.foos, {})
 
 
 class TestTypeMap(TestBase):

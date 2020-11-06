@@ -506,14 +506,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         name = args[0]
         remaining_args = tuple(args[1:])
         if name in self.constructor_args:
-            self.logger.debug("        Calling override function for constructor argument %s" % name)
+            self.logger.debug("        Calling override function for constructor argument '%s'" % name)
             func = self.constructor_args[name]
             return func(self, *remaining_args)
         return None
 
     def __get_override_attr(self, name, container, manager):
         if name in self.obj_attrs:
-            self.logger.debug("        Calling override function for attribute %s" % name)
+            self.logger.debug("        Calling override function for attribute '%s'" % name)
             func = self.obj_attrs[name]
             return func(self, container, manager)
         return None
@@ -979,13 +979,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # or value was read from an external link
                     raise OrphanContainerBuildError(builder, value)
 
-                if not self.__check_container_matches_spec(spec, value, build_manager):
-                    self.logger.debug("    %s '%s' does not match %s name: %s, %s: %s, %s: %s"
-                                      % (value.__class__.__name__, value.name,
-                                         spec.__class__.__name__, repr(spec.name),
-                                         spec.def_key(), repr(spec.data_type_def),
-                                         spec.inc_key(), repr(spec.data_type_inc)))
-                    return
+            if not self.__check_container_matches_spec(spec, value, build_manager):
+                self.logger.debug("    %s '%s' does not match %s name: %s, %s: %s, %s: %s"
+                                  % (value.__class__.__name__, value.name,
+                                     spec.__class__.__name__, repr(spec.name),
+                                     spec.def_key(), repr(spec.data_type_def),
+                                     spec.inc_key(), repr(spec.data_type_inc)))
+                return
 
             if value.modified or export:
                 # writing a newly instantiated container (modified is False only after read) or as if it is newly
