@@ -6,7 +6,7 @@ import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader
+from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader, Spec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 
@@ -344,6 +344,25 @@ class BuildManager:
         ns = self.get_builder_ns(builder)
         return self.namespace_catalog.is_sub_data_type(ns, dt, parent_dt)
 
+    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to check"},
+            {"name": "spec", "type": Spec, "doc": "the spec to compare against"},
+            returns='False if the container class is not an instance of the class associated with the spec', rtype=bool)
+    def is_container_sub_data_type(self, **kwargs):
+        """
+        Check that the data type associated with ``container`` is a subtype of the ``spec`` data_type_def or
+        data_type_inc. Returns True if they match, False if not.
+        """
+        container, spec = getargs('container', 'spec', kwargs)
+        ret = True
+        if isinstance(spec, BaseStorageSpec):
+            ns = getattr(container.__class__, 'namespace')
+            dt = getattr(container.__class__, spec.type_key())
+            if spec.data_type_def is not None:  # check for nested type definition
+                ret = self.namespace_catalog.is_sub_data_type(ns, dt, spec.data_type_def)
+            elif spec.data_type_inc is not None:
+                ret = self.namespace_catalog.is_sub_data_type(ns, dt, spec.data_type_inc)
+        return ret
+
 
 class TypeSource:
     '''A class to indicate the source of a data_type in a namespace.
@@ -657,19 +676,15 @@ class TypeMap:
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
-            {"name": "create_class", "type": bool,
-             "doc": ("whether to dynamically create a class if no class has been associated with the data_type "
-                     "from namespace"), "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
-        '''Get the container class from data type specification
-        If no class has been associated with the ``data_type`` from ``namespace`` and ``create_class`` is True
-        (default), a class will be dynamically created and returned. If no class has been associated with ``data_type``
-        from ``namespace`` and ``create_class`` is False, then None will be returned.
+        '''Get the container class from data type specification.
+        If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
+        created and returned.
         '''
-        namespace, data_type, create_class = getargs('namespace', 'data_type', 'create_class', kwargs)
+        namespace, data_type = getargs('namespace', 'data_type', kwargs)
         cls = self.__get_container_cls(namespace, data_type)
-        if create_class and cls is None:
+        if cls is None:
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             if isinstance(spec, GroupSpec):
                 self.__resolve_child_container_classes(spec, namespace)

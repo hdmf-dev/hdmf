@@ -985,28 +985,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
 
-    def __check_container_matches_spec(self, spec, container, build_manager):
-        """
-        Check that the data type associated with ``container`` matches data_type_def or data_type_inc of the ``spec``
-        or a subtype of data_type_def or data_type_inc (use data_type_def if defined, otherwise use data_type_inc).
-        Returns True if they match, False if not.
-        """
-
-        ret = True
-        if (isinstance(spec, (GroupSpec, DatasetSpec))
-                and (spec.data_type_def is not None or spec.data_type_inc is not None)):
-            # TODO how to get the namespace of the spec data type?
-            namespace, _ = build_manager.type_map.get_container_ns_dt(container)
-            if spec.data_type_def is not None:  # check for nested type definition
-                spec_class = build_manager.type_map.get_container_cls(namespace, spec.data_type_def, create_class=False)
-            else:
-                spec_class = build_manager.type_map.get_container_cls(namespace, spec.data_type_inc, create_class=False)
-            if spec_class is not None:
-                ret = isinstance(container, spec_class)
-            else:
-                ret = False
-        return ret
-
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container, export):
         if isinstance(value, AbstractContainer):
             self.logger.debug("    Adding container %s '%s' with parent %s '%s' to %s '%s'"
@@ -1020,7 +998,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # or value was read from an external link
                     raise OrphanContainerBuildError(builder, value)
 
-            if not self.__check_container_matches_spec(spec, value, build_manager):
+            if not build_manager.is_container_sub_data_type(value, spec):
                 self.logger.debug("    %s '%s' does not match %s name: %s, %s: %s, %s: %s"
                                   % (value.__class__.__name__, value.name,
                                      spec.__class__.__name__, repr(spec.name),
