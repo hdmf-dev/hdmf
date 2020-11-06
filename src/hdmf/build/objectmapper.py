@@ -635,7 +635,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("Building %s '%s' as a dataset of compound dtypes (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
                     # create dataset builder with data=None, dtype=None as a placeholder. fill in with refs later
-                    builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype=None)
+                    builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype=spec_dtype)
                     manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
                                                                           manager))
                 else:
@@ -717,29 +717,22 @@ class ObjectMapper(metaclass=ExtenderMeta):
             builder.data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
         return _filler
 
-    def __set_compound_dataset_to_refs(self, builder, spec, dtype, container, build_manager):
-        self.logger.debug("Queueing set compound dataset %s '%s' to reference builders"
+    def __set_compound_dataset_to_refs(self, builder, spec, spec_dtype, container, build_manager):
+        self.logger.debug("Queueing convert compound dataset %s '%s' and set any references to reference builders"
                           % (builder.__class__.__name__, builder.name))
 
         def _filler():
-            self.logger.debug("Setting compound dataset %s '%s' to list of reference builders"
+            self.logger.debug("Converting compound dataset %s '%s' and setting any references to reference builders"
                               % (builder.__class__.__name__, builder.name))
             # convert the reference part(s) of a compound dataset to ReferenceBuilders, row by row
-            refs = [(i, subt) for i, subt in enumerate(dtype) if isinstance(subt.dtype, RefSpec)]
+            refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
             bldr_data = list()
             for i, row in enumerate(container.data):
                 tmp = list(row)
                 for j, subt in refs:
                     tmp[j] = self.__get_ref_builder(builder, subt.dtype, None, row[j], build_manager)
                 bldr_data.append(tuple(tmp))
-            try:
-                # use spec_dtype from self.spec when spec_ext does not specify dtype
-                bldr_data, bldr_dtype = self.convert_dtype(spec, bldr_data, spec_dtype=dtype)
-            except Exception as ex:
-                msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                raise Exception(msg) from ex
             builder.data = bldr_data
-            builder.dtype = bldr_dtype
         return _filler
 
     def __set_untyped_dataset_to_refs(self, builder, container, build_manager):
@@ -784,10 +777,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.logger.debug("Setting %s '%s' data to list of reference builders"
                                   % (builder.__class__.__name__, builder.name))
                 bldr_data = list()
-                if self.__is_reftype(container.data):
-                    for d in container.data:
-                        target_builder = self.__get_target_builder(d, build_manager, builder)
-                        bldr_data.append(ReferenceBuilder(target_builder))
+                for d in container.data:
+                    target_builder = self.__get_target_builder(d, build_manager, builder)
+                    bldr_data.append(ReferenceBuilder(target_builder))
             else:
                 self.logger.debug("Setting %s '%s' data to reference builder"
                                   % (builder.__class__.__name__, builder.name))
