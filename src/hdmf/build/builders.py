@@ -223,6 +223,8 @@ class GroupBuilder(BaseBuilder):
         '''
         Add an existing builder to this GroupBuilder
         '''
+        msg = 'This function will be deprecated in favor of set_dataset, set_group, and set_link'
+        warnings.warn(PendingDeprecationWarning(msg))
         builder = getargs('builder', kwargs)
         if isinstance(builder, LinkBuilder):
             self.__set_builder(builder, GroupBuilder.__link)

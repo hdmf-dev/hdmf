@@ -901,13 +901,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if isinstance(attr_value, DataIO) and attr_value.data is None:
                 self.logger.debug("        Skipping dataset - attribute is dataio or has no data")
                 continue
-            if isinstance(attr_value, Builder):
+            if isinstance(attr_value, LinkBuilder):
                 self.logger.debug("        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
                                   % (attr_value.name, attr_value.__class__.__name__,
                                      repr(spec.name),
                                      spec.def_key(), repr(spec.data_type_def),
                                      spec.inc_key(), repr(spec.data_type_inc)))
-                builder.set_builder(attr_value)  # add the existing builder
+                builder.set_link(attr_value)  # add the existing builder
             elif spec.data_type_def is None and spec.data_type_inc is None:  # untyped, named dataset
                 if spec.name in builder.datasets:
                     sub_builder = builder.datasets[spec.name]
