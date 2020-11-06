@@ -1,8 +1,31 @@
-from hdmf.common.resources import ResourceReferences, ResourceIdentiferMap, ExternalResources
+from hdmf.common.resources import ExternalResources, KeyTable, Key, ResourceTable, Resource,
+                                 ObjectKeyTable, ObjectKey, ObjectTable, Object
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
-class TestResourceReferences(TestCase):
+class TestExternalResources(TestCase):
+
+    def __old_test_add_row(self):
+        key_table = KeyTable()
+        resource_table = ResourceTable()
+        object_table = ObjectTable()
+        object_key_table = ObjectKeyTable()
+
+        key = Key('ATP Binding')
+        rsc = Resource(key, 'Gene Ontology', 'GO:0005524',  'http://amigo.geneontology.org/amigo/term/GO:0005524')
+
+        obj = Object('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo')
+        objkey = ObjectKey(obj, key)
+
+    def test_ext_reference(self)
+        er = ExternalResources()
+        key = er.add_key('ATP Binding')
+        rsc = er.add_resource(key, 'Gene Ontology', 'GO:0005524',  'http://amigo.geneontology.org/amigo/term/GO:0005524')
+        obj = er.add_object('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo')
+        er.add_external_reference(obj, key)
+
+
+class OldTestResourceReferences(TestCase):
 
     @classmethod
     def build_tables(cls):
@@ -19,16 +42,16 @@ class TestResourceReferences(TestCase):
         resrefs.add_row(3, '0eae6504-da47-4ee9-a375-bbed2d3d65a4', 'qux', 0)
         return rrmap, resrefs
 
-    def test_constructor(self):
+    def __test_constructor(self):
         self.build_tables()
 
 
-class TestExternalResources(H5RoundTripMixin, TestCase):
+class OldTestExternalResources(H5RoundTripMixin, TestCase):
 
-    def test_add_reference(self):
+    def __test_add_reference(self):
         ExternalResources()
 
-    def test_get_resource_identifier(self):
+    def __test_get_resource_identifier(self):
         rrmap, resrefs = TestResourceReferences.build_tables()
         er = ExternalResources(rrmap, resrefs)
         result = er.get_resource_identifier('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo', 'ATP Binding')

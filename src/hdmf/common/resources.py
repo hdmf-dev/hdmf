@@ -1,7 +1,8 @@
+import uuid
 import numpy as np
 
 from . import register_class
-from ..container import Table, Container
+from ..container import Table, Row, Container
 
 from ..utils import docval, call_docval_func, popargs
 
@@ -13,117 +14,100 @@ def _check_id(table, id):
         raise ValueError('id must be a non-negative integer that is not already in the table: %d' % id)
 
 
-@register_class('ResourceIdentiferMap')
-class ResourceIdentiferMap(Table):
-    """A table for mapping user terms (i.e. keys) to resource entities."""
 
-    __defaultname__ = 'resource_map'
+class KeyTable(Table):
 
-    __columns__ = (
-        {'name': 'id', 'type': (int, np.uint64), 'doc': 'The unique identifier in this table.'},
-        {'name': 'key', 'type': str, 'doc': 'The user key that maps to the resource term / registry symbol.'},
-        {'name': 'resource', 'type': str, 'doc': 'The resource/registry that the term/symbol comes from.'},
-        {'name': 'uri', 'type': str, 'doc': 'The unique resource identifier for the resource term / registry symbol.'},
-    )
-
-    @docval(*__columns__)
-    def add_row(self, **kwargs):
-        id = popargs('id', kwargs)
-        kwargs['id'] = _check_id(self, id)
-        return super().add_row(kwargs)
-
-
-@register_class('ResourceReferences')
-class ResourceReferences(Table):
-    """
-    A table for identifying which objects in a file contain
-    values that correspond to external resource references. An
-    external resource reference takes the form of an *id*, which
-    is resolvable within a reference. Some of examples are
-    GO:0005524, an entry in the Genome Ontology, ABE-0008876, an entry
-    in the ASAP microbial genome database, or MGI:88294, an entry in the
-    Mouse Genome Informatics database.
-    """
-    __defaultname__ = 'references'
+    __defaultname__ = 'keys'
 
     __columns__ = (
-        {'name': 'id', 'type': (int, np.uint64), 'doc': 'The unique identifier in this table.'},
-        {'name': 'object_id', 'type': str, 'doc': 'The UUID for the object that uses this ontology term.'},
-        {'name': 'field', 'type': str,
-         'doc': 'The field from the object (specified by object_id) that uses this ontological term.'},
-        {'name': 'item', 'type': (int, np.uint64),
-         'doc': 'An index into the ResourceIdentiferMap that contains the term.'},
+        {'name': 'key_name', 'type': str, 'doc': 'The user key that maps to the resource term / registry symbol.'},
     )
 
-    @docval(*__columns__)
-    def add_row(self, **kwargs):
-        id, item = popargs('id', 'item', kwargs)
-        kwargs['id'] = _check_id(self, id)
-        if item >= 0:
-            kwargs['item'] = np.uint64(item)
-        else:
-            raise ValueError('item must be a non-negative integer: %d' % item)
-        return super().add_row(kwargs)
+
+class Key(Row):
+
+    __table__ = KeyTable
+
+
+class ResourceTable(Table):
+
+    __defaultname__ = 'resources'
+
+    __columns__ = (
+        {'name': 'keytable_id', 'type': (str, Key), 'doc': 'The user key that maps to the resource term / registry symbol.'},
+        {'name': 'resource_name', 'type': str, 'doc': 'The resource/registry that the term/symbol comes from.'},
+        {'name': 'resource_entity_id', 'type': str, 'doc': 'The unique resource identifier for the resource term / registry symbol.'},
+        {'name': 'resource_entity_uri', 'type': str, 'doc': 'The unique resource identifier for the resource term / registry symbol.'},
+    )
+
+
+class ResourceEntity(Row):
+
+    __table__ = ResourceTable
+
+
+class ObjectTable(Table):
+
+    __defaultname__ = 'objects'
+
+    __columns__ = (
+        {'name': 'object_id', 'type': (str, uuid.UUID), 'doc': 'The user key that maps to the resource term / registry symbol.'},
+        {'name': 'field', 'type': str, 'doc': 'The resource/registry that the term/symbol comes from.'},
+    )
+
+
+class Object(Row):
+
+    __table__ = ObjectTable
+
+
+class ObjectKeyTable(Table):
+
+    __defaultname__ = 'object_keys'
+
+    __columns__ = (
+        {'name': 'objecttable_id', 'type': (str, Object), 'doc': 'The user key that maps to the resource term / registry symbol.'},
+        {'name': 'keytable_id', 'type': (str, Key), 'doc': 'The user key that maps to the resource term / registry symbol.'},
+    )
+
+
+class ObjectKey(Row):
+
+    __table__ = ObjectKeyTable
 
 
 @register_class('ExternalResources')
 class ExternalResources(Container):
-    """
-    Container containing a ResourceReferences and ResourceReferenceMap table for
-    tracking external resource references in a file.
-    """
-    __defaultname__ = 'external_resources'
+    """A table for mapping user terms (i.e. keys) to resource entities."""
 
     __fields__ = (
-        {'name': 'resource_map', 'child': True},
-        {'name': 'references', 'child': True},
+        {'name': 'keys', 'child': True},
+        {'name': 'resources', 'child': True},
+        {'name': 'objects', 'child': True},
+        {'name': 'object_keys', 'child': True},
     )
 
-    @docval({'name': 'resource_map', 'type': ResourceIdentiferMap,
-             'doc': 'the resource reference map for external resources', 'default': None},
-            {'name': 'references', 'type': ResourceReferences,
-             'doc': 'the references used in this file', 'default': None},
-            {'name': 'name', 'type': str, 'doc': 'the name of this ExternalResources object', 'default': None})
-    def __init__(self, **kwargs):
-        resource_map, references = popargs('resource_map', 'references', kwargs)
-        kwargs['name'] = kwargs['name'] or self.__defaultname__
-        call_docval_func(super().__init__, kwargs)
-        if resource_map is None:
-            self.resource_map = ResourceIdentiferMap()
-            if references is not None:
-                raise ValueError('Cannot specify references without specifying the accompanying resource map')
-        else:
-            self.resource_map = resource_map
-            self.references = references or ResourceReferences()
+    def __init__(self, keys=None, resources=None, objects=None, object_keys=None):
+        self.keys = keys or KeyTable()
+        self.resources = resources or ResourceTable()
+        self.objects = objects or ObjectTable()
+        self.object_keys = object_keys or ObjectKeyTable()
 
-    def get_resource_identifier(self, object_id, field, key):
-        """Return the resource identifiers (a.k.a. CRID)  associated with the given object_id, field, and key.
-            :returns: Tuple of (resource, URI) tuples
-        """
+    def add_key(self, key):
+        return Key(key, table=self.keys)
 
-        # get the values in the item column where the values in the object_id and field columns match the arguments
-        oid_idx_matches = self.references.which(object_id=object_id)
-        field_col_idx = self.references.__colidx__.get('field')
-        item_col_idx = self.references.__colidx__.get('item')
-        terms_indices = list()
-        for i in oid_idx_matches:
-            row = self.references.data[i]
-            field_val = row[field_col_idx]
-            if field_val == field:
-                item_val = row[item_col_idx]
-                terms_indices.append(item_val)
+    def add_resource(self, key, resource_name, resource_entity_id, resource_entity_uri):
+        if not isinstance(key, Key):
+            key = self.add_key(key)
+        resource_entity = ResourceEntity(key, resource_name, resource_entity_id, resource_entity_uri, table=self.resources)
+        return resource_entity
 
-        key_col_idx = ResourceIdentiferMap.__colidx__.get('key')
-        resource_col_idx = ResourceIdentiferMap.__colidx__.get('resource')
-        uri_col_idx = ResourceIdentiferMap.__colidx__.get('uri')
+    def add_object(self, container, field):
+        if isinstance(container, Container):
+            container = container.object_id
+        obj = Object(container, field, table=self.objects)
+        return obj
 
-        ret = list()
-        for i in terms_indices:
-            terms_row = self.resource_map.data[i]
-            key_val = terms_row[key_col_idx]
-            if key_val == key:
-                resource_val = terms_row[resource_col_idx]
-                uri_val = terms_row[uri_col_idx]
-                ret.append((resource_val, uri_val))
+    def add_external_reference(self, obj, key):
+        return ObjectKeyTable(obj, key, table=self.object_keys)
 
-        return tuple(ret)

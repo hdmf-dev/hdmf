@@ -834,6 +834,54 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
             setattr(cls, get, cls.__make_get(get, attr, container_type))
 
 
+class Row(ExtenderMeta):
+
+    @property
+    def table(self):
+        return self.__table
+
+    @table.setter
+    def table(self, val):
+        if val is not None:
+            self.__table = val
+        self.id = self.__table.add_row(**self.todict())
+
+    @ExtenderMeta.pre_init
+    def __build_row_class(cls, name, bases, classdict):
+        if hasattr(cls, '__table__'):
+            columns = getattr(getattr(cls, '__table__'), '__columns__')
+            if cls.__init__ == bases[-1].__init__:  # check if __init__ is overridden
+                columns = columns.deepcopy()
+                func_args = list()
+                id_col = None
+                for col in columns:
+                    if col['name'] == 'id':
+                        col['default'] = None
+                        id_col = col
+                    else:
+                        func_args.append(col)
+                func_args.append(id_col)
+                func_args.append({'name': 'table', 'type': Table, 'default': None,
+                                  'help': 'the table this row is from'})
+
+                @docval(*func_args)
+                def __init__(self, **kwargs):
+                    super(cls, self).__init__()
+                    table = popargs('table', kwargs)
+                    self.__keys = list()
+                    for k, v in kwargs.items():
+                        self.__keys.append(k)
+                        setattr(self, k, v)
+                    self.table = table
+
+                setattr(cls, '__init__', __init__)
+
+                def todict(self):
+                    return {getattr(self, k) for k in self.__keys}
+
+                setattr(cls, 'todict', todict)
+
+
 class Table(Data):
     r'''
     Subclasses should specify the class attribute \_\_columns\_\_.
@@ -907,7 +955,9 @@ class Table(Data):
             msg = 'Cannot append row to %s' % type(self.data)
             raise ValueError(msg)
         ret = len(self.data)
-        self.data.append(tuple(values[col] for col in self.columns))
+        row = [values[col] for col in self.columns]
+        row = [v.id if isinstance(v, Row) else v for v in row]
+        self.data.append(tuple(v))
         return ret
 
     def which(self, **kwargs):
