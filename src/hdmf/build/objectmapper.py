@@ -655,17 +655,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # a regular dtype
                     if spec_dtype is None and self.__is_reftype(container.data):
                         # an unspecified dtype and we were given references
-                        self.logger.debug("Building %s '%s' containing references as a dataset of unspecified dtype "
-                                          "(source: %s)"
-                                          % (container.__class__.__name__, container.name, repr(source)))
-                        bldr_data = list()
-                        for d in container.data:
-                            if d is None:
-                                bldr_data.append(None)
-                            else:
-                                bldr_data.append(ReferenceBuilder(manager.build(d, source=source, export=export)))
-                        builder = DatasetBuilder(name, bldr_data, parent=parent, source=source,
-                                                 dtype='object')
+                        # create dataset builder with data = None as a placeholder. fill in with refs later
+                        builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype='object')
+                        manager.queue_ref(self._set_dataset_to_refs(builder, container, manager))
                     else:
                         # a dataset that has no references, pass the conversion off to the convert_dtype method
                         self.logger.debug("Building %s '%s' as a dataset (source: %s)"
@@ -824,6 +816,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                 % (attr_value.__class__.__name__, attr_value.name))
             ref_attr_value = ReferenceBuilder(target_builder)
             builder.set_attribute(spec.name, ref_attr_value)
+        return _filler
+
+    def _set_dataset_to_refs(self, builder, container, build_manager):
+        self.logger.debug("Queueing set reference dataset on %s '%s' data to list of containers"
+                          % (builder.__class__.__name__, builder.name))
+
+        def _filler():
+            self.logger.debug("Setting reference dataset on %s '%s' data to list of containers"
+                              % (builder.__class__.__name__, builder.name))
+            bldr_data = list()
+            for d in container.data:
+                if d is None:
+                    bldr_data.append(None)
+                else:
+                    target_builder = build_manager.get_builder(d)
+                    if target_builder is None:
+                        raise Exception("Could not find already-built Builder for %s '%s' in BuildManager"
+                                        % (d.__class__.__name__, d.name))
+                    bldr_data.append(ReferenceBuilder(target_builder))
+            builder.data = bldr_data
         return _filler
 
     def __add_links(self, builder, links, container, build_manager, source, export):
