@@ -1,7 +1,6 @@
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
-from hdmf.build import GroupBuilder, DatasetBuilder
-from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
@@ -261,6 +260,15 @@ class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
                 self.map_spec('foos', spec.get_group('foo_holder_holder').get_group('foo_holder').get_data_type('Foo'))
 
         return BucketMapper
+
+    def test_build(self):
+        ''' Test default mapping for an Container that has an Container as an attribute value '''
+        builder = self.manager.build(self.foo_bucket)
+        self.assertDictEqual(builder, self.bucket_builder)
+
+    def test_construct(self):
+        container = self.manager.construct(self.bucket_builder)
+        self.assertEqual(container, self.foo_bucket)
 
 
 class TestTypeMap(TestBase):

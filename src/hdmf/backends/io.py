@@ -46,7 +46,7 @@ class HDMFIO(metaclass=ABCMeta):
     def write(self, **kwargs):
         """Write a container to the IO source."""
         container = popargs('container', kwargs)
-        f_builder = self.__manager.build(container, source=self.__source)
+        f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
 
     @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
@@ -93,7 +93,7 @@ class HDMFIO(metaclass=ABCMeta):
 
             # build any modified containers
             src_io.manager.purge_outdated()
-            bldr = src_io.manager.build(container, source=self.__source, export=True)
+            bldr = src_io.manager.build(container, source=self.__source, root=True, export=True)
         else:
             bldr = src_io.read_builder()
         self.write_builder(builder=bldr, **write_args)

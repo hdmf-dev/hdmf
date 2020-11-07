@@ -1,5 +1,5 @@
 import numpy as np
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from copy import copy, deepcopy
 from datetime import datetime
 import logging
@@ -89,7 +89,9 @@ class BuildManager:
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         self.__builders = dict()
         self.__containers = dict()
+        self.__active_builders = set()
         self.__type_map = type_map
+        self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
 
     @property
     def namespace_catalog(self):
@@ -141,12 +143,16 @@ class BuildManager:
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec that further refines the base specification",
              'default': None},
             {"name": "export", "type": bool, "doc": "whether this build is for exporting",
+             'default': False},
+            {"name": "root", "type": bool, "doc": "whether the container is the root of the build process",
              'default': False})
     def build(self, **kwargs):
         """ Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container, export = getargs('container', 'export', kwargs)
+        source, spec_ext, root = getargs('source', 'spec_ext', 'root', kwargs)
         result = self.get_builder(container)
-        source, spec_ext = getargs('source', 'spec_ext', kwargs)
+        if root:
+            self.__active_builders.clear()  # reset active builders at start of build process
         if result is None:
             self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s, export: %s)"
                               % (container.__class__.__name__, container.name, repr(container.container_source),
@@ -165,19 +171,23 @@ class BuildManager:
             # NOTE: if exporting, then existing cached builder will be ignored and overridden with new build result
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext, export=export)
             self.prebuilt(container, result)
+            self.__active_prebuilt(result)
             self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
-        elif container.modified or spec_ext is not None:
-            if isinstance(result, BaseBuilder):
-                self.logger.debug("Rebuilding modified / extended %s '%s' (modified: %s, source: %s, extended spec: %s)"
-                                  % (container.__class__.__name__, container.name, container.modified,
-                                     repr(source), spec_ext is not None))
-                result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext,
-                                               export=export)
-                self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
+        elif not self.__is_active_builder(result) and container.modified:
+            # if builder was built on file read and is then modified (append mode), it needs to be rebuilt
+            self.logger.debug("Rebuilding modified %s '%s' (source: %s, extended spec: %s)"
+                              % (container.__class__.__name__, container.name,
+                                 repr(source), spec_ext is not None))
+            result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext,
+                                           export=export)
+            self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
         else:
             self.logger.debug("Using prebuilt %s '%s' for %s '%s'"
                               % (result.__class__.__name__, result.name,
                                  container.__class__.__name__, container.name))
+        if root:  # create reference builders only after building all other builders
+            self.__add_refs()
+            self.__active_builders.clear()  # reset active builders now that build process has completed
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
@@ -191,11 +201,44 @@ class BuildManager:
         builder_id = self.__bldrhash__(builder)
         self.__containers[builder_id] = container
 
+    def __active_prebuilt(self, builder):
+        """Save the Builder for future use during the active/current build process."""
+        builder_id = self.__bldrhash__(builder)
+        self.__active_builders.add(builder_id)
+
+    def __is_active_builder(self, builder):
+        """Return True if the Builder was created during the active/current build process."""
+        builder_id = self.__bldrhash__(builder)
+        return builder_id in self.__active_builders
+
     def __conthash__(self, obj):
         return id(obj)
 
     def __bldrhash__(self, obj):
         return id(obj)
+
+    def __add_refs(self):
+        '''
+        Add ReferenceBuilders.
+
+        References get queued to be added after all other objects are built. This is because
+        the current traversal algorithm (i.e. iterating over specs)
+        does not happen in a guaranteed order. We need to build the targets
+        of the reference builders so that the targets have the proper parent,
+        and then write the reference builders after we write everything else.
+        '''
+        while len(self.__ref_queue) > 0:
+            call = self.__ref_queue.popleft()
+            self.logger.debug("Adding ReferenceBuilder with call id %d from queue (length %d)"
+                              % (id(call), len(self.__ref_queue)))
+            call()
+
+    def queue_ref(self, func):
+        '''Set aside creating ReferenceBuilders'''
+        # TODO: come up with more intelligent way of
+        # queueing reference resolution, based on reference
+        # dependency
+        self.__ref_queue.append(func)
 
     def purge_outdated(self):
         containers_copy = self.__containers.copy()
@@ -632,9 +675,9 @@ class TypeMap:
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
-        '''Get the container class from data type specification
-        If no class has been associated with the ``data_type`` from ``namespace``,
-        a class will be dynamically created and returned.
+        '''Get the container class from data type specification.
+        If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
+        created and returned.
         '''
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
         cls = self.__get_container_cls(namespace, data_type)

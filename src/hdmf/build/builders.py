@@ -221,13 +221,15 @@ class GroupBuilder(BaseBuilder):
     @docval({'name': 'builder', 'type': 'Builder', 'doc': 'the Builder to add to this GroupBuilder'})
     def set_builder(self, **kwargs):
         '''
-        Add an existing builder to this this GroupBuilder
+        Add an existing builder to this GroupBuilder
         '''
+        msg = 'This function will be deprecated in favor of set_dataset, set_group, and set_link'
+        warnings.warn(PendingDeprecationWarning(msg))
         builder = getargs('builder', kwargs)
         if isinstance(builder, LinkBuilder):
             self.__set_builder(builder, GroupBuilder.__link)
         elif isinstance(builder, GroupBuilder):
-            self.__set_builder(builder, GroupBuilder.__dataset)
+            self.__set_builder(builder, GroupBuilder.__group)
         elif isinstance(builder, DatasetBuilder):
             self.__set_builder(builder, GroupBuilder.__dataset)
         else:

@@ -761,25 +761,29 @@ class TestReference(TestCase):
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)
         bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10)
 
-        foo_builder = self.foo_mapper.build(foo_inst, self.manager)
-        bar1_builder = self.bar_mapper.build(bar_inst1, self.manager)
-        bar2_builder = self.bar_mapper.build(bar_inst2, self.manager)
+        foo_builder = self.manager.build(foo_inst, root=True)
+        bar1_builder = self.manager.build(bar_inst1, root=True)  # adds refs
+        bar2_builder = self.manager.build(bar_inst2, root=True)
 
-        foo_expected = GroupBuilder('my_foo')
-
-        inner_foo_builder = GroupBuilder('my_foo',
-                                         attributes={'data_type': 'Foo',
-                                                     'namespace': CORE_NAMESPACE,
-                                                     'object_id': foo_inst.object_id})
+        foo_expected = GroupBuilder('my_foo',
+                                    attributes={'data_type': 'Foo',
+                                                'namespace': CORE_NAMESPACE,
+                                                'object_id': foo_inst.object_id})
         bar1_expected = GroupBuilder('n/a',  # name doesn't matter
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      attributes={'attr1': 'value1',
                                                  'attr2': 10,
-                                                 'foo': ReferenceBuilder(inner_foo_builder)})
+                                                 'foo': ReferenceBuilder(foo_expected),
+                                                 'data_type': 'Bar',
+                                                 'namespace': CORE_NAMESPACE,
+                                                 'object_id': bar_inst1.object_id})
         bar2_expected = GroupBuilder('n/a',  # name doesn't matter
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      attributes={'attr1': 'value1',
-                                                 'attr2': 10})
+                                                 'attr2': 10,
+                                                 'data_type': 'Bar',
+                                                 'namespace': CORE_NAMESPACE,
+                                                 'object_id': bar_inst2.object_id})
         self.assertDictEqual(foo_builder, foo_expected)
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
