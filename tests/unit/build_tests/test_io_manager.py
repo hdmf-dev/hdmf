@@ -2,7 +2,6 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNa
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
-from hdmf.container import Container
 
 from abc import ABCMeta, abstractmethod
 
