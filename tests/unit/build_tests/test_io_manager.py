@@ -272,67 +272,6 @@ class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
         self.assertEqual(container, self.foo_bucket)
 
 
-class Bar(Container):
-    pass
-
-
-class TestNestedContainersSubgroupWrongType(NestedBaseMixin, TestBase):
-    '''
-        Test BuildManager.build and BuildManager.construct when the
-        Container contains other Containers that are stored in a subgroup
-        but the nested Container type does not match the subgroup type
-    '''
-    def setUp(self):
-        # need to register a new type that can be built
-        super().setUp()
-        self.bar_spec = GroupSpec('A test group specification for a Bar', data_type_def='Bar')
-
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_map(Bar, ObjectMapper)
-        self.manager = BuildManager(self.type_map)
-
-    def setUpBucketBuilder(self):
-        tmp_builder = GroupBuilder('foo_holder', groups=self.foo_builders)
-        self.bucket_builder = GroupBuilder(
-            'test_foo_bucket',
-            groups={'foos': tmp_builder},
-            attributes={'namespace': CORE_NAMESPACE, 'data_type': 'FooBucket', 'object_id': self.foo_bucket.object_id})
-
-    def setUpBucketSpec(self):
-        tmp_spec = GroupSpec(
-            'A subgroup for Foos',
-            name='foo_holder',
-            groups=[GroupSpec('the Foos in this bucket',
-                              data_type_inc='Bar',  # <--
-                              quantity=ZERO_OR_MANY)])
-        self.bucket_spec = GroupSpec('A test group specification for a data type containing data type',
-                                     name="test_foo_bucket",
-                                     data_type_def='FooBucket',
-                                     groups=[tmp_spec])
-
-    def setUpBucketMapper(self):
-        class BucketMapper(ObjectMapper):
-            def __init__(self, spec):
-                super().__init__(spec)
-                self.unmap(spec.get_group('foo_holder'))
-                self.map_spec('foos', spec.get_group('foo_holder').get_data_type('Bar'))  # <--
-
-        return BucketMapper
-
-    def test_build(self):
-        """Test build when the Container data type does not match the data type described in the spec."""
-        # foo_bucket contains Foos but the BucketMapper maps foos to the data type Bar
-        bldr = self.manager.build(self.foo_bucket)
-        self.assertDictEqual(bldr['foo_holder'].groups, {})
-
-    def test_construct(self):
-        """Test construct when the builder data type does not match the data type of the Container field."""
-        # TODO: a warning should be raised
-        container = self.manager.construct(self.bucket_builder)
-        self.assertDictEqual(container.foos, {})
-
-
 class TestTypeMap(TestBase):
 
     def test_get_ns_dt_missing(self):

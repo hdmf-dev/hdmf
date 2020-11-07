@@ -998,14 +998,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # or value was read from an external link
                     raise OrphanContainerBuildError(builder, value)
 
-            if not build_manager.is_container_sub_data_type(value, spec):
-                self.logger.debug("    %s '%s' does not match %s name: %s, %s: %s, %s: %s"
-                                  % (value.__class__.__name__, value.name,
-                                     spec.__class__.__name__, repr(spec.name),
-                                     spec.def_key(), repr(spec.data_type_def),
-                                     spec.inc_key(), repr(spec.data_type_inc)))
-                return
-
             if value.modified or export:
                 # writing a newly instantiated container (modified is False only after read) or as if it is newly
                 # instantianted (export=True)

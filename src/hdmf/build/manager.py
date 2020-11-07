@@ -6,7 +6,7 @@ import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader, Spec
+from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 
@@ -359,25 +359,6 @@ class BuildManager:
         dt = self.get_builder_dt(builder)
         ns = self.get_builder_ns(builder)
         return self.namespace_catalog.is_sub_data_type(ns, dt, parent_dt)
-
-    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to check"},
-            {"name": "spec", "type": Spec, "doc": "the spec to compare against"},
-            returns='False if the container class is not an instance of the class associated with the spec', rtype=bool)
-    def is_container_sub_data_type(self, **kwargs):
-        """
-        Check that the data type associated with ``container`` is a subtype of the ``spec`` data_type_def or
-        data_type_inc. Returns True if they match, False if not.
-        """
-        container, spec = getargs('container', 'spec', kwargs)
-        ret = True
-        if isinstance(spec, BaseStorageSpec):
-            ns = getattr(container.__class__, 'namespace')
-            dt = getattr(container.__class__, spec.type_key())
-            if spec.data_type_def is not None:  # check for nested type definition
-                ret = self.namespace_catalog.is_sub_data_type(ns, dt, spec.data_type_def)
-            elif spec.data_type_inc is not None:
-                ret = self.namespace_catalog.is_sub_data_type(ns, dt, spec.data_type_inc)
-        return ret
 
 
 class TypeSource:
