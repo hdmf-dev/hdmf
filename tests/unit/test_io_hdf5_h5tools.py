@@ -12,7 +12,8 @@ from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
-from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError
+from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
+                        LinkBuilder)
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
                             RefSpec, DtypeSpec)
@@ -344,8 +345,10 @@ class H5IOTest(TestCase):
         daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
         daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
         builder = GroupBuilder("root")
-        builder.add_dataset('test_dataset1', daiter1, attributes={})
-        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        dataset1 = DatasetBuilder('test_dataset1', daiter1)
+        dataset2 = DatasetBuilder('test_dataset2', daiter2)
+        builder.set_dataset(dataset1)
+        builder.set_dataset(dataset2)
         self.io.write_builder(builder)
         dset1 = self.f['test_dataset1']
         self.assertListEqual(dset1[:].tolist(), a.tolist())
@@ -363,8 +366,10 @@ class H5IOTest(TestCase):
         daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
         daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
         builder = GroupBuilder("root")
-        builder.add_dataset('test_dataset1', daiter1, attributes={})
-        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        dataset1 = DatasetBuilder('test_dataset1', daiter1)
+        dataset2 = DatasetBuilder('test_dataset2', daiter2)
+        builder.set_dataset(dataset1)
+        builder.set_dataset(dataset2)
         self.io.write_builder(builder)
         dset1 = self.f['test_dataset1']
         self.assertListEqual(dset1[:].tolist(), a.tolist())
@@ -1635,21 +1640,25 @@ class TestReadLink(TestCase):
     def setUp(self):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
-        self.root1 = GroupBuilder(name='root')
-        self.subgroup = self.root1.add_group('test_group')
-        self.dataset = self.subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+        root1 = GroupBuilder(name='root')
+        subgroup = GroupBuilder(name='test_group')
+        root1.set_group(subgroup)
+        dataset = DatasetBuilder('test_dataset', data=[1, 2, 3, 4])
+        subgroup.set_dataset(dataset)
 
-        self.root2 = GroupBuilder(name='root')
-        self.group_link = self.root2.add_link(self.subgroup, 'link_to_test_group')
-        self.dataset_link = self.root2.add_link(self.dataset, 'link_to_test_dataset')
+        root2 = GroupBuilder(name='root')
+        link_group = LinkBuilder(subgroup, 'link_to_test_group')
+        root2.set_link(link_group)
+        link_dataset = LinkBuilder(dataset, 'link_to_test_dataset')
+        root2.set_link(link_dataset)
 
         with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
-            io.write_builder(self.root1)
-        self.root1.source = self.target_path
+            io.write_builder(root1)
+        root1.source = self.target_path
 
         with HDF5IO(self.link_path, manager=_get_manager(), mode='w') as io:
-            io.write_builder(self.root2)
-        self.root2.source = self.link_path
+            io.write_builder(root2)
+        root2.source = self.link_path
 
         self.ios = []
 
@@ -1681,7 +1690,8 @@ class TestReadLink(TestCase):
         self.ios.append(read_io1)  # store IO object for closing in tearDown
         bldr1 = read_io1.read_builder()
         root3 = GroupBuilder(name='root')
-        root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
+        link = LinkBuilder(bldr1['link_to_test_group'].builder, 'link_to_link')
+        root3.set_link(link)
         with HDF5IO(link_to_link_path, manager=_get_manager(), mode='w') as io:
             io.write_builder(root3)
         read_io1.close()
@@ -1711,7 +1721,8 @@ class TestReadLink(TestCase):
 
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
-                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                dataset = DatasetBuilder(name='link_to_test_dataset', data=read_dataset_data)
+                root2.set_dataset(dataset)
                 write_io.write_builder(root2, link_data=True)
 
         os.remove(self.target_path)
@@ -1810,8 +1821,10 @@ class TestLinkData(TestCase):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
         root1 = GroupBuilder(name='root')
-        subgroup = root1.add_group('test_group')
-        subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+        subgroup = GroupBuilder(name='test_group')
+        root1.set_group(subgroup)
+        dataset = DatasetBuilder('test_dataset', data=[1, 2, 3, 4])
+        subgroup.set_dataset(dataset)
 
         with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
             io.write_builder(root1)
@@ -1831,7 +1844,8 @@ class TestLinkData(TestCase):
 
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
-                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                dataset = DatasetBuilder(name='link_to_test_dataset', data=read_dataset_data)
+                root2.set_dataset(dataset)
                 write_io.write_builder(root2, link_data=True)
 
         with File(self.link_path, mode='r') as f:
@@ -1846,7 +1860,8 @@ class TestLinkData(TestCase):
 
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
-                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                dataset = DatasetBuilder(name='link_to_test_dataset', data=read_dataset_data)
+                root2.set_dataset(dataset)
                 write_io.write_builder(root2, link_data=False)
 
         with File(self.link_path, mode='r') as f:
