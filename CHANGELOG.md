@@ -26,6 +26,8 @@
 - Fix convert dtype when writing numpy array from `h5py.Dataset`. @rly (#427)
 - Fix inheritance when non-`AbstractContainer` is base class. @rly (#444)
 - Fix use of `hdmf.testing.assertContainerEqual(...)` for `Data` objects. @rly (#445)
+- Fix bug in BaseStorageSpec.resolve_spec where attributes are not correctly removed from the set of new attributes.
+  @rly (#448)
 
 ## HDMF 2.2.0 (August 14, 2020)
 

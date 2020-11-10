@@ -372,9 +372,9 @@ class TestAbstractContainerFieldsConf(TestCase):
         class NamedFields(AbstractContainer):
             __fields__ = ({'name': 'field1'}, )
 
-        msg = ("Field 'field1' cannot be defined in NamedFieldsChild. It already exists on base class "
+        msg = ("Field 'field1' should not be defined in NamedFieldsChild. It already exists on base class "
                "NamedFields.")
-        with self.assertRaisesWith(ValueError, msg):
+        with self.assertWarnsWith(UserWarning, msg):
             class NamedFieldsChild(NamedFields):
                 __fields__ = ({'name': 'field1', 'settable': True}, )
 
