@@ -1,68 +1,102 @@
-from hdmf.common.resources import ExternalResources, KeyTable, Key, ResourceTable, Resource,
-                                 ObjectKeyTable, ObjectKey, ObjectTable, Object
+from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
-class TestExternalResources(TestCase):
-
-    def __old_test_add_row(self):
-        key_table = KeyTable()
-        resource_table = ResourceTable()
-        object_table = ObjectTable()
-        object_key_table = ObjectKeyTable()
-
-        key = Key('ATP Binding')
-        rsc = Resource(key, 'Gene Ontology', 'GO:0005524',  'http://amigo.geneontology.org/amigo/term/GO:0005524')
-
-        obj = Object('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo')
-        objkey = ObjectKey(obj, key)
-
-    def test_ext_reference(self)
-        er = ExternalResources()
-        key = er.add_key('ATP Binding')
-        rsc = er.add_resource(key, 'Gene Ontology', 'GO:0005524',  'http://amigo.geneontology.org/amigo/term/GO:0005524')
-        obj = er.add_object('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo')
-        er.add_external_reference(obj, key)
-
-
-class OldTestResourceReferences(TestCase):
-
-    @classmethod
-    def build_tables(cls):
-        rrmap = ResourceIdentiferMap()
-        resrefs = ResourceReferences()
-
-        rrmap.add_row(0, 'ATP Binding', 'Gene Ontology', 'GO:0005524')
-        rrmap.add_row(1, 'Cacna1s', 'Mouse Genome Informatics', 'MGI:88294')
-        rrmap.add_row(2, 'recA', 'A Systematic Annotation Package for Community Analysis of Genomes', 'ABE-0008876')
-
-        resrefs.add_row(0, 'ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo', 0)
-        resrefs.add_row(1, 'e455bf5a-cbc5-48b1-b686-4b4e31f62a53', 'bar', 2)
-        resrefs.add_row(2, 'da85e056-caff-4ddd-838c-5f5463e313e6', 'baz', 1)
-        resrefs.add_row(3, '0eae6504-da47-4ee9-a375-bbed2d3d65a4', 'qux', 0)
-        return rrmap, resrefs
-
-    def __test_constructor(self):
-        self.build_tables()
-
-
-class OldTestExternalResources(H5RoundTripMixin, TestCase):
-
-    def __test_add_reference(self):
-        ExternalResources()
-
-    def __test_get_resource_identifier(self):
-        rrmap, resrefs = TestResourceReferences.build_tables()
-        er = ExternalResources(rrmap, resrefs)
-        result = er.get_resource_identifier('ca885753-e8a3-418a-86f4-7748fc2252a8', 'foo', 'ATP Binding')
-        self.assertEqual(result[0][0], 'Gene Ontology')
-        self.assertEqual(result[0][1], 'http://amigo.geneontology.org/amigo/term/GO:0005524')
-
-        result = er.get_resource_identifier('da85e056-caff-4ddd-838c-5f5463e313e6', 'baz', 'Cacna1s')
-        self.assertEqual(result[0][0], 'Mouse Genome Informatics')
-        self.assertEqual(result[0][1], 'http://www.informatics.jax.org/marker/MGI:88294')
+class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
-        rrmap, resrefs = TestResourceReferences.build_tables()
-        er = ExternalResources(rrmap, resrefs)
+        er = ExternalResources('terms')
+        key1 = er.add_key('key1')
+        key2 = er.add_key('key1')
+        er.add_ref('uuid1', 'field1', key1, 'resource11', 'resource_id11', 'url11')
+        er.add_ref('uuid2', 'field2', key2, 'resource21', 'resource_id21', 'url21')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource12', 'resource_id12', 'url12')
         return er
+
+    def test_piecewise_add(self):
+        # this should be automatically created in NWBFile
+        er = ExternalResources('terms')
+
+        # this is the term the user wants to use. They will need to specify this
+        key = er.add_key('mouse')
+
+        # the user will have to supply this info as well. This is the information
+        # needed to retrieve info about the controled term
+        er.add_resource(key, 'NCBI Taxonomy', '10090',
+                        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')
+
+        # The user can also pass in the container or it can be wrapped up under NWBFILE
+        obj = er.add_object('ca885753-e8a3-418a-86f4-7748fc2252a8', 'species')
+
+        # This could also be wrapped up under NWBFile
+        er.add_external_reference(obj, key)
+
+        self.assertEqual(er.keys.data, [('mouse',)])
+        self.assertEqual(er.resources.data,
+                         [(0, 'NCBI Taxonomy', '10090',
+                           'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
+        self.assertEqual(er.objects.data, [('ca885753-e8a3-418a-86f4-7748fc2252a8', 'species')])
+
+    def test_add_ref(self):
+        # this should be automatically created in NWBFile
+        er = ExternalResources('terms')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'uri1')
+
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.resources.data, [(0, 'resource1', 'resource_id1', 'uri1')])
+        self.assertEqual(er.objects.data, [('uuid1', 'field1')])
+
+    def test_add_ref_two_resources(self):
+        # this should be automatically created in NWBFile
+        er = ExternalResources('terms')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'uri1')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource2', 'resource_id2', 'uri2')
+
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.resources.data,
+                         [(0, 'resource1', 'resource_id1', 'uri1'),
+                          (0, 'resource2', 'resource_id2', 'uri2')])
+        self.assertEqual(er.objects.data, [('uuid1', 'field1')])
+
+    def test_add_ref_two_keys(self):
+        # this should be automatically created in NWBFile
+        er = ExternalResources('terms')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'uri1')
+        er.add_ref('uuid2', 'field2', 'key2', 'resource2', 'resource_id2', 'uri2')
+
+        self.assertEqual(er.keys.data, [('key1',), ('key2',)])
+        self.assertEqual(er.resources.data,
+                         [(0, 'resource1', 'resource_id1', 'uri1'),
+                          (1, 'resource2', 'resource_id2', 'uri2')])
+        self.assertEqual(er.objects.data, [('uuid1', 'field1'),
+                                           ('uuid2', 'field2')])
+
+    def test_add_ref_same_key_diff_objfield(self):
+        # this should be automatically created in NWBFile
+        er = ExternalResources('terms')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'url1')
+        er.add_ref('uuid2', 'field2', 'key1', 'resource2', 'resource_id2', 'url2')
+
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.resources.data,
+                         [(0, 'resource1', 'resource_id1', 'url1'),
+                          (0, 'resource2', 'resource_id2', 'url2')])
+        self.assertEqual(er.objects.data, [('uuid1', 'field1'),
+                                           ('uuid2', 'field2')])
+
+    def test_add_ref_same_keyname(self):
+        # this should be automatically created in NWBFile
+        er = ExternalResources('terms')
+        key1 = er.add_key('key1')
+        key2 = er.add_key('key1')
+        er.add_ref('uuid1', 'field1', key1, 'resource11', 'resource_id11', 'url11')
+        er.add_ref('uuid2', 'field2', key2, 'resource21', 'resource_id21', 'url21')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource12', 'resource_id12', 'url12')
+
+        self.assertEqual(er.keys.data, [('key1',), ('key1',)])
+        self.assertEqual(er.resources.data,
+                         [(0, 'resource11', 'resource_id11', 'url11'),
+                          (1, 'resource21', 'resource_id21', 'url21'),
+                          (0, 'resource12', 'resource_id12', 'url12')])
+        self.assertEqual(er.objects.data, [('uuid1', 'field1'),
+                                           ('uuid2', 'field2')])
