@@ -119,6 +119,11 @@ class AbstractH5TableDataset(DatasetOfReferences):
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
                 self.__refgetters[i] = self._get_ref
+            elif t is str:
+                # we need this for when we read compound data types
+                # that have unicode sub-dtypes since h5py does not
+                # store UTF-8 in compound dtypes
+                self.__refgetters[i] = self._get_utf
         self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
@@ -161,6 +166,12 @@ class AbstractH5TableDataset(DatasetOfReferences):
         for i in self.__refgetters:
             getref = self.__refgetters[i]
             row[i] = getref(row[i])
+
+    def _get_utf(self, string):
+        """
+        Decode a dataset element to unicode
+        """
+        return string.decode('utf-8')
 
     def __get_regref(self, ref):
         obj = self._get_ref(ref)
