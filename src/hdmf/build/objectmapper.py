@@ -406,7 +406,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def convert_dt_name(cls, **kwargs):
         '''Get the attribute name corresponding to a specification'''
         spec = getargs('spec', kwargs)
-        if spec.data_type_def is not None:
+        if isinstance(spec, LinkSpec):
+            name = spec.target_type
+        elif spec.data_type_def is not None:
             name = spec.data_type_def
         elif spec.data_type_inc is not None:
             name = spec.data_type_inc
