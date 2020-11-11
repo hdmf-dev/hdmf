@@ -1417,6 +1417,6 @@ class TestConvertDtype(TestCase):
         # see ObjectMapper.get_attr_value
         value = datetime.isoformat(datetime(2020, 11, 10))
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, '2020-11-10T00:00:00')
-        self.assertIs(type(ret), str)
-        self.assertEqual(ret_dtype, 'utf8')
+        self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')

@@ -117,8 +117,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "utf-8": _unicode,
         "ascii": _ascii,
         "bytes": _ascii,
-        "isodatetime": _unicode,
-        "datetime": _unicode,
+        "isodatetime": _ascii,
+        "datetime": _ascii,
     }
 
     __no_convert = set()
