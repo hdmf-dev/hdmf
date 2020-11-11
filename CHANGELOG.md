@@ -27,6 +27,7 @@
 - Fix inheritance when non-`AbstractContainer` is base class. @rly (#444)
 - Fix use of `hdmf.testing.assertContainerEqual(...)` for `Data` objects. @rly (#445)
 - Store isodatetime values in UTF8 encoding instead of ASCII encoding. @rly (#456)
+- Add missing support for data conversion against spec dtypes "bytes" and "short". @rly (#456)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
