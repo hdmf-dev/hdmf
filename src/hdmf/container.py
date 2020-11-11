@@ -7,6 +7,7 @@ from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta,
 from .data_utils import DataIO, append_data, extend_data
 from warnings import warn
 import types
+from copy import deepcopy
 
 import pandas as pd
 
@@ -834,7 +835,18 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
             setattr(cls, get, cls.__make_get(get, attr, container_type))
 
 
-class Row(ExtenderMeta):
+class Row(object, metaclass=ExtenderMeta):
+
+    @property
+    def id(self):
+        return self.__id
+
+    @id.setter
+    def id(self, val):
+        if self.__id is None:
+            self.__id = val
+        else:
+            raise ValueError("cannot reset the ID of a row object")
 
     @property
     def table(self):
@@ -844,42 +856,63 @@ class Row(ExtenderMeta):
     def table(self, val):
         if val is not None:
             self.__table = val
-        self.id = self.__table.add_row(**self.todict())
+        if self.id is None:
+            self.id = self.__table.add_row(**self.todict())
 
     @ExtenderMeta.pre_init
     def __build_row_class(cls, name, bases, classdict):
         if hasattr(cls, '__table__'):
-            columns = getattr(getattr(cls, '__table__'), '__columns__')
+            table_cls = getattr(cls, '__table__')
+            columns = getattr(table_cls, '__columns__')
             if cls.__init__ == bases[-1].__init__:  # check if __init__ is overridden
-                columns = columns.deepcopy()
+                columns = deepcopy(columns)
                 func_args = list()
-                id_col = None
                 for col in columns:
-                    if col['name'] == 'id':
-                        col['default'] = None
-                        id_col = col
-                    else:
-                        func_args.append(col)
-                func_args.append(id_col)
+                    func_args.append(col)
                 func_args.append({'name': 'table', 'type': Table, 'default': None,
                                   'help': 'the table this row is from'})
+                func_args.append({'name': 'id', 'type': int, 'default': None,
+                                  'help': 'the id for this row'})
 
                 @docval(*func_args)
                 def __init__(self, **kwargs):
                     super(cls, self).__init__()
-                    table = popargs('table', kwargs)
+                    table, id = popargs('table', 'id', kwargs)
                     self.__keys = list()
+                    self.__id = None
+                    self.__table = None
                     for k, v in kwargs.items():
                         self.__keys.append(k)
                         setattr(self, k, v)
+                    self.id = id
                     self.table = table
 
                 setattr(cls, '__init__', __init__)
 
                 def todict(self):
-                    return {getattr(self, k) for k in self.__keys}
+                    return {k: getattr(self, k) for k in self.__keys}
 
                 setattr(cls, 'todict', todict)
+
+            table_cls.__rowclass__ = cls
+
+    def __eq__(self, other):
+        return self.id == other.id and self.table is other.table
+
+
+class RowGetter:
+
+    def __init__(self, table):
+        self.table = table
+        self.cache = dict()
+
+    def __getitem__(self, idx):
+        ret = self.cache.get(idx)
+        if ret is None:
+            row = self.table[idx]
+            ret = self.table.__rowclass__(*row, table=self.table, id=idx)
+            self.cache[idx] = ret
+        return ret
 
 
 class Table(Data):
@@ -942,6 +975,8 @@ class Table(Data):
     def __init__(self, **kwargs):
         self.__columns = tuple(popargs('columns', kwargs))
         self.__col_index = {name: idx for idx, name in enumerate(self.__columns)}
+        if hasattr(self, '__rowclass__'):
+            self.row = RowGetter(self)
         call_docval_func(super(Table, self).__init__, kwargs)
 
     @property
@@ -957,7 +992,7 @@ class Table(Data):
         ret = len(self.data)
         row = [values[col] for col in self.columns]
         row = [v.id if isinstance(v, Row) else v for v in row]
-        self.data.append(tuple(v))
+        self.data.append(tuple(row))
         return ret
 
     def which(self, **kwargs):
