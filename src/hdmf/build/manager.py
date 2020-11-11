@@ -467,7 +467,6 @@ class TypeMap:
     # passing an np.int16 would raise a docval error.
     # passing an int64 to __init__ would result in the field storing the value as an int64 (and subsequently written
     # as an int64). no upconversion or downconversion happens as a result of this map
-    # see https://schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
     _spec_dtype_map = {
         'float32': (float, np.float32, np.float64),
         'float': (float, np.float32, np.float64),

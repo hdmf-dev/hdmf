@@ -26,6 +26,7 @@
 - Fix convert dtype when writing numpy array from `h5py.Dataset`. @rly (#427)
 - Fix inheritance when non-`AbstractContainer` is base class. @rly (#444)
 - Fix use of `hdmf.testing.assertContainerEqual(...)` for `Data` objects. @rly (#445)
+- Add missing support for data conversion against spec dtypes "bytes" and "short". @rly (#456)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
