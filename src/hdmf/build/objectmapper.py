@@ -89,6 +89,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     '''
 
+    # mapping from spec dtypes to numpy dtypes or functions for conversion of values to spec dtypes
+    # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
+    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
+    # hdmf.validate.validator.__allowable, and backend dtype maps
     __dtypes = {
         "float": np.float32,
         "float32": np.float32,
@@ -96,24 +100,25 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "float64": np.float64,
         "long": np.int64,
         "int64": np.int64,
-        "uint64": np.uint64,
         "int": np.int32,
         "int32": np.int32,
+        "short": np.int16,
         "int16": np.int16,
         "int8": np.int8,
+        "uint": np.uint32,
+        "uint64": np.uint64,
+        "uint32": np.uint32,
+        "uint16": np.uint16,
+        "uint8": np.uint8,
         "bool": np.bool_,
-        "text": _unicode,
         "text": _unicode,
         "utf": _unicode,
         "utf8": _unicode,
         "utf-8": _unicode,
         "ascii": _ascii,
-        "str": _ascii,
-        "isodatetime": _ascii,
-        "uint32": np.uint32,
-        "uint16": np.uint16,
-        "uint8": np.uint8,
-        "uint": np.uint32
+        "bytes": _ascii,
+        "isodatetime": _unicode,
+        "datetime": _unicode,
     }
 
     __no_convert = set()
@@ -211,10 +216,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
-                if spec_dtype_type == _ascii:
-                    ret_dtype = 'ascii'
-                elif spec_dtype_type == _unicode:
+                if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
+                elif spec_dtype_type is _ascii:
+                    ret_dtype = 'ascii'
                 else:
                     ret_dtype = spec_dtype_type
                 return value, ret_dtype
@@ -235,7 +240,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         else:
             if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
-                if spec_dtype_type == _unicode:
+                if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
                 ret = spec_dtype_type(value)
             else:
@@ -286,7 +291,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 return value, ret_dtype
             if isinstance(value, (list, tuple)):
                 if len(value) == 0:
-                    msg = "cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
+                    msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
                     raise ValueError(msg)
                 return value, cls.__check_edgecases(spec, value[0], spec_dtype)[1]  # infer dtype from first element
             ret_dtype = type(value)
@@ -302,7 +307,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = "got RefSpec for value of type %s" % type(value)
                 raise ValueError(msg)
             return value, spec_dtype
-        if spec_dtype is not None and spec_dtype not in cls.__dtypes:
+        if spec_dtype is not None and spec_dtype not in cls.__dtypes:  # pragma: no cover
             msg = "unrecognized dtype: %s -- cannot convert value" % spec_dtype
             raise ValueError(msg)
         return None, None
