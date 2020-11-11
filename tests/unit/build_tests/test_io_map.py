@@ -913,7 +913,7 @@ class TestConvertDtype(TestCase):
         self._test_convert_alias(spec_type, value_types)
 
         spec_type = 'float64'
-        value_types = ['float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8', 'uint64', 'uint',
+        value_types = ['float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'short', 'int8', 'uint64', 'uint',
                        'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
@@ -922,8 +922,8 @@ class TestConvertDtype(TestCase):
         self._test_convert_alias(spec_type, value_types)
 
         spec_type = 'int64'
-        value_types = ['double', 'float64', 'float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint64', 'uint',
-                       'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['double', 'float64', 'float', 'float32', 'int', 'int32', 'int16', 'short', 'int8', 'uint64',
+                       'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
         spec_type = 'uint64'
@@ -931,8 +931,8 @@ class TestConvertDtype(TestCase):
         self._test_convert_alias(spec_type, value_types)
 
         spec_type = 'uint64'
-        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8',
-                       'uint', 'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'short',
+                       'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_float32_spec(self):
@@ -953,7 +953,7 @@ class TestConvertDtype(TestCase):
         value_types = ['float', 'float32']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['int', 'int32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['int', 'int32', 'int16', 'short', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_int32_spec(self):
@@ -974,7 +974,7 @@ class TestConvertDtype(TestCase):
         value_types = ['int', 'int32']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['float', 'float32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['float', 'float32', 'int16', 'short', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_uint32_spec(self):
@@ -995,7 +995,7 @@ class TestConvertDtype(TestCase):
         value_types = ['uint', 'uint32']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint16', 'uint8', 'bool']
+        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'short', 'int8', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_int16_spec(self):
@@ -1018,7 +1018,7 @@ class TestConvertDtype(TestCase):
         expected_type = 'int32'
         self._test_change_basetype_helper(spec_type, value_types, expected_type)
 
-        value_types = ['int16']
+        value_types = ['int16', 'short']
         self._test_convert_alias(spec_type, value_types)
 
         value_types = ['int8', 'uint16', 'uint8', 'bool']
@@ -1047,7 +1047,7 @@ class TestConvertDtype(TestCase):
         value_types = ['uint16']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['int16', 'int8', 'uint8', 'bool']
+        value_types = ['int16', 'short', 'int8', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_bool_spec(self):
@@ -1063,8 +1063,8 @@ class TestConvertDtype(TestCase):
         value_types = ['uint8', 'int8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
-        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'uint64',
-                       'uint', 'uint32', 'uint16']
+        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'short',
+                       'uint64', 'uint', 'uint32', 'uint16']
         self._test_convert_mismatch_helper(spec_type, value_types)
 
     def _get_type(self, type_str):
@@ -1153,108 +1153,112 @@ class TestConvertDtype(TestCase):
         self.assertEqual(ret_dtype, np.int32)  # increase precision
 
     def test_text_spec(self):
-        spec_type = 'text'
-        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        text_spec_types = ['text', 'utf', 'utf8', 'utf-8']
+        for spec_type in text_spec_types:
+            with self.subTest(spec_type=spec_type):
+                spec = DatasetSpec('an example dataset', spec_type, name='data')
 
-        value = 'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, value)
-        self.assertIs(type(ret), str)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = 'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, value)
+                self.assertIs(type(ret), str)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = b'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, 'a')
-        self.assertIs(type(ret), str)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = b'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, 'a')
+                self.assertIs(type(ret), str)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = ['a', 'b']
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertListEqual(ret, value)
-        self.assertIs(type(ret[0]), str)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = ['a', 'b']
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, value)
+                self.assertIs(type(ret[0]), str)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = np.array(['a', 'b'])
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, value)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = np.array(['a', 'b'])
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = np.array(['a', 'b'], dtype='S1')
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
-        self.assertEqual(ret_dtype, 'utf8')
+                value = np.array(['a', 'b'], dtype='S1')
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = []
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertListEqual(ret, value)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = []
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = 1
-        msg = "Expected unicode or ascii string, got <class 'int'>"
-        with self.assertRaisesWith(ValueError, msg):
-            ObjectMapper.convert_dtype(spec, value)
+                value = 1
+                msg = "Expected unicode or ascii string, got <class 'int'>"
+                with self.assertRaisesWith(ValueError, msg):
+                    ObjectMapper.convert_dtype(spec, value)
 
-        value = DataChunkIterator(np.array(['a', 'b']))
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
-        self.assertIs(ret, value)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = DataChunkIterator(np.array(['a', 'b']))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = DataChunkIterator(np.array(['a', 'b'], dtype='S1'))
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
-        self.assertIs(ret, value)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = DataChunkIterator(np.array(['a', 'b'], dtype='S1'))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
 
     def test_ascii_spec(self):
-        spec_type = 'ascii'
-        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        ascii_spec_types = ['ascii', 'bytes']
+        for spec_type in ascii_spec_types:
+            with self.subTest(spec_type=spec_type):
+                spec = DatasetSpec('an example dataset', spec_type, name='data')
 
-        value = 'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, b'a')
-        self.assertIs(type(ret), bytes)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = 'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, b'a')
+                self.assertIs(type(ret), bytes)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = b'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, b'a')
-        self.assertIs(type(ret), bytes)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = b'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, b'a')
+                self.assertIs(type(ret), bytes)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = ['a', 'b']
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertListEqual(ret, [b'a', b'b'])
-        self.assertIs(type(ret[0]), bytes)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = ['a', 'b']
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, [b'a', b'b'])
+                self.assertIs(type(ret[0]), bytes)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = np.array(['a', 'b'])
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
-        self.assertEqual(ret_dtype, 'ascii')
+                value = np.array(['a', 'b'])
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = np.array(['a', 'b'], dtype='S1')
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, value)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = np.array(['a', 'b'], dtype='S1')
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = []
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertListEqual(ret, value)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = []
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = 1
-        msg = "Expected unicode or ascii string, got <class 'int'>"
-        with self.assertRaisesWith(ValueError, msg):
-            ObjectMapper.convert_dtype(spec, value)
+                value = 1
+                msg = "Expected unicode or ascii string, got <class 'int'>"
+                with self.assertRaisesWith(ValueError, msg):
+                    ObjectMapper.convert_dtype(spec, value)
 
-        value = DataChunkIterator(np.array(['a', 'b']))
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
-        self.assertIs(ret, value)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = DataChunkIterator(np.array(['a', 'b']))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = DataChunkIterator(np.array(['a', 'b'], dtype='S1'))
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
-        self.assertIs(ret, value)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = DataChunkIterator(np.array(['a', 'b'], dtype='S1'))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
 
     def test_no_spec(self):
         spec_type = None
