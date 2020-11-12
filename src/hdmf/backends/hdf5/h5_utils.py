@@ -171,7 +171,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
         """
         Decode a dataset element to unicode
         """
-        return string.decode('utf-8')
+        return string.decode('utf-8') if isinstance(string, bytes) else string
 
     def __get_regref(self, ref):
         obj = self._get_ref(ref)
