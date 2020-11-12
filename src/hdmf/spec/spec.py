@@ -20,27 +20,29 @@ FLAGS = {
 
 class DtypeHelper():
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
-    # this is also used in the validator
-    # if this list is updated, also update hdmf.build.manager.TypeMap._spec_dtype_map
+    # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
+    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
+    # hdmf.validate.validator.__allowable, and backend dtype maps
+    # see https://hdmf-schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
     primary_dtype_synonyms = {
-            'float': ["float", "float32"],
-            'double': ["double", "float64"],
-            'short': ["int16", "short"],
-            'int': ["int32", "int"],
-            'long': ["int64", "long"],
-            'utf': ["text", "utf", "utf8", "utf-8"],
-            'ascii': ["ascii", "bytes"],
-            'bool': ["bool"],
-            'int8': ["int8"],
-            'uint8': ["uint8"],
-            'uint16': ["uint16"],
-            'uint32': ["uint32", "uint"],
-            'uint64': ["uint64"],
-            'object': ['object'],
-            'region': ['region'],
-            'numeric': ['numeric'],
-            'isodatetime': ["isodatetime", "datetime"]
-        }
+        'float': ["float", "float32"],
+        'double': ["double", "float64"],
+        'short': ["int16", "short"],
+        'int': ["int32", "int"],
+        'long': ["int64", "long"],
+        'utf': ["text", "utf", "utf8", "utf-8"],
+        'ascii': ["ascii", "bytes"],
+        'bool': ["bool"],
+        'int8': ["int8"],
+        'uint8': ["uint8"],
+        'uint16': ["uint16"],
+        'uint32': ["uint32", "uint"],
+        'uint64': ["uint64"],
+        'object': ['object'],
+        'region': ['region'],
+        'numeric': ['numeric'],
+        'isodatetime': ["isodatetime", "datetime"]
+    }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
     recommended_primary_dtypes = list(primary_dtype_synonyms.keys())

@@ -1,5 +1,7 @@
-from hdmf.spec import AttributeSpec, DatasetSpec, DtypeSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
-from hdmf.build import DatasetBuilder, ObjectMapper, BuildManager, TypeMap
+from hdmf.spec import (AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog,
+                       RefSpec)
+from hdmf.build import (DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ReferenceBuilder,
+                        ReferenceTargetNotBuiltError)
 from hdmf import Data
 from hdmf.utils import docval, getargs, call_docval_func
 from hdmf.testing import TestCase
@@ -8,7 +10,7 @@ import h5py
 import numpy as np
 import os
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.utils import Foo, CORE_NAMESPACE
 
 
 class Baz(Data):
@@ -189,3 +191,145 @@ class TestDataMapScalarCompound(TestCase):
             self.assertEqual(type(container.data), h5py.Dataset)
             self.assertContainerEqual(container, expected)
         os.remove('test.h5')
+
+
+class BuildDatasetOfReferencesMixin:
+
+    def setUp(self):
+        self.setUpBazSpec()
+        self.foo_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Foo',
+            datasets=[
+                DatasetSpec(name='my_data', doc='an example dataset', dtype='int')
+            ],
+            attributes=[
+                AttributeSpec(name='attr1', doc='an example string attribute', dtype='text'),
+                AttributeSpec(name='attr2', doc='an example int attribute', dtype='int'),
+                AttributeSpec(name='attr3', doc='an example float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.type_map.register_map(Baz, ObjectMapper)
+        self.type_map.register_map(Foo, ObjectMapper)
+        self.manager = BuildManager(self.type_map)
+
+
+class TestBuildUntypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase):
+
+    def setUpBazSpec(self):
+        self.baz_spec = DatasetSpec(
+            doc='a list of references to Foo objects',
+            dtype=None,
+            name='MyBaz',
+            shape=[None],
+            data_type_def='Baz',
+            attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
+        )
+
+    def test_build(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        foo = Foo('my_foo1', [1, 2, 3], 'string', 10)
+        baz = Baz('my_baz', [foo, None], 'abcdefghijklmnopqrstuvwxyz')
+        foo_builder = self.manager.build(foo)
+        baz_builder = self.manager.build(baz, root=True)
+        expected = DatasetBuilder('my_baz', [ReferenceBuilder(foo_builder), None],
+                                  attributes={'baz_attr': 'abcdefghijklmnopqrstuvwxyz',
+                                              'data_type': 'Baz',
+                                              'namespace': CORE_NAMESPACE,
+                                              'object_id': baz.object_id})
+        self.assertDictEqual(baz_builder, expected)
+
+
+class TestBuildCompoundDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase):
+
+    def setUpBazSpec(self):
+        self.baz_spec = DatasetSpec(
+            doc='a list of references to Foo objects',
+            dtype=[
+                DtypeSpec(
+                    name='id',
+                    dtype='uint64',
+                    doc='The unique identifier in this table.'
+                ),
+                DtypeSpec(
+                    name='foo',
+                    dtype=RefSpec('Foo', 'object'),
+                    doc='The foo in this table.'
+                ),
+            ],
+            name='MyBaz',
+            shape=[None],
+            data_type_def='Baz',
+            attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
+        )
+
+    def test_build(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        foo = Foo('my_foo1', [1, 2, 3], 'string', 10)
+        baz = Baz('my_baz', [(1, foo)], 'abcdefghijklmnopqrstuvwxyz')
+        foo_builder = self.manager.build(foo)
+        baz_builder = self.manager.build(baz, root=True)
+        expected = DatasetBuilder('my_baz', [(1, ReferenceBuilder(foo_builder))],
+                                  attributes={'baz_attr': 'abcdefghijklmnopqrstuvwxyz',
+                                              'data_type': 'Baz',
+                                              'namespace': CORE_NAMESPACE,
+                                              'object_id': baz.object_id})
+        self.assertDictEqual(baz_builder, expected)
+
+
+class TestBuildTypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase):
+
+    def setUpBazSpec(self):
+        self.baz_spec = DatasetSpec(
+            doc='a list of references to Foo objects',
+            dtype=RefSpec('Foo', 'object'),
+            name='MyBaz',
+            shape=[None],
+            data_type_def='Baz',
+            attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
+        )
+
+    def test_build(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        foo = Foo('my_foo1', [1, 2, 3], 'string', 10)
+        baz = Baz('my_baz', [foo], 'abcdefghijklmnopqrstuvwxyz')
+        foo_builder = self.manager.build(foo)
+        baz_builder = self.manager.build(baz, root=True)
+        expected = DatasetBuilder('my_baz', [ReferenceBuilder(foo_builder)],
+                                  attributes={'baz_attr': 'abcdefghijklmnopqrstuvwxyz',
+                                              'data_type': 'Baz',
+                                              'namespace': CORE_NAMESPACE,
+                                              'object_id': baz.object_id})
+        self.assertDictEqual(baz_builder, expected)
+
+
+class TestBuildDatasetOfReferencesUnbuiltTarget(BuildDatasetOfReferencesMixin, TestCase):
+
+    def setUpBazSpec(self):
+        self.baz_spec = DatasetSpec(
+            doc='a list of references to Foo objects',
+            dtype=None,
+            name='MyBaz',
+            shape=[None],
+            data_type_def='Baz',
+            attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
+        )
+
+    def test_build(self):
+        ''' Test default mapping functionality when no attributes are nested '''
+        foo = Foo('my_foo1', [1, 2, 3], 'string', 10)
+        baz = Baz('my_baz', [foo], 'abcdefghijklmnopqrstuvwxyz')
+        msg = "MyBaz (MyBaz): Could not find already-built Builder for Foo 'my_foo1' in BuildManager"
+        with self.assertRaisesWith(ReferenceTargetNotBuiltError, msg):
+            self.manager.build(baz, root=True)

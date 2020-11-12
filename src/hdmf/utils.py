@@ -10,6 +10,7 @@ from enum import Enum
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float, bytes],
+    'data': []
 }
 
 # code to signify how to handle positional arguments in docval
@@ -39,6 +40,19 @@ def docval_macro(macro):
         __macros[macro].append(cls)
         return cls
     return _dec
+
+
+def get_docval_macro(key=None):
+    """
+    Return a deepcopy of the docval macros, i.e., strings that represent a customizable list of types for use in docval.
+
+    :param key: Name of the macro. If key=None, then a dictionary of all macros is returned. Otherwise, a tuple of
+                the types associated with the key is returned.
+    """
+    if key is None:
+        return _copy.deepcopy(__macros)
+    else:
+        return tuple(__macros[key])
 
 
 def __type_okay(value, argtype, allow_none=False):

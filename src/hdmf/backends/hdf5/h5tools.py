@@ -1,6 +1,7 @@
 from collections import deque
 import numpy as np
 import os.path
+from pathlib import Path
 from functools import partial
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import logging
@@ -29,7 +30,7 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 class HDF5IO(HDMFIO):
 
-    @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
@@ -44,6 +45,9 @@ class HDF5IO(HDMFIO):
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
+
+        if isinstance(path, Path):
+            path = str(path)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
             msg = 'You argued %s as this object\'s path, ' % path
@@ -86,7 +90,7 @@ class HDF5IO(HDMFIO):
     @classmethod
     @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
@@ -99,6 +103,9 @@ class HDF5IO(HDMFIO):
         """
         namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
                                                                 kwargs)
+
+        if isinstance(path, Path):
+            path = str(path)
 
         if path is None and file_obj is None:
             raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
@@ -780,27 +787,29 @@ class HDF5IO(HDMFIO):
         "float64": np.float64,
         "long": np.int64,
         "int64": np.int64,
-        "uint64": np.uint64,
         "int": np.int32,
         "int32": np.int32,
+        "short": np.int16,
         "int16": np.int16,
         "int8": np.int8,
+        "uint64": np.uint64,
+        "uint": np.uint32,
+        "uint32": np.uint32,
+        "uint16": np.uint16,
+        "uint8": np.uint8,
         "bool": np.bool_,
         "text": H5_TEXT,
         "utf": H5_TEXT,
         "utf8": H5_TEXT,
         "utf-8": H5_TEXT,
         "ascii": H5_BINARY,
-        "str": H5_BINARY,
-        "isodatetime": H5_TEXT,
-        "uint": np.uint32,
-        "uint32": np.uint32,
-        "uint16": np.uint16,
-        "uint8": np.uint8,
+        "bytes": H5_BINARY,
         "ref": H5_REF,
         "reference": H5_REF,
         "object": H5_REF,
         "region": H5_REGREF,
+        "isodatetime": H5_TEXT,
+        "datetime": H5_TEXT,
     }
 
     @classmethod
