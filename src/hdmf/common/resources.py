@@ -256,7 +256,7 @@ class ExternalResources(Container):
         elif not (resource_name is None and resource_id is None and resource_uri is None):
             msg = ("Specify all or none of resource_name, entity_id, and entity_uri arguments. "
                    "All three are required to create a reference")
-            raise ValueError()
+            raise ValueError(msg)
 
         if isinstance(container, Container):
             container = container.object_id
@@ -318,7 +318,8 @@ class ExternalResources(Container):
                 self.add_resource(ret[key], *row.values())
         return ret
 
-    @docval({'name': 'keys', 'type': (list, Key), 'doc': 'the Key(s) to get external resource data for', 'default': None},
+    @docval({'name': 'keys', 'type': (list, Key), 'default': None,
+             'doc': 'the Key(s) to get external resource data for'},
             rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
     def get_keys(self, **kwargs):
         """
@@ -350,4 +351,5 @@ class ExternalResources(Container):
                 rsc_row.pop('keytable_idx')
                 rsc_row['key_name'] = key.key_name
                 data.append(rsc_row)
-        return pd.DataFrame(data=data, columns=['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri'])
+        return pd.DataFrame(data=data, columns=['key_name', 'resource_name',
+                                                'resource_entity_id', 'resource_entity_uri'])

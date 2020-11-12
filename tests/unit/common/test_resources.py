@@ -115,10 +115,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         received = er.get_keys()
 
         expected = pd.DataFrame(
-            data = [['key1', 'resource11', 'resource_id11', 'url11'],
-                    ['key1', 'resource12', 'resource_id12', 'url12'],
-                    ['key2', 'resource21', 'resource_id21', 'url21']],
-            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+            data=[['key1', 'resource11', 'resource_id11', 'url11'],
+                  ['key1', 'resource12', 'resource_id12', 'url12'],
+                  ['key2', 'resource21', 'resource_id21', 'url21']],
+            columns=['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
         )
         pd.testing.assert_frame_equal(received, expected)
 
@@ -131,19 +131,19 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         received = er.get_keys(keys=key)
 
         expected = pd.DataFrame(
-            data = [['key1', 'resource11', 'resource_id11', 'url11'],
-                    ['key1', 'resource12', 'resource_id12', 'url12']],
-            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+            data=[['key1', 'resource11', 'resource_id11', 'url11'],
+                  ['key1', 'resource12', 'resource_id12', 'url12']],
+            columns=['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
         )
         pd.testing.assert_frame_equal(received, expected)
 
     def test_add_keys(self):
         er = ExternalResources('terms')
         keys = pd.DataFrame(
-            data = [['key1', 'resource11', 'resource_id11', 'url11'],
-                    ['key1', 'resource12', 'resource_id12', 'url12'],
-                    ['key2', 'resource21', 'resource_id21', 'url21']],
-            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+            data=[['key1', 'resource11', 'resource_id11', 'url11'],
+                  ['key1', 'resource12', 'resource_id12', 'url12'],
+                  ['key2', 'resource21', 'resource_id21', 'url21']],
+            columns=['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
         )
         ret = er.add_keys(keys)
 
@@ -157,10 +157,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_keys_roundtrip(self):
         er = ExternalResources('terms')
         keys = pd.DataFrame(
-            data = [['key1', 'resource11', 'resource_id11', 'url11'],
-                    ['key1', 'resource12', 'resource_id12', 'url12'],
-                    ['key2', 'resource21', 'resource_id21', 'url21']],
-            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+            data=[['key1', 'resource11', 'resource_id11', 'url11'],
+                  ['key1', 'resource12', 'resource_id12', 'url12'],
+                  ['key2', 'resource21', 'resource_id21', 'url21']],
+            columns=['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
         )
         er.add_keys(keys)
         received = er.get_keys()
