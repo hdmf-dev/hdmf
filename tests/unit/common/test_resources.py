@@ -1,3 +1,5 @@
+import pandas as pd
+
 from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase, H5RoundTripMixin
 
@@ -14,7 +16,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         return er
 
     def test_piecewise_add(self):
-        # this should be automatically created in NWBFile
         er = ExternalResources('terms')
 
         # this is the term the user wants to use. They will need to specify this
@@ -38,7 +39,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [('ca885753-e8a3-418a-86f4-7748fc2252a8', 'species')])
 
     def test_add_ref(self):
-        # this should be automatically created in NWBFile
         er = ExternalResources('terms')
         er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'uri1')
 
@@ -46,8 +46,17 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.resources.data, [(0, 'resource1', 'resource_id1', 'uri1')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
 
+    def test_add_ref_bad_arg(self):
+        er = ExternalResources('terms')
+        # The contents of the message are not important. Just make sure an error is raised
+        with self.assertRaises(ValueError):
+            er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', entity_id='resource_id1')
+        with self.assertRaises(ValueError):
+            er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', entity_uri='uri1')
+        with self.assertRaises(ValueError):
+            er.add_ref('uuid1', 'field1', 'key1', entity_id='resource_id1', entity_uri='uri1')
+
     def test_add_ref_two_resources(self):
-        # this should be automatically created in NWBFile
         er = ExternalResources('terms')
         er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'uri1')
         er.add_ref('uuid1', 'field1', 'key1', 'resource2', 'resource_id2', 'uri2')
@@ -59,7 +68,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
 
     def test_add_ref_two_keys(self):
-        # this should be automatically created in NWBFile
         er = ExternalResources('terms')
         er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'uri1')
         er.add_ref('uuid2', 'field2', 'key2', 'resource2', 'resource_id2', 'uri2')
@@ -72,7 +80,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            ('uuid2', 'field2')])
 
     def test_add_ref_same_key_diff_objfield(self):
-        # this should be automatically created in NWBFile
         er = ExternalResources('terms')
         er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'url1')
         er.add_ref('uuid2', 'field2', 'key1', 'resource2', 'resource_id2', 'url2')
@@ -85,7 +92,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            ('uuid2', 'field2')])
 
     def test_add_ref_same_keyname(self):
-        # this should be automatically created in NWBFile
         er = ExternalResources('terms')
         key1 = er.add_key('key1')
         key2 = er.add_key('key1')
@@ -100,3 +106,63 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                           (0, 'resource12', 'resource_id12', 'url12')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1'),
                                            ('uuid2', 'field2')])
+
+    def test_get_keys(self):
+        er = ExternalResources('terms')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource11', 'resource_id11', 'url11')
+        er.add_ref('uuid2', 'field2', 'key2', 'resource21', 'resource_id21', 'url21')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource12', 'resource_id12', 'url12')
+        received = er.get_keys()
+
+        expected = pd.DataFrame(
+            data = [['key1', 'resource11', 'resource_id11', 'url11'],
+                    ['key1', 'resource12', 'resource_id12', 'url12'],
+                    ['key2', 'resource21', 'resource_id21', 'url21']],
+            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+        )
+        pd.testing.assert_frame_equal(received, expected)
+
+    def test_get_keys_subset(self):
+        er = ExternalResources('terms')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource11', 'resource_id11', 'url11')
+        er.add_ref('uuid2', 'field2', 'key2', 'resource21', 'resource_id21', 'url21')
+        er.add_ref('uuid1', 'field1', 'key1', 'resource12', 'resource_id12', 'url12')
+        key = er.keys.row[0]
+        received = er.get_keys(keys=key)
+
+        expected = pd.DataFrame(
+            data = [['key1', 'resource11', 'resource_id11', 'url11'],
+                    ['key1', 'resource12', 'resource_id12', 'url12']],
+            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+        )
+        pd.testing.assert_frame_equal(received, expected)
+
+    def test_add_keys(self):
+        er = ExternalResources('terms')
+        keys = pd.DataFrame(
+            data = [['key1', 'resource11', 'resource_id11', 'url11'],
+                    ['key1', 'resource12', 'resource_id12', 'url12'],
+                    ['key2', 'resource21', 'resource_id21', 'url21']],
+            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+        )
+        ret = er.add_keys(keys)
+
+        self.assertEqual({'key1', 'key2'}, set(ret))
+        self.assertEqual(er.keys.data, [('key1',), ('key2',)])
+        self.assertEqual(er.resources.data,
+                         [(0, 'resource11', 'resource_id11', 'url11'),
+                          (0, 'resource12', 'resource_id12', 'url12'),
+                          (1, 'resource21', 'resource_id21', 'url21')])
+
+    def test_keys_roundtrip(self):
+        er = ExternalResources('terms')
+        keys = pd.DataFrame(
+            data = [['key1', 'resource11', 'resource_id11', 'url11'],
+                    ['key1', 'resource12', 'resource_id12', 'url12'],
+                    ['key2', 'resource21', 'resource_id21', 'url21']],
+            columns = ['key_name', 'resource_name', 'resource_entity_id', 'resource_entity_uri']
+        )
+        er.add_keys(keys)
+        received = er.get_keys()
+
+        pd.testing.assert_frame_equal(received, keys)
