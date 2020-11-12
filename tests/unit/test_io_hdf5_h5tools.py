@@ -167,7 +167,7 @@ class H5IOTest(TestCase):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
         self.assertTupleEqual(dset.shape, ())
-        self.assertEqual(dset[()], a)
+        self.assertEhqual(dset[()], a)
 
     def test_write_dataset_string(self):
         a = 'test string'
@@ -175,7 +175,10 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         self.assertTupleEqual(dset.shape, ())
         # self.assertEqual(dset[()].decode('utf-8'), a)
-        self.assertEqual(dset[()], a)
+        read_a = dset[()]
+        if isinstance(read_a, bytes):
+            read_a = read_a.decode('utf-8')
+        self.assertEqual(read_a, a)
 
     ##########################################
     #  write_dataset tests: lists
