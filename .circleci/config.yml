@@ -126,19 +126,9 @@ jobs:
       - run:
           <<: *run-style-check
 
-  python35:
-    docker:
-      - image: circleci/python:3.5.9-stretch
-    environment:
-     - TEST_TOX_ENV: "py35"
-     - COVERAGE_TOX_ENV: ""
-     - BUILD_TOX_ENV: "build-py35"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py35"
-    <<: *ci-steps
-
   python36:
     docker:
-      - image: circleci/python:3.6.10-stretch
+      - image: circleci/python:3.6.12-stretch
     environment:
      - TEST_TOX_ENV: "py36"
      - COVERAGE_TOX_ENV: ""
@@ -148,7 +138,7 @@ jobs:
 
   python37:
     docker:
-      - image: circleci/python:3.7.6-stretch
+      - image: circleci/python:3.7.9-stretch
     environment:
      - TEST_TOX_ENV: "py37"
      - COVERAGE_TOX_ENV: ""
@@ -158,7 +148,7 @@ jobs:
 
   python38:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-slim-buster
     environment:
      - TEST_TOX_ENV: "py38"
      - COVERAGE_TOX_ENV: "coverage"
@@ -167,29 +157,30 @@ jobs:
      - UPLOAD_WHEELS: "true"
     <<: *ci-steps
 
-  python35-min-req:
+  python39:
     docker:
-      - image: circleci/python:3.5.9-stretch
+      - image: circleci/python:3.9.0-buster
     environment:
-     - TEST_TOX_ENV: "py35-min-req"
+     - TEST_TOX_ENV: "py39"
      - COVERAGE_TOX_ENV: ""
-     - BUILD_TOX_ENV: "build-py35-min-req"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py35-min-req"
+     - BUILD_TOX_ENV: "build-py39"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall-py39"
     <<: *ci-steps
 
-  miniconda35:
+
+  python36-min-req:
     docker:
-      - image: continuumio/miniconda3:4.3.27p0
+      - image: circleci/python:3.6.12-stretch
     environment:
-      - CONDA_PYTHON_VER: "3.5"
-      - TEST_TOX_ENV: "py35"
-      - BUILD_TOX_ENV: "build-py35"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py35"
-    <<: *conda-steps
+     - TEST_TOX_ENV: "py36-min-req"
+     - COVERAGE_TOX_ENV: ""
+     - BUILD_TOX_ENV: "build-py36-min-req"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall-py36-min-req"
+    <<: *ci-steps
 
   miniconda36:
     docker:
-      - image: continuumio/miniconda3:4.7.12
+      - image: continuumio/miniconda3:4.8.2
     environment:
       - CONDA_PYTHON_VER: "3.6"
       - TEST_TOX_ENV: "py36"
@@ -199,7 +190,7 @@ jobs:
 
   miniconda37:
     docker:
-      - image: continuumio/miniconda3:4.7.12
+      - image: continuumio/miniconda3:4.8.2
     environment:
       - CONDA_PYTHON_VER: "3.7"
       - TEST_TOX_ENV: "py37"
@@ -209,7 +200,7 @@ jobs:
 
   miniconda38:
     docker:
-      - image: continuumio/miniconda3:4.7.12
+      - image: continuumio/miniconda3:4.8.2
     environment:
       - CONDA_PYTHON_VER: "3.8"
       - TEST_TOX_ENV: "py38"
@@ -217,12 +208,15 @@ jobs:
       - TEST_WHEELINSTALL_ENV: "wheelinstall-py38"
     <<: *conda-steps
 
-  gallery35:
+  miniconda39:
     docker:
-      - image: circleci/python:3.5.9-stretch
+      - image: continuumio/miniconda3:4.8.2
     environment:
-     - TEST_TOX_ENV: "gallery-py35"
-    <<: *gallery-steps
+      - CONDA_PYTHON_VER: "3.9"
+      - TEST_TOX_ENV: "py39"
+      - BUILD_TOX_ENV: "build-py39"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall-py39"
+    <<: *conda-steps
 
   gallery36:
     docker:
@@ -245,11 +239,18 @@ jobs:
      - TEST_TOX_ENV: "gallery-py38"
     <<: *gallery-steps
 
-  gallery35-min-req:
+  gallery39:
     docker:
-      - image: circleci/python:3.5.9-stretch
+      - image: circleci/python:3.9.0-buster
     environment:
-     - TEST_TOX_ENV: "gallery-py35-min-req"
+     - TEST_TOX_ENV: "gallery-py39"
+    <<: *gallery-steps
+
+  gallery36-min-req:
+    docker:
+      - image: circleci/python:3.6.10-stretch
+    environment:
+     - TEST_TOX_ENV: "gallery-py36-min-req"
     <<: *gallery-steps
 
   deploy-dev:
@@ -339,17 +340,15 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
-      - python35:
-          <<: *no_filters
       - python36:
           <<: *no_filters
       - python37:
           <<: *no_filters
       - python38:
           <<: *no_filters
-      - python35-min-req:
+      - python39:
           <<: *no_filters
-      - miniconda35:
+      - python36-min-req:
           <<: *no_filters
       - miniconda36:
           <<: *no_filters
@@ -357,7 +356,7 @@ workflows:
           <<: *no_filters
       - miniconda38:
           <<: *no_filters
-      - gallery35:
+      - miniconda39:
           <<: *no_filters
       - gallery36:
           <<: *no_filters
@@ -365,25 +364,27 @@ workflows:
           <<: *no_filters
       - gallery38:
           <<: *no_filters
-      - gallery35-min-req:
+      - gallery39:
+          <<: *no_filters
+      - gallery36-min-req:
           <<: *no_filters
       - deploy-dev:
           requires:
             - flake8
-            - python35
             - python36
             - python37
             - python38
-            - python35-min-req
-            - miniconda35
+            - python39
+            - python36-min-req
             - miniconda36
             - miniconda37
             - miniconda38
-            - gallery35
+            - miniconda39
             - gallery36
             - gallery37
             - gallery38
-            - gallery35-min-req
+            - gallery39
+            - gallery36-min-req
           filters:
             tags:
               ignore:
@@ -395,20 +396,20 @@ workflows:
       - deploy-release:
           requires:
             - flake8
-            - python35
             - python36
             - python37
             - python38
-            - python35-min-req
-            - miniconda35
+            - python39
+            - python36-min-req
             - miniconda36
             - miniconda37
             - miniconda38
-            - gallery35
+            - miniconda39
             - gallery36
             - gallery37
             - gallery38
-            - gallery35-min-req
+            - gallery39
+            - gallery36-min-req
           filters:
             tags:
               only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
