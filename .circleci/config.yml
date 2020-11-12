@@ -148,7 +148,7 @@ jobs:
 
   python38:
     docker:
-      - image: circleci/python:3.8.6-slim-buster
+      - image: circleci/python:3.8.6-buster
     environment:
      - TEST_TOX_ENV: "py38"
      - COVERAGE_TOX_ENV: "coverage"
