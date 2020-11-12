@@ -6,23 +6,26 @@ from .. import register_map
 @register_map(ExternalResources)
 class ExternalResourcesMap(ObjectMapper):
 
-    @classmethod
-    def construct_helper(cls, name, builder, table_cls):
-        builder = builder[name]
-        return table_cls(name=name, data=builder.data)
+    def construct_helper(self, name, parent_builder, table_cls, manager):
+        parent = manager._get_proxy_builder(parent_builder)
+        builder = parent_builder[name]
+        src = builder.source
+        oid = builder.attributes.get(self.spec.id_key())
+        kwargs = dict(name=builder.name, data=builder.data)
+        return self.__new_container__(table_cls, src, parent, oid, **kwargs)
 
     @ObjectMapper.constructor_arg('keys')
     def keys(self, builder, manager):
-        return self.construct_helper('keys', builder, KeyTable)
+        return self.construct_helper('keys', builder, KeyTable, manager)
 
     @ObjectMapper.constructor_arg('resources')
     def resources(self, builder, manager):
-        return self.construct_helper('resources', builder, ResourceTable)
+        return self.construct_helper('resources', builder, ResourceTable, manager)
 
     @ObjectMapper.constructor_arg('objects')
     def objects(self, builder, manager):
-        return self.construct_helper('objects', builder, ObjectTable)
+        return self.construct_helper('objects', builder, ObjectTable, manager)
 
     @ObjectMapper.constructor_arg('object_keys')
     def object_keys(self, builder, manager):
-        return self.construct_helper('object_keys', builder, ObjectKeyTable)
+        return self.construct_helper('object_keys', builder, ObjectKeyTable, manager)
