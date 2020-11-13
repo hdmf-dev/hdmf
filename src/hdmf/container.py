@@ -845,15 +845,28 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
 
 
 class Row(object, metaclass=ExtenderMeta):
+    """
+    A class for representing rows from a Table.
+
+    The Table class can be indicated with the __table__. Doing so
+    will set constructor arguments for the Row class and ensure that
+    Row.idx is set appropriately when a Row is added to the Table. It will
+    also add functionality to the Table class for getting Row objects.
+
+    Note, the Row class is not needed for working with Table objects. This
+    is merely convenience functionality for working with Tables.
+    """
+
+    __table__ = None
 
     @property
-    def id(self):
-        return self.__id
+    def idx(self):
+        return self.__idx
 
-    @id.setter
-    def id(self, val):
-        if self.__id is None:
-            self.__id = val
+    @idx.setter
+    def idx(self, val):
+        if self.__idx is None:
+            self.__idx = val
         else:
             raise ValueError("cannot reset the ID of a row object")
 
@@ -865,13 +878,13 @@ class Row(object, metaclass=ExtenderMeta):
     def table(self, val):
         if val is not None:
             self.__table = val
-        if self.id is None:
-            self.id = self.__table.add_row(**self.todict())
+        if self.idx is None:
+            self.idx = self.__table.add_row(**self.todict())
 
     @ExtenderMeta.pre_init
     def __build_row_class(cls, name, bases, classdict):
-        if hasattr(cls, '__table__'):
-            table_cls = getattr(cls, '__table__')
+        table_cls = getattr(cls, '__table__', None)
+        if table_cls is not None:
             columns = getattr(table_cls, '__columns__')
             if cls.__init__ == bases[-1].__init__:  # check if __init__ is overridden
                 columns = deepcopy(columns)
@@ -880,20 +893,20 @@ class Row(object, metaclass=ExtenderMeta):
                     func_args.append(col)
                 func_args.append({'name': 'table', 'type': Table, 'default': None,
                                   'help': 'the table this row is from'})
-                func_args.append({'name': 'id', 'type': int, 'default': None,
-                                  'help': 'the id for this row'})
+                func_args.append({'name': 'idx', 'type': int, 'default': None,
+                                  'help': 'the index for this row'})
 
                 @docval(*func_args)
                 def __init__(self, **kwargs):
                     super(cls, self).__init__()
-                    table, id = popargs('table', 'id', kwargs)
+                    table, idx = popargs('table', 'idx', kwargs)
                     self.__keys = list()
-                    self.__id = None
+                    self.__idx = None
                     self.__table = None
                     for k, v in kwargs.items():
                         self.__keys.append(k)
                         setattr(self, k, v)
-                    self.id = id
+                    self.idx = idx
                     self.table = table
 
                 setattr(cls, '__init__', __init__)
@@ -903,13 +916,18 @@ class Row(object, metaclass=ExtenderMeta):
 
                 setattr(cls, 'todict', todict)
 
+            # set this so Table.row gets set when a Table is instantiated
             table_cls.__rowclass__ = cls
 
     def __eq__(self, other):
-        return self.id == other.id and self.table is other.table
+        return self.idx == other.idx and self.table is other.table
 
 
 class RowGetter:
+    """
+    A simple class for providing __getitem__ functionality that returns
+    Row objects to a Table.
+    """
 
     def __init__(self, table):
         self.table = table
@@ -942,7 +960,15 @@ class Table(Data):
     The class attribute __defaultname__ can also be set to specify a default name
     for the table class. If \_\_defaultname\_\_ is not specified, then ``name`` will
     need to be specified when the class is instantiated.
+
+    A Table class can be paired with a Row class for conveniently working with rows of
+    a Table. This pairing must be indicated in the Row class implementation. See Row
+    for more details.
     '''
+
+    # This class attribute is used to indicate with Row class should be used when
+    # adding RowGetter functionality to the Table.
+    __rowclass__ = None
 
     @ExtenderMeta.pre_init
     def __build_table_class(cls, name, bases, classdict):
