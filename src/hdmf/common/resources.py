@@ -189,15 +189,17 @@ class ExternalResources(Container):
         If the container and field have not been added, add the pair and return
         the corresponding Object. Otherwise, just return the Object.
         """
-        object_id = self.objects.which(object_id=container)
-        if len(object_id) > 0:
-            field_id = self.objects.which(field=field)
-            object_id = list(set(object_id) & set(field_id))
+        objecttable_idx = self.objects.which(object_id=container)
+        if len(objecttable_idx) > 0:
+            field_idx = self.objects.which(field=field)
+            objecttable_idx = list(set(objecttable_idx) & set(field_idx))
 
-        if len(object_id) == 1:
-            return self.objects.row[object_id[0]]
-        else:
+        if len(objecttable_idx) == 1:
+            return self.objects.row[objecttable_idx[0]]
+        elif len(objecttable_idx) == 0:
             return self.add_object(container, field)
+        else:
+            raise ValueError("Found multiple instances of the same object_id and field in object table")
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'the name of the key to get'},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
