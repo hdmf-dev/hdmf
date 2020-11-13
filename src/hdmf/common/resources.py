@@ -1,18 +1,10 @@
-import uuid
 import numpy as np
 import pandas as pd
 
 from . import register_class
-from ..container import Table, Row, Container
+from ..container import Table, Row, Container, AbstractContainer
 
 from ..utils import docval, popargs
-
-
-def _check_id(table, id):
-    if id >= 0 and len(table.which(id=id)) == 0:
-        return np.uint64(id)
-    else:
-        raise ValueError('id must be a non-negative integer that is not already in the table: %d' % id)
 
 
 class KeyTable(Table):
@@ -44,14 +36,15 @@ class ResourceTable(Table):
     __defaultname__ = 'resources'
 
     __columns__ = (
-        {'name': 'keytable_idx', 'type': (int, str, Key),
-         'doc': 'The user key that maps to the resource term / registry symbol.'},
+        {'name': 'keytable_idx', 'type': (int, Key),
+         'doc': ('The index into the keys table for the user key that '
+                 'maps to the resource term / registry symbol.')},
         {'name': 'resource_name', 'type': str,
          'doc': 'The resource/registry that the term/symbol comes from.'},
         {'name': 'resource_entity_id', 'type': str,
-         'doc': 'The unique resource identifier for the resource term / registry symbol.'},
+         'doc': 'The unique ID for the resource term / registry symbol.'},
         {'name': 'resource_entity_uri', 'type': str,
-         'doc': 'The unique resource identifier for the resource term / registry symbol.'},
+         'doc': 'The URI for the resource term / registry symbol.'},
     )
 
 
@@ -65,15 +58,16 @@ class ResourceEntity(Row):
 
 class ObjectTable(Table):
     """
-    A table for storing objects that contain keys that refer to external resources
+    A table for storing objects (i.e. Containers) that contain keys that refer to external resources
     """
 
     __defaultname__ = 'objects'
 
     __columns__ = (
-        {'name': 'object_id', 'type': (str, uuid.UUID),
-         'doc': 'The user key that maps to the resource term / registry symbol.'},
-        {'name': 'field', 'type': str, 'doc': 'The resource/registry that the term/symbol comes from.'},
+        {'name': 'object_id', 'type': str,
+         'doc': 'The object ID for the Container/Data'},
+        {'name': 'field', 'type': str,
+         'doc': 'The field on the Container/Data that uses an external resource reference key'},
     )
 
 
@@ -93,10 +87,10 @@ class ObjectKeyTable(Table):
     __defaultname__ = 'object_keys'
 
     __columns__ = (
-        {'name': 'objecttable_idx', 'type': (int, str, Object),
-         'doc': 'The user key that maps to the resource term / registry symbol.'},
-        {'name': 'keytable_idx', 'type': (int, str, Key),
-         'doc': 'The user key that maps to the resource term / registry symbol.'},
+        {'name': 'objecttable_idx', 'type': (int, Object),
+         'doc': 'the index into the objects table for the object that uses the key'},
+        {'name': 'keytable_idx', 'type': (int, Key),
+         'doc': 'the index into the key table that is used to make an external resource reference'}
     )
 
 
@@ -165,14 +159,15 @@ class ExternalResources(Container):
                                          table=self.resources)
         return resource_entity
 
-    @docval({'name': 'container', 'type': (Container, str), 'doc': 'the Container to add'},
+    @docval({'name': 'container', 'type': (str, AbstractContainer),
+             'doc': 'the Container/Data object to add or the object_id for the Container/Data object to add'},
             {'name': 'field', 'type': str, 'doc': 'the field on the Container to add'})
     def add_object(self, **kwargs):
         """
         Add an object that references an external resource
         """
         container, field = popargs('container', 'field', kwargs)
-        if isinstance(container, Container):
+        if isinstance(container, AbstractContainer):
             container = container.object_id
         obj = Object(container, field, table=self.objects)
         return obj
@@ -205,7 +200,9 @@ class ExternalResources(Container):
             return self.add_object(container, field)
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'the name of the key to get'},
-            {'name': 'container', 'type': (str, Container), 'doc': 'the Container that uses the key', 'default': None},
+            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('the Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key')},
             {'name': 'field', 'type': str, 'doc': 'the field of the Container that uses the key', 'default': None})
     def get_key(self, **kwargs):
         key_name, container, field = popargs('key_name', 'container', 'field', kwargs)
@@ -214,7 +211,7 @@ class ExternalResources(Container):
             # if same key is used multiple times, determine
             # which instance based on the Container
             object_field = self._check_object_field(container, field)
-            key_tmp = self.object_keys['keytable_idx', object_field.id]
+            key_tmp = self.object_keys['keytable_idx', object_field.idx]
             if key_tmp in key_id:
                 return self.keys.row[key_tmp]
             else:
@@ -229,9 +226,12 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_id[0]]
 
-    @docval({'name': 'container', 'type': (str, Container), 'doc': 'the Container that uses the key', 'default': None},
-            {'name': 'field', 'type': str, 'doc': 'the field of the Container that uses the key', 'default': None},
-            {'name': 'key', 'type': (str, Key), 'doc': 'the name of the key to get', 'default': None},
+    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('the Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key')},
+            {'name': 'field', 'type': str, 'doc': 'the field of the Container/Data that uses the key', 'default': None},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
             {'name': 'resource_name', 'type': str, 'doc': 'the online resource (i.e. database) name', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'the identifier for the entity at the resource', 'default': None},
             {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None})
@@ -276,7 +276,7 @@ class ExternalResources(Container):
                 # which instance based on the Container
                 object_field = self._check_object_field(container, field)
 
-                key_tmp = self.object_keys['keytable_idx', object_field.id]
+                key_tmp = self.object_keys['keytable_idx', object_field.idx]
                 if key_tmp in key_id:
                     key = self.keys.row[key_tmp]
                 else:
@@ -345,7 +345,7 @@ class ExternalResources(Container):
                 keys = [keys]
         data = list()
         for key in keys:
-            rsc_ids = self.resources.which(keytable_idx=key.id)
+            rsc_ids = self.resources.which(keytable_idx=key.idx)
             for rsc_id in rsc_ids:
                 rsc_row = self.resources.row[rsc_id].todict()
                 rsc_row.pop('keytable_idx')

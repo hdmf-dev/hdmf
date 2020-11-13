@@ -861,6 +861,7 @@ class Row(object, metaclass=ExtenderMeta):
 
     @property
     def idx(self):
+        """The index of this row in its respective Table"""
         return self.__idx
 
     @idx.setter
@@ -872,6 +873,7 @@ class Row(object, metaclass=ExtenderMeta):
 
     @property
     def table(self):
+        """The Table this Row comes from"""
         return self.__table
 
     @table.setter
@@ -937,7 +939,7 @@ class RowGetter:
         ret = self.cache.get(idx)
         if ret is None:
             row = self.table[idx]
-            ret = self.table.__rowclass__(*row, table=self.table, id=idx)
+            ret = self.table.__rowclass__(*row, table=self.table, idx=idx)
             self.cache[idx] = ret
         return ret
 
@@ -1026,7 +1028,7 @@ class Table(Data):
             raise ValueError(msg)
         ret = len(self.data)
         row = [values[col] for col in self.columns]
-        row = [v.id if isinstance(v, Row) else v for v in row]
+        row = [v.idx if isinstance(v, Row) else v for v in row]
         self.data.append(tuple(row))
         return ret
 
