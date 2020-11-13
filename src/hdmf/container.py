@@ -920,6 +920,9 @@ class Row(object, metaclass=ExtenderMeta):
 
             # set this so Table.row gets set when a Table is instantiated
             table_cls.__rowclass__ = cls
+        else:
+            if bases != (object,):
+                raise ValueError('__table__ must be set if sub-classing Row')
 
     def __eq__(self, other):
         return self.idx == other.idx and self.table is other.table
@@ -968,7 +971,7 @@ class Table(Data):
     for more details.
     '''
 
-    # This class attribute is used to indicate with Row class should be used when
+    # This class attribute is used to indicate which Row class should be used when
     # adding RowGetter functionality to the Table.
     __rowclass__ = None
 
@@ -1012,7 +1015,7 @@ class Table(Data):
     def __init__(self, **kwargs):
         self.__columns = tuple(popargs('columns', kwargs))
         self.__col_index = {name: idx for idx, name in enumerate(self.__columns)}
-        if hasattr(self, '__rowclass__'):
+        if getattr(self, '__rowclass__') is not None:
             self.row = RowGetter(self)
         call_docval_func(super(Table, self).__init__, kwargs)
 
