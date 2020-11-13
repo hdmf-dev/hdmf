@@ -207,6 +207,12 @@ class ExternalResources(Container):
                      'the object_id for the Container/Data object that uses the key')},
             {'name': 'field', 'type': str, 'doc': 'the field of the Container that uses the key', 'default': None})
     def get_key(self, **kwargs):
+        """
+        Return a Key or a list of Key objects that correspond to the given key_name.
+
+        If container and field are provided, the Key that corresponds to the given key_name
+        for the given container and field is returned.
+        """
         key_name, container, field = popargs('key_name', 'container', 'field', kwargs)
         key_id = self.keys.which(key_name=key_name)
         if container is not None and field is not None:
@@ -263,7 +269,7 @@ class ExternalResources(Container):
         if isinstance(container, Container):
             container = container.object_id
 
-        object_field = None
+        object_field = self._check_object_field(container, field)
 
         # get Key object by searching the table
         if not isinstance(key, Key):
@@ -286,8 +292,6 @@ class ExternalResources(Container):
             else:
                 key = self.keys.row[key_id[0]]
 
-        if object_field is None:
-            object_field = self._check_object_field(container, field)
 
         if add_rsc:
             resource_entity = self.add_resource(key, resource_name, resource_id, resource_uri)
