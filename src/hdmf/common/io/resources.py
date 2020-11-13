@@ -7,6 +7,10 @@ from .. import register_map
 class ExternalResourcesMap(ObjectMapper):
 
     def construct_helper(self, name, parent_builder, table_cls, manager):
+    	"""Create a new instance of table_cls with data from parent_builder[name].
+
+    	   The DatasetBuilder for name is associated with data_type Data and container class Data,
+    	   but users should use the more specific table_cls for these datasets.```
         parent = manager._get_proxy_builder(parent_builder)
         builder = parent_builder[name]
         src = builder.source
