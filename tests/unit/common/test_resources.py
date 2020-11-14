@@ -1,6 +1,6 @@
 import pandas as pd
 
-from hdmf.common.resources import ExternalResources
+from hdmf.common.resources import ExternalResources, Key
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
@@ -166,3 +166,60 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         received = er.get_keys()
 
         pd.testing.assert_frame_equal(received, keys)
+
+class TestExternalResourcesGetKey(TestCase):
+
+    def setUp(self):
+        self.er = ExternalResources('terms')
+
+    def test_get_key(self):
+        self.er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'url1')
+        self.er.add_ref('uuid2', 'field2', 'key1', 'resource2', 'resource_id2', 'url2')
+        keys = self.er.get_key('key1')
+        self.assertIsInstance(keys, Key)
+        self.assertEqual(keys.key_name, 'key1')
+
+    def test_get_key_w_object_info(self):
+        self.er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'url1')
+        self.er.add_ref('uuid2', 'field2', 'key1', 'resource2', 'resource_id2', 'url2')
+        keys = self.er.get_key('key1', 'uuid1', 'field1')
+        self.assertIsInstance(keys, Key)
+        self.assertEqual(keys.key_name, 'key1')
+
+    def test_get_key_w_bad_object_info(self):
+        self.er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'url1')
+        self.er.add_ref('uuid2', 'field2', 'key2', 'resource2', 'resource_id2', 'url2')
+        with self.assertRaisesRegex(ValueError, "No key with name 'key2' for container 'uuid1' and field 'field1'"):
+            self.er.get_key('key2', 'uuid1', 'field1')
+
+    def test_get_key_doesnt_exist(self):
+        self.er.add_ref('uuid1', 'field1', 'key1', 'resource1', 'resource_id1', 'url1')
+        self.er.add_ref('uuid2', 'field2', 'key1', 'resource2', 'resource_id2', 'url2')
+        with self.assertRaisesRegex(ValueError, "key 'bad_key' does not exist"):
+            self.er.get_key('bad_key')
+
+    def test_get_key_same_keyname_all(self):
+        self.er = ExternalResources('terms')
+        key1 = self.er.add_key('key1')
+        key2 = self.er.add_key('key1')
+        self.er.add_ref('uuid1', 'field1', key1, 'resource11', 'resource_id11', 'url11')
+        self.er.add_ref('uuid2', 'field2', key2, 'resource21', 'resource_id21', 'url21')
+        self.er.add_ref('uuid1', 'field1', 'key1', 'resource12', 'resource_id12', 'url12')
+
+        keys = self.er.get_key('key1')
+
+        self.assertIsInstance(keys, list)
+        self.assertEqual(keys[0].key_name, 'key1')
+        self.assertEqual(keys[1].key_name, 'key1')
+
+    def test_get_key_same_keyname_specific(self):
+        self.er = ExternalResources('terms')
+        key1 = self.er.add_key('key1')
+        key2 = self.er.add_key('key1')
+        self.er.add_ref('uuid1', 'field1', key1, 'resource11', 'resource_id11', 'url11')
+        self.er.add_ref('uuid2', 'field2', key2, 'resource21', 'resource_id21', 'url21')
+        self.er.add_ref('uuid1', 'field1', 'key1', 'resource12', 'resource_id12', 'url12')
+
+        keys = self.er.get_key('key1', 'uuid1', 'field1')
+        self.assertIsInstance(keys, Key)
+        self.assertEqual(keys.key_name, 'key1')

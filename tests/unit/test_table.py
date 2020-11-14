@@ -1,3 +1,5 @@
+import pandas as pd
+
 from hdmf.container import Table, Row, RowGetter
 from hdmf.testing import TestCase
 
@@ -27,6 +29,25 @@ class TestTable(TestCase):
         table = MyTable('test_table')
         table.add_row(col1='foo', col2=100)
         table.add_row(col1='bar', col2=200)
+        row1 = table[0]
+        row2 = table[1]
+        self.assertEqual(row1, ('foo', 100))
+        self.assertEqual(row2, ('bar', 200))
+
+    def test_to_dataframe(self):
+        MyTable = TestTable.get_table_class()
+        table = MyTable('test_table')
+        table.add_row(col1='foo', col2=100)
+        table.add_row(col1='bar', col2=200)
+
+        df = table.to_dataframe()
+        exp = pd.DataFrame(data=[{'col1': 'foo', 'col2': 100}, {'col1': 'bar', 'col2': 200}])
+        pd.testing.assert_frame_equal(df, exp)
+
+    def test_from_dataframe(self):
+        MyTable = TestTable.get_table_class()
+        exp = pd.DataFrame(data=[{'col1': 'foo', 'col2': 100}, {'col1': 'bar', 'col2': 200}])
+        table = MyTable.from_dataframe(exp)
         row1 = table[0]
         row2 = table[1]
         self.assertEqual(row1, ('foo', 100))
