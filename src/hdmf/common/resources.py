@@ -292,7 +292,6 @@ class ExternalResources(Container):
             else:
                 key = self.keys.row[key_id[0]]
 
-
         if add_rsc:
             resource_entity = self.add_resource(key, resource_name, resource_id, resource_uri)
             self.add_external_reference(object_field, key)

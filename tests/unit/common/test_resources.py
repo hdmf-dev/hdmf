@@ -167,6 +167,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         pd.testing.assert_frame_equal(received, keys)
 
+
 class TestExternalResourcesGetKey(TestCase):
 
     def setUp(self):
