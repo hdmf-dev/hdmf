@@ -1134,7 +1134,7 @@ class Table(Data):
                     for colname in cls_cols
                 ])
             else:
-                data.append([row[colname] for colname in cls_cols])
+                data.append(tuple([row[colname] for colname in cls_cols]))
 
         if name is None:
             return cls(data=data)
