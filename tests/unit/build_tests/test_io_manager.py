@@ -1,6 +1,8 @@
+import re
+
+from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ContainerConfigurationError
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
-from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap
 from hdmf.testing import TestCase
 
 from abc import ABCMeta, abstractmethod
@@ -21,17 +23,25 @@ class FooMapper(ObjectMapper):
 class TestBase(TestCase):
 
     def setUp(self):
-        self.foo_spec = GroupSpec('A test group specification with a data type',
-                                  data_type_def='Foo',
-                                  datasets=[DatasetSpec(
-                                      'an example dataset',
-                                      'int',
-                                      name='my_data',
-                                      attributes=[AttributeSpec(
-                                          'attr2',
-                                          'an example integer attribute',
-                                          'int')])],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        self.foo_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Foo',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='int',
+                    name='my_data',
+                    attributes=[
+                        AttributeSpec(
+                            name='attr2',
+                            doc='an example integer attribute',
+                            dtype='int'
+                        )
+                    ]
+                )
+            ],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')]
+        )
 
         self.spec_catalog = SpecCatalog()
         self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
@@ -269,6 +279,42 @@ class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
     def test_construct(self):
         container = self.manager.construct(self.bucket_builder)
         self.assertEqual(container, self.foo_bucket)
+
+
+class TestNoMappedAttribute(TestBase):
+
+    def test_build(self):
+        """Test that an error is raised when a spec is not mapped to a container attribute."""
+        class Unmapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                self.unmap(self.spec.get_dataset('my_data'))  # remove mapping from this spec to container attribute
+
+        self.type_map.register_map(Foo, Unmapper)  # override
+
+        container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
+        msg = (r"<class '.*Unmapper'> has no container attribute mapped to spec: %s"
+               % re.escape(str(self.foo_spec.get_dataset('my_data'))))
+        with self.assertRaisesRegex(ContainerConfigurationError, msg):
+            self.manager.build(container_inst)
+
+
+class TestNoAttribute(TestBase):
+
+    def test_build(self):
+        """Test that an error is raised when a spec is mapped to a non-existent container attribute."""
+        class Unmapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                self.map_spec("unknown", self.spec.get_dataset('my_data'))
+
+        self.type_map.register_map(Foo, Unmapper)  # override
+
+        container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
+        msg = ("Foo 'my_foo' does not have attribute 'unknown' for mapping to spec: %s"
+               % self.foo_spec.get_dataset('my_data'))
+        with self.assertRaisesWith(ContainerConfigurationError, msg):
+            self.manager.build(container_inst)
 
 
 class TestTypeMap(TestBase):

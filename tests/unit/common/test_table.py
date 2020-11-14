@@ -235,16 +235,16 @@ class TestDynamicTable(TestCase):
                       ]
                       )
 
-        np.testing.assert_array_equal(table['qux'][:],
-                                      [
-                                          [
-                                              [1, 2, 3],
-                                              [1, 2, 3, 4]
-                                          ],
-                                          [
-                                              [1, 2]
-                                          ]
-                                      ])
+        expected = [
+            [
+                [1, 2, 3],
+                [1, 2, 3, 4]
+            ],
+            [
+                [1, 2]
+            ]
+        ]
+        self.assertListEqual(table['qux'][:], expected)
 
     def test_getitem_row_num(self):
         table = self.with_spec()

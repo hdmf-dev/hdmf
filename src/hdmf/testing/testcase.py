@@ -6,6 +6,7 @@ import os
 from abc import ABCMeta, abstractmethod
 
 from ..container import AbstractContainer, Container, Data
+from ..build import Builder
 from ..query import HDMFDataset
 
 from ..common import validate as common_validate, get_manager
@@ -117,6 +118,19 @@ class TestCase(unittest.TestCase):
                         self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
                     else:
                         self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+
+    def assertBuilderEqual(self, builder1, builder2, check_path=True, check_source=True):
+        """Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
+        """
+        self.assertTrue(isinstance(builder1, Builder))
+        self.assertTrue(isinstance(builder2, Builder))
+        self.assertEqual(type(builder1), type(builder2))
+        self.assertEqual(builder1.name, builder2.name)
+        if check_path:
+            self.assertEqual(builder1.path, builder2.path)
+        if check_source:
+            self.assertEqual(builder1.source, builder2.source)
+        self.assertDictEqual(builder1, builder2)
 
 
 class H5RoundTripMixin(metaclass=ABCMeta):

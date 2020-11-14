@@ -7,15 +7,16 @@ from datetime import datetime
 import logging
 
 from ..utils import docval, getargs, ExtenderMeta, get_docval
-from ..container import AbstractContainer, Container, Data, DataRegion
+from ..container import AbstractContainer, Data, DataRegion
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec.spec import BaseStorageSpec
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
-from .errors import OrphanContainerBuildError, ReferenceTargetNotBuiltError
+from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
+                     ConstructError)
 from .manager import Proxy, BuildManager
-from .warnings import MissingRequiredWarning, DtypeConversionWarning
+from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
 
 _const_arg = '__constructor_arg'
 
@@ -404,16 +405,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
     @classmethod
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to get the name for'})
     def convert_dt_name(cls, **kwargs):
-        '''Get the attribute name corresponding to a specification'''
+        '''Construct the attribute name corresponding to a specification'''
         spec = getargs('spec', kwargs)
-        if isinstance(spec, LinkSpec):
-            name = spec.target_type
-        elif spec.data_type_def is not None:
-            name = spec.data_type_def
-        elif spec.data_type_inc is not None:
-            name = spec.data_type_inc
-        else:
-            raise ValueError('found spec without name or data_type')
+        name = cls.__get_data_type(spec)
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
         name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
         if name[-1] != 's' and spec.is_many():
@@ -542,19 +536,44 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
         attr_name = self.get_attribute(spec)
         if attr_name is None:
-            return None
+            msg = ("%s has no container attribute mapped to spec: %s"
+                   % (self.__class__, spec))
+            raise ContainerConfigurationError(msg)
         attr_val = self.__get_override_attr(attr_name, container, manager)
         if attr_val is None:
             try:
                 attr_val = getattr(container, attr_name)
             except AttributeError:
-                # raise error if an expected attribute (based on the spec) does not exist on a Container object
-                msg = "Container '%s' (%s) does not have attribute '%s'" % (container.name, type(container), attr_name)
-                raise Exception(msg)
+                msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
+                       % (container.__class__.__name__, container.name, attr_name, spec))
+                raise ContainerConfigurationError(msg)
             if attr_val is not None:
                 attr_val = self.__convert_value(attr_val, spec)
+                spec_dt = self.__get_data_type(spec)
+                if spec_dt is not None:
+                    try:
+                        attr_val = self.__filter_by_spec_dt(attr_val, spec_dt, manager)
+                    except ValueError as e:
+                        msg = ("%s '%s' attribute '%s' has unexpected type."
+                               % (container.__class__.__name__, container.name, attr_name))
+                        raise ContainerConfigurationError(msg) from e
             # else: attr_val is an attribute on the Container and its value is None
+        # attr_val can be None, an AbstractContainer, or a list of AbstractContainers
         return attr_val
+
+    @classmethod
+    def __get_data_type(cls, spec):
+        ret = None
+        if isinstance(spec, LinkSpec):
+            ret = spec.target_type
+        elif isinstance(spec, BaseStorageSpec):
+            if spec.data_type_def is not None:
+                ret = spec.data_type_def
+            elif spec.data_type_inc is not None:
+                ret = spec.data_type_inc
+            # else, untyped group/dataset spec
+        # else, attribute spec
+        return ret
 
     def __convert_value(self, value, spec):
         """
@@ -591,6 +610,62 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             params['data'] = ret
                             ret = value.__class__(**params)
         return ret
+
+    def __filter_by_spec_dt(self, attr_value, spec_dt, build_manager):
+        """Return a list of containers that match the spec data type.
+
+        If attr_value is a container that does not match the spec data type, then None is returned.
+        If attr_value is a collection, then a list of only the containers in the collection that match the
+        spec data type are returned.
+        Otherwise, attr_value is returned unchanged.
+
+        spec_dt is a string representing a spec data type.
+
+        Return None, an AbstractContainer, or a list of AbstractContainers
+        """
+        if isinstance(attr_value, AbstractContainer):
+            if build_manager.is_sub_data_type(attr_value, spec_dt):
+                return attr_value
+            else:
+                return None
+
+        ret = attr_value
+        if isinstance(attr_value, (list, tuple, set, dict)):
+            if isinstance(attr_value, dict):
+                attr_values = attr_value.values()
+            else:
+                attr_values = attr_value
+            ret = []
+            # NOTE: this will test collections of non-containers element-wise (e.g. lists of lists of ints)
+            for c in attr_values:
+                if self.__filter_by_spec_dt(c, spec_dt, build_manager) is not None:
+                    ret.append(c)
+            if len(ret) == 0:
+                ret = None
+        else:
+            raise ValueError("Unexpected type for attr_value: %s. Only AbstractContainer, list, tuple, set, dict, are "
+                             "allowed." % type(attr_value))
+        return ret
+
+    def __check_quantity(self, attr_value, spec, container):
+        # attr_value is None, AbstractContainer, or list of AbstractContainers
+        if attr_value is None and spec.required:
+            attr_name = self.get_attribute(spec)
+            msg = ("%s '%s' is missing required value for attribute '%s'."
+                   % (container.__class__.__name__, container.name, attr_name))
+            warnings.warn(msg, MissingRequiredBuildWarning)
+            self.logger.debug('MissingRequiredBuildWarning: ' + msg)
+        elif attr_value is not None and not isinstance(spec, AttributeSpec):
+            if isinstance(attr_value, AbstractContainer):
+                attr_value = [attr_value]
+            n = len(attr_value)
+            if (n and isinstance(attr_value[0], AbstractContainer) and
+                    ((n > 1 and not spec.is_many()) or (isinstance(spec.quantity, int) and n != spec.quantity))):
+                attr_name = self.get_attribute(spec)
+                msg = ("%s '%s' has %d values for attribute '%s' but spec allows %s."
+                       % (container.__class__.__name__, container.name, n, attr_name, repr(spec.quantity)))
+                warnings.warn(msg, IncorrectQuantityBuildWarning)
+                self.logger.debug('IncorrectQuantityBuildWarning: ' + msg)
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the constructor argument for"},
             returns="the name of the constructor argument", rtype=str)
@@ -800,14 +875,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ReferenceTargetNotBuiltError(builder, container)
         return target_builder
 
-    def __is_null(self, item):
-        if item is None:
-            return True
-        else:
-            if any(isinstance(item, t) for t in (list, tuple, dict, set)):
-                return len(item) == 0
-        return False
-
     def __add_attributes(self, builder, attributes, container, build_manager, source, export):
         if attributes:
             self.logger.debug("Adding attributes from %s '%s' to %s '%s'"
@@ -825,11 +892,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
             attr_value = self.__check_ref_resolver(attr_value)
 
+            self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
-                if spec.required:
-                    msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
-                    warnings.warn(msg, MissingRequiredWarning)
-                    self.logger.debug('MissingRequiredWarning: ' + msg)
                 self.logger.debug("        Skipping empty attribute")
                 continue
 
@@ -842,21 +906,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 build_manager.queue_ref(self.__set_attr_to_ref(builder, attr_value, build_manager, spec))
                 continue
             else:
-                if attr_value is not None:
-                    try:
-                        attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
-                    except Exception as ex:
-                        msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
-                        raise Exception(msg) from ex
+                try:
+                    attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
+                except Exception as ex:
+                    msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
+                    raise BuildError(builder, msg) from ex
 
-                    # do not write empty or null valued objects
-                    if attr_value is None:
-                        if spec.required:
-                            msg = "attribute '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
-                            warnings.warn(msg, MissingRequiredWarning)
-                            self.logger.debug('MissingRequiredWarning: ' + msg)
-                        self.logger.debug("        Skipping empty attribute")
-                        continue
+                # do not write empty or null valued objects
+                self.__check_quantity(attr_value, spec, container)
+                if attr_value is None:
+                    self.logger.debug("        Skipping empty attribute")
+                    continue
 
             builder.set_attribute(spec.name, attr_value)
 
@@ -883,7 +943,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("    Adding link for spec name: %s, target_type: %s"
                               % (repr(spec.name), repr(spec.target_type)))
             attr_value = self.get_attr_value(spec, container, build_manager)
-            if not attr_value:
+            self.__check_quantity(attr_value, spec, container)
+            if attr_value is None:
                 self.logger.debug("        Skipping link - no attribute value")
                 continue
             self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
@@ -897,11 +958,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("    Adding dataset for spec name: %s (dtype: %s)"
                               % (repr(spec.name), spec.dtype.__class__.__name__))
             attr_value = self.get_attr_value(spec, container, build_manager)
+            self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
-                if spec.required:
-                    msg = "dataset '%s' for '%s' (%s)" % (spec.name, builder.name, self.spec.data_type_def)
-                    warnings.warn(msg, MissingRequiredWarning)
-                    self.logger.debug('MissingRequiredWarning: ' + msg)
                 self.logger.debug("        Skipping dataset - no attribute value")
                 continue
             attr_value = self.__check_ref_resolver(attr_value)
@@ -928,7 +986,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     except Exception as ex:
                         msg = 'could not convert \'%s\' for %s \'%s\''
                         msg = msg % (spec.name, type(container).__name__, container.name)
-                        raise Exception(msg) from ex
+                        raise BuildError(builder, msg) from ex
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
                     sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
@@ -955,42 +1013,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source, export)
                 self.__add_links(sub_builder, spec.links, container, build_manager, source, export)
-
-                # handle subgroups that are not Containers
-                attr_name = self.get_attribute(spec)
-                if attr_name is not None:
-                    attr_value = self.get_attr_value(spec, container, build_manager)
-                    if any(isinstance(attr_value, t) for t in (list, tuple, set, dict)):
-                        it = iter(attr_value)
-                        if isinstance(attr_value, dict):
-                            it = iter(attr_value.values())
-                        for item in it:
-                            if isinstance(item, Container):
-                                self.__add_containers(sub_builder, spec, item, build_manager, source, container, export)
                 self.__add_groups(sub_builder, spec.groups, container, build_manager, source, export)
                 empty = sub_builder.is_empty()
-                if not empty or (empty and isinstance(spec.quantity, int)):
+                if not empty or (empty and spec.required):
                     if sub_builder.name not in builder.groups:
                         builder.set_group(sub_builder)
             else:
-                if spec.data_type_def is not None:
-                    self.logger.debug("    Adding group for spec name: %s, %s: %s, %s: %s"
-                                      % (repr(spec.name),
-                                         spec.def_key(), repr(spec.data_type_def),
-                                         spec.inc_key(), repr(spec.data_type_inc)))
-                    attr_name = self.get_attribute(spec)
-                    if attr_name is not None:
-                        attr_value = getattr(container, attr_name, None)
-                        if attr_value is not None:
-                            self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
-                else:  # data_type_def is None and data_type_inc is not None
-                    self.logger.debug("    Adding group for spec name: %s, %s: %s, %s: %s"
-                                      % (repr(spec.name),
-                                         spec.def_key(), repr(spec.data_type_def),
-                                         spec.inc_key(), repr(spec.data_type_inc)))
-                    attr_value = self.get_attr_value(spec, container, build_manager)
-                    if attr_value is not None:
-                        self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
+                self.logger.debug("    Adding group for spec name: %s, %s: %s, %s: %s"
+                                  % (repr(spec.name),
+                                     spec.def_key(), repr(spec.data_type_def),
+                                     spec.inc_key(), repr(spec.data_type_inc)))
+                attr_value = self.get_attr_value(spec, container, build_manager)
+                self.__check_quantity(attr_value, spec, container)
+                if attr_value is not None:
+                    self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
 
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container, export):
         if isinstance(value, AbstractContainer):
@@ -1046,19 +1082,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
             else:
                 raise ValueError("Found unmodified AbstractContainer with no source - '%s' with parent '%s'" %
                                  (value.name, parent_container.name))
-        else:
-            if isinstance(value, (list, tuple)):
-                values = value
-            elif isinstance(value, dict):
-                values = value.values()
-            else:
-                msg = ("received %s, expected AbstractContainer - 'value' must be an AbstractContainer or a "
-                       "list/tuple/dict of AbstractContainers if 'spec' is a GroupSpec"
-                       % value.__class__.__name__)
-                raise ValueError(msg)
-            for container in values:
-                if container:
-                    self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
+        elif isinstance(value, list):
+            for container in value:
+                self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
+        else:  # pragma: no cover
+            msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
+                   % value.__class__.__name__)
+            raise ValueError(msg)
 
     def __get_subspec_values(self, builder, spec, manager):
         ret = dict()
@@ -1070,14 +1100,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             if isinstance(attr_val, (GroupBuilder, DatasetBuilder)):
                 ret[attr_spec] = manager.construct(attr_val)
-            elif isinstance(attr_val, RegionBuilder):
+            elif isinstance(attr_val, RegionBuilder):  # pragma: no cover
                 raise ValueError("RegionReferences as attributes is not yet supported")
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
                 ret[attr_spec] = attr_val
         if isinstance(spec, GroupSpec):
-            if not isinstance(builder, GroupBuilder):
+            if not isinstance(builder, GroupBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
             # first aggregate links by data type and separate them
             # by group and dataset
@@ -1106,7 +1136,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.__get_sub_builders(groups, spec.groups, manager, ret)
             self.__get_sub_builders(datasets, spec.datasets, manager, ret)
         elif isinstance(spec, DatasetSpec):
-            if not isinstance(builder, DatasetBuilder):
+            if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
             if (spec.shape is None and getattr(builder.data, 'shape', None) == (1, ) and
                     type(builder.data[0]) != np.void):
@@ -1180,7 +1210,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # For Data container classes, we need to populate the data constructor argument since
         # there is no sub-specification that maps to that argument under the default logic
         if issubclass(cls, Data):
-            if not isinstance(builder, DatasetBuilder):
+            if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
             const_args['data'] = self.__check_ref_resolver(builder.data)
         for subspec, value in subspecs.items():
@@ -1209,7 +1239,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             obj.__init__(**kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object due to: %s' % (cls.__name__, ex)
-            raise Exception(msg) from ex
+            raise ConstructError(builder, msg) from ex
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,
@@ -1220,12 +1250,5 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if self.__spec.name not in (NAME_WILDCARD, None):
             ret = self.__spec.name
         else:
-            if container.name is None:
-                if self.__spec.default_name is not None:
-                    ret = self.__spec.default_name
-                else:
-                    msg = 'Unable to determine name of container type %s' % self.__spec.data_type_def
-                    raise ValueError(msg)
-            else:
-                ret = container.name
+            ret = container.name
         return ret

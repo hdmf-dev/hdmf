@@ -1,7 +1,8 @@
 from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
                        DtypeSpec)
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
-                        ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
+                        ReferenceBuilder, MissingRequiredBuildWarning, OrphanContainerBuildError,
+                        ContainerConfigurationError)
 from hdmf.container import MultiContainerInterface
 from hdmf import Container
 from hdmf.utils import docval, getargs, get_docval
@@ -552,21 +553,35 @@ class TestObjectMapperNested(ObjectMapperMixin, TestCase):
         ''' Test default mapping functionality when object attributes map to an  attribute deeper
         than top-level Builder '''
         container_inst = Bar('my_bar', list(range(10)), 'value1', 10)
-        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
-            'data', list(range(10)), attributes={'attr2': 10})},
-                                attributes={'attr1': 'value1'})
+        expected = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10)),
+                attributes={'attr2': 10}
+            )},
+            attributes={'attr1': 'value1'}
+        )
         self._remap_nested_attr()
         builder = self.mapper.build(container_inst, self.manager)
-        self.assertDictEqual(builder, expected)
+        self.assertBuilderEqual(builder, expected)
 
     def test_construct(self):
         ''' Test default mapping functionality when object attributes map to an attribute
         deeper than top-level Builder '''
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
-        builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
-            'data', list(range(10)), attributes={'attr2': 10})},
-                               attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
-                                           'object_id': expected.object_id})
+        builder = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10)),
+                attributes={'attr2': 10}
+            )},
+            attributes={'attr1': 'value1',
+                        'data_type': 'Bar',
+                        'namespace': CORE_NAMESPACE,
+                        'object_id': expected.object_id}
+        )
         self._remap_nested_attr()
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
@@ -604,7 +619,7 @@ class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
         builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
                                 attributes={'attr1': 'value1', 'attr2': 10})
-        self.assertDictEqual(builder, expected)
+        self.assertBuilderEqual(builder, expected)
 
     def test_build_empty(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -612,7 +627,7 @@ class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
         builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
                                 attributes={'attr1': 'value1', 'attr2': 10})
-        self.assertDictEqual(builder, expected)
+        self.assertBuilderEqual(builder, expected)
 
     def test_construct(self):
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
@@ -689,18 +704,18 @@ class TestLinkedContainer(TestCase):
                                          attributes={'data_type': 'Foo',
                                                      'namespace': CORE_NAMESPACE,
                                                      'object_id': foo_inst.object_id})
-        bar1_expected = GroupBuilder('n/a',  # name doesn't matter
+        bar1_expected = GroupBuilder('my_bar1',
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      groups={'foo': inner_foo_builder},
                                      attributes={'attr1': 'value1', 'attr2': 10})
         link_foo_builder = LinkBuilder(builder=inner_foo_builder)
-        bar2_expected = GroupBuilder('n/a',
+        bar2_expected = GroupBuilder('my_bar2',
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      links={'foo': link_foo_builder},
                                      attributes={'attr1': 'value1', 'attr2': 10})
-        self.assertDictEqual(foo_builder, foo_expected)
-        self.assertDictEqual(bar1_builder, bar1_expected)
-        self.assertDictEqual(bar2_builder, bar2_expected)
+        self.assertBuilderEqual(foo_builder, foo_expected)
+        self.assertBuilderEqual(bar1_builder, bar1_expected)
+        self.assertBuilderEqual(bar2_builder, bar2_expected)
 
     @unittest.expectedFailure
     def test_build_broken_link_parent(self):
@@ -801,96 +816,194 @@ class TestReference(TestCase):
             self.bar_mapper.build(bar_inst1, self.manager)
 
 
-class TestMissingRequiredAttribute(TestCase):
+class TestMissingRequiredAttribute(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
 
     def test_required_attr_missing(self):
-        ''' Test mapping when one container is missing a required attribute
-        '''
-        bar_spec = GroupSpec('A test group specification with a data type Bar',
-                             data_type_def='Bar',
-                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
-                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
-
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                  [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        manager = BuildManager(type_map)
-        bar_mapper = ObjectMapper(bar_spec)
+        """Test mapping when one container is missing a required attribute."""
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
         bar_inst1._Bar__attr1 = None  # make attr1 attribute None
 
-        msg = "attribute 'attr1' for 'my_bar1' (Bar)"
-        with self.assertWarnsWith(MissingRequiredWarning, msg):
-            bar_mapper.build(bar_inst1, manager)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'attr1'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            attributes={'attr2': 10}
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestMissingRequiredAttributeRef(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            attributes=[AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))]
+        )
 
     def test_required_attr_ref_missing(self):
-        ''' Test mapping when one container is missing a required attribute reference
-        '''
-        bar_spec = GroupSpec('A test group specification with a data type Bar',
-                             data_type_def='Bar',
-                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
-                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
-
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                  [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        manager = BuildManager(type_map)
-        bar_mapper = ObjectMapper(bar_spec)
+        """Test mapping when one container is missing a required attribute reference."""
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
 
-        msg = "attribute 'foo' for 'my_bar1' (Bar)"
-        with self.assertWarnsWith(MissingRequiredWarning, msg):
-            bar_mapper.build(bar_inst1, manager)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'foo'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
 
 
-class TestMissingRequiredDataset(TestCase):
+class TestMissingRequiredDataset(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            datasets=[DatasetSpec('an example dataset', 'int', name='data')]
+        )
 
     def test_required_dataset_missing(self):
-        ''' Test mapping when one container is missing a required dataset
-        '''
-        bar_spec = GroupSpec('A test group specification with a data type Bar',
-                             data_type_def='Bar',
-                             datasets=[DatasetSpec('an example dataset', 'int', name='data')])
-
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                  [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        manager = BuildManager(type_map)
-        bar_mapper = ObjectMapper(bar_spec)
+        """Test mapping when one container is missing a required dataset."""
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
         bar_inst1._Bar__data = None  # make data dataset None
 
-        msg = "dataset 'data' for 'my_bar1' (Bar)"
-        with self.assertWarnsWith(MissingRequiredWarning, msg):
-            bar_mapper.build(bar_inst1, manager)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'data'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestMissingRequiredGroup(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[GroupSpec('foo', data_type_inc='Foo')]
+        )
+
+    def test_required_group_missing(self):
+        """Test mapping when one container is missing a required group."""
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'foo'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestRequiredEmptyGroup(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[GroupSpec(name='empty', doc='empty group')],
+        )
+
+    def test_required_group_empty(self):
+        """Test mapping when one container has a required empty group."""
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            groups={'empty': GroupBuilder('empty')},
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestOptionalEmptyGroup(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[GroupSpec(
+                name='empty',
+                doc='empty group',
+                quantity='?',
+                attributes=[AttributeSpec('attr3', 'an optional float attribute', 'float', required=False)]
+            )]
+        )
+
+    def test_optional_group_empty(self):
+        """Test mapping when one container has an optional empty group."""
+
+        self.mapper.map_spec('attr3', self.mapper.spec.get_group('empty').get_attribute('attr3'))
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__attr3 = None  # force attr3 to be None
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
+
+    def test_optional_group_not_empty(self):
+        """Test mapping when one container has an optional not empty group."""
+
+        self.mapper.map_spec('attr3', self.mapper.spec.get_group('empty').get_attribute('attr3'))
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, attr3=1.23)
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            groups={'empty': GroupBuilder(
+                name='empty',
+                attributes={'attr3': 1.23},
+            )},
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestFixedAttributeValue(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text', value='hi'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
+
+    def test_required_attr_missing(self):
+        """Test mapping when one container has a required attribute with a fixed value."""
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)  # attr1=value1 is not processed
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            attributes={'attr1': 'hi', 'attr2': 10}
+        )
+        self.assertBuilderEqual(builder, expected)
 
 
 class TestConvertDtype(TestCase):
@@ -1424,3 +1537,49 @@ class TestConvertDtype(TestCase):
         self.assertEqual(ret, b'2020-11-10T00:00:00')
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
+
+
+class TestObjectMapperBadValue(TestCase):
+
+    def test_bad_value(self):
+        """Test that an error is raised if the container attribute value for a spec with a data type is not a container
+        or collection of containers.
+        """
+        class Qux(Container):
+            @docval({'name': 'name', 'type': str, 'doc': 'the name of this Qux'},
+                    {'name': 'foo', 'type': int, 'doc': 'a group'})
+            def __init__(self, **kwargs):
+                name, foo = getargs('name', 'foo', kwargs)
+                super().__init__(name=name)
+                self.__foo = foo
+                if isinstance(foo, Foo):
+                    self.__foo.parent = self
+
+            @property
+            def foo(self):
+                return self.__foo
+
+        self.qux_spec = GroupSpec(
+            doc='A test group specification with data type Qux',
+            data_type_def='Qux',
+            groups=[GroupSpec('an example dataset', data_type_inc='Foo')]
+        )
+        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.qux_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Qux', Qux)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.manager = BuildManager(self.type_map)
+        self.mapper = ObjectMapper(self.qux_spec)
+
+        container = Qux('my_qux', foo=1)
+        msg = "Qux 'my_qux' attribute 'foo' has unexpected type."
+        with self.assertRaisesWith(ContainerConfigurationError, msg):
+            self.mapper.build(container, self.manager)

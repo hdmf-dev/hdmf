@@ -757,7 +757,7 @@ def _get_manager():
                                             name='buckets',
                                             groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
-                                                              quantity=ONE_OR_MANY)]),
+                                                              quantity=ZERO_OR_MANY)]),
                                   file_links_spec],
                           datasets=[DatasetSpec('Foo data',
                                                 name='foofile_data',
