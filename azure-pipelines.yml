@@ -8,14 +8,6 @@ jobs:
 
   strategy:
     matrix:
-      macOS-py3.9:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.9'
-        testToxEnv: 'py39'
-        coverageToxEnv: ''
-        buildToxEnv: 'build-py39'
-        testWheelInstallEnv: 'wheelinstall'
-
       macOS-py3.8:
         imageName: 'macos-10.15'
         pythonVersion: '3.8'
@@ -54,14 +46,6 @@ jobs:
         testToxEnv: 'py36-min-req'
         coverageToxEnv: ''
         buildToxEnv: 'build-py36-min-req'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.9:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.9'
-        testToxEnv: 'py39'
-        coverageToxEnv: ''
-        buildToxEnv: 'build-py39'
         testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.8:
