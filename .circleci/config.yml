@@ -384,7 +384,7 @@ workflows:
           <<: *no_filters
       - gallery39:
           <<: *no_filters
-      - python38-upgrade-dev:
+      - gallery38-upgrade-dev:
           <<: *no_filters
       - gallery36-min-req:
           <<: *no_filters
