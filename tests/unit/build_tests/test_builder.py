@@ -1,5 +1,3 @@
-import json
-
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
 from hdmf.testing import TestCase
 
@@ -16,13 +14,8 @@ class TestGroupBuilder(TestCase):
 
     def test_repr(self):
         gb1 = GroupBuilder('gb1')
-        expected_prefix = "gb1 GroupBuilder "
-        res = gb1.__repr__()
-        # py3.5 does not preserve dict key order, so convert repr str to dict and compare dicts
-        self.assertTrue(res.startswith(expected_prefix))
-        res_dict = json.loads(res[17:].replace('\'', '"'))
-        expected_dict = {'attributes': {}, 'groups': {}, 'datasets': {}, 'links': {}}
-        self.assertDictEqual(expected_dict, res_dict)
+        expected = "gb1 GroupBuilder {'attributes': {}, 'groups': {}, 'datasets': {}, 'links': {}}"
+        self.assertEqual(gb1.__repr__(), expected)
 
     def test_set_source(self):
         """Test that setting source sets the children builder source."""
