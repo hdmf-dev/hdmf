@@ -259,7 +259,7 @@ jobs:
     docker:
       - image: circleci/python:3.8.1-buster
     environment:
-     - TEST_TOX_ENV: "gallery-py36-upgrade-dev"
+     - TEST_TOX_ENV: "gallery-py38-upgrade-dev"
     <<: *gallery-steps
 
   gallery36-min-req:
