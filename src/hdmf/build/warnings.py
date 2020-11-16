@@ -19,13 +19,6 @@ class MissingRequiredBuildWarning(BuildWarning):
     pass
 
 
-class MissingRequiredWarning(MissingRequiredBuildWarning):
-    """
-    Alias for MissingRequiredBuildWarning.
-    """
-    pass
-
-
 class DtypeConversionWarning(UserWarning):
     """
     Raised when a value is converted to a different data type in order to match the specification.
