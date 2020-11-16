@@ -364,6 +364,8 @@ workflows:
           <<: *no_filters
       - python39:
           <<: *no_filters
+      - python38-upgrade-dev:
+          <<: *no_filters
       - python36-min-req:
           <<: *no_filters
       - miniconda36:
@@ -381,6 +383,8 @@ workflows:
       - gallery38:
           <<: *no_filters
       - gallery39:
+          <<: *no_filters
+      - python38-min-req:
           <<: *no_filters
       - gallery36-min-req:
           <<: *no_filters
