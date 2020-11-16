@@ -1,9 +1,17 @@
 # HDMF Changelog
 
-## HDMF 2.3.0 (Upcoming)
+## HDMF 3.0.0 (Upcoming)
+
+### Breaking changes
+- Drop support for Python 3.5. @ajtritt (#459)
+- Remove `hdmf.get_region_slicer` function. @ajtritt (#442)
+- Remove unused or refactored internal builder functions `GroupBuilder.add_group`, `GroupBuilder.add_dataset`,
+  `GroupBuilder.add_link`, `GroupBuilder.set_builder`, `BaseBuilder.deep_update`, `GroupBuilder.deep_update`,
+  `DatasetBuilder.deep_update`. Make `BaseBuilder` not instantiable and refactor builder code. @rly (#452)
+- Remove `hdmf.build.map.py`. Classes formerly in this file should be imported from `hdmf.build` instead. @rly (#463)
+- Replace `MissingRequiredWarning` with `MissingRequiredBuildWarning`. @rly (#463)
 
 ### New features
-- Drop support for Python 3.5. Add testing for Python 3.9. @ajtritt (#459)
 - Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
 - Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
   `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
@@ -11,7 +19,6 @@
   @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
 - Add functionality for storing external resource references. @ajtritt (#442)
-- Remove `hdmf.get_region_slicer` function. @ajtritt (#442)
 - Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
   and 'scalar_data'. @rly (#446)
 - Add `SimpleMultiContainer`, a data_type for storing a `Container` and `Data` objects together. @ajtritt (#449)
@@ -23,9 +30,7 @@
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
-- Remove unused or refactored internal builder functions `GroupBuilder.add_group`, `GroupBuilder.add_dataset`,
-  `GroupBuilder.add_link`, `GroupBuilder.set_builder`, `BaseBuilder.deep_update`, `GroupBuilder.deep_update`,
-  `DatasetBuilder.deep_update`. Make `BaseBuilder` not instantiable and refactor builder code. @rly (#452)
+- Add testing for Python 3.9. @ajtritt (#459)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
