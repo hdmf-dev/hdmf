@@ -3,6 +3,7 @@
 ## HDMF 2.3.0 (Upcoming)
 
 ### New features
+- Drop support for Python 3.5. Add testing for Python 3.9. @ajtritt (#459)
 - Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
 - Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
   `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
@@ -15,12 +16,15 @@
 - Add SimpleMultiContainer, a data_type for storing a Container and Data objects together. @ajtritt (#449)
 - Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#439)
 - Use hdmf-common-schema 1.2.1. See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html for details.
-- Block usage of h5py 3+. h5py>=2.9, <3 is supported.
-- Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.
+- Block usage of h5py 3+. h5py>=2.9, <3 is supported. @rly (#461)
+- Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.  @rly (#461)
 
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
+- Remove unused or refactored internal builder functions `GroupBuilder.add_group`, `GroupBuilder.add_dataset`,
+  `GroupBuilder.add_link`, `GroupBuilder.set_builder`, `BaseBuilder.deep_update`, `GroupBuilder.deep_update`,
+  `DatasetBuilder.deep_update`. Make `BaseBuilder` not instantiable and refactor builder code. @rly (#452)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
