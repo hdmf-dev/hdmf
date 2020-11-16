@@ -371,13 +371,8 @@ class TestDatasetBuilder(TestCase):
             parent=gb1,
             source='source',
         )
-        expected_prefix = 'gb1/db1 DatasetBuilder'
-        res = db1.__repr__()
-        # py3.5 does not preserve dict key order, so convert repr str to dict and compare dicts
-        self.assertTrue(res.startswith(expected_prefix))
-        res_dict = json.loads(res[23:].replace('\'', '"'))
-        expected_dict = {'attributes': {'attr2': 10}, 'data': [1, 2, 3]}
-        self.assertDictEqual(expected_dict, res_dict)
+        expected = "gb1/db1 DatasetBuilder {'attributes': {'attr2': 10}, 'data': [1, 2, 3]}"
+        self.assertEqual(db1.__repr__(), expected)
 
 
 class TestLinkBuilder(TestCase):
