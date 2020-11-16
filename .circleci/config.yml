@@ -362,8 +362,6 @@ workflows:
           <<: *no_filters
       - python38:
           <<: *no_filters
-      - python39:
-          <<: *no_filters
       - python38-upgrade-dev:
           <<: *no_filters
       - python36-min-req:
@@ -374,15 +372,11 @@ workflows:
           <<: *no_filters
       - miniconda38:
           <<: *no_filters
-      - miniconda39:
-          <<: *no_filters
       - gallery36:
           <<: *no_filters
       - gallery37:
           <<: *no_filters
       - gallery38:
-          <<: *no_filters
-      - gallery39:
           <<: *no_filters
       - gallery38-upgrade-dev:
           <<: *no_filters
@@ -394,17 +388,14 @@ workflows:
             - python36
             - python37
             - python38
-            - python39
             - python38-upgrade-dev
             - python36-min-req
             - miniconda36
             - miniconda37
             - miniconda38
-            - miniconda39
             - gallery36
             - gallery37
             - gallery38
-            - gallery39
             - gallery38-upgrade-dev
             - gallery36-min-req
           filters:
@@ -421,17 +412,14 @@ workflows:
             - python36
             - python37
             - python38
-            - python39
             - python38-upgrade-dev
             - python36-min-req
             - miniconda36
             - miniconda37
             - miniconda38
-            - miniconda39
             - gallery36
             - gallery37
             - gallery38
-            - gallery39
             - gallery38-upgrade-dev
             - gallery36-min-req
           filters:
@@ -443,3 +431,18 @@ workflows:
           filters:
             branches:
               ignore: dev
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 5 * * *"
+          filters:
+            branches:
+              only: dev
+    jobs:
+      - python39:
+          <<: *no_filters
+      - miniconda39:
+          <<: *no_filters
+      - gallery39:
+          <<: *no_filters
