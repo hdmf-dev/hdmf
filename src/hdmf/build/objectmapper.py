@@ -421,6 +421,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             name = cls.convert_dt_name(spec)
         name_stack.append(name)
         name = '__'.join(name_stack)
+        # TODO address potential name clashes, e.g., quantity '*' subgroups and links of same data_type_inc will
+        # have the same name
         all_names[name] = spec
         if isinstance(spec, BaseStorageSpec):
             if not (spec.data_type_def is None and spec.data_type_inc is None):

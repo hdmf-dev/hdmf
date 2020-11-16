@@ -12,7 +12,7 @@ from tests.unit.utils import CORE_NAMESPACE
 ##########################
 # test all crosses:
 # {
-#   named, untyped group with included groups / included datasets / links  # TODO address remapping spec
+#   untyped, named group with data-type-included groups / data-type-included datasets / links
 #   nested, type definition
 #   included groups / included datasets / links
 # }
@@ -359,7 +359,6 @@ class TypeDefMixin:
             groups=[foo_spec],
             datasets=[qux_spec]
         )
-        # TODO why do we need to register foo spec and qux spec?
         return [foo_spec, not_foo_spec, qux_spec, not_qux_spec, bucket_spec]
 
     def setUpBucketMapper(self):
