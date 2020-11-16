@@ -18,7 +18,7 @@ FLAGS = {
 }
 
 
-class DtypeHelper():
+class DtypeHelper:
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
     # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
     # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
@@ -69,6 +69,14 @@ class DtypeHelper():
                 exp_key = exp_key.reftype
             ret.append(exp_key)
         return ret
+
+    @staticmethod
+    def check_dtype(dtype):
+        """Check that the dtype string is a reference or a valid primary dtype."""
+        if not isinstance(dtype, RefSpec) and dtype not in DtypeHelper.valid_primary_dtypes:
+            raise ValueError("dtype '%s' is not a valid primary data type. Allowed dtypes: %s"
+                             % (dtype, str(DtypeHelper.valid_primary_dtypes)))
+        return dtype
 
 
 class ConstructableDict(dict, metaclass=ABCMeta):
@@ -226,14 +234,7 @@ class AttributeSpec(Spec):
         name, dtype, doc, dims, shape, required, parent, value, default_value = getargs(
             'name', 'dtype', 'doc', 'dims', 'shape', 'required', 'parent', 'value', 'default_value', kwargs)
         super().__init__(doc, name=name, required=required, parent=parent)
-        if isinstance(dtype, RefSpec):
-            self['dtype'] = dtype
-        else:
-            self['dtype'] = dtype
-            # Validate the dype string
-            if self['dtype'] not in DtypeHelper.valid_primary_dtypes:
-                raise ValueError('dtype %s not a valid primary data type %s' % (self['dtype'],
-                                                                                str(DtypeHelper.valid_primary_dtypes)))
+        self['dtype'] = DtypeHelper.check_dtype(dtype)
         if value is not None:
             self.pop('required', None)
             self['value'] = value
@@ -554,7 +555,7 @@ class DtypeSpec(ConstructableDict):
         doc, name, dtype = getargs('doc', 'name', 'dtype', kwargs)
         self['doc'] = doc
         self['name'] = name
-        self.assertValidDtype(dtype)
+        self.check_valid_dtype(dtype)
         self['dtype'] = dtype
 
     @property
@@ -574,17 +575,17 @@ class DtypeSpec(ConstructableDict):
 
     @staticmethod
     def assertValidDtype(dtype):
+        # Calls check_valid_dtype. This method is maintained for backwards compatibility
+        return DtypeSpec.check_valid_dtype(dtype)
+
+    @staticmethod
+    def check_valid_dtype(dtype):
         if isinstance(dtype, dict):
             if _target_type_key not in dtype:
                 msg = "'dtype' must have the key '%s'" % _target_type_key
-                raise AssertionError(msg)
-        elif isinstance(dtype, RefSpec):
-            pass
+                raise ValueError(msg)
         else:
-            if dtype not in DtypeHelper.valid_primary_dtypes:
-                msg = "'dtype=%s' string not in valid primary data type: %s " % (str(dtype),
-                                                                                 str(DtypeHelper.valid_primary_dtypes))
-                raise AssertionError(msg)
+            DtypeHelper.check_dtype(dtype)
         return True
 
     @staticmethod
@@ -651,17 +652,12 @@ class DatasetSpec(BaseStorageSpec):
             if isinstance(dtype, list):  # Dtype is a compound data type
                 for _i, col in enumerate(dtype):
                     if not isinstance(col, DtypeSpec):
-                        msg = 'must use DtypeSpec if defining compound dtype - found %s at element %d' % \
-                                (type(col), _i)
+                        msg = ('must use DtypeSpec if defining compound dtype - found %s at element %d'
+                               % (type(col), _i))
                         raise ValueError(msg)
-                self['dtype'] = dtype
-            elif isinstance(dtype, RefSpec):  # Dtype is a reference
-                self['dtype'] = dtype
-            else:   # Dtype is a string
-                self['dtype'] = dtype
-                if self['dtype'] not in DtypeHelper.valid_primary_dtypes:
-                    raise ValueError('dtype %s not a valid primary data type %s' %
-                                     (self['dtype'], str(DtypeHelper.valid_primary_dtypes)))
+            else:
+                DtypeHelper.check_dtype(dtype)
+            self['dtype'] = dtype
         super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value

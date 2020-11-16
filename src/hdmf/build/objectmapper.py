@@ -550,14 +550,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = "Container '%s' (%s) does not have attribute '%s'" % (container.name, type(container), attr_name)
                 raise Exception(msg)
             if attr_val is not None:
-                attr_val = self.__convert_value(attr_val, spec)
+                attr_val = self.__convert_string(attr_val, spec)
             # else: attr_val is an attribute on the Container and its value is None
         return attr_val
 
-    def __convert_value(self, value, spec):
-        """
-        Convert string types to the specified dtype
-        """
+    def __convert_string(self, value, spec):
+        """Convert string types to the specified dtype."""
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
@@ -567,27 +565,24 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     ret = str(value)
         elif isinstance(spec, DatasetSpec):
             # TODO: make sure we can handle specs with data_type_inc set
-            if spec.data_type_inc is not None:
-                ret = value
-            else:
-                if spec.dtype is not None:
-                    string_type = None
-                    if 'text' in spec.dtype:
-                        string_type = str
-                    elif 'ascii' in spec.dtype:
-                        string_type = bytes
-                    elif 'isodatetime' in spec.dtype:
-                        string_type = datetime.isoformat
-                    if string_type is not None:
-                        if spec.shape is not None or spec.dims is not None:
-                            ret = list(map(string_type, value))
-                        else:
-                            ret = string_type(value)
-                        # copy over any I/O parameters if they were specified
-                        if isinstance(value, DataIO):
-                            params = value.get_io_params()
-                            params['data'] = ret
-                            ret = value.__class__(**params)
+            if spec.data_type_inc is None and spec.dtype is not None:
+                string_type = None
+                if 'text' in spec.dtype:
+                    string_type = str
+                elif 'ascii' in spec.dtype:
+                    string_type = bytes
+                elif 'isodatetime' in spec.dtype:
+                    string_type = datetime.isoformat
+                if string_type is not None:
+                    if spec.shape is not None or spec.dims is not None:
+                        ret = list(map(string_type, value))
+                    else:
+                        ret = string_type(value)
+                    # copy over any I/O parameters if they were specified
+                    if isinstance(value, DataIO):
+                        params = value.get_io_params()
+                        params['data'] = ret
+                        ret = value.__class__(**params)
         return ret
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the constructor argument for"},
@@ -929,7 +924,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         raise Exception(msg) from ex
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
-                    sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
+                    sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
+                    builder.set_dataset(sub_builder)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
@@ -955,40 +951,33 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.__add_links(sub_builder, spec.links, container, build_manager, source, export)
 
                 # handle subgroups that are not Containers
-                attr_name = self.get_attribute(spec)
-                if attr_name is not None:
-                    attr_value = self.get_attr_value(spec, container, build_manager)
-                    if any(isinstance(attr_value, t) for t in (list, tuple, set, dict)):
-                        it = iter(attr_value)
-                        if isinstance(attr_value, dict):
-                            it = iter(attr_value.values())
-                        for item in it:
-                            if isinstance(item, Container):
-                                self.__add_containers(sub_builder, spec, item, build_manager, source, container, export)
+                attr_value = self.get_attr_value(spec, container, build_manager)
+                if isinstance(attr_value, (list, tuple, set, dict)):
+                    if isinstance(attr_value, dict):
+                        attr_value = attr_value.values()
+                    for item in attr_value:
+                        if isinstance(item, Container):
+                            self.__add_containers(sub_builder, spec, item, build_manager, source, container, export)
                 self.__add_groups(sub_builder, spec.groups, container, build_manager, source, export)
                 empty = sub_builder.is_empty()
                 if not empty or (empty and isinstance(spec.quantity, int)):
                     if sub_builder.name not in builder.groups:
                         builder.set_group(sub_builder)
-            else:
-                if spec.data_type_def is not None:
-                    self.logger.debug("    Adding group for spec name: %s, %s: %s, %s: %s"
-                                      % (repr(spec.name),
-                                         spec.def_key(), repr(spec.data_type_def),
-                                         spec.inc_key(), repr(spec.data_type_inc)))
-                    attr_name = self.get_attribute(spec)
-                    if attr_name is not None:
-                        attr_value = getattr(container, attr_name, None)
-                        if attr_value is not None:
-                            self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
-                else:  # data_type_def is None and data_type_inc is not None
-                    self.logger.debug("    Adding group for spec name: %s, %s: %s, %s: %s"
-                                      % (repr(spec.name),
-                                         spec.def_key(), repr(spec.data_type_def),
-                                         spec.inc_key(), repr(spec.data_type_inc)))
-                    attr_value = self.get_attr_value(spec, container, build_manager)
+            elif spec.data_type_def is not None:
+                self.logger.debug("    Adding group for spec name: %s, %s: %s"
+                                  % (repr(spec.name), spec.def_key(), repr(spec.data_type_def)))
+                attr_name = self.get_attribute(spec)
+                if attr_name is not None:
+                    # NOTE: can this be overridden? if so, this should use self.get_attr_value
+                    attr_value = getattr(container, attr_name, None)
                     if attr_value is not None:
                         self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
+            else:  # data_type_def is None and data_type_inc is not None
+                self.logger.debug("    Adding group for spec name: %s, %s: %s"
+                                  % (repr(spec.name), spec.inc_key(), repr(spec.data_type_inc)))
+                attr_value = self.get_attr_value(spec, container, build_manager)
+                if attr_value is not None:
+                    self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
 
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container, export):
         if isinstance(value, AbstractContainer):
