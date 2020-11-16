@@ -550,7 +550,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
             if attr_val is not None:
-                attr_val = self.__convert_value(attr_val, spec)
+                attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:
                     try:
@@ -577,10 +577,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # else, attribute spec
         return ret
 
-    def __convert_value(self, value, spec):
-        """
-        Convert string types to the specified dtype
-        """
+    def __convert_string(self, value, spec):
+        """Convert string types to the specified dtype."""
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
@@ -590,27 +588,24 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     ret = str(value)
         elif isinstance(spec, DatasetSpec):
             # TODO: make sure we can handle specs with data_type_inc set
-            if spec.data_type_inc is not None:
-                ret = value
-            else:
-                if spec.dtype is not None:
-                    string_type = None
-                    if 'text' in spec.dtype:
-                        string_type = str
-                    elif 'ascii' in spec.dtype:
-                        string_type = bytes
-                    elif 'isodatetime' in spec.dtype:
-                        string_type = datetime.isoformat
-                    if string_type is not None:
-                        if spec.shape is not None or spec.dims is not None:
-                            ret = list(map(string_type, value))
-                        else:
-                            ret = string_type(value)
-                        # copy over any I/O parameters if they were specified
-                        if isinstance(value, DataIO):
-                            params = value.get_io_params()
-                            params['data'] = ret
-                            ret = value.__class__(**params)
+            if spec.data_type_inc is None and spec.dtype is not None:
+                string_type = None
+                if 'text' in spec.dtype:
+                    string_type = str
+                elif 'ascii' in spec.dtype:
+                    string_type = bytes
+                elif 'isodatetime' in spec.dtype:
+                    string_type = datetime.isoformat
+                if string_type is not None:
+                    if spec.shape is not None or spec.dims is not None:
+                        ret = list(map(string_type, value))
+                    else:
+                        ret = string_type(value)
+                    # copy over any I/O parameters if they were specified
+                    if isinstance(value, DataIO):
+                        params = value.get_io_params()
+                        params['data'] = ret
+                        ret = value.__class__(**params)
         return ret
 
     def __filter_by_spec_dt(self, attr_value, spec_dt, build_manager):
@@ -991,7 +986,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         raise BuildError(builder, msg) from ex
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
-                    sub_builder = builder.add_dataset(spec.name, data, dtype=dtype)
+                    sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
+                    builder.set_dataset(sub_builder)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
