@@ -1236,12 +1236,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             kwargs[argname] = val
         try:
-            obj = cls.__new__(cls, container_source=builder.source, parent=parent,
-                              object_id=builder.attributes.get(self.__spec.id_key()))
-            obj.__init__(**kwargs)
+            obj = self.__new_container__(cls, builder.source, parent, builder.attributes.get(self.__spec.id_key()),
+                                         **kwargs)
         except Exception as ex:
             msg = 'Could not construct %s object due to: %s' % (cls.__name__, ex)
             raise ConstructError(builder, msg) from ex
+        return obj
+
+    def __new_container__(self, cls, container_source, parent, object_id, **kwargs):
+        """A wrapper function for ensuring a container gets everything set appropriately"""
+        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id)
+        obj.__init__(**kwargs)
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

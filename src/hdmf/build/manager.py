@@ -108,11 +108,11 @@ class BuildManager:
     def get_proxy(self, **kwargs):
         obj = getargs('object', kwargs)
         if isinstance(obj, BaseBuilder):
-            return self.__get_proxy_builder(obj)
+            return self._get_proxy_builder(obj)
         elif isinstance(obj, AbstractContainer):
-            return self.__get_proxy_container(obj)
+            return self._get_proxy_container(obj)
 
-    def __get_proxy_builder(self, builder):
+    def _get_proxy_builder(self, builder):
         dt = self.__type_map.get_builder_dt(builder)
         ns = self.__type_map.get_builder_ns(builder)
         stack = list()
@@ -123,7 +123,7 @@ class BuildManager:
         loc = "/".join(reversed(stack))
         return Proxy(self, builder.source, loc, ns, dt)
 
-    def __get_proxy_container(self, container):
+    def _get_proxy_container(self, container):
         ns, dt = self.__type_map.get_container_ns_dt(container)
         stack = list()
         tmp = container
@@ -273,7 +273,7 @@ class BuildManager:
         if result is None:
             parent_builder = self.__get_parent_dt_builder(builder)
             if parent_builder is not None:
-                parent = self.__get_proxy_builder(parent_builder)
+                parent = self._get_proxy_builder(parent_builder)
                 result = self.__type_map.construct(builder, self, parent)
             else:
                 # we are at the top of the hierarchy,

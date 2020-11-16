@@ -9,6 +9,7 @@
 - Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
   @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
+- Add functionality for storing external resource references @ajtritt (#442)
 - Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
   and 'scalar_data'. @rly (#446)
 - Add SimpleMultiContainer, a data_type for storing a Container and Data objects together. @ajtritt (#449)

@@ -116,6 +116,8 @@ def get_type(data):
         return type(data).__name__
     else:
         if hasattr(data, 'dtype'):
+            if isinstance(data.dtype, list):
+                return [get_type(data[0][i]) for i in range(len(data.dtype))]
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
                 return get_type(data[0])
             return data.dtype
