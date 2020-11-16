@@ -1186,12 +1186,7 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.link_spec_cls().build_spec(spec)
-        if spec.name == NAME_WILDCARD:
-            if spec.data_type_inc is not None or spec.data_type_def is not None:
-                self.__add_data_type_inc(spec)
-            else:
-                raise TypeError("must specify 'name' or 'data_type_inc' in Dataset spec")
-        else:
+        if spec.name != NAME_WILDCARD:
             self.__links[spec.name] = spec
         self.setdefault('links', list()).append(spec)
         spec.parent = self

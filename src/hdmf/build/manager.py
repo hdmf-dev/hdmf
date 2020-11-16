@@ -347,8 +347,10 @@ class BuildManager:
         builder = getargs('builder', kwargs)
         return self.__type_map.get_builder_dt(builder)
 
-    @docval({'name': 'builder', 'type': (GroupBuilder, DatasetBuilder), 'doc': 'the builder to check'},
-            {'name': 'parent_data_type', 'type': (str, type), 'doc': 'the potential parent data_type'},
+    @docval({'name': 'builder', 'type': (GroupBuilder, DatasetBuilder, AbstractContainer),
+             'doc': 'the builder or container to check'},
+            {'name': 'parent_data_type', 'type': str,
+             'doc': 'the potential parent data_type that refers to a data_type'},
             returns="True if data_type of *builder* is a sub-data_type of *parent_data_type*, False otherwise",
             rtype=bool)
     def is_sub_data_type(self, **kwargs):
@@ -356,8 +358,11 @@ class BuildManager:
         Return whether or not data_type of *builder* is a sub-data_type of *parent_data_type*
         '''
         builder, parent_dt = getargs('builder', 'parent_data_type', kwargs)
-        dt = self.get_builder_dt(builder)
-        ns = self.get_builder_ns(builder)
+        if isinstance(builder, (GroupBuilder, DatasetBuilder)):
+            ns = self.get_builder_ns(builder)
+            dt = self.get_builder_dt(builder)
+        else:  # builder is an AbstractContainer
+            ns, dt = self.type_map.get_container_ns_dt(builder)
         return self.namespace_catalog.is_sub_data_type(ns, dt, parent_dt)
 
 

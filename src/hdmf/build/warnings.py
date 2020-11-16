@@ -1,14 +1,18 @@
-class OrphanContainerWarning(UserWarning):
+class BuildWarning(UserWarning):
     """
-    Raised when a container does not have a parent.
-
-    Only the top level container (e.g. file) should be
-    without a parent
+    Base class for warnings that are raised during the building of a container.
     """
     pass
 
 
-class MissingRequiredWarning(UserWarning):
+class IncorrectQuantityBuildWarning(BuildWarning):
+    """
+    Raised when a container field contains a number of groups/datasets/links that is not allowed by the spec.
+    """
+    pass
+
+
+class MissingRequiredBuildWarning(BuildWarning):
     """
     Raised when a required field is missing.
     """

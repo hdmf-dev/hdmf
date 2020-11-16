@@ -10,5 +10,6 @@ from .objectmapper import ObjectMapper
 from .manager import BuildManager
 from .manager import TypeMap
 
-from .warnings import MissingRequiredWarning, OrphanContainerWarning, DtypeConversionWarning
-from .errors import BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError
+from .warnings import BuildWarning, MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
+                     ConstructError)
