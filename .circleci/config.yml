@@ -133,7 +133,7 @@ jobs:
      - TEST_TOX_ENV: "py36"
      - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py36"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py36"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
   python37:
@@ -143,7 +143,7 @@ jobs:
      - TEST_TOX_ENV: "py37"
      - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py37"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py37"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
   python38:
@@ -153,7 +153,7 @@ jobs:
      - TEST_TOX_ENV: "py38"
      - COVERAGE_TOX_ENV: "coverage"
      - BUILD_TOX_ENV: "build-py38"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py38"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
      - UPLOAD_WHEELS: "true"
     <<: *ci-steps
 
@@ -164,9 +164,18 @@ jobs:
      - TEST_TOX_ENV: "py39"
      - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py39"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py39"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
+  python38-upgrade-dev:
+    docker:
+      - image: circleci/python:3.8.6-buster
+    environment:
+     - TEST_TOX_ENV: "py38-upgrade-dev"
+     - COVERAGE_TOX_ENV: ""
+     - BUILD_TOX_ENV: "build-py38-upgrade-dev"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
 
   python36-min-req:
     docker:
@@ -175,7 +184,7 @@ jobs:
      - TEST_TOX_ENV: "py36-min-req"
      - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py36-min-req"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py36-min-req"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
   miniconda36:
@@ -185,7 +194,7 @@ jobs:
       - CONDA_PYTHON_VER: "3.6"
       - TEST_TOX_ENV: "py36"
       - BUILD_TOX_ENV: "build-py36"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py36"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
   miniconda37:
@@ -195,7 +204,7 @@ jobs:
       - CONDA_PYTHON_VER: "3.7"
       - TEST_TOX_ENV: "py37"
       - BUILD_TOX_ENV: "build-py37"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py37"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
   miniconda38:
@@ -205,7 +214,7 @@ jobs:
       - CONDA_PYTHON_VER: "3.8"
       - TEST_TOX_ENV: "py38"
       - BUILD_TOX_ENV: "build-py38"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py38"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
   miniconda39:
@@ -215,7 +224,7 @@ jobs:
       - CONDA_PYTHON_VER: "3.9"
       - TEST_TOX_ENV: "py39"
       - BUILD_TOX_ENV: "build-py39"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py39"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
   gallery36:
@@ -244,6 +253,13 @@ jobs:
       - image: circleci/python:3.9.0-buster
     environment:
      - TEST_TOX_ENV: "gallery-py39"
+    <<: *gallery-steps
+
+  gallery38-upgrade-dev:
+    docker:
+      - image: circleci/python:3.8.1-buster
+    environment:
+     - TEST_TOX_ENV: "gallery-py38-upgrade-dev"
     <<: *gallery-steps
 
   gallery36-min-req:
@@ -346,7 +362,7 @@ workflows:
           <<: *no_filters
       - python38:
           <<: *no_filters
-      - python39:
+      - python38-upgrade-dev:
           <<: *no_filters
       - python36-min-req:
           <<: *no_filters
@@ -356,15 +372,13 @@ workflows:
           <<: *no_filters
       - miniconda38:
           <<: *no_filters
-      - miniconda39:
-          <<: *no_filters
       - gallery36:
           <<: *no_filters
       - gallery37:
           <<: *no_filters
       - gallery38:
           <<: *no_filters
-      - gallery39:
+      - gallery38-upgrade-dev:
           <<: *no_filters
       - gallery36-min-req:
           <<: *no_filters
@@ -374,16 +388,15 @@ workflows:
             - python36
             - python37
             - python38
-            - python39
+            - python38-upgrade-dev
             - python36-min-req
             - miniconda36
             - miniconda37
             - miniconda38
-            - miniconda39
             - gallery36
             - gallery37
             - gallery38
-            - gallery39
+            - gallery38-upgrade-dev
             - gallery36-min-req
           filters:
             tags:
@@ -399,16 +412,15 @@ workflows:
             - python36
             - python37
             - python38
-            - python39
+            - python38-upgrade-dev
             - python36-min-req
             - miniconda36
             - miniconda37
             - miniconda38
-            - miniconda39
             - gallery36
             - gallery37
             - gallery38
-            - gallery39
+            - gallery38-upgrade-dev
             - gallery36-min-req
           filters:
             tags:
@@ -419,3 +431,18 @@ workflows:
           filters:
             branches:
               ignore: dev
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 5 * * *"
+          filters:
+            branches:
+              only: dev
+    jobs:
+      - python39:
+          <<: *no_filters
+      - miniconda39:
+          <<: *no_filters
+      - gallery39:
+          <<: *no_filters
