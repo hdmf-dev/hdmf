@@ -15,6 +15,7 @@
 - Add SimpleMultiContainer, a data_type for storing a Container and Data objects together. @ajtritt (#449)
 - Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#439)
 - Use hdmf-common-schema 1.2.1. See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html for details.
+- Block usage of h5py 3+. h5py>=2.9, <3 is supported.
 
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
