@@ -8,6 +8,9 @@ from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta,
 from .data_utils import DataIO, append_data, extend_data
 from warnings import warn
 import types
+from copy import deepcopy
+
+import pandas as pd
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -839,3 +842,300 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
         get = conf_dict.get('get')
         if get is not None:
             setattr(cls, get, cls.__make_get(get, attr, container_type))
+
+
+class Row(object, metaclass=ExtenderMeta):
+    """
+    A class for representing rows from a Table.
+
+    The Table class can be indicated with the __table__. Doing so
+    will set constructor arguments for the Row class and ensure that
+    Row.idx is set appropriately when a Row is added to the Table. It will
+    also add functionality to the Table class for getting Row objects.
+
+    Note, the Row class is not needed for working with Table objects. This
+    is merely convenience functionality for working with Tables.
+    """
+
+    __table__ = None
+
+    @property
+    def idx(self):
+        """The index of this row in its respective Table"""
+        return self.__idx
+
+    @idx.setter
+    def idx(self, val):
+        if self.__idx is None:
+            self.__idx = val
+        else:
+            raise ValueError("cannot reset the ID of a row object")
+
+    @property
+    def table(self):
+        """The Table this Row comes from"""
+        return self.__table
+
+    @table.setter
+    def table(self, val):
+        if val is not None:
+            self.__table = val
+        if self.idx is None:
+            self.idx = self.__table.add_row(**self.todict())
+
+    @ExtenderMeta.pre_init
+    def __build_row_class(cls, name, bases, classdict):
+        table_cls = getattr(cls, '__table__', None)
+        if table_cls is not None:
+            columns = getattr(table_cls, '__columns__')
+            if cls.__init__ == bases[-1].__init__:  # check if __init__ is overridden
+                columns = deepcopy(columns)
+                func_args = list()
+                for col in columns:
+                    func_args.append(col)
+                func_args.append({'name': 'table', 'type': Table, 'default': None,
+                                  'help': 'the table this row is from'})
+                func_args.append({'name': 'idx', 'type': int, 'default': None,
+                                  'help': 'the index for this row'})
+
+                @docval(*func_args)
+                def __init__(self, **kwargs):
+                    super(cls, self).__init__()
+                    table, idx = popargs('table', 'idx', kwargs)
+                    self.__keys = list()
+                    self.__idx = None
+                    self.__table = None
+                    for k, v in kwargs.items():
+                        self.__keys.append(k)
+                        setattr(self, k, v)
+                    self.idx = idx
+                    self.table = table
+
+                setattr(cls, '__init__', __init__)
+
+                def todict(self):
+                    return {k: getattr(self, k) for k in self.__keys}
+
+                setattr(cls, 'todict', todict)
+
+            # set this so Table.row gets set when a Table is instantiated
+            table_cls.__rowclass__ = cls
+        else:
+            if bases != (object,):
+                raise ValueError('__table__ must be set if sub-classing Row')
+
+    def __eq__(self, other):
+        return self.idx == other.idx and self.table is other.table
+
+
+class RowGetter:
+    """
+    A simple class for providing __getitem__ functionality that returns
+    Row objects to a Table.
+    """
+
+    def __init__(self, table):
+        self.table = table
+        self.cache = dict()
+
+    def __getitem__(self, idx):
+        ret = self.cache.get(idx)
+        if ret is None:
+            row = self.table[idx]
+            ret = self.table.__rowclass__(*row, table=self.table, idx=idx)
+            self.cache[idx] = ret
+        return ret
+
+
+class Table(Data):
+    r'''
+    Subclasses should specify the class attribute \_\_columns\_\_.
+
+    This should be a list of dictionaries with the following keys:
+
+    - ``name``            the column name
+    - ``type``            the type of data in this column
+    - ``doc``             a brief description of what gets stored in this column
+
+    For reference, this list of dictionaries will be used with docval to autogenerate
+    the ``add_row`` method for adding data to this table.
+
+    If \_\_columns\_\_ is not specified, no custom ``add_row`` method will be added.
+
+    The class attribute __defaultname__ can also be set to specify a default name
+    for the table class. If \_\_defaultname\_\_ is not specified, then ``name`` will
+    need to be specified when the class is instantiated.
+
+    A Table class can be paired with a Row class for conveniently working with rows of
+    a Table. This pairing must be indicated in the Row class implementation. See Row
+    for more details.
+    '''
+
+    # This class attribute is used to indicate which Row class should be used when
+    # adding RowGetter functionality to the Table.
+    __rowclass__ = None
+
+    @ExtenderMeta.pre_init
+    def __build_table_class(cls, name, bases, classdict):
+        if hasattr(cls, '__columns__'):
+            columns = getattr(cls, '__columns__')
+
+            idx = dict()
+            for i, col in enumerate(columns):
+                idx[col['name']] = i
+            setattr(cls, '__colidx__', idx)
+
+            if cls.__init__ == bases[-1].__init__:     # check if __init__ is overridden
+                name = {'name': 'name', 'type': str, 'doc': 'the name of this table'}
+                defname = getattr(cls, '__defaultname__', None)
+                if defname is not None:
+                    name['default'] = defname
+
+                @docval(name,
+                        {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the data in this table',
+                         'default': list()})
+                def __init__(self, **kwargs):
+                    name, data = getargs('name', 'data', kwargs)
+                    colnames = [i['name'] for i in columns]
+                    super(cls, self).__init__(colnames, name, data)
+
+                setattr(cls, '__init__', __init__)
+
+            if cls.add_row == bases[-1].add_row:     # check if add_row is overridden
+
+                @docval(*columns)
+                def add_row(self, **kwargs):
+                    return super(cls, self).add_row(kwargs)
+
+                setattr(cls, 'add_row', add_row)
+
+    @docval({'name': 'columns', 'type': (list, tuple), 'doc': 'a list of the columns in this table'},
+            {'name': 'name', 'type': str, 'doc': 'the name of this container'},
+            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data', 'default': list()})
+    def __init__(self, **kwargs):
+        self.__columns = tuple(popargs('columns', kwargs))
+        self.__col_index = {name: idx for idx, name in enumerate(self.__columns)}
+        if getattr(self, '__rowclass__') is not None:
+            self.row = RowGetter(self)
+        call_docval_func(super(Table, self).__init__, kwargs)
+
+    @property
+    def columns(self):
+        return self.__columns
+
+    @docval({'name': 'values', 'type': dict, 'doc': 'the values for each column'})
+    def add_row(self, **kwargs):
+        values = getargs('values', kwargs)
+        if not isinstance(self.data, list):
+            msg = 'Cannot append row to %s' % type(self.data)
+            raise ValueError(msg)
+        ret = len(self.data)
+        row = [values[col] for col in self.columns]
+        row = [v.idx if isinstance(v, Row) else v for v in row]
+        self.data.append(tuple(row))
+        return ret
+
+    def which(self, **kwargs):
+        '''
+        Query a table
+        '''
+        if len(kwargs) != 1:
+            raise ValueError("only one column can be queried")
+        colname, value = kwargs.popitem()
+        idx = self.__colidx__.get(colname)
+        if idx is None:
+            msg = "no '%s' column in %s" % (colname, self.__class__.__name__)
+            raise KeyError(msg)
+        ret = list()
+        for i in range(len(self.data)):
+            row = self.data[i]
+            row_val = row[idx]
+            if row_val == value:
+                ret.append(i)
+        return ret
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, args):
+        idx = args
+        col = None
+        if isinstance(args, tuple):
+            idx = args[1]
+            if isinstance(args[0], str):
+                col = self.__col_index.get(args[0])
+            elif isinstance(args[0], int):
+                col = args[0]
+            else:
+                raise KeyError('first argument must be a column name or index')
+            return self.data[idx][col]
+        elif isinstance(args, str):
+            col = self.__col_index.get(args)
+            if col is None:
+                raise KeyError(args)
+            return [row[col] for row in self.data]
+        else:
+            return self.data[idx]
+
+    def to_dataframe(self):
+        '''Produce a pandas DataFrame containing this table's data.
+        '''
+
+        data = {colname: self[colname] for ii, colname in enumerate(self.columns)}
+        return pd.DataFrame(data)
+
+    @classmethod
+    @docval(
+        {'name': 'df', 'type': pd.DataFrame, 'doc': 'input data'},
+        {'name': 'name', 'type': str, 'doc': 'the name of this container', 'default': None},
+        {
+            'name': 'extra_ok',
+            'type': bool,
+            'doc': 'accept (and ignore) unexpected columns on the input dataframe',
+            'default': False
+        },
+    )
+    def from_dataframe(cls, **kwargs):
+        '''Construct an instance of Table (or a subclass) from a pandas DataFrame. The columns of the dataframe
+        should match the columns defined on the Table subclass.
+        '''
+
+        df, name, extra_ok = getargs('df', 'name', 'extra_ok', kwargs)
+
+        cls_cols = list([col['name'] for col in getattr(cls, '__columns__')])
+        df_cols = list(df.columns)
+
+        missing_columns = set(cls_cols) - set(df_cols)
+        extra_columns = set(df_cols) - set(cls_cols)
+
+        if extra_columns:
+            raise ValueError(
+                'unrecognized column(s) {} for table class {} (columns {})'.format(
+                    extra_columns, cls.__name__, cls_cols
+                )
+            )
+
+        use_index = False
+        if len(missing_columns) == 1 and list(missing_columns)[0] == df.index.name:
+            use_index = True
+
+        elif missing_columns:
+            raise ValueError(
+                'missing column(s) {} for table class {} (columns {}, provided {})'.format(
+                    missing_columns, cls.__name__, cls_cols, df_cols
+                )
+            )
+
+        data = []
+        for index, row in df.iterrows():
+            if use_index:
+                data.append([
+                    row[colname] if colname != df.index.name else index
+                    for colname in cls_cols
+                ])
+            else:
+                data.append(tuple([row[colname] for colname in cls_cols]))
+
+        if name is None:
+            return cls(data=data)
+        return cls(name=name, data=data)

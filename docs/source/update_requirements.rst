@@ -74,3 +74,5 @@ Minimum requirements should be updated manually if a new feature or bug fix is a
 for proper running of HDMF. Minimum requirements should also be updated if a user requests that HDMF be installable
 with an older version of a dependency, all tests pass using the older version, and there is no valid reason for the
 minimum version to be as high as it is.
+
+These minimum requirements are used by ``setup.py`` which replaces "==" with ">=".

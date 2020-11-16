@@ -9,11 +9,14 @@
 - Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
   @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
+- Add functionality for storing external resource references @ajtritt (#442)
 - Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
   and 'scalar_data'. @rly (#446)
 - Add SimpleMultiContainer, a data_type for storing a Container and Data objects together. @ajtritt (#449)
 - Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#439)
 - Use hdmf-common-schema 1.2.1. See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html for details.
+- Block usage of h5py 3+. h5py>=2.9, <3 is supported.
+- Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.
 
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
