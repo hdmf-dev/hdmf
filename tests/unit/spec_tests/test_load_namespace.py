@@ -1,7 +1,7 @@
-import ruamel.yaml as yaml
 import json
 import os
 
+import ruamel.yaml as yaml
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
 

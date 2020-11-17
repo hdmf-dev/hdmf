@@ -3,18 +3,18 @@ Collection of Container classes for interacting with data types related to
 the storage and use of dynamic data tables as part of the hdmf-common schema
 """
 
-from h5py import Dataset
-import numpy as np
-import pandas as pd
 import re
 from collections import OrderedDict
 from warnings import warn
 
-from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
-from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..container import Container, Data
+import numpy as np
+import pandas as pd
+from h5py import Dataset
 
 from . import register_class
+from ..container import Container, Data
+from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
 
 
 @register_class('VectorData')
@@ -101,9 +101,9 @@ class VectorIndex(VectorData):
             unsigned integer encoding of idx
         """
         if idx > self.__maxval:
-            nbits = (np.log2(self.__maxval + 1)*2)
+            nbits = (np.log2(self.__maxval + 1) * 2)
             self.__uint = np.dtype('uint%d' % nbits).type
-            self.__maxval = 2**nbits - 1
+            self.__maxval = 2 ** nbits - 1
             self.__adjust_precision(self.__uint)
         return self.__uint(idx)
 
@@ -133,7 +133,7 @@ class VectorIndex(VectorData):
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
         :return: Scalar or list of values retrieved
         """
-        start = 0 if arg == 0 else self.data[arg-1]
+        start = 0 if arg == 0 else self.data[arg - 1]
         end = self.data[arg]
         return self.target.get(slice(start, end), **kwargs)
 
@@ -174,6 +174,7 @@ class ElementIdentifiers(Data):
     """
     Data container with a list of unique identifiers for values within a dataset, e.g. rows of a DynamicTable.
     """
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
              'default': list()})
@@ -403,7 +404,7 @@ class DynamicTable(Container):
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
 
         # self.__colids maps the column name to an index starting at 1
-        self.__colids = {name: i+1 for i, name in enumerate(self.colnames)}
+        self.__colids = {name: i + 1 for i, name in enumerate(self.colnames)}
         self._init_class_columns()
 
     def __set_table_attr(self, col):
@@ -432,7 +433,7 @@ class DynamicTable(Container):
                                     col_cls=col.get('class', VectorData),
                                     # Pass through extra kwargs for add_column that subclasses may have added
                                     **{k: col[k] for k in col.keys()
-                                        if k not in DynamicTable.__reserved_colspec_keys})
+                                       if k not in DynamicTable.__reserved_colspec_keys})
                 else:
                     # track the not yet initialized optional predefined columns
                     self.__uninit_cols[col['name']] = col
@@ -461,7 +462,7 @@ class DynamicTable(Container):
                 if data is not None:
                     index_data = [len(data[0])]
                     for i in range(1, len(data)):
-                        index_data.append(len(data[i]) + index_data[i-1])
+                        index_data.append(len(data[i]) + index_data[i - 1])
                     # assume data came in through a DataFrame, so we need
                     # to concatenate it
                     tmp_data = list()
@@ -511,7 +512,7 @@ class DynamicTable(Container):
                                         # Pass through extra keyword arguments for add_column that
                                         # subclasses may have added
                                         **{k: col[k] for k in col.keys()
-                                            if k not in DynamicTable.__reserved_colspec_keys})
+                                           if k not in DynamicTable.__reserved_colspec_keys})
                     extra_columns.remove(col['name'])
 
         if extra_columns or missing_columns:
@@ -574,7 +575,7 @@ class DynamicTable(Container):
             {'name': 'col_cls', 'type': type, 'default': VectorData,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If vocab=True, this field is ignored and a VocabData '
-                     'object is used.')},)
+                     'object is used.')}, )
     def add_column(self, **kwargs):  # noqa: C901
         """
         Add a column to this table.
@@ -652,7 +653,7 @@ class DynamicTable(Container):
             if isinstance(index, VectorIndex):
                 col_index = index
                 self.__add_column_index_helper(col_index)
-            elif isinstance(index, bool):        # make empty VectorIndex
+            elif isinstance(index, bool):  # make empty VectorIndex
                 if len(col) > 0:
                     raise ValueError("cannot pass empty index with non-empty data to index")
                 col_index = VectorIndex(name + "_index", list(), col)
@@ -668,7 +669,7 @@ class DynamicTable(Container):
                     if i < index - 1:
                         columns.insert(0, col_index)
                         col = col_index
-            else:                                # make VectorIndex with supplied data
+            else:  # make VectorIndex with supplied data
                 if len(col) == 0:
                     raise ValueError("cannot pass non-empty index with empty data to index")
                 col_index = VectorIndex(name + "_index", index, col)
@@ -679,8 +680,8 @@ class DynamicTable(Container):
         if len(col) != len(self.id):
             raise ValueError("column must have the same number of rows as 'id'")
         self.__colids[name] = len(self.__df_cols)
-        self.fields['colnames'] = tuple(list(self.colnames)+[name])
-        self.fields['columns'] = tuple(list(self.columns)+columns)
+        self.fields['colnames'] = tuple(list(self.colnames) + [name])
+        self.fields['columns'] = tuple(list(self.columns) + columns)
         self.__df_cols.append(col)
 
     def __add_column_index_helper(self, col_index):
@@ -1147,12 +1148,12 @@ class VocabData(VectorData):
         else:
             self.vocabulary = vocab
             self.__revidx = dict()  # a map from term to index
-            self.__uint = None      # the precision needed to encode all terms
+            self.__uint = None  # the precision needed to encode all terms
 
     @staticmethod
     def __uint_precision(vocab):
         """ Calculate the uint precision needed to encode the given vocabulary """
-        return np.dtype('uint%d' % 8 * max(1, int((2 ** np.ceil((np.ceil(np.log2(len(vocab))) - 8)/8))))).type
+        return np.dtype('uint%d' % 8 * max(1, int((2 ** np.ceil((np.ceil(np.log2(len(vocab))) - 8) / 8))))).type
 
     @staticmethod
     def __map_vocab(uint, vocab):
@@ -1172,7 +1173,7 @@ class VocabData(VectorData):
             uint = self.__uint_precision(self.vocabulary)
             if self.__uint is uint:
                 # add the new term to the index-term map
-                self.__revidx[term] = self.__uint(len(self.vocabulary)-1)
+                self.__revidx[term] = self.__uint(len(self.vocabulary) - 1)
             else:
                 # remap terms to their uint and bump the precision of existing data
                 self.__uint = uint

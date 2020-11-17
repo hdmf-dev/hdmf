@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
-import numpy as np
 
+import numpy as np
 from hdmf import Container, Data
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
 from hdmf.build.warnings import DtypeConversionWarning
-from hdmf.utils import docval, getargs
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
 from hdmf.testing import TestCase
+from hdmf.utils import docval, getargs
 
 from tests.unit.utils import CORE_NAMESPACE
 

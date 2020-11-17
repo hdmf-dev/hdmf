@@ -1,7 +1,7 @@
 from numpy import dtype
 
-from ..utils import docval, getargs
 from ..spec.spec import DtypeHelper
+from ..utils import docval, getargs
 
 __all__ = [
     "Error",

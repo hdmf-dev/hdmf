@@ -1,13 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
-from dateutil.tz import tzlocal
-import numpy as np
 
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
+import numpy as np
+from dateutil.tz import tzlocal
 from hdmf.build import GroupBuilder, DatasetBuilder
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
+from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import *  # noqa: F403
-from hdmf.testing import TestCase
 
 CORE_NAMESPACE = 'test_core'
 

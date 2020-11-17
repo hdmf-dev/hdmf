@@ -1,5 +1,5 @@
-from hdmf.container import Container, Data
 from hdmf.common import SimpleMultiContainer
+from hdmf.container import Container, Data
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 

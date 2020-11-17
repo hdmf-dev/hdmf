@@ -1,5 +1,5 @@
-from hdmf.utils import LabelledDict
 from hdmf.testing import TestCase
+from hdmf.utils import LabelledDict
 
 
 class MyTestClass:

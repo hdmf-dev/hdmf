@@ -1,8 +1,7 @@
+import numpy as np
+import scipy.sparse as sps
 from hdmf.common import CSRMatrix
 from hdmf.testing import TestCase, H5RoundTripMixin
-
-import scipy.sparse as sps
-import numpy as np
 
 
 class TestCSRMatrix(TestCase):

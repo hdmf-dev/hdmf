@@ -1,17 +1,17 @@
-from collections import OrderedDict
-from datetime import datetime
-from copy import copy
-import ruamel.yaml as yaml
 import os.path
 import string
-from warnings import warn
-from itertools import chain
 from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+from copy import copy
+from datetime import datetime
+from itertools import chain
+from warnings import warn
 
-from ..utils import docval, getargs, popargs, get_docval, call_docval_func
+import ruamel.yaml as yaml
+
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec
-
+from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 
 _namespace_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this namespace represents'},
@@ -230,7 +230,7 @@ class NamespaceCatalog:
             {'name': 'dataset_spec_cls', 'type': type,
              'doc': 'the class to use for dataset specifications', 'default': DatasetSpec},
             {'name': 'spec_namespace_cls', 'type': type,
-             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace},)
+             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace}, )
     def __init__(self, **kwargs):
         """Create a catalog for storing  multiple Namespaces"""
         self.__namespaces = OrderedDict()
