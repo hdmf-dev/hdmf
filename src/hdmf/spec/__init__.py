@@ -14,4 +14,3 @@ from .spec import Spec
 from .write import NamespaceBuilder
 from .write import SpecWriter
 from .write import export_spec
-

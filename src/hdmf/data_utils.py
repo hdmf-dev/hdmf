@@ -571,8 +571,8 @@ class ShapeValidatorResult:
             )
     def __init__(self, **kwargs):
         self.result, self.message, self.ignored, self.unmatched, \
-        self.error, self.shape1, self.shape2, self.axes1, self.axes2 = getargs(
-            'result', 'message', 'ignored', 'unmatched', 'error', 'shape1', 'shape2', 'axes1', 'axes2', kwargs)
+            self.error, self.shape1, self.shape2, self.axes1, self.axes2 = getargs(
+                'result', 'message', 'ignored', 'unmatched', 'error', 'shape1', 'shape2', 'axes1', 'axes2', kwargs)
 
     def __setattr__(self, key, value):
         """

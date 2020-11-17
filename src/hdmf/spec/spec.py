@@ -295,9 +295,9 @@ class AttributeSpec(Spec):
 
 _attrbl_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-    {'name': 'name', 'type': str, 'doc': 'the name of this base storage container, '
-                                         + 'allowed only if quantity is not \'%s\' or \'%s\'' % (
-                                         ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
+    {'name': 'name', 'type': str,
+     'doc': 'the name of this base storage container, allowed only if quantity is not \'%s\' or \'%s\''
+            % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
     {'name': 'default_name', 'type': str,
      'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
     {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
