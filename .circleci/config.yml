@@ -118,7 +118,7 @@ references:
 jobs:
   flake8:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-buster
     steps:
       - checkout
       - run:
@@ -177,6 +177,16 @@ jobs:
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
+  python38-upgrade-dev-pre:
+    docker:
+      - image: circleci/python:3.8.6-buster
+    environment:
+     - TEST_TOX_ENV: "py38-upgrade-dev-pre"
+     - COVERAGE_TOX_ENV: ""
+     - BUILD_TOX_ENV: "build-py38-upgrade-dev-pre"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
   python36-min-req:
     docker:
       - image: circleci/python:3.6.12-stretch
@@ -229,21 +239,21 @@ jobs:
 
   gallery36:
     docker:
-      - image: circleci/python:3.6.10-stretch
+      - image: circleci/python:3.6.12-stretch
     environment:
      - TEST_TOX_ENV: "gallery-py36"
     <<: *gallery-steps
 
   gallery37:
     docker:
-      - image: circleci/python:3.7.6-stretch
+      - image: circleci/python:3.7.9-stretch
     environment:
      - TEST_TOX_ENV: "gallery-py37"
     <<: *gallery-steps
 
   gallery38:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-buster
     environment:
      - TEST_TOX_ENV: "gallery-py38"
     <<: *gallery-steps
@@ -257,21 +267,28 @@ jobs:
 
   gallery38-upgrade-dev:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-buster
     environment:
      - TEST_TOX_ENV: "gallery-py38-upgrade-dev"
     <<: *gallery-steps
 
+  gallery38-upgrade-dev-pre:
+    docker:
+      - image: circleci/python:3.8.6-buster
+    environment:
+     - TEST_TOX_ENV: "gallery-py38-upgrade-dev-pre"
+    <<: *gallery-steps
+
   gallery36-min-req:
     docker:
-      - image: circleci/python:3.6.10-stretch
+      - image: circleci/python:3.6.12-stretch
     environment:
      - TEST_TOX_ENV: "gallery-py36-min-req"
     <<: *gallery-steps
 
   deploy-dev:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-buster
     steps:
       - checkout
       - attach_workspace:
@@ -293,7 +310,7 @@ jobs:
 
   deploy-release:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-buster
     steps:
       - attach_workspace:
           at: ./
@@ -318,7 +335,7 @@ jobs:
 
   pynwb-dev-python38:
     docker:
-      - image: circleci/python:3.8.1-buster
+      - image: circleci/python:3.8.6-buster
     steps:
       - checkout
       - run: git submodule sync
@@ -445,4 +462,8 @@ workflows:
       - miniconda39:
           <<: *no_filters
       - gallery39:
+          <<: *no_filters
+      - python38-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery38-upgrade-dev-pre:
           <<: *no_filters
