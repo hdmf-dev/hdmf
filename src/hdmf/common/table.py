@@ -697,25 +697,22 @@ class DynamicTable(Container):
             {'name': 'description', 'type': str, 'doc': 'a brief description of what the region is'})
     def create_region(self, **kwargs):
         """
-        Create a DynamicTableRegion selecting a region (i.e., rows) in this DynamicTable.
+        Create a DynamicTableRegion selecting a region (i.e., rows) in this DynamicTable by row index.
 
-        :raises: IndexError if the provided region contains invalid indices
-
+        :raises IndexError: If the provided region contains invalid indices.
+        :return: DynamicTableRegion selecting a region (i.e., rows) in this DynamicTable by row index.
         """
-        region = getargs('region', kwargs)
+        name, desc, region = getargs('name', 'description', 'region', kwargs)
         if isinstance(region, slice):
             if (region.start is not None and region.start < 0) or (region.stop is not None and region.stop > len(self)):
-                msg = 'region slice %s is out of range for this DynamicTable of length %d' % (str(region), len(self))
+                msg = 'Region slice %s is out of range for this DynamicTable of length %d.' % (str(region), len(self))
                 raise IndexError(msg)
             region = list(range(*region.indices(len(self))))
         else:
             for idx in region:
                 if idx < 0 or idx >= len(self):
-                    raise IndexError('The index ' + str(idx) +
-                                     ' is out of range for this DynamicTable of length '
-                                     + str(len(self)))
-        desc = getargs('description', kwargs)
-        name = getargs('name', kwargs)
+                    msg = 'The index %d is out of range for this DynamicTable of length %d.' % (idx, len(self))
+                    raise IndexError(msg)
         return DynamicTableRegion(name, region, desc, self)
 
     def __getitem__(self, key):
@@ -766,6 +763,7 @@ class DynamicTable(Container):
             try:
                 if np.issubdtype(type(arg), np.integer):
                     ret = OrderedDict()
+                    breakpoint()
                     ret['id'] = self.id.data[arg]
                     for name in self.colnames:
                         col = self.__df_cols[self.__colids[name]]
@@ -788,7 +786,7 @@ class DynamicTable(Container):
                         col = self.__df_cols[self.__colids[name]]
                         ret[name] = col.get(arg, df=df, **kwargs)
                 else:
-                    raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+                    raise KeyError("Key type %s not supported by DynamicTable.get" % str(type(arg)))
             except ValueError as ve:
                 x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
                 if x:
@@ -811,6 +809,7 @@ class DynamicTable(Container):
                     id_index = [id_index]
                 retdf = OrderedDict()
                 for k in ret:
+                    index = pd.Index(name=self.id.name, data=id_index)
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
                             if len(id_index) == 1:
@@ -838,9 +837,12 @@ class DynamicTable(Container):
                         for col in ret[k].columns:
                             newcolname = "%s_%s" % (k, col)
                             retdf[newcolname] = ret[k][col].values
+                        breakpoint()
+                        hier_cols = pd.MultiIndex.from_product([[k], ret[k].columns])
                     else:
                         retdf[k] = ret[k]
-                ret = pd.DataFrame(retdf, index=pd.Index(name=self.id.name, data=id_index))
+                index = pd.Index(name=self.id.name, data=id_index)
+                ret = pd.DataFrame(retdf, index=index)
             else:
                 ret = list(ret.values())
 
@@ -1033,14 +1035,19 @@ class DynamicTableRegion(VectorData):
             arg1 = arg[0]
             arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
-        elif np.issubdtype(type(arg), np.integer):
+
+        if np.issubdtype(type(arg), np.integer):
             if arg >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
-            ret = self.data[arg]
-            if not index:
-                ret = self.table.get(ret, df=df, **kwargs)
-            return ret
-        elif isinstance(arg, (list, slice, np.ndarray)):
+            return self._basic_get(arg, index, df, **kwargs)
+
+        if isinstance(self.data, (tuple, list)):  # data not written yet
+            if isinstance(arg, (list, slice, np.ndarray)):
+                return self._basic_get(arg, index, df, **kwargs)
+            else:
+                raise ValueError("Type %s not allowed for argument 'arg'." % type(arg))
+
+        if isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
 
             # get the data at the specified indices
@@ -1069,7 +1076,13 @@ class DynamicTableRegion(VectorData):
 
             return ret
         else:
-            raise ValueError("unrecognized argument: '%s'" % arg)
+            raise ValueError("Type %s not allowed for argument 'arg'." % type(arg))
+
+    def _basic_get(self, arg, index, df, **kwargs):
+        ret = self.data[arg]
+        if not index:
+            ret = self.table.get(ret, df=df, **kwargs)
+        return ret
 
     def _index_lol(self, result, index, lut):
         """
