@@ -51,6 +51,15 @@ Overall Health
      :target: https://hdmf.readthedocs.io/en/latest/?badge=latest
      :alt: Documentation Status
 
+Citation
+========
+
+If you use HDMF in your research, please use the following citation:
+
+A. J. Tritt et al., "HDMF: Hierarchical Data Modeling Framework for Modern Science Data Standards,"
+2019 IEEE International Conference on Big Data (Big Data), Los Angeles, CA, USA, 2019, pp. 165-179,
+doi: 10.1109/BigData47090.2019.9005648.
+
 Installation
 ============
 
