@@ -31,6 +31,22 @@ jobs:
         buildToxEnv: 'build-py39'
         testWheelInstallEnv: 'wheelinstall'
 
+      macOS-py3.8-upgrade-dev-pre:
+        imageName: 'macos-10.15'
+        pythonVersion: '3.8'
+        testToxEnv: 'py38-upgrade-dev-pre'
+        coverageToxEnv: ''
+        buildToxEnv: 'build-py38-upgrade-dev-pre'
+        testWheelInstallEnv: 'wheelinstall'
+
+      Windows-py3.8-upgrade-dev-pre:
+        imageName: 'vs2017-win2016'
+        pythonVersion: '3.8'
+        testToxEnv: 'py38-upgrade-dev-pre'
+        coverageToxEnv: ''
+        buildToxEnv: 'build-py38-upgrade-dev-pre'
+        testWheelInstallEnv: 'wheelinstall'
+
   pool:
     vmImage: $(imageName)
 
