@@ -627,7 +627,7 @@ class HDF5IO(HDMFIO):
             if h5obj.dtype.kind == 'O' and len(h5obj) > 0:
                 elem1 = h5obj[0]
                 if isinstance(elem1, (str, bytes)):
-                    d = h5obj
+                    d = h5obj # self._check_str_dtype(h5obj)
                 elif isinstance(elem1, RegionReference):  # read list of references
                     d = BuilderH5RegionDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
@@ -647,6 +647,13 @@ class HDF5IO(HDMFIO):
         ret = DatasetBuilder(name, **kwargs)
         self.__set_written(ret)
         return ret
+
+    def _check_str_dtype(self, h5obj):
+        dtype = h5obj.dtype
+        if dtype.kind == 'O':
+            if dtype.metadata.get('vlen') == str:
+                return h5obj.asstr()
+        return h5obj
 
     @classmethod
     def __compound_dtype_to_list(cls, h5obj_dtype, dset_dtype):
@@ -846,10 +853,8 @@ class HDF5IO(HDMFIO):
             if isinstance(value, (set, list, tuple)):
                 tmp = tuple(value)
                 if len(tmp) > 0:
-                    if isinstance(tmp[0], str):
-                        value = [np.unicode_(s) for s in tmp]
-                    elif isinstance(tmp[0], bytes):
-                        value = [np.string_(s) for s in tmp]
+                    if isinstance(tmp[0], (str, bytes)):
+                        value = np.array(value, dtype=special_dtype(vlen=type(tmp[0])))
                     elif isinstance(tmp[0], Container):  # a list of references
                         self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                     else:
@@ -862,6 +867,8 @@ class HDF5IO(HDMFIO):
             else:
                 self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                   % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                if isinstance(value, np.ndarray) and value.dtype.kind == 'U':
+                    value = np.array(value, dtype=H5_TEXT)
                 obj.attrs[key] = value                   # a regular scalar
 
     def _make_attr_ref_filler(self, obj, key, value):
