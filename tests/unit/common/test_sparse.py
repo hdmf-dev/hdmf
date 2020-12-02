@@ -29,9 +29,9 @@ class TestCSRMatrix(TestCase):
         np.testing.assert_array_equal(indices, csr_mat.indices)
         np.testing.assert_array_equal(indptr, csr_mat.indptr)
         np.testing.assert_array_equal(shape, csr_mat.shape)
-        self.assertEqual(csr_mat.indices.dtype.type, np.uint32)
-        self.assertEqual(csr_mat.indptr.dtype.type, np.uint32)
-        self.assertEqual(csr_mat.shape.dtype.type, np.uint32)
+        self.assertEqual(csr_mat.indices.dtype.type, np.uint)
+        self.assertEqual(csr_mat.indptr.dtype.type, np.uint)
+        self.assertEqual(csr_mat.shape.dtype.type, np.uint)
 
     def test_to_spmat(self):
         data = np.array([1, 2, 3, 4, 5, 6])
