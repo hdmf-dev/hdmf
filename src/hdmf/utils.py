@@ -804,6 +804,25 @@ def pystr(s):
         return s
 
 
+def to_uint_array(arr):
+    """
+    Convert a numpy array or array-like object to a numpy array of unsigned integers with the same dtype itemsize.
+
+    For example, a list of int32 values is converted to a numpy array with dtype uint32.
+    :raises ValueError: if input array contains values that are not unsigned integers or non-negative integers.
+    """
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    if np.issubdtype(arr.dtype, np.unsignedinteger):
+        return arr
+    if np.issubdtype(arr.dtype, np.integer):
+        if (arr < 0).any():
+            raise ValueError('Cannot convert negative integer values to uint.')
+        dt = np.dtype('uint' + str(int(arr.dtype.itemsize*8)))  # keep precision
+        return arr.astype(dt)
+    raise ValueError('Cannot convert array of dtype %s to uint.' % arr.dtype)
+
+
 class LabelledDict(dict):
     """A dict wrapper that allows querying by an attribute of the values and running a callable on removed items.
 
