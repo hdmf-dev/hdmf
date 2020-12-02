@@ -29,6 +29,13 @@
   @rly (#461)
 - Allow passing `GroupSpec` and `DatasetSpec` objects for the 'target_type' argument of `LinkSpec.__init__(...)`.
   @rly (#467)
+- Use hdmf-common-schema 1.3.0. @rly, @ajtritt (#486)
+  - Changes from hdmf-common-schema 1.2.0:
+    - Add data type ExternalResources for storing ontology information / external resource references. NOTE:
+      this data type is in beta testing and is subject to change in a later version.
+    - Fix missing data_type_inc and use dtype uint for CSRMatrix. It now has data_type_inc: Container.
+    - Add hdmf-schema-language comment at the top of each yaml file.
+    - Add SimpleMultiContainer, a Container for storing other Container and Data objects together.
 
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
