@@ -11,6 +11,8 @@ jobs:
       PYTHON: '3.8'
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -23,6 +25,7 @@ jobs:
     - name: Run tests and generate coverage report
       run: |
         python -m coverage run test.py -u
+        coverage report -m
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
