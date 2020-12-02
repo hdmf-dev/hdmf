@@ -20,18 +20,18 @@ class TestCSRMatrix(TestCase):
 
     def test_getattrs(self):
         data = np.array([1, 2, 3, 4, 5, 6])
-        indices = np.array([0, 2, 2, 0, 1, 2])
-        indptr = np.array([0, 2, 3, 6])
-        shape = (3, 3)
+        indices = np.array([0, 2, 2, 0, 1, 2], dtype=np.int32)
+        indptr = np.array([0, 2, 3, 6], dtype=np.int32)
+        shape = np.array([3, 3], dtype=np.int32)
         csr_mat = CSRMatrix(data, indices, indptr, shape)
 
         np.testing.assert_array_equal(data, csr_mat.data)
         np.testing.assert_array_equal(indices, csr_mat.indices)
         np.testing.assert_array_equal(indptr, csr_mat.indptr)
         np.testing.assert_array_equal(shape, csr_mat.shape)
-        self.assertEqual(csr_mat.indices.dtype.type, np.uint)
-        self.assertEqual(csr_mat.indptr.dtype.type, np.uint)
-        self.assertEqual(csr_mat.shape.dtype.type, np.uint)
+        self.assertEqual(csr_mat.indices.dtype.type, np.uint32)
+        self.assertEqual(csr_mat.indptr.dtype.type, np.uint32)
+        self.assertEqual(csr_mat.shape.dtype.type, np.uint32)
 
     def test_to_spmat(self):
         data = np.array([1, 2, 3, 4, 5, 6])
