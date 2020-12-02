@@ -23,7 +23,7 @@ class CSRMatrix(Container):
         data = getargs('data', kwargs)
         if isinstance(data, (np.ndarray, h5py.Dataset)):
             if data.ndim == 2:
-                data = sps.csr_matrix(self.data)
+                data = sps.csr_matrix(data)
             elif data.ndim < 2:
                 indptr, indices, shape = getargs('indptr', 'indices', 'shape', kwargs)
                 if any(_ is None for _ in (indptr, indices, shape)):

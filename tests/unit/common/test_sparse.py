@@ -18,6 +18,12 @@ class TestCSRMatrix(TestCase):
         received = CSRMatrix(sps_mat)
         self.assertContainerEqual(received, expected, ignore_hdmf_attrs=True)
 
+    def test_2d_data(self):
+        data = np.array([[1, 0, 2], [0, 0, 3], [4, 5, 6]])
+        csr_mat = CSRMatrix(data)
+        sps_mat = sps.csr_matrix(data)
+        np.testing.assert_array_equal(csr_mat.data, sps_mat.data)
+
     def test_getattrs(self):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2], dtype=np.int32)
