@@ -12,7 +12,6 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.8'
         testToxEnv: 'py38'
-        coverageToxEnv: 'coverage'
         buildToxEnv: 'build-py38'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -20,7 +19,6 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.7'
         testToxEnv: 'py37'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py37'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -28,7 +26,6 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.6'
         testToxEnv: 'py36'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py36'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -36,7 +33,6 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.8'
         testToxEnv: 'py38-upgrade-dev'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py38-upgrade-dev'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -44,7 +40,6 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.6'
         testToxEnv: 'py36-min-req'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py36-min-req'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -52,7 +47,6 @@ jobs:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.8'
         testToxEnv: 'py38'
-        coverageToxEnv: 'coverage'
         buildToxEnv: 'build-py38'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -60,7 +54,6 @@ jobs:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.7'
         testToxEnv: 'py37'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py37'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -68,7 +61,6 @@ jobs:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.6'
         testToxEnv: 'py36'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py36'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -76,7 +68,6 @@ jobs:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.8'
         testToxEnv: 'py38-upgrade-dev'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py38-upgrade-dev'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -84,7 +75,6 @@ jobs:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.6'
         testToxEnv: 'py36-min-req'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py36-min-req'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -110,12 +100,6 @@ jobs:
   - bash: |
       tox -e $(testToxEnv)
     displayName: 'Run tox tests'
-
-  - bash: |
-      if [[ "$(coverageToxEnv)" != "" ]]; then
-        tox -e $(coverageToxEnv)
-      fi
-    displayName: 'Run coverage tests if coverageToxEnv != ""'
 
   - bash: |
       tox -e $(buildToxEnv)
