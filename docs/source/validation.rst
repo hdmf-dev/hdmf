@@ -10,9 +10,9 @@ Validation is of NWB files is available through :py:mod:`~pynwb`. See the `PyNWB
 
 .. note::
    
-   A simple interface for validating HDMF structured data like for PyNWB is not yet implemented. If you would like
-   to validate HDMF structured data directly through :py:mod:`~hdmf`, then please upvote `this issue
-   <https://github.com/hdmf-dev/hdmf/issues/473>`_.
+   A simple interface for validating HDMF structured data through the command line like for PyNWB files is not yet
+   implemented. If you would like this functionality to be available through :py:mod:`~hdmf`, then please upvote
+   `this issue <https://github.com/hdmf-dev/hdmf/issues/473>`_.
 
 ..
     Validating HDMF structured data is is handled by a command-line tool available in :py:mod:`~hdmf`. The validator can be invoked like so:
