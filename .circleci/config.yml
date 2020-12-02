@@ -305,8 +305,7 @@ jobs:
                 --prerelease-sha $CIRCLE_SHA1 \
                 --prerelease-packages-clear-pattern "*" \
                 --prerelease-packages-keep-pattern "*dev<COMMIT_DISTANCE>*" \
-                --re-upload \
-                --exit-success-if-missing-token
+                --re-upload
 
   deploy-release:
     docker:
