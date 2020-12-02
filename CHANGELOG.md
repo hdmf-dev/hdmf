@@ -36,6 +36,7 @@
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
 - Improve contributing guide. @rly (#474)
 - Add citation information to documentation. @rly (#477)
+- Add type conversion in `CSRMatrix`. @rly (#485)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
