@@ -35,6 +35,7 @@
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
 - Improve contributing guide. @rly (#474)
+- Update CI to be more contributor friendly. @rly (#481)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
