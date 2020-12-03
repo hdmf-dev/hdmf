@@ -8,7 +8,7 @@ __version__ = get_versions()['version']
 del get_versions
 
 
-from ._due import due, Doi, BibTeX  # noqa: E402
+from ._due import due, BibTeX  # noqa: E402
 due.cite(BibTeX("""
 @INPROCEEDINGS{9005648,
   author={A. J. {Tritt} and O. {Rübel} and B. {Dichter} and R. {Ly} and D. {Kang} and E. F. {Chang} and L. M. {Frank} and K. {Bouchard}},
