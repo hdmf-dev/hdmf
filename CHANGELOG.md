@@ -54,6 +54,7 @@
 - Add missing support for data conversion against spec dtypes "bytes" and "short". @rly (#456)
 - Clarify the validator error message when a named data type is missing. @dsleiter (#478)
 - Update documentation on validation to indicate that the example command is not implemented @dsleiter (#482)
+- Fix generated docval for classes with a LinkSpec. @rly (#478)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
