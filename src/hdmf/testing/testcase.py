@@ -1,16 +1,16 @@
+import os
 import re
 import unittest
-import h5py
-import numpy as np
-import os
 from abc import ABCMeta, abstractmethod
 
-from ..container import AbstractContainer, Container, Data
-from ..build import Builder
-from ..query import HDMFDataset
+import h5py
+import numpy as np
 
-from ..common import validate as common_validate, get_manager
 from ..backends.hdf5 import HDF5IO
+from ..build import Builder
+from ..common import validate as common_validate, get_manager
+from ..container import AbstractContainer, Container, Data
+from ..query import HDMFDataset
 
 
 class TestCase(unittest.TestCase):

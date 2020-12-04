@@ -1,5 +1,5 @@
-from collections import OrderedDict
 import copy
+from collections import OrderedDict
 
 from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
@@ -152,7 +152,7 @@ class SpecCatalog:
         # Compute the type hierarchy
         for rt in sorted(registered_types):
             rt_spec = self.get_spec(rt)
-            if isinstance(rt_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+            if isinstance(rt_spec, BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
                 if rt_spec.get(rt_spec.inc_key(), None) is None:
                     type_hierarchy[rt] = get_type_hierarchy(rt, self)
 
@@ -180,7 +180,7 @@ class SpecCatalog:
         """
         data_type, recursive = getargs('data_type', 'recursive', kwargs)
         curr_spec = self.get_spec(data_type)
-        if isinstance(curr_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+        if isinstance(curr_spec, BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
             subtypes = []
             spec_inc_key = curr_spec.inc_key()
             spec_def_key = curr_spec.def_key()
@@ -190,7 +190,7 @@ class SpecCatalog:
                     subtypes.append(rt)
                     if recursive:
                         subtypes += self.get_subtypes(rt)
-            return tuple(set(subtypes))   # Convert to a set to make sure we don't have any duplicates
+            return tuple(set(subtypes))  # Convert to a set to make sure we don't have any duplicates
         else:
             return ()
 
