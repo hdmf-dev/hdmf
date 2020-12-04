@@ -1,29 +1,28 @@
 import os
 import unittest
 import warnings
-import numpy as np
-import h5py
 from io import BytesIO
 from pathlib import Path
 
-from hdmf.utils import docval, getargs
-from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
+import h5py
+import numpy as np
+from h5py import SoftLink, HardLink, ExternalLink, File
+from h5py import filters as h5py_filters
 from hdmf.backends.hdf5 import H5DataIO
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
                         LinkBuilder)
+from hdmf.container import Container, Data
+from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
+from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog
+from hdmf.spec.namespace import SpecNamespace
 from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
                             RefSpec, DtypeSpec)
-from hdmf.spec.namespace import SpecNamespace
-from hdmf.spec.catalog import SpecCatalog
-from hdmf.container import Container, Data
 from hdmf.testing import TestCase
-
-from h5py import SoftLink, HardLink, ExternalLink, File
-from h5py import filters as h5py_filters
+from hdmf.utils import docval, getargs
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
 

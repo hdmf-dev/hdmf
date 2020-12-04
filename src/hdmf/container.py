@@ -1,20 +1,20 @@
+import types
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+from copy import deepcopy
+from uuid import uuid4
+from warnings import warn
+
 import h5py
 import numpy as np
-from abc import ABCMeta, abstractmethod
-from uuid import uuid4
-from collections import OrderedDict
+import pandas as pd
+
+from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
-from .data_utils import DataIO, append_data, extend_data
-from warnings import warn
-import types
-from copy import deepcopy
-
-import pandas as pd
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
-
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
     # the class attribute name to something domain-specific
@@ -711,6 +711,7 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
                     raise ValueError(msg)
                 d[tmp.name] = tmp
             return container
+
         return _func
 
     @classmethod
@@ -724,6 +725,7 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
             ret = container_type(*cargs, **ckwargs)
             getattr(self, add_name)(ret)
             return ret
+
         return _func
 
     @classmethod
@@ -746,6 +748,7 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
                 container = popargs(attr_name, kwargs)
                 add = getattr(self, add_name)
                 add(container)
+
         return _func
 
     @classmethod
@@ -985,7 +988,7 @@ class Table(Data):
                 idx[col['name']] = i
             setattr(cls, '__colidx__', idx)
 
-            if cls.__init__ == bases[-1].__init__:     # check if __init__ is overridden
+            if cls.__init__ == bases[-1].__init__:  # check if __init__ is overridden
                 name = {'name': 'name', 'type': str, 'doc': 'the name of this table'}
                 defname = getattr(cls, '__defaultname__', None)
                 if defname is not None:
@@ -1001,7 +1004,7 @@ class Table(Data):
 
                 setattr(cls, '__init__', __init__)
 
-            if cls.add_row == bases[-1].add_row:     # check if add_row is overridden
+            if cls.add_row == bases[-1].add_row:  # check if add_row is overridden
 
                 @docval(*columns)
                 def add_row(self, **kwargs):

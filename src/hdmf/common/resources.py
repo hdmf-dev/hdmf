@@ -3,7 +3,6 @@ import pandas as pd
 
 from . import register_class
 from ..container import Table, Row, Container, AbstractContainer
-
 from ..utils import docval, popargs
 
 

@@ -1,6 +1,6 @@
-from ...build import ObjectMapper
-from ..resources import ExternalResources, KeyTable, ResourceTable, ObjectTable, ObjectKeyTable
 from .. import register_map
+from ..resources import ExternalResources, KeyTable, ResourceTable, ObjectTable, ObjectKeyTable
+from ...build import ObjectMapper
 
 
 @register_map(ExternalResources)

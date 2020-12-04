@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
-from .utils import docval, getargs, call_docval_func
 from .data_utils import AbstractDataChunkIterator, DataChunkIterator, DataChunk
+from .utils import docval, getargs, call_docval_func
 
 
 class NotYetExhausted(Exception):

@@ -1,8 +1,7 @@
 import numpy as np
-
 from hdmf.container import AbstractContainer, Container, Data
-from hdmf.utils import docval
 from hdmf.testing import TestCase
+from hdmf.utils import docval
 
 
 class Subcontainer(Container):
