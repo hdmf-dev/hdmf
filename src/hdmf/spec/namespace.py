@@ -230,7 +230,7 @@ class NamespaceCatalog:
             {'name': 'dataset_spec_cls', 'type': type,
              'doc': 'the class to use for dataset specifications', 'default': DatasetSpec},
             {'name': 'spec_namespace_cls', 'type': type,
-             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace}, )
+             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         """Create a catalog for storing  multiple Namespaces"""
         self.__namespaces = OrderedDict()
