@@ -5,8 +5,8 @@ import h5py
 import numpy as np
 import pandas as pd
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
-from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, \
-    DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer
+from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, 
+                         DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
