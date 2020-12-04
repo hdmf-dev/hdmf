@@ -380,6 +380,24 @@ class BaseStorageSpec(Spec):
         for attribute in inc_spec.attributes:
             self.__new_attributes.discard(attribute)
             if attribute.name in self.__attributes:
+                # copy over the fields 'shape' and 'dims' of the parent attribute to this spec's attribute
+                # NOTE: because the default value for the 'required' field is True, it is not possible to know whether
+                # the 'required' field was explicitly set. thus, 'required' defaults to True no matter what the parent
+                # specification defines.
+                # NOTE: the value and default value of a parent attribute are also not copied to the child spec
+                my_attribute = self.get_attribute(attribute.name)
+                if attribute.shape is not None:
+                    if my_attribute.shape is None:
+                        my_attribute['shape'] = attribute.shape
+                    else:
+                        # TODO: test whether child shape is compatible with parent shape
+                        pass
+                if attribute.dims is not None:
+                    if my_attribute.dims is None:
+                        my_attribute['dims'] = attribute.dims
+                    else:
+                        # TODO: test whether child dims is compatible with parent dims
+                        pass
                 self.__overridden_attributes.add(attribute.name)
                 continue
             self.set_attribute(attribute)
@@ -694,6 +712,30 @@ class DatasetSpec(BaseStorageSpec):
     @docval({'name': 'inc_spec', 'type': 'DatasetSpec', 'doc': 'the data type this specification represents'})
     def resolve_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
+        # copy over fields of the parent dataset to this spec
+        # NOTE: because the default value for the 'quantity' field is 1, it is not possible to know whether
+        # the 'quantity' field was explicitly set. thus, 'quantity' defaults to 1 no matter what the parent
+        # specification defines.
+        # NOTE: the default value of a parent attribute is also not copied to the child spec
+        if inc_spec.dtype is not None:
+            if self.dtype is None:
+                self['dtype'] = inc_spec.dtype
+            else:
+                # TODO: test whether child dtype is compatible with parent dtype
+                # e.g., if parent dtype is int, child dtype cannot be text
+                pass
+        if inc_spec.shape is not None:
+            if self.shape is None:
+                self['shape'] = inc_spec.shape
+            elif inc_spec.shape is not None:
+                # TODO: test whether child shape is compatible with parent shape
+                pass
+        if inc_spec.dims is not None:
+            if self.dims is None:
+                self['dims'] = inc_spec.dims
+            elif inc_spec.dims is not None:
+                # TODO: test whether child dims is compatible with parent dims
+                pass
         if isinstance(self.dtype, list):
             # merge the new types
             inc_dtype = inc_spec.dtype
