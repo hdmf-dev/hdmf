@@ -44,6 +44,7 @@
 - Improve contributing guide. @rly (#474)
 - Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
 - Add type checking and conversion in `CSRMatrix`. @rly (#485)
+- Clean up unreachable validator code. @rly (#483)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
