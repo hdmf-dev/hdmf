@@ -1,6 +1,6 @@
-import numpy as np
 from copy import copy, deepcopy
 
+import numpy as np
 from hdmf.data_utils import DataChunk
 from hdmf.testing import TestCase
 

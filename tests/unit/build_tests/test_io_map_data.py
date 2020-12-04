@@ -1,15 +1,15 @@
-from hdmf.spec import (AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog,
-                       RefSpec)
-from hdmf.spec.spec import ZERO_OR_MANY
-from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ReferenceBuilder,
-                        ReferenceTargetNotBuiltError)
-from hdmf import Container, Data
-from hdmf.utils import docval, getargs, call_docval_func
-from hdmf.testing import TestCase
+import os
 
 import h5py
 import numpy as np
-import os
+from hdmf import Container, Data
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ReferenceBuilder,
+                        ReferenceTargetNotBuiltError)
+from hdmf.spec import (AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog,
+                       RefSpec)
+from hdmf.spec.spec import ZERO_OR_MANY
+from hdmf.testing import TestCase
+from hdmf.utils import docval, getargs, call_docval_func
 
 from tests.unit.utils import Foo, CORE_NAMESPACE
 

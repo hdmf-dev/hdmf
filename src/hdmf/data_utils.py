@@ -1,9 +1,10 @@
+import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-import numpy as np
 from warnings import warn
-import copy
+
 import h5py
+import numpy as np
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
@@ -129,14 +130,14 @@ class DataChunkIterator(AbstractDataChunkIterator):
     """
 
     __docval_init = (
-            {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
-            {'name': 'maxshape', 'type': tuple,
-             'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
-             'default': None},
-            {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
-            {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
-            {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
-            )
+        {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
+        {'name': 'maxshape', 'type': tuple,
+         'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
+         'default': None},
+        {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
+        {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
+        {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
+    )
 
     @docval(*__docval_init)
     def __init__(self, **kwargs):
@@ -172,7 +173,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         # Determine the shape of the data if possible
         if self.__maxshape is None:
             # If the self.data object identifies its shape, then use it
-            if hasattr(self.data,  "shape"):
+            if hasattr(self.data, "shape"):
                 self.__maxshape = self.data.shape
                 # Avoid the special case of scalar values by making them into a 1D numpy array
                 if len(self.__maxshape) == 0:
@@ -384,6 +385,7 @@ class DataChunk:
     """
     Class used to describe a data chunk. Used in DataChunkIterator.
     """
+
     @docval({'name': 'data', 'type': np.ndarray,
              'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},
             {'name': 'selection', 'type': None,
@@ -490,10 +492,10 @@ def assertEqualShape(data1,
         response.message = response.SHAPE_ERROR[response.error]
         if np.max(response.axes1) >= num_dims_1:
             response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % \
-                                (n1, np.max(response.axes1)+1, num_dims_1)
+                                (n1, np.max(response.axes1) + 1, num_dims_1)
         elif np.max(response.axes2) >= num_dims_2:
             response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % \
-                                (n2, np.max(response.axes2)+1, num_dims_2)
+                                (n2, np.max(response.axes2) + 1, num_dims_2)
     # 4) Compare the length of the dimensions we should validate
     else:
         unmatched = []
@@ -554,18 +556,18 @@ class ShapeValidatorResult:
             {'name': 'message', 'type': str,
              'doc': 'Message describing the result of the shape validation', 'default': None},
             {'name': 'ignored', 'type': tuple,
-             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None,)},
             {'name': 'unmatched', 'type': tuple,
-             'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None, )},
+             'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None,)},
             {'name': 'error', 'type': str, 'doc': 'Error that may have occurred. One of ERROR_TYPE', 'default': None},
             {'name': 'shape1', 'type': tuple,
-             'doc': 'Shape of the first array for comparison', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Shape of the first array for comparison', 'default': tuple(), 'shape': (None,)},
             {'name': 'shape2', 'type': tuple,
-             'doc': 'Shape of the second array for comparison', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Shape of the second array for comparison', 'default': tuple(), 'shape': (None,)},
             {'name': 'axes1', 'type': tuple,
-             'doc': 'Axes for the first array that should match', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Axes for the first array that should match', 'default': tuple(), 'shape': (None,)},
             {'name': 'axes2', 'type': tuple,
-             'doc': 'Axes for the second array that should match', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Axes for the second array that should match', 'default': tuple(), 'shape': (None,)},
             )
     def __init__(self, **kwargs):
         self.result, self.message, self.ignored, self.unmatched, \
@@ -602,6 +604,7 @@ class DataIO:
     Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
     """
+
     @docval({'name': 'data', 'type': 'array_data', 'doc': 'the data to be written', 'default': None})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)

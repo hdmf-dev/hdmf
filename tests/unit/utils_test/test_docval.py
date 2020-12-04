@@ -1,8 +1,7 @@
 import numpy as np
-
+from hdmf.testing import TestCase
 from hdmf.utils import (docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
                         docval_macro)
-from hdmf.testing import TestCase
 
 
 class MyTestClass(object):

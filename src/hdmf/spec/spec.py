@@ -1,7 +1,7 @@
-from abc import ABCMeta
-from copy import deepcopy
-from collections import OrderedDict
 import re
+from abc import ABCMeta
+from collections import OrderedDict
+from copy import deepcopy
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
@@ -171,6 +171,7 @@ class Spec(ConstructableDict):
             tmp = tmp.parent
         return "/".join(reversed(stack))
 
+
 #    def __eq__(self, other):
 #        return id(self) == id(other)
 
@@ -184,7 +185,6 @@ _ref_args = [
 
 
 class RefSpec(ConstructableDict):
-
     __allowable_types = ('object', 'region')
 
     @docval(*_ref_args)
@@ -212,16 +212,16 @@ class RefSpec(ConstructableDict):
 
 
 _attr_args = [
-        {'name': 'name', 'type': str, 'doc': 'The name of this attribute'},
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'dtype', 'type': (str, RefSpec), 'doc': 'The data type of this attribute'},
-        {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
-        {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
-        {'name': 'required', 'type': bool,
-         'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
-        {'name': 'parent', 'type': 'BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
-        {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
-        {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
+    {'name': 'name', 'type': str, 'doc': 'The name of this attribute'},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'dtype', 'type': (str, RefSpec), 'doc': 'The data type of this attribute'},
+    {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
+    {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+    {'name': 'required', 'type': bool,
+     'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
+    {'name': 'parent', 'type': 'BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
+    {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
+    {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
 ]
 
 
@@ -294,17 +294,18 @@ class AttributeSpec(Spec):
 
 
 _attrbl_args = [
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'name', 'type': str, 'doc': 'the name of this base storage container, '
-         + 'allowed only if quantity is not \'%s\' or \'%s\'' % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
-        {'name': 'default_name', 'type': str,
-         'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
-        {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-        {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-        {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-        {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
-         'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'name', 'type': str,
+     'doc': 'the name of this base storage container, allowed only if quantity is not \'%s\' or \'%s\''
+            % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
+    {'name': 'default_name', 'type': str,
+     'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
+    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
+    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
+    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
+    {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
+     'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -318,8 +319,8 @@ class BaseStorageSpec(Spec):
 
     @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc =\
-             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
+        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
+            getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with wildcard name "
                              "without specifying 'data_type_def' and/or 'data_type_inc'")
@@ -612,21 +613,21 @@ class DtypeSpec(ConstructableDict):
 
 
 _dataset_args = [
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'dtype', 'type': (str, list, RefSpec),
-         'doc': 'The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.',
-         'default': None},
-        {'name': 'name', 'type': str, 'doc': 'The name of this dataset', 'default': None},
-        {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
-        {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
-        {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
-        {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-        {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-        {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-        {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
-         'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'dtype', 'type': (str, list, RefSpec),
+     'doc': 'The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.',
+     'default': None},
+    {'name': 'name', 'type': str, 'doc': 'The name of this dataset', 'default': None},
+    {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
+    {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
+    {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
+    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
+    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
+    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
+    {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
+     'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -812,18 +813,18 @@ class LinkSpec(Spec):
 
 
 _group_args = [
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'name', 'type': str, 'doc': 'the name of this group', 'default': None},
-        {'name': 'default_name', 'type': str, 'doc': 'The default name of this group', 'default': None},
-        {'name': 'groups', 'type': list, 'doc': 'the subgroups in this group', 'default': list()},
-        {'name': 'datasets', 'type': list, 'doc': 'the datasets in this group', 'default': list()},
-        {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-        {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
-        {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-        {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-        {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
-         'doc': 'the data type this specification data_type_inc', 'default': None},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'name', 'type': str, 'doc': 'the name of this group', 'default': None},
+    {'name': 'default_name', 'type': str, 'doc': 'The default name of this group', 'default': None},
+    {'name': 'groups', 'type': list, 'doc': 'the subgroups in this group', 'default': list()},
+    {'name': 'datasets', 'type': list, 'doc': 'the datasets in this group', 'default': list()},
+    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
+    {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
+    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
+    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
+    {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
+     'doc': 'the data type this specification data_type_inc', 'default': None},
 ]
 
 
@@ -901,8 +902,8 @@ class GroupSpec(BaseStorageSpec):
             self.__new_data_types.discard(dt)
             existing_dt_spec = self.get_data_type(dt)
             if existing_dt_spec is None or \
-               ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None)) and \
-               dt_spec.name is None:
+                    ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None)) and \
+                    dt_spec.name is None:
                 if isinstance(dt_spec, DatasetSpec):
                     self.set_dataset(dt_spec)
                 elif isinstance(dt_spec, GroupSpec):

@@ -1,7 +1,6 @@
 import numpy as np
-
-from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorData
+from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.testing import TestCase
 
 
