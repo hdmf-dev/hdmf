@@ -1,6 +1,6 @@
-from ...build import ObjectMapper
-from ..multi import SimpleMultiContainer
 from .. import register_map
+from ..multi import SimpleMultiContainer
+from ...build import ObjectMapper
 from ...container import Container, Data
 
 
@@ -13,8 +13,10 @@ class SimpleMultiContainerMap(ObjectMapper):
 
     @ObjectMapper.constructor_arg('containers')
     def containers_carg(self, builder, manager):
-        return [manager.construct(sub) for sub in builder.datasets.values() if manager.is_sub_data_type(sub, 'Data')] +\
-            [manager.construct(sub) for sub in builder.groups.values() if manager.is_sub_data_type(sub, 'Container')]
+        return [manager.construct(sub) for sub in builder.datasets.values()
+                if manager.is_sub_data_type(sub, 'Data')] + \
+               [manager.construct(sub) for sub in builder.groups.values()
+                if manager.is_sub_data_type(sub, 'Container')]
 
     @ObjectMapper.object_attr('datas')
     def datas_attr(self, container, manager):

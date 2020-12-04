@@ -1,16 +1,16 @@
-import os
-from h5py import File, Dataset, Reference
-from numbers import Number
 import json
-import numpy as np
+import os
+from numbers import Number
 
+import numpy as np
+from h5py import File, Dataset, Reference
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
-from hdmf.utils import get_data_shape
 from hdmf.testing import TestCase
+from hdmf.utils import get_data_shape
 
-from tests.unit.utils import Foo
 from tests.unit.test_io_hdf5_h5tools import _get_manager
+from tests.unit.utils import Foo
 
 
 class HDF5Encoder(json.JSONEncoder):

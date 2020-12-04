@@ -1,16 +1,16 @@
 import copy
 import json
-import ruamel.yaml as yaml
 import os.path
 import warnings
-from collections import OrderedDict
 from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
 from datetime import datetime
 
+import ruamel.yaml as yaml
+
+from .catalog import SpecCatalog
 from .namespace import SpecNamespace
 from .spec import GroupSpec, DatasetSpec
-from .catalog import SpecCatalog
-
 from ..utils import docval, getargs, popargs
 
 
@@ -72,6 +72,7 @@ class YAMLSpecWriter(SpecWriter):
         # Represent None as null
         def my_represent_none(self, data):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
+
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
         order = ['neurodata_type_def', 'neurodata_type_inc', 'data_type_def', 'data_type_inc',

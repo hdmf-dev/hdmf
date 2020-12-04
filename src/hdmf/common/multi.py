@@ -1,7 +1,6 @@
+from . import register_class
 from ..container import Container, Data, MultiContainerInterface
 from ..utils import docval, call_docval_func, popargs
-
-from . import register_class
 
 
 @register_class('SimpleMultiContainer')

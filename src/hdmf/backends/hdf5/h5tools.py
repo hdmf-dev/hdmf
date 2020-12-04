@@ -1,24 +1,23 @@
-from collections import deque
-import numpy as np
-import os.path
-from pathlib import Path
-from functools import partial
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import logging
+import os.path
 import warnings
+from collections import deque
+from functools import partial
+from pathlib import Path
 
-from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
-from ...data_utils import AbstractDataChunkIterator
-from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
-                      ReferenceBuilder, TypeMap, ObjectMapper)
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+import numpy as np
+from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter)
-
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+                      ReferenceBuilder, TypeMap, ObjectMapper)
+from ...container import Container
+from ...data_utils import AbstractDataChunkIterator
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
