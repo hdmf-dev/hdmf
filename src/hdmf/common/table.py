@@ -734,7 +734,8 @@ class DynamicTable(Container):
 
         :return: 1) If key is a string, then return array with the data of the selected column
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
-                 3) If key is an int, list or slice, then return pandas.DataFrame consisting of one or more rows
+                 3) If key is an int, list, ndarray, or slice, then return pandas.DataFrame consisting of one or more
+                    rows
 
         :raises: KeyError
         """
@@ -757,8 +758,8 @@ class DynamicTable(Container):
             else:
                 return default
         else:
-            # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
-            # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
+            # index by int, list, ndarray, or slice --> return pandas Dataframe consisting of one or more rows
+            # determine the key.
             arg = key
             try:
                 if np.issubdtype(type(arg), np.integer):
@@ -807,9 +808,9 @@ class DynamicTable(Container):
                 id_index = ret.pop('id')
                 if np.isscalar(id_index):
                     id_index = [id_index]
+                df_index = pd.Index(name=self.id.name, data=id_index)
                 retdf = OrderedDict()
                 for k in ret:
-                    index = pd.Index(name=self.id.name, data=id_index)
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
                             if len(id_index) == 1:
@@ -833,16 +834,15 @@ class DynamicTable(Container):
                         else:
                             retdf[k] = ret[k]
                     elif isinstance(ret[k], pd.DataFrame):
-                        retdf['%s_%s' % (k, ret[k].index.name)] = ret[k].index.values
                         for col in ret[k].columns:
                             newcolname = "%s_%s" % (k, col)
                             retdf[newcolname] = ret[k][col].values
-                        breakpoint()
-                        hier_cols = pd.MultiIndex.from_product([[k], ret[k].columns])
+                        nested_index_name = '%s_%s' % (k, ret[k].index.name)
+                        df_index = pd.MultiIndex.from_product([id_index, ret[k].index.values],
+                                                              names=[self.id.name, nested_index_name])
                     else:
                         retdf[k] = ret[k]
-                index = pd.Index(name=self.id.name, data=id_index)
-                ret = pd.DataFrame(retdf, index=index)
+                ret = pd.DataFrame(retdf, index=df_index)
             else:
                 ret = list(ret.values())
 
