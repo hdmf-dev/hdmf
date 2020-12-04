@@ -1590,7 +1590,7 @@ class TestDTRReferences(TestCase):
             read_group2 = read_multi_container['group2']
             read_table = read_multi_container['table2']
             ret = read_table[0, 'electrodes']
-            expected = pd.DataFrame({'x': np.array([2, 3], dtype='int32'),
+            expected = pd.DataFrame({'x': np.array([2, 3]),
                                      'y': [read_group1, read_group2]},
                                     index=pd.Index(data=[102, 103], name='id'))
             pd.testing.assert_frame_equal(ret, expected)
