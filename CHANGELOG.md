@@ -38,12 +38,15 @@
     - Add SimpleMultiContainer, a Container for storing other Container and Data objects together.
 
 ### Internal improvements
+- Improve warning about cached namespace when loading namespaces from file. @rly (#422)
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
 - Improve contributing guide. @rly (#474)
 - Update CI to be more contributor friendly. @rly (#481)
 - Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
+- Add type checking and conversion in `CSRMatrix`. @rly (#485)
+- Clean up unreachable validator code. @rly (#483)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
