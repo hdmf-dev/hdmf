@@ -38,6 +38,7 @@
     - Add SimpleMultiContainer, a Container for storing other Container and Data objects together.
 
 ### Internal improvements
+- Improve warning about cached namespace when loading namespaces from file. @rly (#422)
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
