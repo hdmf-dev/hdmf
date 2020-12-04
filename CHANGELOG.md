@@ -58,6 +58,7 @@
 - Clarify the validator error message when a named data type is missing. @dsleiter (#478)
 - Update documentation on validation to indicate that the example command is not implemented @dsleiter (#482)
 - Fix generated docval for classes with a LinkSpec. @rly (#478)
+- Fix access of `DynamicTableRegion` of a `DynamicTable` with column of references. @rly (#491)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
