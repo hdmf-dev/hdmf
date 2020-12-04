@@ -8,7 +8,7 @@ from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers,
                          DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer)
-from hdmf.testing import TestCase, H5RoundTripMixin
+from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 
 
 class TestDynamicTable(TestCase):
@@ -1529,6 +1529,12 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
 
 class TestDTRReferences(TestCase):
 
+    def setUp(self):
+        self.filename = 'test_dtr_references.h5'
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+
     def test_dtr_references(self):
         """Test roundtrip of a table with a ragged DTR to another table containing a column of references."""
         group1 = Container('group1')
@@ -1572,12 +1578,10 @@ class TestDTRReferences(TestCase):
         multi_container.add_container(table1)
         multi_container.add_container(table2)
 
-        filename = 'test.h5'
-
-        with HDF5IO(filename, manager=get_manager(), mode='w') as io:
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
             io.write(multi_container)
 
-        with HDF5IO(filename, manager=get_manager(), mode='r') as io:
+        with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
             read_multi_container = io.read()
             self.assertContainerEqual(read_multi_container, multi_container, ignore_name=True)
 
