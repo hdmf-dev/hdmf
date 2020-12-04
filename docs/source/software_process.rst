@@ -29,12 +29,13 @@ There are badges in the README_ file which shows the current condition of the de
 Coverage
 --------
 
-Code coverage is computed and reported using the coverage_ tool. There is a badge in the README_ file which
-shows the status of the `Codecov GitHub Action`_ and the percentage coverage. A detailed report can be found on
-codecov_ which shows line by line which lines are covered by the tests.
+Code coverage is computed and reported using the coverage_ tool. There are two coverage-related badges in the README_
+file. One shows the status of the `GitHub Action`_ which runs the coverage_ tool and uploads the report to codecov_,
+and the other badge shows the percentage coverage reported from codecov_. A detailed report can be found on
+codecov_, which shows line by line which lines are covered by the tests.
 
 .. _coverage: https://coverage.readthedocs.io
-.. _codecov GitHub Action: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3ACodecov
+.. _codecov GitHub Action: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3ARun%20coverage
 .. _codecov: https://codecov.io/gh/hdmf-dev/hdmf/tree/dev/src/hdmf
 
 ..  _software_process_requirement_specifications:
