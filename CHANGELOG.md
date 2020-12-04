@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.0.0 (Upcoming)
+## HDMF 3.0.0 (December 4, 2020)
 
 ### Breaking changes
 - Drop support for Python 3.5. @ajtritt (#459)
