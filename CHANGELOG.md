@@ -44,6 +44,7 @@
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
 - Improve contributing guide. @rly (#474)
 - Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
+- Add type checking and conversion in `CSRMatrix`. @rly (#485)
 - Clean up unreachable validator code. @rly (#483)
 
 ### Bug fixes
