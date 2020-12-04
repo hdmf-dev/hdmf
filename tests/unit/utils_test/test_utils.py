@@ -1,10 +1,10 @@
-import h5py
-import numpy as np
 import os
 
+import h5py
+import numpy as np
 from hdmf.data_utils import DataChunkIterator, DataIO
-from hdmf.utils import get_data_shape
 from hdmf.testing import TestCase
+from hdmf.utils import get_data_shape
 
 
 class TestGetDataShape(TestCase):

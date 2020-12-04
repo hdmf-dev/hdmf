@@ -1,10 +1,10 @@
-import os
-import ruamel.yaml as yaml
 import json
-from glob import glob
+import os
 from argparse import ArgumentParser
+from glob import glob
 
 import jsonschema
+import ruamel.yaml as yaml
 
 
 def validate_spec(fpath_spec, fpath_schema):
@@ -38,7 +38,6 @@ def validate_spec(fpath_spec, fpath_schema):
 
 
 def main():
-
     parser = ArgumentParser(description="Validate an HDMF/NWB specification")
     parser.add_argument("paths", type=str, nargs='+', help="yaml file paths")
     parser.add_argument("-m", "--metaschema", type=str,

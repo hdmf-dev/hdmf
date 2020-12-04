@@ -1,12 +1,61 @@
 # HDMF Changelog
 
-## HDMF 2.3.0 (Upcoming)
+## HDMF 3.0.0 (Upcoming)
+
+### Breaking changes
+- Drop support for Python 3.5. @ajtritt (#459)
+- Remove `hdmf.get_region_slicer` function. @ajtritt (#442)
+- Remove unused or refactored internal builder functions `GroupBuilder.add_group`, `GroupBuilder.add_dataset`,
+  `GroupBuilder.add_link`, `GroupBuilder.set_builder`, `BaseBuilder.deep_update`, `GroupBuilder.deep_update`,
+  `DatasetBuilder.deep_update`. Make `BaseBuilder` not instantiable and refactor builder code. @rly (#452)
+- Remove `hdmf.build.map.py`. Classes formerly in this file should be imported from `hdmf.build` instead. @rly (#463)
+- Replace `MissingRequiredWarning` with `MissingRequiredBuildWarning`. @rly (#463)
 
 ### New features
-- Add support for dynamic class generation (`get_class`) for `MultiContainerInterface` types. @bendichter, @rly (#421)
+- Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
+- Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
+  `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
+- Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
+  @bendichter, @rly (#430)
+- Add capability to add a row to a column after IO. @bendichter (#426)
+- Add functionality for storing external resource references. @ajtritt (#442)
+- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
+  and 'scalar_data'. @rly (#446)
+- Add `SimpleMultiContainer`, a data_type for storing a `Container` and `Data` objects together. @ajtritt (#449)
+- Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#439)
+- Use hdmf-common-schema 1.2.1. See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html for details.
+- Block usage of h5py 3+. h5py>=2.9, <3 is supported. @rly (#461)
+- Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.
+  @rly (#461)
+- Allow passing `GroupSpec` and `DatasetSpec` objects for the 'target_type' argument of `LinkSpec.__init__(...)`.
+  @rly (#467)
+- Use hdmf-common-schema 1.3.0. @rly, @ajtritt (#486)
+  - Changes from hdmf-common-schema 1.2.0:
+    - Add data type ExternalResources for storing ontology information / external resource references. NOTE:
+      this data type is in beta testing and is subject to change in a later version.
+    - Fix missing data_type_inc and use dtype uint for CSRMatrix. It now has data_type_inc: Container.
+    - Add hdmf-schema-language comment at the top of each yaml file.
+    - Add SimpleMultiContainer, a Container for storing other Container and Data objects together.
 
 ### Internal improvements
 - Improve warning about cached namespace when loading namespaces from file. @rly (#422)
+- Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
+- Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
+- Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
+- Improve contributing guide. @rly (#474)
+- Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
+
+### Bug fixes
+- Fix development package dependency issues. @rly (#431)
+- Fix handling of empty lists against a spec with text/bytes dtype. @rly (#434)
+- Fix handling of 1-element datasets with compound dtype against a scalar spec with text/bytes dtype. @rly (#438)
+- Fix convert dtype when writing numpy array from `h5py.Dataset`. @rly (#427)
+- Fix inheritance when non-`AbstractContainer` is base class. @rly (#444)
+- Fix use of `hdmf.testing.assertContainerEqual(...)` for `Data` objects. @rly (#445)
+- Add missing support for data conversion against spec dtypes "bytes" and "short". @rly (#456)
+- Clarify the validator error message when a named data type is missing. @dsleiter (#478)
+- Update documentation on validation to indicate that the example command is not implemented @dsleiter (#482)
+- Fix generated docval for classes with a LinkSpec. @rly (#478)
 
 ## HDMF 2.2.0 (August 14, 2020)
 

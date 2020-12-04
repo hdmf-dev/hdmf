@@ -1,27 +1,28 @@
 import os
 import unittest
 import warnings
-import numpy as np
-import h5py
 from io import BytesIO
+from pathlib import Path
 
-from hdmf.utils import docval, getargs
-from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
-from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.io import HDMFIO, UnsupportedOperation
-from hdmf.backends.warnings import BrokenLinkWarning
-from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError
-from hdmf.spec.namespace import NamespaceCatalog
-from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
-                            RefSpec, DtypeSpec)
-from hdmf.spec.namespace import SpecNamespace
-from hdmf.spec.catalog import SpecCatalog
-from hdmf.container import Container, Data
-from hdmf.testing import TestCase
-
+import h5py
+import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
+from hdmf.backends.hdf5 import H5DataIO
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
+from hdmf.backends.io import HDMFIO, UnsupportedOperation
+from hdmf.backends.warnings import BrokenLinkWarning
+from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
+                        LinkBuilder)
+from hdmf.container import Container, Data
+from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
+from hdmf.spec.catalog import SpecCatalog
+from hdmf.spec.namespace import NamespaceCatalog
+from hdmf.spec.namespace import SpecNamespace
+from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
+                            RefSpec, DtypeSpec)
+from hdmf.testing import TestCase
+from hdmf.utils import docval, getargs
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
 
@@ -174,7 +175,10 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         self.assertTupleEqual(dset.shape, ())
         # self.assertEqual(dset[()].decode('utf-8'), a)
-        self.assertEqual(dset[()], a)
+        read_a = dset[()]
+        if isinstance(read_a, bytes):
+            read_a = read_a.decode('utf-8')
+        self.assertEqual(read_a, a)
 
     ##########################################
     #  write_dataset tests: lists
@@ -343,8 +347,10 @@ class H5IOTest(TestCase):
         daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
         daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
         builder = GroupBuilder("root")
-        builder.add_dataset('test_dataset1', daiter1, attributes={})
-        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        dataset1 = DatasetBuilder('test_dataset1', daiter1)
+        dataset2 = DatasetBuilder('test_dataset2', daiter2)
+        builder.set_dataset(dataset1)
+        builder.set_dataset(dataset2)
         self.io.write_builder(builder)
         dset1 = self.f['test_dataset1']
         self.assertListEqual(dset1[:].tolist(), a.tolist())
@@ -362,8 +368,10 @@ class H5IOTest(TestCase):
         daiter1 = DataChunkIterator.from_iterable(aiter, buffer_size=2)
         daiter2 = DataChunkIterator.from_iterable(biter, buffer_size=2)
         builder = GroupBuilder("root")
-        builder.add_dataset('test_dataset1', daiter1, attributes={})
-        builder.add_dataset('test_dataset2', daiter2, attributes={})
+        dataset1 = DatasetBuilder('test_dataset1', daiter1)
+        dataset2 = DatasetBuilder('test_dataset2', daiter2)
+        builder.set_dataset(dataset1)
+        builder.set_dataset(dataset2)
         self.io.write_builder(builder)
         dset1 = self.f['test_dataset1']
         self.assertListEqual(dset1[:].tolist(), a.tolist())
@@ -756,7 +764,7 @@ def _get_manager():
                                             name='buckets',
                                             groups=[GroupSpec("One or more FooBuckets",
                                                               data_type_inc='FooBucket',
-                                                              quantity=ONE_OR_MANY)]),
+                                                              quantity=ZERO_OR_MANY)]),
                                   file_links_spec],
                           datasets=[DatasetSpec('Foo data',
                                                 name='foofile_data',
@@ -850,6 +858,20 @@ class TestRoundTrip(TestCase):
             read_foofile = io.read()
             self.assertDictEqual({}, read_foofile.buckets['bucket1'].foos)
 
+    def test_roundtrip_pathlib_path(self):
+        pathlib_path = Path(self.path)
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(pathlib_path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(pathlib_path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
 
 class TestHDF5IO(TestCase):
 
@@ -884,6 +906,11 @@ class TestHDF5IO(TestCase):
                    % (self.path, self.file_obj.filename))
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
+
+    def test_pathlib_path(self):
+        pathlib_path = Path(self.path)
+        with HDF5IO(pathlib_path, mode='w') as io:
+            self.assertEqual(io.source, self.path)
 
 
 class TestCacheSpec(TestCase):
@@ -1615,21 +1642,25 @@ class TestReadLink(TestCase):
     def setUp(self):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
-        self.root1 = GroupBuilder(name='root')
-        self.subgroup = self.root1.add_group('test_group')
-        self.dataset = self.subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+        root1 = GroupBuilder(name='root')
+        subgroup = GroupBuilder(name='test_group')
+        root1.set_group(subgroup)
+        dataset = DatasetBuilder('test_dataset', data=[1, 2, 3, 4])
+        subgroup.set_dataset(dataset)
 
-        self.root2 = GroupBuilder(name='root')
-        self.group_link = self.root2.add_link(self.subgroup, 'link_to_test_group')
-        self.dataset_link = self.root2.add_link(self.dataset, 'link_to_test_dataset')
+        root2 = GroupBuilder(name='root')
+        link_group = LinkBuilder(subgroup, 'link_to_test_group')
+        root2.set_link(link_group)
+        link_dataset = LinkBuilder(dataset, 'link_to_test_dataset')
+        root2.set_link(link_dataset)
 
         with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
-            io.write_builder(self.root1)
-        self.root1.source = self.target_path
+            io.write_builder(root1)
+        root1.source = self.target_path
 
         with HDF5IO(self.link_path, manager=_get_manager(), mode='w') as io:
-            io.write_builder(self.root2)
-        self.root2.source = self.link_path
+            io.write_builder(root2)
+        root2.source = self.link_path
 
         self.ios = []
 
@@ -1661,7 +1692,8 @@ class TestReadLink(TestCase):
         self.ios.append(read_io1)  # store IO object for closing in tearDown
         bldr1 = read_io1.read_builder()
         root3 = GroupBuilder(name='root')
-        root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
+        link = LinkBuilder(bldr1['link_to_test_group'].builder, 'link_to_link')
+        root3.set_link(link)
         with HDF5IO(link_to_link_path, manager=_get_manager(), mode='w') as io:
             io.write_builder(root3)
         read_io1.close()
@@ -1691,7 +1723,8 @@ class TestReadLink(TestCase):
 
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
-                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                dataset = DatasetBuilder(name='link_to_test_dataset', data=read_dataset_data)
+                root2.set_dataset(dataset)
                 write_io.write_builder(root2, link_data=True)
 
         os.remove(self.target_path)
@@ -1790,8 +1823,10 @@ class TestLinkData(TestCase):
         self.target_path = get_temp_filepath()
         self.link_path = get_temp_filepath()
         root1 = GroupBuilder(name='root')
-        subgroup = root1.add_group('test_group')
-        subgroup.add_dataset('test_dataset', data=[1, 2, 3, 4])
+        subgroup = GroupBuilder(name='test_group')
+        root1.set_group(subgroup)
+        dataset = DatasetBuilder('test_dataset', data=[1, 2, 3, 4])
+        subgroup.set_dataset(dataset)
 
         with HDF5IO(self.target_path, manager=_get_manager(), mode='w') as io:
             io.write_builder(root1)
@@ -1811,7 +1846,8 @@ class TestLinkData(TestCase):
 
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
-                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                dataset = DatasetBuilder(name='link_to_test_dataset', data=read_dataset_data)
+                root2.set_dataset(dataset)
                 write_io.write_builder(root2, link_data=True)
 
         with File(self.link_path, mode='r') as f:
@@ -1826,7 +1862,8 @@ class TestLinkData(TestCase):
 
             with HDF5IO(self.link_path, manager=manager, mode='w') as write_io:
                 root2 = GroupBuilder(name='root')
-                root2.add_dataset(name='link_to_test_dataset', data=read_dataset_data)
+                dataset = DatasetBuilder(name='link_to_test_dataset', data=read_dataset_data)
+                root2.set_dataset(dataset)
                 write_io.write_builder(root2, link_data=False)
 
         with File(self.link_path, mode='r') as f:
@@ -1987,6 +2024,22 @@ class TestLoadNamespaces(TestCase):
             HDF5IO.load_namespaces(ns_catalog, path='different_path', file=file_obj)
 
         file_obj.close()
+
+    def test_load_namespaces_with_pathlib_path(self):
+        """Test that loading a namespace using a valid pathlib Path is OK and returns the correct dictionary."""
+
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        pathlib_path = Path(self.path)
+        ns_catalog = NamespaceCatalog()
+        d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
+        self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
 
 
 class TestExport(TestCase):

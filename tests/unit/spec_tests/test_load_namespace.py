@@ -1,6 +1,6 @@
-import ruamel.yaml as yaml
 import json
 import os
+import ruamel.yaml as yaml
 from tempfile import gettempdir
 import warnings
 

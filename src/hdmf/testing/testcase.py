@@ -1,14 +1,15 @@
-import re
-import unittest
 import h5py
 import numpy as np
 import os
+import re
+import unittest
 from abc import ABCMeta, abstractmethod
 
 from .utils import remove_test_file
 from ..backends.hdf5 import HDF5IO
+from ..build import Builder
 from ..common import validate as common_validate, get_manager
-from ..container import Container, Data
+from ..container import AbstractContainer, Container, Data
 from ..query import HDMFDataset
 
 
@@ -35,12 +36,14 @@ class TestCase(unittest.TestCase):
 
     def assertContainerEqual(self, container1, container2, ignore_name=False, ignore_hdmf_attrs=False):
         """
-        Asserts that the two containers have equal contents.
+        Asserts that the two AbstractContainers have equal contents. This applies to both Container and Data types.
 
-        ignore_name - whether to ignore testing equality of name
+        ignore_name - whether to ignore testing equality of name of the top-level container
         ignore_hdmf_attrs - whether to ignore testing equality of HDMF container attributes, such as
         container_source and object_id
         """
+        self.assertTrue(isinstance(container1, AbstractContainer))
+        self.assertTrue(isinstance(container2, AbstractContainer))
         type1 = type(container1)
         type2 = type(container2)
         self.assertEqual(type1, type2)
@@ -50,7 +53,8 @@ class TestCase(unittest.TestCase):
             self.assertEqual(container1.container_source, container2.container_source)
             self.assertEqual(container1.object_id, container2.object_id)
         # NOTE: parent is not tested because it can lead to infinite loops
-        self.assertEqual(len(container1.children), len(container2.children))
+        if isinstance(container1, Container):
+            self.assertEqual(len(container1.children), len(container2.children))
         # do not actually check the children values here. all children *should* also be fields, which is checked below.
         # this is in case non-field children are added to one and not the other
 
@@ -77,14 +81,16 @@ class TestCase(unittest.TestCase):
         elif isinstance(f1, Data):
             self._assert_data_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
         elif isinstance(f1, (float, np.floating)):
-            np.testing.assert_equal(f1, f2)
+            np.testing.assert_allclose(f1, f2)
         else:
             self.assertEqual(f1, f2)
 
     def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False):
-        self.assertEqual(type(data1), type(data2))
+        self.assertTrue(isinstance(data1, Data))
+        self.assertTrue(isinstance(data2, Data))
         self.assertEqual(len(data1), len(data2))
         self._assert_array_equal(data1.data, data2.data, ignore_hdmf_attrs=ignore_hdmf_attrs)
+        self.assertContainerEqual(data1, data2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False):
         if isinstance(arr1, (h5py.Dataset, HDMFDataset)):
@@ -93,7 +99,7 @@ class TestCase(unittest.TestCase):
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
             if isinstance(arr1, (float, np.floating)):
-                np.testing.assert_equal(arr1, arr2)
+                np.testing.assert_allclose(arr1, arr2)
             else:
                 self.assertEqual(arr1, arr2)  # scalar
         else:
@@ -103,7 +109,7 @@ class TestCase(unittest.TestCase):
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
-                np.testing.assert_array_equal(arr1, arr2)
+                np.testing.assert_allclose(arr1, arr2)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
@@ -112,6 +118,19 @@ class TestCase(unittest.TestCase):
                         self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
                     else:
                         self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+
+    def assertBuilderEqual(self, builder1, builder2, check_path=True, check_source=True):
+        """Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
+        """
+        self.assertTrue(isinstance(builder1, Builder))
+        self.assertTrue(isinstance(builder2, Builder))
+        self.assertEqual(type(builder1), type(builder2))
+        self.assertEqual(builder1.name, builder2.name)
+        if check_path:
+            self.assertEqual(builder1.path, builder2.path)
+        if check_source:
+            self.assertEqual(builder1.source, builder2.source)
+        self.assertDictEqual(builder1, builder2)
 
 
 class H5RoundTripMixin(metaclass=ABCMeta):

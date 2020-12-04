@@ -1,20 +1,18 @@
-import numpy as np
+import re
 from abc import ABCMeta, abstractmethod
 from copy import copy
-import re
 from itertools import chain
 
-from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
-
-from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
-from ..spec.spec import BaseStorageSpec, DtypeHelper
-from ..spec import SpecNamespace
-
-from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
-from ..build.builders import BaseBuilder
+import numpy as np
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
 from .errors import ExpectedArrayError
+from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+from ..build.builders import BaseBuilder
+from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
+from ..spec import SpecNamespace
+from ..spec.spec import BaseStorageSpec, DtypeHelper
+from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
 __synonyms = DtypeHelper.primary_dtype_synonyms
 
@@ -116,6 +114,8 @@ def get_type(data):
         return type(data).__name__
     else:
         if hasattr(data, 'dtype'):
+            if isinstance(data.dtype, list):
+                return [get_type(data[0][i]) for i in range(len(data.dtype))]
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
                 return get_type(data[0])
             return data.dtype
@@ -458,7 +458,7 @@ class GroupValidator(BaseStorageValidator):
                         found = True
             if not found and self.__include_dts[dt].required:
                 ret.append(MissingDataType(self.get_spec_loc(self.spec), dt,
-                                           location=self.get_builder_loc(builder)))
+                                           location=self.get_builder_loc(builder), missing_dt_name=inc_name))
         it = chain(self.__dataset_validators.items(),
                    self.__group_validators.items())
         for name, validator in it:
@@ -470,7 +470,7 @@ class GroupValidator(BaseStorageValidator):
                 if sub_builder is None:
                     if inc_spec.required:
                         ret.append(MissingDataType(self.get_spec_loc(def_spec), def_spec.data_type_def,
-                                                   location=self.get_builder_loc(builder)))
+                                                   location=self.get_builder_loc(builder), missing_dt_name=name))
                 else:
                     ret.extend(validator.validate(sub_builder))
 

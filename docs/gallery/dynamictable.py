@@ -126,7 +126,9 @@ table.add_column(
 # with a ragged array column, pass both
 # the :py:class:`~hdmf.common.table.VectorIndex` and its target
 # :py:class:`~hdmf.common.table.VectorData` object in for the ``columns``
-# argument in the constructor.
+# argument in the constructor. For instance, the following code creates a column
+# called ``col1`` where the first cell is ['1a', '1b', '1c'] and the second cell
+# is ['2a'].
 
 col1 = VectorData(
     name='col1',
@@ -145,7 +147,9 @@ table_ragged_col = DynamicTable(
     columns=[col1, col1_ind],
 )
 
-###############################################################################
+####################################################################################
+# VectorIndex.data provides the indices for how to break VectorData.data into cells
+#
 # You can add a ragged array column to an existing
 # :py:class:`~hdmf.common.table.DynamicTable` by specifying ``index=True``
 # to :py:meth:`DynamicTable.add_column <hdmf.common.table.DynamicTable.add_column>`.

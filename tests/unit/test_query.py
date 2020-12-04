@@ -1,10 +1,10 @@
 import os
-from h5py import File
-import numpy as np
 from abc import ABCMeta, abstractmethod
 
-from hdmf.query import HDMFDataset, Query
+import numpy as np
+from h5py import File
 from hdmf.array import SortedArray, LinSpace
+from hdmf.query import HDMFDataset, Query
 from hdmf.testing import TestCase
 
 

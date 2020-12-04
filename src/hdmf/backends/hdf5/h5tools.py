@@ -1,23 +1,23 @@
-from collections import deque
-import numpy as np
-import os.path
-from functools import partial
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import logging
+import os.path
 import warnings
+from collections import deque
+from functools import partial
+from pathlib import Path
 
-from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
-from ...data_utils import AbstractDataChunkIterator
-from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
-                      ReferenceBuilder, TypeMap, ObjectMapper)
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+import numpy as np
+from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter)
-
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+                      ReferenceBuilder, TypeMap, ObjectMapper)
+from ...container import Container
+from ...data_utils import AbstractDataChunkIterator
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -29,7 +29,7 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 class HDF5IO(HDMFIO):
 
-    @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
@@ -44,6 +44,9 @@ class HDF5IO(HDMFIO):
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
+
+        if isinstance(path, Path):
+            path = str(path)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
             msg = 'You argued %s as this object\'s path, ' % path
@@ -86,7 +89,7 @@ class HDF5IO(HDMFIO):
     @classmethod
     @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
@@ -99,6 +102,9 @@ class HDF5IO(HDMFIO):
         """
         namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
                                                                 kwargs)
+
+        if isinstance(path, Path):
+            path = str(path)
 
         if path is None and file_obj is None:
             raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
@@ -629,7 +635,7 @@ class HDF5IO(HDMFIO):
                     kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':    # table / compound data type
                 cpd_dt = h5obj.dtype
-                ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
+                ref_cols = [check_dtype(ref=cpd_dt[i]) or check_dtype(vlen=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
                 kwargs['dtype'] = HDF5IO.__compound_dtype_to_list(h5obj.dtype, d.dtype)
             else:
@@ -780,26 +786,29 @@ class HDF5IO(HDMFIO):
         "float64": np.float64,
         "long": np.int64,
         "int64": np.int64,
-        "uint64": np.uint64,
         "int": np.int32,
         "int32": np.int32,
+        "short": np.int16,
         "int16": np.int16,
         "int8": np.int8,
+        "uint64": np.uint64,
+        "uint": np.uint32,
+        "uint32": np.uint32,
+        "uint16": np.uint16,
+        "uint8": np.uint8,
         "bool": np.bool_,
         "text": H5_TEXT,
         "utf": H5_TEXT,
         "utf8": H5_TEXT,
         "utf-8": H5_TEXT,
         "ascii": H5_BINARY,
-        "str": H5_BINARY,
-        "isodatetime": H5_TEXT,
-        "uint32": np.uint32,
-        "uint16": np.uint16,
-        "uint8": np.uint8,
+        "bytes": H5_BINARY,
         "ref": H5_REF,
         "reference": H5_REF,
         "object": H5_REF,
         "region": H5_REGREF,
+        "isodatetime": H5_TEXT,
+        "datetime": H5_TEXT,
     }
 
     @classmethod
@@ -994,27 +1003,51 @@ class HDF5IO(HDMFIO):
         # The user provided an existing h5py dataset as input and asked to create a link to the dataset
         if isinstance(data, Dataset):
             data_filename = os.path.abspath(data.file.filename)
-            if export_source is not None:
-                export_source = os.path.abspath(export_source)
-            # if exporting and dset is in same file as export source, then the current dset could be linked or the
-            # actual dset in the right location
-            if link_data and (data_filename != export_source or parent.name != data.parent.name):
-                # Create a Soft/External link to the dataset
-                parent_filename = os.path.abspath(parent.file.filename)
-                if data_filename != parent_filename and data_filename != export_source:
-                    relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
-                    link = ExternalLink(relative_path, data.name)
-                    self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
-                                      % (parent.name, name, link.filename, link.path))
-                else:
-                    link = SoftLink(data.name)
-                    self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
-                                      % (parent.name, name, link.path))
-                parent[name] = link
-            # Copy the dataset
-            # TODO add option for case where there are multiple links to the same dataset within a file:
-            # instead of copying the dset N times, copy it once and create soft links to it within the file
+            if link_data:
+                if export_source is None:  # not exporting
+                    parent_filename = os.path.abspath(parent.file.filename)
+                    if data_filename != parent_filename:  # create external link to data
+                        relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
+                        link = ExternalLink(relative_path, data.name)
+                        self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                                          % (parent.name, name, link.filename, link.path))
+                    else:  # create soft link to dataset already in this file -- possible if mode == 'r+'
+                        link = SoftLink(data.name)
+                        self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                                          % (parent.name, name, link.path))
+                    parent[name] = link
+                else:  # exporting
+                    export_source = os.path.abspath(export_source)
+                    parent_filename = os.path.abspath(parent.file.filename)
+                    if data_filename != export_source:  # dataset is in different file than export source
+                        # possible if user adds a link to a dataset in a different file after reading export source
+                        # to memory
+                        relative_path = os.path.relpath(data_filename, os.path.dirname(parent_filename))
+                        link = ExternalLink(relative_path, data.name)
+                        self.logger.debug("    Creating ExternalLink '%s/%s' to '%s://%s'"
+                                          % (parent.name, name, link.filename, link.path))
+                        parent[name] = link
+                    elif parent.name != data.parent.name:  # dataset is in export source and has different path
+                        # so create a soft link to the dataset in this file
+                        # possible if user adds a link to a dataset in export source after reading to memory
+                        link = SoftLink(data.name)
+                        self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
+                                          % (parent.name, name, link.path))
+                        parent[name] = link
+                    else:  # dataset is in export source and has same path as the builder, so copy the dataset
+                        self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
+                                          % (data.file.filename, data.name, parent.name, name))
+                        parent.copy(source=data,
+                                    dest=parent,
+                                    name=name,
+                                    expand_soft=False,
+                                    expand_external=False,
+                                    expand_refs=False,
+                                    without_attrs=True)
+                        dset = parent[name]
             else:
+                # TODO add option for case where there are multiple links to the same dataset within a file:
+                # instead of copying the dset N times, copy it once and create soft links to it within the file
                 self.logger.debug("    Copying data from '%s://%s' to '%s/%s'"
                                   % (data.file.filename, data.name, parent.name, name))
                 parent.copy(source=data,
@@ -1025,6 +1058,7 @@ class HDF5IO(HDMFIO):
                             expand_refs=False,
                             without_attrs=True)
                 dset = parent[name]
+
         #  Write a compound dataset, i.e, a dataset with compound data type
         elif isinstance(options['dtype'], list):
             # do some stuff to figure out what data is a reference

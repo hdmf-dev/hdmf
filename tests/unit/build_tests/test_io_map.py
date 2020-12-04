@@ -1,18 +1,21 @@
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec
-from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
-                        ReferenceBuilder, MissingRequiredWarning, OrphanContainerBuildError)
-from hdmf.container import MultiContainerInterface
-from hdmf import Container
-from hdmf.utils import docval, getargs, get_docval
-from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
-from hdmf.backends.hdf5 import H5DataIO
-from hdmf.testing import TestCase
-from hdmf.query import HDMFDataset
-
-from abc import ABCMeta, abstractmethod
-import numpy as np
-import h5py
 import unittest
+from abc import ABCMeta, abstractmethod
+from datetime import datetime
+
+import h5py
+import numpy as np
+from hdmf import Container
+from hdmf.backends.hdf5 import H5DataIO
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
+                        ReferenceBuilder, MissingRequiredBuildWarning, OrphanContainerBuildError,
+                        ContainerConfigurationError)
+from hdmf.container import MultiContainerInterface
+from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
+from hdmf.query import HDMFDataset
+from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
+                       DtypeSpec, LinkSpec)
+from hdmf.testing import TestCase
+from hdmf.utils import docval, getargs, get_docval
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -397,13 +400,17 @@ class TestDynamicContainer(TestCase):
         self.assertEqual(obj.name, 'Baz')
 
     def test_multi_container_spec(self):
-        multi_spec = GroupSpec('A test extension that contains a multi',
-                               data_type_def='Multi',
-                               groups=[GroupSpec(
-                                   data_type_inc=self.bar_spec,
-                                   doc='test multi',
-                                   quantity='*')]
-                               )
+        multi_spec = GroupSpec(
+            'A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(
+                    data_type_inc=self.bar_spec,
+                    doc='test multi',
+                    quantity='*')],
+            attributes=[
+                AttributeSpec('attr3', 'an example float attribute', 'float')]
+        )
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
@@ -416,8 +423,11 @@ class TestDynamicContainer(TestCase):
             create='create_bars'
         )
 
-        multi = Multi(bars=[Bar('my_bar', list(range(10)), 'value1', 10)])
+        multi = Multi(name='my_multi',
+                      bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+                      attr3=5.)
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.attr3 == 5.
 
     def test_build_docval(self):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
@@ -498,6 +508,17 @@ class TestDynamicContainer(TestCase):
             if arg['name'] == 'name':
                 self.assertEqual(arg['default'], 'MyBaz')
 
+    def test_build_docval_link(self):
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(
+            attr3=LinkSpec(name='attr3', target_type='Bar', doc='an example link'),
+        )
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertIs(arg['type'], Bar)
+
 
 class ObjectMapperMixin(metaclass=ABCMeta):
 
@@ -543,21 +564,35 @@ class TestObjectMapperNested(ObjectMapperMixin, TestCase):
         ''' Test default mapping functionality when object attributes map to an  attribute deeper
         than top-level Builder '''
         container_inst = Bar('my_bar', list(range(10)), 'value1', 10)
-        expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
-            'data', list(range(10)), attributes={'attr2': 10})},
-                                attributes={'attr1': 'value1'})
+        expected = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10)),
+                attributes={'attr2': 10}
+            )},
+            attributes={'attr1': 'value1'}
+        )
         self._remap_nested_attr()
         builder = self.mapper.build(container_inst, self.manager)
-        self.assertDictEqual(builder, expected)
+        self.assertBuilderEqual(builder, expected)
 
     def test_construct(self):
         ''' Test default mapping functionality when object attributes map to an attribute
         deeper than top-level Builder '''
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
-        builder = GroupBuilder('my_bar', datasets={'data': DatasetBuilder(
-            'data', list(range(10)), attributes={'attr2': 10})},
-                               attributes={'attr1': 'value1', 'data_type': 'Bar', 'namespace': CORE_NAMESPACE,
-                                           'object_id': expected.object_id})
+        builder = GroupBuilder(
+            name='my_bar',
+            datasets={'data': DatasetBuilder(
+                name='data',
+                data=list(range(10)),
+                attributes={'attr2': 10}
+            )},
+            attributes={'attr1': 'value1',
+                        'data_type': 'Bar',
+                        'namespace': CORE_NAMESPACE,
+                        'object_id': expected.object_id}
+        )
         self._remap_nested_attr()
         container = self.mapper.construct(builder, self.manager)
         self.assertEqual(container, expected)
@@ -595,7 +630,7 @@ class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
         builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', list(range(10)))},
                                 attributes={'attr1': 'value1', 'attr2': 10})
-        self.assertDictEqual(builder, expected)
+        self.assertBuilderEqual(builder, expected)
 
     def test_build_empty(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -603,7 +638,7 @@ class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
         builder = self.mapper.build(container, self.manager)
         expected = GroupBuilder('my_bar', datasets={'data': DatasetBuilder('data', [])},
                                 attributes={'attr1': 'value1', 'attr2': 10})
-        self.assertDictEqual(builder, expected)
+        self.assertBuilderEqual(builder, expected)
 
     def test_construct(self):
         expected = Bar('my_bar', list(range(10)), 'value1', 10)
@@ -680,18 +715,18 @@ class TestLinkedContainer(TestCase):
                                          attributes={'data_type': 'Foo',
                                                      'namespace': CORE_NAMESPACE,
                                                      'object_id': foo_inst.object_id})
-        bar1_expected = GroupBuilder('n/a',  # name doesn't matter
+        bar1_expected = GroupBuilder('my_bar1',
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      groups={'foo': inner_foo_builder},
                                      attributes={'attr1': 'value1', 'attr2': 10})
         link_foo_builder = LinkBuilder(builder=inner_foo_builder)
-        bar2_expected = GroupBuilder('n/a',
+        bar2_expected = GroupBuilder('my_bar2',
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      links={'foo': link_foo_builder},
                                      attributes={'attr1': 'value1', 'attr2': 10})
-        self.assertDictEqual(foo_builder, foo_expected)
-        self.assertDictEqual(bar1_builder, bar1_expected)
-        self.assertDictEqual(bar2_builder, bar2_expected)
+        self.assertBuilderEqual(foo_builder, foo_expected)
+        self.assertBuilderEqual(bar1_builder, bar1_expected)
+        self.assertBuilderEqual(bar2_builder, bar2_expected)
 
     @unittest.expectedFailure
     def test_build_broken_link_parent(self):
@@ -754,25 +789,29 @@ class TestReference(TestCase):
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, foo=foo_inst)
         bar_inst2 = Bar('my_bar2', list(range(10)), 'value1', 10)
 
-        foo_builder = self.foo_mapper.build(foo_inst, self.manager)
-        bar1_builder = self.bar_mapper.build(bar_inst1, self.manager)
-        bar2_builder = self.bar_mapper.build(bar_inst2, self.manager)
+        foo_builder = self.manager.build(foo_inst, root=True)
+        bar1_builder = self.manager.build(bar_inst1, root=True)  # adds refs
+        bar2_builder = self.manager.build(bar_inst2, root=True)
 
-        foo_expected = GroupBuilder('my_foo')
-
-        inner_foo_builder = GroupBuilder('my_foo',
-                                         attributes={'data_type': 'Foo',
-                                                     'namespace': CORE_NAMESPACE,
-                                                     'object_id': foo_inst.object_id})
+        foo_expected = GroupBuilder('my_foo',
+                                    attributes={'data_type': 'Foo',
+                                                'namespace': CORE_NAMESPACE,
+                                                'object_id': foo_inst.object_id})
         bar1_expected = GroupBuilder('n/a',  # name doesn't matter
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      attributes={'attr1': 'value1',
                                                  'attr2': 10,
-                                                 'foo': ReferenceBuilder(inner_foo_builder)})
+                                                 'foo': ReferenceBuilder(foo_expected),
+                                                 'data_type': 'Bar',
+                                                 'namespace': CORE_NAMESPACE,
+                                                 'object_id': bar_inst1.object_id})
         bar2_expected = GroupBuilder('n/a',  # name doesn't matter
                                      datasets={'data': DatasetBuilder('data', list(range(10)))},
                                      attributes={'attr1': 'value1',
-                                                 'attr2': 10})
+                                                 'attr2': 10,
+                                                 'data_type': 'Bar',
+                                                 'namespace': CORE_NAMESPACE,
+                                                 'object_id': bar_inst2.object_id})
         self.assertDictEqual(foo_builder, foo_expected)
         self.assertDictEqual(bar1_builder, bar1_expected)
         self.assertDictEqual(bar2_builder, bar2_expected)
@@ -788,96 +827,194 @@ class TestReference(TestCase):
             self.bar_mapper.build(bar_inst1, self.manager)
 
 
-class TestMissingRequiredAttribute(TestCase):
+class TestMissingRequiredAttribute(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
 
     def test_required_attr_missing(self):
-        ''' Test mapping when one container is missing a required attribute
-        '''
-        bar_spec = GroupSpec('A test group specification with a data type Bar',
-                             data_type_def='Bar',
-                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
-                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
-
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                  [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        manager = BuildManager(type_map)
-        bar_mapper = ObjectMapper(bar_spec)
+        """Test mapping when one container is missing a required attribute."""
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
         bar_inst1._Bar__attr1 = None  # make attr1 attribute None
 
-        msg = "attribute 'attr1' for 'my_bar1' (Bar)"
-        with self.assertWarnsWith(MissingRequiredWarning, msg):
-            bar_mapper.build(bar_inst1, manager)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'attr1'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            attributes={'attr2': 10}
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestMissingRequiredAttributeRef(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            attributes=[AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))]
+        )
 
     def test_required_attr_ref_missing(self):
-        ''' Test mapping when one container is missing a required attribute reference
-        '''
-        bar_spec = GroupSpec('A test group specification with a data type Bar',
-                             data_type_def='Bar',
-                             datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                         AttributeSpec('attr2', 'an example integer attribute', 'int'),
-                                         AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))])
-
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                  [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        manager = BuildManager(type_map)
-        bar_mapper = ObjectMapper(bar_spec)
+        """Test mapping when one container is missing a required attribute reference."""
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
 
-        msg = "attribute 'foo' for 'my_bar1' (Bar)"
-        with self.assertWarnsWith(MissingRequiredWarning, msg):
-            bar_mapper.build(bar_inst1, manager)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'foo'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
 
 
-class TestMissingRequiredDataset(TestCase):
+class TestMissingRequiredDataset(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            datasets=[DatasetSpec('an example dataset', 'int', name='data')]
+        )
 
     def test_required_dataset_missing(self):
-        ''' Test mapping when one container is missing a required dataset
-        '''
-        bar_spec = GroupSpec('A test group specification with a data type Bar',
-                             data_type_def='Bar',
-                             datasets=[DatasetSpec('an example dataset', 'int', name='data')])
-
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                  [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        manager = BuildManager(type_map)
-        bar_mapper = ObjectMapper(bar_spec)
+        """Test mapping when one container is missing a required dataset."""
 
         bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
         bar_inst1._Bar__data = None  # make data dataset None
 
-        msg = "dataset 'data' for 'my_bar1' (Bar)"
-        with self.assertWarnsWith(MissingRequiredWarning, msg):
-            bar_mapper.build(bar_inst1, manager)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'data'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestMissingRequiredGroup(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[GroupSpec('foo', data_type_inc='Foo')]
+        )
+
+    def test_required_group_missing(self):
+        """Test mapping when one container is missing a required group."""
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        msg = "Bar 'my_bar1' is missing required value for attribute 'foo'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestRequiredEmptyGroup(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[GroupSpec(name='empty', doc='empty group')],
+        )
+
+    def test_required_group_empty(self):
+        """Test mapping when one container has a required empty group."""
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            groups={'empty': GroupBuilder('empty')},
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestOptionalEmptyGroup(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[GroupSpec(
+                name='empty',
+                doc='empty group',
+                quantity='?',
+                attributes=[AttributeSpec('attr3', 'an optional float attribute', 'float', required=False)]
+            )]
+        )
+
+    def test_optional_group_empty(self):
+        """Test mapping when one container has an optional empty group."""
+
+        self.mapper.map_spec('attr3', self.mapper.spec.get_group('empty').get_attribute('attr3'))
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)
+        bar_inst1._Bar__attr3 = None  # force attr3 to be None
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+        )
+        self.assertBuilderEqual(expected, builder)
+
+    def test_optional_group_not_empty(self):
+        """Test mapping when one container has an optional not empty group."""
+
+        self.mapper.map_spec('attr3', self.mapper.spec.get_group('empty').get_attribute('attr3'))
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10, attr3=1.23)
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            groups={'empty': GroupBuilder(
+                name='empty',
+                attributes={'attr3': 1.23},
+            )},
+        )
+        self.assertBuilderEqual(expected, builder)
+
+
+class TestFixedAttributeValue(ObjectMapperMixin, TestCase):
+
+    def setUpBarSpec(self):
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text', value='hi'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
+
+    def test_required_attr_missing(self):
+        """Test mapping when one container has a required attribute with a fixed value."""
+
+        bar_inst1 = Bar('my_bar1', list(range(10)), 'value1', 10)  # attr1=value1 is not processed
+        builder = self.mapper.build(bar_inst1, self.manager)
+
+        expected = GroupBuilder(
+            name='my_bar1',
+            attributes={'attr1': 'hi', 'attr2': 10}
+        )
+        self.assertBuilderEqual(builder, expected)
 
 
 class TestConvertDtype(TestCase):
@@ -900,7 +1037,7 @@ class TestConvertDtype(TestCase):
         self._test_convert_alias(spec_type, value_types)
 
         spec_type = 'float64'
-        value_types = ['float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8', 'uint64', 'uint',
+        value_types = ['float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'short', 'int8', 'uint64', 'uint',
                        'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
@@ -909,8 +1046,8 @@ class TestConvertDtype(TestCase):
         self._test_convert_alias(spec_type, value_types)
 
         spec_type = 'int64'
-        value_types = ['double', 'float64', 'float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint64', 'uint',
-                       'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['double', 'float64', 'float', 'float32', 'int', 'int32', 'int16', 'short', 'int8', 'uint64',
+                       'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
         spec_type = 'uint64'
@@ -918,8 +1055,8 @@ class TestConvertDtype(TestCase):
         self._test_convert_alias(spec_type, value_types)
 
         spec_type = 'uint64'
-        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'int8',
-                       'uint', 'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'short',
+                       'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_float32_spec(self):
@@ -940,7 +1077,7 @@ class TestConvertDtype(TestCase):
         value_types = ['float', 'float32']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['int', 'int32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['int', 'int32', 'int16', 'short', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_int32_spec(self):
@@ -961,7 +1098,7 @@ class TestConvertDtype(TestCase):
         value_types = ['int', 'int32']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['float', 'float32', 'int16', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
+        value_types = ['float', 'float32', 'int16', 'short', 'int8', 'uint', 'uint32', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_uint32_spec(self):
@@ -982,7 +1119,7 @@ class TestConvertDtype(TestCase):
         value_types = ['uint', 'uint32']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'int8', 'uint16', 'uint8', 'bool']
+        value_types = ['float', 'float32', 'int', 'int32', 'int16', 'short', 'int8', 'uint16', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_int16_spec(self):
@@ -1005,7 +1142,7 @@ class TestConvertDtype(TestCase):
         expected_type = 'int32'
         self._test_change_basetype_helper(spec_type, value_types, expected_type)
 
-        value_types = ['int16']
+        value_types = ['int16', 'short']
         self._test_convert_alias(spec_type, value_types)
 
         value_types = ['int8', 'uint16', 'uint8', 'bool']
@@ -1034,7 +1171,7 @@ class TestConvertDtype(TestCase):
         value_types = ['uint16']
         self._test_convert_alias(spec_type, value_types)
 
-        value_types = ['int16', 'int8', 'uint8', 'bool']
+        value_types = ['int16', 'short', 'int8', 'uint8', 'bool']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
     def test_convert_to_bool_spec(self):
@@ -1050,8 +1187,8 @@ class TestConvertDtype(TestCase):
         value_types = ['uint8', 'int8']
         self._test_convert_higher_precision_helper(spec_type, value_types)
 
-        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'uint64',
-                       'uint', 'uint32', 'uint16']
+        value_types = ['double', 'float64', 'float', 'float32', 'long', 'int64', 'int', 'int32', 'int16', 'short',
+                       'uint64', 'uint', 'uint32', 'uint16']
         self._test_convert_mismatch_helper(spec_type, value_types)
 
     def _get_type(self, type_str):
@@ -1124,69 +1261,128 @@ class TestConvertDtype(TestCase):
                 with self.assertRaisesWith(ValueError, msg):
                     ObjectMapper.convert_dtype(spec, value)
 
+    def test_dci_input(self):
+        spec = DatasetSpec('an example dataset', 'int64', name='data')
+        value = DataChunkIterator(np.array([1, 2, 3], dtype=np.int32))
+        msg = "Spec 'data': Value with data type int32 is being converted to data type int64 as specified."
+        with self.assertWarnsWith(UserWarning, msg):
+            ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+        self.assertIs(ret, value)
+        self.assertEqual(ret_dtype, np.int64)
+
+        spec = DatasetSpec('an example dataset', 'int16', name='data')
+        value = DataChunkIterator(np.array([1, 2, 3], dtype=np.int32))
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+        self.assertIs(ret, value)
+        self.assertEqual(ret_dtype, np.int32)  # increase precision
+
     def test_text_spec(self):
-        spec_type = 'text'
-        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        text_spec_types = ['text', 'utf', 'utf8', 'utf-8']
+        for spec_type in text_spec_types:
+            with self.subTest(spec_type=spec_type):
+                spec = DatasetSpec('an example dataset', spec_type, name='data')
 
-        value = 'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, value)
-        self.assertIs(type(ret), str)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = 'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, value)
+                self.assertIs(type(ret), str)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = b'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, 'a')
-        self.assertIs(type(ret), str)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = b'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, 'a')
+                self.assertIs(type(ret), str)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = ['a', 'b']
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertListEqual(ret, value)
-        self.assertIs(type(ret[0]), str)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = ['a', 'b']
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, value)
+                self.assertIs(type(ret[0]), str)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = np.array(['a', 'b'])
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, value)
-        self.assertEqual(ret_dtype, 'utf8')
+                value = np.array(['a', 'b'])
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
 
-        value = np.array(['a', 'b'], dtype='S1')
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
-        self.assertEqual(ret_dtype, 'utf8')
+                value = np.array(['a', 'b'], dtype='S1')
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='U1'))
+                self.assertEqual(ret_dtype, 'utf8')
+
+                value = []
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
+
+                value = 1
+                msg = "Expected unicode or ascii string, got <class 'int'>"
+                with self.assertRaisesWith(ValueError, msg):
+                    ObjectMapper.convert_dtype(spec, value)
+
+                value = DataChunkIterator(np.array(['a', 'b']))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
+
+                value = DataChunkIterator(np.array(['a', 'b'], dtype='S1'))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
 
     def test_ascii_spec(self):
-        spec_type = 'ascii'
-        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        ascii_spec_types = ['ascii', 'bytes']
+        for spec_type in ascii_spec_types:
+            with self.subTest(spec_type=spec_type):
+                spec = DatasetSpec('an example dataset', spec_type, name='data')
 
-        value = 'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, b'a')
-        self.assertIs(type(ret), bytes)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = 'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, b'a')
+                self.assertIs(type(ret), bytes)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = b'a'
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertEqual(ret, b'a')
-        self.assertIs(type(ret), bytes)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = b'a'
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertEqual(ret, b'a')
+                self.assertIs(type(ret), bytes)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = ['a', 'b']
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        self.assertListEqual(ret, [b'a', b'b'])
-        self.assertIs(type(ret[0]), bytes)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = ['a', 'b']
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, [b'a', b'b'])
+                self.assertIs(type(ret[0]), bytes)
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = np.array(['a', 'b'])
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
-        self.assertEqual(ret_dtype, 'ascii')
+                value = np.array(['a', 'b'])
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
+                self.assertEqual(ret_dtype, 'ascii')
 
-        value = np.array(['a', 'b'], dtype='S1')
-        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
-        np.testing.assert_array_equal(ret, value)
-        self.assertEqual(ret_dtype, 'ascii')
+                value = np.array(['a', 'b'], dtype='S1')
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
+
+                value = []
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                self.assertListEqual(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
+
+                value = 1
+                msg = "Expected unicode or ascii string, got <class 'int'>"
+                with self.assertRaisesWith(ValueError, msg):
+                    ObjectMapper.convert_dtype(spec, value)
+
+                value = DataChunkIterator(np.array(['a', 'b']))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
+
+                value = DataChunkIterator(np.array(['a', 'b'], dtype='S1'))
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'ascii')
 
     def test_no_spec(self):
         spec_type = None
@@ -1258,6 +1454,11 @@ class TestConvertDtype(TestCase):
         self.assertIs(type(ret.data[0]), bytes)
         self.assertEqual(ret_dtype, 'ascii')
 
+        value = []
+        msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
+
     def test_numeric_spec(self):
         spec_type = 'numeric'
         spec = DatasetSpec('an example dataset', spec_type, name='data')
@@ -1282,6 +1483,11 @@ class TestConvertDtype(TestCase):
 
         value = np.array(['a', 'b'])
         msg = "Cannot convert from <class 'numpy.str_'> to 'numeric' specification dtype."
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, value)
+
+        value = []
+        msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
         with self.assertRaisesWith(ValueError, msg):
             ObjectMapper.convert_dtype(spec, value)
 
@@ -1321,3 +1527,70 @@ class TestConvertDtype(TestCase):
         spec = DatasetSpec('an example dataset', None, name='data')
         res = ObjectMapper.convert_dtype(spec, True, 'bool')
         self.assertTupleEqual(res, (True, np.bool_))
+
+    def test_compound_type(self):
+        """Test that convert_dtype passes through arguments if spec dtype is a list without any validation."""
+        spec_type = [DtypeSpec('an int field', 'f1', 'int'), DtypeSpec('a float field', 'f2', 'float')]
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+        value = ['a', 1, 2.2]
+        res, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertListEqual(res, value)
+        self.assertListEqual(ret_dtype, spec_type)
+
+    def test_isodatetime_spec(self):
+        spec_type = 'isodatetime'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        # NOTE: datetime.isoformat is called on all values with a datetime spec before conversion
+        # see ObjectMapper.get_attr_value
+        value = datetime.isoformat(datetime(2020, 11, 10))
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+
+class TestObjectMapperBadValue(TestCase):
+
+    def test_bad_value(self):
+        """Test that an error is raised if the container attribute value for a spec with a data type is not a container
+        or collection of containers.
+        """
+        class Qux(Container):
+            @docval({'name': 'name', 'type': str, 'doc': 'the name of this Qux'},
+                    {'name': 'foo', 'type': int, 'doc': 'a group'})
+            def __init__(self, **kwargs):
+                name, foo = getargs('name', 'foo', kwargs)
+                super().__init__(name=name)
+                self.__foo = foo
+                if isinstance(foo, Foo):
+                    self.__foo.parent = self
+
+            @property
+            def foo(self):
+                return self.__foo
+
+        self.qux_spec = GroupSpec(
+            doc='A test group specification with data type Qux',
+            data_type_def='Qux',
+            groups=[GroupSpec('an example dataset', data_type_inc='Foo')]
+        )
+        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.qux_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Qux', Qux)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.manager = BuildManager(self.type_map)
+        self.mapper = ObjectMapper(self.qux_spec)
+
+        container = Qux('my_qux', foo=1)
+        msg = "Qux 'my_qux' attribute 'foo' has unexpected type."
+        with self.assertRaisesWith(ContainerConfigurationError, msg):
+            self.mapper.build(container, self.manager)
