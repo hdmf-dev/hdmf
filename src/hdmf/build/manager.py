@@ -534,7 +534,7 @@ class TypeMap:
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
-            return AbstractContainer
+            return self.__get_container_type(spec.target_type)
         if spec.data_type_def is not None:
             return self.__get_container_type(spec.data_type_def)
         if spec.data_type_inc is not None:

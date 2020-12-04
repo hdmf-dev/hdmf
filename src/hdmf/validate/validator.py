@@ -458,7 +458,7 @@ class GroupValidator(BaseStorageValidator):
                         found = True
             if not found and self.__include_dts[dt].required:
                 ret.append(MissingDataType(self.get_spec_loc(self.spec), dt,
-                                           location=self.get_builder_loc(builder)))
+                                           location=self.get_builder_loc(builder), missing_dt_name=inc_name))
         it = chain(self.__dataset_validators.items(),
                    self.__group_validators.items())
         for name, validator in it:
@@ -470,7 +470,7 @@ class GroupValidator(BaseStorageValidator):
                 if sub_builder is None:
                     if inc_spec.required:
                         ret.append(MissingDataType(self.get_spec_loc(def_spec), def_spec.data_type_def,
-                                                   location=self.get_builder_loc(builder)))
+                                                   location=self.get_builder_loc(builder), missing_dt_name=name))
                 else:
                     ret.extend(validator.validate(sub_builder))
 

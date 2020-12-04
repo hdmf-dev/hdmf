@@ -765,7 +765,7 @@ class DatasetSpec(BaseStorageSpec):
 
 _link_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this link represents'},
-    {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
+    {'name': _target_type_key, 'type': (str, BaseStorageSpec), 'doc': 'the target type GroupSpec or DatasetSpec'},
     {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
     {'name': 'name', 'type': str, 'doc': 'the name of this link', 'default': None}
 ]
@@ -777,7 +777,14 @@ class LinkSpec(Spec):
     def __init__(self, **kwargs):
         doc, target_type, name, quantity = popargs('doc', _target_type_key, 'name', 'quantity', kwargs)
         super().__init__(doc, name, **kwargs)
-        self[_target_type_key] = target_type
+        if isinstance(target_type, BaseStorageSpec):
+            if target_type.data_type_def is None:
+                msg = ("'%s' must be a string or a GroupSpec or DatasetSpec with a '%s' key."
+                       % (_target_type_key, target_type.def_key()))
+                raise ValueError(msg)
+            self[_target_type_key] = target_type.data_type_def
+        else:
+            self[_target_type_key] = target_type
         if quantity != 1:
             self['quantity'] = quantity
 

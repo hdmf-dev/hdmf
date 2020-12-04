@@ -25,12 +25,24 @@
 - Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#439)
 - Use hdmf-common-schema 1.2.1. See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html for details.
 - Block usage of h5py 3+. h5py>=2.9, <3 is supported. @rly (#461)
-- Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.  @rly (#461)
+- Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.
+  @rly (#461)
+- Allow passing `GroupSpec` and `DatasetSpec` objects for the 'target_type' argument of `LinkSpec.__init__(...)`.
+  @rly (#467)
+- Use hdmf-common-schema 1.3.0. @rly, @ajtritt (#486)
+  - Changes from hdmf-common-schema 1.2.0:
+    - Add data type ExternalResources for storing ontology information / external resource references. NOTE:
+      this data type is in beta testing and is subject to change in a later version.
+    - Fix missing data_type_inc and use dtype uint for CSRMatrix. It now has data_type_inc: Container.
+    - Add hdmf-schema-language comment at the top of each yaml file.
+    - Add SimpleMultiContainer, a Container for storing other Container and Data objects together.
 
 ### Internal improvements
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
-- Add testing for Python 3.9. @ajtritt (#459)
+- Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
+- Improve contributing guide. @rly (#474)
+- Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
@@ -40,6 +52,9 @@
 - Fix inheritance when non-`AbstractContainer` is base class. @rly (#444)
 - Fix use of `hdmf.testing.assertContainerEqual(...)` for `Data` objects. @rly (#445)
 - Add missing support for data conversion against spec dtypes "bytes" and "short". @rly (#456)
+- Clarify the validator error message when a named data type is missing. @dsleiter (#478)
+- Update documentation on validation to indicate that the example command is not implemented @dsleiter (#482)
+- Fix generated docval for classes with a LinkSpec. @rly (#478)
 
 ## HDMF 2.2.0 (August 14, 2020)
 

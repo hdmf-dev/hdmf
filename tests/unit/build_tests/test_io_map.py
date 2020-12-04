@@ -13,7 +13,7 @@ from hdmf.container import MultiContainerInterface
 from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
 from hdmf.query import HDMFDataset
 from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
-                       DtypeSpec)
+                       DtypeSpec, LinkSpec)
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs, get_docval
 
@@ -507,6 +507,17 @@ class TestDynamicContainer(TestCase):
         for arg in docval:
             if arg['name'] == 'name':
                 self.assertEqual(arg['default'], 'MyBaz')
+
+    def test_build_docval_link(self):
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(
+            attr3=LinkSpec(name='attr3', target_type='Bar', doc='an example link'),
+        )
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertIs(arg['type'], Bar)
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
