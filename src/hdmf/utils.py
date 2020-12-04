@@ -555,7 +555,8 @@ def docval(*validator, **options):  # noqa: C901
                 enforce_type=enforce_type,
                 enforce_shape=enforce_shape,
                 allow_extra=allow_extra,
-                allow_positional=allow_positional)
+                allow_positional=allow_positional
+            )
 
             parse_warnings = parsed.get('future_warnings')
             if parse_warnings:
