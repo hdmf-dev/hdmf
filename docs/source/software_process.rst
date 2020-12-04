@@ -11,8 +11,8 @@ Continuous Integration
 HDMF is tested against Ubuntu, macOS, and Windows operating systems.
 The project has both unit and integration tests.
 
-* CircleCI_ runs all HDMF tests on Ubuntu
 * `Azure Pipelines`_ runs all HDMF tests on Windows and macOS
+* CircleCI_ runs all HDMF tests on Ubuntu
 
 Each time a PR is published or updated, the project is built, packaged, and tested on all supported operating systems
 and python distributions. That way, as a contributor, you know if you introduced regressions or coding style
@@ -29,11 +29,12 @@ There are badges in the README_ file which shows the current condition of the de
 Coverage
 --------
 
-Coverage is computed and reported using the coverage_ tool. There is a badge in the README_ file which
-shows percentage coverage. A detailed report can be found on codecov_ which shows line by line which
-lines are covered by the tests.
+Code coverage is computed and reported using the coverage_ tool. There is a badge in the README_ file which
+shows the status of the `Codecov GitHub Action`_ and the percentage coverage. A detailed report can be found on
+codecov_ which shows line by line which lines are covered by the tests.
 
 .. _coverage: https://coverage.readthedocs.io
+.. _codecov GitHub Action: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3ACodecov
 .. _codecov: https://codecov.io/gh/hdmf-dev/hdmf/tree/dev/src/hdmf
 
 ..  _software_process_requirement_specifications:
