@@ -1,19 +1,20 @@
-from copy import copy
-from collections.abc import Iterable
+import json
+import os
+import warnings
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
+from copy import copy
+
+import numpy as np
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
-import json
-import numpy as np
-import warnings
-import os
 
-from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 
 
 class H5Dataset(HDMFDataset):

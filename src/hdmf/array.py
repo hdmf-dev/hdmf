@@ -1,5 +1,6 @@
-import numpy as np
 from abc import abstractmethod, ABCMeta
+
+import numpy as np
 
 
 class Array:
@@ -101,7 +102,7 @@ class AbstractSortedArray(Array, metaclass=ABCMeta):
             ret = sorted(ret, key=self.__sort)
             tmp = list()
             for i in range(1, len(ret)):
-                a, b = ret[i-1], ret[i]
+                a, b = ret[i - 1], ret[i]
                 if isinstance(a, tuple):
                     if isinstance(b, tuple):
                         if a[1] >= b[0]:
@@ -112,7 +113,7 @@ class AbstractSortedArray(Array, metaclass=ABCMeta):
                         if b > a[1]:
                             tmp.append(slice(*a))
                         elif b == a[1]:
-                            a[1] == b+1
+                            a[1] == b + 1
                         else:
                             ret[i] = a
                 else:
@@ -155,7 +156,7 @@ class AbstractSortedArray(Array, metaclass=ABCMeta):
         if isinstance(eq, tuple):
             return [slice(0, eq[0]), slice(eq[1], len(self))]
         else:
-            return [slice(0, eq), slice(eq+1, len(self))]
+            return [slice(0, eq), slice(eq + 1, len(self))]
 
 
 class SortedArray(AbstractSortedArray):
@@ -179,18 +180,18 @@ class LinSpace(SortedArray):
         self.stop = stop
         self.step = step
         self.dtype = float if any(isinstance(s, float) for s in (start, stop, step)) else int
-        self.__len = int((stop - start)/step)
+        self.__len = int((stop - start) / step)
 
     def __len__(self):
         return self.__len
 
     def find_point(self, val):
-        nsteps = (val-self.start)/self.step
+        nsteps = (val - self.start) / self.step
         fl = int(nsteps)
         if fl == nsteps:
             return int(fl)
         else:
-            return int(fl+1)
+            return int(fl + 1)
 
     def __getidx__(self, arg):
-        return self.start + self.step*arg
+        return self.start + self.step * arg

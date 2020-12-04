@@ -35,6 +35,7 @@ doi: 10.1109/BigData47090.2019.9005648.
 
    overview_intro
    overview_software_architecture
+   overview_citing
 
 .. toctree::
    :maxdepth: 2

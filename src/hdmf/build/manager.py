@@ -1,14 +1,15 @@
-import numpy as np
+import logging
 from collections import OrderedDict, deque
 from copy import copy, deepcopy
 from datetime import datetime
-import logging
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
+import numpy as np
+
+from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
 from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
-from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
+from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
 
 
 class Proxy:
@@ -401,7 +402,7 @@ class TypeMap:
             from .objectmapper import ObjectMapper  # avoid circular import
             mapper_cls = ObjectMapper
         self.__ns_catalog = namespaces
-        self.__mappers = dict()     # already constructed ObjectMapper classes
+        self.__mappers = dict()  # already constructed ObjectMapper classes
         self.__mapper_cls = dict()  # the ObjectMapper class to use for each container type
         self.__container_types = OrderedDict()
         self.__data_types = dict()
@@ -533,7 +534,7 @@ class TypeMap:
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
-            return AbstractContainer
+            return self.__get_container_type(spec.target_type)
         if spec.data_type_def is not None:
             return self.__get_container_type(spec.data_type_def)
         if spec.data_type_inc is not None:
@@ -891,7 +892,7 @@ class TypeMap:
     def register_container_type(self, **kwargs):
         ''' Map a container class to a data_type '''
         namespace, data_type, container_cls = getargs('namespace', 'data_type', 'container_cls', kwargs)
-        spec = self.__ns_catalog.get_spec(namespace, data_type)    # make sure the spec exists
+        spec = self.__ns_catalog.get_spec(namespace, data_type)  # make sure the spec exists
         self.__container_types.setdefault(namespace, dict())
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))

@@ -1,21 +1,21 @@
-from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
-                       DtypeSpec)
+import unittest
+from abc import ABCMeta, abstractmethod
+from datetime import datetime
+
+import h5py
+import numpy as np
+from hdmf import Container
+from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
                         ReferenceBuilder, MissingRequiredBuildWarning, OrphanContainerBuildError,
                         ContainerConfigurationError)
 from hdmf.container import MultiContainerInterface
-from hdmf import Container
-from hdmf.utils import docval, getargs, get_docval
 from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
-from hdmf.backends.hdf5 import H5DataIO
-from hdmf.testing import TestCase
 from hdmf.query import HDMFDataset
-
-from abc import ABCMeta, abstractmethod
-from datetime import datetime
-import numpy as np
-import h5py
-import unittest
+from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
+                       DtypeSpec, LinkSpec)
+from hdmf.testing import TestCase
+from hdmf.utils import docval, getargs, get_docval
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -507,6 +507,17 @@ class TestDynamicContainer(TestCase):
         for arg in docval:
             if arg['name'] == 'name':
                 self.assertEqual(arg['default'], 'MyBaz')
+
+    def test_build_docval_link(self):
+        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        addl_fields = dict(
+            attr3=LinkSpec(name='attr3', target_type='Bar', doc='an example link'),
+        )
+        docval = self.type_map._build_docval(Bar, addl_fields)
+
+        for arg in docval:
+            if arg['name'] == 'attr3':
+                self.assertIs(arg['type'], Bar)
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):

@@ -1,11 +1,12 @@
+import copy as _copy
+import itertools as _itertools
+import posixpath as _posixpath
 from abc import ABCMeta
 from collections.abc import Iterable
-import copy as _copy
 from datetime import datetime
-from h5py import RegionReference
-import itertools as _itertools
+
 import numpy as np
-import posixpath as _posixpath
+from h5py import RegionReference
 
 from ..utils import docval, getargs, get_docval
 

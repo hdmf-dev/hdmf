@@ -1,11 +1,10 @@
 import re
+from abc import ABCMeta, abstractmethod
 
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ContainerConfigurationError
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
-
-from abc import ABCMeta, abstractmethod
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 

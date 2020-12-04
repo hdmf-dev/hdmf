@@ -1,11 +1,10 @@
-import scipy.sparse as sps
-import numpy as np
 import h5py
-
-from ..container import Container
-from ..utils import docval, getargs, call_docval_func, to_uint_array
+import numpy as np
+import scipy.sparse as sps
 
 from . import register_class
+from ..container import Container
+from ..utils import docval, getargs, call_docval_func, to_uint_array
 
 
 @register_class('CSRMatrix')
