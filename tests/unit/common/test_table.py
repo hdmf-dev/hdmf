@@ -1,13 +1,14 @@
-import unittest
 from collections import OrderedDict
-
 import h5py
 import numpy as np
 import pandas as pd
+import unittest
+
+from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers,
                          DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer)
-from hdmf.testing import TestCase, H5RoundTripMixin
+from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 
 
 class TestDynamicTable(TestCase):
@@ -1524,3 +1525,72 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
         read_table.add_row(foo=data, bar=data)
 
         np.testing.assert_array_equal(read_table['foo'][-1], data)
+
+
+class TestDTRReferences(TestCase):
+
+    def setUp(self):
+        self.filename = 'test_dtr_references.h5'
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+
+    def test_dtr_references(self):
+        """Test roundtrip of a table with a ragged DTR to another table containing a column of references."""
+        group1 = Container('group1')
+        group2 = Container('group2')
+
+        table1 = DynamicTable(
+            name='table1',
+            description='test table 1'
+        )
+        table1.add_column(
+            name='x',
+            description='test column of ints'
+        )
+        table1.add_column(
+            name='y',
+            description='test column of reference'
+        )
+        table1.add_row(id=101, x=1, y=group1)
+        table1.add_row(id=102, x=2, y=group1)
+        table1.add_row(id=103, x=3, y=group2)
+
+        table2 = DynamicTable(
+            name='table2',
+            description='test table 2'
+        )
+
+        # create a ragged column that references table1
+        # each row of table2 corresponds to one or more rows of table 1
+        table2.add_column(
+            name='electrodes',
+            description='column description',
+            index=True,
+            table=table1
+        )
+
+        table2.add_row(id=10, electrodes=[1, 2])
+
+        multi_container = SimpleMultiContainer('multi')
+        multi_container.add_container(group1)
+        multi_container.add_container(group2)
+        multi_container.add_container(table1)
+        multi_container.add_container(table2)
+
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            io.write(multi_container)
+
+        with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
+            read_multi_container = io.read()
+            self.assertContainerEqual(read_multi_container, multi_container, ignore_name=True)
+
+            # test DTR access
+            read_group1 = read_multi_container['group1']
+            read_group2 = read_multi_container['group2']
+            read_table = read_multi_container['table2']
+            ret = read_table[0, 'electrodes']
+            expected = pd.DataFrame({'x': np.array([2, 3]),
+                                     'y': [read_group1, read_group2]},
+                                    index=pd.Index(data=[102, 103], name='id'))
+            pd.testing.assert_frame_equal(ret, expected)

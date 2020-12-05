@@ -463,29 +463,17 @@ class GroupValidator(BaseStorageValidator):
                    self.__group_validators.items())
         for name, validator in it:
             sub_builder = builder.get(name)
-            if isinstance(validator, BaseStorageSpec):
-                inc_spec = validator
-                validator = self.vmap.get_validator(inc_spec)
-                def_spec = validator.spec
-                if sub_builder is None:
-                    if inc_spec.required:
-                        ret.append(MissingDataType(self.get_spec_loc(def_spec), def_spec.data_type_def,
-                                                   location=self.get_builder_loc(builder), missing_dt_name=name))
+            spec = validator.spec
+            if isinstance(sub_builder, LinkBuilder):
+                if spec.linkable:
+                    sub_builder = sub_builder.builder
                 else:
-                    ret.extend(validator.validate(sub_builder))
-
+                    ret.append(IllegalLinkError(self.get_spec_loc(spec), location=self.get_builder_loc(builder)))
+                    continue
+            if sub_builder is None:
+                if spec.required:
+                    ret.append(MissingError(self.get_spec_loc(spec), location=self.get_builder_loc(builder)))
             else:
-                spec = validator.spec
-                if isinstance(sub_builder, LinkBuilder):
-                    if spec.linkable:
-                        sub_builder = sub_builder.builder
-                    else:
-                        ret.append(IllegalLinkError(self.get_spec_loc(spec), location=self.get_builder_loc(builder)))
-                        continue
-                if sub_builder is None:
-                    if spec.required:
-                        ret.append(MissingError(self.get_spec_loc(spec), location=self.get_builder_loc(builder)))
-                else:
-                    ret.extend(validator.validate(sub_builder))
+                ret.extend(validator.validate(sub_builder))
 
         return ret
