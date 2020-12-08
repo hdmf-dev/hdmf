@@ -1594,3 +1594,5 @@ class TestObjectMapperBadValue(TestCase):
         msg = "Qux 'my_qux' attribute 'foo' has unexpected type."
         with self.assertRaisesWith(ContainerConfigurationError, msg):
             self.mapper.build(container, self.manager)
+
+    # TODO test passing a Container/Data/other object for a non-container/data array spec
