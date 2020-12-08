@@ -3,4 +3,5 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
                      ConstructError)
 from .manager import BuildManager, TypeMap
 from .objectmapper import ObjectMapper
-from .warnings import BuildWarning, MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from .warnings import (BuildWarning, MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning,
+                       MissingRequiredWarning, OrphanContainerWarning)
