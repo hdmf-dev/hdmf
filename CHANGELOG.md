@@ -27,6 +27,7 @@
 - Block usage of h5py 3+. h5py>=2.9, <3 is supported. @rly (#461)
 - Block usage of numpy>=1.19.4 due to a known issue with numpy on some Windows 10 systems. numpy>1.16, <1.19.4 is supported.
   @rly (#461)
+- Add check for correct quantity during the build process in `ObjectMapper`. @rly (#463, #492)
 - Allow passing `GroupSpec` and `DatasetSpec` objects for the 'target_type' argument of `LinkSpec.__init__(...)`.
   @rly (#467)
 - Use hdmf-common-schema 1.3.0. @rly, @ajtritt (#486)
@@ -43,7 +44,7 @@
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
 - Improve contributing guide. @rly (#474)
-- Update CI to be more contributor friendly. @rly (#481)
+- Update CI to be more contributor friendly. @rly (#481, #493)
 - Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
 - Add type checking and conversion in `CSRMatrix`. @rly (#485)
 - Clean up unreachable validator code. @rly (#483)
