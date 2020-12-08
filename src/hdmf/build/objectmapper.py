@@ -648,14 +648,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret
 
     def __check_quantity(self, attr_value, spec, container):
-        # attr_value is None, AbstractContainer, or list of AbstractContainers
         if attr_value is None and spec.required:
             attr_name = self.get_attribute(spec)
             msg = ("%s '%s' is missing required value for attribute '%s'."
                    % (container.__class__.__name__, container.name, attr_name))
             warnings.warn(msg, MissingRequiredBuildWarning)
             self.logger.debug('MissingRequiredBuildWarning: ' + msg)
-        elif attr_value is not None and not isinstance(spec, AttributeSpec):
+        elif attr_value is not None and self.__get_data_type(spec) is not None:
+            # quantity is valid only for specs with a data type or target type
             if isinstance(attr_value, AbstractContainer):
                 attr_value = [attr_value]
             n = len(attr_value)
