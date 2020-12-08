@@ -1,5 +1,9 @@
 name: Run coverage
-on: [push]
+on:
+  push:
+    tags-ignore:
+    - latest
+    - latest-tmp
 jobs:
   run:
     runs-on: ${{ matrix.os }}
