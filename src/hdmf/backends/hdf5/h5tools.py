@@ -445,8 +445,6 @@ class HDF5IO(HDMFIO):
         :param builder: Builder object to be marked as written
         :type builder: Builder
         """
-        # currently all values in self._written_builders are True, so this could be a set but is a dict for
-        # future flexibility
         builder_id = self.__builderhash(builder)
         self._written_builders[builder_id] = builder
 
