@@ -894,8 +894,10 @@ class HDF5IO(HDMFIO):
         parent, builder = popargs('parent', 'builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    GroupBuilder '%s' is already written" % builder.name)
             group = parent[builder.name]
         else:
+            self.logger.debug("    Creating group '%s'" % builder.name)
             group = parent.create_group(builder.name)
         # write all groups
         subgroups = builder.groups
@@ -939,6 +941,7 @@ class HDF5IO(HDMFIO):
         parent, builder = getargs('parent', 'builder', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    LinkBuilder '%s' is already written" % builder.name)
             return None
         name = builder.name
         target_builder = builder.builder
