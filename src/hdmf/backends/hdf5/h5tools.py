@@ -457,7 +457,7 @@ class HDF5IO(HDMFIO):
         :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
         """
         builder_id = self.__builderhash(builder)
-        return self._written_builders.get(builder_id, False)
+        return builder_id in self._written_builders
 
     def __builderhash(self, obj):
         """Return the ID of a builder for use as a unique hash."""
