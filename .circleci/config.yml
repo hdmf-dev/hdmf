@@ -358,7 +358,7 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
-      - python38-upgrade-dev:
+      - python38:
           <<: *no_filters
       - python36-min-req:
           <<: *no_filters
@@ -366,18 +366,18 @@ workflows:
           <<: *no_filters
       - miniconda38:
           <<: *no_filters
-      - gallery38-upgrade-dev:
+      - gallery38:
           <<: *no_filters
       - gallery36-min-req:
           <<: *no_filters
       - deploy-dev:
           requires:
             - flake8
-            - python38-upgrade-dev
+            - python38
             - python36-min-req
             - miniconda36
             - miniconda38
-            - gallery38-upgrade-dev
+            - gallery38
             - gallery36-min-req
           filters:
             tags:
