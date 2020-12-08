@@ -2,9 +2,9 @@ name: Run coverage
 on:
   push:
     branches:
-    - *
+    - '**'
     tags:
-    - *
+    - '**'
     - '!latest'
     - '!latest-tmp'
 jobs:
