@@ -59,6 +59,21 @@ class SimpleBucket(Container):
             i.parent = self
 
 
+class BasicBucket(Container):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this BasicBucket'},
+            {'name': 'untyped_dataset', 'type': 'scalar_data',
+             'doc': 'a scalar dataset within this BasicBucket', 'default': None},
+            {'name': 'untyped_array_dataset', 'type': ('data', 'array_data'),
+             'doc': 'an array dataset within this BasicBucket', 'default': None},)
+    def __init__(self, **kwargs):
+        name, untyped_dataset, untyped_array_dataset = getargs('name', 'untyped_dataset', 'untyped_array_dataset',
+                                                               kwargs)
+        super().__init__(name=name)
+        self.untyped_dataset = untyped_dataset
+        self.untyped_array_dataset = untyped_array_dataset
+
+
 class BuildQuantityMixin:
     """Base test class mixin to set up the BuildManager."""
 
@@ -860,7 +875,149 @@ class TestBuildZeroOrOneTypeInc(ZeroOrOneMixin, TypeIncMixin, BuildQuantityMixin
     pass
 
 
-# Other edge cases
+# Untyped group/dataset with quantity {1, '?'}
+
+class UntypedMixin:
+
+    def setUpManager(self, specs):
+        spec_catalog = SpecCatalog()
+        schema_file = 'test.yaml'
+        for s in specs:
+            spec_catalog.register_spec(s, schema_file)
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': schema_file}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'BasicBucket', BasicBucket)
+        self.manager = BuildManager(type_map)
+
+    def create_specs(self, quantity):
+        # Type BasicBucket contains:
+        # - [quantity] untyped group
+        # - [quantity] untyped dataset
+        # - [quantity] untyped array dataset
+        # quantity can be only '?' or 1
+        untyped_group_spec = GroupSpec(
+            doc='A test group specification with no data type',
+            name='untyped_group',
+            quantity=quantity,
+        )
+        untyped_dataset_spec = DatasetSpec(
+            doc='A test dataset specification with no data type',
+            name='untyped_dataset',
+            dtype='int',
+            quantity=quantity,
+        )
+        untyped_array_dataset_spec = DatasetSpec(
+            doc='A test dataset specification with no data type',
+            name='untyped_array_dataset',
+            dtype='int',
+            dims=[None],
+            shape=[None],
+            quantity=quantity,
+        )
+        basic_bucket_spec = GroupSpec(
+            doc='A test group specification for a data type containing data type',
+            name="test_bucket",
+            data_type_def='BasicBucket',
+            groups=[untyped_group_spec],
+            datasets=[untyped_dataset_spec, untyped_array_dataset_spec],
+        )
+        return [basic_bucket_spec]
+
+
+class TestBuildOneUntyped(UntypedMixin, TestCase):
+    """Test building a group that has an untyped subgroup/dataset with quantity 1.
+    """
+    def setUp(self):
+        specs = self.create_specs(DEF_QUANTITY)
+        self.setUpManager(specs)
+
+    def test_build_data(self):
+        """Test building a container which contains an untyped empty subgroup and an untyped non-empty dataset."""
+        bucket = BasicBucket(name='test_bucket', untyped_dataset=3, untyped_array_dataset=[3])
+        # a required untyped empty group builder will be created by default
+        untyped_group_builder = GroupBuilder(name='untyped_group')
+        untyped_dataset_builder = DatasetBuilder(name='untyped_dataset', data=3)
+        untyped_array_dataset_builder = DatasetBuilder(name='untyped_array_dataset', data=[3])
+        bucket_builder = GroupBuilder(
+            name='test_bucket',
+            groups={'untyped_group': untyped_group_builder},
+            datasets={'untyped_dataset': untyped_dataset_builder,
+                      'untyped_array_dataset': untyped_array_dataset_builder},
+            attributes={'namespace': CORE_NAMESPACE,
+                        'data_type': 'BasicBucket',
+                        'object_id': bucket.object_id}
+        )
+        builder = self.manager.build(bucket)
+        self.assertDictEqual(builder, bucket_builder)
+
+    def test_build_empty_data(self):
+        """Test building a container which contains an untyped empty subgroup and an untyped empty dataset."""
+        bucket = BasicBucket(name='test_bucket')
+        # a required untyped empty group builder will be created by default
+        untyped_group_builder = GroupBuilder(name='untyped_group')
+        # a required untyped empty dataset builder will NOT be created by default
+        bucket_builder = GroupBuilder(
+            name='test_bucket',
+            groups={'untyped_group': untyped_group_builder},
+            attributes={'namespace': CORE_NAMESPACE,
+                        'data_type': 'BasicBucket',
+                        'object_id': bucket.object_id}
+        )
+        msg = "BasicBucket 'test_bucket' is missing required value for attribute 'untyped_dataset'."
+        # also raises "BasicBucket 'test_bucket' is missing required value for attribute 'untyped_array_dataset'."
+        with self.assertWarnsWith(MissingRequiredBuildWarning, msg):
+            builder = self.manager.build(bucket)
+        self.assertDictEqual(builder, bucket_builder)
+
+
+class TestBuildZeroOrOneUntyped(UntypedMixin, TestCase):
+    """Test building a group that has an untyped subgroup/dataset with quantity '?'.
+    """
+    def setUp(self):
+        specs = self.create_specs(ZERO_OR_ONE)
+        self.setUpManager(specs)
+
+    def test_build_data(self):
+        """Test building a container which contains an untyped empty subgroup and an untyped non-empty dataset."""
+        bucket = BasicBucket(name='test_bucket', untyped_dataset=3, untyped_array_dataset=[3])
+        # an optional untyped empty group builder will NOT be created by default
+        untyped_dataset_builder = DatasetBuilder(name='untyped_dataset', data=3)
+        untyped_array_dataset_builder = DatasetBuilder(name='untyped_array_dataset', data=[3])
+        bucket_builder = GroupBuilder(
+            name='test_bucket',
+            datasets={'untyped_dataset': untyped_dataset_builder,
+                      'untyped_array_dataset': untyped_array_dataset_builder},
+            attributes={'namespace': CORE_NAMESPACE,
+                        'data_type': 'BasicBucket',
+                        'object_id': bucket.object_id}
+        )
+        builder = self.manager.build(bucket)
+        self.assertDictEqual(builder, bucket_builder)
+
+    def test_build_empty_data(self):
+        """Test building a container which contains an untyped empty subgroup and an untyped empty dataset."""
+        bucket = BasicBucket(name='test_bucket')
+        # an optional untyped empty group builder will NOT be created by default
+        # an optional untyped empty dataset builder will NOT be created by default
+        bucket_builder = GroupBuilder(
+            name='test_bucket',
+            attributes={'namespace': CORE_NAMESPACE,
+                        'data_type': 'BasicBucket',
+                        'object_id': bucket.object_id}
+        )
+        builder = self.manager.build(bucket)
+        self.assertDictEqual(builder, bucket_builder)
+
+
+# Multiple allowed types
 
 class TestBuildMultiTypeInc(BuildQuantityMixin, TestCase):
     """Test build process when a groupspec allows multiple groups/datasets/links with different data types / targets.
