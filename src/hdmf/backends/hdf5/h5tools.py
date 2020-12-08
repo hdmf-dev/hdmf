@@ -448,7 +448,7 @@ class HDF5IO(HDMFIO):
         # currently all values in self._written_builders are True, so this could be a set but is a dict for
         # future flexibility
         builder_id = self.__builderhash(builder)
-        self._written_builders[builder_id] = True
+        self._written_builders[builder_id] = builder
 
     def get_written(self, builder):
         """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
