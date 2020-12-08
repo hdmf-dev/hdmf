@@ -541,9 +541,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
         attr_name = self.get_attribute(spec)
         if attr_name is None:
-            msg = ("%s has no container attribute mapped to spec: %s"
-                   % (self.__class__, spec))
-            raise ContainerConfigurationError(msg)
+            return None
         attr_val = self.__get_override_attr(attr_name, container, manager)
         if attr_val is None:
             try:
