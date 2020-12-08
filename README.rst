@@ -40,6 +40,9 @@ Build Status
 Overall Health
 ==============
 
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20coverage/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3A%22Run+coverage%22
+
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
 

@@ -125,8 +125,10 @@ class HDMFDataset(metaclass=ExtenderMeta):
             setattr(cls, op, cls.__build_operation(op))
 
     def __evaluate_key(self, key):
+        if isinstance(key, tuple) and len(key) == 0:
+            return key
         if isinstance(key, (tuple, list, np.ndarray)):
-            return tuple(map(self.__evaluate_key, key))
+            return list(map(self.__evaluate_key, key))
         else:
             if isinstance(key, Query):
                 return key.evaluate()
