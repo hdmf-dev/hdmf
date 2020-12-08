@@ -44,6 +44,7 @@
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
 - Add testing for Python 3.9 and using pre-release packages. @ajtritt, @rly (#459, #472)
 - Improve contributing guide. @rly (#474)
+- Update CI to be more contributor friendly. @rly (#481)
 - Add citation information to documentation and support for duecredit tool. @rly (#477, #488)
 - Add type checking and conversion in `CSRMatrix`. @rly (#485)
 - Clean up unreachable validator code. @rly (#483)
@@ -59,6 +60,7 @@
 - Clarify the validator error message when a named data type is missing. @dsleiter (#478)
 - Update documentation on validation to indicate that the example command is not implemented @dsleiter (#482)
 - Fix generated docval for classes with a LinkSpec. @rly (#478)
+- Fix access of `DynamicTableRegion` of a `DynamicTable` with column of references. @rly (#491)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
