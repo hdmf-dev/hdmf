@@ -1,9 +1,12 @@
 name: Run coverage
 on:
   push:
-    tags-ignore:
-    - latest
-    - latest-tmp
+    branches:
+    - *
+    tags:
+    - *
+    - '!latest'
+    - '!latest-tmp'
 jobs:
   run:
     runs-on: ${{ matrix.os }}
