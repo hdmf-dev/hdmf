@@ -1,15 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.0.0 (December 8, 2020)
-
-### Breaking changes
-- Drop support for Python 3.5. @ajtritt (#459)
-- Remove `hdmf.get_region_slicer` function. @ajtritt (#442)
-- Remove unused or refactored internal builder functions `GroupBuilder.add_group`, `GroupBuilder.add_dataset`,
-  `GroupBuilder.add_link`, `GroupBuilder.set_builder`, `BaseBuilder.deep_update`, `GroupBuilder.deep_update`,
-  `DatasetBuilder.deep_update`. Make `BaseBuilder` not instantiable and refactor builder code. @rly (#452)
-- Remove `hdmf.build.map.py`. Classes formerly in this file should be imported from `hdmf.build` instead. @rly (#463)
-- Replace `MissingRequiredWarning` with `MissingRequiredBuildWarning`. @rly (#463)
+## HDMF 2.3.0 (December 8, 2020)
 
 ### New features
 - Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
@@ -40,6 +31,7 @@
     - Add SimpleMultiContainer, a Container for storing other Container and Data objects together.
 
 ### Internal improvements
+- Drop support for Python 3.5. @ajtritt (#459)
 - Improve warning about cached namespace when loading namespaces from file. @rly (#422)
 - Refactor `HDF5IO.write_dataset` to be more readable. @rly (#428)
 - Fix bug in slicing tables with DynamicTableRegions. @ajtritt (#449)
@@ -50,6 +42,9 @@
 - Add type checking and conversion in `CSRMatrix`. @rly (#485)
 - Clean up unreachable validator code. @rly (#483)
 - Reformat imports. @bendichter (#469)
+- Remove unused or refactored internal builder functions `GroupBuilder.add_group`, `GroupBuilder.add_dataset`,
+  `GroupBuilder.add_link`, `GroupBuilder.set_builder`, `BaseBuilder.deep_update`, `GroupBuilder.deep_update`,
+  `DatasetBuilder.deep_update`. Make `BaseBuilder` not instantiable and refactor builder code. @rly (#452)
 
 ### Bug fixes
 - Fix development package dependency issues. @rly (#431)
