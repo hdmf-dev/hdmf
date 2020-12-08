@@ -60,6 +60,7 @@
 - Update documentation on validation to indicate that the example command is not implemented @dsleiter (#482)
 - Fix generated docval for classes with a LinkSpec. @rly (#478)
 - Fix access of `DynamicTableRegion` of a `DynamicTable` with column of references. @rly (#491)
+- Fix garbage collection issue in Python 3.9. @rly (#496)
 
 ## HDMF 2.2.0 (August 14, 2020)
 
