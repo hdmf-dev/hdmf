@@ -1,7 +1,7 @@
 from numpy import dtype
 
-from ..utils import docval, getargs
 from ..spec.spec import DtypeHelper
+from ..utils import docval, getargs
 
 __all__ = [
     "Error",
@@ -83,11 +83,15 @@ class MissingError(Error):
 class MissingDataType(Error):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'data_type', 'type': str, 'doc': 'the missing data type'},
-            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None},
+            {'name': 'missing_dt_name', 'type': str, 'doc': 'the name of the missing data type', 'default': None})
     def __init__(self, **kwargs):
-        name, data_type = getargs('name', 'data_type', kwargs)
+        name, data_type, missing_dt_name = getargs('name', 'data_type', 'missing_dt_name', kwargs)
         self.__data_type = data_type
-        reason = "missing data type %s" % self.__data_type
+        if missing_dt_name is not None:
+            reason = "missing data type %s (%s)" % (self.__data_type, missing_dt_name)
+        else:
+            reason = "missing data type %s" % self.__data_type
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
 

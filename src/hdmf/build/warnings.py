@@ -19,6 +19,20 @@ class MissingRequiredBuildWarning(BuildWarning):
     pass
 
 
+class MissingRequiredWarning(MissingRequiredBuildWarning):
+    """
+    Raised when a required field is missing.
+    """
+    pass
+
+
+class OrphanContainerWarning(BuildWarning):
+    """
+    Raised when a container is built without a parent.
+    """
+    pass
+
+
 class DtypeConversionWarning(UserWarning):
     """
     Raised when a value is converted to a different data type in order to match the specification.

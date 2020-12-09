@@ -1,11 +1,9 @@
-import re
+from abc import ABCMeta, abstractmethod
 
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ContainerConfigurationError
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
-
-from abc import ABCMeta, abstractmethod
 
 from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
 
@@ -279,24 +277,6 @@ class TestNestedContainersSubgroupSubgroup(NestedBaseMixin, TestBase):
     def test_construct(self):
         container = self.manager.construct(self.bucket_builder)
         self.assertEqual(container, self.foo_bucket)
-
-
-class TestNoMappedAttribute(TestBase):
-
-    def test_build(self):
-        """Test that an error is raised when a spec is not mapped to a container attribute."""
-        class Unmapper(ObjectMapper):
-            def __init__(self, spec):
-                super().__init__(spec)
-                self.unmap(self.spec.get_dataset('my_data'))  # remove mapping from this spec to container attribute
-
-        self.type_map.register_map(Foo, Unmapper)  # override
-
-        container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
-        msg = (r"<class '.*Unmapper'> has no container attribute mapped to spec: %s"
-               % re.escape(str(self.foo_spec.get_dataset('my_data'))))
-        with self.assertRaisesRegex(ContainerConfigurationError, msg):
-            self.manager.build(container_inst)
 
 
 class TestNoAttribute(TestBase):

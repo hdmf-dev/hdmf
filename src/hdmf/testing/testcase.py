@@ -1,16 +1,16 @@
-import re
-import unittest
 import h5py
 import numpy as np
 import os
+import re
+import unittest
 from abc import ABCMeta, abstractmethod
 
-from ..container import AbstractContainer, Container, Data
-from ..build import Builder
-from ..query import HDMFDataset
-
-from ..common import validate as common_validate, get_manager
+from .utils import remove_test_file
 from ..backends.hdf5 import HDF5IO
+from ..build import Builder
+from ..common import validate as common_validate, get_manager
+from ..container import AbstractContainer, Container, Data
+from ..query import HDMFDataset
 
 
 class TestCase(unittest.TestCase):
@@ -168,11 +168,8 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         if self.export_reader is not None:
             self.export_reader.close()
 
-        if os.getenv("CLEAN_HDMF", '1') not in ('0', 'false', 'FALSE', 'False'):
-            if os.path.exists(self.filename):
-                os.remove(self.filename)
-            if os.path.exists(self.export_filename):
-                os.remove(self.export_filename)
+        remove_test_file(self.filename)
+        remove_test_file(self.export_filename)
 
     @abstractmethod
     def setUpContainer(self):

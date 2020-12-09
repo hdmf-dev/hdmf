@@ -1,8 +1,8 @@
-import numpy as np
 from copy import copy, deepcopy
 
-from hdmf.data_utils import DataIO
+import numpy as np
 from hdmf.container import Data
+from hdmf.data_utils import DataIO
 from hdmf.testing import TestCase
 
 

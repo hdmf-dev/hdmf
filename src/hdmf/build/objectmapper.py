@@ -1,22 +1,23 @@
+import logging
 import re
-import numpy as np
 import warnings
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
-import logging
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval
-from ..container import AbstractContainer, Data, DataRegion
-from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
-from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..query import ReferenceResolver
-from ..spec.spec import BaseStorageSpec
+import numpy as np
+
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from ..container import AbstractContainer, Data, DataRegion
+from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..query import ReferenceResolver
+from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
+from ..spec.spec import BaseStorageSpec
+from ..utils import docval, getargs, ExtenderMeta, get_docval
 
 _const_arg = '__constructor_arg'
 
@@ -36,6 +37,7 @@ def _constructor_arg(**kwargs):
     def _dec(func):
         setattr(func, _const_arg, name)
         return func
+
     return _dec
 
 
@@ -58,6 +60,7 @@ def _object_attr(**kwargs):
     def _dec(func):
         setattr(func, _obj_attr, name)
         return func
+
     return _dec
 
 
@@ -148,19 +151,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
         else:
             if np.issubdtype(s, np.unsignedinteger):
                 # e.g.: given int64 and spec uint32, return uint64. given float32 and spec uint8, return uint32.
-                ret_type = np.dtype('uint' + str(int(g.itemsize*8)))
+                ret_type = np.dtype('uint' + str(int(g.itemsize * 8)))
                 warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
                                % (g.name, ret_type.name, s.name))
                 return ret_type.type, warning_msg
             if np.issubdtype(s, np.floating):
                 # e.g.: given int64 and spec float32, return float64. given uint64 and spec float32, return float32.
-                ret_type = np.dtype('float' + str(max(int(g.itemsize*8), 32)))
+                ret_type = np.dtype('float' + str(max(int(g.itemsize * 8), 32)))
                 warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
                                % (g.name, ret_type.name, s.name))
                 return ret_type.type, warning_msg
             if np.issubdtype(s, np.integer):
                 # e.g.: given float64 and spec int8, return int64. given uint32 and spec int8, return int32.
-                ret_type = np.dtype('int' + str(int(g.itemsize*8)))
+                ret_type = np.dtype('int' + str(int(g.itemsize * 8)))
                 warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
                                % (g.name, ret_type.name, s.name))
                 return ret_type.type, warning_msg
@@ -538,9 +541,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
         attr_name = self.get_attribute(spec)
         if attr_name is None:
-            msg = ("%s has no container attribute mapped to spec: %s"
-                   % (self.__class__, spec))
-            raise ContainerConfigurationError(msg)
+            return None
         attr_val = self.__get_override_attr(attr_name, container, manager)
         if attr_val is None:
             try:
@@ -645,14 +646,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret
 
     def __check_quantity(self, attr_value, spec, container):
-        # attr_value is None, AbstractContainer, or list of AbstractContainers
         if attr_value is None and spec.required:
             attr_name = self.get_attribute(spec)
             msg = ("%s '%s' is missing required value for attribute '%s'."
                    % (container.__class__.__name__, container.name, attr_name))
             warnings.warn(msg, MissingRequiredBuildWarning)
             self.logger.debug('MissingRequiredBuildWarning: ' + msg)
-        elif attr_value is not None and not isinstance(spec, AttributeSpec):
+        elif attr_value is not None and self.__get_data_type(spec) is not None:
+            # quantity is valid only for specs with a data type or target type
             if isinstance(attr_value, AbstractContainer):
                 attr_value = [attr_value]
             n = len(attr_value)
@@ -794,6 +795,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
         def _filler():
             builder.data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
+
         return _filler
 
     def __set_compound_dataset_to_refs(self, builder, spec, spec_dtype, container, build_manager):
@@ -812,6 +814,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     tmp[j] = self.__get_ref_builder(builder, subt.dtype, None, row[j], build_manager)
                 bldr_data.append(tuple(tmp))
             builder.data = bldr_data
+
         return _filler
 
     def __set_untyped_dataset_to_refs(self, builder, container, build_manager):
@@ -829,6 +832,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
             builder.data = bldr_data
+
         return _filler
 
     def __get_ref_builder(self, builder, dtype, shape, container, build_manager):
@@ -929,6 +933,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             target_builder = self.__get_target_builder(attr_value, build_manager, builder)
             ref_attr_value = ReferenceBuilder(target_builder)
             builder.set_attribute(spec.name, ref_attr_value)
+
         return _filler
 
     def __add_links(self, builder, links, container, build_manager, source, export):
@@ -1109,8 +1114,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
             # first aggregate links by data type and separate them
             # by group and dataset
-            groups = dict(builder.groups)             # make a copy so we can separate links
-            datasets = dict(builder.datasets)         # make a copy so we can separate links
+            groups = dict(builder.groups)  # make a copy so we can separate links
+            datasets = dict(builder.datasets)  # make a copy so we can separate links
             links = builder.links
             link_dt = dict()
             for link_builder in links.values():
@@ -1136,7 +1141,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
-            if (spec.shape is None and getattr(builder.data, 'shape', None) == (1, ) and
+            if (spec.shape is None and getattr(builder.data, 'shape', None) == (1,) and
                     type(builder.data[0]) != np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error

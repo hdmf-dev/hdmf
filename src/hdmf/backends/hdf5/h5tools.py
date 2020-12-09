@@ -1,24 +1,23 @@
-from collections import deque
-import numpy as np
-import os.path
-from pathlib import Path
-from functools import partial
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import logging
+import os.path
 import warnings
+from collections import deque
+from functools import partial
+from pathlib import Path
 
-from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
-from ...data_utils import AbstractDataChunkIterator
-from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
-                      ReferenceBuilder, TypeMap, ObjectMapper)
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+import numpy as np
+from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter)
-
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+                      ReferenceBuilder, TypeMap, ObjectMapper)
+from ...container import Container
+from ...data_utils import AbstractDataChunkIterator
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -446,10 +445,8 @@ class HDF5IO(HDMFIO):
         :param builder: Builder object to be marked as written
         :type builder: Builder
         """
-        # currently all values in self._written_builders are True, so this could be a set but is a dict for
-        # future flexibility
         builder_id = self.__builderhash(builder)
-        self._written_builders[builder_id] = True
+        self._written_builders[builder_id] = builder
 
     def get_written(self, builder):
         """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
@@ -460,7 +457,7 @@ class HDF5IO(HDMFIO):
         :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
         """
         builder_id = self.__builderhash(builder)
-        return self._written_builders.get(builder_id, False)
+        return builder_id in self._written_builders
 
     def __builderhash(self, obj):
         """Return the ID of a builder for use as a unique hash."""
@@ -902,8 +899,10 @@ class HDF5IO(HDMFIO):
         parent, builder = popargs('parent', 'builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    GroupBuilder '%s' is already written" % builder.name)
             group = parent[builder.name]
         else:
+            self.logger.debug("    Creating group '%s'" % builder.name)
             group = parent.create_group(builder.name)
         # write all groups
         subgroups = builder.groups
@@ -947,6 +946,7 @@ class HDF5IO(HDMFIO):
         parent, builder = getargs('parent', 'builder', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    LinkBuilder '%s' is already written" % builder.name)
             return None
         name = builder.name
         target_builder = builder.builder

@@ -34,13 +34,6 @@ references:
           # While pip installing tox does not output by default. Circle thinks task is dead after 10 min.
           no_output_timeout: 30m
       - run:
-          name: Run coverage and submit to codecov-io if COVERAGE_TOX_ENV != ""
-          command: |
-            . ../venv/bin/activate
-            if [[ "${COVERAGE_TOX_ENV}" != "" ]]; then
-              tox -e $COVERAGE_TOX_ENV
-            fi
-      - run:
           name: Build wheel and source distribution
           command: |
             . ../venv/bin/activate
@@ -131,7 +124,6 @@ jobs:
       - image: circleci/python:3.6.12-stretch
     environment:
      - TEST_TOX_ENV: "py36"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py36"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
@@ -141,7 +133,6 @@ jobs:
       - image: circleci/python:3.7.9-stretch
     environment:
      - TEST_TOX_ENV: "py37"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py37"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
@@ -151,7 +142,6 @@ jobs:
       - image: circleci/python:3.8.6-buster
     environment:
      - TEST_TOX_ENV: "py38"
-     - COVERAGE_TOX_ENV: "coverage"
      - BUILD_TOX_ENV: "build-py38"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
      - UPLOAD_WHEELS: "true"
@@ -162,7 +152,6 @@ jobs:
       - image: circleci/python:3.9.0-buster
     environment:
      - TEST_TOX_ENV: "py39"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py39"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
@@ -172,7 +161,6 @@ jobs:
       - image: circleci/python:3.8.6-buster
     environment:
      - TEST_TOX_ENV: "py38-upgrade-dev"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py38-upgrade-dev"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
@@ -182,7 +170,6 @@ jobs:
       - image: circleci/python:3.8.6-buster
     environment:
      - TEST_TOX_ENV: "py38-upgrade-dev-pre"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py38-upgrade-dev-pre"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
@@ -192,7 +179,6 @@ jobs:
       - image: circleci/python:3.6.12-stretch
     environment:
      - TEST_TOX_ENV: "py36-min-req"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py36-min-req"
      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
@@ -305,8 +291,7 @@ jobs:
                 --prerelease-sha $CIRCLE_SHA1 \
                 --prerelease-packages-clear-pattern "*" \
                 --prerelease-packages-keep-pattern "*dev<COMMIT_DISTANCE>*" \
-                --re-upload \
-                --exit-success-if-missing-token
+                --re-upload
 
   deploy-release:
     docker:
@@ -373,47 +358,26 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
-      - python36:
-          <<: *no_filters
-      - python37:
-          <<: *no_filters
       - python38:
-          <<: *no_filters
-      - python38-upgrade-dev:
           <<: *no_filters
       - python36-min-req:
           <<: *no_filters
       - miniconda36:
           <<: *no_filters
-      - miniconda37:
-          <<: *no_filters
       - miniconda38:
           <<: *no_filters
-      - gallery36:
-          <<: *no_filters
-      - gallery37:
-          <<: *no_filters
       - gallery38:
-          <<: *no_filters
-      - gallery38-upgrade-dev:
           <<: *no_filters
       - gallery36-min-req:
           <<: *no_filters
       - deploy-dev:
           requires:
             - flake8
-            - python36
-            - python37
             - python38
-            - python38-upgrade-dev
             - python36-min-req
             - miniconda36
-            - miniconda37
             - miniconda38
-            - gallery36
-            - gallery37
             - gallery38
-            - gallery38-upgrade-dev
             - gallery36-min-req
           filters:
             tags:
@@ -426,18 +390,11 @@ workflows:
       - deploy-release:
           requires:
             - flake8
-            - python36
-            - python37
             - python38
-            - python38-upgrade-dev
             - python36-min-req
             - miniconda36
-            - miniconda37
             - miniconda38
-            - gallery36
-            - gallery37
             - gallery38
-            - gallery38-upgrade-dev
             - gallery36-min-req
           filters:
             tags:
@@ -457,11 +414,39 @@ workflows:
             branches:
               only: dev
     jobs:
+      - flake8:
+          <<: *no_filters
+      - python36:
+          <<: *no_filters
+      - python37:
+          <<: *no_filters
+      - python38:
+          <<: *no_filters
       - python39:
+          <<: *no_filters
+      - python38-upgrade-dev:
+          <<: *no_filters
+      - python36-min-req:
+          <<: *no_filters
+      - miniconda36:
+          <<: *no_filters
+      - miniconda37:
+          <<: *no_filters
+      - miniconda38:
           <<: *no_filters
       - miniconda39:
           <<: *no_filters
+      - gallery36:
+          <<: *no_filters
+      - gallery37:
+          <<: *no_filters
+      - gallery38:
+          <<: *no_filters
       - gallery39:
+          <<: *no_filters
+      - gallery38-upgrade-dev:
+          <<: *no_filters
+      - gallery36-min-req:
           <<: *no_filters
       - python38-upgrade-dev-pre:
           <<: *no_filters

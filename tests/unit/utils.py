@@ -1,8 +1,7 @@
 import tempfile
 
-from hdmf.utils import docval, getargs
 from hdmf.container import Container
-
+from hdmf.utils import docval, getargs
 
 CORE_NAMESPACE = 'test_core'
 

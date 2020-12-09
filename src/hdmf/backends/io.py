@@ -2,8 +2,8 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
-from ..utils import docval, getargs, popargs
 from ..container import Container
+from ..utils import docval, getargs, popargs
 
 
 class HDMFIO(metaclass=ABCMeta):

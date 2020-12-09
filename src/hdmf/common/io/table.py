@@ -1,8 +1,8 @@
-from ...utils import docval, getargs
+from .. import register_map
+from ..table import DynamicTable, VectorIndex
 from ...build import ObjectMapper, BuildManager
 from ...spec import Spec
-from ..table import DynamicTable, VectorIndex
-from .. import register_map
+from ...utils import docval, getargs
 
 
 @register_map(DynamicTable)
@@ -37,7 +37,7 @@ class DynamicTableMap(ObjectMapper):
                 if isinstance(attr_value, VectorIndex):
                     attr_value = attr_value.target
                 if attr_value.table is None:
-                    msg = "empty or missing table for DynamicTableRegion '%s' in DynamicTable '%s'" %\
+                    msg = "empty or missing table for DynamicTableRegion '%s' in DynamicTable '%s'" % \
                           (attr_value.name, container.name)
                     raise ValueError(msg)
             elif spec.data_type_inc == 'VectorIndex':
