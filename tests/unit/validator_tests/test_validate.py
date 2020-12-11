@@ -3,11 +3,12 @@ from datetime import datetime
 
 import numpy as np
 from dateutil.tz import tzlocal
-from hdmf.build import GroupBuilder, DatasetBuilder
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, LinkSpec
+from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
-from hdmf.validate.errors import *  # noqa: F403
+from hdmf.validate.errors import DtypeError, MissingError, ExpectedArrayError, MissingDataType, IncorrectQuantityError
 
 CORE_NAMESPACE = 'test_core'
 
@@ -69,23 +70,23 @@ class TestBasicSpec(ValidatorTestBase):
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 2)
-        self.assertValidationError(result[0], MissingError, name='Bar/attr1')  # noqa: F405
-        self.assertValidationError(result[1], MissingError, name='Bar/data')  # noqa: F405
+        self.assertValidationError(result[0], MissingError, name='Bar/attr1')
+        self.assertValidationError(result[1], MissingError, name='Bar/data')
 
     def test_invalid_incorrect_type_get_validator(self):
         builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'attr1': 10})
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 2)
-        self.assertValidationError(result[0], DtypeError, name='Bar/attr1')  # noqa: F405
-        self.assertValidationError(result[1], MissingError, name='Bar/data')  # noqa: F405
+        self.assertValidationError(result[0], DtypeError, name='Bar/attr1')
+        self.assertValidationError(result[1], MissingError, name='Bar/data')
 
     def test_invalid_incorrect_type_validate(self):
         builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'attr1': 10})
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 2)
-        self.assertValidationError(result[0], DtypeError, name='Bar/attr1')  # noqa: F405
-        self.assertValidationError(result[1], MissingError, name='Bar/data')  # noqa: F405
+        self.assertValidationError(result[0], DtypeError, name='Bar/attr1')
+        self.assertValidationError(result[1], MissingError, name='Bar/data')
 
     def test_valid(self):
         builder = GroupBuilder('my_bar',
@@ -132,7 +133,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 1)
-        self.assertValidationError(result[0], DtypeError, name='Bar/time')  # noqa: F405
+        self.assertValidationError(result[0], DtypeError, name='Bar/time')
 
     def test_invalid_isodatetime_array(self):
         builder = GroupBuilder('my_bar',
@@ -145,7 +146,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 1)
-        self.assertValidationError(result[0], ExpectedArrayError, name='Bar/time_array')  # noqa: F405
+        self.assertValidationError(result[0], ExpectedArrayError, name='Bar/time_array')
 
 
 class TestNestedTypes(ValidatorTestBase):
@@ -171,7 +172,7 @@ class TestNestedTypes(ValidatorTestBase):
                                                          'foo_attr': 'example Foo object'})
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 1)
-        self.assertValidationError(results[0], MissingDataType, name='Foo',  # noqa: F405
+        self.assertValidationError(results[0], MissingDataType, name='Foo',
                                    reason='missing data type Bar (my_bar)')
 
     def test_invalid_wrong_name_req_type(self):
@@ -186,7 +187,7 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 1)
-        self.assertValidationError(results[0], MissingDataType, name='Foo')   # noqa: F405
+        self.assertValidationError(results[0], MissingDataType, name='Foo')
         self.assertEqual(results[0].data_type, 'Bar')
 
     def test_invalid_missing_unnamed_req_group(self):
@@ -200,7 +201,7 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 1)
-        self.assertValidationError(results[0], MissingDataType, name='Bar',  # noqa: F405
+        self.assertValidationError(results[0], MissingDataType, name='Bar',
                                    reason='missing data type Baz')
 
     def test_valid(self):
@@ -227,6 +228,109 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 0)
+
+
+class TestQuantityValidation(TestCase):
+
+    def create_test_specs(self, q_groups, q_datasets, q_links):
+        bar = GroupSpec('A test group', data_type_def='Bar')
+        baz = DatasetSpec('A test dataset', 'int', data_type_def='Baz')
+        qux = GroupSpec('A group to link', data_type_def='Qux')
+        foo = GroupSpec('A group containing a quantity of tests and dataasets',
+                        data_type_def='Foo',
+                        groups=[GroupSpec('A bar', data_type_inc='Bar', quantity=q_groups)],
+                        datasets=[DatasetSpec('A baz', data_type_inc='Baz', quantity=q_datasets)],
+                        links=[LinkSpec('A qux', target_type='Qux', quantity=q_links)],)
+        return (bar, foo, baz, qux)
+
+    def configure_specs(self, specs):
+        spec_catalog = SpecCatalog()
+        for spec in specs:
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def get_test_builder(self, n_groups, n_datasets, n_links):
+        child_groups = [GroupBuilder(f'bar_{n}', attributes={'data_type': 'Bar'}) for n in range(n_groups)]
+        child_datasets = [DatasetBuilder(f'baz_{n}', n, attributes={'data_type': 'Baz'}) for n in range(n_datasets)]
+        child_links = [LinkBuilder(GroupBuilder(f'qux_{n}', attributes={'data_type': 'Qux'}), f'qux_{n}_link')
+                       for n in range(n_links)]
+        return GroupBuilder('my_foo', attributes={'data_type': 'Foo'},
+                            groups=child_groups, datasets=child_datasets, links=child_links)
+
+    def test_valid_zero_or_many(self):
+        """"Verify that groups/datasets/links with ZERO_OR_MANY and a valid quantity correctly pass validation"""
+        specs = self.create_test_specs(q_groups=ZERO_OR_MANY, q_datasets=ZERO_OR_MANY, q_links=ZERO_OR_MANY)
+        self.configure_specs(specs)
+        for n in [0, 1, 2, 5]:
+            with self.subTest(quantity=n):
+                builder = self.get_test_builder(n_groups=n, n_datasets=n, n_links=n)
+                results = self.vmap.validate(builder)
+                self.assertEqual(len(results), 0)
+
+    def test_valid_one_or_many(self):
+        """"Verify that groups/datasets/links with ONE_OR_MANY and a valid quantity correctly pass validation"""
+        specs = self.create_test_specs(q_groups=ONE_OR_MANY, q_datasets=ONE_OR_MANY, q_links=ONE_OR_MANY)
+        self.configure_specs(specs)
+        for n in [1, 2, 5]:
+            with self.subTest(quantity=n):
+                builder = self.get_test_builder(n_groups=n, n_datasets=n, n_links=n)
+                results = self.vmap.validate(builder)
+                self.assertEqual(len(results), 0)
+
+    def test_valid_zero_or_one(self):
+        """"Verify that groups/datasets/links with ZERO_OR_ONE and a valid quantity correctly pass validation"""
+        specs = self.create_test_specs(q_groups=ZERO_OR_ONE, q_datasets=ZERO_OR_ONE, q_links=ZERO_OR_ONE)
+        self.configure_specs(specs)
+        for n in [0, 1]:
+            with self.subTest(quantity=n):
+                builder = self.get_test_builder(n_groups=n, n_datasets=n, n_links=n)
+                results = self.vmap.validate(builder)
+                self.assertEqual(len(results), 0)
+
+    def test_valid_fixed_quantity(self):
+        """"Verify that groups/datasets/links with a correct fixed quantity correctly pass validation"""
+        self.configure_specs(self.create_test_specs(q_groups=2, q_datasets=3, q_links=5))
+        builder = self.get_test_builder(n_groups=2, n_datasets=3, n_links=5)
+        results = self.vmap.validate(builder)
+        self.assertEqual(len(results), 0)
+
+    def test_missing_one_or_many_should_not_return_incorrect_quantity_error(self):
+        """Verify that missing ONE_OR_MANY groups/datasets/links should not return an IncorrectQuantityError"""
+        specs = self.create_test_specs(q_groups=ONE_OR_MANY, q_datasets=ONE_OR_MANY, q_links=ONE_OR_MANY)
+        self.configure_specs(specs)
+        builder = self.get_test_builder(n_groups=0, n_datasets=0, n_links=0)
+        results = self.vmap.validate(builder)
+        self.assertFalse(any(isinstance(e, IncorrectQuantityError) for e in results))
+
+    def test_missing_fixed_quantity_should_not_return_incorrect_quantity_error(self):
+        """Verify that missing groups/datasets/links should not return an IncorrectQuantityError"""
+        self.configure_specs(self.create_test_specs(q_groups=5, q_datasets=3, q_links=2))
+        builder = self.get_test_builder(0, 0, 0)
+        results = self.vmap.validate(builder)
+        self.assertFalse(any(isinstance(e, IncorrectQuantityError) for e in results))
+
+    def test_incorrect_fixed_quantity_should_return_incorrect_quantity_error(self):
+        """Verify that an incorrect quantity of groups/datasets/links should return an IncorrectQuantityError"""
+        self.configure_specs(self.create_test_specs(q_groups=5, q_datasets=5, q_links=5))
+        for n in [1, 2, 10]:
+            with self.subTest(quantity=n):
+                builder = self.get_test_builder(n_groups=n, n_datasets=n, n_links=n)
+                results = self.vmap.validate(builder)
+                self.assertEqual(len(results), 3)
+                self.assertTrue(all(isinstance(e, IncorrectQuantityError) for e in results))
+
+    def test_incorrect_zero_or_one_quantity_should_return_incorrect_quantity_error(self):
+        """Verify that an incorrect ZERO_OR_ONE quantity of groups/datasets/links should return
+        an IncorrectQuantityError
+        """
+        specs = self.create_test_specs(q_groups=ZERO_OR_ONE, q_datasets=ZERO_OR_ONE, q_links=ZERO_OR_ONE)
+        self.configure_specs(specs)
+        builder = self.get_test_builder(n_groups=2, n_datasets=2, n_links=2)
+        results = self.vmap.validate(builder)
+        self.assertEqual(len(results), 3)
+        self.assertTrue(all(isinstance(e, IncorrectQuantityError) for e in results))
 
 
 class TestDtypeValidation(TestCase):
