@@ -236,7 +236,7 @@ class TestQuantityValidation(TestCase):
         bar = GroupSpec('A test group', data_type_def='Bar')
         baz = DatasetSpec('A test dataset', 'int', data_type_def='Baz')
         qux = GroupSpec('A group to link', data_type_def='Qux')
-        foo = GroupSpec('A group containing a quantity of tests and dataasets',
+        foo = GroupSpec('A group containing a quantity of tests and datasets',
                         data_type_def='Foo',
                         groups=[GroupSpec('A bar', data_type_inc='Bar', quantity=q_groups)],
                         datasets=[DatasetSpec('A baz', data_type_inc='Baz', quantity=q_datasets)],
@@ -331,6 +331,18 @@ class TestQuantityValidation(TestCase):
         results = self.vmap.validate(builder)
         self.assertEqual(len(results), 3)
         self.assertTrue(all(isinstance(e, IncorrectQuantityError) for e in results))
+
+    def test_incorrect_quantity_error_message(self):
+        """Verify that an IncorrectQuantityError includes the expected information in the message"""
+        specs = self.create_test_specs(q_groups=2, q_datasets=ZERO_OR_MANY, q_links=ZERO_OR_MANY)
+        self.configure_specs(specs)
+        builder = self.get_test_builder(n_groups=7, n_datasets=0, n_links=0)
+        results = self.vmap.validate(builder)
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], IncorrectQuantityError)
+        message = str(results[0])
+        self.assertTrue('expected a quantity of 2' in message)
+        self.assertTrue('received 7' in message)
 
 
 class TestDtypeValidation(TestCase):
