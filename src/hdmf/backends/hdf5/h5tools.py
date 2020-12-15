@@ -1,23 +1,23 @@
-from collections import deque
-import numpy as np
-import os.path
-from functools import partial
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 import logging
+import os.path
 import warnings
+from collections import deque
+from functools import partial
+from pathlib import Path
 
-from ...container import Container
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
-from ...data_utils import AbstractDataChunkIterator
-from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
-                      ReferenceBuilder, TypeMap, ObjectMapper)
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+import numpy as np
+from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter)
-
 from ..io import HDMFIO, UnsupportedOperation
 from ..warnings import BrokenLinkWarning
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+                      ReferenceBuilder, TypeMap, ObjectMapper)
+from ...container import Container
+from ...data_utils import AbstractDataChunkIterator
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -29,7 +29,7 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 class HDF5IO(HDMFIO):
 
-    @docval({'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file'},
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
@@ -44,6 +44,9 @@ class HDF5IO(HDMFIO):
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
+
+        if isinstance(path, Path):
+            path = str(path)
 
         if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
             msg = 'You argued %s as this object\'s path, ' % path
@@ -86,7 +89,7 @@ class HDF5IO(HDMFIO):
     @classmethod
     @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': str, 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
@@ -99,6 +102,9 @@ class HDF5IO(HDMFIO):
         """
         namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
                                                                 kwargs)
+
+        if isinstance(path, Path):
+            path = str(path)
 
         if path is None and file_obj is None:
             raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
@@ -439,10 +445,8 @@ class HDF5IO(HDMFIO):
         :param builder: Builder object to be marked as written
         :type builder: Builder
         """
-        # currently all values in self._written_builders are True, so this could be a set but is a dict for
-        # future flexibility
         builder_id = self.__builderhash(builder)
-        self._written_builders[builder_id] = True
+        self._written_builders[builder_id] = builder
 
     def get_written(self, builder):
         """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
@@ -453,7 +457,7 @@ class HDF5IO(HDMFIO):
         :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
         """
         builder_id = self.__builderhash(builder)
-        return self._written_builders.get(builder_id, False)
+        return builder_id in self._written_builders
 
     def __builderhash(self, obj):
         """Return the ID of a builder for use as a unique hash."""
@@ -629,7 +633,7 @@ class HDF5IO(HDMFIO):
                     kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':    # table / compound data type
                 cpd_dt = h5obj.dtype
-                ref_cols = [check_dtype(ref=cpd_dt[i]) for i in range(len(cpd_dt))]
+                ref_cols = [check_dtype(ref=cpd_dt[i]) or check_dtype(vlen=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
                 kwargs['dtype'] = HDF5IO.__compound_dtype_to_list(h5obj.dtype, d.dtype)
             else:
@@ -780,26 +784,29 @@ class HDF5IO(HDMFIO):
         "float64": np.float64,
         "long": np.int64,
         "int64": np.int64,
-        "uint64": np.uint64,
         "int": np.int32,
         "int32": np.int32,
+        "short": np.int16,
         "int16": np.int16,
         "int8": np.int8,
+        "uint64": np.uint64,
+        "uint": np.uint32,
+        "uint32": np.uint32,
+        "uint16": np.uint16,
+        "uint8": np.uint8,
         "bool": np.bool_,
         "text": H5_TEXT,
         "utf": H5_TEXT,
         "utf8": H5_TEXT,
         "utf-8": H5_TEXT,
         "ascii": H5_BINARY,
-        "str": H5_BINARY,
-        "isodatetime": H5_TEXT,
-        "uint32": np.uint32,
-        "uint16": np.uint16,
-        "uint8": np.uint8,
+        "bytes": H5_BINARY,
         "ref": H5_REF,
         "reference": H5_REF,
         "object": H5_REF,
         "region": H5_REGREF,
+        "isodatetime": H5_TEXT,
+        "datetime": H5_TEXT,
     }
 
     @classmethod
@@ -885,8 +892,10 @@ class HDF5IO(HDMFIO):
         parent, builder = popargs('parent', 'builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    GroupBuilder '%s' is already written" % builder.name)
             group = parent[builder.name]
         else:
+            self.logger.debug("    Creating group '%s'" % builder.name)
             group = parent.create_group(builder.name)
         # write all groups
         subgroups = builder.groups
@@ -930,6 +939,7 @@ class HDF5IO(HDMFIO):
         parent, builder = getargs('parent', 'builder', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
+            self.logger.debug("    LinkBuilder '%s' is already written" % builder.name)
             return None
         name = builder.name
         target_builder = builder.builder

@@ -1,7 +1,7 @@
-from abc import ABCMeta
-from copy import deepcopy
-from collections import OrderedDict
 import re
+from abc import ABCMeta
+from collections import OrderedDict
+from copy import deepcopy
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
@@ -18,29 +18,31 @@ FLAGS = {
 }
 
 
-class DtypeHelper():
+class DtypeHelper:
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
-    # this is also used in the validator
-    # if this list is updated, also update hdmf.build.manager.TypeMap._spec_dtype_map
+    # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
+    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
+    # hdmf.validate.validator.__allowable, and backend dtype maps
+    # see https://hdmf-schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
     primary_dtype_synonyms = {
-            'float': ["float", "float32"],
-            'double': ["double", "float64"],
-            'short': ["int16", "short"],
-            'int': ["int32", "int"],
-            'long': ["int64", "long"],
-            'utf': ["text", "utf", "utf8", "utf-8"],
-            'ascii': ["ascii", "bytes"],
-            'bool': ["bool"],
-            'int8': ["int8"],
-            'uint8': ["uint8"],
-            'uint16': ["uint16"],
-            'uint32': ["uint32", "uint"],
-            'uint64': ["uint64"],
-            'object': ['object'],
-            'region': ['region'],
-            'numeric': ['numeric'],
-            'isodatetime': ["isodatetime", "datetime"]
-        }
+        'float': ["float", "float32"],
+        'double': ["double", "float64"],
+        'short': ["int16", "short"],
+        'int': ["int32", "int"],
+        'long': ["int64", "long"],
+        'utf': ["text", "utf", "utf8", "utf-8"],
+        'ascii': ["ascii", "bytes"],
+        'bool': ["bool"],
+        'int8': ["int8"],
+        'uint8': ["uint8"],
+        'uint16': ["uint16"],
+        'uint32': ["uint32", "uint"],
+        'uint64': ["uint64"],
+        'object': ['object'],
+        'region': ['region'],
+        'numeric': ['numeric'],
+        'isodatetime': ["isodatetime", "datetime"]
+    }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
     recommended_primary_dtypes = list(primary_dtype_synonyms.keys())
@@ -67,6 +69,14 @@ class DtypeHelper():
                 exp_key = exp_key.reftype
             ret.append(exp_key)
         return ret
+
+    @staticmethod
+    def check_dtype(dtype):
+        """Check that the dtype string is a reference or a valid primary dtype."""
+        if not isinstance(dtype, RefSpec) and dtype not in DtypeHelper.valid_primary_dtypes:
+            raise ValueError("dtype '%s' is not a valid primary data type. Allowed dtypes: %s"
+                             % (dtype, str(DtypeHelper.valid_primary_dtypes)))
+        return dtype
 
 
 class ConstructableDict(dict, metaclass=ABCMeta):
@@ -161,6 +171,7 @@ class Spec(ConstructableDict):
             tmp = tmp.parent
         return "/".join(reversed(stack))
 
+
 #    def __eq__(self, other):
 #        return id(self) == id(other)
 
@@ -174,7 +185,6 @@ _ref_args = [
 
 
 class RefSpec(ConstructableDict):
-
     __allowable_types = ('object', 'region')
 
     @docval(*_ref_args)
@@ -202,16 +212,16 @@ class RefSpec(ConstructableDict):
 
 
 _attr_args = [
-        {'name': 'name', 'type': str, 'doc': 'The name of this attribute'},
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'dtype', 'type': (str, RefSpec), 'doc': 'The data type of this attribute'},
-        {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
-        {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
-        {'name': 'required', 'type': bool,
-         'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
-        {'name': 'parent', 'type': 'BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
-        {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
-        {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
+    {'name': 'name', 'type': str, 'doc': 'The name of this attribute'},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'dtype', 'type': (str, RefSpec), 'doc': 'The data type of this attribute'},
+    {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
+    {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+    {'name': 'required', 'type': bool,
+     'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
+    {'name': 'parent', 'type': 'BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
+    {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
+    {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
 ]
 
 
@@ -224,14 +234,7 @@ class AttributeSpec(Spec):
         name, dtype, doc, dims, shape, required, parent, value, default_value = getargs(
             'name', 'dtype', 'doc', 'dims', 'shape', 'required', 'parent', 'value', 'default_value', kwargs)
         super().__init__(doc, name=name, required=required, parent=parent)
-        if isinstance(dtype, RefSpec):
-            self['dtype'] = dtype
-        else:
-            self['dtype'] = dtype
-            # Validate the dype string
-            if self['dtype'] not in DtypeHelper.valid_primary_dtypes:
-                raise ValueError('dtype %s not a valid primary data type %s' % (self['dtype'],
-                                                                                str(DtypeHelper.valid_primary_dtypes)))
+        self['dtype'] = DtypeHelper.check_dtype(dtype)
         if value is not None:
             self.pop('required', None)
             self['value'] = value
@@ -291,17 +294,18 @@ class AttributeSpec(Spec):
 
 
 _attrbl_args = [
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'name', 'type': str, 'doc': 'the name of this base storage container, '
-         + 'allowed only if quantity is not \'%s\' or \'%s\'' % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
-        {'name': 'default_name', 'type': str,
-         'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
-        {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-        {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-        {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-        {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
-         'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'name', 'type': str,
+     'doc': 'the name of this base storage container, allowed only if quantity is not \'%s\' or \'%s\''
+            % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
+    {'name': 'default_name', 'type': str,
+     'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
+    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
+    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
+    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
+    {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
+     'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -315,8 +319,8 @@ class BaseStorageSpec(Spec):
 
     @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc =\
-             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
+        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
+            getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with wildcard name "
                              "without specifying 'data_type_def' and/or 'data_type_inc'")
@@ -552,7 +556,7 @@ class DtypeSpec(ConstructableDict):
         doc, name, dtype = getargs('doc', 'name', 'dtype', kwargs)
         self['doc'] = doc
         self['name'] = name
-        self.assertValidDtype(dtype)
+        self.check_valid_dtype(dtype)
         self['dtype'] = dtype
 
     @property
@@ -572,17 +576,17 @@ class DtypeSpec(ConstructableDict):
 
     @staticmethod
     def assertValidDtype(dtype):
+        # Calls check_valid_dtype. This method is maintained for backwards compatibility
+        return DtypeSpec.check_valid_dtype(dtype)
+
+    @staticmethod
+    def check_valid_dtype(dtype):
         if isinstance(dtype, dict):
             if _target_type_key not in dtype:
                 msg = "'dtype' must have the key '%s'" % _target_type_key
-                raise AssertionError(msg)
-        elif isinstance(dtype, RefSpec):
-            pass
+                raise ValueError(msg)
         else:
-            if dtype not in DtypeHelper.valid_primary_dtypes:
-                msg = "'dtype=%s' string not in valid primary data type: %s " % (str(dtype),
-                                                                                 str(DtypeHelper.valid_primary_dtypes))
-                raise AssertionError(msg)
+            DtypeHelper.check_dtype(dtype)
         return True
 
     @staticmethod
@@ -609,21 +613,21 @@ class DtypeSpec(ConstructableDict):
 
 
 _dataset_args = [
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'dtype', 'type': (str, list, RefSpec),
-         'doc': 'The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.',
-         'default': None},
-        {'name': 'name', 'type': str, 'doc': 'The name of this dataset', 'default': None},
-        {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
-        {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
-        {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
-        {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-        {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-        {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-        {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
-         'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'dtype', 'type': (str, list, RefSpec),
+     'doc': 'The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.',
+     'default': None},
+    {'name': 'name', 'type': str, 'doc': 'The name of this dataset', 'default': None},
+    {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
+    {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
+    {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
+    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
+    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
+    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
+    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
+    {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
+     'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -649,17 +653,12 @@ class DatasetSpec(BaseStorageSpec):
             if isinstance(dtype, list):  # Dtype is a compound data type
                 for _i, col in enumerate(dtype):
                     if not isinstance(col, DtypeSpec):
-                        msg = 'must use DtypeSpec if defining compound dtype - found %s at element %d' % \
-                                (type(col), _i)
+                        msg = ('must use DtypeSpec if defining compound dtype - found %s at element %d'
+                               % (type(col), _i))
                         raise ValueError(msg)
-                self['dtype'] = dtype
-            elif isinstance(dtype, RefSpec):  # Dtype is a reference
-                self['dtype'] = dtype
-            else:   # Dtype is a string
-                self['dtype'] = dtype
-                if self['dtype'] not in DtypeHelper.valid_primary_dtypes:
-                    raise ValueError('dtype %s not a valid primary data type %s' %
-                                     (self['dtype'], str(DtypeHelper.valid_primary_dtypes)))
+            else:
+                DtypeHelper.check_dtype(dtype)
+            self['dtype'] = dtype
         super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value
@@ -766,7 +765,7 @@ class DatasetSpec(BaseStorageSpec):
 
 _link_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this link represents'},
-    {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
+    {'name': _target_type_key, 'type': (str, BaseStorageSpec), 'doc': 'the target type GroupSpec or DatasetSpec'},
     {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
     {'name': 'name', 'type': str, 'doc': 'the name of this link', 'default': None}
 ]
@@ -778,7 +777,14 @@ class LinkSpec(Spec):
     def __init__(self, **kwargs):
         doc, target_type, name, quantity = popargs('doc', _target_type_key, 'name', 'quantity', kwargs)
         super().__init__(doc, name, **kwargs)
-        self[_target_type_key] = target_type
+        if isinstance(target_type, BaseStorageSpec):
+            if target_type.data_type_def is None:
+                msg = ("'%s' must be a string or a GroupSpec or DatasetSpec with a '%s' key."
+                       % (_target_type_key, target_type.def_key()))
+                raise ValueError(msg)
+            self[_target_type_key] = target_type.data_type_def
+        else:
+            self[_target_type_key] = target_type
         if quantity != 1:
             self['quantity'] = quantity
 
@@ -807,18 +813,18 @@ class LinkSpec(Spec):
 
 
 _group_args = [
-        {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-        {'name': 'name', 'type': str, 'doc': 'the name of this group', 'default': None},
-        {'name': 'default_name', 'type': str, 'doc': 'The default name of this group', 'default': None},
-        {'name': 'groups', 'type': list, 'doc': 'the subgroups in this group', 'default': list()},
-        {'name': 'datasets', 'type': list, 'doc': 'the datasets in this group', 'default': list()},
-        {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-        {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
-        {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-        {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-        {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-        {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
-         'doc': 'the data type this specification data_type_inc', 'default': None},
+    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+    {'name': 'name', 'type': str, 'doc': 'the name of this group', 'default': None},
+    {'name': 'default_name', 'type': str, 'doc': 'The default name of this group', 'default': None},
+    {'name': 'groups', 'type': list, 'doc': 'the subgroups in this group', 'default': list()},
+    {'name': 'datasets', 'type': list, 'doc': 'the datasets in this group', 'default': list()},
+    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
+    {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
+    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
+    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
+    {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
+     'doc': 'the data type this specification data_type_inc', 'default': None},
 ]
 
 
@@ -896,8 +902,8 @@ class GroupSpec(BaseStorageSpec):
             self.__new_data_types.discard(dt)
             existing_dt_spec = self.get_data_type(dt)
             if existing_dt_spec is None or \
-               ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None)) and \
-               dt_spec.name is None:
+                    ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None)) and \
+                    dt_spec.name is None:
                 if isinstance(dt_spec, DatasetSpec):
                     self.set_dataset(dt_spec)
                 elif isinstance(dt_spec, GroupSpec):
@@ -1188,12 +1194,7 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.link_spec_cls().build_spec(spec)
-        if spec.name == NAME_WILDCARD:
-            if spec.data_type_inc is not None or spec.data_type_def is not None:
-                self.__add_data_type_inc(spec)
-            else:
-                raise TypeError("must specify 'name' or 'data_type_inc' in Dataset spec")
-        else:
+        if spec.name != NAME_WILDCARD:
             self.__links[spec.name] = spec
         self.setdefault('links', list()).append(spec)
         spec.parent = self

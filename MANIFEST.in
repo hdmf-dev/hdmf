@@ -1,4 +1,4 @@
-include license.txt Legal.txt versioneer.py src/hdmf/_version.py
+include license.txt Legal.txt versioneer.py src/hdmf/_version.py src/hdmf/_due.py
 include requirements.txt requirements-dev.txt requirements-doc.txt requirements-min.txt
 include test.py tox.ini
 graft tests

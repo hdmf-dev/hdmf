@@ -17,26 +17,32 @@ references:
       python -m virtualenv ../venv || python -m venv ../venv
       . ../venv/bin/activate
 
+  py39: &py39
+    image: circleci/python:3.9/0-buster
+    auth:
+      username: rly1
+      password: $DOCKERHUB_PASSWORD
+      
   py38: &py38
-    image: circleci/python:3.8.1-buster
+    image: circleci/python:3.8.6-buster
     auth:
       username: rly1
       password: $DOCKERHUB_PASSWORD
 
   py37: &py37
-    image: circleci/python:3.7.6-stretch
+    image: circleci/python:3.7.9-stretch
     auth:
       username: rly1
       password: $DOCKERHUB_PASSWORD
 
   py36: &py36
-    image: circleci/python:3.6.10-stretch
+    image: circleci/python:3.6.12-stretch
     auth:
       username: rly1
       password: $DOCKERHUB_PASSWORD
 
-  py35: &py35
-    image: circleci/python:3.5.9-stretch
+  conda-image: &conda-image
+    image: continuumio/miniconda3:4.8.2
     auth:
       username: rly1
       password: $DOCKERHUB_PASSWORD
@@ -57,13 +63,6 @@ references:
           # Install is expected to be quick. Increase timeout in case there are some network issues.
           # While pip installing tox does not output by default. Circle thinks task is dead after 10 min.
           no_output_timeout: 30m
-      - run:
-          name: Run coverage and submit to codecov-io if COVERAGE_TOX_ENV != ""
-          command: |
-            . ../venv/bin/activate
-            if [[ "${COVERAGE_TOX_ENV}" != "" ]]; then
-              tox -e $COVERAGE_TOX_ENV
-            fi
       - run:
           name: Build wheel and source distribution
           command: |
@@ -152,24 +151,13 @@ jobs:
       - run:
           <<: *run-style-check
 
-  python35:
-    docker:
-      - <<: *py35
-    environment:
-     - TEST_TOX_ENV: "py35"
-     - COVERAGE_TOX_ENV: ""
-     - BUILD_TOX_ENV: "build-py35"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py35"
-    <<: *ci-steps
-
   python36:
     docker:
       - <<: *py36
     environment:
      - TEST_TOX_ENV: "py36"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py36"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py36"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
   python37:
@@ -177,9 +165,8 @@ jobs:
       - <<: *py37
     environment:
      - TEST_TOX_ENV: "py37"
-     - COVERAGE_TOX_ENV: ""
      - BUILD_TOX_ENV: "build-py37"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py37"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
   python38:
@@ -187,80 +174,86 @@ jobs:
       - <<: *py38
     environment:
      - TEST_TOX_ENV: "py38"
-     - COVERAGE_TOX_ENV: "coverage"
      - BUILD_TOX_ENV: "build-py38"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py38"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
      - UPLOAD_WHEELS: "true"
     <<: *ci-steps
 
-  python35-min-req:
+  python39:
     docker:
-      - <<: *py35
+      - <<: *py39
     environment:
-     - TEST_TOX_ENV: "py35-min-req"
-     - COVERAGE_TOX_ENV: ""
-     - BUILD_TOX_ENV: "build-py35-min-req"
-     - TEST_WHEELINSTALL_ENV: "wheelinstall-py35-min-req"
+     - TEST_TOX_ENV: "py39"
+     - BUILD_TOX_ENV: "build-py39"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
-  miniconda35:
+  python38-upgrade-dev:
     docker:
-      - image: continuumio/miniconda3:4.3.27p0
-        auth:
-          username: rly1
-          password: $DOCKERHUB_PASSWORD
+      - <<: *py38
     environment:
-      - CONDA_PYTHON_VER: "3.5"
-      - TEST_TOX_ENV: "py35"
-      - BUILD_TOX_ENV: "build-py35"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py35"
-    <<: *conda-steps
+     - TEST_TOX_ENV: "py38-upgrade-dev"
+     - BUILD_TOX_ENV: "build-py38-upgrade-dev"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
+  python38-upgrade-dev-pre:
+    docker:
+      - <<: *py38
+    environment:
+     - TEST_TOX_ENV: "py38-upgrade-dev-pre"
+     - BUILD_TOX_ENV: "build-py38-upgrade-dev-pre"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
+  python36-min-req:
+    docker:
+      - <<: *py36
+    environment:
+     - TEST_TOX_ENV: "py36-min-req"
+     - BUILD_TOX_ENV: "build-py36-min-req"
+     - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
 
   miniconda36:
     docker:
-      - image: continuumio/miniconda3:4.7.12
-        auth:
-          username: rly1
-          password: $DOCKERHUB_PASSWORD
+      - <<: *conda-image
     environment:
       - CONDA_PYTHON_VER: "3.6"
       - TEST_TOX_ENV: "py36"
       - BUILD_TOX_ENV: "build-py36"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py36"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
   miniconda37:
     docker:
-      - image: continuumio/miniconda3:4.7.12
-        auth:
-          username: rly1
-          password: $DOCKERHUB_PASSWORD
+      - <<: *conda-image
     environment:
       - CONDA_PYTHON_VER: "3.7"
       - TEST_TOX_ENV: "py37"
       - BUILD_TOX_ENV: "build-py37"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py37"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
   miniconda38:
     docker:
-      - image: continuumio/miniconda3:4.7.12
-        auth:
-          username: rly1
-          password: $DOCKERHUB_PASSWORD
+      - <<: *conda-image
     environment:
       - CONDA_PYTHON_VER: "3.8"
       - TEST_TOX_ENV: "py38"
       - BUILD_TOX_ENV: "build-py38"
-      - TEST_WHEELINSTALL_ENV: "wheelinstall-py38"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
-  gallery35:
+  miniconda39:
     docker:
-      - <<: *py35
+      - <<: *conda-image
     environment:
-     - TEST_TOX_ENV: "gallery-py35"
-    <<: *gallery-steps
+      - CONDA_PYTHON_VER: "3.9"
+      - TEST_TOX_ENV: "py39"
+      - BUILD_TOX_ENV: "build-py39"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *conda-steps
 
   gallery36:
     docker:
@@ -283,11 +276,32 @@ jobs:
      - TEST_TOX_ENV: "gallery-py38"
     <<: *gallery-steps
 
-  gallery35-min-req:
+  gallery39:
     docker:
-      - <<: *py35
+      - <<: *py39
     environment:
-     - TEST_TOX_ENV: "gallery-py35-min-req"
+     - TEST_TOX_ENV: "gallery-py39"
+    <<: *gallery-steps
+
+  gallery38-upgrade-dev:
+    docker:
+      - <<: *py38
+    environment:
+     - TEST_TOX_ENV: "gallery-py38-upgrade-dev"
+    <<: *gallery-steps
+
+  gallery38-upgrade-dev-pre:
+    docker:
+      - <<: *py38
+    environment:
+     - TEST_TOX_ENV: "gallery-py38-upgrade-dev-pre"
+    <<: *gallery-steps
+
+  gallery36-min-req:
+    docker:
+      - <<: *py36
+    environment:
+     - TEST_TOX_ENV: "gallery-py36-min-req"
     <<: *gallery-steps
 
   deploy-dev:
@@ -309,8 +323,7 @@ jobs:
                 --prerelease-sha $CIRCLE_SHA1 \
                 --prerelease-packages-clear-pattern "*" \
                 --prerelease-packages-keep-pattern "*dev<COMMIT_DISTANCE>*" \
-                --re-upload \
-                --exit-success-if-missing-token
+                --re-upload
 
   deploy-release:
     docker:
@@ -377,51 +390,27 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
-      - python35:
-          <<: *no_filters
-      - python36:
-          <<: *no_filters
-      - python37:
-          <<: *no_filters
       - python38:
           <<: *no_filters
-      - python35-min-req:
-          <<: *no_filters
-      - miniconda35:
+      - python36-min-req:
           <<: *no_filters
       - miniconda36:
           <<: *no_filters
-      - miniconda37:
-          <<: *no_filters
       - miniconda38:
-          <<: *no_filters
-      - gallery35:
-          <<: *no_filters
-      - gallery36:
-          <<: *no_filters
-      - gallery37:
           <<: *no_filters
       - gallery38:
           <<: *no_filters
-      - gallery35-min-req:
+      - gallery36-min-req:
           <<: *no_filters
       - deploy-dev:
           requires:
             - flake8
-            - python35
-            - python36
-            - python37
             - python38
-            - python35-min-req
-            - miniconda35
+            - python36-min-req
             - miniconda36
-            - miniconda37
             - miniconda38
-            - gallery35
-            - gallery36
-            - gallery37
             - gallery38
-            - gallery35-min-req
+            - gallery36-min-req
           filters:
             tags:
               ignore:
@@ -435,20 +424,12 @@ workflows:
       - deploy-release:
           requires:
             - flake8
-            - python35
-            - python36
-            - python37
             - python38
-            - python35-min-req
-            - miniconda35
+            - python36-min-req
             - miniconda36
-            - miniconda37
             - miniconda38
-            - gallery35
-            - gallery36
-            - gallery37
             - gallery38
-            - gallery35-min-req
+            - gallery36-min-req
           filters:
             tags:
               only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
@@ -462,3 +443,50 @@ workflows:
               ignore: dev
           context:
             - docker-hub-creds
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 5 * * *"
+          filters:
+            branches:
+              only: dev
+    jobs:
+      - flake8:
+          <<: *no_filters
+      - python36:
+          <<: *no_filters
+      - python37:
+          <<: *no_filters
+      - python38:
+          <<: *no_filters
+      - python39:
+          <<: *no_filters
+      - python38-upgrade-dev:
+          <<: *no_filters
+      - python36-min-req:
+          <<: *no_filters
+      - miniconda36:
+          <<: *no_filters
+      - miniconda37:
+          <<: *no_filters
+      - miniconda38:
+          <<: *no_filters
+      - miniconda39:
+          <<: *no_filters
+      - gallery36:
+          <<: *no_filters
+      - gallery37:
+          <<: *no_filters
+      - gallery38:
+          <<: *no_filters
+      - gallery39:
+          <<: *no_filters
+      - gallery38-upgrade-dev:
+          <<: *no_filters
+      - gallery36-min-req:
+          <<: *no_filters
+      - python38-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery38-upgrade-dev-pre:
+          <<: *no_filters

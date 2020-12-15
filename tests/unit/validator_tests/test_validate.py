@@ -1,13 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
-from dateutil.tz import tzlocal
-import numpy as np
 
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
+import numpy as np
+from dateutil.tz import tzlocal
 from hdmf.build import GroupBuilder, DatasetBuilder
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace
+from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import *  # noqa: F403
-from hdmf.testing import TestCase
 
 CORE_NAMESPACE = 'test_core'
 
@@ -25,6 +25,14 @@ class ValidatorTestBase(TestCase, metaclass=ABCMeta):
     @abstractmethod
     def getSpecs(self):
         pass
+
+    def assertValidationError(self, error, type_, name=None, reason=None):
+        """Assert that a validation Error matches expectations"""
+        self.assertIsInstance(error, type_)
+        if name is not None:
+            self.assertEqual(error.name, name)
+        if reason is not None:
+            self.assertEqual(error.reason, reason)
 
 
 class TestEmptySpec(ValidatorTestBase):
@@ -61,29 +69,23 @@ class TestBasicSpec(ValidatorTestBase):
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 2)
-        self.assertIsInstance(result[0], MissingError)  # noqa: F405
-        self.assertEqual(result[0].name, 'Bar/attr1')
-        self.assertIsInstance(result[1], MissingError)  # noqa: F405
-        self.assertEqual(result[1].name, 'Bar/data')
+        self.assertValidationError(result[0], MissingError, name='Bar/attr1')  # noqa: F405
+        self.assertValidationError(result[1], MissingError, name='Bar/data')  # noqa: F405
 
     def test_invalid_incorrect_type_get_validator(self):
         builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'attr1': 10})
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 2)
-        self.assertIsInstance(result[0], DtypeError)  # noqa: F405
-        self.assertEqual(result[0].name, 'Bar/attr1')
-        self.assertIsInstance(result[1], MissingError)  # noqa: F405
-        self.assertEqual(result[1].name, 'Bar/data')
+        self.assertValidationError(result[0], DtypeError, name='Bar/attr1')  # noqa: F405
+        self.assertValidationError(result[1], MissingError, name='Bar/data')  # noqa: F405
 
     def test_invalid_incorrect_type_validate(self):
         builder = GroupBuilder('my_bar', attributes={'data_type': 'Bar', 'attr1': 10})
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 2)
-        self.assertIsInstance(result[0], DtypeError)  # noqa: F405
-        self.assertEqual(result[0].name, 'Bar/attr1')
-        self.assertIsInstance(result[1], MissingError)  # noqa: F405
-        self.assertEqual(result[1].name, 'Bar/data')
+        self.assertValidationError(result[0], DtypeError, name='Bar/attr1')  # noqa: F405
+        self.assertValidationError(result[1], MissingError, name='Bar/data')  # noqa: F405
 
     def test_valid(self):
         builder = GroupBuilder('my_bar',
@@ -130,8 +132,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(result[0], DtypeError)  # noqa: F405
-        self.assertEqual(result[0].name, 'Bar/time')
+        self.assertValidationError(result[0], DtypeError, name='Bar/time')  # noqa: F405
 
     def test_invalid_isodatetime_array(self):
         builder = GroupBuilder('my_bar',
@@ -144,18 +145,17 @@ class TestDateTimeInSpec(ValidatorTestBase):
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 1)
-        self.assertIsInstance(result[0], ExpectedArrayError)  # noqa: F405
-        self.assertEqual(result[0].name, 'Bar/time_array')
+        self.assertValidationError(result[0], ExpectedArrayError, name='Bar/time_array')  # noqa: F405
 
 
 class TestNestedTypes(ValidatorTestBase):
 
     def getSpecs(self):
+        baz = DatasetSpec('A dataset with a data type', 'int', data_type_def='Baz',
+                          attributes=[AttributeSpec('attr2', 'an example integer attribute', 'int')])
         bar = GroupSpec('A test group specification with a data type',
                         data_type_def='Bar',
-                        datasets=[DatasetSpec('an example dataset', 'int', name='data',
-                                              attributes=[AttributeSpec('attr2', 'an example integer attribute',
-                                                                        'int')])],
+                        datasets=[DatasetSpec('an example dataset', data_type_inc='Baz')],
                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         foo = GroupSpec('A test group that contains a data type',
                         data_type_def='Foo',
@@ -163,17 +163,19 @@ class TestNestedTypes(ValidatorTestBase):
                         attributes=[AttributeSpec('foo_attr', 'a string attribute specified as text', 'text',
                                                   required=False)])
 
-        return (bar, foo)
+        return (bar, foo, baz)
 
-    def test_invalid_missing_req_group(self):
+    def test_invalid_missing_named_req_group(self):
+        """Test that a MissingDataType is returned when a required named nested data type is missing."""
         foo_builder = GroupBuilder('my_foo', attributes={'data_type': 'Foo',
                                                          'foo_attr': 'example Foo object'})
         results = self.vmap.validate(foo_builder)
-        self.assertIsInstance(results[0], MissingDataType)  # noqa: F405
-        self.assertEqual(results[0].name, 'Foo')
-        self.assertEqual(results[0].reason, 'missing data type Bar')
+        self.assertEqual(len(results), 1)
+        self.assertValidationError(results[0], MissingDataType, name='Foo',  # noqa: F405
+                                   reason='missing data type Bar (my_bar)')
 
     def test_invalid_wrong_name_req_type(self):
+        """Test that a MissingDataType is returned when a required nested data type is given the wrong name."""
         bar_builder = GroupBuilder('bad_bar_name',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
@@ -184,13 +186,28 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 1)
-        self.assertIsInstance(results[0], MissingDataType)  # noqa: F405
+        self.assertValidationError(results[0], MissingDataType, name='Foo')   # noqa: F405
         self.assertEqual(results[0].data_type, 'Bar')
 
+    def test_invalid_missing_unnamed_req_group(self):
+        """Test that a MissingDataType is returned when a required unnamed nested data type is missing."""
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'})
+
+        foo_builder = GroupBuilder('my_foo',
+                                   attributes={'data_type': 'Foo', 'foo_attr': 'example Foo object'},
+                                   groups=[bar_builder])
+
+        results = self.vmap.validate(foo_builder)
+        self.assertEqual(len(results), 1)
+        self.assertValidationError(results[0], MissingDataType, name='Bar',  # noqa: F405
+                                   reason='missing data type Baz')
+
     def test_valid(self):
+        """Test that no errors are returned when nested data types are correctly built."""
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
-                                   datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
+                                   datasets=[DatasetBuilder('data', 100, attributes={'data_type': 'Baz', 'attr2': 10})])
 
         foo_builder = GroupBuilder('my_foo',
                                    attributes={'data_type': 'Foo', 'foo_attr': 'example Foo object'},
@@ -200,9 +217,10 @@ class TestNestedTypes(ValidatorTestBase):
         self.assertEqual(len(results), 0)
 
     def test_valid_wo_opt_attr(self):
+        """"Test that no errors are returned when an optional attribute is omitted from a group."""
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
-                                   datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
+                                   datasets=[DatasetBuilder('data', 100, attributes={'data_type': 'Baz', 'attr2': 10})])
         foo_builder = GroupBuilder('my_foo',
                                    attributes={'data_type': 'Foo'},
                                    groups=[bar_builder])

@@ -1,19 +1,20 @@
-from copy import copy
-from collections.abc import Iterable
+import json
+import os
+import warnings
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
+from copy import copy
+
+import numpy as np
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
-import json
-import numpy as np
-import warnings
-import os
 
-from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 
 
 class H5Dataset(HDMFDataset):
@@ -119,6 +120,11 @@ class AbstractH5TableDataset(DatasetOfReferences):
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
                 self.__refgetters[i] = self._get_ref
+            elif t is str:
+                # we need this for when we read compound data types
+                # that have unicode sub-dtypes since h5py does not
+                # store UTF-8 in compound dtypes
+                self.__refgetters[i] = self._get_utf
         self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
@@ -161,6 +167,12 @@ class AbstractH5TableDataset(DatasetOfReferences):
         for i in self.__refgetters:
             getref = self.__refgetters[i]
             row[i] = getref(row[i])
+
+    def _get_utf(self, string):
+        """
+        Decode a dataset element to unicode
+        """
+        return string.decode('utf-8') if isinstance(string, bytes) else string
 
     def __get_regref(self, ref):
         obj = self._get_ref(ref)

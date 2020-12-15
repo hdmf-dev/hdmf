@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
+
 import numpy as np
 
-from .utils import ExtenderMeta, docval_macro, docval, getargs
 from .array import Array
+from .utils import ExtenderMeta, docval_macro, docval, getargs
 
 
 class Query(metaclass=ExtenderMeta):
-
     __operations__ = (
         '__lt__',
         '__gt__',
@@ -27,7 +27,7 @@ class Query(metaclass=ExtenderMeta):
             raise TypeError("'__operations__' must be of type tuple")
         # add any new operations
         if len(bases) and 'Query' in globals() and issubclass(bases[-1], Query) \
-           and bases[-1].__operations__ is not cls.__operations__:
+                and bases[-1].__operations__ is not cls.__operations__:
             new_operations = list(cls.__operations__)
             new_operations[0:0] = bases[-1].__operations__
             cls.__operations__ = tuple(new_operations)
@@ -94,7 +94,6 @@ class Query(metaclass=ExtenderMeta):
 
 @docval_macro('array_data')
 class HDMFDataset(metaclass=ExtenderMeta):
-
     __operations__ = (
         '__lt__',
         '__gt__',
@@ -108,6 +107,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
     def __build_operation(cls, op):
         def __func(self, arg):
             return Query(self, op, arg)
+
         setattr(__func, '__name__', op)
         return __func
 
@@ -117,7 +117,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
             raise TypeError("'__operations__' must be of type tuple")
         # add any new operations
         if len(bases) and 'Query' in globals() and issubclass(bases[-1], Query) \
-           and bases[-1].__operations__ is not cls.__operations__:
+                and bases[-1].__operations__ is not cls.__operations__:
             new_operations = list(cls.__operations__)
             new_operations[0:0] = bases[-1].__operations__
             cls.__operations__ = tuple(new_operations)
@@ -125,8 +125,10 @@ class HDMFDataset(metaclass=ExtenderMeta):
             setattr(cls, op, cls.__build_operation(op))
 
     def __evaluate_key(self, key):
+        if isinstance(key, tuple) and len(key) == 0:
+            return key
         if isinstance(key, (tuple, list, np.ndarray)):
-            return tuple(map(self.__evaluate_key, key))
+            return list(map(self.__evaluate_key, key))
         else:
             if isinstance(key, Query):
                 return key.evaluate()
