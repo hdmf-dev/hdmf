@@ -219,7 +219,7 @@ jobs:
     docker:
       - <<: *conda-image
     environment:
-      - CONDA_PYTHON_VER: "3.6"
+      - CONDA_PYTHON_VER: "3.6.*=*_cpython"  # avoid using pypy compiler
       - TEST_TOX_ENV: "py36"
       - BUILD_TOX_ENV: "build-py36"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
