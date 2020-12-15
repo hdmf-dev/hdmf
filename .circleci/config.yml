@@ -231,7 +231,7 @@ jobs:
     <<: *conda-steps
 
   miniconda38:
-    - <<: *conda-image
+    <<: *conda-image
     environment:
       - CONDA_PYTHON_VER: "3.8"
       - TEST_TOX_ENV: "py38"
