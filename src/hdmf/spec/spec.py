@@ -378,7 +378,7 @@ class BaseStorageSpec(Spec):
     def resolve_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
         for attribute in inc_spec.attributes:
-            self.__new_attributes.discard(attribute)
+            self.__new_attributes.discard(attribute.name)
             if attribute.name in self.__attributes:
                 self.__overridden_attributes.add(attribute.name)
                 continue
@@ -426,7 +426,7 @@ class BaseStorageSpec(Spec):
         name = getargs('name', kwargs)
         if name not in self.__attributes:
             raise ValueError("Attribute '%s' not found" % name)
-        return name not in self.__overridden_attributes
+        return name in self.__overridden_attributes
 
     def is_many(self):
         return self.quantity not in (1, ZERO_OR_ONE)
