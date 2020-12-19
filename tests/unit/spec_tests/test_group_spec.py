@@ -42,7 +42,6 @@ class GroupSpecTests(TestCase):
             GroupSpec('A test subgroup',
                       name='subgroup2',
                       linkable=False)
-
         ]
         self.ndt_attr_spec = AttributeSpec('data_type', 'the data type of this object', 'text', value='EphysData')
         self.ns_attr_spec = AttributeSpec('namespace', 'the namespace for the data type of this object',
@@ -204,9 +203,10 @@ class GroupSpecTests(TestCase):
     def test_update_attribute_spec(self):
         spec = GroupSpec('A test group',
                          name='root_constructor',
-                         attributes=[AttributeSpec('attribute1', 'my first attribute', 'text'), ])
-        spec.set_attribute(AttributeSpec('attribute1', 'my first attribute', 'int', value=5))
-        res = spec.get_attribute('attribute1')
+                         attributes=[AttributeSpec('attribute1', 'my first attribute', 'text'),
+                                     AttributeSpec('attribute2', 'my second attribute', 'text')])
+        spec.set_attribute(AttributeSpec('attribute2', 'my second attribute', 'int', value=5))
+        res = spec.get_attribute('attribute2')
         self.assertEqual(res.value, 5)
         self.assertEqual(res.dtype, 'int')
 
@@ -252,3 +252,101 @@ class GroupSpecTests(TestCase):
                       groups=[subgroup])
 
         self.assertEqual(attribute.path, 'root/GroupType/DatasetType/attribute1')
+
+    def test_get_data_type_spec(self):
+        expected = AttributeSpec('data_type', 'the data type of this object', 'text', value='MyType')
+        self.assertDictEqual(GroupSpec.get_data_type_spec('MyType'), expected)
+
+    def test_get_namespace_spec(self):
+        expected = AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
+        self.assertDictEqual(GroupSpec.get_namespace_spec(), expected)
+
+
+class TestNotAllowedConfig(TestCase):
+
+    def test_no_name_no_def_no_inc(self):
+        msg = ("Cannot create Group or Dataset spec with no name without specifying 'data_type_def' "
+               "and/or 'data_type_inc'.")
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec('A test group')
+
+    def test_name_with_multiple(self):
+        msg = ("Cannot give specific name to something that can exist multiple times: name='MyGroup', quantity='*'")
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec('A test group', name='MyGroup', quantity='*')
+
+
+class TestResolveAttrs(TestCase):
+
+    def setUp(self):
+        self.def_group_spec = GroupSpec(
+            doc='A test group',
+            name='root',
+            data_type_def='MyGroup',
+            attributes=[AttributeSpec('attribute1', 'my first attribute', 'text'),
+                        AttributeSpec('attribute2', 'my second attribute', 'text')]
+        )
+        self.inc_group_spec = GroupSpec(
+            doc='A test group',
+            name='root',
+            data_type_inc='MyGroup',
+            attributes=[AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'),
+                        AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed')]
+        )
+        self.inc_group_spec.resolve_spec(self.def_group_spec)
+
+    def test_resolved(self):
+        self.assertTupleEqual(self.inc_group_spec.attributes, (
+            AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'),
+            AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed'),
+            AttributeSpec('attribute1', 'my first attribute', 'text')
+        ))
+
+        self.assertEqual(self.inc_group_spec.get_attribute('attribute1'),
+                         AttributeSpec('attribute1', 'my first attribute', 'text'))
+        self.assertEqual(self.inc_group_spec.get_attribute('attribute2'),
+                         AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'))
+        self.assertEqual(self.inc_group_spec.get_attribute('attribute3'),
+                         AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed'))
+
+        self.assertTrue(self.inc_group_spec.resolved)
+
+    def test_is_inherited_spec(self):
+        self.assertFalse(self.def_group_spec.is_inherited_spec('attribute1'))
+        self.assertFalse(self.def_group_spec.is_inherited_spec('attribute2'))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec(
+            AttributeSpec('attribute1', 'my first attribute', 'text')
+        ))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec('attribute1'))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec('attribute2'))
+        self.assertFalse(self.inc_group_spec.is_inherited_spec('attribute3'))
+        self.assertFalse(self.inc_group_spec.is_inherited_spec('attribute4'))
+
+    def test_is_overridden_spec(self):
+        self.assertFalse(self.def_group_spec.is_overridden_spec('attribute1'))
+        self.assertFalse(self.def_group_spec.is_overridden_spec('attribute2'))
+        self.assertFalse(self.inc_group_spec.is_overridden_spec(
+            AttributeSpec('attribute1', 'my first attribute', 'text')
+        ))
+        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute1'))
+        self.assertTrue(self.inc_group_spec.is_overridden_spec('attribute2'))
+        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute3'))
+        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute4'))
+
+    def test_is_inherited_attribute(self):
+        self.assertFalse(self.def_group_spec.is_inherited_attribute('attribute1'))
+        self.assertFalse(self.def_group_spec.is_inherited_attribute('attribute2'))
+        self.assertTrue(self.inc_group_spec.is_inherited_attribute('attribute1'))
+        self.assertTrue(self.inc_group_spec.is_inherited_attribute('attribute2'))
+        self.assertFalse(self.inc_group_spec.is_inherited_attribute('attribute3'))
+        with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
+            self.inc_group_spec.is_inherited_attribute('attribute4')
+
+    def test_is_overridden_attribute(self):
+        self.assertFalse(self.def_group_spec.is_overridden_attribute('attribute1'))
+        self.assertFalse(self.def_group_spec.is_overridden_attribute('attribute2'))
+        self.assertFalse(self.inc_group_spec.is_overridden_attribute('attribute1'))
+        self.assertTrue(self.inc_group_spec.is_overridden_attribute('attribute2'))
+        self.assertFalse(self.inc_group_spec.is_overridden_attribute('attribute3'))
+        with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
+            self.inc_group_spec.is_overridden_attribute('attribute4')
