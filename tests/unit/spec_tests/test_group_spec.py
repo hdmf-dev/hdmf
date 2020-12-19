@@ -85,6 +85,14 @@ class GroupSpecTests(TestCase):
         self.assertIsNone(spec.data_type_inc)
         json.dumps(spec)
 
+    def test_set_parent_exists(self):
+        GroupSpec('A test group',
+                  name='root_constructor',
+                  groups=self.subgroups)
+        msg = 'Cannot re-assign parent.'
+        with self.assertRaisesWith(AttributeError, msg):
+            self.subgroups[0].parent = self.subgroups[1]
+
     def test_set_dataset(self):
         spec = GroupSpec('A test group',
                          name='root_test_set_dataset',

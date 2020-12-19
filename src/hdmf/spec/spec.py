@@ -91,19 +91,12 @@ class ConstructableDict(dict, metaclass=ABCMeta):
         ''' Build a Spec object from the given Spec dict '''
         # main use cases are when spec_dict is a ConstructableDict or a spec dict read from a file
         vargs = cls.build_const_args(spec_dict)
-        args = list()
         kwargs = dict()
-        try:
-            for x in get_docval(cls.__init__):
-                if not x['name'] in vargs:
-                    continue
-                if 'default' not in x:
-                    args.append(vargs.get(x['name']))
-                else:
-                    kwargs[x['name']] = vargs.get(x['name'])
-        except KeyError as e:
-            raise KeyError("'%s' not found in %s" % (e.args[0], str(spec_dict)))
-        return cls(*args, **kwargs)
+        # iterate through the Spec docval and construct kwargs based on matching values in spec_dict
+        for x in get_docval(cls.__init__):
+            if x['name'] in vargs:
+                kwargs[x['name']] = vargs.get(x['name'])
+        return cls(**kwargs)
 
 
 class Spec(ConstructableDict):
@@ -117,10 +110,9 @@ class Spec(ConstructableDict):
     def __init__(self, **kwargs):
         name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
         super().__init__()
+        self['doc'] = doc
         if name is not None:
             self['name'] = name
-        if doc is not None:
-            self['doc'] = doc
         if not required:
             self['required'] = required
         self._parent = parent
@@ -144,16 +136,13 @@ class Spec(ConstructableDict):
     def parent(self, spec):
         ''' Set the parent of this specification '''
         if self._parent is not None:
-            raise Exception('Cannot re-assign parent')
+            raise AttributeError('Cannot re-assign parent.')
         self._parent = spec
 
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
         ret = super().build_const_args(spec_dict)
-        if 'doc' not in ret:
-            msg = "'doc' missing: %s" % str(spec_dict)
-            raise ValueError(msg)
         return ret
 
     def __hash__(self):
@@ -289,9 +278,8 @@ class AttributeSpec(Spec):
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
         ret = super().build_const_args(spec_dict)
-        if 'dtype' in ret:
-            if isinstance(ret['dtype'], dict):
-                ret['dtype'] = RefSpec.build_spec(ret['dtype'])
+        if isinstance(ret['dtype'], dict):
+            ret['dtype'] = RefSpec.build_spec(ret['dtype'])
         return ret
 
 
