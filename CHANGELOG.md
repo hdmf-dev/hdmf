@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 2.4.0 (Upcoming)
+
+### Internal improvements
+- Update CI. @rly (#432)
+
 ## HDMF 2.3.0 (December 8, 2020)
 
 ### New features
