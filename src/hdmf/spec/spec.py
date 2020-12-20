@@ -468,7 +468,8 @@ class BaseStorageSpec(Spec):
     def type_key(cls):
         ''' Get the key used to store data type on an instance
 
-        Override this method to use a different name for 'data_type'
+        Override this method to use a different name for 'data_type'. HDMF supports combining schema
+        that uses 'data_type' and at most one different name for 'data_type'.
         '''
         return cls.__type_key
 
@@ -476,7 +477,8 @@ class BaseStorageSpec(Spec):
     def inc_key(cls):
         ''' Get the key used to define a data_type include.
 
-        Override this method to use a different keyword for 'data_type_inc'
+        Override this method to use a different keyword for 'data_type_inc'. HDMF supports combining schema
+        that uses 'data_type_inc' and at most one different name for 'data_type_inc'.
         '''
         return cls.__inc_key
 
@@ -484,7 +486,8 @@ class BaseStorageSpec(Spec):
     def def_key(cls):
         ''' Get the key used to define a data_type definition.
 
-        Override this method to use a different keyword for 'data_type_def'
+        Override this method to use a different keyword for 'data_type_def' HDMF supports combining schema
+        that uses 'data_type_def' and at most one different name for 'data_type_def'.
         '''
         return cls.__def_key
 

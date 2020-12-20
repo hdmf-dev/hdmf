@@ -399,7 +399,9 @@ class NamespaceCatalog:
         return ret
 
     def __convert_spec_cls_keys(self, parent_cls, spec_cls, spec_dict):
-        """Replace instances of data_type_def/inc from the spec parent_cls with new values from spec_cls."""
+        """Replace instances of data_type_def/inc in spec_dict with new values from spec_cls."""
+        # this is necessary because the def_key and inc_key may be different in each namespace
+        # NOTE: this does not handle more than one custom set of keys
         if parent_cls.def_key() in spec_dict:
             spec_dict[spec_cls.def_key()] = spec_dict.pop(parent_cls.def_key())
         if parent_cls.inc_key() in spec_dict:
@@ -431,7 +433,7 @@ class NamespaceCatalog:
         included_types = dict()
         for s in namespace['schema']:
             # types_key may be different in each spec namespace, so check both the __spec_namespace_cls types key
-            # and the parent SpecNamespace types key. TODO: account for more than these two?
+            # and the parent SpecNamespace types key. NOTE: this does not handle more than one custom types key
             types_to_load = s.get(self.__spec_namespace_cls.types_key(), s.get(SpecNamespace.types_key()))
             if types_to_load is not None:  # schema specifies specific types from 'source' or 'namespace'
                 types_to_load = set(types_to_load)
