@@ -4,7 +4,6 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
-from itertools import chain
 from warnings import warn
 
 import ruamel.yaml as yaml
