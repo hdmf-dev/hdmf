@@ -176,8 +176,8 @@ class HDF5IO(HDMFIO):
 
         Args:
             deps (dict): a dictionary that maps a namespace name to a list of name of
-                         the namespaces on which the the namespace is directly dependent
-                         Example: {'a': ['b', 'c'], 'b': ['d'], c: ['d'], 'd': []}
+                         the namespaces on which the namespace is directly dependent
+                         Example: {'a': ['b', 'c'], 'b': ['d'], 'c': ['d'], 'd': []}
                          Expected output: ['d', 'b', 'c', 'a']
         """
         order = list()
