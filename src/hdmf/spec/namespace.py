@@ -426,7 +426,7 @@ class NamespaceCatalog:
 
     def __load_namespace(self, namespace, reader, resolve=True):
         ns_name = namespace['name']
-        if ns_name in self.__namespaces:
+        if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
         catalog = SpecCatalog()
         included_types = dict()
@@ -457,6 +457,8 @@ class NamespaceCatalog:
                         spec = self.group_spec_cls.build_spec(spec)
                     catalog.register_spec(spec, spec_file)
                 included_types[s['namespace']] = tuple(types_to_load)
+            else:
+                raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
         # construct namespace
         ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
         self.__namespaces[ns_name] = ns
