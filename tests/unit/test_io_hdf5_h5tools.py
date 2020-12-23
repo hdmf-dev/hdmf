@@ -2053,12 +2053,20 @@ class TestLoadNamespaces(TestCase):
             io.write(foofile)
 
         with h5py.File(self.path, mode='r+') as f:
+            # add two types where one extends the other and overrides an attribute
+            # check that the inherited attribute resolves correctly despite having a different def/inc key than those
+            # used in the namespace catalog
+            added_types = (',{"data_type_def":"BigFoo","data_type_inc":"Foo","doc":"doc","attributes":['
+                           '{"name":"my_attr","dtype":"text","doc":"an attr"}]},'
+                           '{"data_type_def":"BiggerFoo","data_type_inc":"BigFoo","doc":"doc"}]}')
+            old_test_source = f['/specifications/test_core/0.1.0/test']
+            old_test_source[()] = old_test_source[()][0:-2] + added_types  # strip the ]} from end, then add to groups
             new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":['
                       '{"namespace":"test_core","my_data_types":["Foo"]},'
-                      '{"doc":"my doc","source":"test-ext.extensions","title":"ext"}'
+                      '{"source":"test-ext.extensions"}'
                       '],"name":"test-ext","version":"0.1.0"}]}')
             f.create_dataset('/specifications/test-ext/0.1.0/namespace', data=new_ns)
-            new_ext = ('{"groups":[{"my_data_type_def":"FooExt","my_data_type_inc":"Foo","doc":"doc"}]}')
+            new_ext = '{"groups":[{"my_data_type_def":"FooExt","my_data_type_inc":"Foo","doc":"doc"}]}'
             f.create_dataset('/specifications/test-ext/0.1.0/test-ext.extensions', data=new_ext)
 
         # load the namespace from file
@@ -2080,8 +2088,12 @@ class TestLoadNamespaces(TestCase):
         self.assertTrue('my_data_type_inc' in foo_ext_spec)
 
         # test that the data_type_def is replaced with my_data_type_def for test_core ns
-        foo_spec = ns_catalog.get_spec('test_core', 'Foo')
-        self.assertTrue('my_data_type_def' in foo_spec)
+        bigger_foo_spec = ns_catalog.get_spec('test_core', 'BiggerFoo')
+        self.assertTrue('my_data_type_def' in bigger_foo_spec)
+        self.assertTrue('my_data_type_inc' in bigger_foo_spec)
+
+        # test that my_attr is properly inherited in BiggerFoo from BigFoo and attr1, attr3 are inherited from Foo
+        self.assertTrue(len(bigger_foo_spec.attributes) == 3)
 
 
 class TestExport(TestCase):
