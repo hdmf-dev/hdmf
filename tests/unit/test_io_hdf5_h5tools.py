@@ -24,7 +24,8 @@ from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZER
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
+from tests.unit.utils import (Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath, CustomGroupSpec, CustomDatasetSpec,
+                              CustomSpecNamespace)
 
 
 class FooFile(Container):
@@ -2040,6 +2041,47 @@ class TestLoadNamespaces(TestCase):
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
         self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
+
+    def test_load_namespaces_resolve_custom_deps(self):
+        """Test that reading a file with a cached namespace and different def/inc keys works."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with h5py.File(self.path, mode='r+') as f:
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":['
+                      '{"namespace":"test_core","my_data_types":["Foo"]},'
+                      '{"doc":"my doc","source":"test-ext.extensions","title":"ext"}'
+                      '],"name":"test-ext","version":"0.1.0"}]}')
+            f.create_dataset('/specifications/test-ext/0.1.0/namespace', data=new_ns)
+            new_ext = ('{"groups":[{"my_data_type_def":"FooExt","my_data_type_inc":"Foo","doc":"doc"}]}')
+            f.create_dataset('/specifications/test-ext/0.1.0/test-ext.extensions', data=new_ext)
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog(CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+        namespace_deps = HDF5IO.load_namespaces(ns_catalog, self.path)
+
+        # test that the dependencies are correct
+        expected = ('Foo',)
+        self.assertTupleEqual((namespace_deps['test-ext']['test_core']), expected)
+
+        # test that the types are loaded
+        types = ns_catalog.get_types('test-ext.extensions')
+        expected = ('FooExt',)
+        self.assertTupleEqual(types, expected)
+
+        # test that the def_key is updated for test-ext ns
+        foo_ext_spec = ns_catalog.get_spec('test-ext', 'FooExt')
+        self.assertTrue('my_data_type_def' in foo_ext_spec)
+        self.assertTrue('my_data_type_inc' in foo_ext_spec)
+
+        # test that the data_type_def is replaced with my_data_type_def for test_core ns
+        foo_spec = ns_catalog.get_spec('test_core', 'Foo')
+        self.assertTrue('my_data_type_def' in foo_spec)
 
 
 class TestExport(TestCase):

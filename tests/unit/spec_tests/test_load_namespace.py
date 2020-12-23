@@ -4,8 +4,11 @@ import ruamel.yaml as yaml
 from tempfile import gettempdir
 import warnings
 
+from hdmf.common import get_type_map
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
 from hdmf.testing import TestCase, remove_test_file
+
+from tests.unit.utils import CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace
 
 
 class TestSpecLoad(TestCase):
@@ -267,3 +270,76 @@ class TestCatchDupNS(TestCase):
         with warnings.catch_warnings(record=True) as ws:
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
         self.assertEqual(len(ws), 0)
+
+
+class TestCustomSpecClasses(TestCase):
+
+    def setUp(self):  # noqa: C901
+        self.ns_catalog = NamespaceCatalog(CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+        hdmf_typemap = get_type_map()
+        self.ns_catalog.merge(hdmf_typemap.namespace_catalog)
+
+    def test_constructor_getters(self):
+        self.assertEqual(self.ns_catalog.dataset_spec_cls, CustomDatasetSpec)
+        self.assertEqual(self.ns_catalog.group_spec_cls, CustomGroupSpec)
+        self.assertEqual(self.ns_catalog.spec_namespace_cls, CustomSpecNamespace)
+
+    def test_load_namespaces(self):
+        namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
+        namespace_deps = self.ns_catalog.load_namespaces(namespace_path)
+
+        # test that the dependencies are correct
+        expected = set(['Data', 'Container', 'DynamicTable'])
+        self.assertSetEqual(set(namespace_deps['test']['hdmf-common']), expected)
+
+        # test that the types are loaded
+        types = self.ns_catalog.get_types('test.base.yaml')
+        expected = ('TestData', 'TestContainer', 'TestTable')
+        self.assertTupleEqual(types, expected)
+
+        # test that the namespace is correct and the types_key is updated for test ns
+        test_namespace = self.ns_catalog.get_namespace('test')
+        expected = {'doc': 'Test namespace',
+                    'schema': [{'namespace': 'hdmf-common',
+                                'my_data_types': ['Data', 'DynamicTable', 'Container']},
+                               {'doc': 'This source module contains base data types.',
+                                'source': 'test.base.yaml',
+                                'title': 'Base data types'}],
+                    'name': 'test',
+                    'full_name': 'Test',
+                    'version': '0.1.0',
+                    'author': ['Test test'],
+                    'contact': ['test@test.com']}
+        self.assertDictEqual(test_namespace, expected)
+
+        # test that the def_key is updated for test ns
+        test_data_spec = self.ns_catalog.get_spec('test', 'TestData')
+        self.assertTrue('my_data_type_def' in test_data_spec)
+        self.assertTrue('my_data_type_inc' in test_data_spec)
+
+        # test that the def_key is maintained for hdmf-common
+        data_spec = self.ns_catalog.get_spec('hdmf-common', 'Data')
+        self.assertTrue('data_type_def' in data_spec)
+
+    def test_load_namespaces_ext(self):
+        namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
+        self.ns_catalog.load_namespaces(namespace_path)
+
+        ext_namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test-ext.namespace.yaml')
+        ext_namespace_deps = self.ns_catalog.load_namespaces(ext_namespace_path)
+
+        # test that the dependencies are correct
+        expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'DynamicTable'])
+        self.assertSetEqual(set(ext_namespace_deps['test-ext']['test']), expected_deps)
+
+    def test_load_namespaces_bad_path(self):
+        namespace_path = 'test.namespace.yaml'
+        msg = "namespace file 'test.namespace.yaml' not found"
+        with self.assertRaisesWith(IOError, msg):
+            self.ns_catalog.load_namespaces(namespace_path)
+
+    def test_load_namespaces_twice(self):
+        namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
+        namespace_deps1 = self.ns_catalog.load_namespaces(namespace_path)
+        namespace_deps2 = self.ns_catalog.load_namespaces(namespace_path)
+        self.assertDictEqual(namespace_deps1, namespace_deps2)

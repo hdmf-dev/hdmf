@@ -1,0 +1,18 @@
+namespaces:
+- name: test
+  doc: Test namespace
+  author:
+  - Test test
+  contact:
+  - test@test.com
+  full_name: Test
+  schema:
+  - namespace: hdmf-common
+    my_data_types:
+    - Data
+    - DynamicTable
+    - Container
+  - doc: This source module contains base data types.
+    source: test.base.yaml
+    title: Base data types
+  version: 0.1.0
