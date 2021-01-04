@@ -1,9 +1,13 @@
 # HDMF Changelog
 
-## HDMF X.Y.Z (Upcoming)
+## HDMF 2.4.0 (Upcoming)
+
+### Internal improvements
+- Update CI. @rly (#432)
 
 ### New features
-- `GroupValidator` now checks if child groups, datasets, and links have the correct quantity of elements and returns an `IncorrectQuantityError` for each mismatch. @dsleiter (#500)
+- `GroupValidator` now checks if child groups, datasets, and links have the correct quantity of elements and returns
+  an `IncorrectQuantityError` for each mismatch. @dsleiter (#500)
 
 ## HDMF 2.3.0 (December 8, 2020)
 
