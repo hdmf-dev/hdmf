@@ -5,6 +5,9 @@
 ### Internal improvements
 - Update CI. @rly (#432)
 
+### Bug fixes
+- Allow `np.bool_` as a valid `bool` dtype when validating. @dsleiter (#505)
+
 ## HDMF 2.3.0 (December 8, 2020)
 
 ### New features
