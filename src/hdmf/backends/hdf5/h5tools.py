@@ -38,12 +38,14 @@ class HDF5IO(HDMFIO):
                      'more details.')},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None})
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
+        path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
+                                                              kwargs)
 
         if isinstance(path, Path):
             path = str(path)
@@ -53,7 +55,7 @@ class HDF5IO(HDMFIO):
             msg += 'but supplied a file with filename: %s' % file_obj.filename
             raise ValueError(msg)
 
-        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+'):
+        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
             raise UnsupportedOperation(msg)
 
@@ -65,6 +67,7 @@ class HDF5IO(HDMFIO):
             manager = BuildManager(TypeMap(NamespaceCatalog()))
         elif isinstance(manager, TypeMap):
             manager = BuildManager(manager)
+        self.__driver = driver
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
@@ -86,12 +89,17 @@ class HDF5IO(HDMFIO):
     def _file(self):
         return self.__file
 
+    @property
+    def driver(self):
+        return self.__driver
+
     @classmethod
     @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
             {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             returns="dict with the loaded namespaces", rtype=dict)
     def load_namespaces(cls, **kwargs):
         """Load cached namespaces from a file.
@@ -100,8 +108,8 @@ class HDF5IO(HDMFIO):
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
         the given File object will be read from and not closed.
         """
-        namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
-                                                                kwargs)
+        namespace_catalog, path, namespaces, file_obj, driver = popargs(
+            'namespace_catalog', 'path', 'namespaces', 'file', 'driver', kwargs)
 
         if isinstance(path, Path):
             path = str(path)
@@ -116,7 +124,10 @@ class HDF5IO(HDMFIO):
                 raise ValueError(msg)
 
         if file_obj is None:
-            with File(path, 'r') as f:
+            file_kwargs = dict()
+            if driver is not None:
+                file_kwargs.update(driver=driver)
+            with File(path, 'r', **file_kwargs) as f:
                 return cls.__load_namespaces(namespace_catalog, namespaces, f)
         else:
             return cls.__load_namespaces(namespace_catalog, namespaces, file_obj)
@@ -681,10 +692,13 @@ class HDF5IO(HDMFIO):
     def open(self):
         if self.__file is None:
             open_flag = self.__mode
+            kwargs = dict()
             if self.comm:
-                kwargs = {'driver': 'mpio', 'comm': self.comm}
-            else:
-                kwargs = {}
+                kwargs.update(driver='mpio', comm=self.comm)
+
+            if self.driver is not None:
+                kwargs.update(driver=self.driver)
+
             self.__file = File(self.source, open_flag, **kwargs)
 
     def close(self):
