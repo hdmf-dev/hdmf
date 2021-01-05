@@ -55,7 +55,7 @@ class HDF5IO(HDMFIO):
             msg += 'but supplied a file with filename: %s' % file_obj.filename
             raise ValueError(msg)
 
-        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver is not 'ros3':
+        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
             raise UnsupportedOperation(msg)
 
