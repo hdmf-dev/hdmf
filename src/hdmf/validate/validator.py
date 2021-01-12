@@ -445,7 +445,7 @@ class GroupValidator(BaseStorageValidator):
         The keys of the map are data_type names and they map to lists of all child builders of that data_type
         """
         data_types = defaultdict(list)
-        for _, value in builder.items():
+        for value in builder.values():
             v_builder = value
             if isinstance(v_builder, LinkBuilder):
                 v_builder = v_builder.builder

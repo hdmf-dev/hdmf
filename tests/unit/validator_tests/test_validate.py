@@ -297,7 +297,10 @@ class TestQuantityValidation(TestCase):
         self.assertEqual(len(results), 0)
 
     def test_missing_one_or_many_should_not_return_incorrect_quantity_error(self):
-        """Verify that missing ONE_OR_MANY groups/datasets/links should not return an IncorrectQuantityError"""
+        """Verify that missing ONE_OR_MANY groups/datasets/links should not return an IncorrectQuantityError
+
+        NOTE: a MissingDataType error should be returned instead
+        """
         specs = self.create_test_specs(q_groups=ONE_OR_MANY, q_datasets=ONE_OR_MANY, q_links=ONE_OR_MANY)
         self.configure_specs(specs)
         builder = self.get_test_builder(n_groups=0, n_datasets=0, n_links=0)
