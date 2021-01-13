@@ -111,6 +111,8 @@ def get_type(data):
         if data.size == 0:
             raise EmptyArrayError()
         return get_type(data[0])
+    elif isinstance(data, np.bool_):
+        return 'bool'
     if not hasattr(data, '__len__'):
         return type(data).__name__
     else:
