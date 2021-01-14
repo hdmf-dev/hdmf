@@ -5,6 +5,9 @@
 ### Internal improvements
 - Update CI. @rly (#432)
 
+### Bug fixes
+- Allow `np.bool_` as a valid `bool` dtype when validating. @dsleiter (#505)
+
 ### New features
 - `GroupValidator` now checks if child groups, datasets, and links have the correct quantity of elements and returns
   an `IncorrectQuantityError` for each mismatch. @dsleiter (#500)

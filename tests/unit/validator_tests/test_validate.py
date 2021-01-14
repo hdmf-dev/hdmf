@@ -430,6 +430,16 @@ class TestDtypeValidation(TestCase):
                            "Bar/data (my_bar/data): incorrect type - expected 'numeric', got 'bool'"}
         self.assertEqual(result_strings, expected_errors)
 
+    def test_np_bool_for_bool(self):
+        """Test that validator allows np.bool_ data where bool is specified."""
+        self.set_up_spec('bool')
+        value = np.bool_(True)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
 
 class Test1DArrayValidation(TestCase):
 
