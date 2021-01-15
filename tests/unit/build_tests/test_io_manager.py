@@ -1,11 +1,11 @@
 from abc import ABCMeta, abstractmethod
 
-from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ContainerConfigurationError
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, ContainerConfigurationError
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, create_test_type_map
 
 
 class FooMapper(ObjectMapper):
@@ -41,19 +41,8 @@ class TestBase(TestCase):
             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')]
         )
 
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
-        self.namespace = SpecNamespace(
-            'a test namespace',
-            CORE_NAMESPACE,
-            [{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        self.type_map.register_map(Foo, FooMapper)
+        self.type_map = create_test_type_map([self.foo_spec], {'Foo': Foo}, {'Foo': FooMapper})
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.manager = BuildManager(self.type_map)
 
 

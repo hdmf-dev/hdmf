@@ -6,18 +6,17 @@ import h5py
 import numpy as np
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, LinkBuilder,
                         ReferenceBuilder, MissingRequiredBuildWarning, OrphanContainerBuildError,
                         ContainerConfigurationError)
 from hdmf.container import MultiContainerInterface
 from hdmf.data_utils import DataChunkIterator, DataIO, AbstractDataChunkIterator
 from hdmf.query import HDMFDataset
-from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
-                       DtypeSpec, LinkSpec)
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, RefSpec, DtypeSpec, LinkSpec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs, get_docval
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE, create_test_type_map
 
 
 class Bar(Container):
@@ -87,15 +86,7 @@ class TestGetSubSpec(TestCase):
 
     def setUp(self):
         self.bar_spec = GroupSpec('A test group specification with a data type', data_type_def='Bar')
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                  version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        self.type_map = TypeMap(namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map = create_test_type_map([self.bar_spec], {'Bar': Bar})
 
     def test_get_subspec_data_type_noname(self):
         parent_spec = GroupSpec('Something to hold a Bar', 'bar_bucket', groups=[self.bar_spec])
@@ -120,17 +111,7 @@ class TestTypeMap(TestCase):
     def setUp(self):
         self.bar_spec = GroupSpec('A test group specification with a data type', data_type_def='Bar')
         self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.type_map = create_test_type_map([self.bar_spec, self.foo_spec], {'Bar': Bar, 'Foo': Foo})
 
     def test_get_map_unique_mappers(self):
         bar_inst = Bar('my_bar', list(range(10)), 'value1', 10)
@@ -168,14 +149,7 @@ class BarMapper(ObjectMapper):
 class TestMapStrings(TestCase):
 
     def customSetUp(self, bar_spec):
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0',
-                                  catalog=spec_catalog)
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        type_map = create_test_type_map([bar_spec], {'Bar': Bar}, {'Bar': BarMapper})
         return type_map
 
     def test_build_1d(self):
@@ -186,7 +160,6 @@ class TestMapStrings(TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
@@ -199,7 +172,6 @@ class TestMapStrings(TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
@@ -212,7 +184,6 @@ class TestMapStrings(TestCase):
                                                        'attr2', 'an example integer attribute', 'int')])],
                              attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         type_map = self.customSetUp(bar_spec)
-        type_map.register_map(Bar, BarMapper)
         bar_inst = Bar('my_bar', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertIsInstance(builder.get('data').data, H5DataIO)
@@ -227,16 +198,8 @@ class TestDynamicContainer(TestCase):
                                                         attributes=[AttributeSpec(
                                                             'attr2', 'an example integer attribute', 'int')])],
                                   attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map = create_test_type_map([self.bar_spec], {'Bar': Bar})
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
@@ -523,17 +486,8 @@ class TestDynamicContainer(TestCase):
 class ObjectMapperMixin(metaclass=ABCMeta):
 
     def setUp(self):
-        self.setUpBarSpec()
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.bar_spec = self.setUpBarSpec()
+        self.type_map = create_test_type_map([self.bar_spec], {'Bar': Bar})
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.bar_spec)
 
@@ -553,12 +507,19 @@ class ObjectMapperMixin(metaclass=ABCMeta):
 class TestObjectMapperNested(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec('A test group specification with a data type',
-                                  data_type_def='Bar',
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data',
-                                                        attributes=[AttributeSpec(
-                                                            'attr2', 'an example integer attribute', 'int')])],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='int',
+                    name='data',
+                    attributes=[AttributeSpec('attr2', 'an example integer attribute', 'int')]
+                )
+            ],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when object attributes map to an  attribute deeper
@@ -618,11 +579,14 @@ class TestObjectMapperNested(ObjectMapperMixin, TestCase):
 class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec('A test group specification with a data type',
-                                  data_type_def='Bar',
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                              AttributeSpec('attr2', 'an example integer attribute', 'int')])
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -658,11 +622,14 @@ class TestObjectMapperNoNesting(ObjectMapperMixin, TestCase):
 class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec('A test group specification with a data type',
-                                  data_type_def='Bar',
-                                  groups=[GroupSpec('an example group', data_type_def='Foo')],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                              AttributeSpec('attr2', 'an example integer attribute', 'int')])
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            groups=[GroupSpec('an example group', data_type_def='Foo')],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
+        return spec
 
     def test_default_mapping_keys(self):
         attr_map = self.mapper.get_attr_names(self.bar_spec)
@@ -674,29 +641,20 @@ class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
 class TestLinkedContainer(TestCase):
 
     def setUp(self):
-        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
-        self.bar_spec = GroupSpec('A test group specification with a data type Bar',
-                                  data_type_def='Bar',
-                                  groups=[self.foo_spec],
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                              AttributeSpec('attr2', 'an example integer attribute', 'int')])
+        foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            groups=[foo_spec],
+            datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int')]
+        )
 
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map = create_test_type_map([foo_spec, bar_spec], {'Foo': Foo, 'Bar': Bar})
         self.manager = BuildManager(self.type_map)
-        self.foo_mapper = ObjectMapper(self.foo_spec)
-        self.bar_mapper = ObjectMapper(self.bar_spec)
+        self.foo_mapper = ObjectMapper(foo_spec)
+        self.bar_mapper = ObjectMapper(bar_spec)
 
     def test_build_child_link(self):
         ''' Test default mapping functionality when one container contains a child link to another container '''
@@ -757,30 +715,20 @@ class TestLinkedContainer(TestCase):
 class TestReference(TestCase):
 
     def setUp(self):
-        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
-        self.bar_spec = GroupSpec('A test group specification with a data type Bar',
-                                  data_type_def='Bar',
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data')],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
-                                              AttributeSpec('attr2', 'an example integer attribute', 'int'),
-                                              AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'),
-                                                            required=False)])
+        foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type Bar',
+            data_type_def='Bar',
+            datasets=[DatasetSpec('an example dataset', 'int', name='data')],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                        AttributeSpec('attr2', 'an example integer attribute', 'int'),
+                        AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'), required=False)]
+        )
 
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.type_map = create_test_type_map([foo_spec, bar_spec], {'Foo': Foo, 'Bar': Bar})
         self.manager = BuildManager(self.type_map)
-        self.foo_mapper = ObjectMapper(self.foo_spec)
-        self.bar_mapper = ObjectMapper(self.bar_spec)
+        self.foo_mapper = ObjectMapper(foo_spec)
+        self.bar_mapper = ObjectMapper(bar_spec)
 
     def test_build_attr_ref(self):
         ''' Test default mapping functionality when one container contains an attribute reference to another container.
@@ -830,12 +778,13 @@ class TestReference(TestCase):
 class TestMissingRequiredAttribute(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
                         AttributeSpec('attr2', 'an example integer attribute', 'int')]
         )
+        return spec
 
     def test_required_attr_missing(self):
         """Test mapping when one container is missing a required attribute."""
@@ -857,11 +806,12 @@ class TestMissingRequiredAttribute(ObjectMapperMixin, TestCase):
 class TestMissingRequiredAttributeRef(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             attributes=[AttributeSpec('foo', 'a referenced foo', RefSpec('Foo', 'object'))]
         )
+        return spec
 
     def test_required_attr_ref_missing(self):
         """Test mapping when one container is missing a required attribute reference."""
@@ -881,11 +831,12 @@ class TestMissingRequiredAttributeRef(ObjectMapperMixin, TestCase):
 class TestMissingRequiredDataset(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             datasets=[DatasetSpec('an example dataset', 'int', name='data')]
         )
+        return spec
 
     def test_required_dataset_missing(self):
         """Test mapping when one container is missing a required dataset."""
@@ -906,11 +857,12 @@ class TestMissingRequiredDataset(ObjectMapperMixin, TestCase):
 class TestMissingRequiredGroup(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             groups=[GroupSpec('foo', data_type_inc='Foo')]
         )
+        return spec
 
     def test_required_group_missing(self):
         """Test mapping when one container is missing a required group."""
@@ -929,11 +881,12 @@ class TestMissingRequiredGroup(ObjectMapperMixin, TestCase):
 class TestRequiredEmptyGroup(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             groups=[GroupSpec(name='empty', doc='empty group')],
         )
+        return spec
 
     def test_required_group_empty(self):
         """Test mapping when one container has a required empty group."""
@@ -951,7 +904,7 @@ class TestRequiredEmptyGroup(ObjectMapperMixin, TestCase):
 class TestOptionalEmptyGroup(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             groups=[GroupSpec(
@@ -961,6 +914,7 @@ class TestOptionalEmptyGroup(ObjectMapperMixin, TestCase):
                 attributes=[AttributeSpec('attr3', 'an optional float attribute', 'float', required=False)]
             )]
         )
+        return spec
 
     def test_optional_group_empty(self):
         """Test mapping when one container has an optional empty group."""
@@ -997,12 +951,13 @@ class TestOptionalEmptyGroup(ObjectMapperMixin, TestCase):
 class TestFixedAttributeValue(ObjectMapperMixin, TestCase):
 
     def setUpBarSpec(self):
-        self.bar_spec = GroupSpec(
+        spec = GroupSpec(
             doc='A test group specification with a data type Bar',
             data_type_def='Bar',
             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text', value='hi'),
                         AttributeSpec('attr2', 'an example integer attribute', 'int')]
         )
+        return spec
 
     def test_required_attr_missing(self):
         """Test mapping when one container has a required attribute with a fixed value."""
@@ -1570,25 +1525,16 @@ class TestObjectMapperBadValue(TestCase):
             def foo(self):
                 return self.__foo
 
-        self.qux_spec = GroupSpec(
+        qux_spec = GroupSpec(
             doc='A test group specification with data type Qux',
             data_type_def='Qux',
             groups=[GroupSpec('an example dataset', data_type_inc='Foo')]
         )
-        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.qux_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Qux', Qux)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+
+        self.type_map = create_test_type_map([qux_spec, foo_spec], {'Qux': Qux, 'Foo': Foo})
         self.manager = BuildManager(self.type_map)
-        self.mapper = ObjectMapper(self.qux_spec)
+        self.mapper = ObjectMapper(qux_spec)
 
         container = Qux('my_qux', foo=1)
         msg = "Qux 'my_qux' attribute 'foo' has unexpected type."

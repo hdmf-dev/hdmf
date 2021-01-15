@@ -12,11 +12,10 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
-from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
+from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, ObjectMapper, OrphanContainerBuildError,
                         LinkBuilder)
 from hdmf.container import Container, Data
 from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
-from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.namespace import SpecNamespace
 from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
@@ -24,7 +23,7 @@ from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZER
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
+from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath, create_test_type_map
 
 
 class FooFile(Container):
@@ -785,28 +784,10 @@ def _get_manager():
             foo_link_spec = spec.get_group('links').get_link('foo_link')
             self.map_spec('foo_link', foo_link_spec)
 
-    spec_catalog = SpecCatalog()
-    spec_catalog.register_spec(foo_spec, 'test.yaml')
-    spec_catalog.register_spec(bucket_spec, 'test.yaml')
-    spec_catalog.register_spec(file_spec, 'test.yaml')
-    namespace = SpecNamespace(
-        'a test namespace',
-        CORE_NAMESPACE,
-        [{'source': 'test.yaml'}],
-        version='0.1.0',
-        catalog=spec_catalog)
-    namespace_catalog = NamespaceCatalog()
-    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-    type_map = TypeMap(namespace_catalog)
-
-    type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-    type_map.register_container_type(CORE_NAMESPACE, 'FooBucket', FooBucket)
-    type_map.register_container_type(CORE_NAMESPACE, 'FooFile', FooFile)
-
-    type_map.register_map(Foo, FooMapper)
-    type_map.register_map(FooBucket, BucketMapper)
-    type_map.register_map(FooFile, FileMapper)
-
+    specs = [foo_spec, bucket_spec, file_spec]
+    container_classes = {'Foo': Foo, 'FooBucket': FooBucket, 'FooFile': FooFile}
+    mappers = {'Foo': FooMapper, 'FooBucket': BucketMapper, 'FooFile': FileMapper}
+    type_map = create_test_type_map(specs, container_classes, mappers)
     manager = BuildManager(type_map)
     return manager
 
@@ -2850,28 +2831,6 @@ def _get_baz_manager():
                   DatasetSpec(doc='doc', data_type_inc='BazCpdData', quantity=ZERO_OR_ONE)],
     )
 
-    spec_catalog = SpecCatalog()
-    spec_catalog.register_spec(baz_spec, 'test.yaml')
-    spec_catalog.register_spec(baz_data_spec, 'test.yaml')
-    spec_catalog.register_spec(baz_cpd_data_spec, 'test.yaml')
-    spec_catalog.register_spec(baz_bucket_spec, 'test.yaml')
-
-    namespace = SpecNamespace(
-        'a test namespace',
-        CORE_NAMESPACE,
-        [{'source': 'test.yaml'}],
-        version='0.1.0',
-        catalog=spec_catalog)
-
-    namespace_catalog = NamespaceCatalog()
-    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-
-    type_map = TypeMap(namespace_catalog)
-    type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
-    type_map.register_container_type(CORE_NAMESPACE, 'BazData', BazData)
-    type_map.register_container_type(CORE_NAMESPACE, 'BazCpdData', BazCpdData)
-    type_map.register_container_type(CORE_NAMESPACE, 'BazBucket', BazBucket)
-
     class BazBucketMapper(ObjectMapper):
         def __init__(self, spec):
             super().__init__(spec)
@@ -2880,7 +2839,9 @@ def _get_baz_manager():
             baz_spec = baz_holder_spec.get_data_type('Baz')
             self.map_spec('bazs', baz_spec)
 
-    type_map.register_map(BazBucket, BazBucketMapper)
-
+    specs = [baz_spec, baz_data_spec, baz_cpd_data_spec, baz_bucket_spec]
+    container_classes = {'Baz': Baz, 'BazData': BazData, 'BazCpdData': BazCpdData, 'BazBucket': BazBucket}
+    mappers = {'BazBucket': BazBucketMapper}
+    type_map = create_test_type_map(specs, container_classes, mappers)
     manager = BuildManager(type_map)
     return manager

@@ -1,6 +1,8 @@
 import tempfile
 
+from hdmf.build import TypeMap
 from hdmf.container import Container
+from hdmf.spec import NamespaceCatalog, SpecCatalog, SpecNamespace
 from hdmf.utils import docval, getargs
 
 CORE_NAMESPACE = 'test_core'
@@ -83,3 +85,35 @@ def get_temp_filepath():
     temp_file = tempfile.NamedTemporaryFile()
     temp_file.close()
     return temp_file.name
+
+
+def create_test_type_map(specs, container_classes, mappers=None):
+    """
+    Create a TypeMap with the specs registered under a test namespace, and classes and mappers registered to type names.
+
+    :param specs: list of specs
+    :param container_classes: dict of type name to container class
+    :param mappers: (optional) dict of type name to mapper class
+    :return: the constructed TypeMap
+    """
+    spec_catalog = SpecCatalog()
+    schema_file = 'test.yaml'
+    for s in specs:
+        spec_catalog.register_spec(s, schema_file)
+    namespace = SpecNamespace(
+        doc='a test namespace',
+        name=CORE_NAMESPACE,
+        schema=[{'source': schema_file}],
+        version='0.1.0',
+        catalog=spec_catalog
+    )
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    type_map = TypeMap(namespace_catalog)
+    for type_name, container_cls in container_classes.items():
+        type_map.register_container_type(CORE_NAMESPACE, type_name, container_cls)
+    if mappers:
+        for type_name, mapper_cls in mappers.items():
+            container_cls = container_classes[type_name]
+            type_map.register_map(container_cls, mapper_cls)
+    return type_map

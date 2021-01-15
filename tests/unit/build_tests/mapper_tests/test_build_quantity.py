@@ -1,12 +1,12 @@
 from hdmf import Container, Data
-from hdmf.build import (BuildManager, TypeMap, GroupBuilder, DatasetBuilder, LinkBuilder, ObjectMapper,
+from hdmf.build import (BuildManager, GroupBuilder, DatasetBuilder, LinkBuilder, ObjectMapper,
                         MissingRequiredBuildWarning, IncorrectQuantityBuildWarning)
-from hdmf.spec import GroupSpec, DatasetSpec, LinkSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
+from hdmf.spec import GroupSpec, DatasetSpec, LinkSpec
 from hdmf.spec.spec import ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE, DEF_QUANTITY
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE, create_test_type_map
 
 
 ##########################
@@ -78,26 +78,13 @@ class BuildQuantityMixin:
     """Base test class mixin to set up the BuildManager."""
 
     def setUpManager(self, specs):
-        spec_catalog = SpecCatalog()
-        schema_file = 'test.yaml'
-        for s in specs:
-            spec_catalog.register_spec(s, schema_file)
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': schema_file}],
-            version='0.1.0',
-            catalog=spec_catalog
-        )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'SimpleFoo', SimpleFoo)
-        type_map.register_container_type(CORE_NAMESPACE, 'NotSimpleFoo', NotSimpleFoo)
-        type_map.register_container_type(CORE_NAMESPACE, 'SimpleQux', SimpleQux)
-        type_map.register_container_type(CORE_NAMESPACE, 'NotSimpleQux', NotSimpleQux)
-        type_map.register_container_type(CORE_NAMESPACE, 'SimpleBucket', SimpleBucket)
-        type_map.register_map(SimpleBucket, self.setUpBucketMapper())
+        container_classes = {'SimpleFoo': SimpleFoo,
+                             'NotSimpleFoo': NotSimpleFoo,
+                             'SimpleQux': SimpleQux,
+                             'NotSimpleQux': NotSimpleQux,
+                             'SimpleBucket': SimpleBucket}
+        mappers = {'SimpleBucket': self.setUpBucketMapper()}
+        type_map = create_test_type_map(specs, container_classes, mappers)
         self.manager = BuildManager(type_map)
 
     def _create_builder(self, container):
@@ -880,21 +867,8 @@ class TestBuildZeroOrOneTypeInc(ZeroOrOneMixin, TypeIncMixin, BuildQuantityMixin
 class UntypedMixin:
 
     def setUpManager(self, specs):
-        spec_catalog = SpecCatalog()
-        schema_file = 'test.yaml'
-        for s in specs:
-            spec_catalog.register_spec(s, schema_file)
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': schema_file}],
-            version='0.1.0',
-            catalog=spec_catalog
-        )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'BasicBucket', BasicBucket)
+        container_classes = {'BasicBucket': BasicBucket}
+        type_map = create_test_type_map(specs, container_classes)
         self.manager = BuildManager(type_map)
 
     def create_specs(self, quantity):

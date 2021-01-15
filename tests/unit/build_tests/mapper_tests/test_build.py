@@ -2,13 +2,13 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 from hdmf import Container, Data
-from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
+from hdmf.build import ObjectMapper, BuildManager, GroupBuilder, DatasetBuilder
 from hdmf.build.warnings import DtypeConversionWarning
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, Spec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.utils import CORE_NAMESPACE, create_test_type_map
 
 
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
@@ -85,25 +85,10 @@ class ExtBarMapper(ObjectMapper):
 class BuildGroupExtAttrsMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
-        self.setUpBarSpec()
-        self.setUpBarHolderSpec()
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        spec_catalog.register_spec(self.bar_holder_spec, 'test.yaml')
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=spec_catalog
-        )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarHolder', BarHolder)
-        type_map.register_map(Bar, ExtBarMapper)
-        type_map.register_map(BarHolder, ObjectMapper)
+        specs = [self.setUpBarSpec(), self.setUpBarHolderSpec()]
+        container_classes = {'Bar': Bar, 'BarHolder': BarHolder}
+        mappers = {'Bar': ExtBarMapper}
+        type_map = create_test_type_map(specs, container_classes, mappers)
         self.manager = BuildManager(type_map)
 
     def setUpBarSpec(self):
@@ -117,11 +102,12 @@ class BuildGroupExtAttrsMixin(TestCase, metaclass=ABCMeta):
             dtype='int',
             doc='an example int attribute',
         )
-        self.bar_spec = GroupSpec(
+        bar_spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Bar',
             attributes=[attr1_attr, attr2_attr],
         )
+        return bar_spec
 
     @abstractmethod
     def setUpBarHolderSpec(self):
@@ -148,11 +134,12 @@ class TestBuildGroupAddedAttr(BuildGroupExtAttrsMixin, TestCase):
             quantity='*',
             attributes=[ext_attr],
         )
-        self.bar_holder_spec = GroupSpec(
+        bar_holder_spec = GroupSpec(
             doc='A container of multiple extended Bar objects',
             data_type_def='BarHolder',
             groups=[bar_ext_no_name_spec],
         )
+        return bar_holder_spec
 
     def test_build_added_attr(self):
         """
@@ -215,11 +202,12 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
             quantity='*',
             attributes=[int_attr2],
         )
-        self.bar_holder_spec = GroupSpec(
+        bar_holder_spec = GroupSpec(
             doc='A container of multiple extended Bar objects',
             data_type_def='BarHolder',
             groups=[bar_ext_no_name_spec],
         )
+        return bar_holder_spec
 
     def test_build_refined_attr(self):
         """
@@ -372,24 +360,10 @@ class ExtBarDataMapper(ObjectMapper):
 class BuildDatasetExtAttrsMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
-        self.set_up_specs()
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(self.bar_data_spec, 'test.yaml')
-        spec_catalog.register_spec(self.bar_data_holder_spec, 'test.yaml')
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=spec_catalog
-        )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarData', BarData)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarDataHolder', BarDataHolder)
-        type_map.register_map(BarData, ExtBarDataMapper)
-        type_map.register_map(BarDataHolder, ObjectMapper)
+        specs = self.set_up_specs()
+        container_classes = {'BarData': BarData, 'BarDataHolder': BarDataHolder}
+        mappers = {'BarData': ExtBarDataMapper}
+        type_map = create_test_type_map(specs, container_classes, mappers)
         self.manager = BuildManager(type_map)
 
     def set_up_specs(self):
@@ -403,18 +377,19 @@ class BuildDatasetExtAttrsMixin(TestCase, metaclass=ABCMeta):
             dtype='int',
             doc='an example int attribute',
         )
-        self.bar_data_spec = DatasetSpec(
+        bar_data_spec = DatasetSpec(
             doc='A test dataset specification with a data type',
             data_type_def='BarData',
             dtype='int',
             shape=[[None], [None, None]],
             attributes=[attr1_attr, attr2_attr],
         )
-        self.bar_data_holder_spec = GroupSpec(
+        bar_data_holder_spec = GroupSpec(
             doc='A container of multiple extended BarData objects',
             data_type_def='BarDataHolder',
             datasets=[self.get_refined_bar_data_spec()],
         )
+        return [bar_data_spec, bar_data_holder_spec]
 
     @abstractmethod
     def get_refined_bar_data_spec(self):

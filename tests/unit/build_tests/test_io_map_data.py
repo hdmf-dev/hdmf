@@ -3,15 +3,14 @@ import os
 import h5py
 import numpy as np
 from hdmf import Container, Data
-from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ReferenceBuilder,
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, ReferenceBuilder,
                         ReferenceTargetNotBuiltError)
-from hdmf.spec import (AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog,
-                       RefSpec)
+from hdmf.spec import AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, RefSpec
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs, call_docval_func
 
-from tests.unit.utils import Foo, CORE_NAMESPACE
+from tests.unit.utils import Foo, CORE_NAMESPACE, create_test_type_map
 
 
 class Baz(Data):
@@ -45,46 +44,17 @@ class BazHolder(Container):
         return self.__bazs
 
 
-class BazSpecMixin:
+class TestDataMap(TestCase):
 
     def setUp(self):
-        self.setUpBazSpec()
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
-        self.type_map.register_map(Baz, ObjectMapper)
+        baz_spec = self.setUpSpec()
+        self.type_map = create_test_type_map([baz_spec], {'Baz': Baz})
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.manager = BuildManager(self.type_map)
-        self.mapper = ObjectMapper(self.baz_spec)
+        self.mapper = ObjectMapper(baz_spec)
 
-    def setUpBazSpec(self):
-        raise NotImplementedError('Test must implement this method.')
-
-
-class TestDataMap(BazSpecMixin, TestCase):
-
-    def setUp(self):
-        self.setUpBazSpec()
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
-        self.type_map.register_map(Baz, ObjectMapper)
-        self.manager = BuildManager(self.type_map)
-        self.mapper = ObjectMapper(self.baz_spec)
-
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='an Baz type',
             dtype='int',
             name='MyBaz',
@@ -92,6 +62,7 @@ class TestDataMap(BazSpecMixin, TestCase):
             shape=[None],
             attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
         )
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -106,12 +77,12 @@ class TestDataMap(BazSpecMixin, TestCase):
         baz_holder_spec = GroupSpec(doc='doc', data_type_def='BazHolder', datasets=[baz_inc_spec])
         self.spec_catalog.register_spec(baz_holder_spec, 'test.yaml')
         self.type_map.register_container_type(CORE_NAMESPACE, 'BazHolder', BazHolder)
-        self.holder_mapper = ObjectMapper(baz_holder_spec)
+        holder_mapper = ObjectMapper(baz_holder_spec)
 
         baz = Baz('MyBaz', [], 'abcdefghijklmnopqrstuvwxyz')
         holder = BazHolder('holder', [baz])
 
-        builder = self.holder_mapper.build(holder, self.manager)
+        builder = holder_mapper.build(holder, self.manager)
         expected = GroupBuilder(
             name='holder',
             datasets=[DatasetBuilder(
@@ -153,27 +124,20 @@ class BazScalar(Data):
 class TestDataMapScalar(TestCase):
 
     def setUp(self):
-        self.setUpBazSpec()
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'BazScalar', BazScalar)
-        self.type_map.register_map(BazScalar, ObjectMapper)
+        baz_scalar_spec = self.setUpSpec()
+        self.type_map = create_test_type_map([baz_scalar_spec], {'BazScalar': BazScalar})
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.manager = BuildManager(self.type_map)
-        self.mapper = ObjectMapper(self.baz_spec)
+        self.mapper = ObjectMapper(baz_scalar_spec)
 
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='a BazScalar type',
             dtype='int',
             name='MyBaz',
             data_type_def='BazScalar'
         )
+        return spec
 
     def test_construct_scalar_dataset(self):
         """Test constructing a Data object with an h5py.Dataset with shape (1, ) for scalar spec."""
@@ -207,22 +171,14 @@ class BazScalarCompound(Data):
 class TestDataMapScalarCompound(TestCase):
 
     def setUp(self):
-        self.setUpBazSpec()
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'BazScalarCompound', BazScalarCompound)
-        self.type_map.register_map(BazScalarCompound, ObjectMapper)
+        baz_scalar_cpd_spec = self.setUpSpec()
+        self.type_map = create_test_type_map([baz_scalar_cpd_spec], {'BazScalarCompound': BazScalarCompound})
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.manager = BuildManager(self.type_map)
-        self.mapper = ObjectMapper(self.baz_spec)
+        self.mapper = ObjectMapper(baz_scalar_cpd_spec)
 
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='a BazScalarCompound type',
             dtype=[
                 DtypeSpec(
@@ -239,6 +195,7 @@ class TestDataMapScalarCompound(TestCase):
             name='MyBaz',
             data_type_def='BazScalarCompound',
         )
+        return spec
 
     def test_construct_scalar_compound_dataset(self):
         """Test construct on a compound h5py.Dataset with shape (1, ) for scalar spec does not resolve the data."""
@@ -270,8 +227,8 @@ class TestDataMapScalarCompound(TestCase):
 class BuildDatasetOfReferencesMixin:
 
     def setUp(self):
-        self.setUpBazSpec()
-        self.foo_spec = GroupSpec(
+        baz_spec = self.setUpSpec()
+        foo_spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Foo',
             datasets=[
@@ -283,26 +240,16 @@ class BuildDatasetOfReferencesMixin:
                 AttributeSpec(name='attr3', doc='an example float attribute', dtype='float')
             ]
         )
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
-        self.type_map.register_map(Baz, ObjectMapper)
-        self.type_map.register_map(Foo, ObjectMapper)
+
+        self.type_map = create_test_type_map([baz_spec, foo_spec], {'Baz': Baz, 'Foo': Foo})
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.manager = BuildManager(self.type_map)
 
 
 class TestBuildUntypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase):
 
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='a list of references to Foo objects',
             dtype=None,
             name='MyBaz',
@@ -310,6 +257,7 @@ class TestBuildUntypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCas
             data_type_def='Baz',
             attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
         )
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -327,8 +275,8 @@ class TestBuildUntypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCas
 
 class TestBuildCompoundDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase):
 
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='a list of references to Foo objects',
             dtype=[
                 DtypeSpec(
@@ -347,6 +295,7 @@ class TestBuildCompoundDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCa
             data_type_def='Baz',
             attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
         )
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -364,8 +313,8 @@ class TestBuildCompoundDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCa
 
 class TestBuildTypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase):
 
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='a list of references to Foo objects',
             dtype=RefSpec('Foo', 'object'),
             name='MyBaz',
@@ -373,6 +322,7 @@ class TestBuildTypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase)
             data_type_def='Baz',
             attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
         )
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
@@ -390,8 +340,8 @@ class TestBuildTypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCase)
 
 class TestBuildDatasetOfReferencesUnbuiltTarget(BuildDatasetOfReferencesMixin, TestCase):
 
-    def setUpBazSpec(self):
-        self.baz_spec = DatasetSpec(
+    def setUpSpec(self):
+        spec = DatasetSpec(
             doc='a list of references to Foo objects',
             dtype=None,
             name='MyBaz',
@@ -399,6 +349,7 @@ class TestBuildDatasetOfReferencesUnbuiltTarget(BuildDatasetOfReferencesMixin, T
             data_type_def='Baz',
             attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
         )
+        return spec
 
     def test_build(self):
         ''' Test default mapping functionality when no attributes are nested '''
