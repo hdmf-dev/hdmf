@@ -1,7 +1,7 @@
-import os
-
 import h5py
 import numpy as np
+import os
+
 from hdmf import Container, Data
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, ReferenceBuilder,
                         ReferenceTargetNotBuiltError)
@@ -358,3 +358,147 @@ class TestBuildDatasetOfReferencesUnbuiltTarget(BuildDatasetOfReferencesMixin, T
         msg = "MyBaz (MyBaz): Could not find already-built Builder for Foo 'my_foo1' in BuildManager"
         with self.assertRaisesWith(ReferenceTargetNotBuiltError, msg):
             self.manager.build(baz, root=True)
+
+
+class BazContainer(Container):
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Baz'},
+            {'name': 'baz', 'type': Data, 'doc': 'some data'})
+    def __init__(self, **kwargs):
+        name, baz = getargs('name', 'baz', kwargs)
+        super().__init__(name=name)
+        self.baz = baz
+
+
+class StringBaz(Data):
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Baz'},
+            {'name': 'data', 'type': str, 'doc': 'some data'},
+            {'name': 'baz_attr', 'type': str, 'doc': 'an attribute'})
+    def __init__(self, **kwargs):
+        name, data, baz_attr = getargs('name', 'data', 'baz_attr', kwargs)
+        super().__init__(name=name, data=data)
+        self.baz_attr = baz_attr
+
+
+class UntypedDataContainer(Container):
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this Baz'},
+            {'name': 'test_str_dataset', 'type': str, 'doc': 'a test string'},
+            {'name': 'test_str_attr', 'type': str, 'doc': 'a test string', 'default': None},)
+    def __init__(self, **kwargs):
+        name, test_str_dataset, test_str_attr = getargs('name', 'test_str_dataset', 'test_str_attr', kwargs)
+        super().__init__(name=name)
+        self.test_str_dataset = test_str_dataset
+        self.test_str_attr = test_str_attr
+
+
+class TestGetAttrValueConvertString(TestCase):
+    """Test getting an attribute from a container that needs to be converted to str/bytes/datetime."""
+
+    def map_get_attr_value(self, dataset_spec):
+        inc_spec = DatasetSpec('included dataset', name='baz', data_type_inc='StringBaz')
+
+        container_spec = GroupSpec(
+            doc='a group',
+            data_type_def='BazContainer',
+            datasets=[inc_spec]
+        )
+
+        container_classes = {'BazContainer': BazContainer,
+                             'StringBaz': StringBaz}
+        type_map = create_test_type_map([container_spec, dataset_spec], container_classes)
+        manager = BuildManager(type_map)
+        mapper = ObjectMapper(container_spec)
+
+        baz = StringBaz(name='MyBaz', data='value', baz_attr='my attr')
+        container = BazContainer('MyBazContainer', baz)
+
+        # TODO problem is that inc_spec has no dtype so it does not trigger convert_string
+        # NamespaceCatalog.load_namespaces() needs to be called in order to resolve the spec
+        ret = mapper.get_attr_value(inc_spec, container, manager)
+        return ret
+
+    def test_dataset_attribute_text(self):
+        spec = DatasetSpec(
+            doc='a dataset',
+            dtype='text',
+            data_type_def='StringBaz',
+            attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
+        )
+        ret = self.map_get_attr_value(spec)
+
+        # inc_spec maps to an instance of StringBaz, so ret should be an instance of StringBaz and its data should
+        # not be converted as it is already text
+        self.assertIsInstance(ret.data, str)
+        self.assertIsInstance(ret.baz_attr, str)
+
+    # see TODO above in map_get_attr_value
+    # def test_dataset_attribute_ascii(self):
+    #     spec = DatasetSpec(
+    #         doc='a dataset',
+    #         dtype='ascii',  # <--
+    #         data_type_def='StringBaz',
+    #         attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'ascii')]
+    #     )
+    #     ret = self.map_get_attr_value(spec)
+    #
+    #     # inc_spec says that the data should have dtype ascii and the attribute should have dtype ascii
+    #     # the mapper should convert these within get_attr_value
+    #     self.assertIsInstance(ret.data, bytes)
+    #     self.assertIsInstance(ret.baz_attr, bytes)
+
+    def test_untyped_dataset_attribute_text(self):
+        dataset_spec = DatasetSpec(
+            name='test_str_dataset',
+            doc='a dataset',
+            dtype='text'
+        )
+        attribute_spec = AttributeSpec(
+            name='test_str_attr',
+            doc='an attribute',
+            dtype='text'
+        )
+        container_spec = GroupSpec(
+            doc='a group',
+            data_type_def='BazContainer',
+            datasets=[dataset_spec],
+            attributes=[attribute_spec]
+        )
+
+        container_classes = {'BazContainer': BazContainer}
+        type_map = create_test_type_map([container_spec], container_classes)
+        manager = BuildManager(type_map)
+        mapper = ObjectMapper(container_spec)
+
+        container = UntypedDataContainer('MyBazContainer', test_str_dataset='value', test_str_attr='value')
+        ret = mapper.get_attr_value(dataset_spec, container, manager)
+        self.assertIsInstance(ret, str)
+        ret = mapper.get_attr_value(attribute_spec, container, manager)
+        self.assertIsInstance(ret, str)
+
+    def test_untyped_dataset_attribute_ascii(self):
+        dataset_spec = DatasetSpec(
+            name='test_str_dataset',
+            doc='a dataset',
+            dtype='ascii'  # <--
+        )
+        attribute_spec = AttributeSpec(
+            name='test_str_attr',
+            doc='an attribute',
+            dtype='ascii'  # <--
+        )
+        container_spec = GroupSpec(
+            doc='a group',
+            data_type_def='BazContainer',
+            datasets=[dataset_spec],
+            attributes=[attribute_spec]
+        )
+
+        container_classes = {'BazContainer': BazContainer}
+        type_map = create_test_type_map([container_spec], container_classes)
+        manager = BuildManager(type_map)
+        mapper = ObjectMapper(container_spec)
+
+        container = UntypedDataContainer('MyBazContainer', test_str_dataset='value', test_str_attr='value')
+        ret = mapper.get_attr_value(dataset_spec, container, manager)
+        self.assertIsInstance(ret, bytes)
+        ret = mapper.get_attr_value(attribute_spec, container, manager)
+        self.assertIsInstance(ret, bytes)

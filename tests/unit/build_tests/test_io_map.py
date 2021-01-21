@@ -153,6 +153,7 @@ class TestMapStrings(TestCase):
         return type_map
 
     def test_build_1d(self):
+        """Test building a 1D text dataset."""
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,),
@@ -165,6 +166,7 @@ class TestMapStrings(TestCase):
         self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
 
     def test_build_scalar(self):
+        """Test building a scalar text dataset."""
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[DatasetSpec('an example dataset', 'text', name='data',
@@ -174,9 +176,10 @@ class TestMapStrings(TestCase):
         type_map = self.customSetUp(bar_spec)
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
-        self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
+        self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")  # TODO raise error instead
 
     def test_build_dataio(self):
+        """Test building a 1D text dataset wrapped in a DataIO."""
         bar_spec = GroupSpec('A test group specification with a data type',
                              data_type_def='Bar',
                              datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,),
@@ -186,7 +189,9 @@ class TestMapStrings(TestCase):
         type_map = self.customSetUp(bar_spec)
         bar_inst = Bar('my_bar', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1', 10)
         builder = type_map.build(bar_inst)
-        self.assertIsInstance(builder.get('data').data, H5DataIO)
+        ret = builder.get('data').data
+        self.assertEqual(ret.data, ['a', 'b', 'c', 'd'])
+        self.assertIsInstance(ret, H5DataIO)
 
 
 class TestDynamicContainer(TestCase):

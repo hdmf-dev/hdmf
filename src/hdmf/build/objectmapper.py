@@ -578,36 +578,40 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # else, attribute spec
         return ret
 
-    def __convert_string(self, value, spec):
-        """Convert string types to the specified dtype."""
+    @classmethod
+    def __convert_string(cls, value, spec):
+        """Convert string types to the specified dtype for an attribute or a non-data-type dataset."""
         ret = value
         if isinstance(spec, AttributeSpec):
-            if 'text' in spec.dtype:
-                if spec.shape is not None or spec.dims is not None:
-                    ret = list(map(str, value))
-                else:
-                    ret = str(value)
-        elif isinstance(spec, DatasetSpec):
-            # TODO: make sure we can handle specs with data_type_inc set
-            if spec.data_type_inc is None and spec.dtype is not None:
-                string_type = None
-                if 'text' in spec.dtype:
-                    string_type = str
-                elif 'ascii' in spec.dtype:
-                    string_type = bytes
-                elif 'isodatetime' in spec.dtype:
-                    string_type = datetime.isoformat
-                if string_type is not None:
-                    if spec.shape is not None or spec.dims is not None:
-                        ret = list(map(string_type, value))
-                    else:
-                        ret = string_type(value)
-                    # copy over any I/O parameters if they were specified
-                    if isinstance(value, DataIO):
-                        params = value.get_io_params()
-                        params['data'] = ret
-                        ret = value.__class__(**params)
+            ret, string_type = cls.__convert_string_or_date_value(spec, value)
+        if (isinstance(spec, DatasetSpec) and spec.data_type_def is None and spec.data_type_inc is None and
+                spec.dtype is not None):
+            ret, string_type = cls.__convert_string_or_date_value(spec, value)
+            if string_type is not None and isinstance(value, DataIO):
+                # copy over any I/O parameters if they were specified
+                params = value.get_io_params()
+                params['data'] = ret
+                ret = value.__class__(**params)
         return ret
+
+    @classmethod
+    def __convert_string_or_date_value(cls, spec, value):
+        """Convert a value to the specified string, bytes, or datetime dtype."""
+        ret = value
+        string_type = None
+        if spec.dtype is not None:
+            if 'text' in spec.dtype:
+                string_type = _unicode
+            elif 'ascii' in spec.dtype:
+                string_type = _ascii
+            elif 'datetime' in spec.dtype:
+                string_type = datetime.isoformat
+        if string_type is not None:
+            if spec.shape is not None or spec.dims is not None:
+                ret = list(map(string_type, value))
+            else:
+                ret = string_type(value)
+        return (ret, string_type)
 
     def __filter_by_spec_dt(self, attr_value, spec_dt, build_manager):
         """Return a list of containers that match the spec data type.
@@ -698,7 +702,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source, export)
             self.__add_groups(builder, self.__spec.groups, container, manager, source, export)
             self.__add_links(builder, self.__spec.links, container, manager, source, export)
-        else:
+        else:  # self.spec is a DatasetSpec
             if builder is None:
                 if not isinstance(container, Data):
                     msg = "'container' must be of type Data with DatasetSpec"
@@ -994,7 +998,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
                     builder.set_dataset(sub_builder)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
-            else:
+            else:  # typed dataset, therefore attr_value should be of a type that is a subclass of Data
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
                                   % (repr(spec.name),
                                      spec.def_key(), repr(spec.data_type_def),
