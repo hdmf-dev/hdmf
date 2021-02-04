@@ -5,6 +5,13 @@ class BuildWarning(UserWarning):
     pass
 
 
+class IncorrectShapeBuildWarning(BuildWarning):
+    """
+    Raised when a container field has a shape that is not allowed by the spec.
+    """
+    pass
+
+
 class IncorrectQuantityBuildWarning(BuildWarning):
     """
     Raised when a container field contains a number of groups/datasets/links that is not allowed by the spec.

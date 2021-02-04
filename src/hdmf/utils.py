@@ -802,6 +802,31 @@ def get_data_shape(data, strict_no_data_load=False):
     return None
 
 
+def check_shape(expected, received):
+    ret = False
+    if expected is None:
+        ret = True
+    else:
+        if isinstance(expected, (list, tuple)):
+            if isinstance(expected[0], (list, tuple)):
+                for sub in expected:
+                    if check_shape(sub, received):
+                        ret = True
+                        break
+            else:
+                if len(expected) > 0 and received is None:
+                    ret = False
+                elif len(expected) == len(received):
+                    ret = True
+                    for e, r in zip(expected, received):
+                        if not check_shape(e, r):
+                            ret = False
+                            break
+        elif isinstance(expected, int):
+            ret = expected == received
+    return ret
+
+
 def pystr(s):
     """
     Convert a string of characters to Python str object

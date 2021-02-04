@@ -11,13 +11,14 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, Refere
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import Proxy, BuildManager
-from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from .warnings import (MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning,
+                       IncorrectShapeBuildWarning)
 from ..container import AbstractContainer, Data, DataRegion
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, check_shape
 
 _const_arg = '__constructor_arg'
 
@@ -551,6 +552,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
             if attr_val is not None:
+                if isinstance(spec, (AttributeSpec, DatasetSpec)):
+                    shape = get_data_shape(attr_val)
+                    if not check_shape(spec.shape, shape):
+                        msg = ("%s '%s' attribute '%s' has a shape which is not allowed by the spec."
+                               % (container.__class__.__name__, container.name, attr_name))
+                        warnings.warn(msg, IncorrectShapeBuildWarning)
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:

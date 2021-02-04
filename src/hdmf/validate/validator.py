@@ -13,7 +13,7 @@ from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
-from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
+from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape, check_shape
 
 __synonyms = DtypeHelper.primary_dtype_synonyms
 
@@ -123,31 +123,6 @@ def get_type(data):
         if len(data) == 0:
             raise EmptyArrayError()
         return get_type(data[0])
-
-
-def check_shape(expected, received):
-    ret = False
-    if expected is None:
-        ret = True
-    else:
-        if isinstance(expected, (list, tuple)):
-            if isinstance(expected[0], (list, tuple)):
-                for sub in expected:
-                    if check_shape(sub, received):
-                        ret = True
-                        break
-            else:
-                if len(expected) > 0 and received is None:
-                    ret = False
-                elif len(expected) == len(received):
-                    ret = True
-                    for e, r in zip(expected, received):
-                        if not check_shape(e, r):
-                            ret = False
-                            break
-        elif isinstance(expected, int):
-            ret = expected == received
-    return ret
 
 
 class ValidatorMap:
