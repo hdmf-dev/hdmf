@@ -8,7 +8,8 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNa
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
-from hdmf.validate.errors import DtypeError, MissingError, ExpectedArrayError, MissingDataType, IncorrectQuantityError
+from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
+                                  IncorrectQuantityError, IllegalLinkError)
 
 CORE_NAMESPACE = 'test_core'
 
@@ -490,3 +491,94 @@ class Test1DArrayValidation(TestCase):
         self.assertEqual(len(results), 0)
 
     # TODO test shape validation more completely
+
+
+class TestLinkable(TestCase):
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        typed_dataset_spec = DatasetSpec('A typed dataset', data_type_def='Foo')
+        typed_group_spec = GroupSpec('A typed group', data_type_def='Bar')
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Baz',
+                         datasets=[
+                             DatasetSpec('A linkable child dataset', name='untyped_linkable_ds',
+                                         linkable=True, quantity=ZERO_OR_ONE),
+                             DatasetSpec('A non-linkable child dataset', name='untyped_nonlinkable_ds',
+                                         linkable=False, quantity=ZERO_OR_ONE),
+                             DatasetSpec('A linkable child dataset', data_type_inc='Foo',
+                                         name='typed_linkable_ds', linkable=True, quantity=ZERO_OR_ONE),
+                             DatasetSpec('A non-linkable child dataset', data_type_inc='Foo',
+                                         name='typed_nonlinkable_ds', linkable=False, quantity=ZERO_OR_ONE),
+                         ],
+                         groups=[
+                             GroupSpec('A linkable child group', name='untyped_linkable_group',
+                                       linkable=True, quantity=ZERO_OR_ONE),
+                             GroupSpec('A non-linkable child group', name='untyped_nonlinkable_group',
+                                       linkable=False, quantity=ZERO_OR_ONE),
+                             GroupSpec('A linkable child group', data_type_inc='Bar',
+                                       name='typed_linkable_group', linkable=True, quantity=ZERO_OR_ONE),
+                             GroupSpec('A non-linkable child group', data_type_inc='Bar',
+                                       name='typed_nonlinkable_group', linkable=False, quantity=ZERO_OR_ONE),
+                         ])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        spec_catalog.register_spec(typed_dataset_spec, 'test.yaml')
+        spec_catalog.register_spec(typed_group_spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def validate_linkability(self, link, expect_error):
+        """Execute a linkability test and assert whether or not an IllegalLinkError is returned"""
+        self.set_up_spec()
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, links=[link])
+        result = self.vmap.validate(builder)
+        if expect_error:
+            self.assertEqual(len(result), 1)
+            self.assertIsInstance(result[0], IllegalLinkError)
+        else:
+            self.assertEqual(len(result), 0)
+
+    def test_untyped_linkable_dataset_accepts_link(self):
+        """Test that the validator accepts a link when the spec has an untyped linkable dataset"""
+        link = LinkBuilder(name='untyped_linkable_ds', builder=DatasetBuilder('foo'))
+        self.validate_linkability(link, expect_error=False)
+
+    def test_untyped_nonlinkable_dataset_does_not_accept_link(self):
+        """Test that the validator returns an IllegalLinkError when the spec has an untyped non-linkable dataset"""
+        link = LinkBuilder(name='untyped_nonlinkable_ds', builder=DatasetBuilder('foo'))
+        self.validate_linkability(link, expect_error=True)
+
+    def test_typed_linkable_dataset_accepts_link(self):
+        """Test that the validator accepts a link when the spec has a typed linkable dataset"""
+        link = LinkBuilder(name='typed_linkable_ds',
+                           builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'}))
+        self.validate_linkability(link, expect_error=False)
+
+    def test_typed_nonlinkable_dataset_does_not_accept_link(self):
+        """Test that the validator returns an IllegalLinkError when the spec has a typed non-linkable dataset"""
+        link = LinkBuilder(name='typed_nonlinkable_ds',
+                           builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'}))
+        self.validate_linkability(link, expect_error=True)
+
+    def test_untyped_linkable_group_accepts_link(self):
+        """Test that the validator accepts a link when the spec has an untyped linkable group"""
+        link = LinkBuilder(name='untyped_linkable_group', builder=GroupBuilder('foo'))
+        self.validate_linkability(link, expect_error=False)
+
+    def test_untyped_nonlinkable_group_does_not_accept_link(self):
+        """Test that the validator returns an IllegalLinkError when the spec has an untyped non-linkable group"""
+        link = LinkBuilder(name='untyped_nonlinkable_group', builder=GroupBuilder('foo'))
+        self.validate_linkability(link, expect_error=True)
+
+    def test_typed_linkable_group_accepts_link(self):
+        """Test that the validator accepts a link when the spec has a typed linkable group"""
+        link = LinkBuilder(name='typed_linkable_group',
+                           builder=GroupBuilder('foo', attributes={'data_type': 'Bar'}))
+        self.validate_linkability(link, expect_error=False)
+
+    def test_typed_nonlinkable_group_does_not_accept_link(self):
+        """Test that the validator returns an IllegalLinkError when the spec has a typed non-linkable group"""
+        link = LinkBuilder(name='typed_nonlinkable_group',
+                           builder=GroupBuilder('foo', attributes={'data_type': 'Bar'}))
+        self.validate_linkability(link, expect_error=True)
