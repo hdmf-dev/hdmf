@@ -7,6 +7,8 @@
 
 ### Bug fixes
 - Allow `np.bool_` as a valid `bool` dtype when validating. @dsleiter (#505)
+- Fix TypeError when validating a group with an illegally-linked child.
+  @dsleiter (#515)
 
 ### New features
 - `GroupValidator` now checks if child groups, datasets, and links have the correct quantity of elements and returns
