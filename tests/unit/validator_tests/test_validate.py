@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
+from unittest import mock
 
 import numpy as np
 from dateutil.tz import tzlocal
@@ -7,7 +8,7 @@ from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, LinkSpec
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase
-from hdmf.validate import ValidatorMap
+from hdmf.validate import ValidatorMap, GroupValidator
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError)
 
@@ -582,3 +583,18 @@ class TestLinkable(TestCase):
         link = LinkBuilder(name='typed_nonlinkable_group',
                            builder=GroupBuilder('foo', attributes={'data_type': 'Bar'}))
         self.validate_linkability(link, expect_error=True)
+
+    @mock.patch("hdmf.validate.validator.DatasetValidator.validate")
+    def test_should_not_validate_illegally_linked_objects(self, mock_validator):
+        """Test that an illegally linked child dataset is not validated
+
+        Note: this behavior is expected to change in the future:
+        https://github.com/hdmf-dev/hdmf/issues/516
+        """
+        self.set_up_spec()
+        typed_link = LinkBuilder(name='typed_nonlinkable_ds',
+                                 builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'}))
+        untyped_link = LinkBuilder(name='untyped_nonlinkable_ds', builder=DatasetBuilder('foo'))
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, links=[typed_link, untyped_link])
+        _ = self.vmap.validate(builder)
+        assert not mock_validator.called

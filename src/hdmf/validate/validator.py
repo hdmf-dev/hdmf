@@ -470,6 +470,7 @@ class GroupValidator(BaseStorageValidator):
                     if self.__cannot_be_link(child_spec):
                         errors.append(IllegalLinkError(self.get_spec_loc(child_spec),
                                                        location=self.get_builder_loc(child_builder)))
+                        continue  # do not validate illegally linked objects
                     child_builder = child_builder.builder
                 errors.extend(sub_val.validate(child_builder))
                 n_matching_builders += 1
@@ -493,6 +494,7 @@ class GroupValidator(BaseStorageValidator):
         if isinstance(child_builder, LinkBuilder):
             if not child_spec.linkable:
                 errors.append(IllegalLinkError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder)))
+                return errors  # do not validate illegally linked objects
             child_builder = child_builder.builder
         if child_builder is None:
             if child_spec.required:

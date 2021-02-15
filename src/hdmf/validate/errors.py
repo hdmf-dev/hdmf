@@ -155,7 +155,7 @@ class IllegalLinkError(Error):
             {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
-        reason = "illegal use of link"
+        reason = "illegal use of link (linked object will not be validated)"
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
 
