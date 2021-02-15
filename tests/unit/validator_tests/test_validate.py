@@ -8,7 +8,7 @@ from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, LinkSpec
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase
-from hdmf.validate import ValidatorMap, GroupValidator
+from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError)
 
