@@ -27,24 +27,24 @@ class Key(Row):
     __table__ = KeyTable
 
 
-class ResourceTable(Table): 
+class ResourceTable(Table):
     """
     A table for storing names of ontology sources and their uri
     """
-    
+
     __defaultname__ = 'resources'
-    
+
     __columns__ = (
         {'name': 'name', 'type': str,
          'doc': 'The resource/registry that the term/symbol comes from.'},
-        {'name': 'resource_uri', 'type': str, 
+        {'name': 'resource_uri', 'type': str,
          'doc': 'The URI for the resource term / registry symbol.'},
     )
 
 
-class Resource(Row): 
+class Resource(Row):
     """
-    A Row class for representing rows in the ResourceTable 
+    A Row class for representing rows in the ResourceTable
     """
 
     __table__ = ResourceTable
@@ -70,13 +70,13 @@ class EntityTable(Table):
     )
 
 
-class Entity(Row): 
+class Entity(Row):
     """
     A Row class for representing rows in the EntityTable
     """
 
     __table__ = EntityTable
-    
+
 
 class ObjectTable(Table):
     """
@@ -137,7 +137,7 @@ class ExternalResources(Container):
     )
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ExternalResources container'},
-            
+           
             {'name': 'keys', 'type': KeyTable, 'default': None,
              'doc': 'the table storing user keys for referencing resources'},
             {'name': 'resources', 'type': ResourceTable, 'default': None,
@@ -169,10 +169,10 @@ class ExternalResources(Container):
         return Key(key, table=self.keys)
 
     @docval({'name': 'key', 'type': (str, Key), 'doc': 'the key to associate the entity with'},
-            {'name': 'resource_table_idx', 'type': (int,Resource), 'doc': 'the id of the resource'},
+            {'name': 'resource_table_idx', 'type': (int, Resource), 'doc': 'the id of the resource'},
             {'name': 'entity_id', 'type': str, 'doc': 'unique entity id'},
             {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the entity'})
-    def add_entity(self, **kwargs): #
+    def add_entity(self, **kwargs):
         """
         Add an entity that will be referenced to using the given key
         """
@@ -182,8 +182,7 @@ class ExternalResources(Container):
         entity_uri = kwargs['entity_uri']
         if not isinstance(key, Key):
             key = self.add_key(key)
-        resource_entity = Entity(key, resource_table_idx, entity_id, entity_uri,
-                                         table=self.entities)
+        resource_entity = Entity(key, resource_table_idx, entity_id, entity_uri, table=self.entities)
         return resource_entity
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the ontology resource'},
@@ -196,7 +195,6 @@ class ExternalResources(Container):
         uri = kwargs['uri']
         
         resource = Resource(ontology_name, uri, table=self.resources)
-        
         return resource
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
@@ -214,7 +212,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'obj', 'type': (int, Object), 'doc': 'the Object to that uses the Key'},
             {'name': 'key', 'type': (int, Key), 'doc': 'the Key that the Object uses'})
-    def add_external_reference(self, **kwargs): 
+    def add_external_reference(self, **kwargs):
         """
         Specify that an object (i.e. container and field) uses a key to reference
         an external resource
@@ -281,8 +279,8 @@ class ExternalResources(Container):
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
             {'name': 'resource_table_idx', 'type': Resource, 'doc': 'the resourcetable id', 'default': None},
-            {'name': 'resource_name', 'type': str, 'doc': 'the name of the resource to be created if resource_table_idx is None', 'default': None},
-            {'name': 'resource_uri', 'type': str, 'doc': 'the uri of the resource to be created if resource_table_idx is None', 'default': None},
+            {'name': 'resource_name', 'type': str, 'doc': 'the name of the resource to be created', 'default': None},
+            {'name': 'resource_uri', 'type': str, 'doc': 'the uri of the resource to be created', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'the identifier for the entity at the resource', 'default': None},
             {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None})
     def add_ref(self, **kwargs):
@@ -299,12 +297,12 @@ class ExternalResources(Container):
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         add_rsc = False
-        resource_table_idx=kwargs['resource_table_idx']
+        resource_table_idx = kwargs['resource_table_idx']
         if resource_table_idx is not None:
             resource_table_idx = kwargs['resource_table_idx']
         else:
-            resource_name=kwargs['resource_name']
-            resource_uri=kwargs['resource_uri']
+            resource_name = kwargs['resource_name']
+            resource_uri = kwargs['resource_uri']
             resource_table_idx = self.add_resource(resource_name,resource_uri)
 
         if (resource_table_idx or resource_name) is not None and entity_id is not None and entity_uri is not None:
@@ -316,7 +314,7 @@ class ExternalResources(Container):
 
         if isinstance(container, Container):
             container = container.object_id
-            
+
         object_field = self._check_object_field(container, field)
 
         # get Key object by searching the table
