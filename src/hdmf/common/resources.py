@@ -40,43 +40,44 @@ class ResourceTable(Table):
         {'name': 'resource_uri', 'type': str, 
          'doc': 'The URI for the resource term / registry symbol.'},
     )
-    
+
+
 class Resource(Row): 
     """
     A Row class for representing rows in the ResourceTable 
     """
 
-    __table__ = ResourceTable   
+    __table__ = ResourceTable
 
 
-class EntityTable(Table): 
+class EntityTable(Table):
     """
     A table for storing the external resources a key refers to
     """
 
-    __defaultname__ = 'entities' 
+    __defaultname__ = 'entities'
 
     __columns__ = (
         {'name': 'keytable_idx', 'type': (int, Key),
          'doc': ('The index into the keys table for the user key that '
                  'maps to the resource term / registry symbol.')},
         {'name': 'resource_table_idx', 'type': (int, Resource),
-         'doc': 'The index into the ResourceTable.'}, 
+         'doc': 'The index into the ResourceTable.'},
         {'name': 'entity_id', 'type': str,
          'doc': 'The unique ID for the resource term / registry symbol.'},
         {'name': 'entity_uri', 'type': str,
          'doc': 'The URI for the resource term / registry symbol.'},
     )
 
+
 class Entity(Row): 
     """
-    A Row class for representing rows in the EntityTable 
-    """#changed doc
+    A Row class for representing rows in the EntityTable
+    """
 
-    __table__ = EntityTable 
+    __table__ = EntityTable
     
 
-    
 class ObjectTable(Table):
     """
     A table for storing objects (i.e. Containers) that contain keys that refer to external resources
@@ -132,7 +133,7 @@ class ExternalResources(Container):
         {'name': 'resources', 'child': True},
         {'name': 'objects', 'child': True},
         {'name': 'object_keys', 'child': True},
-        {'name': 'entities', 'child': True}, 
+        {'name': 'entities', 'child': True},
     )
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ExternalResources container'},
@@ -141,7 +142,7 @@ class ExternalResources(Container):
              'doc': 'the table storing user keys for referencing resources'},
             {'name': 'resources', 'type': ResourceTable, 'default': None,
              'doc': 'the table for storing names of resources and their uri'},
-            {'name': 'entities', 'type': EntityTable, 'default': None,  
+            {'name': 'entities', 'type': EntityTable, 'default': None,
              'doc': 'the table storing entity information'},
             {'name': 'objects', 'type': ObjectTable, 'default': None,
              'doc': 'the table storing object information'},
@@ -151,8 +152,8 @@ class ExternalResources(Container):
         name = popargs('name', kwargs)
         super().__init__(name)
         self.keys = kwargs['keys'] or KeyTable()
-        self.resources = kwargs['resources'] or ResourceTable()  
-        self.entities = kwargs['entities'] or EntityTable() 
+        self.resources = kwargs['resources'] or ResourceTable()
+        self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
 
@@ -184,11 +185,9 @@ class ExternalResources(Container):
         resource_entity = Entity(key, resource_table_idx, entity_id, entity_uri,
                                          table=self.entities)
         return resource_entity
-    
-    
+
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the ontology resource'},
             {'name': 'uri', 'type': str, 'doc': 'uri associated with ontology resource'})
-    
     def add_resource(self, **kwargs):
         """
         Add onotology name and uri to ResourceTable that will be referenced by the ResourceTable idx.
@@ -199,8 +198,7 @@ class ExternalResources(Container):
         resource = Resource(ontology_name, uri, table=self.resources)
         
         return resource
-    
-    
+
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'the Container/Data object to add or the object_id for the Container/Data object to add'},
             {'name': 'field', 'type': str, 'doc': 'the field on the Container to add'})
