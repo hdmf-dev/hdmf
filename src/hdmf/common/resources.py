@@ -301,7 +301,7 @@ class ExternalResources(Container):
         else:
             resource_name = kwargs['resource_name']
             resource_uri = kwargs['resource_uri']
-            resource_table_idx = self.add_resource(resource_name,resource_uri)
+            resource_table_idx = self.add_resource(resource_name, resource_uri)
 
         if ((resource_table_idx or resource_name) is not None and entity_id is not None and entity_uri is not None):
             add_rsc = True
