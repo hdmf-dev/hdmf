@@ -137,7 +137,6 @@ class ExternalResources(Container):
     )
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ExternalResources container'},
-           
             {'name': 'keys', 'type': KeyTable, 'default': None,
              'doc': 'the table storing user keys for referencing resources'},
             {'name': 'resources', 'type': ResourceTable, 'default': None,
@@ -193,7 +192,6 @@ class ExternalResources(Container):
         """
         ontology_name = kwargs['name']
         uri = kwargs['uri']
-        
         resource = Resource(ontology_name, uri, table=self.resources)
         return resource
 
@@ -305,10 +303,10 @@ class ExternalResources(Container):
             resource_uri = kwargs['resource_uri']
             resource_table_idx = self.add_resource(resource_name,resource_uri)
 
-        if (resource_table_idx or resource_name) is not None and entity_id is not None and entity_uri is not None:
+        if ((resource_table_idx or resource_name) is not None and entity_id is not None and entity_uri is not None):
             add_rsc = True
         elif not ((resource_table_idx and resource_name is None) and entity_id is None and resource_uri is None):
-            msg = ("Specify resource, entity_id, and entity_uri arguments. "
+            msg = ("Specify resource, entity_id, and entity_uri arguments."
                    "All three are required to create a reference")
             raise ValueError(msg)
 
