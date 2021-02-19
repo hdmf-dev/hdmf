@@ -7,6 +7,7 @@
 
 ### Bug fixes
 - Allow `np.bool_` as a valid `bool` dtype when validating. @dsleiter (#505)
+- Fix `DynamicTable.get` for compound type columns. @rly (#518)
 
 ### New features
 - `GroupValidator` now checks if child groups, datasets, and links have the correct quantity of elements and returns
