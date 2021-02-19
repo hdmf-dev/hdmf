@@ -763,7 +763,6 @@ class DynamicTable(Container):
                 return default
         else:
             # index by int, list, np.ndarray, or slice --> return pandas Dataframe consisting of one or more rows
-            # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
             arg = key
             ret = OrderedDict()
             try:
