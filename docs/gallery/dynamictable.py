@@ -281,8 +281,12 @@ table[10::-1]  # get rows 10 to 0 in reverse order
 # the following are equivalent to table[0:10:2]
 table[slice(0, 10, 2)]
 table[np.s_[0:10:2]]
-table[[0, 2, 4, 6, 8]]
-table[np.ndarray([0, 2, 4, 6, 8])]
+
+# you can also index a DynamicTable with a list or 1-dimensional numpy array of
+# integer values. This will raise an IndexError if any of the index values is
+# out of bounds of the table.
+table[[0, 2]]
+table[np.array([0, 2])]
 
 ###############################################################################
 # .. note::
@@ -362,9 +366,18 @@ table['col1'][0]  # get the 0th element from column 'col1'
 table['col1'][:2]  # get a list of the 0th and 1st elements
 table['col1'][0:10:2]  # get a list of the 0th to 10th (exclusive) elements in steps of 2
 table['col1'][10::-1]  # get a list of the 10th to 0th elements in reverse order
-table['col1'][slice(0, 10, 2)]  # equivalent to table['col1'][0:10:2]
-table['col1'][np.s_[0:10:2]]  # equivalent to table['col1'][0:10:2]
 
+# the following are equivalent to table['col1'][0:10:2]
+table['col1'][slice(0, 10, 2)]
+table['col1'][np.s_[0:10:2]]
+
+# you can also index a column with a list or 1-dimensional numpy array of
+# integer values. This will raise an IndexError if any of the index values is
+# out of bounds of the table.
+table['col1'][[0, 2]]
+table['col1'][np.array([0, 2])]
+
+# this slicing and indexing works for ragged array columns as well
 table['col4'][:2]  # get a list of the 0th and 1st list elements
 
 ###############################################################################
