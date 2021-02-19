@@ -277,8 +277,12 @@ table[0]  # get the 0th row of the table as a DataFrame
 table[:2]  # get the first two rows
 table[0:10:2]  # get rows 0 to 10 (exclusive) in steps of 2
 table[10::-1]  # get rows 10 to 0 in reverse order
-table[slice(0, 10, 2)]  # equivalent to table[0:10:2, 'col1']
-table[np.s_[0:10:2]]  # equivalent to table[0:10:2, 'col1']
+
+# the following are equivalent to table[0:10:2]
+table[slice(0, 10, 2)]
+table[np.s_[0:10:2]]
+table[[0, 2, 4, 6, 8]]
+table[np.ndarray([0, 2, 4, 6, 8])]
 
 ###############################################################################
 # .. note::
