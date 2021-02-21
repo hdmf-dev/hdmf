@@ -497,7 +497,7 @@ class TypeMap:
         'utf-8': str,
         'ascii': bytes,
         'bytes': bytes,
-        'bool': bool,
+        'bool': (bool, np.bool_),
         'isodatetime': datetime,
         'datetime': datetime
     }

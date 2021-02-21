@@ -23,7 +23,7 @@ class DtypeHelper:
     # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
     # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
     # hdmf.validate.validator.__allowable, and backend dtype maps
-    # see https://hdmf-schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
+    # see https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype
     primary_dtype_synonyms = {
         'float': ["float", "float32"],
         'double': ["double", "float64"],

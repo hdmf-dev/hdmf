@@ -50,6 +50,8 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
 
     Derived classes must ensure that all abstract methods and abstract properties are implemented, in
     particular, dtype, maxshape, __iter__, ___next__, recommended_chunk_shape, and recommended_data_shape.
+
+    Iterating over AbstractContainer objects is not yet supported.
     """
 
     @abstractmethod
