@@ -11,8 +11,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         key1 = er.add_key('key1')
         key2 = er.add_key('key1')
         resource1 = er.add_resource(name='resource0', uri='resource_uri0')
-        er.add_ref(container='uuid1', field='field1', key=key1,
-        resource_name='resource11', resource_uri='resource_uri11', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid1', field='field1', key=key1,
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
 
         er.add_ref(container='uuid2', field='field2', key=key2,
         resource_name='resource21', resource_uri='resource_uri21', entity_id="id12", entity_uri='url21')
