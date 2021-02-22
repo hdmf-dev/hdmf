@@ -52,9 +52,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_add_ref(self):
         er = ExternalResources('terms')
         resource1 = er.add_resource(name='resource0', uri='resource_uri0')
-        er.add_ref(container='uuid1', field='field1', key='key1',
-        resource_table_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
-
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', #HERE
+            resource_table_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
@@ -63,7 +63,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources('terms')
         # The contents of the message are not important. Just make sure an error is raised
         with self.assertRaises(ValueError):
-            er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1', entity_id='resource_id1')
+            er.add_ref(
+                'uuid1', 'field1', 'key1', resource_name='resource1',
+                resource_uri='uri1', entity_id='resource_id1')
         with self.assertRaises(ValueError):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1', entity_uri='uri1')
         with self.assertRaises(ValueError):
@@ -102,7 +104,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [('uuid1', 'field1'),
                                            ('uuid2', 'field2')])
 
-
     def test_add_ref_same_key_diff_objfield(self):
         er = ExternalResources('terms')
         er.add_ref(
@@ -139,8 +140,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2'),
                           ('resource3', 'resource_uri3')])
-        self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'),
-        (1, 1, 'id12', 'url21'), (0, 2, 'id13', 'url31')])
+        self.assertEqual(
+            er.entities.data, [(0, 0, 'id11', 'url11'),
+            (1, 1, 'id12', 'url21'), (0, 2, 'id13', 'url31')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1'),
                                            ('uuid2', 'field2')])
 
@@ -162,8 +164,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             data=[['key1', 0, 'id11', 'url11'],
             ['key1', 2, 'id13', 'url31'],
             ['key2', 1, 'id12', 'url21']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri']
-        )
+            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
     def test_get_keys_subset(self):
@@ -183,8 +184,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         expected = pd.DataFrame(
             data=[['key1', 0, 'id11', 'url11'],
             ['key1', 2, 'id13', 'url31']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri']
-        )
+            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
     def test_add_keys(self):
@@ -207,9 +207,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2'),
                           ('resource3', 'resource_uri3')])
-        self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'),
-        (0, 1, 'id12', 'url12'), (1, 2, 'id13', 'url13')])
-
+        self.assertEqual(
+            er.entities.data, [(0, 0, 'id11', 'url11'),
+            (0, 1, 'id12', 'url12'),
+            (1, 2, 'id13', 'url13')])
 
     def test_keys_roundtrip(self):
         er = ExternalResources('terms')
@@ -249,7 +250,6 @@ class TestExternalResourcesGetKey(TestCase):
             'uuid2', 'field2', 'key1', resource_name='resource2',
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
-
         self.er.add_ref(
             container='uuid1', field='field1', key='key1',
             resource_name='resource1', resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -271,7 +271,7 @@ class TestExternalResourcesGetKey(TestCase):
         keys = self.er.get_key('key1', 'uuid1', 'field1')
         self.assertIsInstance(keys, Key)
         self.assertEqual(keys.key_name, 'key1')
-    #
+
     def test_get_key_w_bad_object_info(self):
         self.er.add_ref(
             'uuid1', 'field1', 'key1', resource_name='resource1',
@@ -281,7 +281,7 @@ class TestExternalResourcesGetKey(TestCase):
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
         with self.assertRaisesRegex(ValueError,
-        "No key with name 'key2' for container 'uuid1' and field 'field1'"):
+            "No key with name 'key2' for container 'uuid1' and field 'field1'"):
             self.er.get_key('key2', 'uuid1', 'field1')
 
     def test_get_key_doesnt_exist(self):
@@ -313,7 +313,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertIsInstance(keys, list)
         self.assertEqual(keys[0].key_name, 'key1')
         self.assertEqual(keys[1].key_name, 'key1')
-    #
+
     def test_get_key_same_keyname_specific(self):
         self.er = ExternalResources('terms')
         key1 = self.er.add_key('key1')
