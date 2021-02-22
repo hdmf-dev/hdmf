@@ -16,13 +16,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="id11", entity_uri='url11')
 
-        er.add_ref(container='uuid2', field='field2', key=key2,
-        resource_name='resource21', resource_uri='resource_uri21', entity_id="id12", entity_uri='url21')
-
-        er.add_ref(container='uuid1', field='field1', key='key1',
-        resource_name='resource12', resource_uri='resource_uri12', entity_id="id13", entity_uri='url12')
-        er.add_ref(container='uuid2', field='field2', key=key2, resource_table_idx=resource1,
-        resource_name='resource22', resource_uri='resource_uri22', entity_id="id14", entity_uri='url23')
+        er.add_ref(
+            container='uuid2', field='field2', key=key2,
+            resource_name='resource21', resource_uri='resource_uri21', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1',
+            resource_name='resource12', resource_uri='resource_uri12', entity_id="id13", entity_uri='url12')
+        er.add_ref(
+            container='uuid2', field='field2', key=key2, resource_table_idx=resource1,
+            resource_name='resource22', resource_uri='resource_uri22', entity_id="id14", entity_uri='url23')
         return er
 
     def test_piecewise_add(self):
@@ -34,8 +36,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         resource1 = er.add_resource(name='resource0', uri='resource_uri0')
         # the user will have to supply this info as well. This is the information
         # needed to retrieve info about the controled term
-        er.add_entity(key, resource1, '10090',
-        'uri')
+        er.add_entity(key, resource1, '10090', 'uri')
 
         # The user can also pass in the container or it can be wrapped up under NWBFILE
         obj = er.add_object('object', 'species')
@@ -45,7 +46,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         self.assertEqual(er.keys.data, [('mouse',)])
         self.assertEqual(er.entities.data,
-                         [(0, 0, '10090','uri')])
+                         [(0, 0, '10090', 'uri')])
         self.assertEqual(er.objects.data, [('object', 'species')])
 
     def test_add_ref(self):
@@ -70,23 +71,27 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_ref_two_resources(self):
         er = ExternalResources('terms')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.resources.data,
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
-        self.assertEqual(er.entities.data, [(0,0,'id11','url11'), (0,1,'id12','url21')])
+        self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'), (0, 1, 'id12', 'url21')])
 
     def test_add_ref_two_keys(self):
         er = ExternalResources('terms')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        er.add_ref(container='uuid2', field='field2', key='key2', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', field='field2', key='key2', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key2',)])
         self.assertEqual(er.resources.data,
@@ -100,13 +105,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_ref_same_key_diff_objfield(self):
         er = ExternalResources('terms')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        er.add_ref(container='uuid2', field='field2', key='key1', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', field='field2', key='key1', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0,0,'id11','url11'), (0,1,'id12','url21')])
+        self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'), (0, 1, 'id12', 'url21')])
         self.assertEqual(er.resources.data,
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2')])
@@ -117,32 +124,38 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources('terms')
         key1 = er.add_key('key1')
         key2 = er.add_key('key1')
-        er.add_ref(container='uuid1', field='field1', key=key1, resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        er.add_ref(container='uuid2', field='field2', key=key2, resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource3',
-        resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
+        er.add_ref(
+            container='uuid1', field='field1', key=key1, resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', field='field2', key=key2, resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource3',
+            resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
 
         self.assertEqual(er.keys.data, [('key1',), ('key1',)])
         self.assertEqual(er.resources.data,
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2'),
                           ('resource3', 'resource_uri3')])
-        self.assertEqual(er.entities.data, [(0,0,'id11','url11'),
-        (1,1,'id12','url21'), (0,2,'id13','url31')])
+        self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'),
+        (1, 1, 'id12', 'url21'), (0, 2, 'id13', 'url31')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1'),
                                            ('uuid2', 'field2')])
 
     def test_get_keys(self):
         er = ExternalResources('terms')
 
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        er.add_ref(container='uuid2', field='field2', key='key2', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource3',
-        resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', field='field2', key='key2', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource3',
+            resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
         received = er.get_keys()
 
         expected = pd.DataFrame(
@@ -155,12 +168,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_get_keys_subset(self):
         er = ExternalResources('terms')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        er.add_ref(container='uuid2', field='field2', key='key2', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
-        er.add_ref(container='uuid1', field='field1', key='key1', resource_name='resource3',
-        resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', field='field2', key='key2', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource3',
+            resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
         key = er.keys.row[0]
         received = er.get_keys(keys=key)
 
@@ -226,45 +242,55 @@ class TestExternalResourcesGetKey(TestCase):
         self.er = ExternalResources('terms')
 
     def test_get_key(self):
-        self.er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref('uuid2', 'field2', 'key1', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        self.er.add_ref(
+            'uuid1', 'field1', 'key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            'uuid2', 'field2', 'key1', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
 
-        self.er.add_ref(container='uuid1', field='field1', key='key1',
-        resource_name='resource1', resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref(container='uuid2', field='field2', key='key1',
-        resource_name='resource2', resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        self.er.add_ref(
+            container='uuid1', field='field1', key='key1',
+            resource_name='resource1', resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            container='uuid2', field='field2', key='key1',
+            resource_name='resource2', resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
         keys = self.er.get_key('key1')
         self.assertIsInstance(keys, Key)
         self.assertEqual(keys.key_name, 'key1')
 
     def test_get_key_w_object_info(self):
-        self.er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref('uuid2', 'field2', 'key1', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        self.er.add_ref(
+            'uuid1', 'field1', 'key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            'uuid2', 'field2', 'key1', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
         keys = self.er.get_key('key1', 'uuid1', 'field1')
         self.assertIsInstance(keys, Key)
         self.assertEqual(keys.key_name, 'key1')
     #
     def test_get_key_w_bad_object_info(self):
-        self.er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref('uuid2', 'field2', 'key1', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        self.er.add_ref(
+            'uuid1', 'field1', 'key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            'uuid2', 'field2', 'key1', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
         with self.assertRaisesRegex(ValueError,
         "No key with name 'key2' for container 'uuid1' and field 'field1'"):
             self.er.get_key('key2', 'uuid1', 'field1')
 
     def test_get_key_doesnt_exist(self):
-        self.er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref('uuid2', 'field2', 'key1', resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
+        self.er.add_ref(
+            'uuid1', 'field1', 'key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            'uuid2', 'field2', 'key1', resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
         with self.assertRaisesRegex(ValueError, "key 'bad_key' does not exist"):
             self.er.get_key('bad_key')
 
@@ -272,12 +298,15 @@ class TestExternalResourcesGetKey(TestCase):
         self.er = ExternalResources('terms')
         key1 = self.er.add_key('key1')
         key2 = self.er.add_key('key1')
-        self.er.add_ref('uuid1', 'field1', key1, resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref('uuid2', 'field2', key2, resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
-        self.er.add_ref('uuid1', 'field1', 'key1', resource_name='resource3',
-        resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
+        self.er.add_ref(
+            'uuid1', 'field1', key1, resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            'uuid2', 'field2', key2, resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
+        self.er.add_ref(
+            'uuid1', 'field1', 'key1', resource_name='resource3',
+            resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
 
         keys = self.er.get_key('key1')
 
@@ -289,12 +318,15 @@ class TestExternalResourcesGetKey(TestCase):
         self.er = ExternalResources('terms')
         key1 = self.er.add_key('key1')
         key2 = self.er.add_key('key1')
-        self.er.add_ref('uuid1', 'field1', key1, resource_name='resource1',
-        resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref('uuid2', 'field2', key2, resource_name='resource2',
-        resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
-        self.er.add_ref('uuid1', 'field1', 'key1', resource_name='resource3',
-        resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
+        self.er.add_ref(
+            'uuid1', 'field1', key1, resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(
+            'uuid2', 'field2', key2, resource_name='resource2',
+            resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
+        self.er.add_ref(
+            'uuid1', 'field1', 'key1', resource_name='resource3',
+            resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
 
         keys = self.er.get_key('key1', 'uuid1', 'field1')
         self.assertIsInstance(keys, Key)
