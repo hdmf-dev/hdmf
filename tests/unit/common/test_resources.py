@@ -53,7 +53,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources('terms')
         resource1 = er.add_resource(name='resource0', uri='resource_uri0')
         er.add_ref(
-            container='uuid1', field='field1', key='key1', #HERE
+            container='uuid1', field='field1', key='key1', 
             resource_table_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
@@ -141,8 +141,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                           ('resource2', 'resource_uri2'),
                           ('resource3', 'resource_uri3')])
         self.assertEqual(
-            er.entities.data, [(0, 0, 'id11', 'url11'),
-            (1, 1, 'id12', 'url21'), (0, 2, 'id13', 'url31')])
+            er.entities.data,
+            [(0, 0, 'id11', 'url11'),
+             (1, 1, 'id12', 'url21'),
+             (0, 2, 'id13', 'url31')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1'),
                                            ('uuid2', 'field2')])
 
@@ -162,8 +164,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         expected = pd.DataFrame(
             data=[['key1', 0, 'id11', 'url11'],
-            ['key1', 2, 'id13', 'url31'],
-            ['key2', 1, 'id12', 'url21']],
+                  ['key1', 2, 'id13', 'url31'],
+                  ['key2', 1, 'id12', 'url21']],
             columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
@@ -183,7 +185,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         expected = pd.DataFrame(
             data=[['key1', 0, 'id11', 'url11'],
-            ['key1', 2, 'id13', 'url31']],
+                  ['key1', 2, 'id13', 'url31']],
             columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
@@ -208,9 +210,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                           ('resource2', 'resource_uri2'),
                           ('resource3', 'resource_uri3')])
         self.assertEqual(
-            er.entities.data, [(0, 0, 'id11', 'url11'),
-            (0, 1, 'id12', 'url12'),
-            (1, 2, 'id13', 'url13')])
+            er.entities.data, [(0, 0, 'id11', 'url11'), (0, 1, 'id12', 'url12'),
+                               (1, 2, 'id13', 'url13')])
 
     def test_keys_roundtrip(self):
         er = ExternalResources('terms')
@@ -280,8 +281,7 @@ class TestExternalResourcesGetKey(TestCase):
             'uuid2', 'field2', 'key1', resource_name='resource2',
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
-        with self.assertRaisesRegex(ValueError,
-            "No key with name 'key2' for container 'uuid1' and field 'field1'"):
+        with self.assertRaisesRegex(ValueError,"No key with name 'key2'"):
             self.er.get_key('key2', 'uuid1', 'field1')
 
     def test_get_key_doesnt_exist(self):
