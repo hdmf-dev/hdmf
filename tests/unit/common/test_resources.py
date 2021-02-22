@@ -53,7 +53,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources('terms')
         resource1 = er.add_resource(name='resource0', uri='resource_uri0')
         er.add_ref(
-            container='uuid1', field='field1', key='key1', 
+            container='uuid1', field='field1', key='key1',
             resource_table_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
@@ -281,7 +281,7 @@ class TestExternalResourcesGetKey(TestCase):
             'uuid2', 'field2', 'key1', resource_name='resource2',
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
-        with self.assertRaisesRegex(ValueError,"No key with name 'key2'"):
+        with self.assertRaisesRegex(ValueError, "No key with name 'key2'"):
             self.er.get_key('key2', 'uuid1', 'field1')
 
     def test_get_key_doesnt_exist(self):
