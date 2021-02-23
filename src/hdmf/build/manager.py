@@ -622,6 +622,8 @@ class TypeMap:
         existing_args = set(arg['name'] for arg in get_docval(base.__init__))
 
         clsconf = list()
+        cols = list()
+
         # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
             if f == 'help':  # pragma: no cover
@@ -637,6 +639,13 @@ class TypeMap:
                     get='get_{}'.format(f),
                     create='create_{}'.format(f)
                 ))
+            elif base.__name__ == 'DynamicTable' \
+                    and getattr(field_spec, 'neurodata_type_inc', None) in ('VectorData', 'DynamicTableRegion'):
+                # column of a DynamicTable
+                col_spec = dict(name=f, doc=field_spec['doc'])
+                if getattr(field_spec, 'quantity', None) == '?':
+                    col_spec.update(required=False)
+                cols.append(col_spec)
             else:
                 # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
@@ -658,6 +667,8 @@ class TypeMap:
             classdict.update({base._fieldsname: tuple(fields)})
         if len(clsconf):
             classdict.update(__clsconf__=clsconf)
+        if len(cols):
+            classdict.update(__cols__=cols)
 
         docval_args = self._build_docval(base, addl_fields, name, default_name)
 
@@ -679,6 +690,23 @@ class TypeMap:
 
         return classdict
 
+    def get_parent_cls(self, namespace, data_type, spec):
+        dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
+        parent_cls = None
+        for t in dt_hier:
+            parent_cls = self.__get_container_cls(namespace, t)
+            if parent_cls is not None:
+                break
+        if parent_cls is not None:
+            return parent_cls
+        else:
+            if isinstance(spec, GroupSpec):
+                return Container
+            elif isinstance(spec, DatasetSpec):
+                return Data
+            else:
+                raise ValueError("Cannot generate class from %s" % type(spec))
+
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             returns='the class for the given namespace and data_type', rtype=type)
@@ -694,24 +722,8 @@ class TypeMap:
             if isinstance(spec, GroupSpec):
                 self.__resolve_child_container_classes(spec, namespace)
 
-            dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
-            parent_cls = None
-            for t in dt_hier:
-                parent_cls = self.__get_container_cls(namespace, t)
-                if parent_cls is not None:
-                    break
-            if parent_cls is not None:
-                bases = (parent_cls,)
-            else:
-                if isinstance(spec, GroupSpec):
-                    bases = (Container,)
-                elif isinstance(spec, DatasetSpec):
-                    bases = (Data,)
-                else:
-                    raise ValueError("Cannot generate class from %s" % type(spec))
-                parent_cls = bases[0]
-            if type(parent_cls) is not ExtenderMeta:
-                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
+            parent_cls = self.get_parent_cls(namespace, data_type, spec)
+            bases = (parent_cls,)
 
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             fields = dict()
@@ -721,7 +733,8 @@ class TypeMap:
             try:
                 d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
                 if '__clsconf__' in d and not isinstance(parent_cls, MultiContainerInterface):
-                    bases = tuple([MultiContainerInterface] + list(bases))
+                    bases = (MultiContainerInterface, parent_cls)
+
             except TypeDoesNotExistError as e:  # pragma: no cover
                 # this error should never happen after hdmf#322
                 name = spec.data_type_def

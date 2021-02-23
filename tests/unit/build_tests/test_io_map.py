@@ -16,6 +16,7 @@ from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecN
                        DtypeSpec, LinkSpec)
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs, get_docval
+from hdmf.common import DynamicTable
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -428,6 +429,32 @@ class TestDynamicContainer(TestCase):
                       attr3=5.)
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
         assert multi.attr3 == 5.
+
+    def test_dynamic_table(self):
+        dt_spec = GroupSpec(
+            'A test extension that contains a multi',
+            data_type_def='TestTable',
+            data_type_inc='DynamicTable',
+            datasets=[
+                DatasetSpec(
+                    data_type_inc='VectorData',
+                    name='my_col',
+                    doc='a test column',
+                    quantity='?'
+                )
+            ]
+        )
+
+        self.spec_catalog.register_spec(dt_spec, 'extension.yaml')
+        TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
+
+        assert issubclass(TestTable, DynamicTable)
+
+        assert TestTable.__cols__[0] == dict(
+            name='my_col',
+            required=False,
+            doc='a test column'
+        )
 
     def test_build_docval(self):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
