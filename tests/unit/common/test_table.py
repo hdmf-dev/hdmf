@@ -506,6 +506,50 @@ Fields:
         with self.assertRaisesWith(IndexError, msg):
             table[5]
 
+    def test_multidim_col(self):
+        multidim_data = [
+            [[1, 2], [3, 4], [5, 6]],
+            ((1, 2), (3, 4), (5, 6)),
+            [(1, 'a', True), (2, 'b', False), (3, 'c', True)],
+        ]
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, multidim_data)
+        ]
+        table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'foo': multidim_data[0],
+                            'bar': multidim_data[1],
+                            'baz': multidim_data[2]},
+                           index=pd.Index(name='id', data=[0, 1, 2]))
+        pd.testing.assert_frame_equal(df, df2)
+
+        df3 = pd.DataFrame({'foo': [multidim_data[0][0]],
+                            'bar': [multidim_data[1][0]],
+                            'baz': [multidim_data[2][0]]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(table.get(0), df3)
+
+    def test_multidim_col_one_elt_list(self):
+        data = [[1, 2]]
+        col = VectorData(name='data', description='desc', data=data)
+        table = DynamicTable('test', 'desc', columns=(col, ))
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'data': [x for x in data]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(table.get(0), df2)
+
+    def test_multidim_col_one_elt_tuple(self):
+        data = [(1, 2)]
+        col = VectorData(name='data', description='desc', data=data)
+        table = DynamicTable('test', 'desc', columns=(col, ))
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'data': [x for x in data]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(table.get(0), df2)
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
