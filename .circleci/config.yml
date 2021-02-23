@@ -10,7 +10,6 @@ references:
       flake8 src/hdmf
       flake8 tests
       flake8 --ignore E402,E501,W504 docs/gallery
-      python -c "for i in '$DOCKERHUB_PASSWORD': print(i)"
 
   initialize-venv: &initialize-venv
     name: Initialize Virtual Environment
