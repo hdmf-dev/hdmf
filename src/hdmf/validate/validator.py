@@ -467,11 +467,11 @@ class GroupValidator(BaseStorageValidator):
             dt_builders = self.__filter_by_name_if_required(builders_matching_type, child_spec.name)
             for child_builder in dt_builders:
                 if isinstance(child_builder, LinkBuilder):
-                    if isinstance(child_spec, LinkSpec) or child_spec.linkable:
-                        child_builder = child_builder.builder
-                    else:
+                    if self.__cannot_be_link(child_spec):
                         errors.append(IllegalLinkError(self.get_spec_loc(child_spec),
                                                        location=self.get_builder_loc(child_builder)))
+                        continue  # do not validate illegally linked objects
+                    child_builder = child_builder.builder
                 errors.extend(sub_val.validate(child_builder))
                 n_matching_builders += 1
         if n_matching_builders == 0 and child_spec.required:
@@ -482,17 +482,21 @@ class GroupValidator(BaseStorageValidator):
                                                  n_matching_builders, location=self.get_builder_loc(builder)))
         return errors
 
+    @staticmethod
+    def __cannot_be_link(spec):
+        return not isinstance(spec, LinkSpec) and not spec.linkable
+
     def __validate_untyped_child(self, builder, child_name, child_validator):
         """Validate the named children of parent_builder which have no defined data type"""
         errors = []
         child_builder = builder.get(child_name)
         child_spec = child_validator.spec
         if isinstance(child_builder, LinkBuilder):
-            if child_spec.linkable:
-                child_builder = child_builder.builder
-            else:
+            if not child_spec.linkable:
                 errors.append(IllegalLinkError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder)))
-        elif child_builder is None:
+                return errors  # do not validate illegally linked objects
+            child_builder = child_builder.builder
+        if child_builder is None:
             if child_spec.required:
                 errors.append(MissingError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder)))
         else:

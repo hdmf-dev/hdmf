@@ -738,7 +738,8 @@ class DynamicTable(Container):
 
         :return: 1) If key is a string, then return array with the data of the selected column
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
-                 3) If key is an int, list or slice, then return pandas.DataFrame consisting of one or more rows
+                 3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame consisting of one or
+                    more rows
 
         :raises: KeyError
         """
@@ -761,35 +762,19 @@ class DynamicTable(Container):
             else:
                 return default
         else:
-            # index by int, list, or slice --> return pandas Dataframe consisting of one or more rows
-            # determine the key. If the key is an int, then turn it into a slice to reduce the number of cases below
+            # index by int, list, np.ndarray, or slice --> return pandas Dataframe consisting of one or more rows
             arg = key
+            ret = OrderedDict()
             try:
-                if np.issubdtype(type(arg), np.integer):
-                    ret = OrderedDict()
-                    ret['id'] = self.id.data[arg]
-                    for name in self.colnames:
-                        col = self.__df_cols[self.__colids[name]]
-                        ret[name] = col.get(arg, df=df, **kwargs)
-                # index with a python slice (or single integer) to select one or multiple rows
-                elif isinstance(arg, slice):
-                    ret = OrderedDict()
-                    ret['id'] = self.id.data[arg]
-                    for name in self.colnames:
-                        col = self.__df_cols[self.__colids[name]]
-                        ret[name] = col.get(arg, df=df, **kwargs)
-                # index by a list of ints, return multiple rows
-                elif isinstance(arg, (list, np.ndarray)):
-                    if isinstance(arg, np.ndarray):
-                        if len(arg.shape) != 1:
-                            raise ValueError("cannot index DynamicTable with multiple dimensions")
-                    ret = OrderedDict()
-                    ret['id'] = self.id[arg]
-                    for name in self.colnames:
-                        col = self.__df_cols[self.__colids[name]]
-                        ret[name] = col.get(arg, df=df, **kwargs)
-                else:
+                # index with a python slice or single int to select one or multiple rows
+                if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
                     raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+                if isinstance(arg, np.ndarray) and len(arg.shape) != 1:
+                    raise ValueError("cannot index DynamicTable with multiple dimensions")
+                ret['id'] = self.id[arg]
+                for name in self.colnames:
+                    col = self.__df_cols[self.__colids[name]]
+                    ret[name] = col.get(arg, df=df, **kwargs)
             except ValueError as ve:
                 x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
                 if x:
@@ -811,7 +796,7 @@ class DynamicTable(Container):
                 if np.isscalar(id_index):
                     id_index = [id_index]
                 retdf = OrderedDict()
-                for k in ret:
+                for k in ret:  # for each column
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
                             if len(id_index) == 1:
@@ -827,7 +812,7 @@ class DynamicTable(Container):
                                 retdf[k] = list(ret[k])
                             else:
                                 raise ValueError('unable to convert selection to DataFrame')
-                    elif isinstance(ret[k], list):
+                    elif isinstance(ret[k], (list, tuple)):
                         if len(id_index) == 1:
                             # k is a multi-dimension column, and
                             # only one element has been selected
