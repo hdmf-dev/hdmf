@@ -14,6 +14,8 @@
 - Allow `np.bool_` as a valid `bool` dtype when validating. @dsleiter (#505)
 - Fix building of Data objects where the spec has no dtype and the Data object value is a DataIO wrapping an
   AbstractDataChunkIterator. @rly (#512)
+- Fix TypeError when validating a group with an illegally-linked child.
+  @dsleiter (#515)
 - Fix `DynamicTable.get` for compound type columns. @rly (#518)
 - Fix and removed error "Field 'x' cannot be defined in EllipseSeries." when opening files with some extensions. @rly
   (#519)
