@@ -159,19 +159,25 @@ class ValidatorMap:
     def __init__(self, **kwargs):
         ns = getargs('namespace', kwargs)
         self.__ns = ns
-        tree = dict()
+
+        # build tree that isn't really a tree
+        # map(type, list of child types or self)
+        tree = defaultdict(list)
         types = ns.get_registered_types()
         self.__type_key = ns.get_spec(types[0]).type_key()
         for dt in types:
             spec = ns.get_spec(dt)
             parent = spec.data_type_inc
             child = spec.data_type_def
-            tree.setdefault(child, list())
+            tree[child] = list()
             if parent is not None:
-                tree.setdefault(parent, list()).append(child)
+                tree[parent].append(child)
         for t in tree:
             self.__rec(tree, t)
+
+        # map(type, validators of child types or self)
         self.__valid_types = dict()
+        # map(type, validator of self)
         self.__validators = dict()
         for dt, children in tree.items():
             _list = list()
@@ -187,12 +193,12 @@ class ValidatorMap:
             self.__valid_types[dt] = tuple(_list)
 
     def __rec(self, tree, node):
-        if isinstance(tree[node], tuple):
-            return tree[node]
-        sub_types = {node}
-        for child in tree[node]:
-            sub_types.update(self.__rec(tree, child))
-        tree[node] = tuple(sub_types)
+        # recursively go through subtypes and convert to tuple when complete
+        if not isinstance(tree[node], tuple):
+            sub_types = {node}
+            for child in tree[node]:
+                sub_types.update(self.__rec(tree, child))
+            tree[node] = tuple(sub_types)
         return tree[node]
 
     @property
@@ -405,61 +411,84 @@ class GroupValidator(BaseStorageValidator):
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        self.__include_dts = dict()
-        self.__dataset_validators = dict()
-        self.__group_validators = dict()
-        it = chain(self.spec.datasets, self.spec.groups)
-        for spec in it:
-            if spec.data_type_def is None:
-                if spec.data_type_inc is None:
-                    if isinstance(spec, GroupSpec):
-                        self.__group_validators[spec.name] = GroupValidator(spec, self.vmap)
-                    else:
-                        self.__dataset_validators[spec.name] = DatasetValidator(spec, self.vmap)
-                else:
-                    self.__include_dts[spec.data_type_inc] = spec
-            else:
-                self.__include_dts[spec.data_type_def] = spec
-
-        for spec in self.spec.links:
-            self.__include_dts[spec.data_type_inc] = spec
 
     @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
+
+        # validates attributes
         errors = super().validate(builder)
 
-        grouped_children = self.__group_children_by_data_type(builder)
-        for dt, inc_spec in self.__include_dts.items():
-            errors.extend(self.__validate_child_data_type(builder, dt, inc_spec, grouped_children))
-
-        it = chain(self.__dataset_validators.items(),
-                   self.__group_validators.items())
-        for name, validator in it:
-            errors.extend(self.__validate_untyped_child(builder, name, validator))
-
+        errors.extend(self.__validate_datasets(builder))
+        errors.extend(self.__validate_groups(builder))
+        errors.extend(self.__validate_links(builder))
         return errors
 
-    def __group_children_by_data_type(self, builder):
-        """Returns a map of the children of a builder grouping those children by data_type
+    def __validate_datasets(self, builder):
+        grouped_datasets = self.__group_datasets_by_data_type(builder)
+        for spec in self.spec.datasets:
+            if spec.data_type is not None:
+                yield from self.__validate_child_data_type(builder, spec.data_type, spec, grouped_datasets)
+            else:
+                yield from self.__validate_untyped_child(builder, spec.name, spec)
 
-        The keys of the map are data_type names and they map to lists of all child builders of that data_type
+    def __group_datasets_by_data_type(self, builder):
+        """Returns a map of the datasets of a builder grouping those datasets by data_type
+
+        The keys of the map are data_type names and they map to lists of all
+        dataset builders of that data_type or link builders pointing to dataset
+        builders of that type.
         """
+        def _iter_datasets(builder):
+            yield from builder.datasets.values()
+            for lnk in builder.links.values():
+                if isinstance(lnk.builder, DatasetBuilder):
+                    yield lnk
+
         data_types = defaultdict(list)
-        for value in builder.values():
+        for value in _iter_datasets(builder):
             v_builder = value
             if isinstance(v_builder, LinkBuilder):
                 v_builder = v_builder.builder
-            if isinstance(v_builder, BaseBuilder):
-                dt = v_builder.attributes.get(self.spec.type_key())
-                if dt is not None:
-                    data_types[dt].append(value)
+            dt = v_builder.attributes.get(self.spec.type_key())
+            if dt is not None:
+                data_types[dt].append(value)
+        return data_types
+
+    def __validate_groups(self, builder):
+        grouped_groups = self.__group_groups_by_data_type(builder)
+        for spec in self.spec.groups:
+            if spec.data_type is not None:
+                yield from self.__validate_child_data_type(builder, spec.data_type, spec, grouped_groups)
+            else:
+                yield from self.__validate_untyped_child(builder, spec.name, spec)
+
+    def __group_groups_by_data_type(self, builder):
+        """Returns a map of the groups of a builder grouping those groups by data_type
+
+        The keys of the map are data_type names and they map to lists of all
+        group builders of that data_type, or link builders pointing to group
+        builders of that type.
+        """
+        def _iter_groups(builder):
+            yield from builder.groups.values()
+            for lnk in builder.links.values():
+                if isinstance(lnk.builder, GroupBuilder):
+                    yield lnk
+
+        data_types = defaultdict(list)
+        for value in _iter_groups(builder):
+            v_builder = value
+            if isinstance(v_builder, LinkBuilder):
+                v_builder = v_builder.builder
+            dt = v_builder.attributes.get(self.spec.type_key())
+            if dt is not None:
+                data_types[dt].append(value)
         return data_types
 
     def __validate_child_data_type(self, builder, child_dt, child_spec, grouped_builders):
         """Validate the children of builder which have defined data types"""
-        errors = []
         n_matching_builders = 0
         for sub_val in self.vmap.valid_types(child_dt):
             sub_spec = sub_val.spec
@@ -468,46 +497,28 @@ class GroupValidator(BaseStorageValidator):
             for child_builder in dt_builders:
                 if isinstance(child_builder, LinkBuilder):
                     if self.__cannot_be_link(child_spec):
-                        errors.append(IllegalLinkError(self.get_spec_loc(child_spec),
-                                                       location=self.get_builder_loc(child_builder)))
+                        yield IllegalLinkError(self.get_spec_loc(child_spec),
+                                               location=self.get_builder_loc(child_builder))
                         continue  # do not validate illegally linked objects
                     child_builder = child_builder.builder
-                errors.extend(sub_val.validate(child_builder))
+                yield from sub_val.validate(child_builder)
                 n_matching_builders += 1
         if n_matching_builders == 0 and child_spec.required:
-            errors.append(MissingDataType(self.get_spec_loc(self.spec), child_dt,
-                                          location=self.get_builder_loc(builder), missing_dt_name=child_spec.name))
+            yield MissingDataType(self.get_spec_loc(self.spec), child_dt,
+                                  location=self.get_builder_loc(builder), missing_dt_name=child_spec.name)
         elif self.__incorrect_quantity(n_matching_builders, child_spec):
-            errors.append(IncorrectQuantityError(self.get_spec_loc(self.spec), child_dt, child_spec.quantity,
-                                                 n_matching_builders, location=self.get_builder_loc(builder)))
-        return errors
-
-    @staticmethod
-    def __cannot_be_link(spec):
-        return not isinstance(spec, LinkSpec) and not spec.linkable
-
-    def __validate_untyped_child(self, builder, child_name, child_validator):
-        """Validate the named children of parent_builder which have no defined data type"""
-        errors = []
-        child_builder = builder.get(child_name)
-        child_spec = child_validator.spec
-        if isinstance(child_builder, LinkBuilder):
-            if not child_spec.linkable:
-                errors.append(IllegalLinkError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder)))
-                return errors  # do not validate illegally linked objects
-            child_builder = child_builder.builder
-        if child_builder is None:
-            if child_spec.required:
-                errors.append(MissingError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder)))
-        else:
-            errors.extend(child_validator.validate(child_builder))
-        return errors
+            yield IncorrectQuantityError(self.get_spec_loc(self.spec), child_dt, child_spec.quantity,
+                                         n_matching_builders, location=self.get_builder_loc(builder))
 
     @staticmethod
     def __filter_by_name_if_required(builders, name):
         if name is None:
             return builders
         return filter(lambda x: x.name == name, builders)
+
+    @staticmethod
+    def __cannot_be_link(spec):
+        return not isinstance(spec, LinkSpec) and not spec.linkable
 
     @staticmethod
     def __incorrect_quantity(n_found, spec):
@@ -517,3 +528,62 @@ class GroupValidator(BaseStorageValidator):
         elif isinstance(spec.quantity, int) and n_found != spec.quantity:
             return True
         return False
+
+    def __validate_untyped_child(self, builder, child_name, child_spec):
+        """Validate the named children of parent_builder which have no defined data type"""
+        child_builder = builder.get(child_name)
+        if isinstance(child_builder, LinkBuilder):
+            if not child_spec.linkable:
+                yield IllegalLinkError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder))
+                return  # do not validate illegally linked objects
+            child_builder = child_builder.builder
+        if child_builder is not None:
+            child_validator = self.__create_untyped_validator(child_spec)
+            yield from child_validator.validate(child_builder)
+        elif child_spec.required:
+            yield MissingError(self.get_spec_loc(child_spec), location=self.get_builder_loc(builder))
+
+    def __create_untyped_validator(self, spec):
+        if isinstance(spec, GroupSpec):
+            return GroupValidator(spec, self.vmap)
+        elif isinstance(spec, DatasetSpec):
+            return DatasetValidator(spec, self.vmap)
+        else:
+            raise ValueError(spec)
+
+    def __validate_links(self, builder):
+        for link_spec in self.spec.links:
+            yield from self.__validate_child_link(builder, link_spec)
+
+    def __validate_child_link(self, builder, link_spec):
+        grouped_links = self.__group_links_by_data_type(builder)
+        # grouped_builders: dt of linked builder -> link builder
+        # child_dt: link spec target_type
+        n_matching_builders = 0
+        for sub_val in self.vmap.valid_types(link_spec.target_type):
+            # for validators that have a consistent type
+            sub_spec = sub_val.spec
+            builders_matching_type = grouped_links[sub_spec.data_type_def]
+            # for existing link builder that match the validator type
+            dt_builders = self.__filter_by_name_if_required(builders_matching_type, link_spec.name)
+            for child_builder in dt_builders:
+                # child_builder at this point is guaranteed to be a LinkBuilder
+                # link_spec is also certainly a LinkSpec
+                # validate the builder pointed to by the link
+                yield from sub_val.validate(child_builder.builder)
+                n_matching_builders += 1
+        if n_matching_builders == 0 and link_spec.required:
+            yield MissingDataType(self.get_spec_loc(self.spec), link_spec.target_type,
+                                  location=self.get_builder_loc(builder), missing_dt_name=link_spec.name)
+        elif self.__incorrect_quantity(n_matching_builders, link_spec):
+            yield IncorrectQuantityError(self.get_spec_loc(self.spec), link_spec.target_type, link_spec.quantity,
+                                         n_matching_builders, location=self.get_builder_loc(builder))
+
+    def __group_links_by_data_type(self, builder):
+        data_types = defaultdict(list)
+        for value in builder.links.values():
+            v_builder = value.builder
+            dt = v_builder.attributes.get(self.spec.type_key())
+            if dt is not None:
+                data_types[dt].append(value)
+        return data_types
