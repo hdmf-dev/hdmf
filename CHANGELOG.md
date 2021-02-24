@@ -2,8 +2,8 @@
 
 ## HDMF 2.4.1 (Upcoming)
 
-### Bug fixes
-- Fix CI testing on Python 3.9. @rly (#523, #524)
+### Internal improvements
+- Update CI and copyright year. @rly (#523, #524)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
