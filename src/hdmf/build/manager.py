@@ -646,7 +646,7 @@ class TypeMap:
             elif base.__name__ == 'DynamicTable' \
                     and getattr(field_spec, 'neurodata_type_inc', None) in ('VectorData', 'DynamicTableRegion'):
                 # column of a DynamicTable
-                col_spec = dict(name=f, doc=field_spec['doc'])
+                col_spec = dict(name=f, description=field_spec['doc'])
                 if getattr(field_spec, 'quantity', None) == '?':
                     col_spec.update(required=False)
                 if field_spec['neurodata_type_inc'] == 'DynamicTableRegion':
@@ -674,7 +674,7 @@ class TypeMap:
         if len(clsconf):
             classdict.update(__clsconf__=clsconf)
         if len(cols):
-            classdict.update(__cols__=cols)
+            classdict.update(__columns__=tuple(cols))
 
         docval_args = self._build_docval(base, addl_fields, name, default_name)
 
