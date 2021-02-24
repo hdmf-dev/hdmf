@@ -743,3 +743,66 @@ class TestLinkAndChildMatchingDataType(TestCase):
             LinkBuilder(name='dataset_link', builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'}))
         ]
         self.validate_matching_link_data_type_case(datasets, groups, links)
+
+
+class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
+    """When multiple children can satisfy multiple specs due to data_type
+    inheritance, the validation needs to carefully match builders against specs
+    """
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        dataset_spec = DatasetSpec('A dataset', data_type_def='Foo')
+        sub_dataset_spec = DatasetSpec('An Inheriting Dataset',
+                                       data_type_def='Bar', data_type_inc='Foo')
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Baz',
+                         datasets=[
+                             DatasetSpec('Child Dataset', data_type_inc='Foo'),
+                             DatasetSpec('Child Dataset', data_type_inc='Bar'),
+                         ])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        spec_catalog.register_spec(dataset_spec, 'test.yaml')
+        spec_catalog.register_spec(sub_dataset_spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_error_returned_when_child_at_highest_level_missing(self):
+        """Test that a MissingDataType error is returned when the dataset at
+        the highest level of the inheritance hierarchy is missing
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('bar', attributes={'data_type': 'Bar'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_error_returned_when_child_at_lowest_level_missing(self):
+        """Test that a MissingDataType error is returned when the dataset at
+        the lowest level of the inheritance hierarchy is missing
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('foo', attributes={'data_type': 'Foo'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_both_levels_of_hierarchy_validated(self):
+        """Test that when both required children at separate levels of
+        inheritance hierarchy are present, both child specs are satisfied
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('foo', attributes={'data_type': 'Foo'}),
+            DatasetBuilder('bar', attributes={'data_type': 'Bar'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
