@@ -63,7 +63,7 @@ references:
           name: Run the tests
           command: |
             . ../venv/bin/activate
-            if [[ "${TEST_TOX_ENV}" == "py39" ]]; then
+            if [[ "${TEST_TOX_ENV}" == "py38" ]]; then
               sudo apt-get install libhdf5-dev
             fi
             pip install tox
