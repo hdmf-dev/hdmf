@@ -488,11 +488,16 @@ class GroupValidator(BaseStorageValidator):
         """Validate a child builder against a child spec considering links"""
         if isinstance(child_builder, LinkBuilder):
             if self.__cannot_be_link(child_spec):
-                yield IllegalLinkError(self.get_spec_loc(child_spec), location=self.get_builder_loc(parent_builder))
+                yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
         child_validator = self.__get_child_validator(child_spec)
         yield from child_validator.validate(child_builder)
+
+    def __construct_illegal_link_error(self, child_spec, parent_builder):
+        name_of_erroneous = self.get_spec_loc(child_spec)
+        builder_loc = self.get_builder_loc(parent_builder)
+        return IllegalLinkError(name_of_erroneous, location=builder_loc)
 
     @staticmethod
     def __cannot_be_link(spec):
