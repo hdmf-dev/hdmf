@@ -1,6 +1,11 @@
 # HDMF Changelog
 
-## HDMF 2.4.0 (Upcoming)
+## HDMF 2.4.1 (Upcoming)
+
+### Bug fixes
+- Fix CI testing on Python 3.9. @rly (#523)
+
+## HDMF 2.4.0 (February 23, 2021)
 
 ### New features
 - `GroupValidator` now checks if child groups, datasets, and links have the correct quantity of elements and returns
@@ -17,7 +22,7 @@
 - Fix TypeError when validating a group with an illegally-linked child.
   @dsleiter (#515)
 - Fix `DynamicTable.get` for compound type columns. @rly (#518)
-- Fix and removed error "Field 'x' cannot be defined in EllipseSeries." when opening files with some extensions. @rly
+- Fix and removed error "Field 'x' cannot be defined in y." when opening files with some extensions. @rly
   (#519)
 
 ## HDMF 2.3.0 (December 8, 2020)
