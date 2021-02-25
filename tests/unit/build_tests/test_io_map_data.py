@@ -3,9 +3,12 @@ import numpy as np
 import os
 
 from hdmf import Container, Data
-from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, ReferenceBuilder,
+from hdmf.backends.hdf5 import H5DataIO
+from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ReferenceBuilder,
                         ReferenceTargetNotBuiltError)
-from hdmf.spec import AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, RefSpec
+from hdmf.data_utils import DataChunkIterator
+from hdmf.spec import (AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog,
+                       RefSpec)
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs, call_docval_func
@@ -16,7 +19,7 @@ from tests.unit.utils import Foo, CORE_NAMESPACE, create_test_type_map
 class Baz(Data):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Baz'},
-            {'name': 'data', 'type': (list, h5py.Dataset), 'doc': 'some data'},
+            {'name': 'data', 'type': (list, h5py.Dataset, 'data', 'array_data'), 'doc': 'some data'},
             {'name': 'baz_attr', 'type': str, 'doc': 'an attribute'})
     def __init__(self, **kwargs):
         name, data, baz_attr = getargs('name', 'data', 'baz_attr', kwargs)
@@ -502,3 +505,50 @@ class TestGetAttrValueConvertString(TestCase):
         self.assertIsInstance(ret, bytes)
         ret = mapper.get_attr_value(attribute_spec, container, manager)
         self.assertIsInstance(ret, bytes)
+
+
+class TestDataIOEdgeCases(TestCase):
+
+    def setUp(self):
+        self.setUpBazSpec()
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.baz_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Baz', Baz)
+        self.type_map.register_map(Baz, ObjectMapper)
+        self.manager = BuildManager(self.type_map)
+        self.mapper = ObjectMapper(self.baz_spec)
+
+    def setUpBazSpec(self):
+        self.baz_spec = DatasetSpec(
+            doc='an Baz type',
+            dtype=None,
+            name='MyBaz',
+            data_type_def='Baz',
+            shape=[None],
+            attributes=[AttributeSpec('baz_attr', 'an example string attribute', 'text')]
+        )
+
+    def test_build_dataio(self):
+        """Test building of a dataset with data_type and no dtype with value DataIO."""
+        container = Baz('my_baz', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1')
+        builder = self.type_map.build(container)
+        self.assertIsInstance(builder.get('data'), H5DataIO)
+
+    def test_build_datachunkiterator(self):
+        """Test building of a dataset with data_type and no dtype with value DataChunkIterator."""
+        container = Baz('my_baz', DataChunkIterator(['a', 'b', 'c', 'd']), 'value1')
+        builder = self.type_map.build(container)
+        self.assertIsInstance(builder.get('data'), DataChunkIterator)
+
+    def test_build_dataio_datachunkiterator(self):  # hdmf#512
+        """Test building of a dataset with no dtype and no data_type with value DataIO wrapping a DCI."""
+        container = Baz('my_baz', H5DataIO(DataChunkIterator(['a', 'b', 'c', 'd']), chunks=True), 'value1')
+        builder = self.type_map.build(container)
+        self.assertIsInstance(builder.get('data'), H5DataIO)
+        self.assertIsInstance(builder.get('data').data, DataChunkIterator)

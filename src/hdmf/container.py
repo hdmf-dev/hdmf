@@ -128,15 +128,22 @@ class AbstractContainer(metaclass=ExtenderMeta):
             for base_cls in reversed(bases):
                 if issubclass(base_cls, AbstractContainer):
                     break
+
             base_fields = base_cls._get_fields()  # tuple of field names from base class
             if base_fields is not fields:
                 # check whether new fields spec already exists in base class
+                fields_to_remove_from_base = list()
                 for field_name in fields_dict:
                     if field_name in base_fields:
-                        raise ValueError("Field '%s' cannot be defined in %s. It already exists on base class %s."
-                                         % (field_name, cls.__name__, base_cls.__name__))
+                        fields_to_remove_from_base.append(field_name)
                 # prepend field specs from base class to fields list of this class
-                all_fields_conf[0:0] = base_cls.get_fields_conf()
+                # but only field specs that are not redefined in this class
+                base_fields_conf = base_cls.get_fields_conf()  # tuple of fields configurations from base class
+                base_fields_conf_to_add = list()
+                for pconf in base_fields_conf:
+                    if pconf['name'] not in fields_to_remove_from_base:
+                        base_fields_conf_to_add.append(pconf)
+                all_fields_conf[0:0] = base_fields_conf_to_add
 
         # create getter and setter if attribute does not already exist
         # if 'doc' not specified in __fields__, use doc from docval of __init__

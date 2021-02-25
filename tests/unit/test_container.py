@@ -371,11 +371,16 @@ class TestAbstractContainerFieldsConf(TestCase):
         class NamedFields(AbstractContainer):
             __fields__ = ({'name': 'field1'}, )
 
-        msg = ("Field 'field1' cannot be defined in NamedFieldsChild. It already exists on base class "
-               "NamedFields.")
-        with self.assertRaisesWith(ValueError, msg):
-            class NamedFieldsChild(NamedFields):
-                __fields__ = ({'name': 'field1', 'settable': True}, )
+        class NamedFieldsChild(NamedFields):
+            __fields__ = ({'name': 'field1', 'doc': 'overridden field', 'settable': False}, )
+
+        self.assertEqual(NamedFieldsChild._get_fields(), ('field1', ))
+        ret = NamedFieldsChild.get_fields_conf()
+        self.assertEqual(ret[0], {'name': 'field1', 'doc': 'overridden field', 'settable': False})
+
+        # obj = NamedFieldsChild('test name')
+        # with self.assertRaisesWith(AttributeError, "can't set attribute"):
+        #     obj.field1 = 'field1 value'
 
     def test_mult_inheritance_base_mixin(self):
         class NamedFields(AbstractContainer):
