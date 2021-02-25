@@ -16,7 +16,7 @@ from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecN
                        DtypeSpec, LinkSpec)
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs, get_docval
-from hdmf.common import DynamicTable
+import hdmf
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -430,32 +430,6 @@ class TestDynamicContainer(TestCase):
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
         assert multi.attr3 == 5.
 
-    def test_dynamic_table(self):
-        dt_spec = GroupSpec(
-            'A test extension that contains a multi',
-            data_type_def='TestTable',
-            data_type_inc='DynamicTable',
-            datasets=[
-                DatasetSpec(
-                    data_type_inc='VectorData',
-                    name='my_col',
-                    doc='a test column',
-                    quantity='?'
-                )
-            ]
-        )
-
-        self.spec_catalog.register_spec(dt_spec, 'extension.yaml')
-        TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
-
-        assert issubclass(TestTable, DynamicTable)
-
-        assert TestTable.__cols__[0] == dict(
-            name='my_col',
-            required=False,
-            doc='a test column'
-        )
-
     def test_build_docval(self):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         addl_fields = dict(
@@ -545,6 +519,63 @@ class TestDynamicContainer(TestCase):
         for arg in docval:
             if arg['name'] == 'attr3':
                 self.assertIs(arg['type'], Bar)
+
+
+class TestDynamicDynamicTable(TestCase):
+
+    def setUp(self):
+        self.dt_spec = GroupSpec(
+            'A test extension that contains a multi',
+            data_type_def='TestTable',
+            data_type_inc='DynamicTable',
+            datasets=[
+                DatasetSpec(
+                    data_type_inc='VectorData',
+                    name='my_col',
+                    doc='a test column',
+                    #quantity='?'
+                )
+            ]
+        )
+
+        from hdmf.spec.write import YAMLSpecWriter
+        writer = YAMLSpecWriter(outdir='.')
+
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.dt_spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE,
+            [
+                dict(namespace='hdmf-common',
+                     data_types=['DynamicTable', 'VectorData', 'ElementIdentifiers']),
+                dict(source='test.yaml'),
+                ],
+            version='0.1.0',
+            catalog=self.spec_catalog)
+
+        writer.write_spec(dict(groups=[self.dt_spec]), 'test.yaml')
+        writer.write_namespace(self.namespace, 'test-namespace.yaml')
+        self.namespace_catalog = NamespaceCatalog()
+        #self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        hdmf_typemap = hdmf.common.get_type_map()
+        self.namespace_catalog.merge(hdmf_typemap.namespace_catalog)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.merge(hdmf_typemap)
+        self.type_map.load_namespaces('test-namespace.yaml')
+        self.manager = BuildManager(self.type_map)
+        self.mapper = ObjectMapper(self.dt_spec)
+
+    def test_dynamic_table(self):
+
+        TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
+
+        assert issubclass(TestTable, hdmf.common.DynamicTable)
+
+        assert TestTable.__columns__[0] == dict(
+            name='my_col',
+            required=False,
+            doc='a test column'
+        )
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
