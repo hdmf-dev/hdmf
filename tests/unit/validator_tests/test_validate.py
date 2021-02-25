@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
-from unittest import mock
+from unittest import mock, skip
 
 import numpy as np
 from dateutil.tz import tzlocal
@@ -802,6 +802,21 @@ class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
         datasets = [
             DatasetBuilder('foo', attributes={'data_type': 'Foo'}),
             DatasetBuilder('bar', attributes={'data_type': 'Bar'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    @skip("Functionality not yet supported")
+    def test_both_levels_of_hierarchy_validated_inverted_order(self):
+        """Test that when both required children at separate levels of
+        inheritance hierarchy are present, both child specs are satisfied.
+        This should work no matter what the order of the builders.
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('bar', attributes={'data_type': 'Bar'}),
+            DatasetBuilder('foo', attributes={'data_type': 'Foo'})
         ]
         builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
         result = self.vmap.validate(builder)
