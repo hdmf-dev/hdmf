@@ -159,9 +159,6 @@ class ValidatorMap:
     def __init__(self, **kwargs):
         ns = getargs('namespace', kwargs)
         self.__ns = ns
-
-        # build tree that isn't really a tree
-        # map(type, list of child types or self)
         tree = defaultdict(list)
         types = ns.get_registered_types()
         self.__type_key = ns.get_spec(types[0]).type_key()
@@ -174,10 +171,7 @@ class ValidatorMap:
                 tree[parent].append(child)
         for t in tree:
             self.__rec(tree, t)
-
-        # map(type, validators of child types or self)
         self.__valid_types = dict()
-        # map(type, validator of self)
         self.__validators = dict()
         for dt, children in tree.items():
             _list = list()
@@ -193,7 +187,6 @@ class ValidatorMap:
             self.__valid_types[dt] = tuple(_list)
 
     def __rec(self, tree, node):
-        # recursively go through subtypes and convert to tuple when complete
         if not isinstance(tree[node], tuple):
             sub_types = {node}
             for child in tree[node]:
