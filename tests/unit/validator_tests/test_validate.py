@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
-from unittest import mock
+from unittest import mock, skip
 
 import numpy as np
 from dateutil.tz import tzlocal
@@ -598,3 +598,226 @@ class TestLinkable(TestCase):
         builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, links=[typed_link, untyped_link])
         _ = self.vmap.validate(builder)
         assert not mock_validator.called
+
+
+class TestMultipleNamedChildrenOfSameType(TestCase):
+    """When a group has multiple named children of the same type (such as X, Y,
+    and Z VectorData), they all need to be validated.
+    """
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        dataset_spec = DatasetSpec('A dataset', data_type_def='Foo')
+        group_spec = GroupSpec('A group', data_type_def='Bar')
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Baz',
+                         datasets=[
+                             DatasetSpec('Child Dataset A', name='a', data_type_inc='Foo'),
+                             DatasetSpec('Child Dataset B', name='b', data_type_inc='Foo'),
+                         ],
+                         groups=[
+                             GroupSpec('Child Group X', name='x', data_type_inc='Bar'),
+                             GroupSpec('Child Group Y', name='y', data_type_inc='Bar'),
+                         ])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        spec_catalog.register_spec(dataset_spec, 'test.yaml')
+        spec_catalog.register_spec(group_spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def validate_multiple_children(self, dataset_names, group_names):
+        """Utility function to validate a builder with the specified named dataset and group children"""
+        self.set_up_spec()
+        datasets = [DatasetBuilder(ds, attributes={'data_type': 'Foo'}) for ds in dataset_names]
+        groups = [GroupBuilder(gr, attributes={'data_type': 'Bar'}) for gr in group_names]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'},
+                               datasets=datasets, groups=groups)
+        return self.vmap.validate(builder)
+
+    def test_missing_first_dataset_should_return_error(self):
+        """Test that the validator returns a MissingDataType error if the first dataset is missing"""
+        result = self.validate_multiple_children(['b'], ['x', 'y'])
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_missing_last_dataset_should_return_error(self):
+        """Test that the validator returns a MissingDataType error if the last dataset is missing"""
+        result = self.validate_multiple_children(['a'], ['x', 'y'])
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_missing_first_group_should_return_error(self):
+        """Test that the validator returns a MissingDataType error if the first group is missing"""
+        result = self.validate_multiple_children(['a', 'b'], ['y'])
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_missing_last_group_should_return_error(self):
+        """Test that the validator returns a MissingDataType error if the last group is missing"""
+        result = self.validate_multiple_children(['a', 'b'], ['x'])
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_no_errors_when_all_children_satisfied(self):
+        """Test that the validator does not return an error if all child specs are satisfied"""
+        result = self.validate_multiple_children(['a', 'b'], ['x', 'y'])
+        self.assertEqual(len(result), 0)
+
+
+class TestLinkAndChildMatchingDataType(TestCase):
+    """If a link and a child dataset/group have the same specified data type,
+    both the link and the child need to be validated
+    """
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        dataset_spec = DatasetSpec('A dataset', data_type_def='Foo')
+        group_spec = GroupSpec('A group', data_type_def='Bar')
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Baz',
+                         datasets=[
+                             DatasetSpec('Child Dataset', name='dataset', data_type_inc='Foo'),
+                         ],
+                         groups=[
+                             GroupSpec('Child Group', name='group', data_type_inc='Bar'),
+                         ],
+                         links=[
+                             LinkSpec('Linked Dataset', name='dataset_link', target_type='Foo'),
+                             LinkSpec('Linked Dataset', name='group_link', target_type='Bar')
+                         ])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        spec_catalog.register_spec(dataset_spec, 'test.yaml')
+        spec_catalog.register_spec(group_spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def validate_matching_link_data_type_case(self, datasets, groups, links):
+        """Execute validation against a group builder using the provided group
+        children and verify that a MissingDataType error is returned
+        """
+        self.set_up_spec()
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'},
+                               datasets=datasets, groups=groups, links=links)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_error_on_missing_child_dataset(self):
+        """Test that a MissingDataType is returned when the child dataset is missing"""
+        datasets = []
+        groups = [GroupBuilder('group', attributes={'data_type': 'Bar'})]
+        links = [
+            LinkBuilder(name='dataset_link', builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'})),
+            LinkBuilder(name='group_link', builder=GroupBuilder('bar', attributes={'data_type': 'Bar'}))
+        ]
+        self.validate_matching_link_data_type_case(datasets, groups, links)
+
+    def test_error_on_missing_linked_dataset(self):
+        """Test that a MissingDataType is returned when the linked dataset is missing"""
+        datasets = [DatasetBuilder('dataset', attributes={'data_type': 'Foo'})]
+        groups = [GroupBuilder('group', attributes={'data_type': 'Bar'})]
+        links = [
+            LinkBuilder(name='group_link', builder=GroupBuilder('bar', attributes={'data_type': 'Bar'}))
+        ]
+        self.validate_matching_link_data_type_case(datasets, groups, links)
+
+    def test_error_on_missing_group(self):
+        """Test that a MissingDataType is returned when the child group is missing"""
+        self.set_up_spec()
+        datasets = [DatasetBuilder('dataset', attributes={'data_type': 'Foo'})]
+        groups = []
+        links = [
+            LinkBuilder(name='dataset_link', builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'})),
+            LinkBuilder(name='group_link', builder=GroupBuilder('bar', attributes={'data_type': 'Bar'}))
+        ]
+        self.validate_matching_link_data_type_case(datasets, groups, links)
+
+    def test_error_on_missing_linked_group(self):
+        """Test that a MissingDataType is returned when the linked group is missing"""
+        self.set_up_spec()
+        datasets = [DatasetBuilder('dataset', attributes={'data_type': 'Foo'})]
+        groups = [GroupBuilder('group', attributes={'data_type': 'Bar'})]
+        links = [
+            LinkBuilder(name='dataset_link', builder=DatasetBuilder('foo', attributes={'data_type': 'Foo'}))
+        ]
+        self.validate_matching_link_data_type_case(datasets, groups, links)
+
+
+class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
+    """When multiple children can satisfy multiple specs due to data_type
+    inheritance, the validation needs to carefully match builders against specs
+    """
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        dataset_spec = DatasetSpec('A dataset', data_type_def='Foo')
+        sub_dataset_spec = DatasetSpec('An Inheriting Dataset',
+                                       data_type_def='Bar', data_type_inc='Foo')
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Baz',
+                         datasets=[
+                             DatasetSpec('Child Dataset', data_type_inc='Foo'),
+                             DatasetSpec('Child Dataset', data_type_inc='Bar'),
+                         ])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        spec_catalog.register_spec(dataset_spec, 'test.yaml')
+        spec_catalog.register_spec(sub_dataset_spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_error_returned_when_child_at_highest_level_missing(self):
+        """Test that a MissingDataType error is returned when the dataset at
+        the highest level of the inheritance hierarchy is missing
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('bar', attributes={'data_type': 'Bar'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_error_returned_when_child_at_lowest_level_missing(self):
+        """Test that a MissingDataType error is returned when the dataset at
+        the lowest level of the inheritance hierarchy is missing
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('foo', attributes={'data_type': 'Foo'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], MissingDataType)
+
+    def test_both_levels_of_hierarchy_validated(self):
+        """Test that when both required children at separate levels of
+        inheritance hierarchy are present, both child specs are satisfied
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('foo', attributes={'data_type': 'Foo'}),
+            DatasetBuilder('bar', attributes={'data_type': 'Bar'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    @skip("Functionality not yet supported")
+    def test_both_levels_of_hierarchy_validated_inverted_order(self):
+        """Test that when both required children at separate levels of
+        inheritance hierarchy are present, both child specs are satisfied.
+        This should work no matter what the order of the builders.
+        """
+        self.set_up_spec()
+        datasets = [
+            DatasetBuilder('bar', attributes={'data_type': 'Bar'}),
+            DatasetBuilder('foo', attributes={'data_type': 'Foo'})
+        ]
+        builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
