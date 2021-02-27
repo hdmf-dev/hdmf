@@ -9,6 +9,8 @@
 
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
+- Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
+  attached to a `GroupBuilder`. @dsleiter (#526)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
