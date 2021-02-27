@@ -1977,6 +1977,32 @@ class TestLoadNamespaces(TestCase):
         d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
         self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
 
+    def test_load_namespaces_with_dependencies(self):
+        """Test loading namespaces where one includes another."""
+        file_spec = GroupSpec(doc="A FooFile", data_type_def='FooFile')
+        spec_catalog = SpecCatalog()
+        name = 'test_core2'
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=name,
+            schema=[{'source': 'test.yaml', 'namespace': 'test_core'}],  # depends on test_core
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        spec_catalog.register_spec(file_spec, 'test.yaml')
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(name, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(name, 'FooFile', FooFile)
+        manager = BuildManager(type_map)
+        container = FooFile()
+        with HDF5IO(self.path, manager=manager, mode='a') as io:  # append to file
+            io.write(container)
+
+        ns_catalog = NamespaceCatalog()
+        d = HDF5IO.load_namespaces(ns_catalog, self.path)
+        self.assertEqual(d, {'test_core': {}, 'test_core2': {'test_core': ('Foo', 'FooBucket', 'FooFile')}})
+
 
 class TestGetNamespaces(TestCase):
 
@@ -2017,30 +2043,39 @@ class TestGetNamespaces(TestCase):
         """Test getting namespaces given a path."""
         self.write_test_file('test_core', '0.1.0', 'w')
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': '0.1.0'})
 
+    def test_get_namespaces_with_file(self):
+        """Test getting namespaces given a file object."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        with File(self.path, 'r') as f:
+            ret = HDF5IO.get_namespaces(file=f)
+            self.assertEqual(ret, {'test_core': '0.1.0'})
+            self.assertTrue(f.__bool__())  # check file object is still open
+
     def test_get_namespaces_different_versions(self):
-        """Test getting namespaces given a path."""
+        """Test getting namespaces with multiple versions given a path."""
         # write file with spec with smaller version string
         self.write_test_file('test_core', '0.0.10', 'w')
 
         # append to file with spec with larger version string
         self.write_test_file('test_core', '0.1.0', 'a')
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': '0.1.0'})
 
     def test_get_namespaces_multiple_namespaces(self):
-        """Test getting namespaces given a path."""
+        """Test getting multiple namespaces given a path."""
         self.write_test_file('test_core1', '0.0.10', 'w')
         self.write_test_file('test_core2', '0.1.0', 'a')
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core1': '0.0.10', 'test_core2': '0.1.0'})
 
     def test_get_namespaces_none_version(self):
-        """Test getting namespaces given a path."""
+        """Test getting namespaces where file has one None-versioned namespace."""
         self.write_test_file('test_core', '0.1.0', 'w')
 
         # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
@@ -2054,11 +2089,11 @@ class TestGetNamespaces(TestCase):
                       '"version":"None"}]}')
             f['/specifications/test_core/None/namespace'][()] = new_ns
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': 'None'})
 
     def test_get_namespaces_none_and_other_version(self):
-        """Test getting namespaces given a path."""
+        """Test getting namespaces file has a namespace with a normal version and an 'None" version."""
         self.write_test_file('test_core', '0.1.0', 'w')
 
         # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
@@ -2072,13 +2107,14 @@ class TestGetNamespaces(TestCase):
                       '"version":"None"}]}')
             f['/specifications/test_core/None/namespace'][()] = new_ns
 
-        self.write_test_file('test_core', '0.2.0', 'w')
+        # append to file with spec with a larger version string
+        self.write_test_file('test_core', '0.2.0', 'a')
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': '0.2.0'})
 
     def test_get_namespaces_unversioned(self):
-        """Test getting namespaces given a path."""
+        """Test getting namespaces where file has one unversioned namespace."""
         self.write_test_file('test_core', '0.1.0', 'w')
 
         # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
@@ -2090,11 +2126,11 @@ class TestGetNamespaces(TestCase):
             new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
             f['/specifications/test_core/unversioned/namespace'][()] = new_ns
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': 'unversioned'})
 
     def test_get_namespaces_unversioned_and_other(self):
-        """Test getting namespaces given a path."""
+        """Test getting namespaces file has a namespace with a normal version and an 'unversioned" version."""
         self.write_test_file('test_core', '0.1.0', 'w')
 
         # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
@@ -2106,9 +2142,10 @@ class TestGetNamespaces(TestCase):
             new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
             f['/specifications/test_core/unversioned/namespace'][()] = new_ns
 
-        self.write_test_file('test_core', '0.2.0', 'w')
+        # append to file with spec with a larger version string
+        self.write_test_file('test_core', '0.2.0', 'a')
 
-        ret = HDF5IO.get_namespaces(self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': '0.2.0'})
 
 

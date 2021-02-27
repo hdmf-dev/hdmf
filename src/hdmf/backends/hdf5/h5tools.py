@@ -123,7 +123,9 @@ class HDF5IO(HDMFIO):
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            returns="dict with the loaded namespaces", rtype=dict)
+            returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
+                     "the included data types"),
+            rtype=dict)
     def load_namespaces(cls, **kwargs):
         """Load cached namespaces from a file.
 
@@ -146,7 +148,8 @@ class HDF5IO(HDMFIO):
     def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
         d = {}
 
-        if SPEC_LOC_ATTR not in file_obj.attrs:
+        if SPEC_LOC_ATTR not in file_obj.attrs:  # pragma: no cover
+            # this should never happen
             msg = "No cached namespaces found in %s" % file_obj.filename
             warnings.warn(msg)
             return d
@@ -238,8 +241,8 @@ class HDF5IO(HDMFIO):
         Order namespaces according to dependency for loading into a NamespaceCatalog
 
         Args:
-            deps (dict): a dictionary that maps a namespace name to a list of name of
-                         the namespaces on which the the namespace is directly dependent
+            deps (dict): a dictionary that maps a namespace name to a list of names of
+                         the namespaces on which the namespace is directly dependent
                          Example: {'a': ['b', 'c'], 'b': ['d'], c: ['d'], 'd': []}
                          Expected output: ['d', 'b', 'c', 'a']
         """
