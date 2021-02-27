@@ -183,13 +183,16 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            returns="list with the names of the namespaces in the file", rtype=list)
+            returns="dict mapping names to versions of the namespaces in the file", rtype=dict)
     def get_namespaces(cls, **kwargs):
-        """Get the names of the cached namespaces from a file.
+        """Get the names and versions of the cached namespaces from a file.
 
         If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
         the given File object will be read from and not closed.
+
+        If there are multiple versions of a namespace cached in the file, then only the latest one (using alphanumeric
+        ordering) is returned. This is the version of the namespace that is loaded by HDF5IO.load_namespaces(...).
 
         :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
         """
