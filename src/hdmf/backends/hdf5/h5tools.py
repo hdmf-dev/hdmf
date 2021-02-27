@@ -29,6 +29,8 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 class HDF5IO(HDMFIO):
 
+    __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
+
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
@@ -93,6 +95,27 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
+    @staticmethod
+    def __resolve_file_obj(path, file_obj, driver):
+        if isinstance(path, Path):
+            path = str(path)
+
+        if path is None and file_obj is None:
+            raise ValueError("Either the 'path' or 'file' argument must be supplied.")
+
+        if path is not None and file_obj is not None:  # consistency check
+            if os.path.abspath(file_obj.filename) != os.path.abspath(path):
+                msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
+                       % (path, file_obj.filename))
+                raise ValueError(msg)
+
+        if file_obj is None:
+            file_kwargs = dict()
+            if driver is not None:
+                file_kwargs.update(driver=driver)
+            file_obj = File(path, 'r', **file_kwargs)
+        return file_obj
+
     @classmethod
     @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
              'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
@@ -107,30 +130,17 @@ class HDF5IO(HDMFIO):
         If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
         the given File object will be read from and not closed.
+
+        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
         """
         namespace_catalog, path, namespaces, file_obj, driver = popargs(
             'namespace_catalog', 'path', 'namespaces', 'file', 'driver', kwargs)
 
-        if isinstance(path, Path):
-            path = str(path)
-
-        if path is None and file_obj is None:
-            raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
-
-        if path is not None and file_obj is not None:  # consistency check
-            if os.path.abspath(file_obj.filename) != os.path.abspath(path):
-                msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
-                       % (path, file_obj.filename))
-                raise ValueError(msg)
-
-        if file_obj is None:
-            file_kwargs = dict()
-            if driver is not None:
-                file_kwargs.update(driver=driver)
-            with File(path, 'r', **file_kwargs) as f:
-                return cls.__load_namespaces(namespace_catalog, namespaces, f)
-        else:
-            return cls.__load_namespaces(namespace_catalog, namespaces, file_obj)
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        if file_obj is None:  # need to close the file object that we just opened
+            with open_file_obj:
+                return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
+        return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
 
     @classmethod
     def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
@@ -141,13 +151,66 @@ class HDF5IO(HDMFIO):
             warnings.warn(msg)
             return d
 
-        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
+        namespace_versions = cls.__get_namespaces(file_obj)
 
+        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
         if namespaces is None:
             namespaces = list(spec_group.keys())
 
         readers = dict()
         deps = dict()
+        for ns in namespaces:
+            latest_version = namespace_versions[ns]
+            ns_group = spec_group[ns][latest_version]
+            reader = H5SpecReader(ns_group)
+            readers[ns] = reader
+            # for each namespace in the 'namespace' dataset, track all included namespaces (dependencies)
+            for spec_ns in reader.read_namespace(cls.__ns_spec_path):
+                deps[ns] = list()
+                for s in spec_ns['schema']:
+                    dep = s.get('namespace')
+                    if dep is not None:
+                        deps[ns].append(dep)
+
+        order = cls._order_deps(deps)
+        for ns in order:
+            reader = readers[ns]
+            d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=reader))
+
+        return d
+
+    @classmethod
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            returns="list with the names of the namespaces in the file", rtype=list)
+    def get_namespaces(cls, **kwargs):
+        """Get the names of the cached namespaces from a file.
+
+        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
+        namespaces will be read, and the File object will be closed. If `file` is supplied, then
+        the given File object will be read from and not closed.
+
+        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
+        """
+        path, file_obj, driver = popargs('path', 'file', 'driver', kwargs)
+
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        if file_obj is None:  # need to close the file object that we just opened
+            with open_file_obj:
+                return cls.__get_namespaces(open_file_obj)
+        return cls.__get_namespaces(open_file_obj)
+
+    @classmethod
+    def __get_namespaces(cls, file_obj):
+        """Return a dict mapping namespace name to version string for the latest version of that namespace in the file.
+
+        If there are multiple versions of a namespace cached in the file, then only the latest one (using alphanumeric
+        ordering) is returned. This is the version of the namespace that is loaded by HDF5IO.load_namespaces(...).
+        """
+        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
+        namespaces = list(spec_group.keys())
+        used_version_names = dict()
         for ns in namespaces:
             ns_group = spec_group[ns]
             # NOTE: by default, objects within groups are iterated in alphanumeric order
@@ -162,23 +225,9 @@ class HDF5IO(HDMFIO):
                 # make sure that if there is another group representing a newer version, that is read instead
                 if 'None' in version_names:
                     version_names.remove('None')
-            latest_version = version_names[-1]
-            ns_group = ns_group[latest_version]
-            reader = H5SpecReader(ns_group)
-            readers[ns] = reader
-            for spec_ns in reader.read_namespace('namespace'):
-                deps[ns] = list()
-                for s in spec_ns['schema']:
-                    dep = s.get('namespace')
-                    if dep is not None:
-                        deps[ns].append(dep)
+            used_version_names[ns] = version_names[-1]  # save the largest in alphanumeric order
 
-        order = cls._order_deps(deps)
-        for ns in order:
-            reader = readers[ns]
-            d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
-
-        return d
+        return used_version_names
 
     @classmethod
     def _order_deps(cls, deps):
@@ -359,7 +408,7 @@ class HDF5IO(HDMFIO):
                 continue
             ns_group = spec_group.create_group(group_name)
             writer = H5SpecWriter(ns_group)
-            ns_builder.export('namespace', writer=writer)
+            ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
         {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},

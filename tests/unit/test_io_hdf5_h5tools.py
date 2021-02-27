@@ -1876,6 +1876,9 @@ class TestLoadNamespaces(TestCase):
     def setUp(self):
         self.manager = _get_manager()
         self.path = get_temp_filepath()
+        container = FooFile()
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(container)
 
     def tearDown(self):
         if os.path.exists(self.path):
@@ -1883,24 +1886,16 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_none_version(self):
         """Test that reading a file with a cached namespace and None version works but raises a warning."""
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
         # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
         # and set the version key to "None"
         with h5py.File(self.path, mode='r+') as f:
             # rename the group
-            f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/None')
+            f.move('/specifications/test_core/0.1.0', '/specifications/test_core/None')
 
-            # replace the namespace dataset with a serialized dict without the version key
+            # replace the namespace dataset with a serialized dict with the version key set to 'None'
             new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
                       '"version":"None"}]}')
-            f['/specifications/' + CORE_NAMESPACE + '/None/namespace'][()] = new_ns
+            f['/specifications/test_core/None/namespace'][()] = new_ns
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
@@ -1910,23 +1905,15 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_unversioned(self):
         """Test that reading a file with a cached, unversioned version works but raises a warning."""
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
         # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
         # and remove the version key
         with h5py.File(self.path, mode='r+') as f:
             # rename the group
-            f.move('/specifications/' + CORE_NAMESPACE + '/0.1.0', '/specifications/' + CORE_NAMESPACE + '/unversioned')
+            f.move('/specifications/test_core/0.1.0', '/specifications/test_core/unversioned')
 
             # replace the namespace dataset with a serialized dict without the version key
             new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
-            f['/specifications/' + CORE_NAMESPACE + '/unversioned/namespace'][()] = new_ns
+            f['/specifications/test_core/unversioned/namespace'][()] = new_ns
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
@@ -1937,15 +1924,6 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_path(self):
         """Test that loading namespaces given a path is OK and returns the correct dictionary."""
-
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
@@ -1954,7 +1932,7 @@ class TestLoadNamespaces(TestCase):
         """Test that loading namespaces without a path or file raises an error."""
         ns_catalog = NamespaceCatalog()
 
-        msg = "Either the 'path' or 'file' argument must be supplied to load_namespaces."
+        msg = "Either the 'path' or 'file' argument must be supplied."
         with self.assertRaisesWith(ValueError, msg):
             HDF5IO.load_namespaces(ns_catalog)
 
@@ -1962,15 +1940,6 @@ class TestLoadNamespaces(TestCase):
         """
         Test that loading namespaces from an h5py.File not backed by a file on disk is OK and does not close the file.
         """
-
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
         with open(self.path, 'rb') as raw_file:
             buffer = BytesIO(raw_file.read())
             file_obj = h5py.File(buffer, 'r')
@@ -1985,61 +1954,162 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_file_path_matched(self):
         """Test that loading namespaces given an h5py.File and path is OK and does not close the file."""
+        with h5py.File(self.path, 'r') as file_obj:
+            ns_catalog = NamespaceCatalog()
+            d = HDF5IO.load_namespaces(ns_catalog, path=self.path, file=file_obj)
 
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
-        file_obj = h5py.File(self.path, 'r')
-
-        ns_catalog = NamespaceCatalog()
-        d = HDF5IO.load_namespaces(ns_catalog, path=self.path, file=file_obj)
-
-        self.assertTrue(file_obj.__bool__())  # check file object is still open
-        self.assertEqual(d, {'test_core': {}})
-
-        file_obj.close()
+            self.assertTrue(file_obj.__bool__())  # check file object is still open
+            self.assertEqual(d, {'test_core': {}})
 
     def test_load_namespaces_file_path_mismatched(self):
         """Test that loading namespaces given an h5py.File and path that are mismatched raises an error."""
+        with h5py.File(self.path, 'r') as file_obj:
+            ns_catalog = NamespaceCatalog()
 
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
-        file_obj = h5py.File(self.path, 'r')
-
-        ns_catalog = NamespaceCatalog()
-
-        msg = "You argued 'different_path' as this object's path, but supplied a file with filename: %s" % self.path
-        with self.assertRaisesWith(ValueError, msg):
-            HDF5IO.load_namespaces(ns_catalog, path='different_path', file=file_obj)
-
-        file_obj.close()
+            msg = "You argued 'different_path' as this object's path, but supplied a file with filename: %s" % self.path
+            with self.assertRaisesWith(ValueError, msg):
+                HDF5IO.load_namespaces(ns_catalog, path='different_path', file=file_obj)
 
     def test_load_namespaces_with_pathlib_path(self):
         """Test that loading a namespace using a valid pathlib Path is OK and returns the correct dictionary."""
-
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
-        foobucket = FooBucket('bucket1', [foo1])
-        foofile = FooFile([foobucket])
-
-        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
-
         pathlib_path = Path(self.path)
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
         self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
+
+
+class TestGetNamespaces(TestCase):
+
+    def create_test_namespace(self, name, version):
+        file_spec = GroupSpec(doc="A FooFile", data_type_def='FooFile')
+        spec_catalog = SpecCatalog()
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=name,
+            schema=[{'source': 'test.yaml'}],
+            version=version,
+            catalog=spec_catalog
+        )
+        spec_catalog.register_spec(file_spec, 'test.yaml')
+        return namespace
+
+    def write_test_file(self, name, version, mode):
+        namespace = self.create_test_namespace(name, version)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(name, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(name, 'FooFile', FooFile)
+        manager = BuildManager(type_map)
+        with HDF5IO(self.path, manager=manager, mode=mode) as io:
+            io.write(self.container)
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.container = FooFile()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    # see other tests for path & file match/mismatch testing in TestLoadNamespaces
+
+    def test_get_namespaces_with_path(self):
+        """Test getting namespaces given a path."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core': '0.1.0'})
+
+    def test_get_namespaces_different_versions(self):
+        """Test getting namespaces given a path."""
+        # write file with spec with smaller version string
+        self.write_test_file('test_core', '0.0.10', 'w')
+
+        # append to file with spec with larger version string
+        self.write_test_file('test_core', '0.1.0', 'a')
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core': '0.1.0'})
+
+    def test_get_namespaces_multiple_namespaces(self):
+        """Test getting namespaces given a path."""
+        self.write_test_file('test_core1', '0.0.10', 'w')
+        self.write_test_file('test_core2', '0.1.0', 'a')
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core1': '0.0.10', 'test_core2': '0.1.0'})
+
+    def test_get_namespaces_none_version(self):
+        """Test getting namespaces given a path."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
+        # and set the version key to "None"
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/test_core/0.1.0', '/specifications/test_core/None')
+
+            # replace the namespace dataset with a serialized dict with the version key set to 'None'
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
+                      '"version":"None"}]}')
+            f['/specifications/test_core/None/namespace'][()] = new_ns
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core': 'None'})
+
+    def test_get_namespaces_none_and_other_version(self):
+        """Test getting namespaces given a path."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
+        # and set the version key to "None"
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/test_core/0.1.0', '/specifications/test_core/None')
+
+            # replace the namespace dataset with a serialized dict with the version key set to 'None'
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core",'
+                      '"version":"None"}]}')
+            f['/specifications/test_core/None/namespace'][()] = new_ns
+
+        self.write_test_file('test_core', '0.2.0', 'w')
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core': '0.2.0'})
+
+    def test_get_namespaces_unversioned(self):
+        """Test getting namespaces given a path."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/test_core/0.1.0', '/specifications/test_core/unversioned')
+
+            # replace the namespace dataset with a serialized dict without the version key
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
+            f['/specifications/test_core/unversioned/namespace'][()] = new_ns
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core': 'unversioned'})
+
+    def test_get_namespaces_unversioned_and_other(self):
+        """Test getting namespaces given a path."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        # make the file have group name "unversioned" instead of "0.1.0" (namespace version is used as group name)
+        with h5py.File(self.path, mode='r+') as f:
+            # rename the group
+            f.move('/specifications/test_core/0.1.0', '/specifications/test_core/unversioned')
+
+            # replace the namespace dataset with a serialized dict without the version key
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":[{"source":"test"}],"name":"test_core"}]}')
+            f['/specifications/test_core/unversioned/namespace'][()] = new_ns
+
+        self.write_test_file('test_core', '0.2.0', 'w')
+
+        ret = HDF5IO.get_namespaces(self.path)
+        self.assertEqual(ret, {'test_core': '0.2.0'})
 
 
 class TestExport(TestCase):
