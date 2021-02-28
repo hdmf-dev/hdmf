@@ -656,7 +656,7 @@ class TypeMap:
             elif base.__name__ == 'DynamicTable' \
                     and getattr(field_spec, field_spec.inc_key(), None) in ('VectorData', 'DynamicTableRegion'):
                 # column of a DynamicTable
-                cols.append(self.make_dynamic_table_column(f, field_spec))
+                cols.append(self.__make_dynamic_table_column(f, field_spec))
             else:
                 # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
