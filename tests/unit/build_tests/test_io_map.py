@@ -564,7 +564,6 @@ class TestDynamicDynamicTable(TestCase):
         writer.write_spec(dict(groups=[self.dt_spec]), spec_fpath)
         writer.write_namespace(self.namespace, namespace_fpath)
         self.namespace_catalog = NamespaceCatalog()
-        #self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         hdmf_typemap = hdmf.common.get_type_map()
         self.namespace_catalog.merge(hdmf_typemap.namespace_catalog)
         self.type_map = TypeMap(self.namespace_catalog)

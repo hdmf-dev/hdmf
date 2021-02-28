@@ -608,6 +608,16 @@ class TypeMap:
 
         return docval_args
 
+    @staticmethod
+    def __make_dynamic_table_column(f, field_spec):
+        col_spec = dict(name=f, description=field_spec['doc'])
+        if getattr(field_spec, 'quantity', None) == '?':
+            col_spec.update(required=False)
+        if field_spec[field_spec.inc_key()] == 'DynamicTableRegion':
+            col_spec.update(table=True)
+
+        return col_spec
+
     def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
         """
         Get __init__ and fields of new class.
@@ -646,12 +656,7 @@ class TypeMap:
             elif base.__name__ == 'DynamicTable' \
                     and getattr(field_spec, field_spec.inc_key(), None) in ('VectorData', 'DynamicTableRegion'):
                 # column of a DynamicTable
-                col_spec = dict(name=f, description=field_spec['doc'])
-                if getattr(field_spec, 'quantity', None) == '?':
-                    col_spec.update(required=False)
-                if field_spec[field_spec.inc_key()] == 'DynamicTableRegion':
-                    col_spec.update(table=True)
-                cols.append(col_spec)
+                cols.append(self.make_dynamic_table_column(f, field_spec))
             else:
                 # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
