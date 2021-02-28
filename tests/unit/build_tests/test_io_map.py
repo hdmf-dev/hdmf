@@ -1,6 +1,9 @@
 import unittest
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
+import tempfile
+import os
+import shutil
 
 import h5py
 import numpy as np
@@ -525,7 +528,7 @@ class TestDynamicDynamicTable(TestCase):
 
     def setUp(self):
         self.dt_spec = GroupSpec(
-            'A test extension that contains a multi',
+            'A test extension that contains a dynamic table',
             data_type_def='TestTable',
             data_type_inc='DynamicTable',
             datasets=[
@@ -533,7 +536,9 @@ class TestDynamicDynamicTable(TestCase):
                     data_type_inc='VectorData',
                     name='my_col',
                     doc='a test column',
-                    #quantity='?'
+                    quantity=1,
+                    shape=(None,),
+                    dtype='float'
                 )
             ]
         )
@@ -553,29 +558,39 @@ class TestDynamicDynamicTable(TestCase):
             version='0.1.0',
             catalog=self.spec_catalog)
 
-        writer.write_spec(dict(groups=[self.dt_spec]), 'test.yaml')
-        writer.write_namespace(self.namespace, 'test-namespace.yaml')
+        self.test_dir = tempfile.mkdtemp()
+        spec_fpath = os.path.join(self.test_dir, 'test.yaml')
+        namespace_fpath = os.path.join(self.test_dir, 'test-namespace.yaml')
+        writer.write_spec(dict(groups=[self.dt_spec]), spec_fpath)
+        writer.write_namespace(self.namespace, namespace_fpath)
         self.namespace_catalog = NamespaceCatalog()
         #self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
         hdmf_typemap = hdmf.common.get_type_map()
         self.namespace_catalog.merge(hdmf_typemap.namespace_catalog)
         self.type_map = TypeMap(self.namespace_catalog)
         self.type_map.merge(hdmf_typemap)
-        self.type_map.load_namespaces('test-namespace.yaml')
+        self.type_map.load_namespaces(namespace_fpath)
         self.manager = BuildManager(self.type_map)
         self.mapper = ObjectMapper(self.dt_spec)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.test_dir)
 
     def test_dynamic_table(self):
 
         TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
 
         assert issubclass(TestTable, hdmf.common.DynamicTable)
+        print(TestTable)
 
         assert TestTable.__columns__[0] == dict(
             name='my_col',
-            required=False,
-            doc='a test column'
+            description='a test column'
         )
+
+        test_table = TestTable(name='test_table', description='my test table')
+
+        test_table.add_row(my_col=3.0)
 
 
 class ObjectMapperMixin(metaclass=ABCMeta):
