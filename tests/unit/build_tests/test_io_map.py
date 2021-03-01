@@ -537,7 +537,19 @@ class TestDynamicDynamicTable(TestCase):
                     name='my_col',
                     doc='a test column',
                     dtype='float'
-                )
+                ),
+                DatasetSpec(
+                    data_type_inc='VectorData',
+                    name='indexed_col',
+                    doc='a test column',
+                    dtype='float'
+                ),
+                DatasetSpec(
+                    data_type_inc='VectorData',
+                    name='indexed_col_index',
+                    doc='a test column',
+                    dtype='float'
+                ),
             ]
         )
 
@@ -601,7 +613,10 @@ class TestDynamicDynamicTable(TestCase):
 
         test_table = TestTable(name='test_table', description='my test table')
 
-        test_table.add_row(my_col=3.0)
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0])
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0])
+
+        np.testing.assert_array_equal(test_table['indexed_col'].target.data, [1., 3., 2., 4.])
 
         test_dtr_table = TestDTRTable(name='test_dtr_table', description='my table')
         test_dtr_table.add_row(

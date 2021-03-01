@@ -609,12 +609,29 @@ class TypeMap:
         return docval_args
 
     @staticmethod
-    def __make_dynamic_table_column(f, field_spec):
+    def __make_dynamic_table_column(f: str, field_spec: BaseStorageSpec, addl_fields: dict) -> dict:
+        """Make __columns__ object for auto-generated DynamicTable API class
+
+        :param f: field name
+        :param field_spec:
+        :param addl_fields: d
+        :return: dict
+        """
         col_spec = dict(name=f, description=field_spec['doc'])
         if getattr(field_spec, 'quantity', None) == '?':
             col_spec.update(required=False)
         if field_spec[field_spec.inc_key()] == 'DynamicTableRegion':
             col_spec.update(table=True)
+        if '{}_index'.format(f) in addl_fields:
+            counter = 0
+            index_name = f
+            while '{}_index'.format(index_name) in addl_fields:
+                index_name = '{}_index'
+                counter += 1
+            if counter == 1:
+                col_spec.update(index=True)
+            else:
+                col_spec.update(index=counter)
 
         return col_spec
 
@@ -656,7 +673,7 @@ class TypeMap:
             elif base.__name__ == 'DynamicTable' \
                     and getattr(field_spec, field_spec.inc_key(), None) in ('VectorData', 'DynamicTableRegion'):
                 # column of a DynamicTable
-                cols.append(self.__make_dynamic_table_column(f, field_spec))
+                cols.append(self.__make_dynamic_table_column(f, field_spec, addl_fields))
             else:
                 # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
