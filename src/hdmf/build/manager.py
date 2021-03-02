@@ -576,7 +576,7 @@ class TypeMap:
         for f, field_spec in addl_fields.items():
             if base.__name__ == 'DynamicTable' \
                     and getattr(field_spec, field_spec.inc_key(), None) in (
-                    'VectorData', 'DynamicTableRegion'):
+                    'VectorData', 'DynamicTableRegion', 'VectorIndex'):
                 continue  # do not add DynamicTable columns to init docval
             docval_arg = dict(name=f, doc=field_spec.doc)
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
