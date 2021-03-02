@@ -679,7 +679,7 @@ class TypeMap:
                 dtype = self.__get_type(field_spec)
                 fields_conf = {'name': f,
                                'doc': field_spec['doc']}
-                if self.__ischild(dtype) and issubclass(base, Container):
+                if self.__ischild(dtype) and issubclass(base, Container) and not isinstance(field_spec, LinkSpec):
                     fields_conf['child'] = True
                 # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
                 #     fields_conf['settable'] = False
