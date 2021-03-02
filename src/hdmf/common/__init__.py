@@ -104,6 +104,8 @@ if os.path.exists(__resources['namespace_path']):
 
     from . import table  # noqa: F401,E402
     from . import sparse  # noqa: F401,E402
+    from . import resources  # noqa: F401,E402
+    from . import multi  # noqa: F401,E402
 
     from .. import Data, Container
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
@@ -120,6 +122,8 @@ ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdenti
 DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
 VocabData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VocabData')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
+ExternalResources = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ExternalResources')
+SimpleMultiContainer = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'SimpleMultiContainer')
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),

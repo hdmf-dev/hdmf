@@ -26,7 +26,7 @@ assignees: ''
 
 ## Checklist
 
-- [ ] Have you ensured the feature or change was not already [reported](https://github.com/hdmf-dev/hdmf/issues) ?
+- [ ] Have you ensured the bug was not already [reported](https://github.com/hdmf-dev/hdmf/issues) ?
 - [ ] Have you included a brief and descriptive title?
 - [ ] Have you included a clear description of the problem you are trying to solve?
 - [ ] Have you included a minimal code snippet that reproduces the issue you are encountering?

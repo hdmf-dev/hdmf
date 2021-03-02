@@ -13,7 +13,7 @@ import traceback
 import unittest
 from tests.coloredtestrunner import ColoredTestRunner, ColoredTestResult
 
-flags = {'hdmf': 1, 'integration': 3, 'example': 4}
+flags = {'hdmf': 1, 'example': 4}
 
 TOTAL = 0
 FAILURES = 0

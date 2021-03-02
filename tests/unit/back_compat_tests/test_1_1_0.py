@@ -1,10 +1,11 @@
-from shutil import copyfile
 import os
+from shutil import copyfile
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.testing import TestCase
+
 from tests.unit.test_io_hdf5_h5tools import _get_manager
 from tests.unit.utils import Foo, FooBucket
-from hdmf.testing import TestCase
 
 
 class Test1_1_0(TestCase):
