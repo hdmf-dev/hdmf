@@ -575,7 +575,7 @@ class TypeMap:
         docval_args = list(deepcopy(get_docval(base.__init__)))
         for f, field_spec in addl_fields.items():
             if base.__name__ == 'DynamicTable' \
-                    and getattr(field_spec, 'neurodata_type_inc', None) in (
+                    and getattr(field_spec, field_spec.inc_key(), None) in (
                     'VectorData', 'DynamicTableRegion'):
                 continue  # do not add DynamicTable columns to init docval
             docval_arg = dict(name=f, doc=field_spec.doc)
