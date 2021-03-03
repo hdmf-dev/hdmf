@@ -524,8 +524,11 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, ret)
         return ret
 
-    @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder,
-                                     GroupSpec, DatasetSpec),
+    @property
+    def get_container_types(self):
+        return self.__container_types
+
+    @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),
              'doc': 'the object to get the type key for'})
     def __type_key(self, obj):
         """

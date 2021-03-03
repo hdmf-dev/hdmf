@@ -1,10 +1,11 @@
+from abc import ABCMeta, abstractmethod
 from copy import copy, deepcopy
 from datetime import datetime
 
 import numpy as np
 
 from ..container import Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
+from ..spec import AttributeSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
 
@@ -34,8 +35,8 @@ def _constructor_arg(**kwargs):
 class ClassGenerator(metaclass=ExtenderMeta):
 
     def __init__(self, type_map):
-        self.__container_types = type_map
-        self.__generator_cls = dict()  # the ObjectMapper class to use for each container type
+        self.__type_map = type_map
+        self.__custom_generators = []
 
     @staticmethod
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
@@ -75,15 +76,13 @@ class ClassGenerator(metaclass=ExtenderMeta):
             return func(self, *remaining_args)
         return None
 
-    @docval({"name": "container_cls", "type": type,
-             "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
-            {"name": "mapper_cls", "type": type, "doc": "the ObjectMapper class to use to map"})
+    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):
-        ''' Map a container class to an ObjectMapper class '''
-        container_cls, mapper_cls = getargs('container_cls', 'mapper_cls', kwargs)
-        if self.get_container_cls_dt(container_cls) == (None, None):
-            raise ValueError('cannot register map for type %s - no data_type found' % container_cls)
-        self.__generator_cls[container_cls] = mapper_cls
+        """Add a custom class generator to this ClassGenerator."""
+        generator_cls = getargs('generator_cls', kwargs)
+        if not isinstance(generator_cls, CustomClassGenerator):
+            raise ValueError('%s must be an instance of CustomClassGenerator.' % generator_cls.__name__)
+        self.__custom_generators.append(generator_cls)
 
     # mapping from spec types to allowable python types for docval for fields during dynamic class generation
     # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
@@ -123,7 +122,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
     def __get_container_type(self, container_name, default=None):
         """Search all namespaces for the container associated with the given data type"""
         container_type = None
-        for val in self.__container_types.values():
+        for val in self.__type_map.container_types.values():
             container_type = val.get(container_name)
             if container_type is not None:
                 return container_type
@@ -147,7 +146,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
                 container_type = self.__get_container_type(spec.dtype.target_type, default=None)
                 if container_type is not None:
                     return container_type
-                # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class
+                # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class?
                 # returning Data, Container works as a generic fallback for now but should be more specific
                 return Data, Container
             elif spec.shape is None and spec.dims is None:
@@ -182,17 +181,17 @@ class ClassGenerator(metaclass=ExtenderMeta):
                 if x['name'] == 'name':
                     x['default'] = default_name
 
-    def _build_docval(self, base, addl_fields, name=None, default_name=None):
-        """Build docval for auto-generated class
+    def _build_docval(self, base, not_inherited_fields, name=None, default_name=None):
+        """Build docval for __init__ of auto-generated class
 
         :param base: The base class of the new class
-        :param addl_fields: Dict of additional fields that are not in the base class
+        :param not_inherited_fields: Dict of additional fields that are not in the base class
         :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
         :param default_name: Default name of instances of this class, or None if not specified
         :return:
         """
         docval_args = list(deepcopy(get_docval(base.__init__)))
-        for f, field_spec in addl_fields.items():
+        for f, field_spec in not_inherited_fields.items():
             docval_arg = dict(name=f, doc=field_spec.doc)
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
                 docval_arg.update(type=(list, tuple, dict, self.__get_type(field_spec)))
@@ -223,23 +222,15 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         return docval_args
 
-    def _build_fields(self, base, addl_fields, name=None):
-        """
-        Create fields spec of new class.
+    def _build_fields(self, base, not_inherited_fields):
+        """Create fields spec of new class.
         :param base: The base class of the new class
-        :param addl_fields: Dict of additional fields that are not in the base class
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
+        :param not_inherited_fields: Dict of additional fields that are not in the base class
         """
-        if base is None:
-            raise ValueError('cannot generate class without base class')
-        new_args = list()
-        fields = list()
-
-        # copy docval args from superclass
-        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
 
         # add new fields to docval and class fields
-        for f, field_spec in addl_fields.items():
+        fields = list()
+        for f, field_spec in not_inherited_fields.items():
             if f == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
@@ -253,33 +244,25 @@ class ClassGenerator(metaclass=ExtenderMeta):
             #     fields_conf['settable'] = False
             fields.append(fields_conf)
 
-            # auto-initialize arguments not found in superclass
-            if f not in existing_args:
-                new_args.append(f)
-
         classdict = dict()
         if len(fields):
             classdict.update({base._fieldsname: tuple(fields)})
         return classdict
 
-    def _build_init(self, base, addl_fields, name=None, default_name=None):
+    def _build_init(self, base, not_inherited_fields, name=None, default_name=None):
         """
         Get __init__ and fields of new class.
         :param base: The base class of the new class
-        :param addl_fields: Dict of additional fields that are not in the base class
+        :param not_inherited_fields: Dict of additional fields that are not in the base class
         :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
         :param default_name: Default name of instances of this class, or None if not specified
         """
-        if base is None:
-            raise ValueError('cannot generate class without base class')
-        new_args = list()
-        fields = list()
-
         # copy docval args from superclass
         existing_args = set(arg['name'] for arg in get_docval(base.__init__))
 
         # add new fields to docval and class fields
-        for f, field_spec in addl_fields.items():
+        new_args = list()
+        for f, field_spec in not_inherited_fields.items():
             if f == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
@@ -290,9 +273,9 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         classdict = dict()
 
-        docval_args = self._build_docval(base, addl_fields, name, default_name)
+        if len(not_inherited_fields) or name is not None:  # TODO why
+            docval_args = self._build_docval(base, not_inherited_fields, name, default_name)
 
-        if len(fields) or name is not None:  # TODO why
             @docval(*docval_args)
             def __init__(self, **kwargs):
                 if name is not None:
@@ -371,9 +354,6 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         return classdict
 
-    def _get_cls_bases(self, parent_cls):
-        return (parent_cls, )
-
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "spec", "type": BaseStorageSpec, "doc": ""},
@@ -388,18 +368,19 @@ class ClassGenerator(metaclass=ExtenderMeta):
         namespace, data_type, spec, parent_cls, attr_names = getargs('namespace', 'data_type', 'spec', 'parent_cls',
                                                                      'attr_names', kwargs)
 
-        fields = dict()
+        not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
             if not spec.is_inherited_spec(field_spec):
-                fields[k] = field_spec
+                not_inherited_fields[k] = field_spec
         try:
             # add __fields__ and __init__
-            classdict = self._get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
-            bases = (parent_cls, )
+            classdict = self._build_fields(parent_cls, not_inherited_fields)
+            classdict = self._build_init(parent_cls, not_inherited_fields, spec.name, spec.default_name)
+            bases = [parent_cls]
 
-            for class_generator in registered_generators:
-                classdict.update(class_generator.get_cls_dict(parent_cls, fields))  # could override existing keys
-                bases = class_generator.get_cls_bases(bases)
+            for class_generator in custom_generators:
+                # each generator can update classdict and bases
+                class_generator.update_cls_args(classdict, bases, not_inherited_fields, spec.name, spec.default_name)
         except TypeDoesNotExistError as e:  # pragma: no cover
             # this error should never happen after hdmf#322
             name = spec.data_type_def
@@ -408,7 +389,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
             raise ValueError("Cannot dynamically generate class for type '%s'. " % name
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
-        cls = ExtenderMeta(str(data_type), bases, classdict)
+        cls = ExtenderMeta(str(data_type), tuple(bases), classdict)
         return cls
 
 
@@ -416,19 +397,31 @@ class TypeDoesNotExistError(Exception):  # pragma: no cover
     pass
 
 
+class CustomClassGenerator(ClassGenerator, metaclass=ABCMeta):
+    """Subclass this class and register an instance to alter how classes are auto-generated."""
+
+    @abstractmethod
+    def update_cls_args(self, classdict, bases, not_inherited_fields, name, default_name):
+        """Return a tuple of dict of key-value pairs to add to the class dict during class generation."""
+        pass
+
+
 @register_generator()
-class MCIClassGenerator:
+class MCIClassGenerator(CustomClassGenerator):
 
-    def get_cls_dict(self, base, addl_fields):
-        """Get __init__ and fields of new class.
-        :param base: The base class of the new class -- not used in MCIClassGenerator
-        :param addl_fields: Dict of additional fields that are not in the base class
-
-        Returns a dictionary of key value pairs to add to the generated class dict.
+    def update_cls_args(self, classdict, bases, not_inherited_fields, name, default_name):
+        """Update the given class dict and base classes if there is a field spec with quantity * or +
+        :param classdict: The dict to update with __clsconf__ if applicable
+        :param bases: The list of base classes to update if applicable
+        :param not_inherited_fields: Dict of additional fields that are not in the base class
+        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
+        :param default_name: Default name of instances of this class, or None if not specified
         """
+        # NOTE: name, and default_name are not used here
+
+        # create MultiContainerInterface __clsconf__
         clsconf = list()
-        # add new fields to docval and class fields
-        for f, field_spec in addl_fields.items():
+        for f, field_spec in not_inherited_fields.items():
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
                 clsconf.append(dict(
                     attr=f,
@@ -438,12 +431,9 @@ class MCIClassGenerator:
                     create='create_{}'.format(f)
                 ))
 
-        classdict = dict()
         if len(clsconf):
             classdict.update(__clsconf__=clsconf)
 
-        return classdict
-
-    def _get_cls_bases(self, parent_cls, bases):
-        if not isinstance(parent_cls, MultiContainerInterface):  # TODO
-            bases = tuple([MultiContainerInterface] + list(bases))
+            # add MultiContainerInterface to the type hierarchy if not already there
+            if not isinstance(bases[0], MultiContainerInterface):
+                bases.insert(0, MultiContainerInterface)
