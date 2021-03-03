@@ -571,6 +571,15 @@ class MultiContainerInterface(Container):
     The keys 'attr', 'type', and 'add' are required.
     """
 
+    def __new__(cls, *args, **kwargs):
+        if cls is MultiContainerInterface:
+            raise TypeError("Can't instantiate class MultiContainerInterface.")
+        if not hasattr(cls, '__clsconf__'):
+            # either the API was incorrectly defined or only a subclass with __clsconf__ can be initialized
+            raise TypeError("MultiContainerInterface subclass %s is missing __clsconf__ attribute. Please check that "
+                            "the class is properly defined." % cls.__name__)
+        return super().__new__(cls, *args, **kwargs)
+
     @staticmethod
     def __add_article(noun):
         if isinstance(noun, tuple):
