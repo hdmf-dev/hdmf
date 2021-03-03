@@ -3,6 +3,7 @@ from collections import OrderedDict, deque
 from copy import copy
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
+from .classgenerator import ClassGenerator
 from ..container import AbstractContainer, Container
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
@@ -404,6 +405,7 @@ class TypeMap:
         self.__container_types = OrderedDict()
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
+        self.__class_generator = ClassGenerator()
 
     @property
     def namespace_catalog(self):
@@ -463,6 +465,10 @@ class TypeMap:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
+
+    @property
+    def class_generator(self):
+        return self.__class_generator
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},

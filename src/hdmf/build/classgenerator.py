@@ -34,7 +34,7 @@ def _constructor_arg(**kwargs):
 class ClassGenerator(metaclass=ExtenderMeta):
 
     def __init__(self, type_map):
-        self.__container_types = container_types
+        self.__container_types = type_map
         self.__generator_cls = dict()  # the ObjectMapper class to use for each container type
 
     @staticmethod
@@ -156,10 +156,8 @@ class ClassGenerator(metaclass=ExtenderMeta):
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
             return self.__get_container_type(spec.target_type)
-        if spec.data_type_def is not None:
-            return self.__get_container_type(spec.data_type_def)
-        if spec.data_type_inc is not None:
-            return self.__get_container_type(spec.data_type_inc)
+        if spec.data_type is not None:
+            return self.__get_container_type(spec.data_type)
         if spec.shape is None and spec.dims is None:
             return self.__get_scalar_type_map(spec.dtype)
         return 'array_data', 'data'
@@ -225,15 +223,13 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         return docval_args
 
-    def _get_cls_dict(self, base, addl_fields, name=None, default_name=None):
+    def _build_fields(self, base, addl_fields, name=None):
         """
-        Get __init__ and fields of new class.
+        Create fields spec of new class.
         :param base: The base class of the new class
         :param addl_fields: Dict of additional fields that are not in the base class
         :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
         """
-        # TODO: fix this to be more maintainable and smarter
         if base is None:
             raise ValueError('cannot generate class without base class')
         new_args = list()
@@ -251,7 +247,93 @@ class ClassGenerator(metaclass=ExtenderMeta):
             dtype = self.__get_type(field_spec)
             fields_conf = {'name': f,
                            'doc': field_spec['doc']}
-            if self.__ischild(dtype) and issubclass(base, Container):
+            if self.__ischild(dtype) and issubclass(base, Container) and not isinstance(field_spec, LinkSpec):
+                fields_conf['child'] = True
+            # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
+            #     fields_conf['settable'] = False
+            fields.append(fields_conf)
+
+            # auto-initialize arguments not found in superclass
+            if f not in existing_args:
+                new_args.append(f)
+
+        classdict = dict()
+        if len(fields):
+            classdict.update({base._fieldsname: tuple(fields)})
+        return classdict
+
+    def _build_init(self, base, addl_fields, name=None, default_name=None):
+        """
+        Get __init__ and fields of new class.
+        :param base: The base class of the new class
+        :param addl_fields: Dict of additional fields that are not in the base class
+        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
+        :param default_name: Default name of instances of this class, or None if not specified
+        """
+        if base is None:
+            raise ValueError('cannot generate class without base class')
+        new_args = list()
+        fields = list()
+
+        # copy docval args from superclass
+        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
+
+        # add new fields to docval and class fields
+        for f, field_spec in addl_fields.items():
+            if f == 'help':  # pragma: no cover
+                # (legacy) do not add field named 'help' to any part of class object
+                continue
+
+            # auto-initialize arguments not found in superclass
+            if f not in existing_args:
+                new_args.append(f)
+
+        classdict = dict()
+
+        docval_args = self._build_docval(base, addl_fields, name, default_name)
+
+        if len(fields) or name is not None:  # TODO why
+            @docval(*docval_args)
+            def __init__(self, **kwargs):
+                if name is not None:
+                    kwargs.update(name=name)
+                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+                base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+
+                for f in new_args:
+                    arg_val = kwargs.get(f, None)
+                    setattr(self, f, arg_val)
+
+            classdict.update(__init__=__init__)
+
+        return classdict
+
+    def _get_cls_dict(self, base, addl_fields, name=None, default_name=None):
+        """
+        Get __init__ and fields of new class.
+        :param base: The base class of the new class
+        :param addl_fields: Dict of additional fields that are not in the base class
+        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
+        :param default_name: Default name of instances of this class, or None if not specified
+        """
+        if base is None:
+            raise ValueError('cannot generate class without base class')
+        new_args = list()
+        fields = list()
+
+        # copy docval args from superclass
+        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
+
+        # add new fields to docval and class fields
+        for f, field_spec in addl_fields.items():
+            if f == 'help':  # pragma: no cover
+                # (legacy) do not add field named 'help' to any part of class object
+                continue
+
+            dtype = self.__get_type(field_spec)
+            fields_conf = {'name': f,
+                           'doc': field_spec['doc']}
+            if self.__ischild(dtype) and issubclass(base, Container) and not isinstance(field_spec, LinkSpec):
                 fields_conf['child'] = True
             # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
             #     fields_conf['settable'] = False
