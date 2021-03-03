@@ -575,7 +575,6 @@ class MultiContainerInterface(Container):
         if cls is MultiContainerInterface:
             raise TypeError("Can't instantiate class MultiContainerInterface.")
         if not hasattr(cls, '__clsconf__'):
-            # either the API was incorrectly defined or only a subclass with __clsconf__ can be initialized
             raise TypeError("MultiContainerInterface subclass %s is missing __clsconf__ attribute. Please check that "
                             "the class is properly defined." % cls.__name__)
         return super().__new__(cls, *args, **kwargs)
@@ -778,7 +777,7 @@ class MultiContainerInterface(Container):
 
     @ExtenderMeta.pre_init
     def __build_class(cls, name, bases, classdict):
-        """Verify __clsconf__ and create methods based on that.
+        """Verify __clsconf__ and create methods based on __clsconf__.
         This method is called prior to __new__ and __init__ during class declaration in the metaclass.
         """
         if not hasattr(cls, '__clsconf__'):
