@@ -1,5 +1,5 @@
 import types
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
@@ -556,7 +556,7 @@ def _not_parent(arg):
     return arg['name'] != 'parent'
 
 
-class MultiContainerInterface(Container, metaclass=ABCMeta):
+class MultiContainerInterface(Container):
     """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
     To use, extend this class and create a dictionary as a class attribute with any of the following keys:
@@ -570,28 +570,6 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
 
     The keys 'attr', 'type', and 'add' are required.
     """
-
-    @docval(*get_docval(Container.__init__))
-    def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-
-        if not hasattr(self.__class__, '__clsconf__'):
-            # either the API was incorrectly defined or only a subclass with __clsconf__ can be initialized
-            raise TypeError("Cannot initialize an instance of MultiContainerInterface subclass %s."
-                            % self.__class__.__name__)
-
-        # call this function whenever a container is removed from the dictionary
-        def _remove_child(child):
-            if child.parent is self:
-                self._remove_child(child)
-
-        if isinstance(self.__clsconf__, dict):
-            attr_name = self.__clsconf__['attr']
-            self.fields[attr_name] = LabelledDict(attr_name, remove_callable=_remove_child)
-        else:
-            for d in self.__clsconf__:
-                attr_name = d['attr']
-                self.fields[attr_name] = LabelledDict(attr_name, remove_callable=_remove_child)
 
     @staticmethod
     def __add_article(noun):
@@ -759,7 +737,26 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
         return _func
 
     @classmethod
-    def __make_setter(cls, nwbfield, add_name):
+    def __make_getter(cls, attr):
+        """Make a getter function for creating a :py:func:`property`"""
+
+        def _func(self):
+            # initialize the field to an empty labeled dict if it has not yet been
+            # do this here to avoid creating default __init__ which may or may not be overridden in
+            # custom classes and dynamically generated classes
+            if attr not in self.fields:
+                def _remove_child(child):
+                    if child.parent is self:
+                        self._remove_child(child)
+                self.fields[attr] = LabelledDict(attr, remove_callable=_remove_child)
+
+            return self.fields.get(attr)
+
+        return _func
+
+    @classmethod
+    def __make_setter(cls, add_name):
+        """Make a setter function for creating a :py:func:`property`"""
 
         @docval({'name': 'val', 'type': (list, tuple, dict), 'doc': 'the sub items to add', 'default': None})
         def _func(self, **kwargs):
@@ -772,10 +769,12 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
 
     @ExtenderMeta.pre_init
     def __build_class(cls, name, bases, classdict):
-        """This will be called during class declaration in the metaclass to automatically create methods."""
-
+        """Verify __clsconf__ and create methods based on that.
+        This method is called prior to __new__ and __init__ during class declaration in the metaclass.
+        """
         if not hasattr(cls, '__clsconf__'):
             return
+
         multi = False
         if isinstance(cls.__clsconf__, dict):
             clsconf = [cls.__clsconf__]
@@ -797,7 +796,7 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
 
         # create the constructor, only if it has not been overridden
         # i.e. it is the same method as the parent class constructor
-        if cls.__init__ == MultiContainerInterface.__init__:
+        if '__init__' not in cls.__dict__:
             setattr(cls, '__init__', cls.__make_constructor(clsconf))
 
     @classmethod
@@ -828,10 +827,10 @@ class MultiContainerInterface(Container, metaclass=ABCMeta):
 
         # create property with the name given in 'attr' only if the attribute is not already defined
         if not hasattr(cls, attr):
-            aconf = cls._check_field_spec(attr)
-            getter = cls._getter(aconf)
+            getter = cls.__make_getter(attr)
+            setter = cls.__make_setter(add)
             doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
-            setattr(cls, attr, property(getter, cls.__make_setter(aconf, add), None, doc))
+            setattr(cls, attr, property(getter, setter, None, doc))
 
         # create the add method
         setattr(cls, add, cls.__make_add(add, attr, container_type))
