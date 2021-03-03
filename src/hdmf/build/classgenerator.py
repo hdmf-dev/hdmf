@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from copy import copy, deepcopy
+from copy import deepcopy
 from datetime import datetime
 
 import numpy as np
@@ -10,79 +10,17 @@ from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
 
 
-_const_arg = '__constructor_arg'
-
-
-@docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-        is_method=False)
-def _constructor_arg(**kwargs):
-    '''Decorator to override the default mapping scheme for a given constructor argument.
-
-    Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
-    scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
-    first argument the Builder object that is being mapped. The method should return the value to be passed
-    to the target AbstractContainer class constructor argument given by *name*.
-    '''
-    name = getargs('name', kwargs)
-
-    def _dec(func):
-        setattr(func, _const_arg, name)
-        return func
-
-    return _dec
-
-
-class ClassGenerator(metaclass=ExtenderMeta):
+class ClassGenerator:
 
     def __init__(self, type_map):
         self.__type_map = type_map
         self.__custom_generators = []
 
-    @staticmethod
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-            is_method=False)
-    def constructor_arg(**kwargs):
-        '''Decorator to override the default mapping scheme for a given constructor argument.
-
-        Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
-        scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
-        first argument the Builder object that is being mapped. The method should return the value to be passed
-        to the target AbstractContainer class constructor argument given by *name*.
-        '''
-        name = getargs('name', kwargs)
-        return _constructor_arg(name)
-
-    @ExtenderMeta.post_init
-    def __gather_procedures(cls, name, bases, classdict):
-        if hasattr(cls, 'constructor_args'):
-            cls.constructor_args = copy(cls.constructor_args)
-        else:
-            cls.constructor_args = dict()
-        for name, func in cls.__dict__.items():
-            if cls.__is_constructor_arg(func):
-                cls.constructor_args[cls.__get_cargname(func)] = getattr(cls, name)
-
-    @_constructor_arg('name')
-    def get_container_name(self, *args):
-        builder = args[0]
-        return builder.name
-
-    def __get_override_carg(self, *args):
-        name = args[0]
-        remaining_args = tuple(args[1:])
-        if name in self.constructor_args:
-            self.logger.debug("        Calling override function for constructor argument '%s'" % name)
-            func = self.constructor_args[name]
-            return func(self, *remaining_args)
-        return None
-
-    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
+    @docval({"name": "generator", "type": 'CustomClassGenerator', "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):
         """Add a custom class generator to this ClassGenerator."""
-        generator_cls = getargs('generator_cls', kwargs)
-        if not isinstance(generator_cls, CustomClassGenerator):
-            raise ValueError('%s must be an instance of CustomClassGenerator.' % generator_cls.__name__)
-        self.__custom_generators.append(generator_cls)
+        generator = getargs('generator', kwargs)
+        self.__custom_generators.append(generator)
 
     # mapping from spec types to allowable python types for docval for fields during dynamic class generation
     # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
@@ -140,7 +78,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
             raise ValueError("Spec dtype '%s' cannot be mapped to a Python type." % spec_dtype)
         return dtype
 
-    def __get_type(self, spec):
+    def _get_type(self, spec):
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
                 container_type = self.__get_container_type(spec.dtype.target_type, default=None)
@@ -162,9 +100,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
         return 'array_data', 'data'
 
     def __ischild(self, dtype):
-        """
-        Check if dtype represents a type that is a child
-        """
+        """Check if dtype represents a type that is a child."""
         ret = False
         if isinstance(dtype, tuple):
             for sub in dtype:
@@ -176,6 +112,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
     @staticmethod
     def __set_default_name(docval_args, default_name):
+        """Set the default value for the name docval argument."""
         if default_name is not None:
             for x in docval_args:
                 if x['name'] == 'name':
@@ -188,15 +125,15 @@ class ClassGenerator(metaclass=ExtenderMeta):
         :param not_inherited_fields: Dict of additional fields that are not in the base class
         :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
         :param default_name: Default name of instances of this class, or None if not specified
-        :return:
+        :return: List of docval arguments
         """
         docval_args = list(deepcopy(get_docval(base.__init__)))
         for f, field_spec in not_inherited_fields.items():
             docval_arg = dict(name=f, doc=field_spec.doc)
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
-                docval_arg.update(type=(list, tuple, dict, self.__get_type(field_spec)))
+                docval_arg.update(type=(list, tuple, dict, self._get_type(field_spec)))
             else:
-                dtype = self.__get_type(field_spec)
+                dtype = self._get_type(field_spec)
                 docval_arg.update(type=dtype)
                 if getattr(field_spec, 'shape', None) is not None:
                     docval_arg.update(shape=field_spec.shape)
@@ -235,7 +172,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
 
-            dtype = self.__get_type(field_spec)
+            dtype = self._get_type(field_spec)
             fields_conf = {'name': f,
                            'doc': field_spec['doc']}
             if self.__ischild(dtype) and issubclass(base, Container) and not isinstance(field_spec, LinkSpec):
@@ -291,71 +228,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         return classdict
 
-    def _get_cls_dict(self, base, addl_fields, name=None, default_name=None):
-        """
-        Get __init__ and fields of new class.
-        :param base: The base class of the new class
-        :param addl_fields: Dict of additional fields that are not in the base class
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
-        """
-        if base is None:
-            raise ValueError('cannot generate class without base class')
-        new_args = list()
-        fields = list()
-
-        # copy docval args from superclass
-        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
-
-        # add new fields to docval and class fields
-        for f, field_spec in addl_fields.items():
-            if f == 'help':  # pragma: no cover
-                # (legacy) do not add field named 'help' to any part of class object
-                continue
-
-            dtype = self.__get_type(field_spec)
-            fields_conf = {'name': f,
-                           'doc': field_spec['doc']}
-            if self.__ischild(dtype) and issubclass(base, Container) and not isinstance(field_spec, LinkSpec):
-                fields_conf['child'] = True
-            # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
-            #     fields_conf['settable'] = False
-            fields.append(fields_conf)
-
-            # auto-initialize arguments not found in superclass
-            if f not in existing_args:
-                new_args.append(f)
-
-        classdict = dict()
-
-        if len(fields):
-            classdict.update({base._fieldsname: tuple(fields)})
-
-        docval_args = self._build_docval(base, addl_fields, name, default_name)
-
-        if len(fields) or name is not None:  # TODO why
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                if name is not None:
-                    kwargs.update(name=name)
-                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-                base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-                self.__post_super_init()  # hook for custom code
-
-                for f in new_args:
-                    arg_val = kwargs.get(f, None)
-                    setattr(self, f, arg_val)
-
-            def __post_super_init(self, *pargs, **pkwargs):
-                pass
-
-            classdict.update(__init__=__init__)
-            classdict.update(__post_super_init=__post_super_init)
-
-        return classdict
-
-    @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
-            {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+    @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "spec", "type": BaseStorageSpec, "doc": ""},
             {"name": "parent_cls", "type": type, "doc": ""},
             {"name": "attr_names", "type": dict, "doc": ""},
@@ -365,8 +238,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         '''
-        namespace, data_type, spec, parent_cls, attr_names = getargs('namespace', 'data_type', 'spec', 'parent_cls',
-                                                                     'attr_names', kwargs)
+        data_type, spec, parent_cls, attr_names = getargs('data_type', 'spec', 'parent_cls', 'attr_names', kwargs)
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
@@ -378,7 +250,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
             classdict = self._build_init(parent_cls, not_inherited_fields, spec.name, spec.default_name)
             bases = [parent_cls]
 
-            for class_generator in custom_generators:
+            for class_generator in self.__custom_generators:
                 # each generator can update classdict and bases
                 class_generator.update_cls_args(classdict, bases, not_inherited_fields, spec.name, spec.default_name)
         except TypeDoesNotExistError as e:  # pragma: no cover
@@ -389,7 +261,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
             raise ValueError("Cannot dynamically generate class for type '%s'. " % name
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
-        cls = ExtenderMeta(str(data_type), tuple(bases), classdict)
+        cls = ExtenderMeta(data_type, tuple(bases), classdict)
         return cls
 
 
@@ -406,7 +278,6 @@ class CustomClassGenerator(ClassGenerator, metaclass=ABCMeta):
         pass
 
 
-@register_generator()
 class MCIClassGenerator(CustomClassGenerator):
 
     def update_cls_args(self, classdict, bases, not_inherited_fields, name, default_name):
@@ -425,7 +296,7 @@ class MCIClassGenerator(CustomClassGenerator):
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
                 clsconf.append(dict(
                     attr=f,
-                    type=self.__get_type(field_spec),
+                    type=self._get_type(field_spec),  # <-- from ClassGenerator
                     add='add_{}'.format(f),
                     get='get_{}'.format(f),
                     create='create_{}'.format(f)

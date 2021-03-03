@@ -3,11 +3,11 @@ from collections import OrderedDict, deque
 from copy import copy
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
-from .classgenerator import ClassGenerator
-from ..container import AbstractContainer, Container
+from .classgenerator import ClassGenerator, MCIClassGenerator
+from ..container import AbstractContainer, Container, Data
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, call_docval_func
+from ..utils import docval, getargs, call_docval_func, ExtenderMeta
 
 
 class Proxy:
@@ -405,11 +405,16 @@ class TypeMap:
         self.__container_types = OrderedDict()
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
-        self.__class_generator = ClassGenerator()
+        self.__class_generator = ClassGenerator(self)
+        self.__class_generator.register_generator(MCIClassGenerator(self))
 
     @property
     def namespace_catalog(self):
         return self.__ns_catalog
+
+    @property
+    def container_types(self):
+        return self.__container_types
 
     def __copy__(self):
         ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls)
@@ -484,24 +489,9 @@ class TypeMap:
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             if isinstance(spec, GroupSpec):
                 self.__resolve_child_container_classes(spec, namespace)
-
-            dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
-            parent_cls = None
-            for t in dt_hier:
-                parent_cls = self.__get_container_cls(namespace, t)
-                if parent_cls is not None:
-                    break
-            if parent_cls is None:
-                if isinstance(spec, GroupSpec):
-                    parent_cls = Container
-                elif isinstance(spec, DatasetSpec):
-                    parent_cls = Data
-                else:
-                    raise ValueError("Cannot generate class from %s" % type(spec))
-            if type(parent_cls) is not ExtenderMeta:
-                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
-
-            cls = ClassGenerator(self).generate_class()  # TODO generate class
+            parent_cls = self.__get_parent_cls(namespace, data_type, spec)
+            attr_names = self.__default_mapper_cls.get_attr_names(spec)
+            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names)
             self.register_container_type(namespace, data_type, cls)
         return cls
 
@@ -511,6 +501,24 @@ class TypeMap:
                 self.get_container_cls(namespace, child_spec.data_type_inc)
             elif child_spec.data_type_def is not None:
                 self.get_container_cls(namespace, child_spec.data_type_def)
+
+    def __get_parent_cls(self, namespace, data_type, spec):
+        dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
+        parent_cls = None
+        for t in dt_hier:
+            parent_cls = self.__get_container_cls(namespace, t)
+            if parent_cls is not None:
+                break
+        if parent_cls is None:
+            if isinstance(spec, GroupSpec):
+                parent_cls = Container
+            elif isinstance(spec, DatasetSpec):
+                parent_cls = Data
+            else:
+                raise ValueError("Cannot generate class from %s" % type(spec))
+        if type(parent_cls) is not ExtenderMeta:
+            raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
+        return parent_cls
 
     def __get_container_cls(self, namespace, data_type):
         if namespace not in self.__container_types:
@@ -523,10 +531,6 @@ class TypeMap:
             if ret is not None:
                 self.register_container_type(namespace, data_type, ret)
         return ret
-
-    @property
-    def get_container_types(self):
-        return self.__container_types
 
     @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),
              'doc': 'the object to get the type key for'})
