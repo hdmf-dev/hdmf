@@ -63,7 +63,7 @@ def register_map(**kwargs):
 
 # a function to register a custom class generator
 @docval({"name": "class_generator", "type": type,
-         "doc": "the ClassGenerator class to call during dynamic class generation", },
+         "doc": "the ClassGenerator class to call during dynamic class generation"},
         is_method=False)
 def register_generator(**kwargs):
     """Register a ClassGenerator with methods to call during dynamic class generation (see ``get_class``)."""
@@ -72,10 +72,7 @@ def register_generator(**kwargs):
     def _dec(cls):
         __TYPE_MAP.class_generator.register_generator(class_generator, cls)
         return cls
-    if class_generator is None:
-        return _dec
-    else:
-        _dec(class_generator)
+    _dec(class_generator)
 
 
 def __get_resources():
@@ -123,6 +120,10 @@ if os.path.exists(__resources['namespace_path']):
     from . import sparse  # noqa: F401,E402
     from . import resources  # noqa: F401,E402
     from . import multi  # noqa: F401,E402
+
+    # register custom class generators
+    from .io.table import DynamicTableGenerator
+    __TYPE_MAP.class_generator.register_generator(DynamicTableGenerator(__TYPE_MAP))
 
     from .. import Data, Container
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)

@@ -447,6 +447,10 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, container_cls)
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
+        for custom_generators in type_map.class_generator.custom_generators:
+            # TODO clean this up
+            # create a new CustomClassGenerator, passing this TypeMap to it
+            self.__class_generator.register_generator(type(custom_generators)(self))
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve', 'type': bool,
@@ -485,7 +489,7 @@ class TypeMap:
         '''
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
         cls = self.__get_container_cls(namespace, data_type)
-        if cls is None:
+        if cls is None:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             if isinstance(spec, GroupSpec):
                 self.__resolve_child_container_classes(spec, namespace)

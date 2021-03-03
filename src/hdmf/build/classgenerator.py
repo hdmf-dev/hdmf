@@ -16,6 +16,10 @@ class ClassGenerator:
         self.__type_map = type_map
         self.__custom_generators = []
 
+    @property
+    def custom_generators(self):
+        return self.__custom_generators
+
     @docval({"name": "generator", "type": 'CustomClassGenerator', "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):
         """Add a custom class generator to this ClassGenerator."""
@@ -168,10 +172,6 @@ class ClassGenerator:
         # add new fields to docval and class fields
         fields = list()
         for f, field_spec in not_inherited_fields.items():
-            if f == 'help':  # pragma: no cover
-                # (legacy) do not add field named 'help' to any part of class object
-                continue
-
             dtype = self._get_type(field_spec)
             fields_conf = {'name': f,
                            'doc': field_spec['doc']}
@@ -200,10 +200,6 @@ class ClassGenerator:
         # add new fields to docval and class fields
         new_args = list()
         for f, field_spec in not_inherited_fields.items():
-            if f == 'help':  # pragma: no cover
-                # (legacy) do not add field named 'help' to any part of class object
-                continue
-
             # auto-initialize arguments not found in superclass
             if f not in existing_args:
                 new_args.append(f)
@@ -242,6 +238,9 @@ class ClassGenerator:
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
+            if k == 'help':  # pragma: no cover
+                # (legacy) do not add field named 'help' to any part of class object
+                continue
             if not spec.is_inherited_spec(field_spec):
                 not_inherited_fields[k] = field_spec
         try:
