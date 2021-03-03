@@ -61,20 +61,6 @@ def register_map(**kwargs):
         _dec(mapper_cls)
 
 
-# a function to register a custom class generator
-@docval({"name": "class_generator", "type": type,
-         "doc": "the ClassGenerator class to call during dynamic class generation"},
-        is_method=False)
-def register_generator(**kwargs):
-    """Register a ClassGenerator with methods to call during dynamic class generation (see ``get_class``)."""
-    class_generator = getargs('class_generator', kwargs)
-
-    def _dec(cls):
-        __TYPE_MAP.class_generator.register_generator(class_generator, cls)
-        return cls
-    _dec(class_generator)
-
-
 def __get_resources():
     from pkg_resources import resource_filename
     from os.path import join
