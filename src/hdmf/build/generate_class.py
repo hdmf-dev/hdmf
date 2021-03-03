@@ -33,7 +33,7 @@ def _constructor_arg(**kwargs):
 
 class ClassGenerator(metaclass=ExtenderMeta):
 
-    def __init__(self, container_types):
+    def __init__(self, type_map):
         self.__container_types = container_types
         self.__generator_cls = dict()  # the ObjectMapper class to use for each container type
 
@@ -120,15 +120,18 @@ class ClassGenerator(metaclass=ExtenderMeta):
         'datetime': datetime
     }
 
-    def __get_container_type(self, container_name):
+    def __get_container_type(self, container_name, default=None):
+        """Search all namespaces for the container associated with the given data type"""
         container_type = None
         for val in self.__container_types.values():
             container_type = val.get(container_name)
             if container_type is not None:
                 return container_type
-        if container_type is None:  # pragma: no cover
-            # this code should never happen after hdmf#322
-            raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
+        if container_type is None:
+            if default is not None:
+                return default
+            # this should never happen after hdmf#322
+            raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)  # pragma: no cover
 
     def __get_scalar_type_map(self, spec_dtype):
         dtype = self._spec_dtype_map.get(spec_dtype)
@@ -141,11 +144,11 @@ class ClassGenerator(metaclass=ExtenderMeta):
     def __get_type(self, spec):
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
-                tgttype = spec.dtype.target_type
-                for val in self.__container_types.values():
-                    container_type = val.get(tgttype)
-                    if container_type is not None:
-                        return container_type
+                container_type = self.__get_container_type(spec.dtype.target_type, default=None)
+                if container_type is not None:
+                    return container_type
+                # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class
+                # returning Data, Container works as a generic fallback for now but should be more specific
                 return Data, Container
             elif spec.shape is None and spec.dims is None:
                 return self.__get_scalar_type_map(spec.dtype)
@@ -222,7 +225,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         return docval_args
 
-    def get_cls_dict(self, base, addl_fields, name=None, default_name=None):
+    def _get_cls_dict(self, base, addl_fields, name=None, default_name=None):
         """
         Get __init__ and fields of new class.
         :param base: The base class of the new class
@@ -265,25 +268,28 @@ class ClassGenerator(metaclass=ExtenderMeta):
 
         docval_args = self._build_docval(base, addl_fields, name, default_name)
 
-        if len(fields) or name is not None:
+        if len(fields) or name is not None:  # TODO why
             @docval(*docval_args)
             def __init__(self, **kwargs):
                 if name is not None:
                     kwargs.update(name=name)
                 pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
                 base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-                if len(clsconf):
-                    MultiContainerInterface.__init__(self, *pargs, **pkwargs)
+                self.__post_super_init()  # hook for custom code
 
                 for f in new_args:
                     arg_val = kwargs.get(f, None)
                     setattr(self, f, arg_val)
 
+            def __post_super_init(self, *pargs, **pkwargs):
+                pass
+
             classdict.update(__init__=__init__)
+            classdict.update(__post_super_init=__post_super_init)
 
         return classdict
 
-    def get_cls_bases(self, parent_cls):
+    def _get_cls_bases(self, parent_cls):
         return (parent_cls, )
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
@@ -305,8 +311,13 @@ class ClassGenerator(metaclass=ExtenderMeta):
             if not spec.is_inherited_spec(field_spec):
                 fields[k] = field_spec
         try:
-            d = self.get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
-            bases = self.get_cls_bases(parent_cls)
+            # add __fields__ and __init__
+            classdict = self._get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
+            bases = (parent_cls, )
+
+            for class_generator in registered_generators:
+                classdict.update(class_generator.get_cls_dict(parent_cls, fields))  # could override existing keys
+                bases = class_generator.get_cls_bases(bases)
         except TypeDoesNotExistError as e:  # pragma: no cover
             # this error should never happen after hdmf#322
             name = spec.data_type_def
@@ -315,7 +326,7 @@ class ClassGenerator(metaclass=ExtenderMeta):
             raise ValueError("Cannot dynamically generate class for type '%s'. " % name
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
-        cls = ExtenderMeta(str(data_type), bases, d)
+        cls = ExtenderMeta(str(data_type), bases, classdict)
         return cls
 
 
@@ -323,20 +334,20 @@ class TypeDoesNotExistError(Exception):  # pragma: no cover
     pass
 
 
-class MCIClassGenerator(ClassGenerator):
+@register_generator()
+class MCIClassGenerator:
 
-    def update_cls_dict(self, base, addl_fields):
+    def get_cls_dict(self, base, addl_fields):
         """Get __init__ and fields of new class.
-        :param base: The base class of the new class
+        :param base: The base class of the new class -- not used in MCIClassGenerator
         :param addl_fields: Dict of additional fields that are not in the base class
+
+        Returns a dictionary of key value pairs to add to the generated class dict.
         """
-        new_args = list()
         clsconf = list()
-        classdict = dict()
         # add new fields to docval and class fields
         for f, field_spec in addl_fields.items():
             if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
-                # if its a MultiContainerInterface, also build clsconf
                 clsconf.append(dict(
                     attr=f,
                     type=self.__get_type(field_spec),
@@ -345,27 +356,12 @@ class MCIClassGenerator(ClassGenerator):
                     create='create_{}'.format(f)
                 ))
 
+        classdict = dict()
         if len(clsconf):
             classdict.update(__clsconf__=clsconf)
 
-        if len(fields) or name is not None:
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                if name is not None:
-                    kwargs.update(name=name)
-                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-                base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-                if len(clsconf):
-                    MultiContainerInterface.__init__(self, *pargs, **pkwargs)
-
-                for f in new_args:
-                    arg_val = kwargs.get(f, None)
-                    setattr(self, f, arg_val)
-
-            classdict.update(__init__=__init__)
-
         return classdict
 
-    def get_cls_bases(self, parent_cls, bases):
-        if not isinstance(parent_cls, MultiContainerInterface):
+    def _get_cls_bases(self, parent_cls, bases):
+        if not isinstance(parent_cls, MultiContainerInterface):  # TODO
             bases = tuple([MultiContainerInterface] + list(bases))

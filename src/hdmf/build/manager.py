@@ -495,7 +495,7 @@ class TypeMap:
             if type(parent_cls) is not ExtenderMeta:
                 raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
 
-            cls = None  # TODO generate class
+            cls = ClassGenerator(self).generate_class()  # TODO generate class
             self.register_container_type(namespace, data_type, cls)
         return cls
 
