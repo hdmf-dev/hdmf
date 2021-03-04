@@ -69,8 +69,11 @@ class TypeDoesNotExistError(Exception):  # pragma: no cover
     pass
 
 
-class CustomClassGenerator:
+class CustomClassGenerator():
     """Subclass this class and register an instance to alter how classes are auto-generated."""
+
+    def __new__(cls, *args, **kwargs):  # pragma: no cover
+        raise TypeError('Cannot instantiate class %s' % cls.__name__)
 
     # mapping from spec types to allowable python types for docval for fields during dynamic class generation
     # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
