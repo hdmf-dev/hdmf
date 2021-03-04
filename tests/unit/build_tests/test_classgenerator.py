@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.build import ObjectMapper, BuildManager, TypeMap, CustomClassGenerator
 from hdmf.container import MultiContainerInterface
 from hdmf.data_utils import DataIO, AbstractDataChunkIterator
 from hdmf.query import HDMFDataset
@@ -220,6 +220,7 @@ class TestDynamicContainer(TestCase):
         multi = Multi(name='my_multi',
                       bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
                       attr3=5.)
+        breakpoint()
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
         assert multi.attr3 == 5.
 
@@ -229,7 +230,7 @@ class TestDynamicContainer(TestCase):
             attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
             attr4=AttributeSpec('attr4', 'another example float attribute', 'float')
         )
-        docval = self.type_map.class_generator._build_docval(Bar, addl_fields)
+        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
 
         expected = [
             {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
@@ -256,7 +257,7 @@ class TestDynamicContainer(TestCase):
         """Test that docval generation for a class with shape has the shape set."""
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric', shape=[None]))
-        docval = self.type_map.class_generator._build_docval(Bar, addl_fields)
+        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
 
         for arg in docval:
             if arg['name'] == 'attr3':
@@ -267,7 +268,7 @@ class TestDynamicContainer(TestCase):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
                                                required=False, default_value=10.0))
-        docval = self.type_map.class_generator._build_docval(Bar, addl_fields)
+        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
 
         for arg in docval:
             if arg['name'] == 'attr3':
@@ -278,7 +279,7 @@ class TestDynamicContainer(TestCase):
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
                                                required=False))
-        docval = self.type_map.class_generator._build_docval(Bar, addl_fields)
+        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
 
         for arg in docval:
             if arg['name'] == 'attr3':
@@ -286,7 +287,7 @@ class TestDynamicContainer(TestCase):
 
     def test_build_docval_fixed_name(self):
         """Test that docval generation for a class with a fixed name does not contain a docval arg for name."""
-        docval = self.type_map.class_generator._build_docval(Bar, {}, name='Baz')
+        docval = CustomClassGenerator._build_docval(Bar, {}, self.type_map, name='Baz', default_name=None)
 
         found = False
         for arg in docval:
@@ -296,7 +297,7 @@ class TestDynamicContainer(TestCase):
 
     def test_build_docval_default_name(self):
         """Test that docval generation for a class with a default name has the default value for name set."""
-        docval = self.type_map.class_generator._build_docval(Bar, {}, default_name='MyBaz')
+        docval = CustomClassGenerator._build_docval(Bar, {}, self.type_map, name=None, default_name='MyBaz')
 
         for arg in docval:
             if arg['name'] == 'name':
@@ -307,7 +308,7 @@ class TestDynamicContainer(TestCase):
         addl_fields = dict(
             attr3=LinkSpec(name='attr3', target_type='Bar', doc='an example link'),
         )
-        docval = self.type_map.class_generator._build_docval(Bar, addl_fields)
+        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
 
         for arg in docval:
             if arg['name'] == 'attr3':

@@ -48,21 +48,23 @@ class DynamicTableMap(ObjectMapper):
 
 class DynamicTableGenerator(CustomClassGenerator):
 
-    def update_cls_args(self, classdict, bases, not_inherited_fields, name, default_name):
-        """Update the given class dict and base classes if there is a DynamicTable
+    @classmethod
+    def update_cls_args(cls, classdict, bases, not_inherited_fields, spec, type_map):
+        """Update the given class dict and base classes if there is a field spec with quantity * or +
         :param classdict: The dict to update with __clsconf__ if applicable
         :param bases: The list of base classes to update if applicable
         :param not_inherited_fields: Dict of additional fields that are not in the base class
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
+        :param spec: The spec for the container class to generate
+        :param type_map: The type map to use
         """
+        # NOTE: spec and type_map are not used here
         cols = list()
         for f, field_spec in not_inherited_fields.items():
             # check for columns of a dynamic table
             # TODO is there a smarter check using type hierarchy than comparing spec inc key names?
             if (any([b.__name__ == 'DynamicTable' for b in bases])
                     and getattr(field_spec, field_spec.inc_key(), None) in ('VectorData', 'DynamicTableRegion')):
-                cols.append(self.__make_dynamic_table_column(f, field_spec, not_inherited_fields))
+                cols.append(cls.__make_dynamic_table_column(f, field_spec, not_inherited_fields))
         if len(cols):
             classdict.update(__columns__=tuple(cols))
 

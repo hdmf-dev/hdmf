@@ -109,7 +109,7 @@ if os.path.exists(__resources['namespace_path']):
 
     # register custom class generators
     from .io.table import DynamicTableGenerator
-    __TYPE_MAP.class_generator.register_generator(DynamicTableGenerator(__TYPE_MAP))
+    __TYPE_MAP.register_generator(DynamicTableGenerator)
 
     from .. import Data, Container
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)

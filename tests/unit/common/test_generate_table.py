@@ -92,7 +92,6 @@ class TestDynamicDynamicTable(TestCase):
 
         assert issubclass(TestTable, DynamicTable)
         print(TestTable)
-        breakpoint()
 
         assert TestTable.__columns__[0] == dict(
             name='my_col',

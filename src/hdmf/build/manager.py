@@ -3,7 +3,7 @@ from collections import OrderedDict, deque
 from copy import copy
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
-from .classgenerator import ClassGenerator, MCIClassGenerator
+from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
@@ -405,8 +405,9 @@ class TypeMap:
         self.__container_types = OrderedDict()
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
-        self.__class_generator = ClassGenerator(self)
-        self.__class_generator.register_generator(MCIClassGenerator(self))
+        self.__class_generator = ClassGenerator()
+        self.register_generator(CustomClassGenerator)
+        self.register_generator(MCIClassGenerator)
 
     @property
     def namespace_catalog(self):
@@ -447,10 +448,14 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, container_cls)
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
-        for custom_generators in type_map.class_generator.custom_generators:
-            # TODO clean this up
-            # create a new CustomClassGenerator, passing this TypeMap to it
-            self.__class_generator.register_generator(type(custom_generators)(self))
+        for custom_generators in type_map.__class_generator.custom_generators:
+            self.register_generator(custom_generators)
+
+    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
+    def register_generator(self, **kwargs):
+        """Add a custom class generator."""
+        generator = getargs('generator', kwargs)
+        self.__class_generator.register_generator(generator)
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve', 'type': bool,
@@ -475,10 +480,6 @@ class TypeMap:
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    @property
-    def class_generator(self):
-        return self.__class_generator
-
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             returns='the class for the given namespace and data_type', rtype=type)
@@ -495,7 +496,7 @@ class TypeMap:
                 self.__resolve_child_container_classes(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
-            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names)
+            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 
