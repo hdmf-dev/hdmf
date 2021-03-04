@@ -220,7 +220,6 @@ class TestDynamicContainer(TestCase):
         multi = Multi(name='my_multi',
                       bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
                       attr3=5.)
-        breakpoint()
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
         assert multi.attr3 == 5.
 
