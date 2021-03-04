@@ -322,6 +322,8 @@ class MCIClassGenerator(CustomClassGenerator):
                     get='get_{}'.format(f),
                     create='create_{}'.format(f)
                 ))
+                # remove the attribute from __fields__ -- needed so that MCI initializes the attribute to LabelledDict
+                classdict['__fields__'] = tuple(filter(lambda x: x['name'] != f, classdict['__fields__']))
 
         if len(clsconf):
             classdict.update(__clsconf__=clsconf)
