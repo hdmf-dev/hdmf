@@ -1,9 +1,8 @@
 from .. import register_map
-from ..table import DynamicTable, VectorData, VectorIndex
+from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
 from ...build import ObjectMapper, BuildManager, CustomClassGenerator
 from ...spec import Spec
-from ...spec.spec import BaseStorageSpec
-from ...utils import docval, getargs, get_docval
+from ...utils import docval, getargs
 
 
 @register_map(DynamicTable)
@@ -49,50 +48,34 @@ class DynamicTableMap(ObjectMapper):
 class DynamicTableGenerator(CustomClassGenerator):
 
     @classmethod
-    def update_cls_args(cls, classdict, bases, not_inherited_fields, spec, type_map):
+    def apply_generator_to_field(cls, field_spec, bases, type_map):
+        """Return True if this Generator should be run on this field_spec, False otherwise."""
+        dtype = cls._get_type(field_spec, type_map)
+        return DynamicTable in bases and issubclass(dtype, VectorData)
+
+    @classmethod
+    def process_field_spec(cls, classdict, parent_cls, f, field_spec, not_inherited_fields, type_map):
         """Update the given class dict and base classes if there is a field spec with quantity * or +
         :param classdict: The dict to update with __clsconf__ if applicable
         :param bases: The list of base classes to update if applicable
-        :param not_inherited_fields: Dict of additional fields that are not in the base class
+        :param f: The field name
+        :param field_spec: The field spec
         :param spec: The spec for the container class to generate
         :param type_map: The type map to use
+        :return bool: Whether the field spec has been processed and should not be processed by other class generators
         """
-        # NOTE: spec and type_map are not used here
-        cols = list()
-        for f, field_spec in not_inherited_fields.items():
-            # check for columns of a dynamic table
-            # TODO is there a smarter check using type hierarchy than comparing spec inc key names?
-            if (any([b.__name__ == 'DynamicTable' for b in bases])
-                    and getattr(field_spec, field_spec.inc_key(), None) in ('VectorData', 'DynamicTableRegion')):
-                cols.append(cls.__make_dynamic_table_column(f, field_spec, not_inherited_fields))
-        if len(cols):
-            classdict.update(__columns__=tuple(cols))
-
-            # alter __init__ docval to remove columns
-            old_dv = list(get_docval(classdict['__init__']))
-            new_dv = [arg for arg in old_dv if not isinstance(arg['type'], VectorData)]
-
-            # TODO improve this override build_docval??? add a hook in there?
-            @docval(*new_dv)
-            def __init__(self, **kwargs):
-                # TODO: improve this
-                classdict['__init__'](**kwargs)  # this still requires some columns
-
-            classdict.update(__init__=__init__)
-
-    @staticmethod
-    def __make_dynamic_table_column(f: str, field_spec: BaseStorageSpec, not_inherited_fields: dict) -> dict:
         """Make single column for __columns__ configuration for auto-generated DynamicTable API class.
         :param f: field name
         :param field_spec:
         :param not_inherited_fields: d
         :return: dict
         """
-        col_spec = dict(name=f, description=field_spec['doc'])
-        if getattr(field_spec, 'quantity', None) == '?':
-            col_spec.update(required=False)
-        if field_spec[field_spec.inc_key()] == 'DynamicTableRegion':
-            col_spec.update(table=True)
+        column_conf = dict(name=f, description=field_spec['doc'])
+        dtype = cls._get_type(field_spec, type_map)
+        if not field_spec.required:
+            column_conf['required'] = False
+        if issubclass(dtype, DynamicTableRegion):
+            column_conf['table'] = True
         if '{}_index'.format(f) in not_inherited_fields:
             counter = 0
             index_name = f
@@ -100,7 +83,18 @@ class DynamicTableGenerator(CustomClassGenerator):
                 index_name = '{}_index'
                 counter += 1
             if counter == 1:
-                col_spec.update(index=True)
+                column_conf['index'] = True
             else:
-                col_spec.update(index=counter)
-        return col_spec
+                column_conf['index'] = counter
+        classdict.setdefault('__columns__', list()).append(column_conf)  # add to __columns__ list
+
+    @classmethod
+    def update_docval_args(cls, docval_args, f, field_spec, type_map):
+        pass  # do not add DynamicTable columns to init docval
+
+    @classmethod
+    def post_process(cls, classdict, bases, docval_args, spec):
+        # convert classdict['__columns__'] from list to tuple if present
+        columns = classdict.get('__columns__')
+        if columns is not None:
+            classdict['__columns__'] = tuple(columns)

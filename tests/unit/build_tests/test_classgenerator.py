@@ -224,33 +224,66 @@ class TestDynamicContainer(TestCase):
         assert multi.attr3 == 5.
 
     def test_build_docval(self):
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        addl_fields = dict(
-            attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric'),
-            attr4=AttributeSpec('attr4', 'another example float attribute', 'float')
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            groups=[GroupSpec(
+                doc='a group',
+                data_type_inc='Bar',
+                quantity='?'
+            )],
+            datasets=[DatasetSpec(
+                doc='an example dataset',
+                dtype='int',
+                name='data',
+                attributes=[AttributeSpec(
+                    name='attr2',
+                    doc='an example integer attribute',
+                    dtype='int'
+                )]
+            )],
+            attributes=[AttributeSpec(
+                name='attr1',
+                doc='an example string attribute',
+                dtype='text'
+            ), AttributeSpec(
+                name='attr3',
+                doc='an example numeric attribute',
+                dtype='numeric'
+            ), AttributeSpec(
+                name='attr4',
+                doc='an example float attribute',
+                dtype='float'
+            )]
         )
-        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
-
         expected = [
-            {'doc': 'the name of this Bar', 'name': 'name', 'type': str},
-            {'name': 'data',
-             'type': (DataIO, np.ndarray, list, tuple, h5py.Dataset,
-                      HDMFDataset, AbstractDataChunkIterator),
-             'doc': 'some data'},
-            {'name': 'attr1', 'type': str,
-             'doc': 'an attribute'},
-            {'name': 'attr2', 'type': int,
-             'doc': 'another attribute'},
+            {'name': 'data', 'type': (int, np.int32, np.int64), 'doc': 'an example dataset'},
+            {'name': 'attr1', 'type': str, 'doc': 'an example string attribute'},
+            {'name': 'attr2', 'type': (int, np.int32, np.int64), 'doc': 'an example integer attribute'},
             {'name': 'attr3', 'doc': 'an example numeric attribute',
              'type': (float, np.float32, np.float64, np.int8, np.int16,
                       np.int32, np.int64, int, np.uint8, np.uint16,
                       np.uint32, np.uint64)},
-            {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None},
-            {'name': 'attr4', 'doc': 'another example float attribute',
-             'type': (float, np.float32, np.float64)}
+            {'name': 'attr4', 'doc': 'an example float attribute',
+             'type': (float, np.float32, np.float64)},
+            {'name': 'bar', 'type': Bar, 'doc': 'a group', 'default': None},
         ]
 
-        self.assertListEqual(docval, expected)
+        attr_map = {
+            'data': spec.get_dataset('data'),
+            'attr1': spec.get_attribute('attr1'),
+            'attr2': spec.get_dataset('data').get_attribute('attr2'),
+            'attr3': spec.get_attribute('attr3'),
+            'attr4': spec.get_attribute('attr4'),
+            'bar': spec.groups[0]
+        }
+
+        docval_args = list()
+        for i, attr_name in enumerate(attr_map):
+            with self.subTest(attr_name=attr_name):
+                field_spec = attr_map[attr_name]
+                CustomClassGenerator.update_docval_args(docval_args, attr_name, field_spec, self.type_map)
+                self.assertListEqual(docval_args, expected[:(i+1)])  # compare with the first i elements of expected
 
     def test_build_docval_shape(self):
         """Test that docval generation for a class with shape has the shape set."""

@@ -20,11 +20,16 @@ class ClassGenerator:
 
     @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):
-        """Add a custom class generator to this ClassGenerator."""
+        """Add a custom class generator to this ClassGenerator.
+
+        Generators added later are run first. Duplicates are moved to the top of the list.
+        """
         generator = getargs('generator', kwargs)
         if not issubclass(generator, CustomClassGenerator):
             raise ValueError('Generator %s must be a subclass of CustomClassGenerator.' % generator.__name__)
-        self.__custom_generators.append(generator)
+        if generator in self.__custom_generators:
+            self.__custom_generators.remove(generator)
+        self.__custom_generators.insert(0, generator)
 
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "spec", "type": BaseStorageSpec, "doc": ""},
@@ -50,9 +55,20 @@ class ClassGenerator:
         try:
             classdict = dict()
             bases = [parent_cls]
+            docval_args = list(deepcopy(get_docval(parent_cls.__init__)))
+            for f, field_spec in not_inherited_fields.items():
+                for class_generator in self.__custom_generators:
+                    # each generator can update classdict and docval_args
+                    if class_generator.apply_generator_to_field(field_spec, bases, type_map):
+                        class_generator.process_field_spec(classdict, parent_cls, f, field_spec, not_inherited_fields,
+                                                           type_map)
+                        class_generator.update_docval_args(docval_args, f, field_spec, type_map)
+                        break  # each field_spec should be processed by only one generator
+
             for class_generator in self.__custom_generators:
-                # each generator can update classdict and bases
-                class_generator.update_cls_args(classdict, bases, not_inherited_fields, spec, type_map)
+                class_generator.post_process(classdict, bases, docval_args, spec)
+
+            self.__set_init(classdict, bases, docval_args, not_inherited_fields, spec.name)
         except TypeDoesNotExistError as e:  # pragma: no cover
             # this error should never happen after hdmf#322
             name = spec.data_type_def
@@ -63,6 +79,29 @@ class ClassGenerator:
                              + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
         return cls
+
+    @classmethod
+    def __set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
+        # get docval arg names from superclass
+        base = bases[0]
+        parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
+        new_args = list()
+        for f, field_spec in not_inherited_fields.items():
+            # auto-initialize arguments not found in superclass
+            if f not in parent_docval_args:
+                new_args.append(f)
+
+        @docval(*docval_args)
+        def __init__(self, **kwargs):
+            if name is not None:  # force container name to be the fixed name in the spec
+                kwargs.update(name=name)
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+
+            for f in new_args:
+                arg_val = kwargs.get(f, None)
+                setattr(self, f, arg_val)
+        classdict['__init__'] = __init__
 
 
 class TypeDoesNotExistError(Exception):  # pragma: no cover
@@ -178,159 +217,111 @@ class CustomClassGenerator():
                     x['default'] = default_name
 
     @classmethod
-    def _build_docval(cls, base, not_inherited_fields, type_map, name, default_name):
-        """Build docval for __init__ of auto-generated class
-        :param base: The base class of the new class
-        :param not_inherited_fields: Dict of additional fields that are not in the base class
-        :param type_map: TypeMap to use when determining type for a spec
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
-        :return: List of docval arguments
-        """
-        docval_args = list(deepcopy(get_docval(base.__init__)))
-        for f, field_spec in not_inherited_fields.items():
-            docval_arg = dict(name=f, doc=field_spec.doc)
-            if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
-                docval_arg.update(type=(list, tuple, dict, cls._get_type(field_spec, type_map)))
-            else:
-                dtype = cls._get_type(field_spec, type_map)
-                docval_arg.update(type=dtype)
-                if getattr(field_spec, 'shape', None) is not None:
-                    docval_arg.update(shape=field_spec.shape)
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
+    def apply_generator_to_field(cls, field_spec, bases, type_map):
+        return True
 
-            # if argument already exists, overwrite it. If not, append it to list.
-            inserted = False
-            for i, x in enumerate(docval_args):
-                if x['name'] == f:
-                    docval_args[i] = docval_arg
-                    inserted = True
-            if not inserted:
-                docval_args.append(docval_arg)
+    @classmethod
+    def process_field_spec(cls, classdict, parent_cls, f, field_spec, not_inherited_fields, type_map):
+        """Update the given class dict and base classes if there is a field spec with quantity * or +
+        :param classdict: The dict to update with __clsconf__ if applicable
+        :param f: The field name
+        :param field_spec: The field spec
+        :param spec: The spec for the container class to generate
+        :param type_map: The type map to use
+        :return bool: Whether the field spec has been processed and should not be processed by other class generators
+        """
+        dtype = cls._get_type(field_spec, type_map)
+        fields_conf = {'name': f,
+                       'doc': field_spec['doc']}
+        if cls._ischild(dtype) and issubclass(parent_cls, Container) and not isinstance(field_spec, LinkSpec):
+            fields_conf['child'] = True
+        # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
+        #     fields_conf['settable'] = False
+        classdict.setdefault('__fields__', list()).append(fields_conf)
+
+    @classmethod
+    def update_docval_args(cls, docval_args, f, field_spec, type_map):
+        docval_arg = dict(
+            name=f,
+            doc=field_spec.doc,
+            type=cls._get_type(field_spec, type_map)
+        )
+        shape = getattr(field_spec, 'shape', None)
+        if shape is not None:
+            docval_arg['shape'] = shape
+        if not field_spec.required:
+            docval_arg['default'] = getattr(field_spec, 'default_value', None)
+        cls._add_to_docval_args(docval_args, docval_arg)
+
+    @classmethod
+    def _add_to_docval_args(cls, docval_args, arg):
+        # if argument already exists, overwrite it. If not, append it to list.
+        inserted = False
+        for i, x in enumerate(docval_args):
+            if x['name'] == arg['name']:
+                docval_args[i] = arg
+                inserted = True
+        if not inserted:
+            docval_args.append(arg)
+
+    @classmethod
+    def post_process(cls, classdict, bases, docval_args, spec):
+        # convert classdict['__fields__'] from list to tuple if present
+        fields = classdict.get('__fields__')
+        if fields is not None:
+            classdict['__fields__'] = tuple(fields)
 
         # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
         # be passed for a name positional or keyword arg
-        if name is not None:  # fixed name is specified in spec, remove it from docval args
-            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
+        if spec.name is not None:
+            for arg in list(docval_args):
+                if arg['name'] == 'name':
+                    docval_args.remove(arg)
 
-        # set default name if provided
-        cls._set_default_name(docval_args, default_name)
-
-        return docval_args
-
-    @classmethod
-    def _build_fields(cls, base, not_inherited_fields, type_map):
-        """Create fields spec of new class.
-        :param base: The base class of the new class
-        :param not_inherited_fields: Dict of additional fields that are not in the base class
-        :param type_map: TypeMap to use when determining type for a spec
-        """
-
-        # add new fields to docval and class fields
-        fields = list()
-        for f, field_spec in not_inherited_fields.items():
-            dtype = cls._get_type(field_spec, type_map)
-            fields_conf = {'name': f,
-                           'doc': field_spec['doc']}
-            if cls._ischild(dtype) and issubclass(base, Container) and not isinstance(field_spec, LinkSpec):
-                fields_conf['child'] = True
-            # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
-            #     fields_conf['settable'] = False
-            fields.append(fields_conf)
-
-        classdict = dict()
-        if len(fields):
-            classdict.update({base._fieldsname: tuple(fields)})
-        return classdict
-
-    @classmethod
-    def _build_init(cls, base, not_inherited_fields, type_map, name, default_name):
-        """
-        Get __init__ and fields of new class.
-        :param base: The base class of the new class
-        :param not_inherited_fields: Dict of additional fields that are not in the base class
-        :param type_map: TypeMap to use when determining type for a spec
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
-        """
-        # copy docval args from superclass
-        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
-
-        # add new fields to docval and class fields
-        new_args = list()
-        for f, field_spec in not_inherited_fields.items():
-            # auto-initialize arguments not found in superclass
-            if f not in existing_args:
-                new_args.append(f)
-
-        classdict = dict()
-
-        if len(not_inherited_fields) or name is not None:  # TODO why
-            docval_args = cls._build_docval(base, not_inherited_fields, type_map, name, default_name)
-
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                if name is not None:
-                    kwargs.update(name=name)
-                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-                base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-
-                for f in new_args:
-                    arg_val = kwargs.get(f, None)
-                    setattr(self, f, arg_val)
-
-            classdict.update(__init__=__init__)
-
-        return classdict
-
-    @classmethod
-    def update_cls_args(cls, classdict, bases, not_inherited_fields, spec, type_map):
-        """Add __fields__ and __init__ to the classdict
-        :param classdict: The dict to update with __clsconf__ if applicable
-        :param bases: The list of base classes to update if applicable
-        :param not_inherited_fields: Dict of additional fields that are not in the base class
-        :param spec: The spec for the container class to generate
-        :param type_map: TypeMap to use when determining type for a spec
-        """
-        parent_cls = bases[0]
-        d = cls._build_fields(parent_cls, not_inherited_fields, type_map)
-        classdict.update(d)
-        d = cls._build_init(parent_cls, not_inherited_fields, type_map, spec.name, spec.default_name)
-        classdict.update(d)
-        # TODO add test that fields is built correctly
+        # set default name in docval args if provided
+        cls._set_default_name(docval_args, spec.default_name)
 
 
 class MCIClassGenerator(CustomClassGenerator):
 
     @classmethod
-    def update_cls_args(cls, classdict, bases, not_inherited_fields, spec, type_map):
+    def apply_generator_to_field(cls, field_spec, bases, type_map):
+        """Return True if this Generator should be run on this field_spec, False otherwise."""
+        return getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY)
+
+    @classmethod
+    def process_field_spec(cls, classdict, parent_cls, f, field_spec, not_inherited_fields, type_map):
         """Update the given class dict and base classes if there is a field spec with quantity * or +
         :param classdict: The dict to update with __clsconf__ if applicable
         :param bases: The list of base classes to update if applicable
-        :param not_inherited_fields: Dict of additional fields that are not in the base class
+        :param f: The field name
+        :param field_spec: The field spec
         :param spec: The spec for the container class to generate
         :param type_map: The type map to use
+        :return bool: Whether the field spec has been processed and should not be processed by other class generators
         """
-        # NOTE: spec is not used here
+        field_clsconf = dict(
+            attr=f,
+            type=cls._get_type(field_spec, type_map),  # <-- from ClassGenerator
+            add='add_{}'.format(f),
+            get='get_{}'.format(f),
+            create='create_{}'.format(f)
+        )
+        classdict.setdefault('__clsconf__', list()).append(field_clsconf)  # add to __clsconf__ list
 
-        # create MultiContainerInterface __clsconf__
-        clsconf = list()
-        for f, field_spec in not_inherited_fields.items():
-            if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
-                clsconf.append(dict(
-                    attr=f,
-                    type=cls._get_type(field_spec, type_map),  # <-- from ClassGenerator
-                    add='add_{}'.format(f),
-                    get='get_{}'.format(f),
-                    create='create_{}'.format(f)
-                ))
-                # remove the attribute from __fields__ -- needed so that MCI initializes the attribute to LabelledDict
-                classdict['__fields__'] = tuple(filter(lambda x: x['name'] != f, classdict['__fields__']))
+    @classmethod
+    def update_docval_args(cls, docval_args, f, field_spec, type_map):
+        # add a specialized docval arg for __init__
+        docval_arg = dict(
+            name=f,
+            doc=field_spec.doc,
+            type=(list, tuple, dict, cls._get_type(field_spec, type_map))
+        )
+        if not field_spec.required:
+            docval_arg['default'] = getattr(field_spec, 'default_value', None)
+        cls._add_to_docval_args(docval_args, docval_arg)
 
-        if len(clsconf):
-            classdict.update(__clsconf__=clsconf)
-
-            # add MultiContainerInterface to the type hierarchy if not already there
-            if not isinstance(bases[0], MultiContainerInterface):
-                bases.insert(0, MultiContainerInterface)
+    @classmethod
+    def post_process(cls, classdict, bases, docval_args, spec):
+        if '__clsconf__' in classdict:
+            bases.insert(0, MultiContainerInterface)
