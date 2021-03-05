@@ -108,7 +108,7 @@ class TypeDoesNotExistError(Exception):  # pragma: no cover
     pass
 
 
-class CustomClassGenerator():
+class CustomClassGenerator:
     """Subclass this class and register an instance to alter how classes are auto-generated."""
 
     def __new__(cls, *args, **kwargs):  # pragma: no cover
