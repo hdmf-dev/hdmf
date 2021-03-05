@@ -55,20 +55,13 @@ class DynamicTableGenerator(CustomClassGenerator):
 
     @classmethod
     def process_field_spec(cls, classdict, parent_cls, f, field_spec, not_inherited_fields, type_map):
-        """Update the given class dict and base classes if there is a field spec with quantity * or +
+        """Update the given class dict with a __columns__ configuration for this field
         :param classdict: The dict to update with __clsconf__ if applicable
-        :param bases: The list of base classes to update if applicable
-        :param f: The field name
+        :param parent_cls: The parent class
+        :param f: The attribute name
         :param field_spec: The field spec
-        :param spec: The spec for the container class to generate
+        :param not_inherited_fields: All of the field specs that will be processed
         :param type_map: The type map to use
-        :return bool: Whether the field spec has been processed and should not be processed by other class generators
-        """
-        """Make single column for __columns__ configuration for auto-generated DynamicTable API class.
-        :param f: field name
-        :param field_spec:
-        :param not_inherited_fields: d
-        :return: dict
         """
         column_conf = dict(name=f, description=field_spec['doc'])
         dtype = cls._get_type(field_spec, type_map)
