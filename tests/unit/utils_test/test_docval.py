@@ -976,13 +976,13 @@ class TestMacro(TestCase):
         self.assertTrue(isinstance(get_docval_macro(), dict))
         self.assertSetEqual(set(get_docval_macro().keys()), {'array_data', 'scalar_data', 'data'})
 
-        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes))
+        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, bool))
 
         @docval_macro('scalar_data')
         class Dummy1:
             pass
 
-        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, Dummy1))
+        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, bool, Dummy1))
 
         @docval_macro('dummy')
         class Dummy2:

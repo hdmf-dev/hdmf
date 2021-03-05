@@ -497,7 +497,7 @@ class TypeMap:
         'utf-8': str,
         'ascii': bytes,
         'bytes': bytes,
-        'bool': bool,
+        'bool': (bool, np.bool_),
         'isodatetime': datetime,
         'datetime': datetime
     }
@@ -640,10 +640,13 @@ class TypeMap:
             else:
                 # if not, add arguments to fields for getter/setter generation
                 dtype = self.__get_type(field_spec)
+                fields_conf = {'name': f,
+                               'doc': field_spec['doc']}
                 if self.__ischild(dtype) and issubclass(base, Container):
-                    fields.append({'name': f, 'child': True})
-                else:
-                    fields.append(f)
+                    fields_conf['child'] = True
+                # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
+                #     fields_conf['settable'] = False
+                fields.append(fields_conf)
 
             # auto-initialize arguments not found in superclass
             if f not in existing_args:

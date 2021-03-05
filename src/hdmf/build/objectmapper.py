@@ -767,6 +767,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return dtype, shape, spec
 
     def __is_reftype(self, data):
+        if (isinstance(data, AbstractDataChunkIterator) or
+                (isinstance(data, DataIO) and isinstance(data.data, AbstractDataChunkIterator))):
+            return False
+
         tmp = data
         while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, str, bytes)):
             tmptmp = None
