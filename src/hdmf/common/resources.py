@@ -364,7 +364,7 @@ class ExternalResources(Container):
             mask = keys == key
             try:
                 self.get_key(key_name=key)
-            except:
+            except Exception:
                 ret[key] = self.add_key(key)
             else:
                 ret[key] = self.get_key(key_name=key)
