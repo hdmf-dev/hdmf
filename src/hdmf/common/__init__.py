@@ -107,6 +107,10 @@ if os.path.exists(__resources['namespace_path']):
     from . import resources  # noqa: F401,E402
     from . import multi  # noqa: F401,E402
 
+    # register custom class generators
+    from .io.table import DynamicTableGenerator
+    __TYPE_MAP.register_generator(DynamicTableGenerator)
+
     from .. import Data, Container
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
