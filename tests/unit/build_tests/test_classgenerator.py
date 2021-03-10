@@ -1,9 +1,6 @@
-import h5py
 import numpy as np
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, CustomClassGenerator
-from hdmf.container import MultiContainerInterface
-from hdmf.data_utils import DataIO, AbstractDataChunkIterator
-from hdmf.query import HDMFDataset
+from hdmf.container import Container, MultiContainerInterface
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
 from hdmf.testing import TestCase
 from hdmf.utils import get_docval
@@ -17,10 +14,10 @@ class TestDynamicContainer(TestCase):
     def setUp(self):
         self.bar_spec = GroupSpec('A test group specification with a data type',
                                   data_type_def='Bar',
-                                  datasets=[DatasetSpec('an example dataset', 'int', name='data',
+                                  datasets=[DatasetSpec('a dataset', 'int', name='data',
                                                         attributes=[AttributeSpec(
-                                                            'attr2', 'an example integer attribute', 'int')])],
-                                  attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+                                                            'attr2', 'an integer attribute', 'int')])],
+                                  attributes=[AttributeSpec('attr1', 'a string attribute', 'text')])
         self.spec_catalog = SpecCatalog()
         self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
@@ -37,8 +34,8 @@ class TestDynamicContainer(TestCase):
     def test_dynamic_container_creation(self):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
@@ -54,7 +51,7 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_default_name(self):
         baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz',
-                             attributes=[AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             attributes=[AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
         inst = cls(attr4=10.)
@@ -63,8 +60,8 @@ class TestDynamicContainer(TestCase):
     def test_dynamic_container_creation_defaults(self):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
@@ -76,8 +73,8 @@ class TestDynamicContainer(TestCase):
     def test_dynamic_container_constructor(self):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
-                             attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
         # TODO: test that constructor works!
@@ -94,8 +91,8 @@ class TestDynamicContainer(TestCase):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
                              name='A fixed name',
-                             attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                         AttributeSpec('attr4', 'another example float attribute', 'float')])
+                             attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
 
@@ -117,8 +114,8 @@ class TestDynamicContainer(TestCase):
                                  data_type_def='Baz', data_type_inc=self.bar_spec,
                                  name='A fixed name',
                                  default_name='A default name',
-                                 attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                             AttributeSpec('attr4', 'another example float attribute', 'float')])
+                                 attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                             AttributeSpec('attr4', 'another float attribute', 'float')])
             self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
             cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
 
@@ -129,12 +126,12 @@ class TestDynamicContainer(TestCase):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
                               data_type_inc=self.bar_spec,
                               attributes=[
-                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+                                  AttributeSpec('attr3', 'a float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another float attribute', 'float')])
 
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
-                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another float attribute', 'float')],
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
@@ -153,12 +150,12 @@ class TestDynamicContainer(TestCase):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
                               data_type_inc=self.bar_spec,
                               attributes=[
-                                  AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                  AttributeSpec('attr4', 'another example float attribute', 'float')])
+                                  AttributeSpec('attr3', 'a float attribute', 'float'),
+                                  AttributeSpec('attr4', 'another float attribute', 'float')])
 
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
-                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another float attribute', 'float')],
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
@@ -175,8 +172,8 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_composition_missing_type(self):
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
-                              attributes=[AttributeSpec('attr3', 'an example float attribute', 'float'),
-                                          AttributeSpec('attr4', 'another example float attribute', 'float')],
+                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another float attribute', 'float')],
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
 
@@ -203,7 +200,7 @@ class TestDynamicContainer(TestCase):
                     doc='test multi',
                     quantity='*')],
             attributes=[
-                AttributeSpec('attr3', 'an example float attribute', 'float')]
+                AttributeSpec('attr3', 'a float attribute', 'float')]
         )
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
@@ -223,53 +220,68 @@ class TestDynamicContainer(TestCase):
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
         assert multi.attr3 == 5.
 
-    def test_build_docval(self):
-        spec = GroupSpec(
+
+class EmptyBar(Container):
+    pass
+
+
+class TestBuildDocval(TestCase):
+
+    def setUp(self):
+        self.bar_spec = GroupSpec(
             doc='A test group specification with a data type',
-            data_type_def='Baz',
-            groups=[GroupSpec(
-                doc='a group',
-                data_type_inc='Bar',
-                quantity='?'
-            )],
-            datasets=[DatasetSpec(
-                doc='an example dataset',
-                dtype='int',
-                name='data',
-                attributes=[AttributeSpec(
-                    name='attr2',
-                    doc='an example integer attribute',
-                    dtype='int'
-                )]
-            )],
-            attributes=[AttributeSpec(
-                name='attr1',
-                doc='an example string attribute',
-                dtype='text'
-            ), AttributeSpec(
-                name='attr3',
-                doc='an example numeric attribute',
-                dtype='numeric'
-            ), AttributeSpec(
-                name='attr4',
-                doc='an example float attribute',
-                dtype='float'
-            )]
+            data_type_def='EmptyBar'
         )
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'EmptyBar', EmptyBar)
+
+    def test_build_docval(self):
+        """Test update_docval_args for a variety of data types and mapping configurations."""
+        spec = GroupSpec(
+            doc="A test group specification with a data type",
+            data_type_def="Baz",
+            groups=[
+                GroupSpec(doc="a group", data_type_inc="EmptyBar", quantity="?")
+            ],
+            datasets=[
+                DatasetSpec(
+                    doc="a dataset",
+                    dtype="int",
+                    name="data",
+                    attributes=[
+                        AttributeSpec(name="attr2", doc="an integer attribute", dtype="int")
+                    ],
+                )
+            ],
+            attributes=[
+                AttributeSpec(name="attr1", doc="a string attribute", dtype="text"),
+                AttributeSpec(name="attr3", doc="a numeric attribute", dtype="numeric"),
+                AttributeSpec(name="attr4", doc="a float attribute", dtype="float"),
+            ],
+        )
+
         expected = [
-            {'name': 'data', 'type': (int, np.int32, np.int64), 'doc': 'an example dataset'},
-            {'name': 'attr1', 'type': str, 'doc': 'an example string attribute'},
-            {'name': 'attr2', 'type': (int, np.int32, np.int64), 'doc': 'an example integer attribute'},
-            {'name': 'attr3', 'doc': 'an example numeric attribute',
+            {'name': 'data', 'type': (int, np.int32, np.int64), 'doc': 'a dataset'},
+            {'name': 'attr1', 'type': str, 'doc': 'a string attribute'},
+            {'name': 'attr2', 'type': (int, np.int32, np.int64), 'doc': 'an integer attribute'},
+            {'name': 'attr3', 'doc': 'a numeric attribute',
              'type': (float, np.float32, np.float64, np.int8, np.int16,
                       np.int32, np.int64, int, np.uint8, np.uint16,
                       np.uint32, np.uint64)},
-            {'name': 'attr4', 'doc': 'an example float attribute',
+            {'name': 'attr4', 'doc': 'a float attribute',
              'type': (float, np.float32, np.float64)},
-            {'name': 'bar', 'type': Bar, 'doc': 'a group', 'default': None},
+            {'name': 'bar', 'type': EmptyBar, 'doc': 'a group', 'default': None},
         ]
 
-        attr_map = {
+        not_inherited_fields = {
             'data': spec.get_dataset('data'),
             'attr1': spec.get_attribute('attr1'),
             'attr2': spec.get_dataset('data').get_attribute('attr2'),
@@ -279,69 +291,184 @@ class TestDynamicContainer(TestCase):
         }
 
         docval_args = list()
-        for i, attr_name in enumerate(attr_map):
+        for i, attr_name in enumerate(not_inherited_fields):
             with self.subTest(attr_name=attr_name):
-                field_spec = attr_map[attr_name]
-                CustomClassGenerator.update_docval_args(docval_args, attr_name, field_spec, self.type_map)
+                CustomClassGenerator.process_field_spec(
+                    classdict={},
+                    docval_args=docval_args,
+                    parent_cls=EmptyBar,  # <-- arbitrary class
+                    attr_name=attr_name,
+                    not_inherited_fields=not_inherited_fields,
+                    type_map=self.type_map
+                )
                 self.assertListEqual(docval_args, expected[:(i+1)])  # compare with the first i elements of expected
 
-    def test_build_docval_shape(self):
-        """Test that docval generation for a class with shape has the shape set."""
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'numeric', shape=[None]))
-        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
-
-        for arg in docval:
-            if arg['name'] == 'attr3':
-                self.assertListEqual(arg['shape'], [None])
-
-    def test_build_docval_default_value(self):
-        """Test that docval generation for a class with an additional optional field has the default value set."""
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
-                                               required=False, default_value=10.0))
-        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
-
-        for arg in docval:
-            if arg['name'] == 'attr3':
-                self.assertEqual(arg['default'], 10.0)
-
-    def test_build_docval_default_value_none(self):
-        """Test that docval generation for a class with an additional optional field has default: None."""
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        addl_fields = dict(attr3=AttributeSpec('attr3', 'an example numeric attribute', 'float',
-                                               required=False))
-        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
-
-        for arg in docval:
-            if arg['name'] == 'attr3':
-                self.assertIsNone(arg['default'])
-
-    def test_build_docval_fixed_name(self):
-        """Test that docval generation for a class with a fixed name does not contain a docval arg for name."""
-        docval = CustomClassGenerator._build_docval(Bar, {}, self.type_map, name='Baz', default_name=None)
-
-        found = False
-        for arg in docval:
-            if arg['name'] == 'name':
-                found = True
-        self.assertFalse(found)
-
-    def test_build_docval_default_name(self):
-        """Test that docval generation for a class with a default name has the default value for name set."""
-        docval = CustomClassGenerator._build_docval(Bar, {}, self.type_map, name=None, default_name='MyBaz')
-
-        for arg in docval:
-            if arg['name'] == 'name':
-                self.assertEqual(arg['default'], 'MyBaz')
-
-    def test_build_docval_link(self):
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        addl_fields = dict(
-            attr3=LinkSpec(name='attr3', target_type='Bar', doc='an example link'),
+    def test_update_docval_shape(self):
+        """Test that update_docval_args for a field with shape sets the shape key."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a string attribute', dtype='text', shape=[None])
+            ]
         )
-        docval = CustomClassGenerator._build_docval(Bar, addl_fields, self.type_map, name=None, default_name=None)
+        not_inherited_fields = {'attr1': spec.get_attribute('attr1')}
 
-        for arg in docval:
-            if arg['name'] == 'attr3':
-                self.assertIs(arg['type'], Bar)
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap()
+        )
+
+        expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute', 'shape': [None]}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_update_docval_default_value(self):
+        """Test that update_docval_args for an optional field with default value sets the default key."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a string attribute', dtype='text', required=False,
+                              default_value='value')
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_attribute('attr1')}
+
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap()
+        )
+
+        expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': 'value'}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_update_docval_default_value_none(self):
+        """Test that update_docval_args for an optional field sets default: None."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a string attribute', dtype='text', required=False)
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_attribute('attr1')}
+
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap()
+        )
+
+        expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_process_field_spec_overwrite(self):
+        """Test that docval generation overwrites previous docval args."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a string attribute', dtype='text', shape=[None])
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_attribute('attr1')}
+
+        docval_args = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                        'shape': [[None], [None, None]]},  # this dict will be overwritten below
+                       {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                        'shape': [[None], [None, None]]}]
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap()
+        )
+
+        expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                    'shape': [None]},
+                    {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                     'shape': [[None], [None, None]]}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_process_field_spec_link(self):
+        """Test that processing a link spec does not set child=True in __fields__."""
+        classdict = {}
+        not_inherited_fields = {'attr3': LinkSpec(name='attr3', target_type='EmptyBar', doc='a link')}
+        CustomClassGenerator.process_field_spec(
+            classdict=classdict,
+            docval_args=[],
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr3',
+            not_inherited_fields=not_inherited_fields,
+            type_map=self.type_map
+        )
+
+        expected = {'__fields__': [{'name': 'attr3', 'doc': 'a link'}]}
+        self.assertDictEqual(classdict, expected)
+
+    def test_post_process_fixed_name(self):
+        """Test that docval generation for a class with a fixed name does not contain a docval arg for name."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            name='MyBaz',  # <-- fixed name
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a string attribute',
+                    dtype='text',
+                    shape=[None]
+                )
+            ]
+        )
+
+        docval_args = [{'name': 'name', 'type': str, 'doc': 'name'},
+                       {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                        'shape': [None]}]
+        CustomClassGenerator.post_process({}, [], docval_args, spec)
+
+        expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                     'shape': [None]}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_post_process_default_name(self):
+        """Test that docval generation for a class with a default name has the default value for name set."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            default_name='MyBaz',  # <-- default name
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a string attribute',
+                    dtype='text',
+                    shape=[None]
+                )
+            ]
+        )
+
+        docval_args = [{'name': 'name', 'type': str, 'doc': 'name'},
+                       {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                        'shape': [None]}]
+        CustomClassGenerator.post_process({}, [], docval_args, spec)
+
+        expected = [{'name': 'name', 'type': str, 'doc': 'name', 'default': 'MyBaz'},
+                    {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
+                     'shape': [None]}]
+        self.assertListEqual(docval_args, expected)

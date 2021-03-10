@@ -484,10 +484,10 @@ class TypeMap:
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
-        '''Get the container class from data type specification.
+        """Get the container class from data type specification.
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
-        '''
+        """
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None:  # dynamically generate a class

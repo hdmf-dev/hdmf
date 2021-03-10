@@ -86,7 +86,6 @@ class TestDynamicDynamicTable(TestCase):
         shutil.rmtree(self.test_dir)
 
     def test_dynamic_table(self):
-
         TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
         TestDTRTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestDTRTable')
 
