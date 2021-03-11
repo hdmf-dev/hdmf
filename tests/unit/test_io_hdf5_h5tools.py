@@ -9,7 +9,7 @@ import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, SPEC_LOC_ATTR
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
@@ -2003,6 +2003,19 @@ class TestLoadNamespaces(TestCase):
         d = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertEqual(d, {'test_core': {}, 'test_core2': {'test_core': ('Foo', 'FooBucket', 'FooFile')}})
 
+    def test_load_namespaces_no_specloc(self):
+        """Test loading namespaces where the file does not contain a SPEC_LOC_ATTR."""
+        # delete the spec location attribute from the file
+        with h5py.File(self.path, mode='r+') as f:
+            del f.attrs[SPEC_LOC_ATTR]
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog()
+        msg = "No cached namespaces found in %s" % self.path
+        with self.assertWarnsWith(UserWarning, msg):
+            ret = HDF5IO.load_namespaces(ns_catalog, self.path)
+        self.assertDictEqual(ret, {})
+
 
 class TestGetNamespaces(TestCase):
 
@@ -2147,6 +2160,20 @@ class TestGetNamespaces(TestCase):
 
         ret = HDF5IO.get_namespaces(path=self.path)
         self.assertEqual(ret, {'test_core': '0.2.0'})
+
+    def test_get_namespaces_no_specloc(self):
+        """Test getting namespaces where the file does not contain a SPEC_LOC_ATTR."""
+        self.write_test_file('test_core', '0.1.0', 'w')
+
+        # delete the spec location attribute from the file
+        with h5py.File(self.path, mode='r+') as f:
+            del f.attrs[SPEC_LOC_ATTR]
+
+        # load the namespace from file
+        msg = "No cached namespaces found in %s" % self.path
+        with self.assertWarnsWith(UserWarning, msg):
+            ret = HDF5IO.get_namespaces(path=self.path)
+        self.assertDictEqual(ret, {})
 
 
 class TestExport(TestCase):

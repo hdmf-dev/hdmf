@@ -148,10 +148,7 @@ class HDF5IO(HDMFIO):
     def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
         d = {}
 
-        if SPEC_LOC_ATTR not in file_obj.attrs:  # pragma: no cover
-            # this should never happen
-            msg = "No cached namespaces found in %s" % file_obj.filename
-            warnings.warn(msg)
+        if not cls.__check_specloc(file_obj):
             return d
 
         namespace_versions = cls.__get_namespaces(file_obj)
@@ -181,6 +178,15 @@ class HDF5IO(HDMFIO):
             d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=reader))
 
         return d
+
+    @classmethod
+    def __check_specloc(cls, file_obj):
+        if SPEC_LOC_ATTR not in file_obj.attrs:
+            # this occurs in legacy files
+            msg = "No cached namespaces found in %s" % file_obj.filename
+            warnings.warn(msg)
+            return False
+        return True
 
     @classmethod
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
@@ -214,9 +220,12 @@ class HDF5IO(HDMFIO):
         If there are multiple versions of a namespace cached in the file, then only the latest one (using alphanumeric
         ordering) is returned. This is the version of the namespace that is loaded by HDF5IO.load_namespaces(...).
         """
+        used_version_names = dict()
+        if not cls.__check_specloc(file_obj):
+            return used_version_names
+
         spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
         namespaces = list(spec_group.keys())
-        used_version_names = dict()
         for ns in namespaces:
             ns_group = spec_group[ns]
             # NOTE: by default, objects within groups are iterated in alphanumeric order
