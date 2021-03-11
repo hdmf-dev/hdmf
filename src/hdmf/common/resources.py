@@ -285,8 +285,8 @@ class ExternalResources(Container):
         """
         Add information about an external reference used in this file.
 
-        It is possible to use the same name of the key to refer to different resources 
-        so long as the name of the key is not used within the same object and field. 
+        It is possible to use the same name of the key to refer to different resources
+        so long as the name of the key is not used within the same object and field.
         This method does not support such functionality by default. The different
         keys must be added separately using *add_key* and passed to the *key* argument in separate calls of this method.
         """
@@ -354,8 +354,8 @@ class ExternalResources(Container):
             - *entity_id*:    the index for the entity at the external resource
             - *entity_uri*:   the URI for the entity at the external resource
 
-        It is possible to use the same name of the key to refer to different resources 
-        so long as the name of the key is not used within the same object and field. 
+        It is possible to use the same name of the key to refer to different resources
+        so long as the name of the key is not used within the same object and field.
         This method does not support such functionality. See *add_key* and
         *add_resource*.
         """
