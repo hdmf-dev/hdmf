@@ -1,9 +1,19 @@
 # HDMF Changelog
 
-## HDMF 2.4.1 (Upcoming)
+## HDMF 2.5.0 (Upcoming)
+
+### New features
+- Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
+  namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
+  @rly (#527)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
+
+### Bug fixes
+- Fix CI testing on Python 3.9. @rly (#523)
+- Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
+  attached to a `GroupBuilder`. @dsleiter (#526)
 
 ## HDMF 2.4.0 (February 23, 2021)
 

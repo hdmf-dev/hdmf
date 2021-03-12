@@ -307,8 +307,9 @@ class H5SpecWriter(SpecWriter):
 
 
 class H5SpecReader(SpecReader):
+    """Class that reads cached JSON-formatted namespace and spec data from an HDF5 group."""
 
-    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to read specs from'})
+    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 group to read specs from'})
     def __init__(self, **kwargs):
         self.__group = getargs('group', kwargs)
         super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
@@ -317,13 +318,12 @@ class H5SpecReader(SpecReader):
 
     def __read(self, path):
         s = self.__group[path][()]
-
-        if isinstance(s, np.ndarray) \
-           and s.shape == (1,):
+        if isinstance(s, np.ndarray) and s.shape == (1,):  # unpack scalar spec dataset
             s = s[0]
 
         if isinstance(s, bytes):
             s = s.decode('UTF-8')
+
         d = json.loads(s)
         return d
 
