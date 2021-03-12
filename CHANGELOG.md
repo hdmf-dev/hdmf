@@ -7,6 +7,9 @@
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
 
+### Internal improvements
+- Update CI and copyright year. @rly (#523, #524)
+
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
