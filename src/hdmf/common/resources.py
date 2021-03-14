@@ -167,6 +167,7 @@ class ExternalResources(Container):
         The returned Key objects must be managed by the caller so as to be appropriately passed to subsequent calls
         to methods for storing information about the different resources.
         """
+        key = kwargs['key_name']
         return Key(key, table=self.keys)
 
     @docval({'name': 'key', 'type': (str, Key), 'doc': 'the key to associate the entity with'},
@@ -298,11 +299,10 @@ class ExternalResources(Container):
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         add_entity = False
-        resource_table_idx = kwargs['resources_idx']
-        if resource_table_idx is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
+        if kwargs['resources_idx'] is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
             resource_table_idx = kwargs['resources_idx']
         if (
-            resource_table_idx is not None
+            kwargs['resources_idx'] is not None
             and (kwargs['resource_name'] is not None
                  or kwargs['resource_uri'] is not None)):
             msg = "Can't have resource_idx with resource_name and resource_uri."
