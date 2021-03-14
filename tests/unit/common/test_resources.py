@@ -10,7 +10,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources('terms')
         key1 = er.add_key('key1')
         key2 = er.add_key('key1')
-        resource1 = er.add_resource(name='resource0', uri='resource_uri0')
+        resource1 = er.add_resource(resource='resource0', uri='resource_uri0')
         er.add_ref(
             container='uuid1', field='field1', key=key1,
             resource_name='resource11', resource_uri='resource_uri11',
@@ -33,7 +33,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # this is the term the user wants to use. They will need to specify this
         key = er.add_key('mouse')
 
-        resource1 = er.add_resource(name='resource0', uri='resource_uri0')
+        resource1 = er.add_resource(resource='resource0', uri='resource_uri0')
         # the user will have to supply this info as well. This is the information
         # needed to retrieve info about the controled term
         er.add_entity(key, resource1, '10090', 'uri')
@@ -51,7 +51,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_ref(self):
         er = ExternalResources('terms')
-        resource1 = er.add_resource(name='resource0', uri='resource_uri0')
+        resource1 = er.add_resource(resource='resource0', uri='resource_uri0')
         er.add_ref(
             container='uuid1', field='field1', key='key1',
             resource_table_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
@@ -70,6 +70,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1', entity_uri='uri1')
         with self.assertRaises(ValueError):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1')
+        with self.assertRaises(ValueError):
+            er.add_ref('uuid1', 'field1')
 
     def test_add_ref_two_resources(self):
         er = ExternalResources('terms')
@@ -191,9 +193,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_keys(self):
         er = ExternalResources('terms')
-        resource1 = er.add_resource(name='resource1', uri='resource_uri1')
-        resource2 = er.add_resource(name='resource2', uri='resource_uri2')
-        resource3 = er.add_resource(name='resource3', uri='resource_uri3')
+        resource1 = er.add_resource(resource='resource1', uri='resource_uri1')
+        resource2 = er.add_resource(resource='resource2', uri='resource_uri2')
+        resource3 = er.add_resource(resource='resource3', uri='resource_uri3')
 
         keys = pd.DataFrame(
             data=[['key1', resource1, "id11", 'url11'],
@@ -215,9 +217,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_keys_roundtrip(self):
         er = ExternalResources('terms')
-        resource1 = er.add_resource(name='resource1', uri='resource_uri1')
-        resource2 = er.add_resource(name='resource2', uri='resource_uri2')
-        resource3 = er.add_resource(name='resource3', uri='resource_uri3')
+        resource1 = er.add_resource(resource='resource1', uri='resource_uri1')
+        resource2 = er.add_resource(resource='resource2', uri='resource_uri2')
+        resource3 = er.add_resource(resource='resource3', uri='resource_uri3')
 
         expected_get_keys = pd.DataFrame(
             data=[['key1', 0, "id11", 'url11'],
