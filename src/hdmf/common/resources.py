@@ -156,7 +156,9 @@ class ExternalResources(Container):
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
 
-    def add_key(self, key):
+    @docval({'name': 'key', 'type': str,
+             'doc': 'the name of the key to be added'})
+    def add_key(self, **kwargs):
         """
         Add a key to be used for making references to external resources
 
