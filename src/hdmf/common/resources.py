@@ -295,18 +295,23 @@ class ExternalResources(Container):
         key = kwargs['key']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        add_rsc = False
+        add_entity = False
         resource_table_idx = kwargs['resources_idx']
-        if resource_table_idx is not None:
+        if resource_table_idx is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
             resource_table_idx = kwargs['resources_idx']
+        if (
+            resource_table_idx is not None
+            and (kwargs['resource_name'] is not None
+                 or kwargs['resource_uri'] is not None)):
+            msg = "Can't have resource_idx with resource_name and resource_uri."
         else:
             resource_name = kwargs['resource_name']
             resource_uri = kwargs['resource_uri']
             resource_table_idx = self.add_resource(resource_name, resource_uri)
 
-        if ((resource_table_idx or resource_name) is not None and entity_id is not None and entity_uri is not None):
-            add_rsc = True
-        elif not ((resource_table_idx and resource_name is None) and entity_id is None and resource_uri is None):
+        if (resource_table_idx is not None and entity_id is not None and entity_uri is not None):
+            add_entity = True
+        elif not (resource_table_idx is None and entity_id is None and resource_uri is None):
             msg = ("Specify resource, entity_id, and entity_uri arguments."
                    "All three are required to create a reference")
             raise ValueError(msg)
@@ -337,7 +342,7 @@ class ExternalResources(Container):
             else:
                 key = self.keys.row[key_id[0]]
 
-        if add_rsc:
+        if add_entity:
             entity = self.add_entity(key, resource_table_idx, entity_id, entity_uri)
             self.add_external_reference(object_field, key)
 
