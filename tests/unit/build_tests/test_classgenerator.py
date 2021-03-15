@@ -365,7 +365,7 @@ class TestGetClassSeparateNamespace(TestCase):
             type_map=self.type_map
         )
         # resolve Spam first so that ndx-qux is resolved first
-        spam_cls = self.type_map.get_container_cls('ndx-qux', 'Spam')
+        self.type_map.get_container_cls('ndx-qux', 'Spam')
 
         baz_spec = GroupSpec(
             doc='A test extension',
