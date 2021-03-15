@@ -57,7 +57,7 @@ class ClassGenerator:
             bases = [parent_cls]
             docval_args = list(deepcopy(get_docval(parent_cls.__init__)))
             for attr_name, field_spec in not_inherited_fields.items():
-                for class_generator in self.__custom_generators:
+                for class_generator in self.__custom_generators:  # pragma: no branch
                     # each generator can update classdict and docval_args
                     if class_generator.apply_generator_to_field(field_spec, bases, type_map):
                         class_generator.process_field_spec(classdict, docval_args, parent_cls, attr_name,
@@ -167,6 +167,8 @@ class CustomClassGenerator:
         """
         container_type = None
         for val in type_map.container_types.values():
+            # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
+            # but the same type_name should point to the same class
             container_type = val.get(type_name)
             if container_type is not None:
                 return container_type

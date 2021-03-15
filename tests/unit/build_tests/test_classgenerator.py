@@ -5,7 +5,7 @@ import tempfile
 
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
-from hdmf.container import Container, MultiContainerInterface, AbstractContainer
+from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
 from hdmf.testing import TestCase
 from hdmf.utils import get_docval
@@ -321,13 +321,13 @@ class TestGetClassSeparateNamespace(TestCase):
             incl_types=dict(),
             type_map=self.type_map
         )
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
     def test_get_class_separate_ns(self):
         """Test that get_class correctly sets the name and type hierarchy across namespaces."""
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
         baz_spec = GroupSpec(
             doc='A test extension',
             data_type_def='Baz',
@@ -344,6 +344,55 @@ class TestGetClassSeparateNamespace(TestCase):
         cls = self.type_map.get_container_cls('ndx-test', 'Baz')
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
+
+    def test_get_class_include_from_separate_ns(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces."""
+        # create an empty extension to test ClassGenerator._get_container_type resolution
+        # the Bar class has not been mapped yet to the bar spec
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        create_load_namespace_yaml(
+            namespace_name='ndx-qux',
+            specs=[qux_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        qux_cls = self.type_map.get_container_cls('ndx-qux', 'Qux')  # test resolving Qux first
+
+        baz_spec = GroupSpec(
+            doc='A test extension',
+            data_type_def='Baz',
+            data_type_inc='Bar',
+            groups=[
+                GroupSpec(data_type_inc='Qux', doc='a qux', quantity='?')
+            ]
+        )
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[baz_spec],
+            output_dir=self.test_dir,
+            incl_types={
+                CORE_NAMESPACE: ['Bar'],
+                'ndx-qux': ['Qux']
+            },
+            type_map=self.type_map
+        )
+
+        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')
+        bar_cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        self.assertEqual(qux_cls.__name__, 'Qux')
+        self.assertEqual(baz_cls.__name__, 'Baz')
+        self.assertEqual(bar_cls.__name__, 'Bar')
+        self.assertTrue(issubclass(qux_cls, Data))
+        self.assertTrue(issubclass(baz_cls, bar_cls))
+        self.assertTrue(issubclass(bar_cls, Container))
+
+        qux_inst = qux_cls(name='qux_name', data=[1])
+        baz_inst = baz_cls(name='baz_name', qux=qux_inst, data=100, attr1='a string', attr2=10)
+        self.assertIs(baz_inst.qux, qux_inst)
 
 
 class EmptyBar(Container):
