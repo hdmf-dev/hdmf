@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 
-from hdmf.build import ObjectMapper, BuildManager, TypeMap, CustomClassGenerator
+from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
 from hdmf.container import Container, MultiContainerInterface, AbstractContainer
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
@@ -84,24 +84,22 @@ class TestClassGenerator(TestCase):
 class TestDynamicContainer(TestCase):
 
     def setUp(self):
-        self.bar_spec = GroupSpec('A test group specification with a data type',
-                                  data_type_def='Bar',
-                                  datasets=[DatasetSpec('a dataset', 'int', name='data',
-                                                        attributes=[AttributeSpec(
-                                                            'attr2', 'an integer attribute', 'int')])],
-                                  attributes=[AttributeSpec('attr1', 'a string attribute', 'text')])
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
-                                       [{'source': 'test.yaml'}],
-                                       version='0.1.0',
-                                       catalog=self.spec_catalog)
-        self.namespace_catalog = NamespaceCatalog()
-        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
-        self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        self.manager = BuildManager(self.type_map)
-        self.mapper = ObjectMapper(self.bar_spec)
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    dtype='int',
+                    name='data',
+                    attributes=[AttributeSpec(name='attr2', doc='an integer attribute', dtype='int')]
+                )
+            ],
+            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text')])
+        specs = [self.bar_spec]
+        containers = {'Bar': Bar}
+        self.type_map = create_test_type_map(specs, containers)
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
 
     def test_dynamic_container_creation(self):
         baz_spec = GroupSpec('A test extension with no Container class',
@@ -251,7 +249,7 @@ class TestDynamicContainer(TestCase):
 
         msg = "No specification for 'Baz2' in namespace 'test_core'"
         with self.assertRaisesWith(ValueError, msg):
-            self.manager.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+            self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
 
     def test_dynamic_container_fixed_name(self):
         """Test that dynamic class generation for an extended type with a fixed name works."""
@@ -264,31 +262,34 @@ class TestDynamicContainer(TestCase):
 
     def test_multi_container_spec(self):
         multi_spec = GroupSpec(
-            'A test extension that contains a multi',
+            doc='A test extension that contains a multi',
             data_type_def='Multi',
             groups=[
-                GroupSpec(
-                    data_type_inc=self.bar_spec,
-                    doc='test multi',
-                    quantity='*')],
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='*')
+            ],
             attributes=[
-                AttributeSpec('attr3', 'a float attribute', 'float')]
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
         )
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
         Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
         assert issubclass(Multi, MultiContainerInterface)
-        assert Multi.__clsconf__[0] == dict(
-            attr='bars',
-            type=Bar,
-            add='add_bars',
-            get='get_bars',
-            create='create_bars'
-        )
+        assert Multi.__clsconf__ == [
+            dict(
+                attr='bars',
+                type=Bar,
+                add='add_bars',
+                get='get_bars',
+                create='create_bars'
+            )
+        ]
 
-        multi = Multi(name='my_multi',
-                      bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
-                      attr3=5.)
+        multi = Multi(
+            name='my_multi',
+            bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+            attr3=5.
+        )
         assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
         assert multi.attr3 == 5.
 
