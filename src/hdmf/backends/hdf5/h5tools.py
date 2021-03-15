@@ -918,26 +918,30 @@ class HDF5IO(HDMFIO):
     def set_attributes(self, **kwargs):
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
-            if isinstance(value, (set, list, tuple)):
-                tmp = tuple(value)
-                if len(tmp) > 0:
-                    if isinstance(tmp[0], str):
-                        value = [np.unicode_(s) for s in tmp]
-                    elif isinstance(tmp[0], bytes):
-                        value = [np.string_(s) for s in tmp]
-                    elif isinstance(tmp[0], Container):  # a list of references
-                        self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
-                    else:
-                        value = np.array(value)
-                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
-                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
-                obj.attrs[key] = value
-            elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
-                self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
-            else:
-                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
-                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
-                obj.attrs[key] = value                   # a regular scalar
+            try:
+                if isinstance(value, (set, list, tuple)):
+                    tmp = tuple(value)
+                    if len(tmp) > 0:
+                        if isinstance(tmp[0], str):
+                            value = [np.unicode_(s) for s in tmp]
+                        elif isinstance(tmp[0], bytes):
+                            value = [np.string_(s) for s in tmp]
+                        elif isinstance(tmp[0], Container):  # a list of references
+                            self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
+                        else:
+                            value = np.array(value)
+                    self.logger.debug("Setting %s '%s' attribute '%s' to %s"
+                                      % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                    obj.attrs[key] = value
+                elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
+                    self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
+                else:
+                    self.logger.debug("Setting %s '%s' attribute '%s' to %s"
+                                      % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                    obj.attrs[key] = value                   # a regular scalar
+            except Exception as e:
+                msg = "unable to write attribute %s on object %s" % (key, obj.name)
+                raise RuntimeError(msg) from e
 
     def _make_attr_ref_filler(self, obj, key, value):
         '''
