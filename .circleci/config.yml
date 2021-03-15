@@ -63,6 +63,9 @@ references:
           name: Run the tests
           command: |
             . ../venv/bin/activate
+            if [[ "${TEST_TOX_ENV}" == "py39" ]]; then
+              sudo apt-get install libhdf5-dev
+            fi
             pip install tox
             tox -e $TEST_TOX_ENV
           # Install is expected to be quick. Increase timeout in case there are some network issues.

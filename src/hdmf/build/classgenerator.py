@@ -26,7 +26,7 @@ class ClassGenerator:
         """
         generator = getargs('generator', kwargs)
         if not issubclass(generator, CustomClassGenerator):
-            raise ValueError('Generator %s must be a subclass of CustomClassGenerator.' % generator.__name__)
+            raise ValueError('Generator %s must be a subclass of CustomClassGenerator.' % generator)
         if generator in self.__custom_generators:
             self.__custom_generators.remove(generator)
         self.__custom_generators.insert(0, generator)
@@ -297,7 +297,7 @@ class MCIClassGenerator(CustomClassGenerator):
 
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
-        """Return True if tthe field spec has quantity * or +, False otherwise."""
+        """Return True if the field spec has quantity * or +, False otherwise."""
         return getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY)
 
     @classmethod

@@ -509,6 +509,7 @@ class TypeMap:
 
     def __get_parent_cls(self, namespace, data_type, spec):
         dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
+        dt_hier = dt_hier[1:]  # remove the current data_type
         parent_cls = None
         for t in dt_hier:
             parent_cls = self.__get_container_cls(namespace, t)
