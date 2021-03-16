@@ -7,7 +7,7 @@ import unittest
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
-                         DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer)
+                         DynamicTableRegion, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 
 
@@ -559,7 +559,7 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('bar', 'a float column')
         table.add_column('baz', 'a string column')
         table.add_column('qux', 'a boolean column')
-        table.add_column('quux', 'a vocab column', vocab=True)
+        table.add_column('quux', 'an enum column', enum=True)
         table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
         return table
@@ -912,8 +912,8 @@ class SubTable(DynamicTable):
         {'name': 'col6', 'description': 'optional region', 'table': True},
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
-        {'name': 'col10', 'description': 'required, indexed vocab column', 'index': True, 'class': VocabData},
-        {'name': 'col11', 'description': 'required, enumerable column', 'enum': True},
+        {'name': 'col10', 'description': 'required, indexed enum column', 'index': True, 'class': EnumData},
+        {'name': 'col11', 'description': 'required, enumerable column', 'enum': True, 'index': True},
     )
 
 
@@ -947,8 +947,8 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertIsNone(table.col6)
         self.assertIsNone(table.col8)
         self.assertIsNone(table.col8_index)
-        self.assertIsNone(table.col10)
-        self.assertIsNone(table.col10_index)
+        self.assertIsNone(table.col11)
+        self.assertIsNone(table.col11_index)
 
         # uninitialized optional predefined columns cannot be accessed in this manner
         with self.assertRaisesWith(KeyError, "'col2'"):
@@ -996,9 +996,6 @@ class TestDynamicTableClassColumns(TestCase):
 
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
-
-        table.add_column(name='col10', description='column #10', index=True, col_cls=VocabData)
-        self.assertIsInstance(table.col10, VocabData)
 
         table.add_column(name='col11', description='column #11', enum=True)
         self.assertIsInstance(table.col11, EnumData)
@@ -1056,14 +1053,14 @@ class TestDynamicTableClassColumns(TestCase):
     def test_add_opt_column_mismatched_col_cls(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
         table = SubTable(name='subtable', description='subtable description')
-        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.VocabData'> "
+        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.EnumData'> "
                "which does not match the entered col_cls "
                "argument. The predefined class spec will be ignored. "
                "Please ensure the new column complies with the spec. "
                "This will raise an error in a future version of HDMF.")
         with self.assertWarnsWith(UserWarning, msg):
-            table.add_column(name='col10', description='column #10', index=True)
-        self.assertEqual(table.col10.description, 'column #10')
+            table.add_column(name='col10', description='column #11', index=True)
+        self.assertEqual(table.col10.description, 'column #11')
         self.assertEqual(type(table.col10), VectorData)
         self.assertEqual(type(table.get('col10')), VectorIndex)
 
@@ -1148,65 +1145,6 @@ class TestDynamicTableClassColumns(TestCase):
         msg = "'columns' contains columns with duplicate names: ['col1', 'col1']"
         with self.assertRaisesWith(ValueError, msg):
             SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
-
-
-class TestVocabData(TestCase):
-
-    def test_init(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        self.assertIsInstance(vd.vocabulary, np.ndarray)
-
-    def test_get(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd[2]
-        self.assertEqual(dat, 'b')
-        dat = vd[-1]
-        self.assertEqual(dat, 'c')
-        dat = vd[0]
-        self.assertEqual(dat, 'a')
-
-    def test_get_list(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd[[0, 1, 2]]
-        np.testing.assert_array_equal(dat, ['a', 'a', 'b'])
-
-    def test_get_list_join(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], join=True)
-        self.assertEqual(dat, 'aab')
-
-    def test_get_list_indices(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], index=True)
-        np.testing.assert_array_equal(dat, [0, 0, 1])
-
-    def test_get_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData',
-                       vocabulary=['a', 'b', 'c'],
-                       data=np.array([[0, 0], [1, 1], [2, 2]]))
-        dat = vd[0]
-        np.testing.assert_array_equal(dat, ['a', 'a'])
-
-    def test_get_2d_w_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData',
-                       vocabulary=['a', 'b', 'c'],
-                       data=np.array([[0, 0], [1, 1], [2, 2]]))
-        dat = vd[[0, 1]]
-        np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])
-
-    def test_add_row(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
-        vd.add_row('b')
-        vd.add_row('a')
-        vd.add_row('c')
-        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
-
-    def test_add_row_index(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
-        vd.add_row(1, index=True)
-        vd.add_row(0, index=True)
-        vd.add_row(2, index=True)
-        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
 
 
 class TestEnumData(TestCase):
