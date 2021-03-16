@@ -305,7 +305,8 @@ class ExternalResources(Container):
             kwargs['resources_idx'] is not None
             and (kwargs['resource_name'] is not None
                  or kwargs['resource_uri'] is not None)):
-            msg = "Can't have resource_idx with resource_name and resource_uri."
+            msg = "Can't have resource_idx with resource_name or resource_uri."
+            raise ValueError(msg)
         else:
             resource_name = kwargs['resource_name']
             resource_uri = kwargs['resource_uri']
