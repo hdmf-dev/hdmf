@@ -208,12 +208,12 @@ class DynamicTable(Container):
     A column-based table. Columns are defined by the argument *columns*. This argument
     must be a list/tuple of :class:`~hdmf.common.table.VectorData` and :class:`~hdmf.common.table.VectorIndex` objects
     or a list/tuple of dicts containing the keys ``name`` and ``description`` that provide the name and description
-    of each column in the table. Additionally, the keys ``index``, ``table``, ``vocab`` can be used for specifying
+    of each column in the table. Additionally, the keys ``index``, ``table``, ``enum`` can be used for specifying
     additional structure to the table columns. Setting the key ``index`` to ``True`` can be used to indicate that the
     :class:`~hdmf.common.table.VectorData` column will store a ragged array (i.e. will be accompanied with a
     :class:`~hdmf.common.table.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the
-    column will store regions to another DynamicTable. Setting the key ``vocab`` to ``True`` can be used to indicate
-    that the column data will come from a controlled vocabulary.
+    column will store regions to another DynamicTable. Setting the key ``enum`` to ``True`` can be used to indicate
+    that the column data will come from a fixed set of values.
 
     Columns in DynamicTable subclasses can be statically defined by specifying the class attribute *\_\_columns\_\_*,
     rather than specifying them at runtime at the instance level. This is useful for defining a table structure
@@ -596,14 +596,11 @@ class DynamicTable(Container):
                     'array-like of ints: Create a VectorIndex and use these values as the data \n'
                     'int: Recursively create `n` VectorIndex objects for a multi-ragged array \n',
              'default': False},
-            {'name': 'vocab', 'type': (bool, 'array_data'), 'default': False,
-             'doc': ('whether or not this column contains data from a '
-                     'controlled vocabulary or the controlled vocabulary')},
             {'name': 'enum', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a fixed set of elements')},
             {'name': 'col_cls', 'type': type, 'default': VectorData,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
-                     'DynamicTableRegion object is used. If vocab=True, this field is ignored and a VocabData '
+                     'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
                      'object is used.')}, )
     def add_column(self, **kwargs):  # noqa: C901
         """
@@ -614,7 +611,7 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, vocab, enum, col_cls = popargs('index', 'table', 'vocab', 'enum', 'col_cls', kwargs)
+        index, table, enum, col_cls = popargs('index', 'table', 'enum', 'col_cls', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
@@ -659,20 +656,16 @@ class DynamicTable(Container):
         ckwargs = dict(kwargs)
 
         # Add table if it's been specified
-        if table and vocab:
-            raise ValueError("column '%s' cannot be both a table region and come from a controlled vocabulary" % name)
+        if table and enum:
+            raise ValueError("column '%s' cannot be both a table region and come from an enumerable set of elements" % name)
         if table is not False:
             col_cls = DynamicTableRegion
             if isinstance(table, DynamicTable):
                 ckwargs['table'] = table
-        if vocab is not False:
-            col_cls = VocabData
-            if isinstance(vocab, (list, tuple, np.ndarray)):
-                ckwargs['vocabulary'] = vocab
         if enum is not False:
             col_cls = EnumData
             if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
-                ckwargs['elements'] = vocab
+                ckwargs['elements'] = enum
 
         col = col_cls(**ckwargs)
         col.parent = self
@@ -1160,107 +1153,6 @@ def _map_elements(uint, elements):
     return {t[1]: uint(t[0]) for t in enumerate(elements)}
 
 
-@register_class('VocabData')
-class VocabData(VectorData):
-    """
-    A n-dimensional dataset that can contain elements from a controlled
-    vocabulary.
-    """
-
-    __fields__ = ('vocabulary',)
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
-            {'name': 'description', 'type': str, 'doc': 'a description for this column'},
-            {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
-            {'name': 'vocabulary', 'type': ('array_data', 'data'), 'default': list(),
-             'doc': 'the items in this vocabulary'})
-    def __init__(self, **kwargs):
-        vocab = popargs('vocabulary', kwargs)
-        super().__init__(**kwargs)
-        if len(vocab) > 0:
-            self.vocabulary = np.asarray(vocab)
-            self.__uint = _uint_precision(vocab)
-            self.__revidx = _map_elements(self.__uint, self.vocabulary)
-        else:
-            self.vocabulary = vocab
-            self.__revidx = dict()  # a map from term to index
-            self.__uint = None  # the precision needed to encode all terms
-
-    def __add_term(self, term):
-        """
-        Add a new CV term, and return it's corresponding index
-
-        Returns:
-            The index of the term
-        """
-        if term not in self.__revidx:
-            # get minimum uint precision needed for vocabulary
-            self.vocabulary.append(term)
-            uint = _uint_precision(self.vocabulary)
-            if self.__uint is uint:
-                # add the new term to the index-term map
-                self.__revidx[term] = self.__uint(len(self.vocabulary) - 1)
-            else:
-                # remap terms to their uint and bump the precision of existing data
-                self.__uint = uint
-                self.__revidx = _map_elements(self.__uint, self.vocabulary)
-                for i in range(len(self.data)):
-                    self.data[i] = self.__uint(self.data[i])
-        return self.__revidx[term]
-
-    def __getitem__(self, arg):
-        return self.get(arg, index=False)
-
-    def _get_helper(self, idx, index=False, join=False, **kwargs):
-        """
-        A helper function for getting vocabulary elements
-
-        This helper function contains the post-processing of retrieve indices. By separating this,
-        it allows customizing processing of indices before resolving the vocabulary elements
-        """
-        if index:
-            return idx
-        if not np.isscalar(idx):
-            orig_shape = idx.shape
-            ret = self.vocabulary[idx.ravel()]
-            ret = ret.reshape(orig_shape)
-            if join:
-                ret = ''.join(ret.ravel())
-        else:
-            ret = self.vocabulary[idx]
-        return ret
-
-    def get(self, arg, index=False, join=False, **kwargs):
-        """
-        Return vocabulary elements for the given argument.
-
-        Args:
-            index (bool):      Return indices, do not return CV elements
-            join (bool):       Concatenate elements together into a single string
-
-        Returns:
-            CV elements if *join* is False or a concatenation of all selected
-            elements if *join* is True.
-        """
-        idx = self.data[arg]
-        return self._get_helper(idx, index=index, join=join, **kwargs)
-
-    @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'},
-            {'name': 'index', 'type': bool, 'doc': 'whether or not the value being added is an index',
-             'default': False})
-    def add_row(self, **kwargs):
-        """Append a data value to this VocabData column
-
-        If a controlled-vocabulary is provided for *val* (i.e. *index* is False), the correct
-        index value will be determined. Otherwise, *val* will be added as provided.
-        """
-        val, index = getargs('val', 'index', kwargs)
-        if not index:
-            val = self.__add_term(val)
-        super().append(val)
-
-
 @register_class('EnumData')
 class EnumData(VectorData):
     """
@@ -1351,7 +1243,7 @@ class EnumData(VectorData):
             {'name': 'index', 'type': bool, 'doc': 'whether or not the value being added is an index',
              'default': False})
     def add_row(self, **kwargs):
-        """Append a data value to this VocabData column
+        """Append a data value to this EnumData column
 
         If an element is provided for *val* (i.e. *index* is False), the correct
         index value will be determined. Otherwise, *val* will be added as provided.
