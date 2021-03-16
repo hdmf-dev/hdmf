@@ -14,7 +14,7 @@ This is a user guide to interacting with the ``ExternalResources`` class.
 # from the resources.
 
 ###############################################################################
-# Creating an instance of the ExternalResources class_name
+# Creating an instance of the ExternalResources class
 from hdmf.common import ExternalResources
 from hdmf import Data
 import pandas as pd
@@ -25,7 +25,7 @@ er = ExternalResources(name='test')
 # Using the add_ref method
 # ------------
 # add_ref will be one of the ExternalResources class methods that simplifies
-# how to add new data to KeyTable, ObjectTable, EntityTable, and ResourceTable.
+# how to add new data.
 # You can think of add_ref as a wrapper function.
 #
 # The function takes in the keyword arguments and will automatically create
@@ -41,7 +41,7 @@ data = Data(name="species", data='homo sapien')
 er.add_ref(container=data, field='', key='one', resource_name='new_name',
            resource_uri='new_uri', entity_id='111', entity_uri='entity_uri1')
 
-# Run the following to see the new data in the tables:
+# The data is stored in KeyTable, ObjectTable, EntityTable, and ResourceTable.
 
 # This will return a pandas dataframe of the ResourceTable
 er.resources.to_dataframe()
@@ -62,7 +62,7 @@ er.objects.to_dataframe()
 # when referencing a key. Let's start by creating a new key.
 
 # The add_key method will create a new key
-er.add_key(key='two')
+er.add_key(key_name='two')
 
 # The get_key method will return the key object of the key_name.
 key_object = er.get_key(key_name='two')
