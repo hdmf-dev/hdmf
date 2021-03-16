@@ -7,6 +7,11 @@
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
 
+- Add `EnumData` type for storing data that comes from a fixed set of values. This replaces `VocabData` i.e.
+  `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
+  `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
+  @ajtritt (#537)
+
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
 
