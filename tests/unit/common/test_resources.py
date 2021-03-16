@@ -76,8 +76,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         with self.assertRaises(TypeError):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1')
         with self.assertRaises(ValueError):
-            er.add_ref('uuid1', 'field1', 'key1', resources_idx=resource1, resource_name='resource1', resource_uri='uri1')
-
+            er.add_ref(
+                'uuid1', 'field1', 'key1', resources_idx=resource1,
+                resource_name='resource1', resource_uri='uri1')
 
     def test_add_ref_two_resources(self):
         er = ExternalResources('terms')
