@@ -614,7 +614,7 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, vocab, col_cls = popargs('index', 'table', 'vocab', 'col_cls', kwargs)
+        index, table, vocab, enum, col_cls = popargs('index', 'table', 'vocab', 'enum', 'col_cls', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
@@ -681,8 +681,9 @@ class DynamicTable(Container):
         if col in self.__uninit_cols:
             self.__uninit_cols.pop(col)
 
-        if col_class is EnumData:
+        if col_cls is EnumData:
             columns.append(col.elements)
+            col.elements.parent = self
 
         # Add index if it's been specified
         if index is not False:
@@ -1323,7 +1324,8 @@ class EnumData(VectorData):
         if index:
             return idx
         if not np.isscalar(idx):
-            ret = self.elements.get(idx.ravel(), **kwargs).reshape(idx.shape)
+            idx = np.asarray(idx)
+            ret = np.asarray(self.elements.get(idx.ravel(), **kwargs)).reshape(idx.shape)
             if join:
                 ret = ''.join(ret.ravel())
         else:
