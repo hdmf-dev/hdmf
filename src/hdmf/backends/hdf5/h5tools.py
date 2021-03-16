@@ -940,7 +940,7 @@ class HDF5IO(HDMFIO):
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                     obj.attrs[key] = value                   # a regular scalar
             except Exception as e:
-                msg = "unable to write attribute %s on object %s" % (key, obj.name)
+                msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)
                 raise RuntimeError(msg) from e
 
     def _make_attr_ref_filler(self, obj, key, value):
