@@ -6,7 +6,7 @@ import unittest
 
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
-from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers,
+from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
                          DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 
@@ -913,6 +913,7 @@ class SubTable(DynamicTable):
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
         {'name': 'col10', 'description': 'required, indexed vocab column', 'index': True, 'class': VocabData},
+        {'name': 'col11', 'description': 'required, enumerable column', 'enum': True},
     )
 
 
@@ -998,6 +999,9 @@ class TestDynamicTableClassColumns(TestCase):
 
         table.add_column(name='col10', description='column #10', index=True, col_cls=VocabData)
         self.assertIsInstance(table.col10, VocabData)
+
+        table.add_column(name='col11', description='column #11', enum=True)
+        self.assertIsInstance(table.col11, EnumData)
 
     def test_add_opt_column_mismatched_table_true(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
@@ -1205,6 +1209,65 @@ class TestVocabData(TestCase):
         np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
 
 
+class TestEnumData(TestCase):
+
+    def test_init(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        self.assertIsInstance(ed.elements, VectorData)
+
+    def test_get(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed[2]
+        self.assertEqual(dat, 'b')
+        dat = ed[-1]
+        self.assertEqual(dat, 'c')
+        dat = ed[0]
+        self.assertEqual(dat, 'a')
+
+    def test_get_list(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed[[0, 1, 2]]
+        np.testing.assert_array_equal(dat, ['a', 'a', 'b'])
+
+    def test_get_list_join(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed.get([0, 1, 2], join=True)
+        self.assertEqual(dat, 'aab')
+
+    def test_get_list_indices(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed.get([0, 1, 2], index=True)
+        np.testing.assert_array_equal(dat, [0, 0, 1])
+
+    def test_get_2d(self):
+        ed = EnumData('cv_data', 'a test EnumData',
+                       elements=['a', 'b', 'c'],
+                       data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = ed[0]
+        np.testing.assert_array_equal(dat, ['a', 'a'])
+
+    def test_get_2d_w_2d(self):
+        ed = EnumData('cv_data', 'a test EnumData',
+                       elements=['a', 'b', 'c'],
+                       data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = ed[[0, 1]]
+        np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])
+
+    def test_add_row(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        ed.add_row('b')
+        ed.add_row('a')
+        ed.add_row('c')
+        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
+
+    def test_add_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        ed.add_row(1, index=True)
+        ed.add_row(0, index=True)
+        ed.add_row(2, index=True)
+        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
+
+
 class TestIndexing(TestCase):
 
     def setUp(self):
@@ -1398,6 +1461,18 @@ class TestDynamicTableAddIndexRoundTrip(H5RoundTripMixin, TestCase):
         table = DynamicTable('table0', 'an example table')
         table.add_column('foo', 'an int column', index=True)
         table.add_row(foo=[1, 2, 3])
+        return table
+
+
+class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an enumerable column', enum=True)
+        table.add_row(bar='a')
+        table.add_row(bar='b')
+        table.add_row(bar='a')
+        table.add_row(bar='c')
         return table
 
 
