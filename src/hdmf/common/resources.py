@@ -258,7 +258,7 @@ class ExternalResources(Container):
             # if same key is used multiple times, determine
             # which instance based on the Container
             object_field = self._check_object_field(container, field)
-            key_tmp = self.object_keys['keytable_idx', object_field.idx]
+            key_tmp = self.object_keys['keys_idx', object_field.idx]
             if key_tmp in key_id:
                 return self.keys.row[key_tmp]
             else:
@@ -301,7 +301,7 @@ class ExternalResources(Container):
         add_entity = False
         if kwargs['resources_idx'] is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
             resource_table_idx = kwargs['resources_idx']
-        if (
+        elif (
             kwargs['resources_idx'] is not None
             and (kwargs['resource_name'] is not None
                  or kwargs['resource_uri'] is not None)):
@@ -336,7 +336,7 @@ class ExternalResources(Container):
                 # which instance based on the Container
                 object_field = self._check_object_field(container, field)
 
-                key_tmp = self.object_keys['keytable_idx', object_field.idx]
+                key_tmp = self.object_keys['keys_idx', object_field.idx]
                 if key_tmp in key_id:
                     key = self.keys.row[key_tmp]
                 else:

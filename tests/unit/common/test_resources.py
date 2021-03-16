@@ -23,8 +23,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             container='uuid1', field='field1', key='key1',
             resource_name='resource12', resource_uri='resource_uri12', entity_id="id13", entity_uri='url12')
         er.add_ref(
-            container='uuid2', field='field2', key=key2, resource_table_idx=resource1,
-            resource_name='resource22', resource_uri='resource_uri22', entity_id="id14", entity_uri='url23')
+            container='uuid2', field='field2', key=key2, resources_idx=resource1,
+            entity_id="id14", entity_uri='url23')
         return er
 
     def test_piecewise_add(self):
@@ -54,7 +54,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         resource1 = er.add_resource(resource='resource0', uri='resource_uri0')
         er.add_ref(
             container='uuid1', field='field1', key='key1',
-            resource_table_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
+            resources_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
@@ -70,7 +70,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1', entity_uri='uri1')
         with self.assertRaises(ValueError):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             er.add_ref('uuid1', 'field1')
 
     def test_add_ref_two_resources(self):
@@ -168,7 +168,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             data=[['key1', 0, 'id11', 'url11'],
                   ['key1', 2, 'id13', 'url31'],
                   ['key2', 1, 'id12', 'url21']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri'])
+            columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
     def test_get_keys_subset(self):
@@ -188,7 +188,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         expected = pd.DataFrame(
             data=[['key1', 0, 'id11', 'url11'],
                   ['key1', 2, 'id13', 'url31']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri'])
+            columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
     def test_add_keys(self):
@@ -201,7 +201,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             data=[['key1', resource1, "id11", 'url11'],
                   ['key1', resource2, "id12", 'url12'],
                   ['key2', resource3, "id13", 'url13']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri']
+            columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri']
         )
         ret = er.add_keys(keys)
 
@@ -225,13 +225,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             data=[['key1', 0, "id11", 'url11'],
                   ['key1', 1, "id12", 'url12'],
                   ['key2', 2, "id13", 'url13']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri']
+            columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri']
         )
         input_data = pd.DataFrame(
             data=[['key1', resource1, "id11", 'url11'],
                   ['key1', resource2, "id12", 'url12'],
                   ['key2', resource3, "id13", 'url13']],
-            columns=['key_name', 'resource_table_idx', 'entity_id', 'entity_uri']
+            columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri']
         )
         er.add_keys(input_data)
 
@@ -262,7 +262,7 @@ class TestExternalResourcesGetKey(TestCase):
 
         keys = self.er.get_key('key1')
         self.assertIsInstance(keys, Key)
-        self.assertEqual(keys.key_name, 'key1')
+        self.assertEqual(keys.key, 'key1')
 
     def test_get_key_w_object_info(self):
         self.er.add_ref(
@@ -273,7 +273,7 @@ class TestExternalResourcesGetKey(TestCase):
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
         keys = self.er.get_key('key1', 'uuid1', 'field1')
         self.assertIsInstance(keys, Key)
-        self.assertEqual(keys.key_name, 'key1')
+        self.assertEqual(keys.key, 'key1')
 
     def test_get_key_w_bad_object_info(self):
         self.er.add_ref(
@@ -313,8 +313,8 @@ class TestExternalResourcesGetKey(TestCase):
         keys = self.er.get_key('key1')
 
         self.assertIsInstance(keys, list)
-        self.assertEqual(keys[0].key_name, 'key1')
-        self.assertEqual(keys[1].key_name, 'key1')
+        self.assertEqual(keys[0].key, 'key1')
+        self.assertEqual(keys[1].key, 'key1')
 
     def test_get_key_same_keyname_specific(self):
         self.er = ExternalResources('terms')
@@ -332,4 +332,4 @@ class TestExternalResourcesGetKey(TestCase):
 
         keys = self.er.get_key('key1', 'uuid1', 'field1')
         self.assertIsInstance(keys, Key)
-        self.assertEqual(keys.key_name, 'key1')
+        self.assertEqual(keys.key, 'key1')
