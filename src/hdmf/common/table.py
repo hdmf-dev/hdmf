@@ -657,7 +657,8 @@ class DynamicTable(Container):
 
         # Add table if it's been specified
         if table and enum:
-            raise ValueError("column '%s' cannot be both a table region and come from an enumerable set of elements" % name)
+            raise ValueError("column '%s' cannot be both a table region "
+                             "and come from an enumerable set of elements" % name)
         if table is not False:
             col_cls = DynamicTableRegion
             if isinstance(table, DynamicTable):
