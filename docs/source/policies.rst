@@ -4,8 +4,6 @@
 Policies
 ********
 
-.. _policies.version:
-
 .. versionadded:: 3.0.0
 
 API version policy
@@ -108,7 +106,8 @@ namespace.
 should be generally compliant with later minor releases of HDMF schema
 ``x.(y+1)``.
 
-Later minor ``x.(y+1)`` releases of the HDMF schema may:
+Later minor and patch releases of the HDMF schema may:
+
 - add new data types
 - add new optional fields
 - make required fields optional
@@ -122,6 +121,7 @@ Later minor ``x.(y+1)`` releases of the HDMF schema may:
 - make other changes that loosen restrictions imposed by a previous release
 
 Later minor and patch releases of the HDMF schema should not:
+
 - remove data types
 - add new required fields
 - make optional fields optional
