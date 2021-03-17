@@ -19,7 +19,7 @@ from hdmf.common import ExternalResources
 from hdmf import Data
 import pandas as pd
 
-er = ExternalResources(name='test')
+er = ExternalResources(name='example')
 
 ###############################################################################
 # Using the add_ref method
@@ -38,8 +38,9 @@ er = ExternalResources(name='test')
 # the key object itself.
 
 data = Data(name="species", data='homo sapien')
-er.add_ref(container=data, field='', key='one', resource_name='new_name',
-           resource_uri='new_uri', entity_id='111', entity_uri='entity_uri1')
+er.add_ref(container=data, field='Data', key='human', resource_name='NCBI_Taxonomy',
+           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
+           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
 # The data is stored in KeyTable, ObjectTable, EntityTable, and ResourceTable.
 
@@ -61,11 +62,16 @@ er.objects.to_dataframe()
 # Mentioned in the note aobve, the user needs to reference a key object
 # when referencing a key. Let's start by creating a new key.
 
+# Let's start with a new instance of ExternalResources
+
+er = ExternalResources(name='new_example')
+
 # The add_key method will create a new key
-er.add_key(key_name='two')
+er.add_key(key_name='human')
+er.add_key(key_name='gorilla')
 
 # The get_key method will return the key object of the key_name.
-key_object = er.get_key(key_name='two')
+key_object = er.get_key(key_name='gorilla')
 
 # This will return a pandas dataframe of the KeyTable
 er.keys.to_dataframe()
@@ -77,10 +83,10 @@ er.keys.to_dataframe()
 # to add/reference keys, resources, and entities.
 
 new_data = {
-    'key_name': 'two',
-    'resources_idx': 1,
-    'entity_id': '12345',
-    'entity_uri': 'entity_uri4'}
+    'key_name': 'human',
+    'resources_idx': 0,
+    'entity_id': 'NCBI:txid9606',
+    'entity_uri': 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}
 
 df = pd.DataFrame(new_data, index=[0])
 
@@ -94,10 +100,10 @@ er.add_keys(df)
 # a list of key objects, or leave the input paramters empty to return all.
 
 # Single Key
-er.get_keys(keys=er.get_key('one'))
+er.get_keys(keys=er.get_key('human'))
 
 # List of Specific Keys
-er.get_keys(keys=[er.get_key('one'), er.get_key('two')])
+er.get_keys(keys=[er.get_key('human'), er.get_key('gorilla')])
 
 # All Keys
 er.get_keys()
@@ -109,7 +115,7 @@ er.get_keys()
 # The ResourceTable holds the name and uri for the resource.
 # For example, you could add NCBI Taxonomy with its uri.
 
-er.add_resource(resource='taxonomy', uri='uri')
+er.add_resource(resource='NCBI_Taxonomy', uri='https://www.ncbi.nlm.nih.gov/taxonomy')
 
 ###############################################################################
 # Using the add_entity method
@@ -118,25 +124,30 @@ er.add_resource(resource='taxonomy', uri='uri')
 # Keeping with the NCBI Taxonomy example, the entity would be a specfic item
 # or "search" in NCBI Taxonomy, whereas the resource is NCBI Taxonomy itself.
 
-er.add_entity(key='four', resources_idx=1,
-              entity_id='113', entity_uri='entity_uri3')
+er.add_entity(key='human', resources_idx=0,
+              entity_id='NCBI:txid9606',
+              entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
 ###############################################################################
 # Using the add_object method
 # ------------
 # This method creates a new object and adds it to the ObjectTable.
 
-er.add_object(container=data, field='')
+er.add_object(container=data, field='Data')
 
 ###############################################################################
 # Using the add_external_reference method
 # ------------
 # This method creates objectkey to ObjectKeyTable
 
-# This method below returns an Object object.
-object_ = er._check_object_field(data, field="")
+# Let's create a new Data instance
 
-key_object = er.get_key(key_name='one')
+data_gorilla = Data(name="species", data='Gorilla beringei')
+
+# This method below returns an Object object.
+object_ = er._check_object_field(data_gorilla, field='')
+
+key_object = er.get_key(key_name='gorilla')
 
 er.add_external_reference(object_, key_object)
 
