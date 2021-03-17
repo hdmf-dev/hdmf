@@ -47,6 +47,7 @@ doi: 10.1109/BigData47090.2019.9005648.
    validation
    export
    api_docs
+   policies
    software_process
    make_roundtrip_test
 
