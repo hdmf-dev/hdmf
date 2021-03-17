@@ -372,12 +372,10 @@ class ExternalResources(Container):
         ret = dict()
         for key in np.unique(keys):
             mask = keys == key
-            try:
-                self.get_key(key_name=key)
-            except Exception:
-                ret[key] = self.add_key(key)
-            else:
+            if key in self.keys:
                 ret[key] = self.get_key(key_name=key)
+            else:
+                ret[key] = self.add_key(key)
             for row in res_df[mask][[d['name'] for d in self.entities.__columns__[1:]]].to_dict('records'):
                 self.add_entity(ret[key], *row.values())
         return ret
