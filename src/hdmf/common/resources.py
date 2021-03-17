@@ -372,7 +372,7 @@ class ExternalResources(Container):
         ret = dict()
         for key in np.unique(keys):
             mask = keys == key
-            if key in self.keys:
+            if key in self.keys.to_dataframe().values:
                 ret[key] = self.get_key(key_name=key)
             else:
                 ret[key] = self.add_key(key)
