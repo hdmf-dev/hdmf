@@ -369,8 +369,9 @@ class DynamicTable(Container):
                             indices[curr_col.target.name] = tmp_indices
                     elif isinstance(col, EnumData):
                         # EnumData is the indexing column, so it should go first
-                        indices[col.name] = [col]            # EnumData is the indexing object
-                        col_dict[col.name] = col.elements    # EnumData.elements is the column with values
+                        if col.name not in indices:
+                            indices[col.name] = [col]            # EnumData is the indexing object
+                            col_dict[col.name] = col.elements    # EnumData.elements is the column with values
                     else:
                         if col.name in indices:
                             continue
