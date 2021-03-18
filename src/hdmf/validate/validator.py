@@ -152,6 +152,23 @@ def check_shape(expected, received):
     return ret
 
 
+def _resolve_spec_links(spec, vmap):
+    if isinstance(spec, LinkSpec):
+        validator = vmap.get_validator(spec.target_type)
+        spec = validator.spec
+    return spec
+
+
+def _resolve_spec_data_type(spec):
+    if isinstance(spec, LinkSpec):
+        return spec.target_type
+    return spec.data_type
+
+
+def _resolve_builder_data_type(builder, spec):
+    return builder.attributes.get(spec.type_key())
+
+
 class ValidatorMap:
     """A class for keeping track of Validator objects for all data types in a namespace"""
 
@@ -348,7 +365,7 @@ class BaseStorageValidator(Validator):
         return errors
 
     def __validate_attributes(self, builder):
-        attribute_matcher = AttributeMatcher(self.vmap, self.spec.attributes)
+        attribute_matcher = AttributeMatcher(self.vmap, self.spec)
         attribute_matcher.assign_to_specs(builder.attributes)
 
         for attr_spec, value in attribute_matcher.spec_matches:
@@ -364,11 +381,7 @@ class BaseStorageValidator(Validator):
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 yield from errors
 
-        # TODO: fix reserved attribute handling like in #288
-        to_skip = ['data_type', 'namespace', 'object_id']
         for name, value in attribute_matcher.unmatched_attributes:
-            if name in to_skip:
-                continue
             name_of_erroneous = self.get_spec_loc(self.spec)
             attribute_loc = self.get_builder_loc(builder) + ".%s" % name
             yield ExtraFieldWarning(name_of_erroneous, location=attribute_loc)
@@ -386,9 +399,10 @@ class SpecMatch:
 
 
 class AttributeMatcher:
-    def __init__(self, vmap, specs):
+    def __init__(self, vmap, parent_spec):
         self.vmap = vmap
-        self._spec_matches = {spec.name: SpecMatch(spec) for spec in specs}
+        self.parent_spec = parent_spec
+        self._spec_matches = {spec.name: SpecMatch(spec) for spec in parent_spec.attributes}
         self._unmatched_attributes = dict()
 
     @property
@@ -401,6 +415,8 @@ class AttributeMatcher:
 
     def assign_to_specs(self, attributes):
         for name, value in attributes.items():
+            if name in self.parent_spec.reserved_attrs():
+                continue
             if name in self._spec_matches:
                 self._spec_matches[name].assign(value)
             else:
@@ -439,12 +455,6 @@ class DatasetValidator(BaseStorageValidator):
                 ret.append(ShapeError(self.get_spec_loc(self.spec), self.spec.shape, shape,
                                       location=self.get_builder_loc(builder)))
         return ret
-
-
-def _resolve_data_type(spec):
-    if isinstance(spec, LinkSpec):
-        return spec.target_type
-    return spec.data_type
 
 
 class GroupValidator(BaseStorageValidator):
@@ -504,7 +514,7 @@ class GroupValidator(BaseStorageValidator):
         """Returns either a MissingDataType or a MissingError depending on
         whether or not a specific data type can be resolved from the spec
         """
-        data_type = _resolve_data_type(child_spec)
+        data_type = _resolve_spec_data_type(child_spec)
         builder_loc = self.get_builder_loc(parent_builder)
         if data_type is not None:
             name_of_erroneous = self.get_spec_loc(self.spec)
@@ -525,7 +535,7 @@ class GroupValidator(BaseStorageValidator):
 
     def __construct_incorrect_quantity_error(self, child_spec, parent_builder, n_builders):
         name_of_erroneous = self.get_spec_loc(self.spec)
-        data_type = _resolve_data_type(child_spec)
+        data_type = _resolve_spec_data_type(child_spec)
         builder_loc = self.get_builder_loc(parent_builder)
         return IncorrectQuantityError(name_of_erroneous, data_type, expected=child_spec.quantity,
                                       received=n_builders, location=builder_loc)
@@ -537,7 +547,7 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        child_validator = self.__get_child_validator(child_spec)
+        child_validator = self.__get_child_validator(child_builder, child_spec)
         yield from child_validator.validate(child_builder)
 
     def __construct_illegal_link_error(self, child_spec, parent_builder):
@@ -549,20 +559,23 @@ class GroupValidator(BaseStorageValidator):
     def __cannot_be_link(spec):
         return not isinstance(spec, LinkSpec) and not spec.linkable
 
-    def __get_child_validator(self, spec):
-        """Returns the appropriate validator for a child spec
+    def __get_child_validator(self, builder, spec):
+        """Returns the appropriate validator for a child builder
 
-        If a specific data type can be resolved, the validator is acquired from
-        the ValidatorMap, otherwise a new Validator is created.
+        If a specific data type of the builder can be resolved, the validator
+        is acquired from the ValidatorMap, otherwise a new Validator is created
+        from the spec.
         """
-        if _resolve_data_type(spec) is not None:
-            return self.vmap.get_validator(_resolve_data_type(spec))
+        base_spec = _resolve_spec_links(spec, self.vmap)
+        dt = _resolve_builder_data_type(builder, base_spec)
+        if dt is not None:
+            return self.vmap.get_validator(dt)
         elif isinstance(spec, GroupSpec):
             return GroupValidator(spec, self.vmap)
         elif isinstance(spec, DatasetSpec):
             return DatasetValidator(spec, self.vmap)
         else:
-            msg = "Unable to resolve a validator for spec %s" % spec
+            msg = "Unable to resolve a validator for builder %s" % builder
             raise ValueError(msg)
 
     def __warn_on_extra_fields(self, extra_builders):
@@ -672,19 +685,16 @@ class SpecMatcher:
         """Returns the candidate specs which have a data type consistent with
         the builder's data type.
         """
+        if isinstance(builder, LinkBuilder):
+            builder = builder.builder
+
         def compatible_type(spec_matches):
-            spec = spec_matches.spec
-            if isinstance(spec, LinkSpec):
-                validator = self.vmap.get_validator(spec.target_type)
-                spec = validator.spec
+            spec = _resolve_spec_links(spec_matches.spec, self.vmap)
             if spec.data_type is None:
                 return True
             valid_validators = self.vmap.valid_types(spec.data_type)
             valid_types = [v.spec.data_type for v in valid_validators]
-            if isinstance(builder, LinkBuilder):
-                dt = builder.builder.attributes.get(spec.type_key())
-            else:
-                dt = builder.attributes.get(spec.type_key())
+            dt = _resolve_builder_data_type(builder, spec)
             return dt in valid_types
 
         return list(filter(compatible_type, candidates))

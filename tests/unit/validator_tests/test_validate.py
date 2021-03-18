@@ -890,3 +890,24 @@ class TestExtraFields(TestCase):
         self.set_up_spec()
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
+
+    def test_fields_from_inheriting_types_do_not_raise_warning(self):
+        """Test that no warnings are generated if a child builder inherits from the type in the spec"""
+        self.set_up_inheriting_specs_special_case()
+        groups = [GroupBuilder('qux', attributes={'data_type': 'Qux', 'quux': 42})]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, groups=groups)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def set_up_inheriting_specs_special_case(self):
+        spec_catalog = SpecCatalog()
+        group_spec = GroupSpec('A child group', data_type_def='Bar')
+        group_spec_inh = GroupSpec('An inheriting child group', data_type_def='Qux', data_type_inc='Bar',
+                                   attributes=[AttributeSpec('quux', 'A new attribute', 'int')])
+        parent_group_spec = GroupSpec('A test group specification', data_type_def='Foo',
+                                      groups=[group_spec])
+        for spec in [parent_group_spec, group_spec, group_spec_inh]:
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
