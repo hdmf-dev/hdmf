@@ -339,28 +339,72 @@ class BaseStorageValidator(Validator):
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        self.__attribute_validators = dict()
-        for attr in self.spec.attributes:
-            self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
 
     @docval({"name": "builder", "type": BaseBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
-        attributes = builder.attributes
-        ret = list()
-        for attr, validator in self.__attribute_validators.items():
-            attr_val = attributes.get(attr)
-            if attr_val is None:
-                if validator.spec.required:
-                    ret.append(MissingError(self.get_spec_loc(validator.spec),
-                                            location=self.get_builder_loc(builder)))
+        errors = list(self.__validate_attributes(builder))
+        return errors
+
+    def __validate_attributes(self, builder):
+        attribute_matcher = AttributeMatcher(self.vmap, self.spec.attributes)
+        attribute_matcher.assign_to_specs(builder.attributes)
+
+        for attr_spec, value in attribute_matcher.spec_matches:
+            if value is None:
+                if attr_spec.required:
+                    spec_loc = self.get_spec_loc(attr_spec)
+                    builder_loc = self.get_builder_loc(builder)
+                    yield MissingError(spec_loc, location=builder_loc)
             else:
-                errors = validator.validate(attr_val)
+                validator = AttributeValidator(attr_spec, self.vmap)
+                errors = validator.validate(value)
                 for err in errors:
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
-                ret.extend(errors)
-        return ret
+                yield from errors
+
+        # TODO: fix reserved attribute handling like in #288
+        to_skip = ['data_type', 'namespace', 'object_id']
+        for name, value in attribute_matcher.unmatched_attributes:
+            if name in to_skip:
+                continue
+            name_of_erroneous = self.get_spec_loc(self.spec)
+            attribute_loc = self.get_builder_loc(builder) + ".%s" % name
+            yield ExtraFieldWarning(name_of_erroneous, location=attribute_loc)
+
+
+class SpecMatch:
+    def __init__(self, spec):
+        self.spec = spec
+        self.value = None
+
+    def assign(self, value):
+        if self.value is not None:
+            raise ValueError('cannot assign another value')
+        self.value = value
+
+
+class AttributeMatcher:
+    def __init__(self, vmap, specs):
+        self.vmap = vmap
+        self._spec_matches = {spec.name: SpecMatch(spec) for spec in specs}
+        self._unmatched_attributes = dict()
+
+    @property
+    def unmatched_attributes(self):
+        return self._unmatched_attributes.items()
+
+    @property
+    def spec_matches(self):
+        return [(sm.spec, sm.value) for sm in self._spec_matches.values()]
+
+    def assign_to_specs(self, attributes):
+        for name, value in attributes.items():
+            if name in self._spec_matches:
+                self._spec_matches[name].assign(value)
+            else:
+                self._unmatched_attributes[name] = value
 
 
 class DatasetValidator(BaseStorageValidator):

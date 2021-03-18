@@ -876,3 +876,17 @@ class TestExtraFields(TestCase):
         links = [LinkBuilder(GroupBuilder('bar', attributes={'data_type': 'Bar'}), 'bar_link')]
         builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, links=links)
         self.validate_extra_fields_test_case(builder)
+
+    def test_extra_attribute(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is an attribute"""
+        extra_attribute = {'x': 42}
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo', **extra_attribute})
+        self.validate_extra_fields_test_case(builder)
+
+    def test_reserved_attributes_are_ok(self):
+        """Test that ExtraFieldWarnings are not generated for the presence of reserved attributes"""
+        reserved_attributes = {'data_type': 'Foo', 'namespace': CORE_NAMESPACE, 'object_id': 1324}
+        builder = GroupBuilder('foo', attributes=reserved_attributes)
+        self.set_up_spec()
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
