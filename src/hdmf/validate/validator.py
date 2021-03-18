@@ -6,8 +6,8 @@ from collections import defaultdict
 
 import numpy as np
 
-from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
-from .errors import ExpectedArrayError, IncorrectQuantityError
+from .errors import (Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError,
+                     IncorrectDataType, ExpectedArrayError, IncorrectQuantityError, ExtraFieldWarning)
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
@@ -445,6 +445,8 @@ class GroupValidator(BaseStorageValidator):
             for child_builder in matched_builders:
                 yield from self.__validate_child_builder(child_spec, child_builder, parent_builder)
 
+        yield from self.__warn_on_extra_fields(matcher.unmatched_builders)
+
     def __validate_presence_and_quantity(self, child_spec, n_builders, parent_builder):
         """Validate that at least one matching builder exists if the spec is
         required and that the number of builders agrees with the spec quantity
@@ -518,6 +520,17 @@ class GroupValidator(BaseStorageValidator):
         else:
             msg = "Unable to resolve a validator for spec %s" % spec
             raise ValueError(msg)
+
+    def __warn_on_extra_fields(self, extra_builders):
+        """Warn for each child builder which is not part of the spec
+
+        Extra fields are any children attached to the parent builder
+        which are not part of the parent spec.
+        """
+        for builder in extra_builders:
+            name_of_erroneous = self.get_spec_loc(self.spec)
+            builder_loc = self.get_builder_loc(builder)
+            yield ExtraFieldWarning(name_of_erroneous, location=builder_loc)
 
 
 class SpecMatches:
