@@ -372,9 +372,8 @@ class ExternalResources(Container):
         ret = dict()
         for key in np.unique(keys):
             mask = keys == key
-#             key_id = self.keys.which(key=key)
-#             if len(key_id) == 0:
-            if key in self.keys.to_dataframe().values:
+            key_id = self.keys.which(key=key)
+            if len(key_id) == 1:
                 ret[key] = self.get_key(key_name=key)
             else:
                 ret[key] = self.add_key(key)
