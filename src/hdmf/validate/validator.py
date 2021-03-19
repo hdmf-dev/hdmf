@@ -365,62 +365,35 @@ class BaseStorageValidator(Validator):
         return errors
 
     def __validate_attributes(self, builder):
-        attribute_matcher = AttributeMatcher(self.vmap, self.spec)
-        attribute_matcher.assign_to_specs(builder.attributes)
+        attribute_matcher = AttributeSpecMatcher(self.vmap, list(self.spec.attributes))
+        nonreserved_attributes = self.__get_nonreserved_attributes(builder)
+        attribute_matcher.assign_to_specs(nonreserved_attributes)
 
-        for attr_spec, value in attribute_matcher.spec_matches:
-            if value is None:
+        for attr_spec, attr_match in attribute_matcher.matches:
+            if attr_match is None:
                 if attr_spec.required:
                     spec_loc = self.get_spec_loc(attr_spec)
                     builder_loc = self.get_builder_loc(builder)
                     yield MissingError(spec_loc, location=builder_loc)
             else:
+                attr_name, attr_value = attr_match
                 validator = AttributeValidator(attr_spec, self.vmap)
-                errors = validator.validate(value)
+                errors = validator.validate(attr_value)
                 for err in errors:
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 yield from errors
 
-        for name, value in attribute_matcher.unmatched_attributes:
+        for attr_name, attr_value in attribute_matcher.unmatched:
             name_of_erroneous = self.get_spec_loc(self.spec)
-            attribute_loc = self.get_builder_loc(builder) + ".%s" % name
+            attribute_loc = self.get_builder_loc(builder) + ".%s" % attr_name
             yield ExtraFieldWarning(name_of_erroneous, location=attribute_loc)
 
+    def __get_nonreserved_attributes(self, builder):
+        def is_nonreserved(attr_item):
+            name, value = attr_item
+            return name not in self.spec.reserved_attrs()
 
-class SpecMatch:
-    def __init__(self, spec):
-        self.spec = spec
-        self.value = None
-
-    def assign(self, value):
-        if self.value is not None:
-            raise ValueError('cannot assign another value')
-        self.value = value
-
-
-class AttributeMatcher:
-    def __init__(self, vmap, parent_spec):
-        self.vmap = vmap
-        self.parent_spec = parent_spec
-        self._spec_matches = {spec.name: SpecMatch(spec) for spec in parent_spec.attributes}
-        self._unmatched_attributes = dict()
-
-    @property
-    def unmatched_attributes(self):
-        return self._unmatched_attributes.items()
-
-    @property
-    def spec_matches(self):
-        return [(sm.spec, sm.value) for sm in self._spec_matches.values()]
-
-    def assign_to_specs(self, attributes):
-        for name, value in attributes.items():
-            if name in self.parent_spec.reserved_attrs():
-                continue
-            if name in self._spec_matches:
-                self._spec_matches[name].assign(value)
-            else:
-                self._unmatched_attributes[name] = value
+        return list(filter(is_nonreserved, builder.attributes.items()))
 
 
 class DatasetValidator(BaseStorageValidator):
@@ -486,20 +459,20 @@ class GroupValidator(BaseStorageValidator):
         straightforward procedure for validating the set of matching builders
         against each child spec.
         """
-        spec_children = chain(self.spec.datasets, self.spec.groups, self.spec.links)
-        matcher = SpecMatcher(self.vmap, spec_children)
+        spec_children = list(chain(self.spec.datasets, self.spec.groups, self.spec.links))
+        matcher = BuilderSpecMatcher(self.vmap, spec_children)
 
-        builder_children = chain(parent_builder.datasets.values(),
-                                 parent_builder.groups.values(),
-                                 parent_builder.links.values())
+        builder_children = list(chain(parent_builder.datasets.values(),
+                                      parent_builder.groups.values(),
+                                      parent_builder.links.values()))
         matcher.assign_to_specs(builder_children)
 
-        for child_spec, matched_builders in matcher.spec_matches:
+        for child_spec, matched_builders in matcher.matches:
             yield from self.__validate_presence_and_quantity(child_spec, len(matched_builders), parent_builder)
             for child_builder in matched_builders:
                 yield from self.__validate_child_builder(child_spec, child_builder, parent_builder)
 
-        yield from self.__warn_on_extra_fields(matcher.unmatched_builders)
+        yield from self.__warn_on_extra_fields(matcher.unmatched)
 
     def __validate_presence_and_quantity(self, child_spec, n_builders, parent_builder):
         """Validate that at least one matching builder exists if the spec is
@@ -590,58 +563,139 @@ class GroupValidator(BaseStorageValidator):
             yield ExtraFieldWarning(name_of_erroneous, location=builder_loc)
 
 
-class SpecMatches:
-    """A utility class to hold a spec and the builders matched to it"""
+class SpecMatch:
+    """A utility class class to hold a spec and the fields matched to it"""
 
-    def __init__(self, spec):
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which fields will matched against'},
+            {'name': 'empty_match', 'type': None,
+             'doc': 'whatever represents an empty match for the matcher. eg. None or []', 'default': None})
+    def __init__(self, **kwargs):
+        spec, empty_match = getargs('spec', 'empty_match', kwargs)
         self.spec = spec
-        self.builders = list()
-
-    def add(self, builder):
-        self.builders.append(builder)
+        self.matching = empty_match
 
 
-class SpecMatcher:
-    """Matches a set of builders against a set of specs
+class SpecMatcher(metaclass=ABCMeta):
+    """Matches a set of fields against a set of specs
 
-    This class is intended to isolate the task of choosing which spec a
-    builder should be validated against from the task of performing that
-    validation.
+    This class is intended to isolate the task of choosing which spec an attribute,
+    dataset, group, or link should be validated against from the task of performing
+    that validation.
+
+    Matching rules should be defined in subclasses of this class.
     """
 
-    def __init__(self, vmap, specs):
+    @docval({'name': 'vmap', 'type': ValidatorMap, 'doc': 'the ValidatorMap used for validation'},
+            {'name': 'specs', 'type': list, 'doc': 'the list of specs to which fields will be matched'})
+    def __init__(self, **kwargs):
+        vmap, specs = getargs('vmap', 'specs', kwargs)
         self.vmap = vmap
-        self._spec_matches = [SpecMatches(spec) for spec in specs]
-        self._unmatched_builders = SpecMatches(None)
+        self._spec_matches = [self.create_empty_match(spec) for spec in specs]
+        self._unmatched = list()
+
+    @abstractmethod
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which fields will matched against'},
+
+            returns='An empty SpecMatch according to what defines an empty match for the subclass', rtype=SpecMatch)
+    def create_empty_match(self, **kwargs):
+        pass
 
     @property
-    def unmatched_builders(self):
-        """Returns the builders for which no matching spec was found
-
-        These builders can be considered superfluous, and will generate a
-        warning in the future.
-        """
-        return self._unmatched_builders.builders
+    @docval(returns='The list of fields which did not match any specs', rtype=list)
+    def unmatched(self):
+        return self._unmatched
 
     @property
-    def spec_matches(self):
-        """Returns a list of tuples of: (spec, assigned builders)"""
-        return [(sm.spec, sm.builders) for sm in self._spec_matches]
+    @docval(returns='A list of tuples containing each spec and their matching fields', rtype=list)
+    def matches(self):
+        return [(sm.spec, sm.matching) for sm in self._spec_matches]
 
-    def assign_to_specs(self, builders):
-        """Assigns a set of builders against a set of specs (many-to-one)
+    @docval({'name': 'fields', 'type': list, 'doc': 'a list of the fields to match against the specs'})
+    def assign_to_specs(self, **kwargs):
+        """Assigns a set of fields against the specs according to matching rules defined in a subclass
 
-        In the case that no matching spec is found, a builder will be
-        added to a list of unmatched builders.
+        In the case that no matching spec is found for a field, that field will be added to
+        the list of unmatched fields.
         """
-        for builder in builders:
-            spec_match = self._best_matching_spec(builder)
-            if spec_match is None:
-                self._unmatched_builders.add(builder)
+        fields = getargs('fields', kwargs)
+        for field in fields:
+            spec_match = self.choose_spec_match(field)
+            if spec_match is not None:
+                self.assign_single_match(spec_match, field)
             else:
-                spec_match.add(builder)
+                self._unmatched.append(field)
 
-    def _best_matching_spec(self, builder):
+    @abstractmethod
+    @docval({'name': 'spec_match', 'type': SpecMatch,
+             'doc': 'the SpecMatch to which the matchin field should be assigned'},
+            {'name': 'field', 'type': None, 'doc': 'the field to be assigned to the spec_match'})
+    def assign_single_match(self, **kwargs):
+        """Assigns a single field to the best matching spec
+
+        This method should be implemented in subclasses to define how assignment happens.
+        """
+        pass
+
+    @abstractmethod
+    @docval({'name': 'field', 'type': None, 'doc': 'the field to be matched against the specs'},
+            returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
+    def choose_spec_match(self, **kwargs):
+        """Determines which spec is the best match for a field and returns the appropriate SpecMatch
+
+        This method should be implemented in subclasses to define the matching rules.
+        """
+        pass
+
+
+class AttributeSpecMatcher(SpecMatcher):
+    """Matches attributes against AttributeSpecs with a 1-to-1 mapping"""
+
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which attributes will matched against'},
+            returns='An empty SpecMatch where an empty match is represented by None', rtype=SpecMatch)
+    def create_empty_match(self, **kwargs):
+        spec = getargs('spec', kwargs)
+        return SpecMatch(spec, None)
+
+    @docval({'name': 'spec_match', 'type': SpecMatch,
+             'doc': 'the SpecMatch to which the matching attribute should be assigned'},
+            {'name': 'field', 'type': None, 'doc': 'the attribute to be assigned to the spec_match'})
+    def assign_single_match(self, **kwargs):
+        spec_match, field = getargs('spec_match', 'field', kwargs)
+        if spec_match.matching is not None:
+            raise ValueError('cannot assign another value')
+        spec_match.matching = field
+
+    @docval({'name': 'field', 'type': None,
+             'doc': 'the name and value of the attribute to be matched against the specs'},
+            returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
+    def choose_spec_match(self, **kwargs):
+        field = getargs('field', kwargs)
+        attr_name, attr_value = field
+        for spec_match in self._spec_matches:
+            if spec_match.spec.name == attr_name:
+                return spec_match
+        return None
+
+
+class BuilderSpecMatcher(SpecMatcher):
+    """Matches a set of builders against a set of specs with an N-to-1 mapping"""
+
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which builders will matched against'},
+            returns='An empty SpecMatch where an empty match is represented by []', rtype=SpecMatch)
+    def create_empty_match(self, **kwargs):
+        spec = getargs('spec', kwargs)
+        return SpecMatch(spec, list())
+
+    @docval({'name': 'spec_match', 'type': SpecMatch,
+             'doc': 'the SpecMatch to which the matching builder should be assigned'},
+            {'name': 'field', 'type': None, 'doc': 'the builder to be assigned to the spec_match'})
+    def assign_single_match(self, **kwargs):
+        spec_match, field = getargs('spec_match', 'field', kwargs)
+        spec_match.matching.append(field)
+
+    @docval({'name': 'field', 'type': None, 'doc': 'the field to be matched against the specs'},
+            returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
+    def choose_spec_match(self, **kwargs):
         """Finds the best matching spec for builder
 
         The current algorithm is:
@@ -658,6 +712,7 @@ class SpecMatcher:
         inheritance hierarchy. Future improvements to this matching algorithm
         should resolve these discrepancies.
         """
+        builder = getargs('field', kwargs)
         candidates = self._filter_by_name(self._spec_matches, builder)
         candidates = self._filter_by_type(candidates, builder)
         if len(candidates) == 0:
@@ -705,7 +760,7 @@ class SpecMatcher:
         """
         def is_unsatisfied(spec_matches):
             spec = spec_matches.spec
-            n_match = len(spec_matches.builders)
+            n_match = len(spec_matches.matching)
             if spec.required and n_match == 0:
                 return True
             if isinstance(spec.quantity, int) and n_match < spec.quantity:
