@@ -6,6 +6,8 @@
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
+- Add `ExtraFieldWarning` validator warning, which is created when fields that are not part of the spec are
+  encountered @dsleiter (#542)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
