@@ -149,7 +149,7 @@ class CustomClassGenerator:
     }
 
     @classmethod
-    def _get_scalar_type_map(cls, spec_dtype):
+    def _get_type_from_spec_dtype(cls, spec_dtype):
         """Get the Python type associated with the given spec dtype string.
         Raises ValueError if the given dtype has no mapping to a Python type.
         """
@@ -193,7 +193,7 @@ class CustomClassGenerator:
                     # returning Data, Container works as a generic fallback for now but should be more specific
                     return Data, Container
             elif spec.shape is None and spec.dims is None:
-                return cls._get_scalar_type_map(spec.dtype)
+                return cls._get_type_from_spec_dtype(spec.dtype)
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
@@ -201,7 +201,7 @@ class CustomClassGenerator:
         if spec.data_type is not None:
             return cls._get_container_type(spec.data_type, type_map)
         if spec.shape is None and spec.dims is None:
-            return cls._get_scalar_type_map(spec.dtype)
+            return cls._get_type_from_spec_dtype(spec.dtype)
         return 'array_data', 'data'
 
     @classmethod
