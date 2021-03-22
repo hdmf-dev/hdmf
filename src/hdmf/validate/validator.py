@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from copy import copy
 from itertools import chain
 from collections import defaultdict
+from typing import NamedTuple, Any
 
 import numpy as np
 
@@ -352,6 +353,12 @@ class AttributeValidator(Validator):
         return ret
 
 
+class NamedAttribute(NamedTuple):
+    """An immutable utility container representing an attribute value paired with its name."""
+    name: str
+    value: Any
+
+
 class BaseStorageValidator(Validator):
     '''A base class for validating against Spec objects that have attributes i.e. BaseStorageSpec'''
 
@@ -381,22 +388,21 @@ class BaseStorageValidator(Validator):
         nonreserved_attributes = self.__get_nonreserved_attributes(builder)
         attribute_matcher.assign_to_specs(nonreserved_attributes)
 
-        for attr_spec, attr_match in attribute_matcher.matches:
+        for attr_spec, attr_match in attribute_matcher.one_to_one_matches:
             if attr_spec.required and attr_match is None:
                 yield self.__construct_missing_attribute_error(attr_spec, builder)
             elif attr_match is not None:
-                attr_name, attr_value = attr_match
-                yield from self.__validate_existing_attribute(attr_spec, attr_value, builder)
+                yield from self.__validate_existing_attribute(attr_spec, attr_match, builder)
 
         yield from self.__warn_on_extra_attributes(attribute_matcher.unmatched, builder)
 
     def __get_nonreserved_attributes(self, builder):
         """"Returns the attributes of this builder which are not reserved according to the spec"""
-        def is_nonreserved(attr_item):
-            name, value = attr_item
-            return name not in self.spec.reserved_attrs()
+        def is_nonreserved(attribute):
+            return attribute.name not in self.spec.reserved_attrs()
 
-        return list(filter(is_nonreserved, builder.attributes.items()))
+        attributes = [NamedAttribute(name, value) for name, value in builder.attributes.items()]
+        return list(filter(is_nonreserved, attributes))
 
     def __construct_missing_attribute_error(self, attr_spec, parent_builder):
         """Returns a MissingError for the missing required attribute"""
@@ -404,10 +410,10 @@ class BaseStorageValidator(Validator):
         builder_loc = self.get_builder_loc(parent_builder)
         return MissingError(spec_loc, location=builder_loc)
 
-    def __validate_existing_attribute(self, attr_spec, attr_value, parent_builder):
+    def __validate_existing_attribute(self, attr_spec, attribute, parent_builder):
         """Validates the value of an attribute against its spec"""
         validator = AttributeValidator(attr_spec, self.vmap)
-        errors = validator.validate(attr_value)
+        errors = validator.validate(attribute.value)
 
         # since attributes are not (necessarily) builders, they don't contain the information required for
         # AttributeValidator to determine the location error, so we need to set it separately here
@@ -501,7 +507,7 @@ class GroupValidator(BaseStorageValidator):
                                       parent_builder.links.values()))
         matcher.assign_to_specs(builder_children)
 
-        for child_spec, matched_builders in matcher.matches:
+        for child_spec, matched_builders in matcher.one_to_many_matches:
             yield from self.__validate_presence_and_quantity(child_spec, len(matched_builders), parent_builder)
             for child_builder in matched_builders:
                 yield from self.__validate_child_builder(child_spec, child_builder, parent_builder)
@@ -598,15 +604,33 @@ class GroupValidator(BaseStorageValidator):
 
 
 class SpecMatch:
-    """A utility class class to hold a spec and the fields matched to it"""
+    """A container to hold a spec paired with a list of matching fields"""
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which fields will matched against'},
-            {'name': 'empty_match', 'type': None,
-             'doc': 'whatever represents an empty match for the matcher. eg. None or []', 'default': None})
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the spec for this container to hold'})
     def __init__(self, **kwargs):
-        spec, empty_match = getargs('spec', 'empty_match', kwargs)
-        self.spec = spec
-        self.matching = empty_match
+        self.spec = getargs('spec', kwargs)
+        self.matches = list()
+
+    @docval({'name': 'match', 'type': None, 'doc': 'adds a new field matching the spec'})
+    def add_match(self, **kwargs):
+        match = getargs('match', kwargs)
+        self.matches.append(match)
+
+    @property
+    @docval(returns='A list of tuples containing each spec and their single matching field', rtype=list)
+    def single_match(self):
+        """Returns a single match or `None` if there are no matches.
+
+        Raises a `ValueError` if there are more than one matches. This function should never be
+        called unless you can be certain there is at most one match.
+        """
+        if len(self.matches) == 0:
+            return None
+        elif len(self.matches) == 1:
+            return self.matches[0]
+        else:
+            msg = 'Should never have more than 1 attribute match, found %s.' % len(self.matches)
+            raise ValueError(msg)
 
 
 class SpecMatcher(metaclass=ABCMeta):
@@ -624,14 +648,8 @@ class SpecMatcher(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         vmap, specs = getargs('vmap', 'specs', kwargs)
         self.vmap = vmap
-        self._spec_matches = [self.create_empty_match(spec) for spec in specs]
+        self._spec_matches = [SpecMatch(spec) for spec in specs]
         self._unmatched = list()
-
-    @abstractmethod
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which fields will matched against'},
-            returns='An empty SpecMatch according to what defines an empty match for the subclass', rtype=SpecMatch)
-    def create_empty_match(self, **kwargs):
-        pass
 
     @property
     @docval(returns='The list of fields which did not match any specs', rtype=list)
@@ -639,9 +657,9 @@ class SpecMatcher(metaclass=ABCMeta):
         return self._unmatched
 
     @property
-    @docval(returns='A list of tuples containing each spec and their matching fields', rtype=list)
+    @docval(returns='A list of `SpecMatch`s containing each spec and their matching fields', rtype=list)
     def matches(self):
-        return [(sm.spec, sm.matching) for sm in self._spec_matches]
+        return self._spec_matches
 
     @docval({'name': 'fields', 'type': list, 'doc': 'a list of the fields to match against the specs'})
     def assign_to_specs(self, **kwargs):
@@ -654,20 +672,9 @@ class SpecMatcher(metaclass=ABCMeta):
         for field in fields:
             spec_match = self.choose_spec_match(field)
             if spec_match is not None:
-                self.assign_single_match(spec_match, field)
+                spec_match.add_match(field)
             else:
                 self._unmatched.append(field)
-
-    @abstractmethod
-    @docval({'name': 'spec_match', 'type': SpecMatch,
-             'doc': 'the SpecMatch to which the matchin field should be assigned'},
-            {'name': 'field', 'type': None, 'doc': 'the field to be assigned to the spec_match'})
-    def assign_single_match(self, **kwargs):
-        """Assigns a single field to the best matching spec
-
-        This method should be implemented in subclasses to define how assignment happens.
-        """
-        pass
 
     @abstractmethod
     @docval({'name': 'field', 'type': None, 'doc': 'the field to be matched against the specs'},
@@ -683,24 +690,9 @@ class SpecMatcher(metaclass=ABCMeta):
 class AttributeSpecMatcher(SpecMatcher):
     """Matches attributes against AttributeSpecs with a 1-to-1 mapping"""
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which attributes will matched against'},
-            returns='An empty SpecMatch where an empty match is represented by None', rtype=SpecMatch)
-    def create_empty_match(self, **kwargs):
-        spec = getargs('spec', kwargs)
-        return SpecMatch(spec, None)
-
-    @docval({'name': 'spec_match', 'type': SpecMatch,
-             'doc': 'the SpecMatch to which the matching attribute should be assigned'},
-            {'name': 'field', 'type': None, 'doc': 'the attribute to be assigned to the spec_match'})
-    def assign_single_match(self, **kwargs):
-        spec_match, field = getargs('spec_match', 'field', kwargs)
-        if spec_match.matching is not None:
-            raise ValueError('cannot assign another value')
-        spec_match.matching = field
-
     @docval({'name': 'field', 'type': None,
              'doc': 'the name and value of the attribute to be matched against the specs'},
-            returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
+            returns='The SpecMatch for the best matching spec, or `None` if no match is found', rtype=SpecMatch)
     def choose_spec_match(self, **kwargs):
         field = getargs('field', kwargs)
         attr_name, attr_value = field
@@ -709,22 +701,33 @@ class AttributeSpecMatcher(SpecMatcher):
                 return spec_match
         return None
 
+    @property
+    @docval(returns='A list of tuples containing each spec and their single matching `NamedAttribute`', rtype=list)
+    def one_to_one_matches(self):
+        """Returns attribute specs matched to attributes in a one-to-one mapping.
+
+        Since attribute specs always have a name, there can be at most one attribute matched to an
+        `AttributeSpec`. This function unwraps the one-to-many mapping returned by the `matches`
+        property to return a one-to-one mapping.
+
+        For each `SpecMatch`, a tuple containing the spec is returned along with a value
+        according to the following rules:
+          * If the `SpecMatch` tuple has exactly 1 `matches`, that attribute is returned.
+          * If the `SpecMatch` tuple has 0 `matches`, `None` is returned.
+          * Raises a `ValueError` if there are is more than one `matches` as this situation
+            should never occur when matching attributes.
+        """
+        return [(sm.spec, sm.single_match) for sm in self.matches]
+
 
 class BuilderSpecMatcher(SpecMatcher):
     """Matches a set of builders against a set of specs with an N-to-1 mapping"""
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which builders will matched against'},
-            returns='An empty SpecMatch where an empty match is represented by []', rtype=SpecMatch)
-    def create_empty_match(self, **kwargs):
-        spec = getargs('spec', kwargs)
-        return SpecMatch(spec, list())
-
-    @docval({'name': 'spec_match', 'type': SpecMatch,
-             'doc': 'the SpecMatch to which the matching builder should be assigned'},
-            {'name': 'field', 'type': None, 'doc': 'the builder to be assigned to the spec_match'})
-    def assign_single_match(self, **kwargs):
-        spec_match, field = getargs('spec_match', 'field', kwargs)
-        spec_match.matching.append(field)
+    @property
+    @docval(returns='A list of tuples containing each spec and their possibly multiple matches', rtype=list)
+    def one_to_many_matches(self):
+        """Returns specs and their matches as a sequence of tuples of the form (spec, matches)."""
+        return [(sm.spec, sm.matches) for sm in self.matches]
 
     @docval({'name': 'field', 'type': None, 'doc': 'the field to be matched against the specs'},
             returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
@@ -793,7 +796,7 @@ class BuilderSpecMatcher(SpecMatcher):
         """
         def is_unsatisfied(spec_matches):
             spec = spec_matches.spec
-            n_match = len(spec_matches.matching)
+            n_match = len(spec_matches.matches)
             if spec.required and n_match == 0:
                 return True
             if isinstance(spec.quantity, int) and n_match < spec.quantity:
