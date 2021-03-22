@@ -153,6 +153,7 @@ def check_shape(expected, received):
 
 
 def _resolve_spec_links(spec, vmap):
+    """Resolves a spec, following a link if it exists"""
     if isinstance(spec, LinkSpec):
         validator = vmap.get_validator(spec.target_type)
         spec = validator.spec
@@ -160,12 +161,14 @@ def _resolve_spec_links(spec, vmap):
 
 
 def _resolve_spec_data_type(spec):
+    """Resolves the `data_type` of a spec, following a link if it exists"""
     if isinstance(spec, LinkSpec):
         return spec.target_type
     return spec.data_type
 
 
 def _resolve_builder_data_type(builder, spec):
+    """Returns the `data_type` of a builder according to the `type_key` of the associated spec"""
     return builder.attributes.get(spec.type_key())
 
 
@@ -365,35 +368,63 @@ class BaseStorageValidator(Validator):
         return errors
 
     def __validate_attributes(self, builder):
+        """Validates the Attributes attached to `builder` against the builder's spec.
+
+        Validation works by first matching attributes on the builder against the attributes
+        attached to the spec using an AttributeMatcher in a one-to-one relationship. Following
+        that, each attribute spec is validated against the matched or absent attribute value.
+
+        Warnings are generated for each attribute attached to `builder` which is not matched to
+        any attribute specs.
+        """
         attribute_matcher = AttributeSpecMatcher(self.vmap, list(self.spec.attributes))
         nonreserved_attributes = self.__get_nonreserved_attributes(builder)
         attribute_matcher.assign_to_specs(nonreserved_attributes)
 
         for attr_spec, attr_match in attribute_matcher.matches:
-            if attr_match is None:
-                if attr_spec.required:
-                    spec_loc = self.get_spec_loc(attr_spec)
-                    builder_loc = self.get_builder_loc(builder)
-                    yield MissingError(spec_loc, location=builder_loc)
-            else:
+            if attr_spec.required and attr_match is None:
+                yield self.__construct_missing_attribute_error(attr_spec, builder)
+            elif attr_match is not None:
                 attr_name, attr_value = attr_match
-                validator = AttributeValidator(attr_spec, self.vmap)
-                errors = validator.validate(attr_value)
-                for err in errors:
-                    err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
-                yield from errors
+                yield from self.__validate_existing_attribute(attr_spec, attr_value, builder)
 
-        for attr_name, attr_value in attribute_matcher.unmatched:
-            name_of_erroneous = self.get_spec_loc(self.spec)
-            attribute_loc = self.get_builder_loc(builder) + ".%s" % attr_name
-            yield ExtraFieldWarning(name_of_erroneous, location=attribute_loc)
+        yield from self.__warn_on_extra_attributes(attribute_matcher.unmatched, builder)
 
     def __get_nonreserved_attributes(self, builder):
+        """"Returns the attributes of this builder which are not reserved according to the spec"""
         def is_nonreserved(attr_item):
             name, value = attr_item
             return name not in self.spec.reserved_attrs()
 
         return list(filter(is_nonreserved, builder.attributes.items()))
+
+    def __construct_missing_attribute_error(self, attr_spec, parent_builder):
+        """Returns a MissingError for the missing required attribute"""
+        spec_loc = self.get_spec_loc(attr_spec)
+        builder_loc = self.get_builder_loc(parent_builder)
+        return MissingError(spec_loc, location=builder_loc)
+
+    def __validate_existing_attribute(self, attr_spec, attr_value, parent_builder):
+        """Validates the value of an attribute against its spec"""
+        validator = AttributeValidator(attr_spec, self.vmap)
+        errors = validator.validate(attr_value)
+
+        # since attributes are not (necessarily) builders, they don't contain the information required for
+        # AttributeValidator to determine the location error, so we need to set it separately here
+        for err in errors:
+            err.location = self.get_builder_loc(parent_builder) + ".%s" % validator.spec.name
+        yield from errors
+
+    def __warn_on_extra_attributes(self, extra_attributes, builder):
+        """Warn for each attribute on `builder` which is classified as an extra field
+
+        Extra fields are any children attached to the parent builder
+        which are not part of the parent spec.
+        """
+        for attr_name, attr_value in extra_attributes:
+            name_of_erroneous = self.get_spec_loc(self.spec)
+            attribute_loc = self.get_builder_loc(builder) + ".%s" % attr_name
+            yield ExtraFieldWarning(name_of_erroneous, location=attribute_loc)
 
 
 class DatasetValidator(BaseStorageValidator):
@@ -458,6 +489,9 @@ class GroupValidator(BaseStorageValidator):
         separate class). Once the matching is complete, it is a
         straightforward procedure for validating the set of matching builders
         against each child spec.
+
+        Warnings are generated for each child attached to `builder` which is
+        not matched to any specs.
         """
         spec_children = list(chain(self.spec.datasets, self.spec.groups, self.spec.links))
         matcher = BuilderSpecMatcher(self.vmap, spec_children)
@@ -595,7 +629,6 @@ class SpecMatcher(metaclass=ABCMeta):
 
     @abstractmethod
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the Spec which fields will matched against'},
-
             returns='An empty SpecMatch according to what defines an empty match for the subclass', rtype=SpecMatch)
     def create_empty_match(self, **kwargs):
         pass
