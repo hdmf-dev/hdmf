@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from . import register_class
+from . import register_class, EXP_NAMESPACE
 from ..container import Table, Row, Container, AbstractContainer
 from ..utils import docval, popargs
 
@@ -101,7 +101,7 @@ class ObjectKey(Row):
     __table__ = ObjectKeyTable
 
 
-@register_class('ExternalResources')
+@register_class('ExternalResources', EXP_NAMESPACE)
 class ExternalResources(Container):
     """A table for mapping user terms (i.e. keys) to resource entities."""
 
