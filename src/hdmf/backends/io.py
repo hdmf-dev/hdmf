@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
-from ..build import BuildManager, GroupBuilder
+from ..build import BuildManager, Builder, DatasetBuilder, GroupBuilder
 from ..container import Container
 from ..utils import docval, getargs, popargs
 
@@ -38,7 +38,7 @@ class HDMFIO(metaclass=ABCMeta):
         if all(len(v) == 0 for v in f_builder.values()):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
-        self.add_foreign(f_builder)
+        self.add_foreign_fields(f_builder)
         container = self.__manager.construct(f_builder)
         return container
 
@@ -71,17 +71,17 @@ class HDMFIO(metaclass=ABCMeta):
 
         # fill in the gaps the foreign fields create
         for ff in foreign_fields:
-            foreign_builder = ff['builder']
+            value = ff['value']
             path = ff['path']
             parent_oid = ff['parent_object_id']
             parent = objects[parent_oid]
-            if isinstance(foreign_builder, DatasetBuilder):
-                parent.set_dataset(foreign_builder)
-            elif isinstance(foreign_builder, GroupBuilder):
-                parent.set_group(foreign_builder)
+            if isinstance(value, DatasetBuilder):
+                parent.set_dataset(value)
+            elif isinstance(value, GroupBuilder):
+                parent.set_group(value)
             else:
                 # assume we are adding an attribute
-                parent.set_attribute(path, foreign_builder)
+                parent.set_attribute(path, value)
 
         if not cached and cache:
             # only cached foreign field data if it has not
@@ -212,7 +212,7 @@ class HDMFIO(metaclass=ABCMeta):
         This method should return a list of dictionaries. Each dictionary should
         contain the following keys:
 
-            value:                the value of the foreign field
+            value:                the value of the foreign field e.g. a Builder or a scalar
             parent_object_id:     the object ID for the parent this foreign field belongs to
             path:                 the path of the foreign field relative to the parent object
         '''
