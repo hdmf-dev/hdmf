@@ -13,11 +13,24 @@ from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
 
+def _set_exp(cls):
+    cls._experimental = True
+
+def _exp_warn_msg(cls):
+    pfx = cls
+    if isinstance(cls, type):
+        pfx = cls.__name__
+    msg = ('%s is experimental -- it may be removed in the future and '
+           'is not guaranteed to maintain backward compatibility') % pfx
+    return msg
 
 class AbstractContainer(metaclass=ExtenderMeta):
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
     # the class attribute name to something domain-specific
+
+    _experimental = False
+
     _fieldsname = '__fields__'
 
     _data_type_attr = 'data_type'
@@ -159,6 +172,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
     def __new__(cls, *args, **kwargs):
         inst = super().__new__(cls)
+        if cls._experimental:
+            warn(_exp_warn_msg(cls))
         inst.__container_source = kwargs.pop('container_source', None)
         inst.__parent = None
         inst.__children = list()
