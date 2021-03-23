@@ -13,16 +13,21 @@ from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
 
+
 def _set_exp(cls):
+    """Set a class as being experimental"""
     cls._experimental = True
 
+
 def _exp_warn_msg(cls):
+    """Generate a warning message experimental features"""
     pfx = cls
     if isinstance(cls, type):
         pfx = cls.__name__
     msg = ('%s is experimental -- it may be removed in the future and '
            'is not guaranteed to maintain backward compatibility') % pfx
     return msg
+
 
 class AbstractContainer(metaclass=ExtenderMeta):
     # The name of the class attribute that subclasses use to autogenerate properties

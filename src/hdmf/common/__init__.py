@@ -14,8 +14,7 @@ from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
-
-from ..container import _set_exp
+from ..container import _set_exp  # noqa: E402
 
 
 # a global type map
