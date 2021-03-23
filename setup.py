@@ -19,6 +19,16 @@ with open('requirements-min.txt', 'r') as fp:
 
 print(reqs)
 
+
+### get schema SHA ###
+import subprocess
+import os
+import sys
+cwd = os.path.join(os.path.dirname(sys.argv[0]), "src/hdmf/common/hdmf-common-schema")
+SHA = subprocess.check_output("git rev-parse HEAD".split(), cwd=cwd)[:-1].decode('utf-8')
+print(SHA)
+
+
 setup_args = {
     'name': 'hdmf',
     'version': versioneer.get_version(),
