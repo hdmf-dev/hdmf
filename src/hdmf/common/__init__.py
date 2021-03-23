@@ -201,11 +201,15 @@ def get_class(**kwargs):
          'doc': 'the HDMFIO object to read from'},
         {'name': 'namespace', 'type': str,
          'doc': 'the namespace to validate against', 'default': CORE_NAMESPACE},
+        {'name': 'experimental', 'type': bool,
+         'doc': 'data type is an experimental data type', 'default': False},
         returns="errors in the file", rtype=list,
         is_method=False)
 def validate(**kwargs):
     """Validate an file against a namespace"""
-    io, namespace = getargs('io', 'namespace', kwargs)
+    io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
+    if experimental:
+        namespace = EXP_NAMESPACE
     builder = io.read_builder()
     validator = ValidatorMap(io.manager.namespace_catalog.get_namespace(name=namespace))
     return validator.validate(builder)
