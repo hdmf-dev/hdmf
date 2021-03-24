@@ -290,7 +290,9 @@ class NamespaceCatalog:
         self.__namespaces[name] = namespace
         for dt in namespace.catalog.get_registered_types():
             source = namespace.catalog.get_spec_source_file(dt)
-            self.__loaded_specs.setdefault(source, list()).append(dt)
+            self.__loaded_specs.setdefault(source, list())
+            if dt not in self.__loaded_specs[source]:  # do not include types that have already been loaded
+                self.__loaded_specs[source].append(dt)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             returns="the SpecNamespace with the given name", rtype=SpecNamespace)
@@ -365,6 +367,8 @@ class NamespaceCatalog:
         ret = self.__loaded_specs.get(source)
         if ret is not None:
             ret = tuple(ret)
+        else:
+            ret = tuple()
         return ret
 
     def __load_spec_file(self, reader, spec_source, catalog, dtypes=None, resolve=True):
