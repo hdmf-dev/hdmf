@@ -31,7 +31,7 @@ class SpecCatalog:
              'doc': 'path to the source file from which the spec was loaded', 'default': None})
     def register_spec(self, **kwargs):
         '''
-        Associate a specified object type with an HDF5 specification
+        Associate a specified object type with a specification
         '''
         spec, source_file = getargs('spec', 'source_file', kwargs)
         ndt = spec.data_type_inc
