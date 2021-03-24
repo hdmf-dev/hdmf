@@ -367,6 +367,8 @@ class NamespaceCatalog:
         ret = self.__loaded_specs.get(source)
         if ret is not None:
             ret = tuple(ret)
+        else:
+            ret = tuple()
         return ret
 
     def __load_spec_file(self, reader, spec_source, catalog, dtypes=None, resolve=True):
