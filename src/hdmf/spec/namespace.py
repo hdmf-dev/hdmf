@@ -290,9 +290,9 @@ class NamespaceCatalog:
         self.__namespaces[name] = namespace
         for dt in namespace.catalog.get_registered_types():
             source = namespace.catalog.get_spec_source_file(dt)
-            self.__loaded_specs.setdefault(source, list())
-            if dt not in self.__loaded_specs[source]:  # do not include types that have already been loaded
-                self.__loaded_specs[source].append(dt)
+            # do not add types that have already been loaded
+            # use dict with None values as ordered set because order of specs does matter
+            self.__loaded_specs.setdefault(source, dict()).update({dt: None})
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             returns="the SpecNamespace with the given name", rtype=SpecNamespace)
@@ -390,14 +390,16 @@ class NamespaceCatalog:
             return catalog.auto_register(spec_obj, spec_source)
 
         if ret is None:
-            ret = list()
+            ret = dict()  # this is used as an ordered set -- values are all none
             d = reader.read_spec(spec_source)
             specs = d.get('datasets', list())
             for spec_dict in specs:
-                ret.extend(__reg_spec(self.__dataset_spec_cls, spec_dict))
+                temp_dict = {k: None for k in __reg_spec(self.__dataset_spec_cls, spec_dict)}
+                ret.update(temp_dict)
             specs = d.get('groups', list())
             for spec_dict in specs:
-                ret.extend(__reg_spec(self.__group_spec_cls, spec_dict))
+                temp_dict = {k: None for k in __reg_spec(self.__group_spec_cls, spec_dict)}
+                ret.update(temp_dict)
             self.__loaded_specs[spec_source] = ret
         return ret
 
