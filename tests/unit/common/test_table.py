@@ -997,7 +997,7 @@ class TestDynamicTableClassColumns(TestCase):
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
 
-        table.add_column(name='col11', description='column #11', enum=True)
+        table.add_column(name='col11', description='column #11', enum=True, index=True)
         self.assertIsInstance(table.col11, EnumData)
 
     def test_add_opt_column_mismatched_table_true(self):
