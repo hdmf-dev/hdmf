@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from h5py import Dataset
 
-from . import register_class
+from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
@@ -1155,7 +1155,7 @@ def _map_elements(uint, elements):
     return {t[1]: uint(t[0]) for t in enumerate(elements)}
 
 
-@register_class('EnumData')
+@register_class('EnumData', EXP_NAMESPACE)
 class EnumData(VectorData):
     """
     A n-dimensional dataset that can contain elements from fixed set of elements.
