@@ -1059,8 +1059,8 @@ class TestDynamicTableClassColumns(TestCase):
                "Please ensure the new column complies with the spec. "
                "This will raise an error in a future version of HDMF.")
         with self.assertWarnsWith(UserWarning, msg):
-            table.add_column(name='col10', description='column #11', index=True)
-        self.assertEqual(table.col10.description, 'column #11')
+            table.add_column(name='col10', description='column #10', index=True)
+        self.assertEqual(table.col10.description, 'column #10')
         self.assertEqual(type(table.col10), VectorData)
         self.assertEqual(type(table.get('col10')), VectorIndex)
 
