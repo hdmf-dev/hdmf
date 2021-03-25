@@ -5,6 +5,8 @@ import os.path
 from copy import deepcopy
 
 CORE_NAMESPACE = 'hdmf-common'
+EXP_NAMESPACE = 'hdmf-experimental'
+
 
 from ..spec import NamespaceCatalog  # noqa: E402
 from ..utils import docval, getargs, call_docval_func, get_docval, fmt_docval_args  # noqa: E402
@@ -12,6 +14,7 @@ from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
+from ..container import _set_exp  # noqa: E402
 
 
 # a global type map
@@ -30,10 +33,16 @@ def register_class(**kwargs):
     as the class for data_type in namespace.
     """
     data_type, namespace, container_cls = getargs('data_type', 'namespace', 'container_cls', kwargs)
+    if namespace == EXP_NAMESPACE:
+        def _dec(cls):
+            _set_exp(cls)
+            __TYPE_MAP.register_container_type(namespace, data_type, cls)
+            return cls
+    else:
+        def _dec(cls):
+            __TYPE_MAP.register_container_type(namespace, data_type, cls)
+            return cls
 
-    def _dec(cls):
-        __TYPE_MAP.register_container_type(namespace, data_type, cls)
-        return cls
     if container_cls is None:
         return _dec
     else:
@@ -122,7 +131,7 @@ ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdenti
 DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
 EnumData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'EnumData')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
-ExternalResources = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ExternalResources')
+ExternalResources = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'ExternalResources')
 SimpleMultiContainer = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'SimpleMultiContainer')
 
 
@@ -191,11 +200,15 @@ def get_class(**kwargs):
          'doc': 'the HDMFIO object to read from'},
         {'name': 'namespace', 'type': str,
          'doc': 'the namespace to validate against', 'default': CORE_NAMESPACE},
+        {'name': 'experimental', 'type': bool,
+         'doc': 'data type is an experimental data type', 'default': False},
         returns="errors in the file", rtype=list,
         is_method=False)
 def validate(**kwargs):
     """Validate an file against a namespace"""
-    io, namespace = getargs('io', 'namespace', kwargs)
+    io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
+    if experimental:
+        namespace = EXP_NAMESPACE
     builder = io.read_builder()
     validator = ValidatorMap(io.manager.namespace_catalog.get_namespace(name=namespace))
     return validator.validate(builder)
