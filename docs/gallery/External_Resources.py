@@ -37,7 +37,7 @@ er = ExternalResources(name='example')
 # as a string, but if you want to reference a key then you reference
 # the key object itself.
 
-data = Data(name="species", data=['Homo sapien','Mus musculus'])
+data = Data(name="species", data=['Homo sapien', 'Mus musculus'])
 er.add_ref(container=data, field='', key='homo sapien', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
