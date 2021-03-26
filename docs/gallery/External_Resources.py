@@ -69,7 +69,6 @@ er.get_keys(keys=[er.get_key('Homo sapien'), er.get_key('Mus Musculus')])
 # when referencing a key. Let's start by creating a new key.
 
 # Let's start with a new instance of ExternalResources
-
 er = ExternalResources(name='new_example')
 
 # The add_key method will create a new key
@@ -78,6 +77,13 @@ er.add_key(key_name='Mus Musculus')
 
 # The get_key method will return the key object of the key_name.
 key_object = er.get_key(key_name='Mus Musculus')
+
+# We can use the key_object to reference keys.
+er.add_ref(container=data, field='', key=key_object, resource_name='NCBI_Taxonomy',
+           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid10090',
+           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+er.get_keys()
 
 # This will return a pandas dataframe of the KeyTable
 er.keys.to_dataframe()
@@ -105,7 +111,13 @@ er.add_keys(df)
 # The ResourceTable holds the name and uri for the resource.
 # For example, you could add NCBI Taxonomy with its uri.
 
+er = ExternalResources(name='new_example')
+
+
 er.add_resource(resource='NCBI_Taxonomy', uri='https://www.ncbi.nlm.nih.gov/taxonomy')
+
+# This will return a pandas dataframe of the ResourceTable
+er.resources.to_dataframe()
 
 ###############################################################################
 # Using the add_entity method
@@ -118,12 +130,22 @@ er.add_entity(key='Homo sapien', resources_idx=0,
               entity_id='NCBI:txid9606',
               entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
+er.add_entity(key='Mus Musculus', resources_idx=0,
+              entity_id='NCBI:txid10090',
+              entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+# This will return a pandas dataframe of the EntityTable
+er.entities.to_dataframe()
+
 ###############################################################################
 # Using the add_object method
 # ------------
 # This method creates a new object and adds it to the ObjectTable.
 
 er.add_object(container=data, field='Data')
+
+# This will return a pandas dataframe of the ObjectTable
+er.objects.to_dataframe()
 
 ###############################################################################
 # Using the add_external_reference method
