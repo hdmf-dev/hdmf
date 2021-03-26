@@ -124,7 +124,7 @@ class ObjectKey(Row):
     __table__ = ObjectKeyTable
 
 
-@register_class('ExternalResources')
+@register_class('ExternalResources', EXP_NAMESPACE)
 class ExternalResources(Container):
     """A table for mapping user terms (i.e. keys) to resource entities."""
 
