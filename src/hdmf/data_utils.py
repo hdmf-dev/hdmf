@@ -10,11 +10,13 @@ from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
 def append_data(data, arg):
+    if isinstance(data, DataIO):
+        pass
     if isinstance(data, (list, DataIO)):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.append(data, [arg])
+        return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1
