@@ -19,6 +19,7 @@ improve the structure and access of data stored with this type for your use case
 ###############################################################################
 # Creating an instance of the ExternalResources class
 from hdmf.common import ExternalResources
+from hdmf.common import DynamicTable
 from hdmf import Data
 import pandas as pd
 
@@ -48,6 +49,21 @@ er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Tax
 er.add_ref(container=data, field='', key='Mus musculus', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid10090',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+# In the above example, field was empty because the data of the Data object was
+# being associated with a resource. The Data object may also have attributes
+# that you would like to associate with resources.
+# Similarly, a Container object may have several datasets and attributes that
+# you would like to associate with resources.
+# To disambiguate between these different fields, you can set the 'field' keyword
+# argument corresponding to the name of the dataset or attribute containing the
+# values being associated with a resource. For example:
+genotypes = DynamicTable(name='genotypes', description='My genotypes')
+genotypes.add_column(name='genotype_name', description="Name of genotypes")
+genotypes.add_row(id=0, genotype_name='Rorb')
+er.add_ref(container=genotypes, field='genotype_name', key='Mus musculus', resource_name='MGI Ontology',
+           resource_uri='http://www.informatics.jax.org/', entity_id='MGI:1346434',
+           entity_uri="http://www.informatics.jax.org/probe/key/804614")
 
 ###############################################################################
 # Using the get_keys method
