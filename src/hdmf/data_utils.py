@@ -10,8 +10,6 @@ from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
 def append_data(data, arg):
-    if isinstance(data, DataIO):
-        pass
     if isinstance(data, (list, DataIO)):
         data.append(arg)
         return data
