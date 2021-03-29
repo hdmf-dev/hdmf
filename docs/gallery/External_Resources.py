@@ -3,6 +3,9 @@ ExternalResources
 ============
 
 This is a user guide to interacting with the ``ExternalResources`` class.
+The ExternalResources type is experimental and is subject to change in future releases.
+If you use this type, please provide feedback to the HDMF team so that we can
+improve the structure and access of data stored with this type for your use cases.
 
 """
 
@@ -37,12 +40,12 @@ er = ExternalResources(name='example')
 # as a string, but if you want to reference a key then you reference
 # the key object itself.
 
-data = Data(name="species", data=['Homo sapien', 'Mus Musculus'])
-er.add_ref(container=data, field='', key='Homo sapien', resource_name='NCBI_Taxonomy',
+data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
-er.add_ref(container=data, field='', key='Mus Musculus', resource_name='NCBI_Taxonomy',
+er.add_ref(container=data, field='', key='Mus musculus', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid10090',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
@@ -57,10 +60,10 @@ er.add_ref(container=data, field='', key='Mus Musculus', resource_name='NCBI_Tax
 er.get_keys()
 
 # Single Key
-er.get_keys(keys=er.get_key('Homo sapien'))
+er.get_keys(keys=er.get_key('Homo sapiens'))
 
 # List of Specific Keys
-er.get_keys(keys=[er.get_key('Homo sapien'), er.get_key('Mus Musculus')])
+er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 
 ###############################################################################
 # Using the add_key and the get_key methods
@@ -72,11 +75,11 @@ er.get_keys(keys=[er.get_key('Homo sapien'), er.get_key('Mus Musculus')])
 er = ExternalResources(name='new_example')
 
 # The add_key method will create a new key
-er.add_key(key_name='Homo sapien')
-er.add_key(key_name='Mus Musculus')
+er.add_key(key_name='Homo sapiens')
+er.add_key(key_name='Mus musculus')
 
 # The get_key method will return the key object of the key_name.
-key_object = er.get_key(key_name='Mus Musculus')
+key_object = er.get_key(key_name='Mus musculus')
 
 # We can use the key_object to reference keys.
 er.add_ref(container=data, field='', key=key_object, resource_name='NCBI_Taxonomy',
@@ -95,7 +98,7 @@ er.keys.to_dataframe()
 # to add/reference keys, resources, and entities.
 
 new_data = {
-    'key_name': 'Homo sapien',
+    'key_name': 'Homo sapiens',
     'resources_idx': 0,
     'entity_id': 'NCBI:txid9606',
     'entity_uri': 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}
@@ -126,11 +129,11 @@ er.resources.to_dataframe()
 # Keeping with the NCBI Taxonomy example, the entity would be a specfic item
 # or "search" in NCBI Taxonomy, whereas the resource is NCBI Taxonomy itself.
 
-er.add_entity(key='Homo sapien', resources_idx=0,
+er.add_entity(key='Homo sapiens', resources_idx=0,
               entity_id='NCBI:txid9606',
               entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
-er.add_entity(key='Mus Musculus', resources_idx=0,
+er.add_entity(key='Mus musculus', resources_idx=0,
               entity_id='NCBI:txid10090',
               entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
@@ -154,12 +157,12 @@ er.objects.to_dataframe()
 
 # Let's create a new Data instance
 
-data_mouse = Data(name="species", data='Mus Musculus')
+data_mouse = Data(name="species", data='Mus musculus')
 
 # This method below returns an Object object.
 object_ = er._check_object_field(data_mouse, field='')
 
-key_object = er.get_key(key_name='Mus Musculus')
+key_object = er.get_key(key_name='Mus musculus')
 
 er.add_external_reference(object_, key_object)
 
