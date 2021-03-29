@@ -1209,6 +1209,46 @@ class TestEnumData(TestCase):
         np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
 
 
+class TestIndexedEnumData(TestCase):
+
+    def test_init(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        idx = VectorIndex('enum_index', [2, 4, 6], target=ed)
+        self.assertIsInstance(ed.elements, VectorData)
+        self.assertIsInstance(idx.target, EnumData)
+
+    def test_add_row(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row(['a', 'a', 'a'])
+        idx.add_row(['b', 'b'])
+        idx.add_row(['c', 'c', 'c', 'c'])
+        np.testing.assert_array_equal(idx[0], ['a', 'a', 'a'])
+        np.testing.assert_array_equal(idx[1], ['b', 'b'])
+        np.testing.assert_array_equal(idx[2], ['c', 'c', 'c', 'c'])
+
+    def test_add_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row([0, 0, 0], index=True)
+        idx.add_row([1, 1], index=True)
+        idx.add_row([2, 2, 2, 2], index=True)
+        np.testing.assert_array_equal(idx[0], ['a', 'a', 'a'])
+        np.testing.assert_array_equal(idx[1], ['b', 'b'])
+        np.testing.assert_array_equal(idx[2], ['c', 'c', 'c', 'c'])
+
+    @unittest.skip("feature is not yet supported")
+    def test_add_2d_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row([['a', 'a'], ['a', 'a'], ['a', 'a']])
+        idx.add_row([['b', 'b'], ['b', 'b']])
+        idx.add_row([['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
+        np.testing.assert_array_equal(idx[0], [['a', 'a'], ['a', 'a'], ['a', 'a']])
+        np.testing.assert_array_equal(idx[1], [['b', 'b'], ['b', 'b']])
+        np.testing.assert_array_equal(idx[2], [['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
+
+
 class TestIndexing(TestCase):
 
     def setUp(self):
@@ -1415,6 +1455,33 @@ class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
         table.add_row(bar='a')
         table.add_row(bar='c')
         return table
+
+
+class TestDynamicTableAddEnum(TestCase):
+
+    def test_enum(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an enumerable column', enum=True)
+        table.add_row(bar='a')
+        table.add_row(bar='b')
+        table.add_row(bar='a')
+        table.add_row(bar='c')
+        rec = table.to_dataframe()
+        exp = pd.DataFrame(data={'bar': ['a', 'b', 'a', 'c']}, index=pd.Series(name='id', data=[0, 1, 2, 3]))
+        pd.testing.assert_frame_equal(exp, rec)
+
+    def test_enum_index(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an indexed enumerable column', enum=True, index=True)
+        table.add_row(bar=['a', 'a', 'a'])
+        table.add_row(bar=['b', 'b', 'b', 'b'])
+        table.add_row(bar=['c', 'c'])
+        rec = table.to_dataframe()
+        exp = pd.DataFrame(data={'bar': [['a', 'a', 'a'],
+                                         ['b', 'b', 'b', 'b'],
+                                         ['c', 'c']]},
+                           index=pd.Series(name='id', data=[0, 1, 2]))
+        pd.testing.assert_frame_equal(exp, rec)
 
 
 class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
