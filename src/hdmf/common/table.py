@@ -50,7 +50,7 @@ class VectorData(Data):
     def get(self, key, **kwargs):
         return super().get(key)
 
-    def extend(self, ar):
+    def extend(self, ar, **kwargs):
         #################################################################################
         # Each subclass of VectorData should have its own extend method to ensure
         # functionality AND efficiency of the extend operation. However, because currently
@@ -61,7 +61,7 @@ class VectorData(Data):
             super().extend(ar)
         else:
             for i in ar:
-                self.add_row(i)
+                self.add_row(i, **kwargs)
 
 
 @register_class('VectorIndex')
@@ -93,7 +93,7 @@ class VectorIndex(VectorData):
             # adjust precision for types that we can adjust precision for
             self.__adjust_precision(self.__uint)
 
-    def add_vector(self, arg):
+    def add_vector(self, arg, **kwargs):
         """
         Add the given data value to the target VectorData and append the corresponding index to this VectorIndex
         :param arg: The data value to be added to self.target
@@ -102,7 +102,7 @@ class VectorIndex(VectorData):
             for a in arg:
                 self.target.add_vector(a)
         else:
-            self.target.extend(arg)
+            self.target.extend(arg, **kwargs)
         self.append(self.__check_precision(len(self.target)))
 
     def __check_precision(self, idx):
@@ -132,11 +132,11 @@ class VectorIndex(VectorData):
         else:
             raise ValueError("cannot adjust precision of type %s to %s", (type(self.data), uint))
 
-    def add_row(self, arg):
+    def add_row(self, arg, **kwargs):
         """
         Convenience function. Same as :py:func:`add_vector`
         """
-        self.add_vector(arg)
+        self.add_vector(arg, **kwargs)
 
     def __getitem_helper(self, arg, **kwargs):
         """
