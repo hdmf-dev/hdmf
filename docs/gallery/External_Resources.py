@@ -1,6 +1,6 @@
 """
 ExternalResources
-============
+=============================
 
 This is a user guide to interacting with the ``ExternalResources`` class.
 The ExternalResources type is experimental and is subject to change in future releases.
@@ -50,6 +50,9 @@ er.add_ref(container=data, field='', key='Mus musculus', resource_name='NCBI_Tax
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid10090',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
+###############################################################################
+# Using the add_ref method with a field
+# ------------------------------------------------------
 # In the above example, field was empty because the data of the Data object was
 # being associated with a resource. The Data object may also have attributes
 # that you would like to associate with resources.
