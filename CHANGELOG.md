@@ -6,6 +6,13 @@
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
+- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace 
+  (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
+  a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
+- Add `EnumData` type for storing data that comes from a fixed set of values. This replaces `VocabData` i.e.
+  `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
+  `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
+  @ajtritt (#537)
 - Add `ExtraFieldWarning` validator warning, which is created when fields that are not part of the spec are
   encountered @dsleiter (#542)
 
