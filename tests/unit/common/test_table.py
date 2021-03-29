@@ -997,6 +997,9 @@ class TestDynamicTableClassColumns(TestCase):
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
 
+        table.add_column(name='col10', description='column #10', index=True, col_cls=EnumData)
+        self.assertIsInstance(table.col10, EnumData)
+
         table.add_column(name='col11', description='column #11', enum=True, index=True)
         self.assertIsInstance(table.col11, EnumData)
 
