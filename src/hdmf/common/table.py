@@ -50,6 +50,19 @@ class VectorData(Data):
     def get(self, key, **kwargs):
         return super().get(key)
 
+    def extend(self, ar):
+        #################################################################################
+        # Each subclass of VectorData should have its own extend method to ensure
+        # functionality AND efficiency of the extend operation. However, because currently
+        # they do not all have one of these methods, the only way to ensure functionality
+        # is with calls to add_row. Because that is inefficient for basic VectorData,
+        # this check is added to ensure we always call extend on a basic VectorData.
+        if self.__class__.__mro__[0] == VectorData:
+            super().extend(ar)
+        else:
+            for i in ar:
+                self.add_row(i)
+
 
 @register_class('VectorIndex')
 class VectorIndex(VectorData):
