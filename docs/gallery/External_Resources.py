@@ -11,7 +11,7 @@ improve the structure and access of data stored with this type for your use case
 
 ###############################################################################
 # Introduction
-# ------------
+# ------------------------------------------------------
 # The :py:class:`~hdmf.common.resources.ExternalResources` class provides a way
 # to organize and map user terms (keys) to multiple resources and entities
 # from the resources.
@@ -27,7 +27,7 @@ er = ExternalResources(name='example')
 
 ###############################################################################
 # Using the add_ref method
-# ------------
+# ------------------------------------------------------
 # add_ref will be one of the ExternalResources class methods that simplifies
 # how to add new data.
 # You can think of add_ref as a wrapper function.
@@ -67,7 +67,7 @@ er.add_ref(container=genotypes, field='genotype_name', key='Mus musculus', resou
 
 ###############################################################################
 # Using the get_keys method
-# ------------
+# ------------------------------------------------------
 # This method returns a DataFrame of key_name, resource_table_idx, entity_id,
 # and entity_uri. You can either have a single key object,
 # a list of key objects, or leave the input paramters empty to return all.
@@ -83,7 +83,7 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 
 ###############################################################################
 # Using the add_key and the get_key methods
-# ------------
+# ------------------------------------------------------
 # Mentioned in the note aobve, the user needs to reference a key object
 # when referencing a key. Let's start by creating a new key.
 
@@ -102,6 +102,13 @@ er.add_ref(container=data, field='', key=key_object, resource_name='NCBI_Taxonom
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid10090',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
+# It is also useful to associate an existing key with an additional entity.
+# For example, we can reference the Mus musculus key for a different entity from
+# a new resource.
+er.add_ref(container=data, field='', key=key_object, resource_name='ITIS',
+           resource_uri='https://www.itis.gov/', entity_id='180366',
+           entity_uri='https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=180366')
+
 er.get_keys()
 
 # This will return a pandas dataframe of the KeyTable
@@ -109,7 +116,7 @@ er.keys.to_dataframe()
 
 ###############################################################################
 # Using the add_keys method
-# ------------
+# ------------------------------------------------------
 # This is another wrapper function, but allows the use of a pandas DataFrame
 # to add/reference keys, resources, and entities.
 
@@ -125,7 +132,7 @@ er.add_keys(df)
 
 ###############################################################################
 # Using the add_resource method
-# ------------
+# ------------------------------------------------------
 # This method creates new resource objects and adds them to the ResourceTable.
 # The ResourceTable holds the name and uri for the resource.
 # For example, you could add NCBI Taxonomy with its uri.
@@ -140,7 +147,7 @@ er.resources.to_dataframe()
 
 ###############################################################################
 # Using the add_entity method
-# ------------
+# ------------------------------------------------------
 # This method creates a new entity object and adds it to the EntityTable.
 # Keeping with the NCBI Taxonomy example, the entity would be a specfic item
 # or "search" in NCBI Taxonomy, whereas the resource is NCBI Taxonomy itself.
@@ -158,7 +165,7 @@ er.entities.to_dataframe()
 
 ###############################################################################
 # Using the add_object method
-# ------------
+# ------------------------------------------------------
 # This method creates a new object and adds it to the ObjectTable.
 
 er.add_object(container=data, field='Data')
@@ -168,7 +175,7 @@ er.objects.to_dataframe()
 
 ###############################################################################
 # Using the add_external_reference method
-# ------------
+# ------------------------------------------------------
 # This method creates objectkey to ObjectKeyTable
 
 # Let's create a new Data instance
