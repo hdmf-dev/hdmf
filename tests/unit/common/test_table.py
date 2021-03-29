@@ -912,8 +912,8 @@ class SubTable(DynamicTable):
         {'name': 'col6', 'description': 'optional region', 'table': True},
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
-        {'name': 'col10', 'description': 'required, indexed enum column', 'index': True, 'class': EnumData},
-        {'name': 'col11', 'description': 'required, enumerable column', 'enum': True, 'index': True},
+        {'name': 'col10', 'description': 'optional, indexed enum column', 'index': True, 'class': EnumData},
+        {'name': 'col11', 'description': 'optional, enumerable column', 'enum': True, 'index': True},
     )
 
 
