@@ -68,7 +68,9 @@ class TestSpecLoad(TestCase):
         self.specs_path = 'test_load_namespace.specs.yaml'
         self.namespace_path = 'test_load_namespace.namespace.yaml'
         with open(self.specs_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
         ns_dict = {
             'doc': 'a test namespace',
             'name': self.NS_NAME,
@@ -80,7 +82,9 @@ class TestSpecLoad(TestCase):
         self.namespace = SpecNamespace.build_namespace(**ns_dict)
         to_dump = {'namespaces': [self.namespace]}
         with open(self.namespace_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
         self.ns_catalog = NamespaceCatalog()
 
     def tearDown(self):
@@ -126,7 +130,9 @@ class TestSpecLoadEdgeCase(TestCase):
         # write basically empty specs file
         to_dump = {'groups': []}
         with open(self.specs_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
 
     def tearDown(self):
         remove_test_file(self.namespace_path)
@@ -166,7 +172,9 @@ class TestSpecLoadEdgeCase(TestCase):
         # write the namespace to file without version key
         to_dump = {'namespaces': [namespace]}
         with open(self.namespace_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
@@ -194,7 +202,9 @@ class TestSpecLoadEdgeCase(TestCase):
         # write the namespace to file without version key
         to_dump = {'namespaces': [namespace]}
         with open(self.namespace_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
