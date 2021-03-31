@@ -1,6 +1,6 @@
 import pandas as pd
 
-from hdmf.common.resources import ExternalResources, Key
+from hdmf.common.resources import ExternalResources, Key, Resource
 from hdmf.testing import TestCase, H5RoundTripMixin
 
 
@@ -94,6 +94,16 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                           ('resource2', 'resource_uri2')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
         self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'), (0, 1, 'id12', 'url21')])
+
+    def test_get_resources(self):
+        er = ExternalResources('terms')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1', resource_name='resource1',
+            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
+        resource = er.get_resource('resource1')
+        self.assertIsInstance(resource, Resource)
+        with self.assertRaises(ValueError):
+            er.get_resource('unknown_resource')
 
     def test_add_ref_two_keys(self):
         er = ExternalResources('terms')
@@ -198,7 +208,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
-    def test_add_keys(self):
+    def test_add_external_resource(self):
         er = ExternalResources('terms')
         resource1 = er.add_resource(resource='resource1', uri='resource_uri1')
         resource2 = er.add_resource(resource='resource2', uri='resource_uri2')
@@ -210,7 +220,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                   ['key2', resource3, "id13", 'url13']],
             columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri']
         )
-        ret = er.add_keys(keys)
+        ret = er.add_external_resource(keys)
 
         self.assertEqual({'key1', 'key2'}, set(ret))
         self.assertEqual(er.keys.data, [('key1',), ('key2',)])
@@ -240,7 +250,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                   ['key2', resource3, "id13", 'url13']],
             columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri']
         )
-        er.add_keys(input_data)
+        er.add_external_resource(input_data)
 
         received = er.get_keys()
 

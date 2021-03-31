@@ -273,6 +273,18 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_id[0]]
 
+    @docval({'name': 'resource_name', 'type': str, 'default': None})
+    def get_resource(self, **kwargs):
+        """
+        Retrieve resource object with the given resource_name.
+        """
+        resourcetable_idx = self.resources.which(resource = kwargs['resource_name'])
+        if len(resourcetable_idx) == 0:
+            #Resource hasn't been created
+            raise ValueError("No resource with name '%s' exists. Use add_resource to create a new resource" % kwargs['resource_name'])
+        else:
+            return self.resources.row[resourcetable_idx[0]]
+
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
@@ -349,13 +361,19 @@ class ExternalResources(Container):
             entity = self.add_entity(key, resource_table_idx, entity_id, entity_uri)
             self.add_external_reference(object_field, key)
 
-        return entity
-
+        return key, resource_table_idx, entity
+    
+#     @docval({'name': 'res_df', 'type': pd.DataFrame, 'doc': 'the DataFrame with all the keys and their resources'},
+#             rtype=dict, returns='a dict with the Key objects that were added')
+#     def test_popargs(self, **kwargs):
+#         res_df = popargs('res_df', kwargs)
+#         return res_df
+    
     @docval({'name': 'res_df', 'type': pd.DataFrame, 'doc': 'the DataFrame with all the keys and their resources'},
             rtype=dict, returns='a dict with the Key objects that were added')
-    def add_keys(self, **kwargs):
+    def add_external_resource(self, **kwargs):
         """
-        Add key to be used for making references to external resources. This must be a DataFrame with the
+        Add data to be used for making references to external resources. This must be a DataFrame with the
         following columns:
             - *key_name*:              the key that will be used for referencing an external resource
             - *resources_idx*:         the index for the resourcetable

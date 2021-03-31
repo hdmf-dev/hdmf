@@ -123,15 +123,18 @@ er.keys.to_dataframe()
 # This is another wrapper function, but allows the use of a pandas DataFrame
 # to add/reference keys, resources, and entities.
 
+# get_resource returns the resource object given the resource_name.
+resource = er.get_resource('NCBI_Taxonomy')
+
 new_data = {
     'key_name': 'Homo sapiens',
-    'resources_idx': 0,
+    'resources_idx': resource,
     'entity_id': 'NCBI:txid9606',
     'entity_uri': 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}
 
 df = pd.DataFrame(new_data, index=[0])
 
-er.add_keys(df)
+er.add_external_resource(df)
 
 ###############################################################################
 # Using the add_resource method
