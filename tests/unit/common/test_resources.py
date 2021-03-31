@@ -65,7 +65,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(
             container='uuid1', field='field1', key='key1',
             resources_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
-        resource_list = er.resources.which(resource = 'resource0')
+        resource_list = er.resources.which(resource='resource0')
         self.assertEqual(len(resource_list), 1)
 
     def test_add_ref_bad_arg(self):
