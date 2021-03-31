@@ -278,12 +278,12 @@ class ExternalResources(Container):
         """
         Retrieve resource object with the given resource_name.
         """
-        resourcetable_idx = self.resources.which(resource = kwargs['resource_name'])
-        if len(resourcetable_idx) == 0:
+        resource_table_idx = self.resources.which(resource = kwargs['resource_name'])
+        if len(resource_table_idx) == 0:
             #Resource hasn't been created
             raise ValueError("No resource with name '%s' exists. Use add_resource to create a new resource" % kwargs['resource_name'])
         else:
-            return self.resources.row[resourcetable_idx[0]]
+            return self.resources.row[resource_table_idx[0]]
 
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
@@ -319,10 +319,13 @@ class ExternalResources(Container):
                  or kwargs['resource_uri'] is not None)):
             msg = "Can't have resource_idx with resource_name or resource_uri."
             raise ValueError(msg)
-        else:
+        elif len(self.resources.which(resource = kwargs['resource_name'])) == 0:
             resource_name = kwargs['resource_name']
             resource_uri = kwargs['resource_uri']
             resource_table_idx = self.add_resource(resource_name, resource_uri)
+        else:
+            idx = self.resources.which(resource = kwargs['resource_name'])
+            resource_table_idx = self.resources.row[idx[0]]
 
         if (resource_table_idx is not None and entity_id is not None and entity_uri is not None):
             add_entity = True
