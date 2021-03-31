@@ -64,7 +64,7 @@ er.add_ref(container=data, field='', key='Mus musculus', resource_name='NCBI_Tax
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
-er.add_ref(container=genotypes, field='genotype_name', key='Mus musculus', resource_name='MGI Ontology',
+er.add_ref(container=genotypes, field='genotype_name', key='Rorb', resource_name='MGI Ontology',
            resource_uri='http://www.informatics.jax.org/', entity_id='MGI:1346434',
            entity_uri="http://www.informatics.jax.org/probe/key/804614")
 

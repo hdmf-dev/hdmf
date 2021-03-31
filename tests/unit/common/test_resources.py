@@ -59,6 +59,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [('uuid1', 'field1')])
 
+    def test_add_ref_duplicate_resource(self):
+        er = ExternalResources('terms')
+        resource1 = er.add_resource(resource='resource0', uri='resource_uri0')
+        er.add_ref(
+            container='uuid1', field='field1', key='key1',
+            resources_idx=resource1, entity_id='entity_id1', entity_uri='entity1')
+        resource_list = er.resources.which(resource = 'resource0')
+        self.assertEqual(len(resource_list), 1)
+
     def test_add_ref_bad_arg(self):
         er = ExternalResources('terms')
         resource1 = er.add_resource(resource='resource0', uri='resource_uri0')
@@ -73,7 +82,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1', resource_uri='uri1')
         with self.assertRaises(TypeError):
             er.add_ref('uuid1', 'field1')
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             er.add_ref('uuid1', 'field1', 'key1', resource_name='resource1')
         with self.assertRaises(ValueError):
             er.add_ref(
