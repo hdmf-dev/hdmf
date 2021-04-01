@@ -228,7 +228,7 @@ class ExternalResources(Container):
         If the container and field have not been added, add the pair and return
         the corresponding Object. Otherwise, just return the Object.
         """
-        objecttable_idx = self.objects.which(object_id=container)
+        objecttable_idx = self.objects.which(object_id=container.object_id)
         if len(objecttable_idx) > 0:
             field_idx = self.objects.which(field=field)
             objecttable_idx = list(set(objecttable_idx) & set(field_idx))
@@ -311,6 +311,25 @@ class ExternalResources(Container):
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         add_entity = False
+        
+#         if container is not None and field is not None and not isinstance(key, Key):
+#             # if same key is used multiple times, determine
+#             # which instance based on the Container
+#             key_id = self.keys.which(key=key)
+
+#             if len(key_id) == 0:
+#                 # the key has never been used before
+#                 key = self.add_key(key)
+#             else:
+#                 object_field = self._check_object_field(container,field)
+#                 obj_key_rows = self.object_keys.which(objects_idx = object_field.idx)
+#                 key_idx = self.get_key(key, container, field).idx
+#                 for row in obj_key_rows:
+#                     object_key_key_idx = self.object_keys['keys_idx', row]
+#                     if object_key_key_idx == key_idx:
+#                         msg = "Use Key Object"
+#                         raise ValueError(msg)
+                   
         if kwargs['resources_idx'] is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
             resource_table_idx = kwargs['resources_idx']
         elif (
@@ -339,7 +358,7 @@ class ExternalResources(Container):
 
         object_field = self._check_object_field(container, field)
 
-        # get Key object by searching the table
+#         get Key object by searching the table
         if not isinstance(key, Key):
             key_id = self.keys.which(key=key)
 
