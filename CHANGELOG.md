@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 2.5.0 (March 30, 2021)
+## HDMF 2.5.0 (April 5, 2021)
 
 ### New features
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
