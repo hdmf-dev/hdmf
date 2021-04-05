@@ -6,7 +6,7 @@
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
-- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace 
+- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
   (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
   a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
 
@@ -14,6 +14,10 @@
   `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
   `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
   @ajtritt (#537)
+- Add `AlignedDynamicTable` type which defines a DynamicTable that supports storing a collection of subtables.
+  Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
+  defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
+  @oruebel (#551)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
@@ -48,13 +52,13 @@
 ### New features
 - Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
 - Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
-  `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
+  `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)
 - Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
   @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
 - Add method `AbstractContainer.get_fields_conf`. @rly (#441)
 - Add functionality for storing external resource references. @ajtritt (#442)
-- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
+- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'
   and 'scalar_data'. @rly (#446)
 - Add `SimpleMultiContainer`, a data_type for storing a `Container` and `Data` objects together. @ajtritt (#449)
 - Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#450)
@@ -142,7 +146,7 @@
 - Allow passing None for docval enum arguments with default value None. @rly (#409)
 - If a file is written with an orphan container, e.g., a link to a container that is not written, then an
   `OrphanContainerBuildError` will be raised. This replaces the `OrphanContainerWarning` that was previously raised.
-  @rly (#407)  
+  @rly (#407)
 
 ## HDMF 2.0.0 (July 17, 2020)
 
