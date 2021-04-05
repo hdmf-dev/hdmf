@@ -1,5 +1,5 @@
 from .. import register_map
-from ..table import DynamicTable, VectorIndex
+from ..table import DynamicTable, VectorIndex, AlignedDynamicTable
 from ...build import ObjectMapper, BuildManager
 from ...spec import Spec
 from ...utils import docval, getargs
@@ -43,3 +43,16 @@ class DynamicTableMap(ObjectMapper):
             elif spec.data_type_inc == 'VectorIndex':
                 attr_value = container[spec.name]
         return attr_value
+
+
+@register_map(AlignedDynamicTable)
+class AlignedDynamicTableMap(DynamicTableMap):
+    """
+    Customize the mapping for AlignedDynamicTable
+    """
+    def __init__(self, spec):
+        super().__init__(spec)
+        # By default the DynamicTables contained as sub-categories in the AlignedDynamicTable are mapped to
+        # the 'dynamic_tables' class attribute. This renames the attribute to 'category_tables'
+        self.map_spec('category_tables', spec.get_data_type('DynamicTable'))
+
