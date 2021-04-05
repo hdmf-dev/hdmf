@@ -490,6 +490,12 @@ class TypeMap:
         """
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
         cls = self.__get_container_cls(namespace, data_type)
+        # TODO: Why is cls NONE here for DynamicTable, AlignedDynamicTable, Data etc.?
+        # print(cls, namespace, data_type)
+        # TODO: Returning Container here is obviously wrong but I do it here just to allow me to start testing things until we have fixed the real problem.
+        if cls is None and data_type == 'AlignedDynamicTable':
+            return Container
+
         if cls is None:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             if isinstance(spec, GroupSpec):
