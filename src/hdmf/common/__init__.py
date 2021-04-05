@@ -133,6 +133,7 @@ EnumData = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'EnumData')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
 ExternalResources = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'ExternalResources')
 SimpleMultiContainer = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'SimpleMultiContainer')
+AlignedDynamicTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'AlignedDynamicTable')
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
