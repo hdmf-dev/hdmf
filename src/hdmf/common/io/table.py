@@ -55,4 +55,3 @@ class AlignedDynamicTableMap(DynamicTableMap):
         # By default the DynamicTables contained as sub-categories in the AlignedDynamicTable are mapped to
         # the 'dynamic_tables' class attribute. This renames the attribute to 'category_tables'
         self.map_spec('category_tables', spec.get_data_type('DynamicTable'))
-

@@ -14,7 +14,6 @@ from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifie
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 
 
-
 class TestDynamicTable(TestCase):
 
     def setUp(self):
@@ -2142,7 +2141,6 @@ class TestAlignedDynamicTableContainer(unittest.TestCase):
 
         # Test the to_dataframe method with default settings
         tdf = adt.to_dataframe()
-        print(tdf.index)
         self.assertListEqual(tdf.index.tolist(), list(range(10)))
         self.assertTupleEqual(tdf.index.name, ('test_aligned_table', 'id'))
         expected_cols = [('test_aligned_table', 'main_c1'),
@@ -2168,4 +2166,3 @@ class TestAlignedDynamicTableContainer(unittest.TestCase):
         tdf_cols = tdf.columns.tolist()
         for v in zip(expected_cols, tdf_cols):
             self.assertTupleEqual(v[0], v[1])
-

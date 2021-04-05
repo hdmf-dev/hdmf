@@ -1269,7 +1269,6 @@ class EnumData(VectorData):
         super().append(val)
 
 
-
 @register_class('AlignedDynamicTable')
 class AlignedDynamicTable(DynamicTable):
     """

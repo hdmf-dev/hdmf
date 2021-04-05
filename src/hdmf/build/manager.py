@@ -492,7 +492,7 @@ class TypeMap:
         cls = self.__get_container_cls(namespace, data_type)
         # TODO: Why is cls NONE here for DynamicTable, AlignedDynamicTable, Data etc.?
         # print(cls, namespace, data_type)
-        # TODO: Returning Container here is obviously wrong but I do it here just to allow me to start testing things until we have fixed the real problem.
+        # TODO: Returning Container here is obviously wrong but allows for initial testing until the real fix is done.
         if cls is None and data_type == 'AlignedDynamicTable':
             return Container
 
