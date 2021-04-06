@@ -207,6 +207,22 @@ jobs:
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
+  python39-upgrade-dev:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "py39-upgrade-dev"
+      - BUILD_TOX_ENV: "build-py39-upgrade-dev"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
+  python39-upgrade-dev-pre:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "py39-upgrade-dev-pre"
+      - BUILD_TOX_ENV: "build-py39-upgrade-dev-pre"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
   python36-min-req:
     <<: *py36
     environment:
@@ -285,6 +301,18 @@ jobs:
     <<: *py38
     environment:
       - TEST_TOX_ENV: "gallery-py38-upgrade-dev-pre"
+    <<: *gallery-steps
+
+  gallery39-upgrade-dev:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "gallery-py39-upgrade-dev"
+    <<: *gallery-steps
+
+  gallery39-upgrade-dev-pre:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "gallery-py39-upgrade-dev-pre"
     <<: *gallery-steps
 
   gallery36-min-req:
