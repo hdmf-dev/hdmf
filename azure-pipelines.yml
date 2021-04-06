@@ -29,47 +29,47 @@ jobs:
         buildToxEnv: 'build-py39'
         testWheelInstallEnv: 'wheelinstall'
 
-      macOS-py3.8-upgrade-dev-pre:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38-upgrade-dev-pre'
-        buildToxEnv: 'build-py38-upgrade-dev-pre'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.8-upgrade-dev:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38-upgrade-dev'
-        buildToxEnv: 'build-py38-upgrade-dev'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.8:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38'
-        buildToxEnv: 'build-py38'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.7:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.7'
-        testToxEnv: 'py37'
-        buildToxEnv: 'build-py37'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.6:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.6'
-        testToxEnv: 'py36'
-        buildToxEnv: 'build-py36'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.6-min-req:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.6'
-        testToxEnv: 'py36-min-req'
-        buildToxEnv: 'build-py36-min-req'
-        testWheelInstallEnv: 'wheelinstall'
+      # macOS-py3.8-upgrade-dev-pre:
+      #   imageName: 'macos-10.15'
+      #   pythonVersion: '3.8'
+      #   testToxEnv: 'py38-upgrade-dev-pre'
+      #   buildToxEnv: 'build-py38-upgrade-dev-pre'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # macOS-py3.8-upgrade-dev:
+      #   imageName: 'macos-10.15'
+      #   pythonVersion: '3.8'
+      #   testToxEnv: 'py38-upgrade-dev'
+      #   buildToxEnv: 'build-py38-upgrade-dev'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # macOS-py3.8:
+      #   imageName: 'macos-10.15'
+      #   pythonVersion: '3.8'
+      #   testToxEnv: 'py38'
+      #   buildToxEnv: 'build-py38'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # macOS-py3.7:
+      #   imageName: 'macos-10.15'
+      #   pythonVersion: '3.7'
+      #   testToxEnv: 'py37'
+      #   buildToxEnv: 'build-py37'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # macOS-py3.6:
+      #   imageName: 'macos-10.15'
+      #   pythonVersion: '3.6'
+      #   testToxEnv: 'py36'
+      #   buildToxEnv: 'build-py36'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # macOS-py3.6-min-req:
+      #   imageName: 'macos-10.15'
+      #   pythonVersion: '3.6'
+      #   testToxEnv: 'py36-min-req'
+      #   buildToxEnv: 'build-py36-min-req'
+      #   testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.9:
         imageName: 'vs2017-win2016'
@@ -92,47 +92,47 @@ jobs:
         buildToxEnv: 'build-py39-upgrade-dev'
         testWheelInstallEnv: 'wheelinstall'
 
-      Windows-py3.8-upgrade-dev-pre:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38-upgrade-dev-pre'
-        buildToxEnv: 'build-py38-upgrade-dev-pre'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.8-upgrade-dev:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38-upgrade-dev'
-        buildToxEnv: 'build-py38-upgrade-dev'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.8:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38'
-        buildToxEnv: 'build-py38'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.7:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.7'
-        testToxEnv: 'py37'
-        buildToxEnv: 'build-py37'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.6:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.6'
-        testToxEnv: 'py36'
-        buildToxEnv: 'build-py36'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.6-min-req:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.6'
-        testToxEnv: 'py36-min-req'
-        buildToxEnv: 'build-py36-min-req'
-        testWheelInstallEnv: 'wheelinstall'
+      # Windows-py3.8-upgrade-dev-pre:
+      #   imageName: 'vs2017-win2016'
+      #   pythonVersion: '3.8'
+      #   testToxEnv: 'py38-upgrade-dev-pre'
+      #   buildToxEnv: 'build-py38-upgrade-dev-pre'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # Windows-py3.8-upgrade-dev:
+      #   imageName: 'vs2017-win2016'
+      #   pythonVersion: '3.8'
+      #   testToxEnv: 'py38-upgrade-dev'
+      #   buildToxEnv: 'build-py38-upgrade-dev'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # Windows-py3.8:
+      #   imageName: 'vs2017-win2016'
+      #   pythonVersion: '3.8'
+      #   testToxEnv: 'py38'
+      #   buildToxEnv: 'build-py38'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # Windows-py3.7:
+      #   imageName: 'vs2017-win2016'
+      #   pythonVersion: '3.7'
+      #   testToxEnv: 'py37'
+      #   buildToxEnv: 'build-py37'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # Windows-py3.6:
+      #   imageName: 'vs2017-win2016'
+      #   pythonVersion: '3.6'
+      #   testToxEnv: 'py36'
+      #   buildToxEnv: 'build-py36'
+      #   testWheelInstallEnv: 'wheelinstall'
+      #
+      # Windows-py3.6-min-req:
+      #   imageName: 'vs2017-win2016'
+      #   pythonVersion: '3.6'
+      #   testToxEnv: 'py36-min-req'
+      #   buildToxEnv: 'build-py36-min-req'
+      #   testWheelInstallEnv: 'wheelinstall'
 
   pool:
     vmImage: $(imageName)
@@ -158,14 +158,14 @@ jobs:
       msiexec.exe /i "C:\hdf\HDF5-1.10.7-win64.msi" /qn INSTALL_ROOT=C:\hdf5-1.10.7-win64-vs2017
       $env:HDF5_DIR = "C:\hdf5-1.10.7-win64-vs2017"
     displayName: 'Install HDF5 1.10.7'
-    condition: and(eq($(pythonVersion), 'py39'), eq($(imageName), 'vs2017-win2016'))
+    condition: and(eq(${{pythonVersion}}, 'py39'), eq(${{imageName}}, 'vs2017-win2016'))
 
   - bash: |
       curl --output hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.7/bin/unix/hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz
       tar -xzvf hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz
       export HDF5_DIR=~/hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1
     displayName: 'Install HDF5 1.10.7'
-    condition: and(eq($(pythonVersion), 'py39'), eq($(imageName), 'macos-10.15'))
+    condition: and(eq(${{pythonVersion}}, 'py39'), eq(${{imageName}}, 'macos-10.15'))
 
   - bash: |
       tox -e $(testToxEnv)
