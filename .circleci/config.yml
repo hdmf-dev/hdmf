@@ -376,17 +376,41 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
+      - python36:
+          <<: *no_filters
+      - python37:
+          <<: *no_filters
       - python38:
+          <<: *no_filters
+      - python39:
+          <<: *no_filters
+      - python38-upgrade-dev:
           <<: *no_filters
       - python36-min-req:
           <<: *no_filters
       - miniconda36:
           <<: *no_filters
+      - miniconda37:
+          <<: *no_filters
       - miniconda38:
+          <<: *no_filters
+      - miniconda39:
+          <<: *no_filters
+      - gallery36:
+          <<: *no_filters
+      - gallery37:
           <<: *no_filters
       - gallery38:
           <<: *no_filters
+      - gallery39:
+          <<: *no_filters
+      - gallery38-upgrade-dev:
+          <<: *no_filters
       - gallery36-min-req:
+          <<: *no_filters
+      - python38-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery38-upgrade-dev-pre:
           <<: *no_filters
       - deploy-dev:
           requires:
