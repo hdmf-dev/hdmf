@@ -63,6 +63,7 @@ references:
           name: Run the tests
           command: |
             . ../venv/bin/activate
+            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9
             if [[ "${TEST_TOX_ENV}" == *"py39"* ]]; then
               sudo apt-get install libhdf5-dev
             fi
@@ -134,6 +135,7 @@ references:
           name: Run the gallery tests
           command: |
             . ../venv/bin/activate
+            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9
             if [[ "${TEST_TOX_ENV}" == *"py39"* ]]; then
               sudo apt-get install libhdf5-dev
             fi

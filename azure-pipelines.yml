@@ -152,19 +152,18 @@ jobs:
       python -m pip install setuptools wheel virtualenv tox
     displayName: 'Install build dependencies'
 
+  # Installing HDF5 1.10.7 is required for building h5py 2.10 wheels for Python 3.9
   - powershell: |
       Invoke-WebRequest https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.7/bin/windows/hdf5-1.10.7-Std-win10_64-vs15.zip -OutFile C:\hdf5-1.10.7-Std-win10_64-vs15.zip
       Expand-Archive C:\hdf5-1.10.7-Std-win10_64-vs15.zip -DestinationPath C:\
       msiexec.exe /i "C:\hdf\HDF5-1.10.7-win64.msi" /qn INSTALL_ROOT=C:\hdf5-1.10.7-win64-vs2017
       $env:HDF5_DIR = "C:\hdf5-1.10.7-win64-vs2017"
-    displayName: 'Install HDF5 1.10.7'
+    displayName: 'Install HDF5 1.10.7 on Windows'
     condition: and(eq(variables['pythonVersion'], '3.9'), eq(variables['Agent.OS'], 'Windows_NT'))
 
   - bash: |
-      curl --output hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.7/bin/unix/hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz
-      tar -xzvf hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz
-      export HDF5_DIR=~/hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1
-    displayName: 'Install HDF5 1.10.7'
+      brew install hdf5@1.10
+    displayName: 'Install HDF5 1.10.7 on macOS'
     condition: and(eq(variables['pythonVersion'], '3.9'), eq(variables['Agent.OS'], 'Darwin'))
 
   - bash: |
