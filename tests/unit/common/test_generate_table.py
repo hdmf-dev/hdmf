@@ -4,7 +4,7 @@ import shutil
 import tempfile
 
 from hdmf.build import BuildManager, TypeMap
-from hdmf.common import get_type_map, DynamicTable, VectorIndex
+from hdmf.common import get_type_map, DynamicTable
 from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
 from hdmf.utils import docval
@@ -155,19 +155,6 @@ class TestDynamicDynamicTable(TestCase):
 
     def test_dynamic_table_region(self):
 
-        TestDTRTable = self.TestDTRTable
-
-        @docval({'name': 'ref_col', 'type': int, 'doc': 'references table'},
-                allow_extra=True)
-        def add_row(self, **kwargs):
-            super(TestDTRTable, self).add_row(**kwargs)
-            for arg, table in zip(['ref_col', 'indexed_ref_col'], [test_table, test_table]):
-                col = self[arg].target if isinstance(self[arg], VectorIndex) else self[arg]
-                if col.table is None:
-                    col.table = table
-
-        self.TestDTRTable.add_row = add_row
-
         test_table = self.TestTable(name='test_table', description='my test table')
         test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
         test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
@@ -176,6 +163,9 @@ class TestDynamicDynamicTable(TestCase):
 
         test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1])
         test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1])
+
+        test_dtr_table['ref_col'].table = test_table
+        test_dtr_table['indexed_ref_col'].target.table = test_table
 
         np.testing.assert_array_equal(test_dtr_table['indexed_ref_col'].target.data, [0, 1, 0, 1])
         np.testing.assert_array_equal(test_dtr_table['ref_col'].data, [0, 0])
