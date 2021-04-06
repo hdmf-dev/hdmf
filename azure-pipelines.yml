@@ -138,7 +138,6 @@ jobs:
     vmImage: $(imageName)
 
   steps:
-
   - checkout: self
     submodules: true
 
@@ -153,10 +152,22 @@ jobs:
       python -m pip install setuptools wheel virtualenv tox
     displayName: 'Install build dependencies'
 
+  - powershell: |
+      Invoke-WebRequest https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.7/bin/windows/hdf5-1.10.7-Std-win10_64-vs15.zip -OutFile C:\hdf5-1.10.7-Std-win10_64-vs15.zip
+      Expand-Archive C:\hdf5-1.10.7-Std-win10_64-vs15.zip -DestinationPath C:\
+      msiexec.exe /i "C:\hdf\HDF5-1.10.7-win64.msi" /qn INSTALL_ROOT=C:\hdf5-1.10.7-win64-vs2017
+      $env:HDF5_DIR = "C:\hdf5-1.10.7-win64-vs2017"
+    displayName: 'Install HDF5 1.10.7'
+    condition: and(eq($(pythonVersion), 'py39'), eq($(imageName), 'vs2017-win2016'))
+
   - bash: |
-      if [[ "$(testToxEnv)" == *"py39"* ]]; then
-        sudo apt-get install libhdf5-dev
-      fi
+      curl --output hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.7/bin/unix/hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz
+      tar -xzvf hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1.tar.gz
+      export HDF5_DIR=~/hdf5-1.10.7-macOS-10.14-x86_64-clang10.0.1
+    displayName: 'Install HDF5 1.10.7'
+    condition: and(eq($(pythonVersion), 'py39'), eq($(imageName), 'macos-10.15'))
+
+  - bash: |
       tox -e $(testToxEnv)
     displayName: 'Run tox tests'
 
