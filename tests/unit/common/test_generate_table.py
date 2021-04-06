@@ -119,6 +119,10 @@ class TestDynamicDynamicTable(TestCase):
         )
 
         test_table = TestTable(name='test_table', description='my test table')
+
+        with self.assertRaises(ValueError):
+            test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], incorrect_col=5)
+
         test_table.add_column('dynamic_column', 'this is a dynamic column')
 
         test_table.add_row(
