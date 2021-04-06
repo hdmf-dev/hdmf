@@ -4,9 +4,10 @@ import shutil
 import tempfile
 
 from hdmf.build import BuildManager, TypeMap
-from hdmf.common import get_type_map, DynamicTable, DynamicTableRegion
+from hdmf.common import get_type_map, DynamicTable, VectorIndex
 from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
+from hdmf.utils import docval
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -103,28 +104,30 @@ class TestDynamicDynamicTable(TestCase):
         self.type_map.load_namespaces(namespace_fpath)
         self.manager = BuildManager(self.type_map)
 
+        self.TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
+        self.TestDTRTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestDTRTable')
+
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
 
     def test_dynamic_table(self):
-        TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
-        TestDTRTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestDTRTable')
 
-        assert issubclass(TestTable, DynamicTable)
-        print(TestTable)
+        assert issubclass(self.TestTable, DynamicTable)
 
-        assert TestTable.__columns__[0] == dict(
+        assert self.TestTable.__columns__[0] == dict(
             name='my_col',
             description='a test column'
         )
 
-        test_table = TestTable(name='test_table', description='my test table')
+    def test_forbids_incorrect_col(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
 
         with self.assertRaises(ValueError):
             test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], incorrect_col=5)
 
+    def test_dynamic_column(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
         test_table.add_column('dynamic_column', 'this is a dynamic column')
-
         test_table.add_row(
             my_col=3.0, indexed_col=[1.0, 3.0], dynamic_column=4, optional_col2=.5,
         )
@@ -135,12 +138,30 @@ class TestDynamicDynamicTable(TestCase):
         np.testing.assert_array_equal(test_table['indexed_col'].target.data, [1., 3., 2., 4.])
         np.testing.assert_array_equal(test_table['dynamic_column'].data, [4, 4])
 
-        test_dtr_table = TestDTRTable(name='test_dtr_table', description='my table')
-        test_dtr_table.add_row(
-            ref_col=DynamicTableRegion(
-                name='ref_col',
-                description='a test column',
-                data=[0],
-                table=test_table
-            )
-        )
+    def test_optional_col(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
+
+    def test_dynamic_table_region(self):
+
+        TestDTRTable = self.TestDTRTable
+
+        @docval({'name': 'ref_col', 'type': int, 'doc': 'references table'},
+                allow_extra=True)
+        def add_row(self, **kwargs):
+            super(TestDTRTable, self).add_row(**kwargs)
+            for arg, table in zip(['ref_col'], [test_table]):
+                col = self[arg].target if isinstance(self[arg], VectorIndex) else self[arg]
+                if col.table is None:
+                    col.table = table
+
+        self.TestDTRTable.add_row = add_row
+
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
+
+        test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table')
+
+        test_dtr_table.add_row(ref_col=0)
