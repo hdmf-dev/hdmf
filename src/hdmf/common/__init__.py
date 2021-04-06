@@ -112,6 +112,7 @@ if os.path.exists(__resources['namespace_path']):
     from . import io as __io  # noqa: F401,E402
 
     from . import table  # noqa: F401,E402
+    from . import alignedtable  # noqa: F401,E402
     from . import sparse  # noqa: F401,E402
     from . import resources  # noqa: F401,E402
     from . import multi  # noqa: F401,E402

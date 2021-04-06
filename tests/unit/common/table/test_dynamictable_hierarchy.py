@@ -1,6 +1,6 @@
 import numpy as np
 from hdmf.common import DynamicTable
-from hdmf.common.table import HierarchicalDynamicTableMixin
+from hdmf.common.alignedtable import HierarchicalDynamicTableMixin
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
 import pandas
@@ -96,7 +96,7 @@ class TestHierarchicalDynamicTableMixin(TestCase):
                                     'referencedata_test_hierarchical_dynamic_table_mixin.h5')
         if os.path.exists(ref_filename):
             os.remove(ref_filename)
-        print("\n Generating reference test data file %s" % ref_filename)
+        print("\n Generating reference test data file %s" % ref_filename)  # noqa: T001
         temp = self.table_level1.to_denormalized_dataframe(flat_column_index=False)
         temp.to_hdf(path_or_buf=ref_filename,
                     key='test_to_denormalized_dataframe_table_level1')
