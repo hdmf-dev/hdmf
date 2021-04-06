@@ -451,99 +451,99 @@ workflows:
           <<: *no_filters
       - gallery39-upgrade-dev-pre:
           <<: *no_filters
-      - deploy-dev:
-          requires:
-            - flake8
-            - python38
-            - python36-min-req
-            - miniconda36
-            - miniconda38
-            - gallery38
-            - gallery36-min-req
-          filters:
-            tags:
-              ignore:
-                # exclude tags created by "ci_addons publish_github_release"
-                - /^latest$/
-                - /^latest-tmp$/
-            branches:
-              only: dev
-          context:
-            - docker-hub-creds
-      - deploy-release:
-          requires:
-            - flake8
-            - python38
-            - python36-min-req
-            - miniconda36
-            - miniconda38
-            - gallery38
-            - gallery36-min-req
-          filters:
-            tags:
-              only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
-            branches:
-              ignore: /.*/
-          context:
-            - docker-hub-creds
-      - pynwb-dev-python38:
-          filters:
-            branches:
-              ignore: dev
-          context:
-            - docker-hub-creds
+      # - deploy-dev:
+      #     requires:
+      #       - flake8
+      #       - python38
+      #       - python36-min-req
+      #       - miniconda36
+      #       - miniconda38
+      #       - gallery38
+      #       - gallery36-min-req
+      #     filters:
+      #       tags:
+      #         ignore:
+      #           # exclude tags created by "ci_addons publish_github_release"
+      #           - /^latest$/
+      #           - /^latest-tmp$/
+      #       branches:
+      #         only: dev
+      #     context:
+      #       - docker-hub-creds
+      # - deploy-release:
+      #     requires:
+      #       - flake8
+      #       - python38
+      #       - python36-min-req
+      #       - miniconda36
+      #       - miniconda38
+      #       - gallery38
+      #       - gallery36-min-req
+      #     filters:
+      #       tags:
+      #         only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
+      #       branches:
+      #         ignore: /.*/
+      #     context:
+      #       - docker-hub-creds
+      # - pynwb-dev-python38:
+      #     filters:
+      #       branches:
+      #         ignore: dev
+      #     context:
+      #       - docker-hub-creds
 
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 5 * * *"
-          filters:
-            branches:
-              only: dev
-    jobs:
-      - flake8:
-          <<: *no_filters
-      - python36:
-          <<: *no_filters
-      - python36-min-req:
-          <<: *no_filters
-      - python37:
-          <<: *no_filters
-      - python38:
-          <<: *no_filters
-      - python38-upgrade-dev:
-          <<: *no_filters
-      - python38-upgrade-dev-pre:
-          <<: *no_filters
-      - python39:
-          <<: *no_filters
-      - python39-upgrade-dev:
-          <<: *no_filters
-      - python39-upgrade-dev-pre:
-          <<: *no_filters
-      - miniconda36:
-          <<: *no_filters
-      - miniconda37:
-          <<: *no_filters
-      - miniconda38:
-          <<: *no_filters
-      - miniconda39:
-          <<: *no_filters
-      - gallery36:
-          <<: *no_filters
-      - gallery36-min-req:
-          <<: *no_filters
-      - gallery37:
-          <<: *no_filters
-      - gallery38:
-          <<: *no_filters
-      - gallery38-upgrade-dev:
-          <<: *no_filters
-      - gallery38-upgrade-dev-pre:
-          <<: *no_filters
-      - gallery39:
-          <<: *no_filters
-      - gallery39-upgrade-dev:
-          <<: *no_filters
-      - gallery39-upgrade-dev-pre:
-          <<: *no_filters
+  # nightly:
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 5 * * *"
+  #         filters:
+  #           branches:
+  #             only: dev
+  #   jobs:
+  #     - flake8:
+  #         <<: *no_filters
+  #     - python36:
+  #         <<: *no_filters
+  #     - python36-min-req:
+  #         <<: *no_filters
+  #     - python37:
+  #         <<: *no_filters
+  #     - python38:
+  #         <<: *no_filters
+  #     - python38-upgrade-dev:
+  #         <<: *no_filters
+  #     - python38-upgrade-dev-pre:
+  #         <<: *no_filters
+  #     - python39:
+  #         <<: *no_filters
+  #     - python39-upgrade-dev:
+  #         <<: *no_filters
+  #     - python39-upgrade-dev-pre:
+  #         <<: *no_filters
+  #     - miniconda36:
+  #         <<: *no_filters
+  #     - miniconda37:
+  #         <<: *no_filters
+  #     - miniconda38:
+  #         <<: *no_filters
+  #     - miniconda39:
+  #         <<: *no_filters
+  #     - gallery36:
+  #         <<: *no_filters
+  #     - gallery36-min-req:
+  #         <<: *no_filters
+  #     - gallery37:
+  #         <<: *no_filters
+  #     - gallery38:
+  #         <<: *no_filters
+  #     - gallery38-upgrade-dev:
+  #         <<: *no_filters
+  #     - gallery38-upgrade-dev-pre:
+  #         <<: *no_filters
+  #     - gallery39:
+  #         <<: *no_filters
+  #     - gallery39-upgrade-dev:
+  #         <<: *no_filters
+  #     - gallery39-upgrade-dev-pre:
+  #         <<: *no_filters
