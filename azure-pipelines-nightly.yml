@@ -32,8 +32,8 @@ jobs:
       macOS-py3.9-upgrade-dev:
         imageName: 'macos-10.15'
         pythonVersion: '3.9'
-        testToxEnv: 'py39-upgrade-dev'
-        buildToxEnv: 'build-py39-upgrade-dev'
+        testToxEnv: 'py39'
+        buildToxEnv: 'build-py39'
         testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.8-upgrade-dev-pre:
