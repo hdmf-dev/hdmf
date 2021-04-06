@@ -32,10 +32,9 @@ class TestDynamicDynamicTable(TestCase):
                     dtype='float'
                 ),
                 DatasetSpec(
-                    data_type_inc='VectorData',
+                    data_type_inc='VectorIndex',
                     name='indexed_col_index',
                     doc='a test column',
-                    dtype='float'
                 ),
             ]
         )
@@ -49,7 +48,7 @@ class TestDynamicDynamicTable(TestCase):
                     data_type_inc='DynamicTableRegion',
                     name='ref_col',
                     doc='a test column',
-                )
+                ),
             ]
         )
 
@@ -62,8 +61,16 @@ class TestDynamicDynamicTable(TestCase):
         self.namespace = SpecNamespace(
             'a test namespace', CORE_NAMESPACE,
             [
-                dict(namespace='hdmf-common',
-                     data_types=['DynamicTable', 'VectorData', 'ElementIdentifiers', 'DynamicTableRegion']),
+                dict(
+                    namespace='hdmf-common',
+                    data_types=[
+                         'DynamicTable',
+                         'VectorData',
+                         'ElementIdentifiers',
+                         'DynamicTableRegion',
+                         'VectorIndex',
+                     ]
+                ),
                 dict(source='test.yaml'),
                 ],
             version='0.1.0',
@@ -98,11 +105,13 @@ class TestDynamicDynamicTable(TestCase):
         )
 
         test_table = TestTable(name='test_table', description='my test table')
+        test_table.add_column('dynamic_column', 'this is a dynamic column')
 
-        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0])
-        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0])
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], dynamic_column=4)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], dynamic_column=4)
 
         np.testing.assert_array_equal(test_table['indexed_col'].target.data, [1., 3., 2., 4.])
+        np.testing.assert_array_equal(test_table['dynamic_column'].data, [4, 4])
 
         test_dtr_table = TestDTRTable(name='test_dtr_table', description='my table')
         test_dtr_table.add_row(
