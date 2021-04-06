@@ -12,7 +12,20 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.9'
         testToxEnv: 'py39'
-        coverageToxEnv: ''
+        buildToxEnv: 'build-py39'
+        testWheelInstallEnv: 'wheelinstall'
+
+      macOS-py3.9-upgrade-dev-pre:
+        imageName: 'macos-10.15'
+        pythonVersion: '3.9'
+        testToxEnv: 'py39-upgrade-dev-pre'
+        buildToxEnv: 'build-py39-upgrade-dev-pre'
+        testWheelInstallEnv: 'wheelinstall'
+
+      macOS-py3.9-upgrade-dev:
+        imageName: 'macos-10.15'
+        pythonVersion: '3.9'
+        testToxEnv: 'py39'
         buildToxEnv: 'build-py39'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -20,7 +33,6 @@ jobs:
         imageName: 'macos-10.15'
         pythonVersion: '3.8'
         testToxEnv: 'py38-upgrade-dev-pre'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py38-upgrade-dev-pre'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -63,15 +75,27 @@ jobs:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.9'
         testToxEnv: 'py39'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py39'
+        testWheelInstallEnv: 'wheelinstall'
+
+      Windows-py3.9-upgrade-dev-pre:
+        imageName: 'vs2017-win2016'
+        pythonVersion: '3.9'
+        testToxEnv: 'py39-upgrade-dev-pre'
+        buildToxEnv: 'build-py39-upgrade-dev-pre'
+        testWheelInstallEnv: 'wheelinstall'
+
+      Windows-py3.9-upgrade-dev:
+        imageName: 'vs2017-win2016'
+        pythonVersion: '3.9'
+        testToxEnv: 'py39-upgrade-dev'
+        buildToxEnv: 'build-py39-upgrade-dev'
         testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.8-upgrade-dev-pre:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.8'
         testToxEnv: 'py38-upgrade-dev-pre'
-        coverageToxEnv: ''
         buildToxEnv: 'build-py38-upgrade-dev-pre'
         testWheelInstallEnv: 'wheelinstall'
 
@@ -101,34 +125,6 @@ jobs:
         pythonVersion: '3.6'
         testToxEnv: 'py36'
         buildToxEnv: 'build-py36'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.6-min-req:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.6'
-        testToxEnv: 'py36-min-req'
-        buildToxEnv: 'build-py36-min-req'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.8:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38'
-        buildToxEnv: 'build-py38'
-        testWheelInstallEnv: 'wheelinstall'
-
-      macOS-py3.6-min-req:
-        imageName: 'macos-10.15'
-        pythonVersion: '3.6'
-        testToxEnv: 'py36-min-req'
-        buildToxEnv: 'build-py36-min-req'
-        testWheelInstallEnv: 'wheelinstall'
-
-      Windows-py3.8:
-        imageName: 'vs2017-win2016'
-        pythonVersion: '3.8'
-        testToxEnv: 'py38'
-        buildToxEnv: 'build-py38'
         testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.6-min-req:

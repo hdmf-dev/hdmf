@@ -386,6 +386,12 @@ workflows:
           <<: *no_filters
       - python38-upgrade-dev:
           <<: *no_filters
+      - python38-upgrade-dev-pre:
+          <<: *no_filters
+      - python39-upgrade-dev:
+          <<: *no_filters
+      - python39-upgrade-dev-pre:
+          <<: *no_filters
       - python36-min-req:
           <<: *no_filters
       - miniconda36:
@@ -406,11 +412,13 @@ workflows:
           <<: *no_filters
       - gallery38-upgrade-dev:
           <<: *no_filters
-      - gallery36-min-req:
-          <<: *no_filters
-      - python38-upgrade-dev-pre:
-          <<: *no_filters
       - gallery38-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery39-upgrade-dev:
+          <<: *no_filters
+      - gallery39-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery36-min-req:
           <<: *no_filters
       - deploy-dev:
           requires:
@@ -474,6 +482,12 @@ workflows:
           <<: *no_filters
       - python38-upgrade-dev:
           <<: *no_filters
+      - python38-upgrade-dev-pre:
+          <<: *no_filters
+      - python39-upgrade-dev:
+          <<: *no_filters
+      - python39-upgrade-dev-pre:
+          <<: *no_filters
       - python36-min-req:
           <<: *no_filters
       - miniconda36:
@@ -494,9 +508,11 @@ workflows:
           <<: *no_filters
       - gallery38-upgrade-dev:
           <<: *no_filters
-      - gallery36-min-req:
-          <<: *no_filters
-      - python38-upgrade-dev-pre:
-          <<: *no_filters
       - gallery38-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery39-upgrade-dev:
+          <<: *no_filters
+      - gallery39-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery36-min-req:
           <<: *no_filters
