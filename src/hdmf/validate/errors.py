@@ -16,12 +16,15 @@ __all__ = [
     "ExtraFieldWarning"
 ]
 
+WARNING_SEVERITY = 0
+ERROR_SEVERITY = 10
+
 
 class Error:
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},
-            {'name': 'severity', 'type': int, 'doc': 'severity of the error', 'default': 10},
+            {'name': 'severity', 'type': int, 'doc': 'severity of the error', 'default': ERROR_SEVERITY},
             {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
     def __init__(self, **kwargs):
         self.__name = getargs('name', kwargs)
@@ -192,4 +195,4 @@ class ExtraFieldWarning(Error):
         name = getargs('name', kwargs)
         reason = "encountered extra field"
         loc = getargs('location', kwargs)
-        super().__init__(name, reason, location=loc, severity=0)
+        super().__init__(name, reason, location=loc, severity=WARNING_SEVERITY)

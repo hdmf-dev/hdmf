@@ -10,7 +10,7 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError, ExtraFieldWarning)
+                                  IncorrectQuantityError, IllegalLinkError, ExtraFieldWarning, ERROR_SEVERITY)
 
 CORE_NAMESPACE = 'test_core'
 
@@ -189,7 +189,7 @@ class TestNestedTypes(ValidatorTestBase):
 
         results = self.vmap.validate(foo_builder)
         self.assertEqual(len(results), 2)
-        error = next(err for err in results if err.severity == 10)
+        error = next(err for err in results if err.severity == ERROR_SEVERITY)
         self.assertValidationError(error, MissingDataType, name='Foo')
         self.assertEqual(error.data_type, 'Bar')
 

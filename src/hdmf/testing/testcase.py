@@ -4,6 +4,7 @@ import os
 import re
 import unittest
 from abc import ABCMeta, abstractmethod
+from warnings import warn
 
 from .utils import remove_test_file
 from ..backends.hdf5 import HDF5IO
@@ -11,6 +12,7 @@ from ..build import Builder
 from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
 from ..query import HDMFDataset
+from ..validate.errors import WARNING_SEVERITY
 
 
 class TestCase(unittest.TestCase):
@@ -225,14 +227,25 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         """Validate the written and exported files, if they exist."""
         if os.path.exists(self.filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io, experimental=experimental)
+                result = common_validate(io, experimental=experimental)
+                errors, warnings = self._split_validation_result(result)
                 if errors:
-                    for err in errors:
-                        raise Exception(err)
+                    raise Exception("Validation Errors %s" % errors)
+                if warnings:
+                    warn("Validation Warnings: %s" % warnings)
 
         if os.path.exists(self.export_filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io, experimental=experimental)
+                result = common_validate(io, experimental=experimental)
+                errors, warnings = self._split_validation_result(result)
                 if errors:
-                    for err in errors:
-                        raise Exception(err)
+                    raise Exception("Validation Errors %s" % errors)
+                if warnings:
+                    warn("Validation Warnings: %s" % warnings)
+
+    @staticmethod
+    def _split_validation_result(result):
+        """Split validation result into errors and warnings"""
+        errors = [alert for alert in result if alert.severity > WARNING_SEVERITY]
+        warnings = [alert for alert in result if alert.severity == WARNING_SEVERITY]
+        return errors, warnings
