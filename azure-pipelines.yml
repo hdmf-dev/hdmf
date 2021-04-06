@@ -167,7 +167,7 @@ jobs:
     condition: and(eq(variables['pythonVersion'], '3.9'), eq(variables['Agent.OS'], 'Darwin'))
 
   - bash: |
-      echo $(pullRequest)
+      echo $(HDF5_DIR)
       tox -e $(testToxEnv)
     displayName: 'Run tox tests'
 
