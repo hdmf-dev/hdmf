@@ -154,6 +154,9 @@ jobs:
     displayName: 'Install build dependencies'
 
   - bash: |
+      if [[ "${TEST_TOX_ENV}" == "py39" ]]; then
+        sudo apt-get install libhdf5-dev
+      fi
       tox -e $(testToxEnv)
     displayName: 'Run tox tests'
 
