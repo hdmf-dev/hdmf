@@ -64,6 +64,16 @@ class TestDynamicDynamicTable(TestCase):
                     name='ref_col',
                     doc='a test column',
                 ),
+                DatasetSpec(
+                    data_type_inc='DynamicTableRegion',
+                    name='indexed_ref_col',
+                    doc='a test column',
+                ),
+                DatasetSpec(
+                    data_type_inc='VectorIndex',
+                    name='indexed_ref_col_index',
+                    doc='a test column',
+                ),
             ]
         )
 
@@ -151,7 +161,7 @@ class TestDynamicDynamicTable(TestCase):
                 allow_extra=True)
         def add_row(self, **kwargs):
             super(TestDTRTable, self).add_row(**kwargs)
-            for arg, table in zip(['ref_col'], [test_table]):
+            for arg, table in zip(['ref_col', 'indexed_ref_col'], [test_table, test_table]):
                 col = self[arg].target if isinstance(self[arg], VectorIndex) else self[arg]
                 if col.table is None:
                     col.table = table
@@ -164,4 +174,8 @@ class TestDynamicDynamicTable(TestCase):
 
         test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table')
 
-        test_dtr_table.add_row(ref_col=0)
+        test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1])
+        test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1])
+
+        np.testing.assert_array_equal(test_dtr_table['indexed_ref_col'].target.data, [0, 1, 0, 1])
+        np.testing.assert_array_equal(test_dtr_table['ref_col'].data, [0, 0])
