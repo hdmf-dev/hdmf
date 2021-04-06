@@ -157,7 +157,7 @@ jobs:
       Invoke-WebRequest https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.7/bin/windows/hdf5-1.10.7-Std-win10_64-vs15.zip -OutFile C:\hdf5-1.10.7-Std-win10_64-vs15.zip
       Expand-Archive C:\hdf5-1.10.7-Std-win10_64-vs15.zip -DestinationPath C:\
       msiexec.exe /i "C:\hdf\HDF5-1.10.7-win64.msi" /qn INSTALL_ROOT=C:\hdf5-1.10.7-win64-vs2017
-      $env:HDF5_DIR = "C:\hdf5-1.10.7-win64-vs2017"
+      $Env:HDF5_DIR = "C:\hdf5-1.10.7-win64-vs2017"
     displayName: 'Install HDF5 1.10.7 on Windows'
     condition: and(eq(variables['pythonVersion'], '3.9'), eq(variables['Agent.OS'], 'Windows_NT'))
 
@@ -167,6 +167,7 @@ jobs:
     condition: and(eq(variables['pythonVersion'], '3.9'), eq(variables['Agent.OS'], 'Darwin'))
 
   - bash: |
+      echo $(pullRequest)
       tox -e $(testToxEnv)
     displayName: 'Run tox tests'
 
