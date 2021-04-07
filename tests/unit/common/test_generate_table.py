@@ -75,6 +75,31 @@ class TestDynamicDynamicTable(TestCase):
                     name='indexed_ref_col_index',
                     doc='a test column',
                 ),
+                DatasetSpec(
+                    data_type_inc='DynamicTableRegion',
+                    name='optional_ref_col',
+                    doc='a test column',
+                    quantity='?'
+                ),
+                DatasetSpec(
+                    data_type_inc='DynamicTableRegion',
+                    name='optional_indexed_ref_col',
+                    doc='a test column',
+                    quantity='?'
+                ),
+                DatasetSpec(
+                    data_type_inc='VectorIndex',
+                    name='optional_indexed_ref_col_index',
+                    doc='a test column',
+                    quantity='?'
+                ),
+                DatasetSpec(
+                    data_type_inc='VectorData',
+                    name='optional_col3',
+                    doc='a test column',
+                    dtype='float',
+                    quantity='?',
+                )
             ]
         )
 
@@ -127,7 +152,8 @@ class TestDynamicDynamicTable(TestCase):
 
         assert self.TestTable.__columns__[0] == dict(
             name='my_col',
-            description='a test column'
+            description='a test column',
+            required=True
         )
 
     def test_forbids_incorrect_col(self):
@@ -159,17 +185,47 @@ class TestDynamicDynamicTable(TestCase):
         test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
         test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
 
-        test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table')
+        test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table',
+                                           target_tables={'ref_col': test_table,
+                                                          'indexed_ref_col': test_table})
+        self.assertIs(test_dtr_table['ref_col'].table, test_table)
+        self.assertIs(test_dtr_table['indexed_ref_col'].target.table, test_table)
 
         test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1])
         test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1])
-
-        # DTR table attribute needs to be set manually
-        test_dtr_table['ref_col'].table = test_table
-        test_dtr_table['indexed_ref_col'].target.table = test_table
 
         np.testing.assert_array_equal(test_dtr_table['indexed_ref_col'].target.data, [0, 1, 0, 1])
         np.testing.assert_array_equal(test_dtr_table['ref_col'].data, [0, 0])
+
+    def test_dynamic_table_region_optional(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
+
+        test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table',
+                                           target_tables={'optional_ref_col': test_table,
+                                                          'optional_indexed_ref_col': test_table})
+        self.assertIs(test_dtr_table['optional_ref_col'].table, test_table)
+        self.assertIs(test_dtr_table['optional_indexed_ref_col'].target.table, test_table)
+
+    def test_dynamic_table_region_bad_target_col(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
+
+        msg = r"^'bad' is not the name of a predefined column of table .*"
+        with self.assertRaisesRegex(ValueError, msg):
+            self.TestDTRTable(name='test_dtr_table', description='my table', target_tables={'bad': test_table})
+
+    def test_dynamic_table_region_non_dtr_target(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
+
+        msg = "Column 'optional_col3' must be a DynamicTableRegion to have a target table."
+        with self.assertRaisesWith(ValueError, msg):
+            self.TestDTRTable(name='test_dtr_table', description='my table',
+                              target_tables={'optional_col3': test_table})
 
     def test_roundtrip(self):
         # NOTE this does not use H5RoundTripMixin because this requires custom validation
