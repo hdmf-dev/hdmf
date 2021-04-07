@@ -894,20 +894,20 @@ class TestDynamicTableWithDTR(TestCase):
         pd.testing.assert_frame_equal(df, expected)
 
     def test_dt_with_indexed_dtr(self):
-        dtr = DynamicTableRegion('dtr', [1, 2, 3, 0, 1], 'desc', table=self.reftable)
-        dtr_ind = VectorIndex(name='dtr_index', data=[2, 3, 5], target=dtr)
+        dtr = DynamicTableRegion('dtr', [1, 2, 4, 0], 'desc', table=self.reftable)
+        dtr_ind = VectorIndex(name='dtr_index', data=[3, 4, 4], target=dtr)
         columns = [dtr, dtr_ind]
         self.table = DynamicTable("test_table", 'a test table', columns=columns)
         self.assertTrue(isinstance(self.table['dtr'], VectorIndex))
         fetch_ids = self.table['dtr'].target[:].index.values
-        self.assertListEqual(fetch_ids.tolist(), [1, 2, 3, 0, 1])
+        self.assertListEqual(fetch_ids.tolist(), [1, 2, 4, 0])
 
         df = self.table.to_dataframe()
         data = OrderedDict()
         data['dtr'] = list()
-        data['dtr'].append(self.reftable[[1, 2]])
-        data['dtr'].append(self.reftable[[3]])
-        data['dtr'].append(self.reftable[[0, 1]])
+        data['dtr'].append(self.reftable[[1, 2, 4]])
+        data['dtr'].append(self.reftable[[0]])
+        data['dtr'].append(self.reftable[[]])
         idx = [0, 1, 2]
         expected = pd.DataFrame(data, index=pd.Index(name='id', data=idx))
         pd.testing.assert_frame_equal(df, expected)
