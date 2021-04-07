@@ -474,7 +474,7 @@ class TypeMap:
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
-                    container_cls = self.get_container_cls(src_ns, dt)
+                    container_cls = self.get_container_cls(src_ns, dt, autogen=False)
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
@@ -482,15 +482,17 @@ class TypeMap:
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+            {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
+
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
         """Get the container class from data type specification.
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
-        namespace, data_type = getargs('namespace', 'data_type', kwargs)
+        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
         cls = self.__get_container_cls(namespace, data_type)
-        if cls is None:  # dynamically generate a class
+        if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             if isinstance(spec, GroupSpec):
                 self.__resolve_child_container_classes(spec, namespace)
@@ -683,8 +685,9 @@ class TypeMap:
         self.__container_types.setdefault(namespace, dict())
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))
-        setattr(container_cls, spec.type_key(), data_type)
-        setattr(container_cls, 'namespace', namespace)
+        if not isinstance(container_cls, TypeSource):
+            setattr(container_cls, spec.type_key(), data_type)
+            setattr(container_cls, 'namespace', namespace)
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
