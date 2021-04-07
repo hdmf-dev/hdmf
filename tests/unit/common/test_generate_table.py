@@ -208,6 +208,15 @@ class TestDynamicDynamicTable(TestCase):
         self.assertIs(test_dtr_table['optional_ref_col'].table, test_table)
         self.assertIs(test_dtr_table['optional_indexed_ref_col'].target.table, test_table)
 
+        test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1],
+                               optional_ref_col=0, optional_indexed_ref_col=[0, 1])
+        test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1],
+                               optional_ref_col=0, optional_indexed_ref_col=[0, 1])
+
+        np.testing.assert_array_equal(test_dtr_table['optional_indexed_ref_col'].target.data, [0, 1, 0, 1])
+        np.testing.assert_array_equal(test_dtr_table['optional_ref_col'].data, [0, 0])
+
+
     def test_dynamic_table_region_bad_target_col(self):
         test_table = self.TestTable(name='test_table', description='my test table')
         test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
