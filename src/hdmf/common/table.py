@@ -152,7 +152,7 @@ class VectorIndex(VectorData):
 
     def __getitem__(self, arg):
         """
-        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+        Select elements in this VectorIndex and retrieve the corresponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :return: Scalar or list of values retrieved
@@ -161,7 +161,7 @@ class VectorIndex(VectorData):
 
     def get(self, arg, **kwargs):
         """
-        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+        Select elements in this VectorIndex and retrieve the corresponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
@@ -889,6 +889,9 @@ class DynamicTable(Container):
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
+
+        If this DynamicTable contains a DynamicTableRegion, then the referenced table will be represented as a
+        nested DataFrame.
         """
         exclude = popargs('exclude', kwargs)
         if exclude is None:
@@ -899,8 +902,14 @@ class DynamicTable(Container):
                 continue
             col = self.__df_cols[self.__colids[name]]
 
-            if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                data[name] = [x for x in col[:]]
+            if isinstance(col, DynamicTableRegion):
+                # col[:] returns df with rows that map to rows of this table
+                # nest a df with a single element for each row in the table
+                data[name] = [col[:].iloc[[i]] for i in range(0, len(col[:]))]
+            elif isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion):
+                data[name] = list(col[:])  # col[:] returns list of dfs
+            elif isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
+                data[name] = list(col[:])
             else:
                 data[name] = col[:]
 
@@ -1057,7 +1066,7 @@ class DynamicTableRegion(VectorData):
         :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
                        and the int selects the row, 2) int or slice to select a subset of rows
 
-        :return: Result from self.table[....] with the appropritate selection based on the
+        :return: Result from self.table[....] with the appropriate selection based on the
                  rows selected by this DynamicTableRegion
         """
         # treat the list of indices as data that can be indexed. then pass the
