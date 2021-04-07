@@ -845,7 +845,7 @@ class DynamicTable(Container):
                     col = self.__df_cols[self.__colids[k]]
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
-                            if len(id_index) == 1:
+                            if len(id_index) == 1 and ret[k].shape[0] > 1:
                                 # k is a multi-dimension column, and
                                 # only one element has been selected
                                 retdf[k] = [ret[k]]
@@ -859,26 +859,19 @@ class DynamicTable(Container):
                             else:
                                 raise ValueError('unable to convert selection to DataFrame')
                     elif isinstance(ret[k], (list, tuple)):
-                        # if len(ret[k]) == 1 and isinstance(ret[k][0], pd.DataFrame):
-                        #     self.__merge_dataframes(retdf, ret[k][0], k, id_index)
-                        # elif len(id_index) == 1 and not isinstance(col, VectorIndex):
-                        if len(id_index) == 1:
+                        if len(ret[k]) >= 1 and isinstance(ret[k][0], pd.DataFrame):
+                            if len(ret[k]) == 1:  # list of 1 df
+                                self.__merge_dataframes(retdf, ret[k][0], k, id_index)
+                            else:  # list of multiple dfs
+                                self.__merge_ragged_dataframes(retdf, ret[k], k)
+                        elif len(id_index) == 1 and not isinstance(col, VectorIndex):
                             # k is a multi-dimension column, and
                             # only one element has been selected
                             retdf[k] = [ret[k]]
                         else:
                             retdf[k] = ret[k]
                     elif isinstance(ret[k], pd.DataFrame):
-                        retdf['%s_%s' % (k, ret[k].index.name)] = ret[k].index.values
-                        for col in ret[k].columns:
-                            newcolname = "%s_%s" % (k, col)
-                            retdf[newcolname] = ret[k][col].values
-                        # retdf[k] = [ret[k]]
-                    #     retdf['%s_%s' % (k, ret[k].index.name)] = ret[k].index.values
-                    #     for col in ret[k].columns:
-                    #         newcolname = "%s_%s" % (k, col)
-                    #         retdf[newcolname] = ret[k][col].values
-                        # self.__merge_dataframes(retdf, ret[k], k, id_index)
+                        self.__merge_dataframes(retdf, ret[k], k, id_index)
                     else:
                         retdf[k] = ret[k]
                 ret = pd.DataFrame(retdf, index=pd.Index(name=self.id.name, data=id_index))
@@ -899,10 +892,19 @@ class DynamicTable(Container):
             new_colname = "%s_%s" % (colname, inner_col)
             num_values = len(df[inner_col].values)
             retdf[new_colname] = df[inner_col].to_numpy()
-            if num_values > 1:
+            if len(id_index) == 1 and num_values > 1:
                 # wrap the returned array in a list
                 # note: to_numpy does not copy. tolist also does not copy but does not maintain dtype
                 retdf[new_colname] = [retdf[new_colname]]
+
+    @staticmethod
+    def __merge_ragged_dataframes(retdf, dfs, colname):
+        # dfs is a list of dfs - result of get call on ragged DTR
+        inner_index_colname = '%s_%s' % (colname, dfs[0].index.name)
+        retdf[inner_index_colname] = [df.index.to_numpy() for df in dfs]
+        for inner_col in dfs[0].columns:
+            new_colname = "%s_%s" % (colname, inner_col)
+            retdf[new_colname] = [df[inner_col].to_numpy() for df in dfs]
 
     def __contains__(self, val):
         """

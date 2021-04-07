@@ -1308,6 +1308,243 @@ class TestIndexedEnumData(TestCase):
         np.testing.assert_array_equal(idx[2], [['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
 
 
+class IndexTestMixin:
+
+    def _check_two_rows_df(self, elem):
+        data = OrderedDict()
+        data['foo'] = np.array([0.0, 1.0])
+        data['bar'] = [np.array(['r11', 'r12']), np.array(['r21'])]
+        data['baz'] = [np.array([10.0, 11.0, 12.0]),
+                       np.array([20.0, 21.0, 22.0])]
+
+        qux_data = OrderedDict()
+        qux_data['foo'] = [10.0, 11.0]
+        qux_data['bar'] = [np.array(['s11', 's12']), np.array(['s21'])]
+        qux_data['baz'] = [np.array([110.0, 111.0, 112.0]),
+                           np.array([120.0, 121.0, 122.0])]
+        qux_idx = [10, 11]
+        qux_df = pd.DataFrame(data=qux_data, index=pd.Index(name='id', data=qux_idx))
+
+        # qux.data = [0, 1]
+        data['qux_id'] = [qux_df.index.values[0], qux_df.index.values[1]]
+        data['qux_foo'] = [qux_df['foo'].values[0], qux_df['foo'].values[1]]
+        data['qux_bar'] = [qux_df['bar'].values[0], qux_df['bar'].values[1]]
+        data['qux_baz'] = [qux_df['baz'].values[0], qux_df['baz'].values[1]]
+
+        # to get the same behavior for nested dataframes, cannot construct a single dataframe
+        # must construct the nested df and pull rows from it
+        # corge.data = [[0, 1], [2]]
+        corge_data = OrderedDict()
+        corge_data['foo'] = [10.0, 11.0, 12.0]
+        corge_data['bar'] = [np.array(['s11', 's12']), np.array(['s21']), np.array(['s31', 's32', 's33'])]
+        corge_data['baz'] = [np.array([110.0, 111.0, 112.0]), np.array([120.0, 121.0, 122.0]),
+                             np.array([130.0, 131.0, 132.0])]
+        corge_idx = [10, 11, 12]
+        corge_df = pd.DataFrame(data=corge_data, index=pd.Index(name='id', data=corge_idx))
+
+        data['corge_id'] = [corge_df.index.values[0:2], corge_df.index.values[[2]]]
+        data['corge_foo'] = [corge_df['foo'].values[0:2], corge_df['foo'].values[[2]]]
+        data['corge_bar'] = [corge_df['bar'].values[0:2], corge_df['bar'].values[[2]]]
+        data['corge_baz'] = [corge_df['baz'].values[0:2], corge_df['baz'].values[[2]]]
+        idx = [0, 1]
+        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+
+        # test 'corge_bar' and 'corge_baz' series separately and then remove them
+        # because elementwise comparison for ragged arrays is not allowed
+        for colname in ['corge_bar', 'corge_baz']:
+            self.assertNestedRaggedArrayEqual(elem[colname].values, exp[colname].values)
+            del elem[colname], exp[colname]
+        pd.testing.assert_frame_equal(elem, exp)
+
+    def _check_one_row_df(self, elem):
+        data = OrderedDict()
+        data['foo'] = np.array([0.0])
+        data['bar'] = [np.array(['r11', 'r12'])]
+        data['baz'] = [np.array([10.0, 11.0, 12.0])]
+
+        qux_data = OrderedDict()
+        qux_data['foo'] = [10.0]
+        qux_data['bar'] = [np.array(['s11', 's12'])]
+        qux_data['baz'] = [np.array([110.0, 111.0, 112.0])]
+        qux_idx = [10]
+        qux_df = pd.DataFrame(data=qux_data, index=pd.Index(name='id', data=qux_idx))
+
+        data['qux_id'] = [qux_df.index.values[0]]
+        data['qux_foo'] = [qux_df['foo'].values[0]]
+        data['qux_bar'] = [qux_df['bar'].values[0]]
+        data['qux_baz'] = [qux_df['baz'].values[0]]
+
+        # to get the same behavior for nested dataframes, cannot construct a single dataframe
+        # must construct the nested df and pull rows from it
+        corge_data = OrderedDict()
+        corge_data['foo'] = [10.0, 11.0]
+        corge_data['bar'] = [np.array(['s11', 's12']), np.array(['s21'])]
+        corge_data['baz'] = [np.array([110.0, 111.0, 112.0]), np.array([120.0, 121.0, 122.0])]
+        corge_idx = [10, 11]
+        corge_df = pd.DataFrame(data=corge_data, index=pd.Index(name='id', data=corge_idx))
+
+        data['corge_id'] = [corge_df.index.values[0:2]]
+        data['corge_foo'] = [corge_df['foo'].values[0:2]]
+        data['corge_bar'] = [corge_df['bar'].values[0:2]]
+        data['corge_baz'] = [corge_df['baz'].values[0:2]]
+        idx = [0]
+        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+
+        # test 'corge_bar' and 'corge_baz' series separately and then remove them
+        # because elementwise comparison for ragged arrays is not allowed
+        for colname in ['corge_bar', 'corge_baz']:
+            self.assertNestedRaggedArrayEqual(elem[colname].values, exp[colname].values)
+            del elem[colname], exp[colname]
+        pd.testing.assert_frame_equal(elem, exp)
+
+    def _check_two_rows_no_df(self, elem):
+        self.assertEqual(elem[0], [0, 1])
+        np.testing.assert_array_equal(elem[1], np.array([0.0, 1.0]))
+        np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))  # TODO do full array equal test
+        np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
+        np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+        expected = [[10, 11],
+                    np.array([10.0, 11.0]),
+                    [np.array(['s11', 's12']), np.array(['s21'])],
+                    np.array([[110.0, 111.0, 112.0], [120.0, 121.0, 122.0]])]
+        for i, j in zip(elem[4], expected):
+            self.assertNestedRaggedArrayEqual(i, j)
+        expected = [[[10, 11],  # each row is wrapped in a list TODO verify that this is the intended behavior
+                     np.array([10.0, 11.0]),
+                     [np.array(['s11', 's12']), np.array(['s21'])],
+                     np.array([[110.0, 111.0, 112.0], [120.0, 121.0, 122.0]])],
+                    [[12],
+                     np.array([12.0]),
+                     [np.array(['s31', 's32', 's33'])],
+                     np.array([[130.0, 131.0, 132.0]])]]
+        for i, j in zip(elem[5], expected):
+            self.assertNestedRaggedArrayEqual(i, j)
+
+    def _check_one_row_no_df(self, elem):
+        self.assertEqual(elem[0], 0)
+        self.assertEqual(elem[1], 0.0)
+        np.testing.assert_array_equal(elem[2], np.array(['r11', 'r12']))
+        np.testing.assert_array_equal(elem[3], np.array([10.0, 11.0, 12.0]))
+        expected = [10, 10.0, np.array(['s11', 's12']), np.array([110., 111., 112.])]
+        for i, j in zip(elem[4], expected):
+            np.testing.assert_array_equal(i, j)
+        expected = [[10, 11],
+                    np.array([10.0, 11.0]),
+                    [np.array(['s11', 's12']), np.array(['s21'])],
+                    np.array([[110.0, 111.0, 112.0], [120.0, 121.0, 122.0]])]
+        for i, j in zip(elem[5], expected):
+            self.assertNestedRaggedArrayEqual(i, j)
+
+    def _check_one_row_multiselect_no_df(self, elem):
+        # difference from _check_one_row_no_df is that everything is wrapped in a list
+        self.assertEqual(elem[0], [0])
+        self.assertEqual(elem[1], [0.0])
+        np.testing.assert_array_equal(elem[2], [np.array(['r11', 'r12'])])
+        np.testing.assert_array_equal(elem[3], [np.array([10.0, 11.0, 12.0])])
+        # the individual elements are wrapped
+        expected = [[10], [10.0], [np.array(['s11', 's12'])], [np.array([110., 111., 112.])]]
+        for i, j in zip(elem[4], expected):
+            np.testing.assert_array_equal(i, j)
+        # the whole list (row) is wrapped
+        expected = [[[10, 11],
+                     np.array([10.0, 11.0]),
+                     [np.array(['s11', 's12']), np.array(['s21'])],
+                     np.array([[110.0, 111.0, 112.0], [120.0, 121.0, 122.0]])]]
+        for i, j in zip(elem[5], expected):
+            self.assertNestedRaggedArrayEqual(i, j)
+
+    def test_single_item(self):
+        elem = self.table[0]
+        self._check_one_row_df(elem)
+
+    def test_single_item_no_df(self):
+        elem = self.table.get(0, df=False)
+        self._check_one_row_no_df(elem)
+
+    def test_slice(self):
+        elem = self.table[0:2]
+        self._check_two_rows_df(elem)
+
+    def test_slice_single(self):
+        elem = self.table[0:1]
+        self._check_one_row_df(elem)
+
+    def test_slice_no_df(self):
+        elem = self.table.get(slice(0, 2), df=False)
+        self._check_two_rows_no_df(elem)
+
+    def test_slice_single_no_df(self):
+        elem = self.table.get(slice(0, 1), df=False)
+        self._check_one_row_multiselect_no_df(elem)
+
+    def test_list(self):
+        elem = self.table[[0, 1]]
+        self._check_two_rows_df(elem)
+
+    def test_list_single(self):
+        elem = self.table[[0]]
+        self._check_one_row_df(elem)
+
+    def test_list_no_df(self):
+        elem = self.table.get([0, 1], df=False)
+        self._check_two_rows_no_df(elem)
+
+    def test_list_single_no_df(self):
+        elem = self.table.get([0], df=False)
+        self._check_one_row_multiselect_no_df(elem)
+
+    def test_array(self):
+        elem = self.table[np.array([0, 1])]
+        self._check_two_rows_df(elem)
+
+    def test_array_single(self):
+        elem = self.table[np.array([0])]
+        self._check_one_row_df(elem)
+
+    def test_array_no_df(self):
+        elem = self.table.get(np.array([0, 1]), df=False)
+        self._check_two_rows_no_df(elem)
+
+    def test_array_single_no_df(self):
+        elem = self.table.get(np.array([0]), df=False)
+        self._check_one_row_multiselect_no_df(elem)
+
+
+class TestIndexingArrays(IndexTestMixin, TestCase):
+
+    def setUp(self):
+        self.other_table = DynamicTable(
+            name='table2',
+            description='a test table',
+            id=[10, 11, 12]
+        )
+        self.other_table.add_column('foo', 'scalar column', data=np.array([10.0, 11.0, 12.0]))
+        self.other_table.add_column('bar', 'ragged column', index=np.array([2, 3, 6]),
+                                    data=np.array(['s11', 's12', 's21', 's31', 's32', 's33']))
+        self.other_table.add_column('baz', 'multi-dimension column',
+                                    data=np.array([[110.0, 111.0, 112.0],
+                                                   [120.0, 121.0, 122.0],
+                                                   [130.0, 131.0, 132.0]]))
+        # TODO table with DTR pointing to table with DTR not yet tested
+        # TODO test when ragged DTR indices are not in ascending order
+
+        self.table = DynamicTable(
+            name='table1',
+            description='a table to test slicing',
+            id=[0, 1, 2]
+        )
+        self.table.add_column('foo', 'scalar column', data=np.array([0.0, 1.0, 2.0]))
+        self.table.add_column('bar', 'ragged column', index=np.array([2, 3, 6]),
+                              data=np.array(['r11', 'r12', 'r21', 'r31', 'r32', 'r33']))
+        self.table.add_column('baz', 'multi-dimension column',
+                              data=np.array([[10.0, 11.0, 12.0],
+                                             [20.0, 21.0, 22.0],
+                                             [30.0, 31.0, 32.0]]))
+        self.table.add_column('qux', 'DTR column', table=self.other_table, data=np.array([0, 1, 0]))
+        self.table.add_column('corge', 'ragged DTR column', index=np.array([2, 3, 6]), table=self.other_table,
+                              data=np.array([0, 1, 2, 0, 1, 2]))
+
+
 class TestIndexing(TestCase):
 
     def setUp(self):

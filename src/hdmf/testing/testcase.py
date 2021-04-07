@@ -109,7 +109,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
-                np.testing.assert_allclose(arr1, arr2)
+                if np.issubdtype(arr1.dtype, np.number):
+                    np.testing.assert_allclose(arr1, arr2)
+                else:
+                    np.testing.assert_array_equal(arr1, arr2)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
@@ -131,6 +134,24 @@ class TestCase(unittest.TestCase):
         if check_source:
             self.assertEqual(builder1.source, builder2.source)
         self.assertDictEqual(builder1, builder2)
+
+    def assertNestedRaggedArrayEqual(self, arr1, arr2):
+        """Test whether arrays or lists containing numpy arrays that may be ragged are equal."""
+        self.assertEqual(type(arr1), type(arr2))
+        self.assertEqual(len(arr1), len(arr2))
+        if isinstance(arr1, np.ndarray):
+            if arr1.dtype == object:  # both are arrays containing arrays or lists
+                for i, j in zip(arr1, arr2):
+                    self.assertNestedRaggedArrayEqual(i, j)
+            else:
+                self._assert_array_equal(arr1, arr2)
+        else:  # both are lists
+            self.assertTrue(isinstance(arr1, list))
+            for i, j in zip(arr1, arr2):
+                if isinstance(i, (list, np.ndarray)):
+                    self.assertNestedRaggedArrayEqual(i, j)
+                else:
+                    self.assertEqual(arr1, arr2)  # scalar
 
 
 class H5RoundTripMixin(metaclass=ABCMeta):
