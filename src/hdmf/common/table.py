@@ -928,11 +928,12 @@ class DynamicTable(Container):
             col = self.__df_cols[self.__colids[name]]
 
             if isinstance(col, DynamicTableRegion):
-                # col[:] returns df with rows that map to rows of this table
-                # nest a df with a single element for each row in the table
+                # col[:] returns a single df where rows map to the rows of this table
+                # place dfs with a single element for each row in this table (results in nested dfs)
+                # TODO consider mangling column names and merging dataframes
                 data[name] = [col[:].iloc[[i]] for i in range(0, len(col[:]))]
             elif isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion):
-                data[name] = list(col[:])  # col[:] returns list of dfs
+                data[name] = list(col[:])  # col[:] returns a list of dfs, one element per row of this table
             elif isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
                 data[name] = list(col[:])
             else:

@@ -854,6 +854,65 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         self._assert_list_of_ndarray_equal(exp, rec)
 
 
+class TestDynamicTableWithDTR(TestCase):
+
+    def setUp(self):
+        self.spec = [
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
+        ]
+        self.data = [
+            [1, 2, 3, 4, 5],
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
+        ]
+
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        self.reftable = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+    def test_dt_with_dtr(self):
+        columns = [
+            DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=self.reftable)
+        ]
+        self.table = DynamicTable("test_table", 'a test table', columns=columns)
+        self.assertTrue(isinstance(self.table['dtr'], DynamicTableRegion))
+        fetch_ids = self.table['dtr'][:].index.values
+        self.assertListEqual(fetch_ids.tolist(), [1, 2, 2])
+
+        df = self.table.to_dataframe()
+        data = OrderedDict()
+        data['dtr'] = list()
+        data['dtr'].append(self.reftable[1])
+        data['dtr'].append(self.reftable[2])
+        data['dtr'].append(self.reftable[2])
+        idx = [0, 1, 2]
+        expected = pd.DataFrame(data, index=pd.Index(name='id', data=idx))
+        pd.testing.assert_frame_equal(df, expected)
+
+    def test_dt_with_indexed_dtr(self):
+        dtr = DynamicTableRegion('dtr', [1, 2, 3, 0, 1], 'desc', table=self.reftable)
+        dtr_ind = VectorIndex(name='dtr_index', data=[2, 3, 5], target=dtr)
+        columns = [dtr, dtr_ind]
+        self.table = DynamicTable("test_table", 'a test table', columns=columns)
+        self.assertTrue(isinstance(self.table['dtr'], VectorIndex))
+        fetch_ids = self.table['dtr'].target[:].index.values
+        self.assertListEqual(fetch_ids.tolist(), [1, 2, 3, 0, 1])
+
+        df = self.table.to_dataframe()
+        data = OrderedDict()
+        data['dtr'] = list()
+        data['dtr'].append(self.reftable[[1, 2]])
+        data['dtr'].append(self.reftable[[3]])
+        data['dtr'].append(self.reftable[[0, 1]])
+        idx = [0, 1, 2]
+        expected = pd.DataFrame(data, index=pd.Index(name='id', data=idx))
+        pd.testing.assert_frame_equal(df, expected)
+
+
 class TestElementIdentifiers(TestCase):
 
     def test_identifier_search_single_list(self):
