@@ -228,7 +228,11 @@ class ExternalResources(Container):
         If the container and field have not been added, add the pair and return
         the corresponding Object. Otherwise, just return the Object.
         """
-        objecttable_idx = self.objects.which(object_id=container.object_id)
+        if isinstance(container, str):
+            objecttable_idx = self.objects.which(object_id=container)
+        else:
+            objecttable_idx = self.objects.which(object_id=container.object_id)
+
         if len(objecttable_idx) > 0:
             field_idx = self.objects.which(field=field)
             objecttable_idx = list(set(objecttable_idx) & set(field_idx))
@@ -253,35 +257,35 @@ class ExternalResources(Container):
         for the given container and field is returned.
         """
         key_name, container, field = popargs('key_name', 'container', 'field', kwargs)
-        key_id = self.keys.which(key=key_name)
+        key_idx_matches = self.keys.which(key=key_name)
         if container is not None and field is not None:
             # if same key is used multiple times, determine
             # which instance based on the Container
             object_field = self._check_object_field(container, field)
-            key_tmp = self.object_keys['keys_idx', object_field.idx]
-            if key_tmp in key_id:
-                return self.keys.row[key_tmp]
-            else:
-                raise ValueError("No key with name '%s' for container '%s' and field '%s'" %
-                                 (key_name, container, field))
+            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                key_idx = self.object_keys['keys_idx', row_idx]
+                if key_idx in key_idx_matches:
+                    return self.keys.row[key_idx]
+            raise ValueError("No key with name '%s' for container '%s' and field '%s'" % (key_name, container, field))
         else:
-            if len(key_id) == 0:
+            if len(key_idx_matches) == 0:
                 # the key has never been used before
                 raise ValueError("key '%s' does not exist" % key_name)
-            elif len(key_id) > 1:
-                return [self.keys.row[i] for i in key_id]
+            elif len(key_idx_matches) > 1:
+                return [self.keys.row[i] for i in key_idx_matches]
             else:
-                return self.keys.row[key_id[0]]
+                return self.keys.row[key_idx_matches[0]]
 
     @docval({'name': 'resource_name', 'type': str, 'default': None})
     def get_resource(self, **kwargs):
         """
         Retrieve resource object with the given resource_name.
         """
-        resource_table_idx = self.resources.which(resource = kwargs['resource_name'])
+        resource_table_idx = self.resources.which(resource=kwargs['resource_name'])
         if len(resource_table_idx) == 0:
-            #Resource hasn't been created
-            raise ValueError("No resource with name '%s' exists. Use add_resource to create a new resource" % kwargs['resource_name'])
+            # Resource hasn't been created
+            msg = "No resource '%s' exists. Use add_resource to create a new resource" % kwargs['resource_name']
+            raise ValueError(msg)
         else:
             return self.resources.row[resource_table_idx[0]]
 
@@ -311,25 +315,21 @@ class ExternalResources(Container):
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         add_entity = False
-        
-#         if container is not None and field is not None and not isinstance(key, Key):
-#             # if same key is used multiple times, determine
-#             # which instance based on the Container
-#             key_id = self.keys.which(key=key)
 
-#             if len(key_id) == 0:
-#                 # the key has never been used before
-#                 key = self.add_key(key)
-#             else:
-#                 object_field = self._check_object_field(container,field)
-#                 obj_key_rows = self.object_keys.which(objects_idx = object_field.idx)
-#                 key_idx = self.get_key(key, container, field).idx
-#                 for row in obj_key_rows:
-#                     object_key_key_idx = self.object_keys['keys_idx', row]
-#                     if object_key_key_idx == key_idx:
-#                         msg = "Use Key Object"
-#                         raise ValueError(msg)
-                   
+        object_field = self._check_object_field(container, field)
+        if not isinstance(key, Key):
+            key_idx_matches = self.keys.which(key=key)
+        # if same key is used multiple times, determine
+        # which instance based on the Container
+            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                key_idx = self.object_keys['keys_idx', row_idx]
+                if key_idx in key_idx_matches:
+                    msg = "Use Key Object when referencing an existing (container, field, key)"
+                    raise ValueError(msg)
+
+        if not isinstance(key, Key):
+            key = self.add_key(key)
+
         if kwargs['resources_idx'] is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
             resource_table_idx = kwargs['resources_idx']
         elif (
@@ -338,12 +338,12 @@ class ExternalResources(Container):
                  or kwargs['resource_uri'] is not None)):
             msg = "Can't have resource_idx with resource_name or resource_uri."
             raise ValueError(msg)
-        elif len(self.resources.which(resource = kwargs['resource_name'])) == 0:
+        elif len(self.resources.which(resource=kwargs['resource_name'])) == 0:
             resource_name = kwargs['resource_name']
             resource_uri = kwargs['resource_uri']
             resource_table_idx = self.add_resource(resource_name, resource_uri)
         else:
-            idx = self.resources.which(resource = kwargs['resource_name'])
+            idx = self.resources.which(resource=kwargs['resource_name'])
             resource_table_idx = self.resources.row[idx[0]]
 
         if (resource_table_idx is not None and entity_id is not None and entity_uri is not None):
@@ -353,44 +353,18 @@ class ExternalResources(Container):
                    "All three are required to create a reference")
             raise ValueError(msg)
 
-        if isinstance(container, Container):
-            container = container.object_id
-
-        object_field = self._check_object_field(container, field)
-
-#         get Key object by searching the table
-        if not isinstance(key, Key):
-            key_id = self.keys.which(key=key)
-
-            if len(key_id) == 0:
-                # the key has never been used before
-                key = self.add_key(key)
-
-            elif len(key_id) > 1:
-                # if same key is used multiple times, determine
-                # which instance based on the Container
-                object_field = self._check_object_field(container, field)
-
-                key_tmp = self.object_keys['keys_idx', object_field.idx]
-                if key_tmp in key_id:
-                    key = self.keys.row[key_tmp]
-                else:
-                    key = self.add_key(key)
-            else:
-                key = self.keys.row[key_id[0]]
-
         if add_entity:
             entity = self.add_entity(key, resource_table_idx, entity_id, entity_uri)
             self.add_external_reference(object_field, key)
 
         return key, resource_table_idx, entity
-    
+
 #     @docval({'name': 'res_df', 'type': pd.DataFrame, 'doc': 'the DataFrame with all the keys and their resources'},
 #             rtype=dict, returns='a dict with the Key objects that were added')
 #     def test_popargs(self, **kwargs):
 #         res_df = popargs('res_df', kwargs)
 #         return res_df
-    
+
     @docval({'name': 'res_df', 'type': pd.DataFrame, 'doc': 'the DataFrame with all the keys and their resources'},
             rtype=dict, returns='a dict with the Key objects that were added')
     def add_external_resource(self, **kwargs):
