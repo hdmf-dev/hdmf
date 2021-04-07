@@ -18,6 +18,8 @@ class ForeignField(object):
             {'name': 'data_type', 'type': str, 'help': 'the data_type of the foreign object', 'default': None},
             {'name': 'object_id', 'type': str, 'help': 'the UUID object ID of the foreign object', 'default': True})
     def __init__(self, **kwargs):
+        ######################################################
+        # add ability to just pass in an existing NWBFile or Container.
         self.__uri = kwargs['uri']
         self.__namespace = kwargs['namespace']
         self.__parent = kwargs['parent']
