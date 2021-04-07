@@ -71,6 +71,8 @@ class DynamicTableGenerator(CustomClassGenerator):
             column_conf['required'] = False
         dtype = cls._get_type(field_spec, type_map)
         if issubclass(dtype, DynamicTableRegion):
+            # the spec does not know which table this DTR points to
+            # the user must specify the table attribute on the DTR after it is generated
             column_conf['table'] = True
 
         index_counter = 0
