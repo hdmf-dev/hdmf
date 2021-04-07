@@ -8,7 +8,7 @@ from hdmf.build import BuildManager, TypeMap
 from hdmf.common import get_type_map, DynamicTable
 from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
-from hdmf.validate import ValidatorMap
+# from hdmf.validate import ValidatorMap
 
 from tests.unit.utils import CORE_NAMESPACE
 
