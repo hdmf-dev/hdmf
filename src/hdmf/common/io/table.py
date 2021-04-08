@@ -54,14 +54,15 @@ class DynamicTableGenerator(CustomClassGenerator):
         return DynamicTable in bases and isinstance(dtype, type) and issubclass(dtype, VectorData)
 
     @classmethod
-    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map):
+    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __columns__ to the classdict and update the docval args for the field spec with the given attribute name.
         :param classdict: The dict to update with __columns__.
         :param docval_args: The list of docval arguments.
         :param parent_cls: The parent class.
         :param attr_name: The attribute name of the field spec for the container class to generate.
-        :param spec: The spec for the container class to generate.
+        :param not_inherited_fields: Dictionary of fields not inherited from the parent class.
         :param type_map: The type map to use.
+        :param spec: The spec for the container class to generate.
         """
         if attr_name.endswith('_index'):  # do not add index columns to __columns__
             return
