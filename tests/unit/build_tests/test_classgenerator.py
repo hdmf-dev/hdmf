@@ -26,7 +26,8 @@ class TestClassGenerator(TestCase):
                 return True
 
             @classmethod
-            def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map):
+            def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map,
+                                   spec):
                 # append attr_name to classdict['__custom_fields__'] list
                 classdict.setdefault('process_field_spec', list()).append(attr_name)
 
@@ -549,7 +550,8 @@ class TestBaseProcessFieldSpec(TestCase):
                     parent_cls=EmptyBar,  # <-- arbitrary class
                     attr_name=attr_name,
                     not_inherited_fields=not_inherited_fields,
-                    type_map=self.type_map
+                    type_map=self.type_map,
+                    spec=spec
                 )
                 self.assertListEqual(docval_args, expected[:(i+1)])  # compare with the first i elements of expected
 
@@ -571,7 +573,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute', 'shape': [None]}]
@@ -595,7 +598,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='dset1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'dset1', 'type': ('array_data', 'data'), 'doc': 'a string dataset', 'shape': [None]}]
@@ -620,7 +624,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': 'value'}]
@@ -644,7 +649,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
@@ -671,7 +677,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
@@ -690,7 +697,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr3',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=GroupSpec('dummy', 'doc')
         )
 
         expected = {'__fields__': [{'name': 'attr3', 'doc': 'a link'}]}
@@ -774,7 +782,8 @@ class TestMCIProcessFieldSpec(TestCase):
             parent_cls=Container,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=spec
         )
 
         expected = [
@@ -799,7 +808,8 @@ class TestMCIProcessFieldSpec(TestCase):
             parent_cls=Container,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=spec
         )
 
         expected = [{'name': 'empty_bars', 'type': (list, tuple, dict, EmptyBar), 'doc': 'test multi', 'default': None}]
@@ -816,7 +826,8 @@ class TestMCIProcessFieldSpec(TestCase):
             parent_cls=Container,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=spec
         )
 
         expected = [{'name': 'empty_bars', 'type': (list, tuple, dict, EmptyBar), 'doc': 'test multi'}]
