@@ -854,6 +854,7 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         self._assert_list_of_ndarray_equal(exp, rec)
 
 
+@unittest.skipIf(pd.__version__ < '1.0.0', 'Pandas testing code for <1 seems buggy with nested dataframes')
 class TestDynamicTableWithDTR(TestCase):
 
     def setUp(self):
@@ -891,6 +892,7 @@ class TestDynamicTableWithDTR(TestCase):
         data['dtr'].append(self.reftable[2])
         idx = [0, 1, 2]
         expected = pd.DataFrame(data, index=pd.Index(name='id', data=idx))
+        # this comparison fails with pandas < 1.0 due to a mysterious KeyError
         pd.testing.assert_frame_equal(df, expected)
 
     def test_dt_with_indexed_dtr(self):
@@ -910,6 +912,7 @@ class TestDynamicTableWithDTR(TestCase):
         data['dtr'].append(self.reftable[[]])
         idx = [0, 1, 2]
         expected = pd.DataFrame(data, index=pd.Index(name='id', data=idx))
+        # this comparison fails with pandas < 1.0 due to a mysterious KeyError
         pd.testing.assert_frame_equal(df, expected)
 
 
