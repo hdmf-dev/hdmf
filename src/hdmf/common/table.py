@@ -882,14 +882,14 @@ class DynamicTable(Container):
 
     @staticmethod
     def __merge_dataframes(retdf, df, colname, id_index):
-        inner_index_colname = '%s_%s' % (colname, df.index.name)
+        inner_index_colname = (colname, df.index.name)
         retdf[inner_index_colname] = df.index.to_numpy()
         if len(id_index) == 1 and len(df) > 1:
             # one row is requested from this table and k has multiple rows
             # wrap the returned array in a list because the scalar index is wrapped in a list
             retdf[inner_index_colname] = [retdf[inner_index_colname]]
         for inner_col in df.columns:
-            new_colname = "%s_%s" % (colname, inner_col)
+            new_colname = (colname, inner_col)
             num_values = len(df[inner_col].values)
             retdf[new_colname] = df[inner_col].to_numpy()
             if len(id_index) == 1 and num_values > 1:
@@ -900,10 +900,10 @@ class DynamicTable(Container):
     @staticmethod
     def __merge_ragged_dataframes(retdf, dfs, colname):
         # dfs is a list of dfs - result of get call on ragged DTR
-        inner_index_colname = '%s_%s' % (colname, dfs[0].index.name)
+        inner_index_colname = (colname, dfs[0].index.name)
         retdf[inner_index_colname] = [df.index.to_numpy() for df in dfs]
         for inner_col in dfs[0].columns:
-            new_colname = "%s_%s" % (colname, inner_col)
+            new_colname = (colname, inner_col)
             retdf[new_colname] = [df[inner_col].to_numpy() for df in dfs]
 
     def __contains__(self, val):
