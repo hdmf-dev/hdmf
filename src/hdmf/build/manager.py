@@ -550,10 +550,10 @@ class TypeMap:
             return None
         ret = self.__container_types[namespace][data_type]
         if isinstance(ret, TypeSource):  # data_type is a dependency from ret.namespace
-            klass = self.get_container_cls(ret.namespace, ret.data_type)  # get class / generate class
+            cls = self.get_container_cls(ret.namespace, ret.data_type)  # get class / generate class
             # register the same class into this namespace (replaces TypeSource)
-            self.register_container_type(namespace, data_type, klass)
-            ret = klass
+            self.register_container_type(namespace, data_type, cls)
+            ret = cls
         return ret
 
     @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),
