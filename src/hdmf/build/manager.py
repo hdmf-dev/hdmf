@@ -556,7 +556,6 @@ class TypeMap:
             ret = cls
         return ret
 
-    @classmethod
     def find_container_cls(self, type_name):
         """Search all namespaces for the container class associated with the given data type.
         Raises TypeDoesNotExistError if type is not found in any namespace.
