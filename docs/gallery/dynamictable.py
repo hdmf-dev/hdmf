@@ -46,17 +46,16 @@ table = DynamicTable(
 # ``range(0, len(column_data))`` by default.
 
 from hdmf.common import VectorData, VectorIndex
-import numpy as np
 
 col1 = VectorData(
     name='col1',
     description='column #1',
-    data=np.array([1, 2]),
+    data=[1, 2],
 )
 col2 = VectorData(
     name='col2',
     description='column #2',
-    data=np.array(['a', 'b']),
+    data=['a', 'b'],
 )
 
 # this table will have two rows with ids 0 and 1
@@ -71,7 +70,7 @@ table_set_ids = DynamicTable(
     name='my table',
     description='an example table',
     columns=[col1, col2],
-    id=np.array([100, 200]),
+    id=[100, 200],
 )
 
 ###############################################################################
@@ -116,7 +115,7 @@ table.add_row(
 table.add_column(
     name='col3',
     description='column #3',
-    data=np.array([True, True, False, True]),  # specify data for the 4 rows in the table
+    data=[True, True, False, True],  # specify data for the 4 rows in the table
 )
 
 ###############################################################################
@@ -134,12 +133,12 @@ table.add_column(
 col1 = VectorData(
     name='col1',
     description='column #1',
-    data=np.array(['1a', '1b', '1c', '2a']),
+    data=['1a', '1b', '1c', '2a'],
 )
 col1_ind = VectorIndex(
     name='col1_index',
     target=col1,
-    data=np.array([3, 4]),
+    data=[3, 4],
 )
 
 table_ragged_col = DynamicTable(
@@ -175,8 +174,8 @@ new_table.add_column(
 table.add_column(
     name='col4',
     description='column #4',
-    data=np.array([1, 0, -1, 0, -1, 1, 1, -1]),
-    index=np.array([3, 4, 6, 8]),  # specify the end indices of data for each row
+    data=[1, 0, -1, 0, -1, 1, 1, -1],
+    index=[3, 4, 6, 8],  # specify the end indices of data for each row
 )
 
 ###############################################################################
@@ -403,12 +402,12 @@ table['col4'][:2]  # get a list of the 0th and 1st list elements
 col5 = VectorData(
     name='col5',
     description='column #5',
-    data=np.array([['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i']]),
+    data=[['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i']],
 )
 col5_ind = VectorIndex(
     name='col5_index',
     target=col5,
-    data=np.array([2, 3]),
+    data=[2, 3],
 )
 
 ###############################################################################
@@ -429,17 +428,17 @@ col5_ind = VectorIndex(
 col6 = VectorData(
     name='col6',
     description='column #6',
-    data=np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm']),
+    data=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'],
 )
 col6_ind = VectorIndex(
     name='col6_index',
     target=col6,
-    data=np.array([3, 6, 8, 10, 12, 13]),
+    data=[3, 6, 8, 10, 12, 13],
 )
 col6_ind_ind = VectorIndex(
     name='col6_index_index',
     target=col6_ind,
-    data=np.array([2, 5, 6]),
+    data=[2, 5, 6],
 )
 
 # All indices must be added to the table
