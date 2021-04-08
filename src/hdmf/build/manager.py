@@ -566,20 +566,6 @@ class TypeMap:
             ret = cls
         return ret
 
-    def find_container_cls(self, type_name):
-        """Search all namespaces for the container class associated with the given data type.
-        Raises TypeDoesNotExistError if type is not found in any namespace.
-        """
-        for val in self.__container_types.values():
-            # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
-            # but the same type_name should point to the same class
-            found_cls = val.get(type_name)
-            if found_cls is not None and not isinstance(found_cls, TypeSource):
-                return found_cls
-        else:  # pragma: no cover
-            # this should never happen after hdmf#322
-            raise TypeDoesNotExistError("Type '%s' does not exist." % type_name)
-
     @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),
              'doc': 'the object to get the type key for'})
     def __type_key(self, obj):
