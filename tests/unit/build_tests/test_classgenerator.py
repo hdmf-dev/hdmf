@@ -345,8 +345,7 @@ class TestGetClassSeparateNamespace(TestCase):
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
 
-    def test_get_class_include_from_separate_ns(self):
-        """Test that get_class correctly sets the name and includes types correctly across namespaces."""
+    def _build_separate_namespaces(self):
         # create an empty extension to test ClassGenerator._get_container_type resolution
         # the Bar class has not been mapped yet to the bar spec
         qux_spec = DatasetSpec(
@@ -387,12 +386,7 @@ class TestGetClassSeparateNamespace(TestCase):
             type_map=self.type_map
         )
 
-        # order of generation should not matter as long as dependencies are listed correctly in namespaces
-        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
-        bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
-        bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        qux_cls = self.type_map.get_container_cls('ndx-test', 'Qux')
-        qux_cls2 = self.type_map.get_container_cls('ndx-qux', 'Qux')
+    def _check_classes(self, baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2):
         self.assertEqual(qux_cls.__name__, 'Qux')
         self.assertEqual(baz_cls.__name__, 'Baz')
         self.assertEqual(bar_cls.__name__, 'Bar')
@@ -406,6 +400,75 @@ class TestGetClassSeparateNamespace(TestCase):
         bar_inst = bar_cls(name='bar_name', data=100, attr1='a string', attr2=10)
         baz_inst = baz_cls(name='baz_name', qux=qux_inst, bar=bar_inst, data=100, attr1='a string', attr2=10)
         self.assertIs(baz_inst.qux, qux_inst)
+
+
+    def test_get_class_include_from_separate_ns_1(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use EXTENSION namespace, then use ORIGINAL namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
+        bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
+        bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        qux_cls = self.type_map.get_container_cls('ndx-test', 'Qux')
+        qux_cls2 = self.type_map.get_container_cls('ndx-qux', 'Qux')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+    def test_get_class_include_from_separate_ns_2(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use ORIGINAL namespace, then use EXTENSION namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
+        bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
+        qux_cls = self.type_map.get_container_cls('ndx-test', 'Qux')
+        qux_cls2 = self.type_map.get_container_cls('ndx-qux', 'Qux')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+    def test_get_class_include_from_separate_ns_3(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use EXTENSION namespace, then use EXTENSION namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
+        bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
+        bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        qux_cls2 = self.type_map.get_container_cls('ndx-qux', 'Qux')
+        qux_cls = self.type_map.get_container_cls('ndx-test', 'Qux')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+    def test_get_class_include_from_separate_ns_4(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use ORIGINAL namespace, then use EXTENSION namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
+        bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
+        qux_cls2 = self.type_map.get_container_cls('ndx-qux', 'Qux')
+        qux_cls = self.type_map.get_container_cls('ndx-test', 'Qux')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
 
 
 class EmptyBar(Container):

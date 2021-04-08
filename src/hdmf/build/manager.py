@@ -491,6 +491,16 @@ class TypeMap:
         created and returned.
         """
         namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+
+        # namespace is unknown, so look it up
+        if namespace == 'UNKNOWN':
+            for key, val in self.__container_types.items():
+                # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
+                # but the same type_name should point to the same class
+                if data_type in val:
+                    namespace = key
+                    break
+
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)

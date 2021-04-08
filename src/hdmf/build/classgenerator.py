@@ -143,6 +143,17 @@ class CustomClassGenerator:
         return dtype
 
     @classmethod
+    def _get_container_type(cls, type_name, type_map):
+        """Search all namespaces for the container class associated with the given data type.
+        Raises TypeDoesNotExistError if type is not found in any namespace.
+        """
+        container_type = type_map.get_container_cls('UNKNOWN', type_name)
+        if container_type is None:  # pragma: no cover
+            # this should never happen after hdmf#322
+            raise TypeDoesNotExistError("Type '%s' does not exist." % type_name)
+        return container_type
+
+    @classmethod
     def _get_type(cls, spec, type_map):
         """Get the type of a spec for use in docval.
         Returns a container class, a type, a tuple of types, ('array_data', 'data') for specs with
@@ -152,7 +163,7 @@ class CustomClassGenerator:
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
                 try:
-                    container_type = type_map.find_container_cls(spec.dtype.target_type)
+                    container_type = type_map._get_container_type(spec.dtype.target_type)
                     return container_type
                 except TypeDoesNotExistError:
                     # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class?
@@ -163,9 +174,9 @@ class CustomClassGenerator:
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
-            return type_map.find_container_cls(spec.target_type)
+            return type_map._get_container_type(spec.target_type)
         if spec.data_type is not None:
-            return type_map.find_container_cls(spec.data_type)
+            return type_map._get_container_type(spec.data_type)
         if spec.shape is None and spec.dims is None:
             return cls._get_type_from_spec_dtype(spec.dtype)
         return 'array_data', 'data'
