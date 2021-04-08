@@ -163,7 +163,7 @@ class CustomClassGenerator:
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
                 try:
-                    container_type = type_map._get_container_type(spec.dtype.target_type)
+                    container_type = cls._get_container_type(spec.dtype.target_type, type_map)
                     return container_type
                 except TypeDoesNotExistError:
                     # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class?
@@ -174,9 +174,9 @@ class CustomClassGenerator:
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
-            return type_map._get_container_type(spec.target_type)
+            return cls._get_container_type(spec.target_type, type_map)
         if spec.data_type is not None:
-            return type_map._get_container_type(spec.data_type)
+            return cls._get_container_type(spec.data_type, type_map)
         if spec.shape is None and spec.dims is None:
             return cls._get_type_from_spec_dtype(spec.dtype)
         return 'array_data', 'data'
