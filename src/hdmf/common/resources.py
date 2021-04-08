@@ -224,7 +224,7 @@ class ExternalResources(Container):
     def _check_object_field(self, container, field):
         """
         A helper function for checking if a container and field have been added.
-        
+
         The container can be either an object_id string or a Container type.
 
         If the container and field have not been added, add the pair and return
