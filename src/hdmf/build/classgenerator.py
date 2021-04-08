@@ -3,8 +3,8 @@ from datetime import datetime
 
 import numpy as np
 
-from ..container import Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, LinkSpec, RefSpec
+from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
+from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
 
@@ -49,6 +49,8 @@ class ClassGenerator:
         for k, field_spec in attr_names.items():
             if k == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
+                continue
+            if isinstance(field_spec, GroupSpec) and field_spec.data_type is None:  # skip named, untyped groups
                 continue
             if not spec.is_inherited_spec(field_spec):
                 not_inherited_fields[k] = field_spec
@@ -161,18 +163,18 @@ class CustomClassGenerator:
         return dtype
 
     @classmethod
-    def _get_container_type(cls, type_name, type_map):
+    def _find_container_cls(cls, type_name, type_map):
         """Search all namespaces for the container class associated with the given data type.
         Raises TypeDoesNotExistError if type is not found in any namespace.
         """
-        container_type = None
+        container_class = None
         for val in type_map.container_types.values():
             # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
             # but the same type_name should point to the same class
-            container_type = val.get(type_name)
-            if container_type is not None:
-                return container_type
-        if container_type is None:  # pragma: no cover
+            klass = val.get(type_name)
+            if klass is not None and isinstance(klass, type) and issubclass(klass, AbstractContainer):
+                return klass
+        if container_class is None:  # pragma: no cover
             # this should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % type_name)
 
@@ -186,7 +188,7 @@ class CustomClassGenerator:
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
                 try:
-                    container_type = cls._get_container_type(spec.dtype.target_type, type_map)
+                    container_type = cls._find_container_cls(spec.dtype.target_type, type_map)
                     return container_type
                 except TypeDoesNotExistError:
                     # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class?
@@ -197,9 +199,9 @@ class CustomClassGenerator:
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
-            return cls._get_container_type(spec.target_type, type_map)
+            return cls._find_container_cls(spec.target_type, type_map)
         if spec.data_type is not None:
-            return cls._get_container_type(spec.data_type, type_map)
+            return cls._find_container_cls(spec.data_type, type_map)
         if spec.shape is None and spec.dims is None:
             return cls._get_type_from_spec_dtype(spec.dtype)
         return 'array_data', 'data'
@@ -341,4 +343,9 @@ class MCIClassGenerator(CustomClassGenerator):
         :param spec: The spec for the container class to generate.
         """
         if '__clsconf__' in classdict:
-            bases.insert(0, MultiContainerInterface)
+            # do not add MCI as a base if a base is already a subclass of MultiContainerInterface
+            for b in bases:
+                if MultiContainerInterface in b.__mro__:
+                    break
+            else:
+                bases.insert(0, MultiContainerInterface)
