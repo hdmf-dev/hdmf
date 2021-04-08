@@ -3,7 +3,7 @@ from datetime import datetime
 
 import numpy as np
 
-from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
+from ..container import Container, Data, DataRegion, MultiContainerInterface
 from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
@@ -143,21 +143,6 @@ class CustomClassGenerator:
         return dtype
 
     @classmethod
-    def _find_container_cls(cls, type_name, type_map):
-        """Search all namespaces for the container class associated with the given data type.
-        Raises TypeDoesNotExistError if type is not found in any namespace.
-        """
-        for val in type_map.container_types.values():
-            # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
-            # but the same type_name should point to the same class
-            found_cls = val.get(type_name)
-            if found_cls is not None and isinstance(found_cls, type) and issubclass(found_cls, AbstractContainer):
-                return found_cls
-        else:  # pragma: no cover
-            # this should never happen after hdmf#322
-            raise TypeDoesNotExistError("Type '%s' does not exist." % type_name)
-
-    @classmethod
     def _get_type(cls, spec, type_map):
         """Get the type of a spec for use in docval.
         Returns a container class, a type, a tuple of types, ('array_data', 'data') for specs with
@@ -167,7 +152,7 @@ class CustomClassGenerator:
         if isinstance(spec, AttributeSpec):
             if isinstance(spec.dtype, RefSpec):
                 try:
-                    container_type = cls._find_container_cls(spec.dtype.target_type, type_map)
+                    container_type = type_map.find_container_cls(spec.dtype.target_type)
                     return container_type
                 except TypeDoesNotExistError:
                     # TODO what happens when the attribute ref target is not (or not yet) mapped to a container class?
@@ -178,9 +163,9 @@ class CustomClassGenerator:
             else:
                 return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
-            return cls._find_container_cls(spec.target_type, type_map)
+            return type_map.find_container_cls(spec.target_type)
         if spec.data_type is not None:
-            return cls._find_container_cls(spec.data_type, type_map)
+            return type_map.find_container_cls(spec.data_type)
         if spec.shape is None and spec.dims is None:
             return cls._get_type_from_spec_dtype(spec.dtype)
         return 'array_data', 'data'
