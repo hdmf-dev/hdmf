@@ -116,6 +116,10 @@ if os.path.exists(__resources['namespace_path']):
     from . import resources  # noqa: F401,E402
     from . import multi  # noqa: F401,E402
 
+    # register custom class generators
+    from .io.table import DynamicTableGenerator
+    __TYPE_MAP.register_generator(DynamicTableGenerator)
+
     from .. import Data, Container
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
     __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
@@ -129,7 +133,7 @@ VectorData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorData')
 VectorIndex = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorIndex')
 ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdentifiers')
 DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
-VocabData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VocabData')
+EnumData = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'EnumData')
 CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
 ExternalResources = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'ExternalResources')
 SimpleMultiContainer = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'SimpleMultiContainer')
