@@ -3,6 +3,8 @@
 ## HDMF 2.5.0 (Upcoming)
 
 ### New features
+- `DynamicTable` can be automatically generated using `get_class`. Now the HDMF API can read files with extensions
+  that contain a `DynamicTable` without needing to import the extension first. @rly and @bendichter (#536)
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
