@@ -387,6 +387,7 @@ class TestGetClassSeparateNamespace(TestCase):
             type_map=self.type_map
         )
 
+        # order of generation should not matter as long as dependencies are listed correctly in namespaces
         baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
         bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
         bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
