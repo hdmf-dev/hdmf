@@ -123,7 +123,7 @@ class DynamicTableGenerator(CustomClassGenerator):
             base_init(self, **kwargs)
 
             # set target attribute on DTR
-            target_tables = kwargs['target_tables']
+            target_tables = kwargs.get('target_tables')
             if target_tables:
                 for colname, table in target_tables.items():
                     if colname not in self:  # column has not yet been added (it is optional)
