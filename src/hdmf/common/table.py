@@ -825,14 +825,14 @@ class DynamicTable(Container):
                 if x:
                     msg = ("Row index %s out of range for %s '%s' (length %d)."
                            % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
+                    raise IndexError(msg) from ve
                 else:  # pragma: no cover
                     raise ve
             except IndexError as ie:
                 if str(ie) == 'list index out of range':
                     msg = ("Row index out of range for %s '%s' (length %d)."
                            % (self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
+                    raise IndexError(msg) from ie
                 else:  # pragma: no cover
                     raise ie
             if df:
@@ -864,7 +864,7 @@ class DynamicTable(Container):
                                 self.__merge_dataframes(retdf, ret[k][0], k, id_index)
                             else:  # list of multiple dfs
                                 self.__merge_ragged_dataframes(retdf, ret[k], k)
-                        elif len(id_index) == 1 and not isinstance(col, VectorIndex):
+                        elif len(id_index) == 1 and len(ret[k]) > 1:
                             # k is a multi-dimension column, and
                             # only one element has been selected
                             retdf[k] = [ret[k]]
@@ -1151,10 +1151,11 @@ class DynamicTableRegion(VectorData):
         ret = list()
         for col in result:
             if isinstance(col, list):
-                if isinstance(col[0], list):
-                    ret.append(self._index_lol(col, index, lut))
-                else:
-                    ret.append([col[lut[i]] for i in index])
+                # if isinstance(col[0], list):
+                #     breakpoint()
+                #     ret.append(self._index_lol(col, index, lut))
+                # else:
+                ret.append([col[lut[i]] for i in index])
             elif isinstance(col, np.ndarray):
                 ret.append(np.array([col[lut[i]] for i in index], dtype=col.dtype))
             else:
