@@ -3,7 +3,7 @@ from collections import OrderedDict, deque
 from copy import copy
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
-from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator, TypeDoesNotExistError
+from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..spec import DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
