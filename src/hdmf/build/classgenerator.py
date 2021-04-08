@@ -147,14 +147,13 @@ class CustomClassGenerator:
         """Search all namespaces for the container class associated with the given data type.
         Raises TypeDoesNotExistError if type is not found in any namespace.
         """
-        container_class = None
         for val in type_map.container_types.values():
             # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
             # but the same type_name should point to the same class
-            klass = val.get(type_name)
-            if klass is not None and isinstance(klass, type) and issubclass(klass, AbstractContainer):
-                return klass
-        if container_class is None:  # pragma: no cover
+            found_cls = val.get(type_name)
+            if found_cls is not None and isinstance(found_cls, type) and issubclass(found_cls, AbstractContainer):
+                return found_cls
+        else:  # pragma: no cover
             # this should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % type_name)
 
