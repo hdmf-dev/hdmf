@@ -483,7 +483,6 @@ class TypeMap:
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
-
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
         """Get the container class from data type specification.
@@ -494,20 +493,27 @@ class TypeMap:
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
-            if isinstance(spec, GroupSpec):
-                self.__resolve_child_container_classes(spec, namespace)
+            self.__check_dependent_types(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 
-    def __resolve_child_container_classes(self, spec, namespace):
-        for child_spec in (spec.groups + spec.datasets):
-            if child_spec.data_type_inc is not None:
-                self.get_container_cls(namespace, child_spec.data_type_inc)
-            elif child_spec.data_type_def is not None:
-                self.get_container_cls(namespace, child_spec.data_type_def)
+    def __check_dependent_types(self, spec, namespace):
+        """Ensure that classes for all types used by this type exist and generate them if not.
+        """
+        if spec.data_type_inc is not None:
+            self.get_container_cls(namespace, spec.data_type_inc)
+        if isinstance(spec, GroupSpec):
+            for child_spec in (spec.groups + spec.datasets):
+                if child_spec.data_type_inc is not None:
+                    self.get_container_cls(namespace, child_spec.data_type_inc)
+                if child_spec.data_type_def is not None:
+                    self.get_container_cls(namespace, child_spec.data_type_def)
+            for child_spec in spec.links:
+                if child_spec.target_type is not None:
+                    self.get_container_cls(namespace, child_spec.target_type)
 
     def __get_parent_cls(self, namespace, data_type, spec):
         dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
@@ -529,15 +535,17 @@ class TypeMap:
         return parent_cls
 
     def __get_container_cls(self, namespace, data_type):
+        """Get the container class for the namespace, data_type. If the class doesn't exist yet, generate it."""
         if namespace not in self.__container_types:
             return None
         if data_type not in self.__container_types[namespace]:
             return None
         ret = self.__container_types[namespace][data_type]
-        if isinstance(ret, TypeSource):
-            ret = self.__get_container_cls(ret.namespace, ret.data_type)
-            if ret is not None:
-                self.register_container_type(namespace, data_type, ret)
+        if isinstance(ret, TypeSource):  # data_type is a dependency from ret.namespace
+            klass = self.get_container_cls(ret.namespace, ret.data_type)  # get class / generate class
+            # register the same class into this namespace (replaces TypeSource)
+            self.register_container_type(namespace, data_type, klass)
+            ret = klass
         return ret
 
     @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),

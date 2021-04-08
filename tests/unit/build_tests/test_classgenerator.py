@@ -388,11 +388,15 @@ class TestGetClassSeparateNamespace(TestCase):
         )
 
         baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
-        bar_cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        qux_cls = self.type_map.get_container_cls('ndx-qux', 'Qux')
+        bar_cls = self.type_map.get_container_cls('ndx-test', 'Bar')
+        bar_cls2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        qux_cls = self.type_map.get_container_cls('ndx-test', 'Qux')
+        qux_cls2 = self.type_map.get_container_cls('ndx-qux', 'Qux')
         self.assertEqual(qux_cls.__name__, 'Qux')
         self.assertEqual(baz_cls.__name__, 'Baz')
         self.assertEqual(bar_cls.__name__, 'Bar')
+        self.assertIs(bar_cls, bar_cls2)  # same class, two different namespaces
+        self.assertIs(qux_cls, qux_cls2)
         self.assertTrue(issubclass(qux_cls, Data))
         self.assertTrue(issubclass(baz_cls, bar_cls))
         self.assertTrue(issubclass(bar_cls, Container))
