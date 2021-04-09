@@ -401,7 +401,6 @@ class TestGetClassSeparateNamespace(TestCase):
         baz_inst = baz_cls(name='baz_name', qux=qux_inst, bar=bar_inst, data=100, attr1='a string', attr2=10)
         self.assertIs(baz_inst.qux, qux_inst)
 
-
     def test_get_class_include_from_separate_ns_1(self):
         """Test that get_class correctly sets the name and includes types correctly across namespaces.
         This is one of multiple tests carried out to ensure that order of which get_container_cls is called
