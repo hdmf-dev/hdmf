@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from . import register_class
-from .table import DynamicTable, DynamicTableRegion, VectorIndex
+from .table import DynamicTable
 from ..utils import docval, getargs, call_docval_func, popargs, get_docval
 
 
@@ -241,5 +241,3 @@ class AlignedDynamicTable(DynamicTable):
                 return self.get_category(item[0])[item[1]][item[2]]
             else:
                 raise ValueError("Expected tuple of length 2 or 3 with (category, column, row) as value.")
-
-
