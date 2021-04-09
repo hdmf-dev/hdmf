@@ -377,3 +377,4 @@ class TestExternalResourcesGetKey(TestCase):
         keys = self.er.get_key('key1', 'uuid1', 'field1')
         self.assertIsInstance(keys, Key)
         self.assertEqual(keys.key, 'key1')
+        self.assertEqual(self.er.keys.data, [('key1',), ('key1',)])
