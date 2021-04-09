@@ -136,6 +136,7 @@ df = pd.DataFrame(new_data, index=[0])
 
 er.add_external_resource(df)
 
+
 ###############################################################################
 # Using the add_resource method
 # ------------------------------------------------------
