@@ -844,7 +844,7 @@ class DynamicTable(Container):
                 for k in ret:  # for each column
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
-                            if len(id_index) == 1:  # and len(self[k].shape) > 1:  # TODO: Fix this check
+                            if len(id_index) == 1:
                                 # k is a multi-dimension column, and
                                 # only one element has been selected
                                 retdf[k] = [ret[k]]
@@ -858,7 +858,7 @@ class DynamicTable(Container):
                             else:
                                 raise ValueError('unable to convert selection to DataFrame')
                     elif isinstance(ret[k], (list, tuple)):
-                        if len(id_index) == 1:  # and len(self[k].shape) > 1:    # TODO: Fix this check
+                        if len(id_index) == 1:
                             # k is a multi-dimension column, and
                             # only one element has been selected
                             retdf[k] = [ret[k]]
