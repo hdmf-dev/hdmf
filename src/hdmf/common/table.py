@@ -583,18 +583,20 @@ class DynamicTable(Container):
                 c.add_row(data[colname])
 
     def __eq__(self, other):
-        """
-        Compare if the two DynamicTables contain the same data
+        """Compare if the two DynamicTables contain the same data.
 
-        This implemented by converting the DynamicTables to a pandas dataframe and
-        comparing the equality of the two tables.
+        First this returns False if the other DynamicTable has a different name or
+        description. Then, this table and the other table are converted to pandas
+        dataframes and the equality of the two tables is returned.
 
         :param other: DynamicTable to compare to
 
-        :raises: An error will be raised with to_dataframe is not defined or other
-
         :return: Bool indicating whether the two DynamicTables contain the same data
         """
+        if not isinstance(other, DynamicTable):
+            return False
+        if self.name != other.name or self.description != other.description:
+            return False
         return self.to_dataframe().equals(other.to_dataframe())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
