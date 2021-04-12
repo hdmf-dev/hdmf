@@ -593,6 +593,8 @@ class DynamicTable(Container):
 
         :return: Bool indicating whether the two DynamicTables contain the same data
         """
+        if other is self:
+            return True
         if not isinstance(other, DynamicTable):
             return False
         if self.name != other.name or self.description != other.description:
