@@ -12,8 +12,8 @@ This is a user guide to interacting with ``DynamicTable`` objects.
 # The :py:class:`~hdmf.common.table.DynamicTable` class represents a column-based table
 # to which you can add custom columns. It consists of a name, a description, a list of
 # row IDs, and a list of columns. Columns are represented by
-# :py:class:`~hdmf.common.table.VectorData` and :py:class:`~hdmf.common.table.VectorIndex`
-# objects.
+# :py:class:`~hdmf.common.table.VectorData`, :py:class:`~hdmf.common.table.VectorIndex`,
+# and :py:class:`~hdmf.common.table.DynamicTableRegion` objects.
 
 ###############################################################################
 # Constructing a table
@@ -32,7 +32,7 @@ table = DynamicTable(
 ###############################################################################
 # Initializing columns
 # --------------------
-# You can initialize a :py:class:`~hdmf.common.table.DynamicTable` with particular
+# You can create a :py:class:`~hdmf.common.table.DynamicTable` with particular
 # columns by passing a list or tuple of
 # :py:class:`~hdmf.common.table.VectorData` objects for the ``columns`` argument
 # in the constructor.
@@ -91,7 +91,7 @@ table_set_ids = DynamicTable(
 ###############################################################################
 # Adding rows
 # -----------
-# You can add rows to a :py:class:`~hdmf.common.table.DynamicTable` using
+# You can also add rows to a :py:class:`~hdmf.common.table.DynamicTable` using
 # :py:meth:`DynamicTable.add_row <hdmf.common.table.DynamicTable.add_row>`.
 # A keyword argument for every column in the table must be supplied.
 
@@ -101,10 +101,9 @@ table.add_row(
 )
 
 ###############################################################################
-# You can also supply an optional row ID to
+# You can supply an optional row ID to
 # :py:meth:`DynamicTable.add_row <hdmf.common.table.DynamicTable.add_row>`.
-# If no ID is supplied, the ID is automatically set to the number of rows in the table
-# prior to adding the new row (i.e., automatic IDs start at 0).
+# If no ID is supplied, the automatic row IDs count up from 0.
 
 table.add_row(
     col1=4,
@@ -165,9 +164,10 @@ table_ragged_col = DynamicTable(
 ####################################################################################
 # VectorIndex.data provides the indices for how to break VectorData.data into cells
 #
-# You can add a ragged array column to an existing
+# You can add an empty ragged array column to an existing
 # :py:class:`~hdmf.common.table.DynamicTable` by specifying ``index=True``
 # to :py:meth:`DynamicTable.add_column <hdmf.common.table.DynamicTable.add_column>`.
+# This method only works if run before any rows have been added to the table.
 
 new_table = DynamicTable(
     name='my table',
@@ -192,6 +192,67 @@ table.add_column(
     data=[1, 0, -1, 0, -1, 1, 1, -1],
     index=[3, 4, 6, 8],  # specify the end indices of data for each row
 )
+
+###############################################################################
+# Referencing rows of other tables
+# --------------------------------
+# You can create a column that references rows of another table using adding a
+# :py:class:`~hdmf.common.table.DynamicTableRegion` object as a column of your
+# :py:class:`~hdmf.common.table.DynamicTable`. This is analogous to
+# a foreign key in a relational database.
+
+from hdmf.common.table import DynamicTableRegion
+
+dtr_col = DynamicTableRegion(
+    name='table1_ref',
+    description='references rows of earlier table',
+    data=[0, 1, 0, 0],
+    table=table
+)
+
+data_col = VectorData(
+    name='col2',
+    description='column #2',
+    data=['a', 'a', 'a', 'b'],
+)
+
+table2 = DynamicTable(
+    name='my table',
+    description='an example table',
+    columns=[dtr_col, data_col],
+)
+
+###############################################################################
+# Here, the ``data`` of ``dtr_col`` maps to rows of ``table`` (0-indexed).
+#
+# .. note::
+#   The ``data`` values of :py:class:`~hdmf.common.table.DynamicTableRegion` map to the row
+#   index, not the row ID, though if you are using default IDs. these values will be the
+#   same.
+#
+# Reference more than one row of another table with a
+# :py:class:`~hdmf.common.table.DynamicTableRegion` indexed by a
+# :py:class:`~hdmf.common.table.VectorIndex`.
+
+indexed_dtr_col = DynamicTableRegion(
+    name='table1_ref2',
+    description='references multiple rows of earlier table',
+    data=[0, 0, 1, 1, 0, 0, 1],
+    table=table
+)
+
+dtr_idx = VectorIndex(
+    name='table1_ref2_index',
+    target=indexed_dtr_col,
+    data=[2, 3, 5, 7],
+)
+
+table3 = DynamicTable(
+    name='my table',
+    description='an example table',
+    columns=[dtr_idx, indexed_dtr_col],
+)
+
 ###############################################################################
 # Creating an expandable table
 # ----------------------------
@@ -232,7 +293,7 @@ expandable_table = DynamicTable(
 )
 
 ###############################################################################
-# Now you can save the file, load it back, and run ``expandable_table.add_row()``.
+# Now you can write the file, read it back, and run ``expandable_table.add_row()``.
 # In this example, we are setting ``maxshape`` to ``(None,)``, which means this is a
 # 1-dimensional matrix that can expand indefinitely along its single dimension. You
 # could also use an integer in place of ``None``. For instance, ``maxshape=(8,)`` would
