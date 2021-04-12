@@ -293,7 +293,7 @@ expandable_table = DynamicTable(
 )
 
 ###############################################################################
-# Now you can save the file, load it back, and run ``expandable_table.add_row()``.
+# Now you can write the file, read it back, and run ``expandable_table.add_row()``.
 # In this example, we are setting ``maxshape`` to ``(None,)``, which means this is a
 # 1-dimensional matrix that can expand indefinitely along its single dimension. You
 # could also use an integer in place of ``None``. For instance, ``maxshape=(8,)`` would
