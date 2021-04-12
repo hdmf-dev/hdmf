@@ -67,7 +67,10 @@ class ClassGenerator:
             for class_generator in self.__custom_generators:
                 class_generator.post_process(classdict, bases, docval_args, spec)
 
-            self.__set_init(classdict, bases, docval_args, not_inherited_fields, spec.name)
+            for class_generator in reversed(self.__custom_generators):
+                # go in reverse order so that base init is added first and
+                # later class generators can modify or overwrite __init__ set by an earlier class generator
+                class_generator.set_init(classdict, bases, docval_args, not_inherited_fields, spec.name)
         except TypeDoesNotExistError as e:  # pragma: no cover
             # this error should never happen after hdmf#322
             name = spec.data_type_def
@@ -78,29 +81,6 @@ class ClassGenerator:
                              + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
         return cls
-
-    @classmethod
-    def __set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
-        # get docval arg names from superclass
-        base = bases[0]
-        parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
-        new_args = list()
-        for attr_name, field_spec in not_inherited_fields.items():
-            # auto-initialize arguments not found in superclass
-            if attr_name not in parent_docval_args:
-                new_args.append(attr_name)
-
-        @docval(*docval_args)
-        def __init__(self, **kwargs):
-            if name is not None:  # force container name to be the fixed name in the spec
-                kwargs.update(name=name)
-            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-
-            for f in new_args:
-                arg_val = kwargs.get(f, None)
-                setattr(self, f, arg_val)
-        classdict['__init__'] = __init__
 
 
 class TypeDoesNotExistError(Exception):  # pragma: no cover
@@ -165,16 +145,11 @@ class CustomClassGenerator:
         """Search all namespaces for the container class associated with the given data type.
         Raises TypeDoesNotExistError if type is not found in any namespace.
         """
-        container_type = None
-        for val in type_map.container_types.values():
-            # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
-            # but the same type_name should point to the same class
-            container_type = val.get(type_name)
-            if container_type is not None:
-                return container_type
+        container_type = type_map.get_container_cls(type_name)
         if container_type is None:  # pragma: no cover
             # this should never happen after hdmf#322
             raise TypeDoesNotExistError("Type '%s' does not exist." % type_name)
+        return container_type
 
     @classmethod
     def _get_type(cls, spec, type_map):
@@ -293,6 +268,29 @@ class CustomClassGenerator:
 
         # set default name in docval args if provided
         cls._set_default_name(docval_args, spec.default_name)
+
+    @classmethod
+    def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
+        # get docval arg names from superclass
+        base = bases[0]
+        parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
+        new_args = list()
+        for attr_name, field_spec in not_inherited_fields.items():
+            # auto-initialize arguments not found in superclass
+            if attr_name not in parent_docval_args:
+                new_args.append(attr_name)
+
+        @docval(*docval_args)
+        def __init__(self, **kwargs):
+            if name is not None:  # force container name to be the fixed name in the spec
+                kwargs.update(name=name)
+            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
+            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
+
+            for f in new_args:
+                arg_val = kwargs.get(f, None)
+                setattr(self, f, arg_val)
+        classdict['__init__'] = __init__
 
 
 class MCIClassGenerator(CustomClassGenerator):
