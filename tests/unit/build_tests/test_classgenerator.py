@@ -55,7 +55,7 @@ class TestClassGenerator(TestCase):
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
         type_map.register_generator(MyClassGenerator)
-        cls = type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        cls = type_map.get_container_cls('Baz', CORE_NAMESPACE)
 
         self.assertEqual(cls.process_field_spec, ['attr1'])
         self.assertTrue(cls.post_process)
@@ -107,7 +107,7 @@ class TestDynamicContainer(TestCase):
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        cls = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
         received_args = set()
         for x in get_docval(cls.__init__):
@@ -123,7 +123,7 @@ class TestDynamicContainer(TestCase):
         baz_spec = GroupSpec('doc', default_name='bingo', data_type_def='Baz',
                              attributes=[AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        cls = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
         inst = cls(attr4=10.)
         self.assertEqual(inst.name, 'bingo')
 
@@ -133,7 +133,7 @@ class TestDynamicContainer(TestCase):
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        cls = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
@@ -146,7 +146,7 @@ class TestDynamicContainer(TestCase):
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        cls = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
         # TODO: test that constructor works!
         inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'My Baz')
@@ -164,7 +164,7 @@ class TestDynamicContainer(TestCase):
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        cls = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
 
         with self.assertRaises(TypeError):
             inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
@@ -187,7 +187,7 @@ class TestDynamicContainer(TestCase):
                                  attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                              AttributeSpec('attr4', 'another float attribute', 'float')])
             self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-            cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+            cls = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
 
             inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
             self.assertEqual(inst.name, 'A fixed name')
@@ -205,12 +205,12 @@ class TestDynamicContainer(TestCase):
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
-        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
-        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+        Baz2 = self.type_map.get_container_cls('Baz2', CORE_NAMESPACE)
+        Baz1 = self.type_map.get_container_cls('Baz1', CORE_NAMESPACE)
         Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
              baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
 
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        Bar = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
         bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
 
         with self.assertRaises(TypeError):
@@ -229,12 +229,12 @@ class TestDynamicContainer(TestCase):
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
-        Baz1 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
-        Baz2 = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz2')
+        Baz1 = self.type_map.get_container_cls('Baz1', CORE_NAMESPACE)
+        Baz2 = self.type_map.get_container_cls('Baz2', CORE_NAMESPACE)
         Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
              baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
 
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
+        Bar = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
         bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
 
         with self.assertRaises(TypeError):
@@ -249,14 +249,14 @@ class TestDynamicContainer(TestCase):
 
         msg = "No specification for 'Baz2' in namespace 'test_core'"
         with self.assertRaisesWith(ValueError, msg):
-            self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz1')
+            self.type_map.get_container_cls('Baz1', CORE_NAMESPACE)
 
     def test_dynamic_container_fixed_name(self):
         """Test that dynamic class generation for an extended type with a fixed name works."""
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        Baz = self.type_map.get_container_cls(CORE_NAMESPACE, 'Baz')
+        Baz = self.type_map.get_container_cls('Baz', CORE_NAMESPACE)
         obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
         self.assertEqual(obj.name, 'Baz')
 
@@ -272,8 +272,8 @@ class TestDynamicContainer(TestCase):
             ]
         )
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
-        Bar = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        Multi = self.type_map.get_container_cls(CORE_NAMESPACE, 'Multi')
+        Bar = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
+        Multi = self.type_map.get_container_cls('Multi', CORE_NAMESPACE)
         assert issubclass(Multi, MultiContainerInterface)
         assert Multi.__clsconf__ == [
             dict(
@@ -341,12 +341,11 @@ class TestGetClassSeparateNamespace(TestCase):
             type_map=self.type_map
         )
 
-        cls = self.type_map.get_container_cls('ndx-test', 'Baz')
+        cls = self.type_map.get_container_cls('Baz', 'ndx-test')
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
 
-    def test_get_class_include_from_separate_ns(self):
-        """Test that get_class correctly sets the name and includes types correctly across namespaces."""
+    def _build_separate_namespaces(self):
         # create an empty extension to test ClassGenerator._get_container_type resolution
         # the Bar class has not been mapped yet to the bar spec
         qux_spec = DatasetSpec(
@@ -365,7 +364,7 @@ class TestGetClassSeparateNamespace(TestCase):
             type_map=self.type_map
         )
         # resolve Spam first so that ndx-qux is resolved first
-        self.type_map.get_container_cls('ndx-qux', 'Spam')
+        self.type_map.get_container_cls('Spam', 'ndx-qux')
 
         baz_spec = GroupSpec(
             doc='A test extension',
@@ -387,12 +386,12 @@ class TestGetClassSeparateNamespace(TestCase):
             type_map=self.type_map
         )
 
-        baz_cls = self.type_map.get_container_cls('ndx-test', 'Baz')  # Qux and Bar are not yet resolved
-        bar_cls = self.type_map.get_container_cls(CORE_NAMESPACE, 'Bar')
-        qux_cls = self.type_map.get_container_cls('ndx-qux', 'Qux')
+    def _check_classes(self, baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2):
         self.assertEqual(qux_cls.__name__, 'Qux')
         self.assertEqual(baz_cls.__name__, 'Baz')
         self.assertEqual(bar_cls.__name__, 'Bar')
+        self.assertIs(bar_cls, bar_cls2)  # same class, two different namespaces
+        self.assertIs(qux_cls, qux_cls2)
         self.assertTrue(issubclass(qux_cls, Data))
         self.assertTrue(issubclass(baz_cls, bar_cls))
         self.assertTrue(issubclass(bar_cls, Container))
@@ -401,6 +400,74 @@ class TestGetClassSeparateNamespace(TestCase):
         bar_inst = bar_cls(name='bar_name', data=100, attr1='a string', attr2=10)
         baz_inst = baz_cls(name='baz_name', qux=qux_inst, bar=bar_inst, data=100, attr1='a string', attr2=10)
         self.assertIs(baz_inst.qux, qux_inst)
+
+    def test_get_class_include_from_separate_ns_1(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use EXTENSION namespace, then use ORIGINAL namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('Baz', 'ndx-test')  # Qux and Bar are not yet resolved
+        bar_cls = self.type_map.get_container_cls('Bar', 'ndx-test')
+        bar_cls2 = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
+        qux_cls = self.type_map.get_container_cls('Qux', 'ndx-test')
+        qux_cls2 = self.type_map.get_container_cls('Qux', 'ndx-qux')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+    def test_get_class_include_from_separate_ns_2(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use ORIGINAL namespace, then use EXTENSION namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('Baz', 'ndx-test')  # Qux and Bar are not yet resolved
+        bar_cls2 = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
+        bar_cls = self.type_map.get_container_cls('Bar', 'ndx-test')
+        qux_cls = self.type_map.get_container_cls('Qux', 'ndx-test')
+        qux_cls2 = self.type_map.get_container_cls('Qux', 'ndx-qux')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+    def test_get_class_include_from_separate_ns_3(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use EXTENSION namespace, then use EXTENSION namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('Baz', 'ndx-test')  # Qux and Bar are not yet resolved
+        bar_cls = self.type_map.get_container_cls('Bar', 'ndx-test')
+        bar_cls2 = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
+        qux_cls2 = self.type_map.get_container_cls('Qux', 'ndx-qux')
+        qux_cls = self.type_map.get_container_cls('Qux', 'ndx-test')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+    def test_get_class_include_from_separate_ns_4(self):
+        """Test that get_class correctly sets the name and includes types correctly across namespaces.
+        This is one of multiple tests carried out to ensure that order of which get_container_cls is called
+        does not impact the results
+
+        first use ORIGINAL namespace, then use EXTENSION namespace
+        """
+        self._build_separate_namespaces()
+
+        baz_cls = self.type_map.get_container_cls('Baz', 'ndx-test')  # Qux and Bar are not yet resolved
+        bar_cls2 = self.type_map.get_container_cls('Bar', CORE_NAMESPACE)
+        bar_cls = self.type_map.get_container_cls('Bar', 'ndx-test')
+        qux_cls2 = self.type_map.get_container_cls('Qux', 'ndx-qux')
+        qux_cls = self.type_map.get_container_cls('Qux', 'ndx-test')
+
+        self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
 
 
 class EmptyBar(Container):
