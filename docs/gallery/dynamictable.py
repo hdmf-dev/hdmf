@@ -74,6 +74,21 @@ table_set_ids = DynamicTable(
 )
 
 ###############################################################################
+# If a list of integers in passed to ``id``,
+# :py:class:`~hdmf.common.table.DynamicTable` automatically creates
+# an :py:class:`~hdmf.common.table.ElementIdentifiers` object, which is the data type
+# that stores row IDs. The above command is equivalent to
+
+from hdmf.common.table import ElementIdentifiers
+
+table_set_ids = DynamicTable(
+    name='my table',
+    description='an example table',
+    columns=[col1, col2],
+    id=ElementIdentifiers(name='id', data=[100, 200]),
+)
+
+###############################################################################
 # Adding rows
 # -----------
 # You can add rows to a :py:class:`~hdmf.common.table.DynamicTable` using
@@ -177,8 +192,64 @@ table.add_column(
     data=[1, 0, -1, 0, -1, 1, 1, -1],
     index=[3, 4, 6, 8],  # specify the end indices of data for each row
 )
+###############################################################################
+# Creating an expandable table
+# ----------------------------
+# When using the default HDF5 backend, each column of these tables is an HDF5 Dataset,
+# which by default are set in size. This means that once a file is written, it is not
+# possible to add a new row. If you want to be able to save this file, load it, and add
+# more rows to the table, you will need to set this up when you create the
+# :py:class:`~hdmf.common.table.DynamicTable`. You do this by wrapping the data with
+# :py:class:`~hdmf.backends.hdf5.h5_utils.H5DataIO`.
+
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+
+col1 = VectorData(
+    name='expandable col1',
+    description='column #1',
+    data=H5DataIO(data=[1, 2], maxshape=(None,)),
+)
+col2 = VectorData(
+    name='expandable col2',
+    description='column #2',
+    data=H5DataIO(data=['a', 'b'], maxshape=(None,)),
+)
+
+# Don't forget to wrap the row IDs too!
+ids = ElementIdentifiers(
+    name='id',
+    data=H5DataIO(
+        data=[0, 1],
+        maxshape=(None,)
+    )
+)
+
+expandable_table = DynamicTable(
+    name='table that can be expanded after being saved to file',
+    description='an example table',
+    columns=[col1, col2],
+    id=ids,
+)
 
 ###############################################################################
+# Now you can save the file, load it back, and run ``expandable_table.add_row()``.
+# In this example, we are setting ``maxshape`` to ``(None,)``, which means this is a
+# 1-dimensional matrix that can expand indefinitely along its single dimension. You
+# could also use an integer in place of ``None``. For instance, ``maxshape=(8,)`` would
+# allow the column to grow up to a length of 8. Whichever ``maxshape`` you choose,
+# it should be the same for all :py:class:`~hdmf.common.table.VectorData`,
+# :py:class:`~hdmf.common.table.ElementIdentifiers`, and
+# :py:class:`~hdmf.common.table.DynamicTableRegion` objects in the
+# :py:class:`~hdmf.common.table.DynamicTable`, since they must always be the same
+# length. The default :py:class:`~hdmf.common.table.ElementIdentifiers` automatically
+# generated when you pass a list of integers to the ``id`` argument of the
+# :py:class:`~hdmf.common.table.DynamicTable` constructor is not expandable, so do not
+# forget to create a :py:class:`~hdmf.common.table.ElementIdentifiers` object, and wrap
+# that data as well. If any of the columns are indexed, the ``data`` arg of
+# :py:class:`~hdmf.common.table.VectorIndex` will also need to be wrapped in
+# :py:class:`~hdmf.backends.hdf5.h5_utils.H5DataIO`.
+#
+#
 # Converting the table to a pandas ``DataFrame``
 # ----------------------------------------------
 # `pandas`_ is a popular data analysis tool, especially for working with tabular data.
