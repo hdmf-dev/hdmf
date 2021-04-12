@@ -225,7 +225,7 @@ class ExternalResources(Container):
         """
         A helper function for checking if a container and field have been added.
 
-        The container can be either an object_id string or a Container type.
+        The container can be either an object_id string or a AbstractContainer.
 
         If the container and field have not been added, add the pair and return
         the corresponding Object. Otherwise, just return the Object.
