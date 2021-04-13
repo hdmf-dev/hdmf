@@ -28,6 +28,9 @@
   attached to a `GroupBuilder`. @dsleiter (#526)
 - Various fixes for dynamic class generation. @rly (#561)
 
+- Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
+  `MultiContainerInterface`. @rly (#567)
+
 ## HDMF 2.4.0 (February 23, 2021)
 
 ### New features

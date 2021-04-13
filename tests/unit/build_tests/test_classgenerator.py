@@ -839,9 +839,6 @@ class TestMCIProcessFieldSpec(TestCase):
             groups=[
                 GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
             ],
-            attributes=[
-                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
-            ]
         )
         classdict = dict(
             __clsconf__=[
@@ -858,3 +855,31 @@ class TestMCIProcessFieldSpec(TestCase):
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
         self.assertEqual(bases, [MultiContainerInterface, Container])
+
+    def test_post_process_already_multi(self):
+        class Multi1(MultiContainerInterface):
+            pass
+
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi and extends a multi',
+            data_type_def='Multi2',
+            data_type_inc='Multi1',
+            groups=[
+                GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
+            ],
+        )
+        classdict = dict(
+            __clsconf__=[
+                dict(
+                    attr='empty_bars',
+                    type=EmptyBar,
+                    add='add_empty_bars',
+                    get='get_empty_bars',
+                    create='create_empty_bars'
+                )
+            ]
+        )
+        bases = [Multi1]
+        docval_args = []
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        self.assertEqual(bases, [Multi1])
