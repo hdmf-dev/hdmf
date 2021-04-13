@@ -161,7 +161,7 @@ class VectorIndex(VectorData):
 
     def get(self, arg, **kwargs):
         """
-        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+        Select elements in this VectorIndex and retrieve the corresponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
@@ -1060,6 +1060,7 @@ class DynamicTableRegion(VectorData):
 
         :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
                        and the int selects the row, 2) int or slice to select a subset of rows
+        :param df: Boolean indicating whether we want to return the result as a pandas dataframe
 
         :return: Result from self.table[....] with the appropritate selection based on the
                  rows selected by this DynamicTableRegion
@@ -1103,7 +1104,6 @@ class DynamicTableRegion(VectorData):
                     ret = values.iloc[[lut[i] for i in ret]]
                 else:
                     ret = self._index_lol(values, ret, lut)
-
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
