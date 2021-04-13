@@ -655,6 +655,69 @@ class TestBaseProcessFieldSpec(TestCase):
         expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
         self.assertListEqual(docval_args, expected)
 
+    def test_update_docval_default_value_none_required_parent(self):
+        """Test that update_docval_args for an optional field with a required parent sets default: None."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            groups=[
+                GroupSpec(
+                    name='group1',
+                    doc='required untyped group',
+                    attributes=[
+                        AttributeSpec(name='attr1', doc='a string attribute', dtype='text', required=False)
+                    ]
+                )
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_group('group1').get_attribute('attr1')}
+
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap(),
+            spec=spec
+        )
+
+        expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_update_docval_required_field_optional_parent(self):
+        """Test that update_docval_args for a required field with an optional parent sets default: None."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            groups=[
+                GroupSpec(
+                    name='group1',
+                    doc='required untyped group',
+                    attributes=[
+                        AttributeSpec(name='attr1', doc='a string attribute', dtype='text')
+                    ],
+                    quantity='?'
+                )
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_group('group1').get_attribute('attr1')}
+
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap(),
+            spec=spec
+        )
+
+        expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
+        self.assertListEqual(docval_args, expected)
+
     def test_process_field_spec_overwrite(self):
         """Test that docval generation overwrites previous docval args."""
         spec = GroupSpec(
