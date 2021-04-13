@@ -133,8 +133,34 @@ table.add_column(
 )
 
 ###############################################################################
+# Enumerated Data
+# ---------------
+# :py:class:`~hdmf.common.table.EnumData` is a special type of column for storing
+# an enumerated data type. This way each unique value is stored once, and the data
+# references those values by index. Using this method is more efficient than storing
+# a single value many types, and has the advantage of communicating to downstream
+# tools that the data is categorical in nature.
+
+from hdmf.common.table import EnumData
+
+# this column has a length of 5, not 3
+enum_col = EnumData(
+    name="cell_type",
+    description="this column holds categorical variables",
+    data=[0, 1, 2, 1, 0],
+    elements=["aa", "bb", "cc"]
+)
+
+my_table = DynamicTable(
+    name='my table',
+    description='an example table',
+    columns=[enum_col],
+)
+
+
+###############################################################################
 # Ragged array columns
-# ^^^^^^^^^^^^^^^^^^^^
+# --------------------
 # A table column with a different number of elements for each row is called a
 # ragged array. To initialize a :py:class:`~hdmf.common.table.DynamicTable`
 # with a ragged array column, pass both
@@ -597,11 +623,6 @@ table_double_ragged_col['col6'][0][1]  # returns ['d', 'e', 'f']
 
 table_double_ragged_col['col6']  # returns col6_ind_ind
 table_double_ragged_col.col6  # returns col6
-
-###############################################################################
-# Referencing rows of a DynamicTable
-# ----------------------------------
-# TODO
 
 ###############################################################################
 # Creating custom DynamicTable subclasses
