@@ -26,6 +26,8 @@
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
   attached to a `GroupBuilder`. @dsleiter (#526)
+- Various fixes for dynamic class generation. @rly (#561)
+
 - Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
   `MultiContainerInterface`. @rly (#567)
 
