@@ -128,15 +128,15 @@ else:
     raise RuntimeError("Unable to load a TypeMap - no namespace file found")
 
 
-DynamicTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTable')
-VectorData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorData')
-VectorIndex = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorIndex')
-ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdentifiers')
-DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
-EnumData = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'EnumData')
-CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
-ExternalResources = __TYPE_MAP.get_container_cls(EXP_NAMESPACE, 'ExternalResources')
-SimpleMultiContainer = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'SimpleMultiContainer')
+DynamicTable = __TYPE_MAP.get_container_cls('DynamicTable', CORE_NAMESPACE)
+VectorData = __TYPE_MAP.get_container_cls('VectorData', CORE_NAMESPACE)
+VectorIndex = __TYPE_MAP.get_container_cls('VectorIndex', CORE_NAMESPACE)
+ElementIdentifiers = __TYPE_MAP.get_container_cls('ElementIdentifiers', CORE_NAMESPACE)
+DynamicTableRegion = __TYPE_MAP.get_container_cls('DynamicTableRegion', CORE_NAMESPACE)
+EnumData = __TYPE_MAP.get_container_cls('EnumData', EXP_NAMESPACE)
+CSRMatrix = __TYPE_MAP.get_container_cls('CSRMatrix', CORE_NAMESPACE)
+ExternalResources = __TYPE_MAP.get_container_cls('ExternalResources', EXP_NAMESPACE)
+SimpleMultiContainer = __TYPE_MAP.get_container_cls('SimpleMultiContainer', CORE_NAMESPACE)
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
@@ -197,7 +197,7 @@ def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
     """
     data_type, namespace = getargs('data_type', 'namespace', kwargs)
-    return __TYPE_MAP.get_container_cls(namespace, data_type)
+    return __TYPE_MAP.get_container_cls(data_type, namespace)
 
 
 @docval({'name': 'io', 'type': HDMFIO,
