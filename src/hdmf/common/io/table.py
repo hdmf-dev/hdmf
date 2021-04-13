@@ -50,8 +50,14 @@ class DynamicTableGenerator(CustomClassGenerator):
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
         """Return True if this is a DynamicTable and the field spec is a column."""
+        dt_base_found = False
+        for b in bases:
+            if issubclass(b, DynamicTable):
+                dt_base_found = True
+        if not dt_base_found:
+            return False
         dtype = cls._get_type(field_spec, type_map)
-        return DynamicTable in bases and isinstance(dtype, type) and issubclass(dtype, VectorData)
+        return isinstance(dtype, type) and issubclass(dtype, VectorData)
 
     @classmethod
     def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
