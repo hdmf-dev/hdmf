@@ -341,7 +341,7 @@ class MCIClassGenerator(CustomClassGenerator):
         if '__clsconf__' in classdict:
             # do not add MCI as a base if a base is already a subclass of MultiContainerInterface
             for b in bases:
-                if MultiContainerInterface in b.__mro__:
+                if issubclass(b, MultiContainerInterface):
                     break
             else:
                 bases.insert(0, MultiContainerInterface)
