@@ -583,18 +583,22 @@ class DynamicTable(Container):
                 c.add_row(data[colname])
 
     def __eq__(self, other):
-        """
-        Compare if the two DynamicTables contain the same data
+        """Compare if the two DynamicTables contain the same data.
 
-        This implemented by converting the DynamicTables to a pandas dataframe and
-        comparing the equality of the two tables.
+        First this returns False if the other DynamicTable has a different name or
+        description. Then, this table and the other table are converted to pandas
+        dataframes and the equality of the two tables is returned.
 
         :param other: DynamicTable to compare to
 
-        :raises: An error will be raised with to_dataframe is not defined or other
-
         :return: Bool indicating whether the two DynamicTables contain the same data
         """
+        if other is self:
+            return True
+        if not isinstance(other, DynamicTable):
+            return False
+        if self.name != other.name or self.description != other.description:
+            return False
         return self.to_dataframe().equals(other.to_dataframe())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
@@ -1176,12 +1180,12 @@ class EnumData(VectorData):
 
     __fields__ = ('elements', )
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this column'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+             'doc': 'integers that index into elements for the value of each row', 'default': list()},
             {'name': 'elements', 'type': ('array_data', 'data', VectorData), 'default': list(),
-             'doc': 'the items in this elements'})
+             'doc': 'lookup values for each integer in ``data``'})
     def __init__(self, **kwargs):
         elements = popargs('elements', kwargs)
         super().__init__(**kwargs)

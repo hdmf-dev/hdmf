@@ -11,7 +11,6 @@
 - Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
   (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
   a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
-
 - Add `EnumData` type for storing data that comes from a fixed set of values. This replaces `VocabData` i.e.
   `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
   `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
@@ -20,14 +19,19 @@
   Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
   defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   @oruebel (#551)
+- Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
+- Equality check for `DynamicTable` returns False if the other object is a `DynamicTable` instead of raising an error.
+  @rly (#566)
 
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
   attached to a `GroupBuilder`. @dsleiter (#526)
+- Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
+  `MultiContainerInterface`. @rly (#567)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
