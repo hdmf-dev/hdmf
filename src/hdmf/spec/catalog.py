@@ -42,7 +42,7 @@ class SpecCatalog:
             self.__parent_types[ndt_def] = ndt
         type_name = ndt_def if ndt_def is not None else ndt
         if type_name in self.__specs:
-            if self.__specs[type_name] != spec and self.__spec_source_files[type_name] != source_file:
+            if self.__specs[type_name] != spec or self.__spec_source_files[type_name] != source_file:
                 raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
