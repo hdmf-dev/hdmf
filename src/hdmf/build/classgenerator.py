@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 
 from ..container import Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, LinkSpec, RefSpec
+from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
 
@@ -50,6 +50,8 @@ class ClassGenerator:
             if k == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
+            if isinstance(field_spec, GroupSpec) and field_spec.data_type is None:  # skip named, untyped groups
+                continue
             if not spec.is_inherited_spec(field_spec):
                 not_inherited_fields[k] = field_spec
         try:
@@ -61,7 +63,7 @@ class ClassGenerator:
                     # each generator can update classdict and docval_args
                     if class_generator.apply_generator_to_field(field_spec, bases, type_map):
                         class_generator.process_field_spec(classdict, docval_args, parent_cls, attr_name,
-                                                           not_inherited_fields, type_map)
+                                                           not_inherited_fields, type_map, spec)
                         break  # each field_spec should be processed by only one generator
 
             for class_generator in self.__custom_generators:
@@ -204,14 +206,15 @@ class CustomClassGenerator:
         return True
 
     @classmethod
-    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map):
+    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __fields__ to the classdict and update the docval args for the field spec with the given attribute name.
         :param classdict: The dict to update with __fields__.
         :param docval_args: The list of docval arguments.
         :param parent_cls: The parent class.
         :param attr_name: The attribute name of the field spec for the container class to generate.
-        :param spec: The spec for the container class to generate.
+        :param not_inherited_fields: Dictionary of fields not inherited from the parent class.
         :param type_map: The type map to use.
+        :param spec: The spec for the container class to generate.
         """
         field_spec = not_inherited_fields[attr_name]
         dtype = cls._get_type(field_spec, type_map)
@@ -231,9 +234,19 @@ class CustomClassGenerator:
         shape = getattr(field_spec, 'shape', None)
         if shape is not None:
             docval_arg['shape'] = shape
-        if not field_spec.required:
+        if cls._check_spec_optional(field_spec, spec):
             docval_arg['default'] = getattr(field_spec, 'default_value', None)
         cls._add_to_docval_args(docval_args, docval_arg)
+
+    @classmethod
+    def _check_spec_optional(cls, field_spec, spec):
+        """Returns True if the spec or any of its parents (up to the parent type spec) are optional."""
+        if not field_spec.required:
+            return True
+        if field_spec == spec:
+            return False
+        if field_spec.parent is not None:
+            return cls._check_spec_optional(field_spec.parent, spec)
 
     @classmethod
     def _add_to_docval_args(cls, docval_args, arg):
@@ -301,14 +314,15 @@ class MCIClassGenerator(CustomClassGenerator):
         return getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY)
 
     @classmethod
-    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map):
+    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __clsconf__ to the classdict and update the docval args for the field spec with the given attribute name.
         :param classdict: The dict to update with __clsconf__.
         :param docval_args: The list of docval arguments.
         :param parent_cls: The parent class.
         :param attr_name: The attribute name of the field spec for the container class to generate.
-        :param spec: The spec for the container class to generate.
+        :param not_inherited_fields: Dictionary of fields not inherited from the parent class.
         :param type_map: The type map to use.
+        :param spec: The spec for the container class to generate.
         """
         field_spec = not_inherited_fields[attr_name]
         field_clsconf = dict(
@@ -326,7 +340,7 @@ class MCIClassGenerator(CustomClassGenerator):
             doc=field_spec.doc,
             type=(list, tuple, dict, cls._get_type(field_spec, type_map))
         )
-        if not field_spec.required:
+        if cls._check_spec_optional(field_spec, spec):
             docval_arg['default'] = getattr(field_spec, 'default_value', None)
         cls._add_to_docval_args(docval_args, docval_arg)
 
