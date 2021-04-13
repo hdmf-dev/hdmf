@@ -8,7 +8,7 @@
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
-- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace 
+- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
   (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
   a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
 
@@ -24,6 +24,8 @@
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
   attached to a `GroupBuilder`. @dsleiter (#526)
+- Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
+  `MultiContainerInterface`. @rly (#567)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
