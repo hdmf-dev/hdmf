@@ -1180,7 +1180,7 @@ class EnumData(VectorData):
 
     __fields__ = ('elements', )
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name for this column'},
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this column'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'integers that index into elements for the value of each row', 'default': list()},
