@@ -353,9 +353,4 @@ class MCIClassGenerator(CustomClassGenerator):
         :param spec: The spec for the container class to generate.
         """
         if '__clsconf__' in classdict:
-            # do not add MCI as a base if a base is already a subclass of MultiContainerInterface
-            for b in bases:
-                if MultiContainerInterface in b.__mro__:
-                    break
-            else:
-                bases.insert(0, MultiContainerInterface)
+            bases.insert(0, MultiContainerInterface)
