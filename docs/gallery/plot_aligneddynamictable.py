@@ -180,8 +180,8 @@ customer_table.to_dataframe()
 # Adding a category
 # ^^^^^^^^^^^^^^^^^
 #
-# To add a category we use :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_category`
-# to add a new :py:class:`~hdmf.common.table.DynamicTable` as a sub-category.
+# To add a new :py:class:`~hdmf.common.table.DynamicTable` as a category, 
+# we use :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_category`.
 #
 
 # create a new category DynamicTable for the work address
