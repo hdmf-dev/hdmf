@@ -193,6 +193,8 @@ class ExternalResources(Container):
         """
         Add resource name and uri to ResourceTable that will be referenced by the ResourceTable idx.
         """
+        #check to see if the resource exists
+        
         resource_name = kwargs['resource']
         uri = kwargs['uri']
         resource = Resource(resource_name, uri, table=self.resources)
