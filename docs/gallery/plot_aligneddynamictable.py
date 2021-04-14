@@ -197,13 +197,13 @@ subcol3 = VectorData(
     name='zipcode',
     description='zip code of the city',
     data=[33333, 44444, 55555])
-workadress_table = DynamicTable(
+workaddress_table = DynamicTable(
     name='work_address',
     description='home address of the customer',
     columns=[subcol1, subcol2, subcol3])
 
 # add the category to our AlignedDynamicTable
-customer_table.add_category(category=workadress_table)
+customer_table.add_category(category=workaddress_table)
 
 # render the table in the online docs
 customer_table.to_dataframe()
