@@ -161,7 +161,7 @@ class VectorIndex(VectorData):
 
     def get(self, arg, **kwargs):
         """
-        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+        Select elements in this VectorIndex and retrieve the corresponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
@@ -583,18 +583,22 @@ class DynamicTable(Container):
                 c.add_row(data[colname])
 
     def __eq__(self, other):
-        """
-        Compare if the two DynamicTables contain the same data
+        """Compare if the two DynamicTables contain the same data.
 
-        This implemented by converting the DynamicTables to a pandas dataframe and
-        comparing the equality of the two tables.
+        First this returns False if the other DynamicTable has a different name or
+        description. Then, this table and the other table are converted to pandas
+        dataframes and the equality of the two tables is returned.
 
         :param other: DynamicTable to compare to
 
-        :raises: An error will be raised with to_dataframe is not defined or other
-
         :return: Bool indicating whether the two DynamicTables contain the same data
         """
+        if other is self:
+            return True
+        if not isinstance(other, DynamicTable):
+            return False
+        if self.name != other.name or self.description != other.description:
+            return False
         return self.to_dataframe().equals(other.to_dataframe())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
@@ -1056,6 +1060,7 @@ class DynamicTableRegion(VectorData):
 
         :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
                        and the int selects the row, 2) int or slice to select a subset of rows
+        :param df: Boolean indicating whether we want to return the result as a pandas dataframe
 
         :return: Result from self.table[....] with the appropritate selection based on the
                  rows selected by this DynamicTableRegion
@@ -1099,7 +1104,6 @@ class DynamicTableRegion(VectorData):
                     ret = values.iloc[[lut[i] for i in ret]]
                 else:
                     ret = self._index_lol(values, ret, lut)
-
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
@@ -1176,12 +1180,12 @@ class EnumData(VectorData):
 
     __fields__ = ('elements', )
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this column'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+             'doc': 'integers that index into elements for the value of each row', 'default': list()},
             {'name': 'elements', 'type': ('array_data', 'data', VectorData), 'default': list(),
-             'doc': 'the items in this elements'})
+             'doc': 'lookup values for each integer in ``data``'})
     def __init__(self, **kwargs):
         elements = popargs('elements', kwargs)
         super().__init__(**kwargs)

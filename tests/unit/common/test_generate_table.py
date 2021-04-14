@@ -141,8 +141,8 @@ class TestDynamicDynamicTable(TestCase):
         self.type_map.load_namespaces(namespace_fpath)
         self.manager = BuildManager(self.type_map)
 
-        self.TestTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestTable')
-        self.TestDTRTable = self.type_map.get_container_cls(CORE_NAMESPACE, 'TestDTRTable')
+        self.TestTable = self.type_map.get_container_cls('TestTable', CORE_NAMESPACE)
+        self.TestDTRTable = self.type_map.get_container_cls('TestDTRTable', CORE_NAMESPACE)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
