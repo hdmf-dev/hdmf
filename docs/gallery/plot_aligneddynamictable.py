@@ -7,7 +7,6 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 """
 
 
-
 ###############################################################################
 # Introduction
 # ------------
@@ -128,7 +127,7 @@ customer_table = AlignedDynamicTable(
     name='customer',
     description='an example aligned table',
     columns=[col1, col2],
-    category_tables=[homeaddress_table,]
+    category_tables=[homeaddress_table, ]
 )
 
 # render the table in the online docs
@@ -150,10 +149,10 @@ customer_table.to_dataframe()
 #
 
 customer_table.add_row(
-    firstname = 'Paul',
-    lastname = 'Smith',
-    home_address = {'city': 'Bugcity',
-                    'street': 'Beestree'}
+    firstname='Paul',
+    lastname='Smith',
+    home_address={'city': 'Bugcity',
+                  'street': 'Beestree'}
 )
 
 # render the table in the online docs
@@ -285,7 +284,7 @@ customer_table[0:2]
 #
 
 # Get a list of rows as a DataFrame
-customer_table[[0,2]]
+customer_table[[0, 2]]
 
 
 ###############################################################################
