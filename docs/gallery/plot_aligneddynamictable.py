@@ -63,6 +63,7 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 # * ``description`` string to describe the table
 #
 
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_aligneddynamictable.png'
 from hdmf.common import AlignedDynamicTable
 
 customer_table = AlignedDynamicTable(
