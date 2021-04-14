@@ -35,6 +35,7 @@
 - Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
   `MultiContainerInterface`. @rly (#567)
 - Fix `make clean` command for docs to clean up sphinx-gallery tutorial files. @oruebel (#571)
+- Make sure we cannot set ``AlignedDynamicTable`` as a category on an ``AlignedDynamicTable``. @oruebel (#571)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
