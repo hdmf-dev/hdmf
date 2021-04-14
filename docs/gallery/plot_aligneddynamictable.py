@@ -145,7 +145,7 @@ customer_table.to_dataframe()
 #
 # To add a row via :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_row` we
 # can either: 1) provide the row data as a single dict to the ``data`` parameter  or
-# 2) specifying a dict for each category and column as keyword arguments. Additional
+# 2) specify a dict for each category and column as keyword arguments. Additional
 # optional arguments include ``id`` and ``enforce_unique_id``.
 #
 
