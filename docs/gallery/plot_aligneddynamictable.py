@@ -15,19 +15,19 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 # with support for grouping columns by category. :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
 # inherits from :py:class:`~hdmf.common.table.DynamicTable` and may contain additional
 # :py:class:`~hdmf.common.table.DynamicTable` objects, one per sub-category. All tables
-# must align, i.e., they are required to have the same number of rows. Some key properties
+# must align, i.e., they are required to have the same number of rows. Some key features
 # of :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` are:
 #
-# * add custom categories, each of which is a :py:class:`~hdmf.common.table.DynamicTable`
+# * support custom categories, each of which is a :py:class:`~hdmf.common.table.DynamicTable`
 #   stored as part of the :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`,
-# * interact with category tables individually as well as treat the
+# * support interaction with category tables individually as well as treating the
 #   :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` as a single large table, and
 # * because :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` is itself a
 #   :py:class:`~hdmf.common.table.DynamicTable` users can:
 #
 #     * Use :py:class:`~hdmf.common.table.DynamicTableRegion` to reference rows in
 #       :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
-#     * Add custom columns to the :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
+#     * Add custom columns to the :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`, and
 #     * Interact with :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` as well as
 #       the category (sub-tables) it contains in the same fashion as with
 #       :py:class:`~hdmf.common.table.DynamicTable`
@@ -35,13 +35,13 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 # When to use (and not use) AlignedDynamicTable?
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #
-# :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` is a seful data structure but it is also
-# fairly complex, consisting of multiple :py:class:`~hdmf.common.table.DynamicTable` object each of
+# :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` is a useful data structure but it is also
+# fairly complex, consisting of multiple :py:class:`~hdmf.common.table.DynamicTable` objects, each of
 # which is itself a complex type composed of many datasets and attributes. In general, if a simpler
 # data structure is sufficient, then consider using those instead. For example, consider using instead:
 #
 # * :py:class:`~hdmf.common.table.DynamicTable` if a regular table is sufficient.
-# * A compound dataset and :py:class:`~hdmf.container.Table` if all columns of a table are fixed
+# * A compound dataset via :py:class:`~hdmf.container.Table` if all columns of a table are fixed
 #   and fast, column-based access is not critical but fast row-based access is.
 # * Multiple, separate tables if using :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` would
 #   lead to duplication of data (i.e., de-normalize data), e.g., by having to replicate values across
@@ -49,8 +49,9 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 #
 # Use :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable` when:
 #
-# * When you need to group columns in the table by category
-# * Need to avoid name-collisions between columns and creating compound columns is not an option
+# * When you need to group columns in a :py:class:`~hdmf.common.table.DynamicTable` by category
+# * Need to avoid name collisions between columns in a :py:class:`~hdmf.common.table.DynamicTable`
+#   and creating compound columns is not an option
 #
 
 ###############################################################################
@@ -59,8 +60,8 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 #
 # To create an :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`, call the constructor with:
 #
-# * ``name`` string with the name of the table
-# * ``description`` string to describe the table
+# * ``name`` string with the name of the table, and
+# * ``description`` string to describe the table.
 #
 
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_aligneddynamictable.png'
@@ -78,7 +79,7 @@ customer_table = AlignedDynamicTable(
 # The basic behavior of adding data and initalizing  :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
 # is the same as in :py:class:`~hdmf.common.table.DynamicTable`. See the :doc:`DynamicTable tutorial  <dynamictable>`
 # for details. E.g., using  the ``columns`` and ``colnames`` parameters (which are inherited from
-# :py:class:`~hdmf.common.table.DynamicTable` we can define the columns of the primary table).
+# :py:class:`~hdmf.common.table.DynamicTable`) we can define the columns of the primary table.
 # All columns must have the same length.
 
 from hdmf.common import VectorData
@@ -103,9 +104,8 @@ customer_table = AlignedDynamicTable(
 # ^^^^^^^^^^^^^^^^^^^^^^^
 #
 # By specifying the ``category_tables`` as a list of :py:class:`~hdmf.common.table.DynamicTable`
-# optionally along with the ``categories`` names of sub-tables as an array of strings, we can
-# specify the sub-category tables.
-
+# objects we can then directly specify the sub-category tables. Optionally, we can also set
+# the ``categories`` names of the sub-tables as an array of strings to define the ordering of categories.
 
 from hdmf.common import DynamicTable
 
@@ -143,7 +143,7 @@ customer_table.to_dataframe()
 # Adding a row
 # ^^^^^^^^^^^^
 #
-# To add a row via :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_row`. Here we
+# To add a row via :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_row` we
 # can either: 1) provide the row data as a single dict to the ``data`` parameter  or
 # 2) specifying a dict for each category and column as keyword arguments. Additional
 # optional arguments include ``id`` and ``enforce_unique_id``.
@@ -180,10 +180,11 @@ customer_table.to_dataframe()
 # Adding a category
 # ^^^^^^^^^^^^^^^^^
 #
-# To add a category we use :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_category`.
+# To add a category we use :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_category`
+# to add a new :py:class:`~hdmf.common.table.DynamicTable` as a sub-category.
 #
 
-# create a new category for the work address
+# create a new category DynamicTable for the work address
 subcol1 = VectorData(
     name='city',
     description='city',
@@ -201,7 +202,7 @@ workadress_table = DynamicTable(
     description='home address of the customer',
     columns=[subcol1, subcol2, subcol3])
 
-# add the category to our algined table
+# add the category to our AlignedDynamicTable
 customer_table.add_category(category=workadress_table)
 
 # render the table in the online docs
@@ -223,7 +224,7 @@ customer_table.to_dataframe()
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #
 # If we need to access the whole table for analysis, then converting the table
-# to pandas DataFrame is a convenient option. To ignore the``id`` columns of all
+# to pandas DataFrame is a convenient option. To ignore the ``id`` columns of all
 # category tables we can simply set the ``ignore_category_ids`` parameter.
 
 
@@ -241,23 +242,26 @@ _ = customer_table.categories
 # Get the DynamicTable object of a particular category
 _ = customer_table.get_category(name='home_address')
 
-# Alternatively we can also use standard array slicing to get the category as a pandas DataFrame.
-# NOTE: in contrast to the previous call, the table is here converted to a DataFrame here.
+# Alternatively, we can use normal array slicing to get the category as a pandas DataFrame.
+# NOTE: In contrast to the previous call, the table is here converted to a DataFrame.
 _ = customer_table['home_address']
 
 ###############################################################################
 # Accessing columns
 # ^^^^^^^^^^^^^^^^^
-# We can use the standard  'in' operator to check if a column exists
+# We can use the standard Python ``in`` operator to check if a column exists
 
 # To check if a column exists in the primary table we only need to specify the column name
+# or alternatively specify the category as None
 _ = 'firstname' in customer_table
-# To check if a column exists in a category table we need to specify the category and column name as a tuple
+_ = (None, 'firstname') in customer_table
+# To check if a column exists in a category table we need to specify the category
+# and column name as a tuple
 _ = ('home_address', 'zipcode') in customer_table
 
 
 ###############################################################################
-# We can use standard array slicing to get the VectorData object of a column.
+# We can use standard array slicing to get the :py:class:`~hdmf.common.table.VectorData` object of a column.
 
 # To get a column from the primary table we just provide the name.
 _ = customer_table['firstname']
@@ -292,9 +296,9 @@ customer_table[[0, 2]]
 # Accessing cells
 # ^^^^^^^^^^^^^^^
 #
-# To get a single cell we need to specify the: 1) category, 2) column, and 3) row index when slicing into the table.
+# To get a set of cells we need to specify the: 1) category, 2) column, and 3) row index when slicing into the table.
 #
-# When selecting from the primary table we need specify None for the category, followed by the column name and
+# When selecting from the primary table we need to specify None for the category, followed by the column name and
 # the selection.
 
 # Select rows 0:2 from the 'firstname' column in the primary table
