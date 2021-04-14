@@ -312,4 +312,4 @@ Coming soon!
 Further Reading
 ---------------
 
-* **Specification Language:** For a detailed overview of the specification language itself see https://schema-language.readthedocs.io/en/latest/
+* **Specification Language:** For a detailed overview of the specification language itself see https://hdmf-schema-language.readthedocs.io/en/latest/index.html
