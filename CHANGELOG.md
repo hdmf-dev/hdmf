@@ -21,7 +21,7 @@
   @oruebel (#551)
 - Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 - Add `ExtraFieldWarning` validator warning, which is created when fields that are not part of the spec are
-  encountered @dsleiter (#542)
+  encountered. @dsleiter, @t-b, @rly (#542)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
