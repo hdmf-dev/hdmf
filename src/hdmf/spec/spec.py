@@ -449,7 +449,7 @@ class BaseStorageSpec(Spec):
     @classmethod
     def reserved_attrs(cls):
         ''' Get the names of the reserved attributes '''
-        return (cls.__namespace_key, cls.__type_key, cls.__id_key)
+        return (cls.namespace_key(), cls.type_key(), cls.id_key())
 
     @classmethod
     def namespace_key(cls):
