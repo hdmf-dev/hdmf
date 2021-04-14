@@ -209,12 +209,14 @@ class AlignedDynamicTable(DynamicTable):
 
     def __getitem__(self, item):
         """
-        If item is:
-        * int : Return a single row of the table
-        * string : Return a single category of the table
-        * tuple: Get a column, row, or cell from a particular category. The tuple is expected to consist
-                 of (category, selection) where category may be a string with the name of the sub-category
-                 or None (or the name of this AlignedDynamicTable) if we want to slice into the main table.
+        :param item: Selection defining the items of interest. This may be a
+
+        * **int, list, array, slice** : Return one or multiple row of the table as a DataFrame
+        * **string** : Return a single category table as a DynamicTable or a single column of the
+          primary table as a
+        * **tuple**: Get a column, row, or cell from a particular category. The tuple is expected to consist
+          of (category, selection) where category may be a string with the name of the sub-category
+          or None (or the name of this AlignedDynamicTable) if we want to slice into the main table.
 
         :returns: DataFrame when retrieving a row or category. Returns scalar when selecting a cell.
                  Returns a VectorData/VectorIndex when retrieving a single column.
@@ -229,7 +231,7 @@ class AlignedDynamicTable(DynamicTable):
             return res
         elif isinstance(item, str) or item is None:
             if item in self.colnames:
-                # get a specfic column
+                # get a specific column
                 return super().__getitem__(item)
             else:
                 # get a single category
