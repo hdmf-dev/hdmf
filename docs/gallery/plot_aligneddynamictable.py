@@ -150,7 +150,7 @@ customer_table.to_dataframe()
 #
 # To add a row via :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_row` we
 # can either: 1) provide the row data as a single dict to the ``data`` parameter  or
-# 2) specifying a dict for each category and column as keyword arguments. Additional
+# 2) specify a dict for each category and column as keyword arguments. Additional
 # optional arguments include ``id`` and ``enforce_unique_id``.
 #
 
@@ -185,8 +185,8 @@ customer_table.to_dataframe()
 # Adding a category
 # ^^^^^^^^^^^^^^^^^
 #
-# To add a category we use :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_category`
-# to add a new :py:class:`~hdmf.common.table.DynamicTable` as a sub-category.
+# To add a new :py:class:`~hdmf.common.table.DynamicTable` as a category, 
+# we use :py:func:`~hdmf.common.alignedtable.AlignedDynamicTable.add_category`.
 #
 
 # create a new category DynamicTable for the work address
@@ -204,14 +204,14 @@ subcol3 = VectorData(
     name='zipcode',
     description='zip code of the city',
     data=[33333, 44444, 55555])
-workadress_table = DynamicTable(
+workaddress_table = DynamicTable(
     name='work_address',
     description='home address of the customer',
     columns=[subcol1, subcol2, subcol3]
 )
 
 # add the category to our AlignedDynamicTable
-customer_table.add_category(category=workadress_table)
+customer_table.add_category(category=workaddress_table)
 
 # render the table in the online docs
 customer_table.to_dataframe()
