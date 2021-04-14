@@ -87,11 +87,13 @@ from hdmf.common import VectorData
 col1 = VectorData(
     name='firstname',
     description='Customer first name',
-    data=['Peter', 'Emma'])
+    data=['Peter', 'Emma']
+)
 col2 = VectorData(
     name='lastname',
     description='Customer last name',
-    data=['Williams', 'Brown'])
+    data=['Williams', 'Brown']
+)
 
 customer_table = AlignedDynamicTable(
     name='customer',
@@ -113,15 +115,18 @@ from hdmf.common import DynamicTable
 subcol1 = VectorData(
     name='city',
     description='city',
-    data=['Rivercity', 'Mountaincity'])
+    data=['Rivercity', 'Mountaincity']
+)
 subcol2 = VectorData(
     name='street',
     description='street data',
-    data=['Amazonstreet', 'Alpinestreet'])
+    data=['Amazonstreet', 'Alpinestreet']
+)
 homeaddress_table = DynamicTable(
     name='home_address',
     description='home address of the customer',
-    columns=[subcol1, subcol2])
+    columns=[subcol1, subcol2]
+)
 
 # create the table
 customer_table = AlignedDynamicTable(
@@ -188,11 +193,13 @@ customer_table.to_dataframe()
 subcol1 = VectorData(
     name='city',
     description='city',
-    data=['Busycity', 'Worktown', 'Labortown'])
+    data=['Busycity', 'Worktown', 'Labortown']
+)
 subcol2 = VectorData(
     name='street',
     description='street data',
-    data=['Cannery Row', 'Woodwork Avenue', 'Steel Street'])
+    data=['Cannery Row', 'Woodwork Avenue', 'Steel Street']
+)
 subcol3 = VectorData(
     name='zipcode',
     description='zip code of the city',
@@ -200,7 +207,8 @@ subcol3 = VectorData(
 workadress_table = DynamicTable(
     name='work_address',
     description='home address of the customer',
-    columns=[subcol1, subcol2, subcol3])
+    columns=[subcol1, subcol2, subcol3]
+)
 
 # add the category to our AlignedDynamicTable
 customer_table.add_category(category=workadress_table)
