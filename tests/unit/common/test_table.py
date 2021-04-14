@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import unittest
 
+
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
@@ -549,6 +550,63 @@ Fields:
                            index=pd.Index(name='id', data=[0]))
         pd.testing.assert_frame_equal(df, df2)
         pd.testing.assert_frame_equal(table.get(0), df2)
+
+    def test_eq(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertTrue(table == test_table)
+
+    def test_eq_from_df(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard']
+        }).loc[:, ('foo', 'bar', 'baz')]
+
+        test_table = DynamicTable.from_dataframe(df, 'with_columns_and_data', table_description='a test table')
+        table = self.with_columns_and_data()
+        self.assertTrue(table == test_table)
+
+    def test_eq_diff_missing_col(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        del columns[-1]
+        test_table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_diff_name(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("wrong name", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_diff_desc(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("with_columns_and_data", 'wrong description', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_bad_type(self):
+        container = Container('test_container')
+        table = self.with_columns_and_data()
+        self.assertFalse(table == container)
 
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
