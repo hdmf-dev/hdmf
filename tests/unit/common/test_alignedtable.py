@@ -189,6 +189,26 @@ class TestAlignedDynamicTableContainer(TestCase):
                 description='Test aligned container',
                 category_tables=categories)
 
+    def test_init_with_bad_custom_categories(self):
+        """Test that we cannot provide a category that is not a DynamicTable"""
+        num_rows = 10
+        categories = [  # good category
+                      DynamicTable(name='test1',
+                                   description="test1 description",
+                                   columns=[VectorData(name='test1'+t,
+                                                       description='test1' + t + ' description',
+                                                       data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']]
+                                   ),
+                      # use a list as a bad category example
+                      [0, 1, 2]]
+        with self.assertRaises(ValueError) as ve:
+            AlignedDynamicTable(
+                name='test_aligned_table',
+                description='Test aligned container',
+                category_tables=categories)
+            self.assertEqual(str(ve.exception),
+                             "Category table with index 1 is not a DynamicTable")
+
     def test_round_trip_container(self):
         """Test read and write the container by itself"""
         category_names = ['test1', 'test2', 'test3']
@@ -447,3 +467,43 @@ class TestAlignedDynamicTableContainer(TestCase):
         tdf_cols = tdf.columns.tolist()
         for v in zip(expected_cols, tdf_cols):
             self.assertTupleEqual(v[0], v[1])
+
+    def test_nested_aligned_dynamic_table_not_allowed(self):
+        """
+        Test that using and AlignedDynamicTable as category for an AlignedDynamicTable is not allowed
+        """
+        # create an AlignedDynamicTable as category
+        subsubcol1 = VectorData(name='sub_sub_column1', description='test sub sub column', data=['test11', 'test12'])
+        sub_category = DynamicTable(name='sub_category1', description='test subcategory table', columns=[subsubcol1, ])
+        subcol1 = VectorData(name='sub_column1', description='test-subcolumn', data=['test1', 'test2'])
+        adt_category = AlignedDynamicTable(
+            name='category1',
+            description='test using AlignedDynamicTable as a category',
+            columns=[subcol1, ],
+            category_tables=[sub_category, ])
+
+        # Create a regular column for our main AlignedDynamicTable
+        col1 = VectorData(name='column1', description='regular test column', data=['test1', 'test2'])
+
+        # test 1: Make sure we can't add the AlignedDynamicTable category on init
+        with self.assertRaises(ValueError) as ve:
+            # create the nested AlignedDynamicTable with our adt_category as a sub-category
+            AlignedDynamicTable(
+                name='nested_adt',
+                description='test nesting AlignedDynamicTable',
+                columns=[col1, ],
+                category_tables=[adt_category, ])
+            self.assertEqual(str(ve.exception),
+                             "Category table with index %i is an AlignedDynamicTable. "
+                             "Nesting of AlignedDynamicTable is currently not supported." % 0)
+
+        # test 2: Make sure we can't add the AlignedDynamicTable category via add_category
+        adt = AlignedDynamicTable(
+            name='nested_adt',
+            description='test nesting AlignedDynamicTable',
+            columns=[col1, ])
+        with self.assertRaises(ValueError) as ve:
+            adt.add_category(adt_category)
+            self.assertEqual(str(ve.exception),
+                             "Category is an AlignedDynamicTable. Nesting of AlignedDynamicTable "
+                             "is currently not supported.")
