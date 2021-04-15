@@ -17,7 +17,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval, StrDataset
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -26,6 +26,37 @@ H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
+
+# from h5py import h5t
+#
+# @docval_macro('array_data')
+# class StrDataset: #(Dataset):
+#     """Wrapper to decode strings on reading the dataset"""
+#     def __init__(self, dset, encoding, errors='strict'):
+#         self.dset = dset
+#         if encoding is None:
+#             encoding = h5t.check_string_dtype(dset.dtype).encoding
+#         self.encoding = encoding
+#         self.errors = errors
+#
+#     def __getattr__(self, name):
+#         return getattr(self.dset, name)
+#
+#     def __getitem__(self, args):
+#         print("CALLING GETITEM OVERRIDE")
+#         bytes_arr = self.dset[args]
+#         # numpy.char.decode() seems like the obvious thing to use. But it only
+#         # accepts numpy string arrays, not object arrays of bytes (which we
+#         # return from HDF5 variable-length strings). And the numpy
+#         # implementation is not faster than doing it with a loop; in fact, by
+#         # not converting the result to a numpy unicode array, the
+#         # naive way can be faster! (Comparing with numpy 1.18.4, June 2020)
+#         if numpy.isscalar(bytes_arr):
+#             return bytes_arr.decode(self.encoding, self.errors)
+#
+#         return np.array([
+#             b.decode(self.encoding, self.errors) for b in bytes_arr.flat
+#         ], dtype=object).reshape(bytes_arr.shape)
 
 class HDF5IO(HDMFIO):
 
@@ -699,7 +730,7 @@ class HDF5IO(HDMFIO):
             if h5obj.dtype.kind == 'O' and len(h5obj) > 0:
                 elem1 = h5obj[0]
                 if isinstance(elem1, (str, bytes)):
-                    d = h5obj # self._check_str_dtype(h5obj)
+                    d = self._check_str_dtype(h5obj)
                 elif isinstance(elem1, RegionReference):  # read list of references
                     d = BuilderH5RegionDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
@@ -724,7 +755,7 @@ class HDF5IO(HDMFIO):
         dtype = h5obj.dtype
         if dtype.kind == 'O':
             if dtype.metadata.get('vlen') == str:
-                return h5obj.asstr()
+                return StrDataset(h5obj, None)
         return h5obj
 
     @classmethod
