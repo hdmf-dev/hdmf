@@ -922,10 +922,8 @@ class HDF5IO(HDMFIO):
                 if isinstance(value, (set, list, tuple)):
                     tmp = tuple(value)
                     if len(tmp) > 0:
-                        if isinstance(tmp[0], str):
-                            value = [np.unicode_(s) for s in tmp]
-                        elif isinstance(tmp[0], bytes):
-                            value = [np.string_(s) for s in tmp]
+                        if isinstance(tmp[0], (str, bytes)):
+                            value = np.array(value, dtype=special_dtype(vlen=type(tmp[0])))
                         elif isinstance(tmp[0], Container):  # a list of references
                             self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                         else:
@@ -938,6 +936,8 @@ class HDF5IO(HDMFIO):
                 else:
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                    if isinstance(value, np.ndarray) and value.dtype.kind == 'U':
+                        value = np.array(value, dtype=H5_TEXT)
                     obj.attrs[key] = value                   # a regular scalar
             except Exception as e:
                 msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)
