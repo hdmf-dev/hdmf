@@ -26,22 +26,20 @@ class TestAlignedDynamicTableContainer(TestCase):
 
     def test_init_categories_without_category_tables_error(self):
         # Test raise error if categories is given without category_tables
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError, "Categories provided but no category_tables given"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
                 categories=['cat1', 'cat2'])
-        self.assertEqual(str(ve.exception), "Categories provided but no category_tables given")
 
     def test_init_length_mismatch_between_categories_and_category_tables(self):
         # Test length mismatch between categories and category_tables
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError,  "0 category_tables given but 2 categories specified"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
                 categories=['cat1', 'cat2'],
                 category_tables=[])
-        self.assertEqual(str(ve.exception), "0 category_tables given but 2 categories specified")
 
     def test_init_category_table_names_do_not_match_categories(self):
         # Construct some categories for testing
@@ -54,17 +52,17 @@ class TestAlignedDynamicTableContainer(TestCase):
                                                        data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']]
                                    ) for val in category_names]
         # Test add category_table that is not listed in the categories list
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError,
+                                   "DynamicTable test3 does not appear in categories ['test1', 'test2', 't3']"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
                 categories=['test1', 'test2', 't3'],  # bad name for 'test3'
                 category_tables=categories)
-        self.assertEqual(str(ve.exception), "DynamicTable test3 does not appear in categories ['test1', 'test2', 't3']")
 
     def test_init_duplicate_category_table_name(self):
         # Test duplicate table name
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError, "Duplicate table name test1 found in input dynamic_tables"):
             categories = [DynamicTable(name=val,
                                        description=val+" description",
                                        columns=[VectorData(name=val+t,
@@ -76,28 +74,27 @@ class TestAlignedDynamicTableContainer(TestCase):
                 description='Test aligned container',
                 categories=['test1', 'test2', 'test3'],
                 category_tables=categories)
-        self.assertEqual(str(ve.exception), "Duplicate table name test1 found in input dynamic_tables")
 
     def test_init_misaligned_category_tables(self):
-        # Test misaligned category tables
-        with self.assertRaises(ValueError) as ve:
-            categories = [DynamicTable(name=val,
-                                       description=val+" description",
-                                       columns=[VectorData(name=val+t,
-                                                           description=val+t+' description',
-                                                           data=np.arange(10)) for t in ['c1', 'c2', 'c3']]
-                                       ) for val in ['test1', 'test2']]
-            categories.append(DynamicTable(name='test3',
-                                           description="test3 description",
-                                           columns=[VectorData(name='test3 '+t,
-                                                               description='test3 '+t+' description',
-                                                               data=np.arange(8)) for t in ['c1', 'c2', 'c3']]))
+        """Test misaligned category tables"""
+        categories = [DynamicTable(name=val,
+                                   description=val+" description",
+                                   columns=[VectorData(name=val+t,
+                                                       description=val+t+' description',
+                                                       data=np.arange(10)) for t in ['c1', 'c2', 'c3']]
+                                   ) for val in ['test1', 'test2']]
+        categories.append(DynamicTable(name='test3',
+                                       description="test3 description",
+                                       columns=[VectorData(name='test3 '+t,
+                                                           description='test3 '+t+' description',
+                                                           data=np.arange(8)) for t in ['c1', 'c2', 'c3']]))
+        with self.assertRaisesWith(ValueError,
+                                   "Category DynamicTable test3 does not align, it has 8 rows expected 10"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
                 categories=['test1', 'test2', 'test3'],
                 category_tables=categories)
-        self.assertEqual(str(ve.exception), "Category DynamicTable test3 does not align, it has 8 rows expected 10")
 
     def test_init_with_custom_empty_categories(self):
         """Test that we can create an empty table with custom categories"""
@@ -147,9 +144,10 @@ class TestAlignedDynamicTableContainer(TestCase):
         self.assertEqual(temp.categories, category_names)
         self.assertTrue('test1' in temp)  # test that contains category works
         self.assertTrue(('test1', 'c1') in temp)  # test that contains a column works
-        with self.assertRaises(ValueError):  # test the error case of a tuple with len !-2
+        # test the error case of a tuple with len !=2
+        with self.assertRaisesWith(ValueError, "Expected tuple of strings of length 2 got tuple of length 3"):
             ('test1', 'c1', 't3') in temp
-        self.assertTupleEqual(temp.colnames, ('main_c1', 'main_c2', 'main_c3'))
+        self.assertTupleEqual(temp.colnames, ('main_c1', 'main_c2', 'main_c3'))  # confirm column names
 
     def test_init_with_custom_misaligned_categories(self):
         """Test that we cannot create an empty table with custom categories"""
@@ -161,13 +159,14 @@ class TestAlignedDynamicTableContainer(TestCase):
                                    columns=[VectorData(name=val1+t,
                                                        description=val1+t+' description',
                                                        data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']]),
-                      DynamicTable(name=val1,
-                                   description=val1+" description",
+                      DynamicTable(name=val2,
+                                   description=val2+" description",
                                    columns=[VectorData(name=val2+t,
                                                        description=val2+t+' description',
                                                        data=np.arange(num_rows+1)) for t in ['c1', 'c2', 'c3']])
                       ]
-        with self.assertRaises(ValueError):
+        with self.assertRaisesWith(ValueError,
+                                   "Category DynamicTable test2 does not align, it has 11 rows expected 10"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
@@ -183,7 +182,7 @@ class TestAlignedDynamicTableContainer(TestCase):
                                                        description=val+t+' description',
                                                        data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']]
                                    ) for val in category_names]
-        with self.assertRaises(ValueError):
+        with self.assertRaisesWith(ValueError, "Duplicate table name test1 found in input dynamic_tables"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
@@ -201,13 +200,11 @@ class TestAlignedDynamicTableContainer(TestCase):
                                    ),
                       # use a list as a bad category example
                       [0, 1, 2]]
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError, "Category table with index 1 is not a DynamicTable"):
             AlignedDynamicTable(
                 name='test_aligned_table',
                 description='Test aligned container',
                 category_tables=categories)
-            self.assertEqual(str(ve.exception),
-                             "Category table with index 1 is not a DynamicTable")
 
     def test_round_trip_container(self):
         """Test read and write the container by itself"""
@@ -266,14 +263,13 @@ class TestAlignedDynamicTableContainer(TestCase):
             description='Test aligned container',
             category_tables=categories)
         self.assertListEqual(adt.categories, category_names)
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError, "New category DynamicTable does not align, it has 8 rows expected 10"):
             adt.add_category(DynamicTable(name='test3',
                                           description='test3_description',
                                           columns=[VectorData(name='test3_'+t,
                                                               description='test3 '+t+' description',
                                                               data=np.arange(num_rows - 2)) for t in ['c1', 'c2', 'c3']
                                                    ]))
-        self.assertEqual(str(ve.exception), "New category DynamicTable does not align, it has 8 rows expected 10")
 
     def test_add_category_already_in_table(self):
         category_names = ['test1', 'test2', 'test2']
@@ -289,9 +285,8 @@ class TestAlignedDynamicTableContainer(TestCase):
             description='Test aligned container',
             category_tables=categories[0:2])
         self.assertListEqual(adt.categories, category_names[0:2])
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError, "Category test2 already in the table"):
             adt.add_category(categories[-1])
-        self.assertEqual(str(ve.exception), "Category test2 already in the table")
 
     def test_add_column(self):
         adt = AlignedDynamicTable(
@@ -312,9 +307,8 @@ class TestAlignedDynamicTableContainer(TestCase):
             columns=[VectorData(name='test_'+t,
                                 description='test_'+t+' description',
                                 data=np.arange(10)) for t in ['c1', 'c2', 'c3']])
-        with self.assertRaises(KeyError) as ke:
+        with self.assertRaisesWith(KeyError, "'Category mycat not in table'"):
             adt.add_column(category='mycat', name='testA', description='testA', data=np.arange(10))
-        self.assertEqual(str(ke.exception), "'Category mycat not in table'")
 
     def test_add_column_bad_length(self):
         """Test add column that is too short"""
@@ -325,9 +319,8 @@ class TestAlignedDynamicTableContainer(TestCase):
                                 description='test_'+t+' description',
                                 data=np.arange(10)) for t in ['c1', 'c2', 'c3']])
         # Test successful add
-        with self.assertRaises(ValueError) as ve:
+        with self.assertRaisesWith(ValueError, "column must have the same number of rows as 'id'"):
             adt.add_column(name='testA', description='testA', data=np.arange(8))
-        self.assertEqual(str(ve.exception), "column must have the same number of rows as 'id'")
 
     def test_add_column_to_subcategory(self):
         """Test adding a column to a subcategory"""
@@ -375,7 +368,7 @@ class TestAlignedDynamicTableContainer(TestCase):
         # Test missing categories data
         with self.assertRaises(KeyError) as ke:
             temp.add_row(main_c1=3, main_c2=5)
-        self.assertTrue("row data keys don't match" in str(ke.exception))
+        self.assertTrue("row data keys do not match" in str(ke.exception))
 
     def test_get_item(self):
         """Test getting elements from the table"""
@@ -418,9 +411,9 @@ class TestAlignedDynamicTableContainer(TestCase):
         # Test getting a specific cell
         self.assertEqual(temp[None, 'main_c1', 1], 3)
         # Test bad selection tuple
-        with self.assertRaises(ValueError):
+        with self.assertRaisesWith(ValueError,
+                                   "Expected tuple of length 2 or 3 with (category, column, row) as value."):
             temp[('main_c1',)]
-            raise ValueError("Expected tuple of length 2 or 3 with (category, selection, row) as value.")
 
     def test_to_dataframe(self):
         """Test that the to_dataframe method works"""
@@ -486,24 +479,21 @@ class TestAlignedDynamicTableContainer(TestCase):
         col1 = VectorData(name='column1', description='regular test column', data=['test1', 'test2'])
 
         # test 1: Make sure we can't add the AlignedDynamicTable category on init
-        with self.assertRaises(ValueError) as ve:
+        msg = ("Category table with index %i is an AlignedDynamicTable. "
+               "Nesting of AlignedDynamicTable is currently not supported." % 0)
+        with self.assertRaisesWith(ValueError, msg):
             # create the nested AlignedDynamicTable with our adt_category as a sub-category
             AlignedDynamicTable(
                 name='nested_adt',
                 description='test nesting AlignedDynamicTable',
                 columns=[col1, ],
                 category_tables=[adt_category, ])
-            self.assertEqual(str(ve.exception),
-                             "Category table with index %i is an AlignedDynamicTable. "
-                             "Nesting of AlignedDynamicTable is currently not supported." % 0)
 
         # test 2: Make sure we can't add the AlignedDynamicTable category via add_category
         adt = AlignedDynamicTable(
             name='nested_adt',
             description='test nesting AlignedDynamicTable',
             columns=[col1, ])
-        with self.assertRaises(ValueError) as ve:
+        msg = "Category is an AlignedDynamicTable. Nesting of AlignedDynamicTable is currently not supported."
+        with self.assertRaisesWith(ValueError, msg):
             adt.add_category(adt_category)
-            self.assertEqual(str(ve.exception),
-                             "Category is an AlignedDynamicTable. Nesting of AlignedDynamicTable "
-                             "is currently not supported.")
