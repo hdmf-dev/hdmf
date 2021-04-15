@@ -198,7 +198,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         else:
             self.assertContainerEqual(read_container, self.container, ignore_name=True, ignore_hdmf_attrs=True)
 
-        self.validate()
+        self.validate(read_container._experimental)
 
     def roundtripContainer(self, cache_spec=False):
         """Write the container to an HDF5 file, read the container from the file, and return it."""
@@ -221,18 +221,18 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         self.export_reader = HDF5IO(self.export_filename, manager=get_manager(), mode='r')
         return self.export_reader.read()
 
-    def validate(self):
+    def validate(self, experimental=False):
         """Validate the written and exported files, if they exist."""
         if os.path.exists(self.filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io)
+                errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)
 
         if os.path.exists(self.export_filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io)
+                errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)

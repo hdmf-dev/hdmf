@@ -31,7 +31,7 @@ class SpecCatalog:
              'doc': 'path to the source file from which the spec was loaded', 'default': None})
     def register_spec(self, **kwargs):
         '''
-        Associate a specified object type with an HDF5 specification
+        Associate a specified object type with a specification
         '''
         spec, source_file = getargs('spec', 'source_file', kwargs)
         ndt = spec.data_type_inc
@@ -42,7 +42,8 @@ class SpecCatalog:
             self.__parent_types[ndt_def] = ndt
         type_name = ndt_def if ndt_def is not None else ndt
         if type_name in self.__specs:
-            raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
+            if self.__specs[type_name] != spec or self.__spec_source_files[type_name] != source_file:
+                raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
 
