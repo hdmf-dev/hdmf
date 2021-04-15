@@ -132,7 +132,7 @@ class AlignedDynamicTable(DynamicTable):
         then we have to populate the new category with the corresponding data before adding it.
 
         :raises: ValueError is raised if the input table does not have the same number of rows as the main table.
-                 ValueErrir is raised if the table is an AlignedDynamicTable instead of regular DynamicTable.
+                 ValueError is raised if the table is an AlignedDynamicTable instead of regular DynamicTable.
         """
         category = getargs('category', kwargs)
         if len(category) != len(self):
