@@ -196,7 +196,7 @@ class AlignedDynamicTable(DynamicTable):
         if missing_categories:
             raise KeyError(
                 '\n'.join([
-                    'row data keys don\'t match available categories',
+                    'row data keys do not match available categories',
                     'missing {} category keys: {}'.format(len(missing_categories), missing_categories)
                 ])
             )
