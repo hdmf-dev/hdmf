@@ -26,37 +26,7 @@ H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
-
-# from h5py import h5t
-#
-# @docval_macro('array_data')
-# class StrDataset: #(Dataset):
-#     """Wrapper to decode strings on reading the dataset"""
-#     def __init__(self, dset, encoding, errors='strict'):
-#         self.dset = dset
-#         if encoding is None:
-#             encoding = h5t.check_string_dtype(dset.dtype).encoding
-#         self.encoding = encoding
-#         self.errors = errors
-#
-#     def __getattr__(self, name):
-#         return getattr(self.dset, name)
-#
-#     def __getitem__(self, args):
-#         print("CALLING GETITEM OVERRIDE")
-#         bytes_arr = self.dset[args]
-#         # numpy.char.decode() seems like the obvious thing to use. But it only
-#         # accepts numpy string arrays, not object arrays of bytes (which we
-#         # return from HDF5 variable-length strings). And the numpy
-#         # implementation is not faster than doing it with a loop; in fact, by
-#         # not converting the result to a numpy unicode array, the
-#         # naive way can be faster! (Comparing with numpy 1.18.4, June 2020)
-#         if numpy.isscalar(bytes_arr):
-#             return bytes_arr.decode(self.encoding, self.errors)
-#
-#         return np.array([
-#             b.decode(self.encoding, self.errors) for b in bytes_arr.flat
-#         ], dtype=object).reshape(bytes_arr.shape)
+H5PY_3 = h5py.__version__.startswith('3')
 
 class HDF5IO(HDMFIO):
 
@@ -754,7 +724,7 @@ class HDF5IO(HDMFIO):
     def _check_str_dtype(self, h5obj):
         dtype = h5obj.dtype
         if dtype.kind == 'O':
-            if dtype.metadata.get('vlen') == str:
+            if dtype.metadata.get('vlen') == str and H5PY_3:
                 return StrDataset(h5obj, None)
         return h5obj
 
