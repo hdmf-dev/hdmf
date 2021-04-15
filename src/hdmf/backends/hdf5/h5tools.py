@@ -6,6 +6,7 @@ from functools import partial
 from pathlib import Path
 
 import numpy as np
+import h5py
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
