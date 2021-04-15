@@ -25,14 +25,26 @@ class AlignedDynamicTable(DynamicTable):
 
     @docval(*get_docval(DynamicTable.__init__),
             {'name': 'category_tables', 'type': list,
-             'doc': 'List of DynamicTables to be added to the container', 'default': None},
+             'doc': 'List of DynamicTables to be added to the container. NOTE: Only regular '
+                    'DynamicTables are allowed. Using AlignedDynamicTable as a category for '
+                    'AlignedDynamicTable is currently not supported.', 'default': None},
             {'name': 'categories', 'type': 'array_data',
              'doc': 'List of names with the ordering of category tables', 'default': None})
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):  # noqa: C901
         in_category_tables = popargs('category_tables', kwargs)
         in_categories = popargs('categories', kwargs)
+        if in_category_tables is not None:
+            # Error check to make sure that all category_table are regular DynamicTable
+            for i, v in enumerate(in_category_tables):
+                if not isinstance(v, DynamicTable):
+                    raise ValueError("Category table with index %i is not a DynamicTable" % i)
+                if isinstance(v, AlignedDynamicTable):
+                    raise ValueError("Category table with index %i is an AlignedDynamicTable. "
+                                     "Nesting of AlignedDynamicTable is currently not supported." % i)
+        # set in_categories from the in_category_tables if it is empy
         if in_categories is None and in_category_tables is not None:
             in_categories = [tab.name for tab in in_category_tables]
+        # check that if categories is given that we also have category_tables
         if in_categories is not None and in_category_tables is None:
             raise ValueError("Categories provided but no category_tables given")
         # at this point both in_categories and in_category_tables should either both be None or both be a list
@@ -119,7 +131,8 @@ class AlignedDynamicTable(DynamicTable):
         other category tables). I.e., if the AlignedDynamicTable is already populated with data
         then we have to populate the new category with the corresponding data before adding it.
 
-        :raises: ValueError is raised if the input table does not have the same number of rows as the main table
+        :raises: ValueError is raised if the input table does not have the same number of rows as the main table.
+                 ValueError is raised if the table is an AlignedDynamicTable instead of regular DynamicTable.
         """
         category = getargs('category', kwargs)
         if len(category) != len(self):
@@ -127,6 +140,9 @@ class AlignedDynamicTable(DynamicTable):
                              (len(category), len(self)))
         if category.name in self.category_tables:
             raise ValueError("Category %s already in the table" % category.name)
+        if isinstance(category, AlignedDynamicTable):
+            raise ValueError("Category is an AlignedDynamicTable. Nesting of AlignedDynamicTable "
+                             "is currently not supported.")
         self.category_tables[category.name] = category
         category.parent = self
 
@@ -180,7 +196,7 @@ class AlignedDynamicTable(DynamicTable):
         if missing_categories:
             raise KeyError(
                 '\n'.join([
-                    'row data keys don\'t match available categories',
+                    'row data keys do not match available categories',
                     'missing {} category keys: {}'.format(len(missing_categories), missing_categories)
                 ])
             )
@@ -209,12 +225,14 @@ class AlignedDynamicTable(DynamicTable):
 
     def __getitem__(self, item):
         """
-        If item is:
-        * int : Return a single row of the table
-        * string : Return a single category of the table
-        * tuple: Get a column, row, or cell from a particular category. The tuple is expected to consist
-                 of (category, selection) where category may be a string with the name of the sub-category
-                 or None (or the name of this AlignedDynamicTable) if we want to slice into the main table.
+        :param item: Selection defining the items of interest. This may be a
+
+        * **int, list, array, slice** : Return one or multiple row of the table as a DataFrame
+        * **string** : Return a single category table as a DynamicTable or a single column of the
+          primary table as a
+        * **tuple**: Get a column, row, or cell from a particular category. The tuple is expected to consist
+          of (category, selection) where category may be a string with the name of the sub-category
+          or None (or the name of this AlignedDynamicTable) if we want to slice into the main table.
 
         :returns: DataFrame when retrieving a row or category. Returns scalar when selecting a cell.
                  Returns a VectorData/VectorIndex when retrieving a single column.
@@ -229,7 +247,7 @@ class AlignedDynamicTable(DynamicTable):
             return res
         elif isinstance(item, str) or item is None:
             if item in self.colnames:
-                # get a specfic column
+                # get a specific column
                 return super().__getitem__(item)
             else:
                 # get a single category

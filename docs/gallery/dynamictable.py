@@ -22,6 +22,7 @@ This is a user guide to interacting with ``DynamicTable`` objects.
 # :py:class:`~hdmf.common.table.DynamicTable` with a string ``name`` and string
 # ``description``. Specifying the arguments with keywords is recommended.
 
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_dynamictable.png'
 from hdmf.common import DynamicTable
 
 table = DynamicTable(
