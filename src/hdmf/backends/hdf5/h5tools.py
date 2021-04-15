@@ -29,6 +29,7 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 H5PY_3 = h5py.__version__.startswith('3')
 
+
 class HDF5IO(HDMFIO):
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
