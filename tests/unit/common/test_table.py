@@ -832,7 +832,7 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         return table[arg]
 
     def test_getitem_oor(self):
-        msg =  "Index (12) out of range for (0-4)"
+        msg = "Index (12) out of range for (0-4)"
         with self.assertRaisesWith(IndexError, msg):
             self._getitem(12)
 
