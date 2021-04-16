@@ -68,6 +68,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
+            if isinstance(val, ForeignField):
+                val.parent = self.object_id
             self.fields[name] = val
 
         return setter
