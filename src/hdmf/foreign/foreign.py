@@ -9,14 +9,23 @@ class ForeignField(object):
     '''
 
 
+    # set by user
     @docval({'name': 'uri', 'type': str, 'help': 'the URI for retreiving the foreign field'},
-            {'name': 'namespace', 'type': str, 'help': 'the namespace of data_type'},
-            {'name': 'parent', 'type': Container, 'help': 'the UUID object ID of the parent of the foreign object'},
-            {'name': 'path', 'type': str, 'help': 'the path of the foreign field, relative to the parent'},
-            {'name': 'checksum', 'type': str, 'help': 'the MD5 checksum for the data'},
-            {'name': 'manager', 'type', BuildManager, 'the BuildManager used to read this field'},
+            {'name': 'checksum', 'type': str, 'help': 'the MD5 checksum for the data', 'default': None},
+
+            # set by user, if storing a whole object as foreign
             {'name': 'data_type', 'type': str, 'help': 'the data_type of the foreign object', 'default': None},
-            {'name': 'object_id', 'type': str, 'help': 'the UUID object ID of the foreign object', 'default': True})
+            {'name': 'object_id', 'type': str, 'help': 'the UUID object ID of the foreign object', 'default': True},
+            {'name': 'namespace', 'type': str, 'help': 'the namespace of data_type', 'default': None},
+
+            # set by Container setter
+            {'name': 'parent', 'type': Container, 'help': 'the UUID object ID of the parent of the foreign object', 'default': None},
+
+            # set by ObjectMapper
+            {'name': 'path', 'type': str, 'help': 'the path of the foreign field, relative to the parent', 'default': None},
+
+            {'name': 'manager', 'type', BuildManager, 'the BuildManager used to read this field'},
+           )
     def __init__(self, **kwargs):
         ######################################################
         # add ability to just pass in an existing NWBFile or Container.
@@ -27,26 +36,12 @@ class ForeignField(object):
         self.__checksum = kwargs['checksum']
         self.__data_type = kwargs['data_type']
         self.__object_id = kwargs['object_id']
+        self.__manager = kwargs['manager']
 
     @property
     def uri(self):
         '''the URI for retreiving the foreign field'''
         return self.__uri
-
-    @property
-    def namespace(self):
-        '''the namespace of data_type'''
-        return self.__namespace
-
-    @property
-    def parent(self):
-        '''the UUID object ID of the parent of the foreign object'''
-        return self.__parent
-
-    @property
-    def path(self):
-        '''the path of the foreign field, relative to the parent'''
-        return self.__path
 
     @property
     def checksum(self):
@@ -62,6 +57,29 @@ class ForeignField(object):
     def object_id(self):
         '''the UUID object ID of the foreign object'''
         return self.__object_id
+
+    @property
+    def namespace(self):
+        '''the namespace of data_type'''
+        return self.__namespace
+
+    @property
+    def parent(self):
+        '''the UUID object ID of the parent of the foreign object'''
+        return self.__parent
+
+    @parent.setter
+    def parent(self, val):
+        self.__parent = val
+
+    @property
+    def path(self):
+        '''the path of the foreign field, relative to the parent'''
+        return self.__path
+
+    @path.setter
+    def path(self, val):
+        self.__path = val
 
     @docval({'name': 'cache', 'type': bool, 'help': 'whether or not to cache result after resolving', 'default': True},
             {'name': 'swap', 'type': bool, 'help': 'whether or not to swap in the returned value to the parent Container', 'default': True},
