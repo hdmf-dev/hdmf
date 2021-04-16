@@ -646,6 +646,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret
 
     def __check_quantity(self, attr_value, spec, container):
+        """
+        Check to make sure quantity is satisfied and required values are present,
+        and issue appropriate warnings if necessary.
+        """
         if attr_value is None and spec.required:
             attr_name = self.get_attribute(spec)
             msg = ("%s '%s' is missing required value for attribute '%s'."
@@ -880,6 +884,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ReferenceTargetNotBuiltError(builder, container)
         return target_builder
 
+    def __is_foreign(self, val):
+        return isinstance(val, ForeignField)
+
     def __add_attributes(self, builder, attributes, container, build_manager, source, export):
         if attributes:
             self.logger.debug("Adding attributes from %s '%s' to %s '%s'"
@@ -894,14 +901,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 attr_value = self.get_attr_value(spec, container, build_manager)
                 if attr_value is None:
                     attr_value = spec.default_value
-
+            if self.__is_foreign(attr_value):
+                attr_value.path = spec.name
+                builder.add_foreign_field(attr_value)
+                self.logger.debug("        Storing attribute as foreign field")
+                continue
             attr_value = self.__check_ref_resolver(attr_value)
-
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
                 self.logger.debug("        Skipping empty attribute")
                 continue
-
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
                     msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
@@ -911,6 +920,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 build_manager.queue_ref(self.__set_attr_to_ref(builder, attr_value, build_manager, spec))
                 continue
             else:
+                # If attr_value is a foreign field, add it as is as an attribute
                 try:
                     attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                 except Exception as ex:
@@ -949,6 +959,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("    Adding link for spec name: %s, target_type: %s"
                               % (repr(spec.name), repr(spec.target_type)))
             attr_value = self.get_attr_value(spec, container, build_manager)
+            if self.__is_foreign(attr_value):
+                builder.add_foreign_field(attr_value)
+                self.logger.debug("        Storing link as foreign field")
+                continue
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
                 self.logger.debug("        Skipping link - no attribute value")
@@ -964,6 +978,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("    Adding dataset for spec name: %s (dtype: %s)"
                               % (repr(spec.name), spec.dtype.__class__.__name__))
             attr_value = self.get_attr_value(spec, container, build_manager)
+            if self.__is_foreign(attr_value):
+                attr_value.path = spec.name
+                builder.add_foreign_field(attr_value)
+                self.logger.debug("        Storing dataset as foreign field")
+                continue
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
                 self.logger.debug("        Skipping dataset - no attribute value")
@@ -1092,6 +1111,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(value, list):
             for container in value:
                 self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
+        elif self.__is_foreign(attr_value):
+            attr_value.path = attr_value.name
+            builder.add_foreign_field(attr_value)
+            self.logger.debug("        Storing group as foreign field")
+            continue
         else:  # pragma: no cover
             msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
                    % value.__class__.__name__)
