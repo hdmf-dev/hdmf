@@ -96,6 +96,9 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
+    def read_foreign_fields(self):
+        pass
+
     @staticmethod
     def __resolve_file_obj(path, file_obj, driver):
         if isinstance(path, Path):

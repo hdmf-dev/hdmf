@@ -13,6 +13,8 @@ from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
 
+from .foreign import ForeignField
+
 
 def _set_exp(cls):
     """Set a class as being experimental"""

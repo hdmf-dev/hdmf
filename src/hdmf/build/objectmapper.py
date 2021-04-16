@@ -14,6 +14,7 @@ from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
 from ..container import AbstractContainer, Data, DataRegion
 from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..foreign import ForeignField
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
 from ..spec.spec import BaseStorageSpec
@@ -1115,7 +1116,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
             attr_value.path = attr_value.name
             builder.add_foreign_field(attr_value)
             self.logger.debug("        Storing group as foreign field")
-            continue
         else:  # pragma: no cover
             msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
                    % value.__class__.__name__)

@@ -1,6 +1,8 @@
-import requests
+#import requests
 
-from ..container import Container
+# from ..build import BuildManager
+from ..utils import docval
+
 
 
 class ForeignField(object):
@@ -15,16 +17,16 @@ class ForeignField(object):
 
             # set by user, if storing a whole object as foreign
             {'name': 'data_type', 'type': str, 'help': 'the data_type of the foreign object', 'default': None},
-            {'name': 'object_id', 'type': str, 'help': 'the UUID object ID of the foreign object', 'default': True},
+            {'name': 'object_id', 'type': str, 'help': 'the UUID object ID of the foreign object', 'default': None},
             {'name': 'namespace', 'type': str, 'help': 'the namespace of data_type', 'default': None},
 
             # set by Container setter
-            {'name': 'parent', 'type': Container, 'help': 'the UUID object ID of the parent of the foreign object', 'default': None},
+            {'name': 'parent', 'type': str, 'help': 'the UUID object ID of the parent of the foreign object', 'default': None},
 
             # set by ObjectMapper
             {'name': 'path', 'type': str, 'help': 'the path of the foreign field, relative to the parent', 'default': None},
 
-            {'name': 'manager', 'type', BuildManager, 'the BuildManager used to read this field'},
+            {'name': 'manager', 'type': 'BuildManager', 'help': 'the BuildManager used to read this field', 'default': None},
            )
     def __init__(self, **kwargs):
         ######################################################
@@ -83,7 +85,7 @@ class ForeignField(object):
 
     @docval({'name': 'cache', 'type': bool, 'help': 'whether or not to cache result after resolving', 'default': True},
             {'name': 'swap', 'type': bool, 'help': 'whether or not to swap in the returned value to the parent Container', 'default': True},
-            returns='the value that was retrieved'})
+            returns='the value that was retrieved')
     def resolve(self):
         '''
         Retrieve the foreign value.
