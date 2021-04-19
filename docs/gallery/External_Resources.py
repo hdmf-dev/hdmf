@@ -96,12 +96,13 @@ er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_
 ###############################################################################
 # Using the add_ref method with a field
 # ------------------------------------------------------
-# In the above example, ``field`` was empty because the data of the ``container``
-# data object itself was being associated with a resource. However, rather than
-# the ``container`` data object itself, you may instead want to associated external
-# resources with datasets or attributes contained in the data object.
-# that you would like to associate with resources. To disambiguate between
-# these different fields, you can set the 'field' keyword.
+# In the above example, the ``field`` keyword argument was empty because the data
+# of the :py:class:`~hdmf.container.Data` object passed in for the ``container``
+# argument was being associated with a resource. However, you may want to associate
+# an attribute of a :py:class:`~hdmf.container.Data` object with a resource or
+# a dataset or attribute of a :py:class:`~hdmf.container.Container` object with
+# a resource. To disambiguate between these different fields, you can set the
+# 'field' keyword.
 
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
