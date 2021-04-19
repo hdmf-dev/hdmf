@@ -60,7 +60,7 @@ er = ExternalResources(name='example')
 # ------------------------------------------------------
 # :py:func:`~hdmf.common.resources.ExternalResources.add_ref`
 # is a wrapper function provided by the ``ExternalResources`` class, that
-# simplifies adding data. Using add_ref allows us to treat new entries similar
+# simplifies adding data. Using ``add_ref`` allows us to treat new entries similar
 # to adding a new row to a flat table, with add_ref taking care of populating
 # the underlying data structures accordingly.
 
