@@ -308,7 +308,7 @@ class ExternalResources(Container):
         It is possible to use the same name of the key to refer to different resources
         so long as the name of the key is not used within the same object and field.
         This method does not support such functionality by default. The different
-        keys must be added separately using _add_key and passed to the *key* argument 
+        keys must be added separately using _add_key and passed to the *key* argument
         in separate calls of this method. If a resource with the same name already
         exists, then it will be used and the resource_uri will be ignored.
         """
