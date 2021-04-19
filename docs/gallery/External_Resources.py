@@ -44,7 +44,7 @@ improve the structure and access of data stored with this type for your use case
 #   are used by which objects.
 #
 # The :py:class:`~hdmf.common.resources.ExternalResources` class then provides
-# convenienve functions to simply interation with these tables, allowing users
+# convenience functions to simplify interaction with these tables, allowing users
 # to treat ``ExternalResources`` as a single large table as much as possible.
 
 ###############################################################################
