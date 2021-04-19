@@ -136,7 +136,8 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # ------------------------------------------------------
 # This method will return a ``Key`` object. In the current version of ``ExternalResources``,
 # duplicate keys are allowed; however, each key needs a unique linking Object.
-# i.e (container, field)
+# In other words, each combination of (container, field, key) can exist only once in
+# ``ExternalResources``.
 
 # The get_key method will return the key object of the unique (key, container, field).
 key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_name')
