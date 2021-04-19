@@ -21,7 +21,6 @@ improve the structure and access of data stored with this type for your use case
 from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
-import pandas as pd
 
 er = ExternalResources(name='example')
 
@@ -85,7 +84,7 @@ er.get_keys(keys=er.get_key('Homo sapiens'))
 er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 
 ###############################################################################
-# Using the add_key and the get_key methods
+# Using the _add_key and the get_key methods
 # ------------------------------------------------------
 # Mentioned in the note aobve, the user needs to reference a key object
 # when referencing a key. Let's start by creating a new key.
@@ -93,9 +92,9 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # Let's start with a new instance of ExternalResources
 er = ExternalResources(name='new_example')
 
-# The add_key method will create a new key
-er.add_key(key_name='Homo sapiens')
-er.add_key(key_name='Mus musculus')
+# The _add_key method will create a new key
+er._add_key(key_name='Homo sapiens')
+er._add_key(key_name='Mus musculus')
 
 # The get_key method will return the key object of the key_name.
 key_object = er.get_key(key_name='Mus musculus')
@@ -118,27 +117,7 @@ er.get_keys()
 er.keys.to_dataframe()
 
 ###############################################################################
-# Using the add_keys method
-# ------------------------------------------------------
-# This is another wrapper function, but allows the use of a pandas DataFrame
-# to add/reference keys, resources, and entities.
-
-# get_resource returns the resource object given the resource_name.
-resource = er.get_resource('NCBI_Taxonomy')
-
-new_data = {
-    'key_name': 'Homo sapiens',
-    'resources_idx': resource,
-    'entity_id': 'NCBI:txid9606',
-    'entity_uri': 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}
-
-df = pd.DataFrame(new_data, index=[0])
-
-er.add_external_resource(df)
-
-
-###############################################################################
-# Using the add_resource method
+# Using the _add_resource method
 # ------------------------------------------------------
 # This method creates new resource objects and adds them to the ResourceTable.
 # The ResourceTable holds the name and uri for the resource.
@@ -147,7 +126,7 @@ er.add_external_resource(df)
 er = ExternalResources(name='new_example')
 
 
-er.add_resource(resource='NCBI_Taxonomy', uri='https://www.ncbi.nlm.nih.gov/taxonomy')
+er._add_resource(resource='NCBI_Taxonomy', uri='https://www.ncbi.nlm.nih.gov/taxonomy')
 
 # This will return a pandas dataframe of the ResourceTable
 er.resources.to_dataframe()
@@ -159,13 +138,13 @@ er.resources.to_dataframe()
 # Keeping with the NCBI Taxonomy example, the entity would be a specfic item
 # or "search" in NCBI Taxonomy, whereas the resource is NCBI Taxonomy itself.
 
-er.add_entity(key='Homo sapiens', resources_idx=0,
-              entity_id='NCBI:txid9606',
-              entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+er._add_entity(key='Homo sapiens', resources_idx=0,
+               entity_id='NCBI:txid9606',
+               entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
-er.add_entity(key='Mus musculus', resources_idx=0,
-              entity_id='NCBI:txid10090',
-              entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+er._add_entity(key='Mus musculus', resources_idx=0,
+               entity_id='NCBI:txid10090',
+               entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
 # This will return a pandas dataframe of the EntityTable
 er.entities.to_dataframe()
@@ -175,7 +154,7 @@ er.entities.to_dataframe()
 # ------------------------------------------------------
 # This method creates a new object and adds it to the ObjectTable.
 
-er.add_object(container=data, field='Data')
+er._add_object(container=data, field='Data')
 
 # This will return a pandas dataframe of the ObjectTable
 er.objects.to_dataframe()
@@ -194,7 +173,7 @@ object_ = er._check_object_field(data_mouse, field='')
 
 key_object = er.get_key(key_name='Mus musculus')
 
-er.add_external_reference(object_, key_object)
+er._add_external_reference(object_, key_object)
 
 # This return ObjectKeyTable
 er.object_keys.to_dataframe()
