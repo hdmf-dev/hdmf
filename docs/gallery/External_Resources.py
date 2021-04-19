@@ -146,7 +146,7 @@ key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_na
 # Using the add_ref method with a key_object
 # ------------------------------------------------------
 # Sometimes you want to reference a specific key that already exists when adding
-# new ontology data into ExternalResources.
+# new ontology data into ``ExternalResources``.
 
 er.add_ref(container=genotypes, field='genotype_name', key=key_object, resource_name='Ensembl',
            resource_uri='https://uswest.ensembl.org/index.html', entity_id='ENSG00000198963',
