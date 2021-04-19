@@ -134,7 +134,7 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 ###############################################################################
 # Using the get_key method
 # ------------------------------------------------------
-# This method will return a key_object. In the current version of ExternalResources
+# This method will return a ``Key`` object. In the current version of ``ExternalResources``,
 # duplicate keys are allowed; however, each key needs a unique linking Object.
 # i.e (container, field)
 
