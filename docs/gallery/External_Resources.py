@@ -14,7 +14,38 @@ improve the structure and access of data stored with this type for your use case
 # ------------------------------------------------------
 # The :py:class:`~hdmf.common.resources.ExternalResources` class provides a way
 # to organize and map user terms (keys) to multiple resources and entities
-# from the resources.
+# from the resources. A typical use case for external resources is to link data
+# stored in datasets or attributes to ontologies. For example, you may have a
+# dataset `country` storing locations. Using
+# :py:class:`~hdmf.common.resources.ExternalResources` allows us to link the
+# country names stored in the dataset to an ontology of all countries, enabling
+# more rigid standardization of the data and facilitating data query and
+# introspection.
+#
+# From a users perspective, one can think of the ``ExternalResources`` as a
+# simple table, in which each row associates a particular ``key`` stored in a
+# particular ``object`` (i.e., Attribute or Dataset in a file) with a particular
+# ``entity`` (e.g., a term)  of an online ``resource`` (e.g., an ontology).
+# That is, ``(object, key)`` refer to parts inside a file and ``(resource, entity)``
+# refer to an external resource outside of the file, and ``ExternalResources``
+# allows us to link the two. To reduce data redundancy and improve data integrity
+# ``ExternalResources`` stores this data internally in a collection of
+# interlinked tables.
+# * :py:class:`~hdmf.common.resources.KeyTable` where each row describes a
+#   :py:class:`~hdmf.common.resources.Key`
+# * :py:class:`~hdmf.common.resources.ResourceTable` where each row describes a
+#   :py:class:`~hdmf.common.resources.Resource`
+# * :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
+#   :py:class:`~hdmf.common.resources.Entity`
+# * :py:class:`~hdmf.common.resources.ObjectTable` where each row descibes an
+#   :py:class:`~hdmf.common.resources.Object`
+# * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
+#  :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
+#   are used by which objects.
+#
+# The :py:class:`~hdmf.common.resources.ExternalResources` class then provides
+# convenienve functions to simply interation with these tables, allowing users
+# to treat ``ExternalResources`` as a single large table as much as possible.
 
 ###############################################################################
 # Creating an instance of the ExternalResources class
@@ -27,9 +58,11 @@ er = ExternalResources(name='example')
 ###############################################################################
 # Using the add_ref method
 # ------------------------------------------------------
-# add_ref takes inputs of new data via keyword arguments
-# and adds to ExternalResources.
-# You can think of add_ref as a wrapper function.
+# :py:func:`~hdmf.common.resources.ExternalResources.add_ref`
+# is a wrapper function provided by the ExternalResources class, that
+# simplifies adding data. Using add_ref allows us to treat new entries similar
+# to adding a new row to a flat table, with add_ref taking care of populating
+# the underlying data structures accordingly.
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Taxonomy',
@@ -63,14 +96,12 @@ er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_
 ###############################################################################
 # Using the add_ref method with a field
 # ------------------------------------------------------
-# In the above example, field was empty because the data of the Data object was
-# being associated with a resource. The Data object may also have attributes
-# that you would like to associate with resources.
-# Similarly, a Container object may have several datasets and attributes that
-# you would like to associate with resources.
-# To disambiguate between these different fields, you can set the 'field' keyword
-# argument corresponding to the name of the dataset or attribute containing the
-# values being associated with a resource. For example:
+# In the above example, ``field`` was empty because the data of the ``container``
+# data object itself was being associated with a resource. However, rather than
+# the ``container`` data object itself, you may instead want to associated external
+# resources with datasets or attributes contained in the data object.
+# that you would like to associate with resources. To disambiguate between
+# these different fields, you can set the 'field' keyword.
 
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
