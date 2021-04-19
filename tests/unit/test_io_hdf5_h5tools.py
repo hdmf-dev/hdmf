@@ -714,6 +714,18 @@ class H5IOTest(TestCase):
         with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
 
+    def test_read_str(self):
+        a = ['a', 'bb', 'ccc', 'dddd', 'e']
+        attr = 'foobar'
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={'test_attr': attr}, dtype='text'))
+        self.io.close()
+        io = HDF5IO(self.path, 'r')
+        bldr = io.read_builder()
+        np.array_equal(bldr['test_dataset'].data[:], ['a', 'bb', 'ccc', 'dddd', 'e'])
+        np.array_equal(bldr['test_dataset'].attributes['test_attr'], attr)
+        self.assertEqual(str(bldr['test_dataset'].data),
+                         '<StrDataset for HDF5 dataset "test_dataset": shape (5,), type "|O">')
+
 
 def _get_manager():
 
