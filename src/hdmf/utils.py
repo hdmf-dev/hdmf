@@ -1003,7 +1003,7 @@ class LabelledDict(dict):
 
 
 @docval_macro('array_data')
-class StrDataset:
+class StrDataset(h5py.Dataset):
     """Wrapper to decode strings on reading the dataset"""
     def __init__(self, dset, encoding, errors='strict'):
         self.dset = dset
@@ -1014,6 +1014,9 @@ class StrDataset:
 
     def __getattr__(self, name):
         return getattr(self.dset, name)
+
+    def __repr__(self):
+        return '<StrDataset for %s>' % repr(self.dset)[1:-1]
 
     def __len__(self):
         return len(self.dset)
