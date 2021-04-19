@@ -78,9 +78,9 @@ er.add_ref(container=data, field='', key='Mus musculus', resource_name='NCBI_Tax
 # ------------------------------------------------------
 # When adding references to resources, you may want to refer to multiple entities
 # within the same resource. Resource names are unique, so if you call ``add_ref``
-# with the name of an existing resource, then that resource will be reused. You 
+# with the name of an existing resource, then that resource will be reused. You
 # can also use the :py:func:`~hdmf.common.resources.ExternalResources.get_resource`
-# method to get the ``Resource`` object and pass that in to ``add_ref`` to 
+# method to get the ``Resource`` object and pass that in to ``add_ref`` to
 # reuse an existing resource.
 
 # Let's create a new instance of ExternalResources.
