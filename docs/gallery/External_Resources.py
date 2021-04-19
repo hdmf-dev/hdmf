@@ -28,7 +28,7 @@ improve the structure and access of data stored with this type for your use case
 # ``entity`` (e.g., a term)  of an online ``resource`` (e.g., an ontology).
 # That is, ``(object, key)`` refer to parts inside a file and ``(resource, entity)``
 # refer to an external resource outside of the file, and ``ExternalResources``
-# allows us to link the two. To reduce data redundancy and improve data integrity
+# allows us to link the two. To reduce data redundancy and improve data integrity,
 # ``ExternalResources`` stores this data internally in a collection of
 # interlinked tables.
 # * :py:class:`~hdmf.common.resources.KeyTable` where each row describes a
