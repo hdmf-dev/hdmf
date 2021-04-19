@@ -22,7 +22,7 @@ improve the structure and access of data stored with this type for your use case
 # more rigid standardization of the data and facilitating data query and
 # introspection.
 #
-# From a users perspective, one can think of the ``ExternalResources`` as a
+# From a user's perspective, one can think of the ``ExternalResources`` as a
 # simple table, in which each row associates a particular ``key`` stored in a
 # particular ``object`` (i.e., Attribute or Dataset in a file) with a particular
 # ``entity`` (e.g., a term)  of an online ``resource`` (e.g., an ontology).
