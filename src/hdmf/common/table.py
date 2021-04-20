@@ -829,14 +829,14 @@ class DynamicTable(Container):
                 if x:
                     msg = ("Row index %s out of range for %s '%s' (length %d)."
                            % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
+                    raise IndexError(msg) from ve
                 else:  # pragma: no cover
                     raise ve
             except IndexError as ie:
                 if str(ie) == 'list index out of range':
                     msg = ("Row index out of range for %s '%s' (length %d)."
                            % (self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
+                    raise IndexError(msg) from ie
                 else:  # pragma: no cover
                     raise ie
             if df:
