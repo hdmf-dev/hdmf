@@ -628,7 +628,7 @@ class SpecMatch:
             return None
         elif len(self.matches) == 1:
             return self.matches[0]
-        else:
+        else:  # pragma: no cover
             msg = 'Should never have more than 1 attribute match, found %s.' % len(self.matches)
             raise ValueError(msg)
 
