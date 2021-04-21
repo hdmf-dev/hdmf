@@ -3,11 +3,12 @@ from abc import ABCMeta, abstractmethod
 from copy import copy
 from itertools import chain
 from collections import defaultdict
+from typing import NamedTuple, Any
 
 import numpy as np
 
-from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
-from .errors import ExpectedArrayError, IncorrectQuantityError
+from .errors import (Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError,
+                     IncorrectDataType, ExpectedArrayError, IncorrectQuantityError, ExtraFieldWarning)
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
@@ -150,6 +151,26 @@ def check_shape(expected, received):
         elif isinstance(expected, int):
             ret = expected == received
     return ret
+
+
+def _resolve_spec_links(spec, vmap):
+    """Resolves a spec, following a link if it exists"""
+    if isinstance(spec, LinkSpec):
+        validator = vmap.get_validator(spec.target_type)
+        spec = validator.spec
+    return spec
+
+
+def _resolve_spec_data_type(spec):
+    """Resolves the `data_type` of a spec, following a link if it exists"""
+    if isinstance(spec, LinkSpec):
+        return spec.target_type
+    return spec.data_type
+
+
+def _resolve_builder_data_type(builder, spec):
+    """Returns the `data_type` of a builder according to the `type_key` of the associated spec"""
+    return builder.attributes.get(spec.type_key())
 
 
 class ValidatorMap:
@@ -332,6 +353,12 @@ class AttributeValidator(Validator):
         return ret
 
 
+class NamedAttribute(NamedTuple):
+    """An immutable utility container representing an attribute value paired with its name."""
+    name: str
+    value: Any
+
+
 class BaseStorageValidator(Validator):
     '''A base class for validating against Spec objects that have attributes i.e. BaseStorageSpec'''
 
@@ -339,28 +366,71 @@ class BaseStorageValidator(Validator):
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        self.__attribute_validators = dict()
-        for attr in self.spec.attributes:
-            self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
 
     @docval({"name": "builder", "type": BaseBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
-        attributes = builder.attributes
-        ret = list()
-        for attr, validator in self.__attribute_validators.items():
-            attr_val = attributes.get(attr)
-            if attr_val is None:
-                if validator.spec.required:
-                    ret.append(MissingError(self.get_spec_loc(validator.spec),
-                                            location=self.get_builder_loc(builder)))
-            else:
-                errors = validator.validate(attr_val)
-                for err in errors:
-                    err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
-                ret.extend(errors)
-        return ret
+        errors = list(self.__validate_attributes(builder))
+        return errors
+
+    def __validate_attributes(self, builder):
+        """Validates the Attributes attached to `builder` against the builder's spec.
+
+        Validation works by first matching attributes on the builder against the attributes
+        attached to the spec using an AttributeMatcher in a one-to-one relationship. Following
+        that, each attribute spec is validated against the matched or absent attribute value.
+
+        Warnings are generated for each attribute attached to `builder` which is not matched to
+        any attribute specs.
+        """
+        attribute_matcher = AttributeSpecMatcher(self.vmap, list(self.spec.attributes))
+        nonreserved_attributes = self.__get_nonreserved_attributes(builder)
+        attribute_matcher.assign_to_specs(nonreserved_attributes)
+
+        for attr_spec, attr_match in attribute_matcher.one_to_one_matches:
+            if attr_spec.required and attr_match is None:
+                yield self.__construct_missing_attribute_error(attr_spec, builder)
+            elif attr_match is not None:
+                yield from self.__validate_existing_attribute(attr_spec, attr_match, builder)
+
+        yield from self.__warn_on_extra_attributes(attribute_matcher.unmatched, builder)
+
+    def __get_nonreserved_attributes(self, builder):
+        """"Returns the attributes of this builder which are not reserved according to the spec"""
+        def is_nonreserved(attribute):
+            return attribute.name not in self.spec.reserved_attrs()
+
+        attributes = [NamedAttribute(name, value) for name, value in builder.attributes.items()]
+        return list(filter(is_nonreserved, attributes))
+
+    def __construct_missing_attribute_error(self, attr_spec, parent_builder):
+        """Returns a MissingError for the missing required attribute"""
+        spec_loc = self.get_spec_loc(attr_spec)
+        builder_loc = self.get_builder_loc(parent_builder)
+        return MissingError(spec_loc, location=builder_loc)
+
+    def __validate_existing_attribute(self, attr_spec, attribute, parent_builder):
+        """Validates the value of an attribute against its spec"""
+        validator = AttributeValidator(attr_spec, self.vmap)
+        errors = validator.validate(attribute.value)
+
+        # since attributes are not (necessarily) builders, they don't contain the information required for
+        # AttributeValidator to determine the location error, so we need to set it separately here
+        for err in errors:
+            err.location = self.get_builder_loc(parent_builder) + ".%s" % validator.spec.name
+        yield from errors
+
+    def __warn_on_extra_attributes(self, extra_attributes, builder):
+        """Warn for each attribute on `builder` which is classified as an extra field
+
+        Extra fields are any children attached to the parent builder
+        which are not part of the parent spec.
+        """
+        for attr_name, attr_value in extra_attributes:
+            name_of_erroneous = self.get_spec_loc(self.spec)
+            attribute_loc = self.get_builder_loc(builder) + ".%s" % attr_name
+            yield ExtraFieldWarning(name_of_erroneous, location=attribute_loc)
 
 
 class DatasetValidator(BaseStorageValidator):
@@ -397,12 +467,6 @@ class DatasetValidator(BaseStorageValidator):
         return ret
 
 
-def _resolve_data_type(spec):
-    if isinstance(spec, LinkSpec):
-        return spec.target_type
-    return spec.data_type
-
-
 class GroupValidator(BaseStorageValidator):
     '''A class for validating GroupBuilders against GroupSpecs'''
 
@@ -431,19 +495,24 @@ class GroupValidator(BaseStorageValidator):
         separate class). Once the matching is complete, it is a
         straightforward procedure for validating the set of matching builders
         against each child spec.
-        """
-        spec_children = chain(self.spec.datasets, self.spec.groups, self.spec.links)
-        matcher = SpecMatcher(self.vmap, spec_children)
 
-        builder_children = chain(parent_builder.datasets.values(),
-                                 parent_builder.groups.values(),
-                                 parent_builder.links.values())
+        Warnings are generated for each child attached to `builder` which is
+        not matched to any specs.
+        """
+        spec_children = list(chain(self.spec.datasets, self.spec.groups, self.spec.links))
+        matcher = BuilderSpecMatcher(self.vmap, spec_children)
+
+        builder_children = list(chain(parent_builder.datasets.values(),
+                                      parent_builder.groups.values(),
+                                      parent_builder.links.values()))
         matcher.assign_to_specs(builder_children)
 
-        for child_spec, matched_builders in matcher.spec_matches:
+        for child_spec, matched_builders in matcher.one_to_many_matches:
             yield from self.__validate_presence_and_quantity(child_spec, len(matched_builders), parent_builder)
             for child_builder in matched_builders:
                 yield from self.__validate_child_builder(child_spec, child_builder, parent_builder)
+
+        yield from self.__warn_on_extra_fields(matcher.unmatched)
 
     def __validate_presence_and_quantity(self, child_spec, n_builders, parent_builder):
         """Validate that at least one matching builder exists if the spec is
@@ -458,7 +527,7 @@ class GroupValidator(BaseStorageValidator):
         """Returns either a MissingDataType or a MissingError depending on
         whether or not a specific data type can be resolved from the spec
         """
-        data_type = _resolve_data_type(child_spec)
+        data_type = _resolve_spec_data_type(child_spec)
         builder_loc = self.get_builder_loc(parent_builder)
         if data_type is not None:
             name_of_erroneous = self.get_spec_loc(self.spec)
@@ -479,7 +548,7 @@ class GroupValidator(BaseStorageValidator):
 
     def __construct_incorrect_quantity_error(self, child_spec, parent_builder, n_builders):
         name_of_erroneous = self.get_spec_loc(self.spec)
-        data_type = _resolve_data_type(child_spec)
+        data_type = _resolve_spec_data_type(child_spec)
         builder_loc = self.get_builder_loc(parent_builder)
         return IncorrectQuantityError(name_of_erroneous, data_type, expected=child_spec.quantity,
                                       received=n_builders, location=builder_loc)
@@ -491,7 +560,7 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        child_validator = self.__get_child_validator(child_spec)
+        child_validator = self.__get_child_validator(child_builder, child_spec)
         yield from child_validator.validate(child_builder)
 
     def __construct_illegal_link_error(self, child_spec, parent_builder):
@@ -503,75 +572,166 @@ class GroupValidator(BaseStorageValidator):
     def __cannot_be_link(spec):
         return not isinstance(spec, LinkSpec) and not spec.linkable
 
-    def __get_child_validator(self, spec):
-        """Returns the appropriate validator for a child spec
+    def __get_child_validator(self, builder, spec):
+        """Returns the appropriate validator for a child builder
 
-        If a specific data type can be resolved, the validator is acquired from
-        the ValidatorMap, otherwise a new Validator is created.
+        If a specific data type of the builder can be resolved, the validator
+        is acquired from the ValidatorMap, otherwise a new Validator is created
+        from the spec.
         """
-        if _resolve_data_type(spec) is not None:
-            return self.vmap.get_validator(_resolve_data_type(spec))
+        base_spec = _resolve_spec_links(spec, self.vmap)
+        dt = _resolve_builder_data_type(builder, base_spec)
+        if dt is not None:
+            return self.vmap.get_validator(dt)
         elif isinstance(spec, GroupSpec):
             return GroupValidator(spec, self.vmap)
         elif isinstance(spec, DatasetSpec):
             return DatasetValidator(spec, self.vmap)
         else:
-            msg = "Unable to resolve a validator for spec %s" % spec
+            msg = "Unable to resolve a validator for builder %s" % builder
+            raise ValueError(msg)
+
+    def __warn_on_extra_fields(self, extra_builders):
+        """Warn for each child builder which is not part of the spec
+
+        Extra fields are any children attached to the parent builder
+        which are not part of the parent spec.
+        """
+        for builder in extra_builders:
+            name_of_erroneous = self.get_spec_loc(self.spec)
+            builder_loc = self.get_builder_loc(builder)
+            yield ExtraFieldWarning(name_of_erroneous, location=builder_loc)
+
+
+class SpecMatch:
+    """A container to hold a spec paired with a list of matching fields"""
+
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the spec for this container to hold'})
+    def __init__(self, **kwargs):
+        self.spec = getargs('spec', kwargs)
+        self.matches = list()
+
+    @docval({'name': 'match', 'type': None, 'doc': 'adds a new field matching the spec'})
+    def add_match(self, **kwargs):
+        match = getargs('match', kwargs)
+        self.matches.append(match)
+
+    @property
+    @docval(returns='A list of tuples containing each spec and their single matching field', rtype=list)
+    def single_match(self):
+        """Returns a single match or `None` if there are no matches.
+
+        Raises a `ValueError` if there are more than one matches. This function should never be
+        called unless you can be certain there is at most one match.
+        """
+        if len(self.matches) == 0:
+            return None
+        elif len(self.matches) == 1:
+            return self.matches[0]
+        else:  # pragma: no cover
+            msg = 'Should never have more than 1 attribute match, found %s.' % len(self.matches)
             raise ValueError(msg)
 
 
-class SpecMatches:
-    """A utility class to hold a spec and the builders matched to it"""
+class SpecMatcher(metaclass=ABCMeta):
+    """Matches a set of fields against a set of specs
 
-    def __init__(self, spec):
-        self.spec = spec
-        self.builders = list()
+    This class is intended to isolate the task of choosing which spec an attribute,
+    dataset, group, or link should be validated against from the task of performing
+    that validation.
 
-    def add(self, builder):
-        self.builders.append(builder)
-
-
-class SpecMatcher:
-    """Matches a set of builders against a set of specs
-
-    This class is intended to isolate the task of choosing which spec a
-    builder should be validated against from the task of performing that
-    validation.
+    Matching rules should be defined in subclasses of this class.
     """
 
-    def __init__(self, vmap, specs):
+    @docval({'name': 'vmap', 'type': ValidatorMap, 'doc': 'the ValidatorMap used for validation'},
+            {'name': 'specs', 'type': list, 'doc': 'the list of specs to which fields will be matched'})
+    def __init__(self, **kwargs):
+        vmap, specs = getargs('vmap', 'specs', kwargs)
         self.vmap = vmap
-        self._spec_matches = [SpecMatches(spec) for spec in specs]
-        self._unmatched_builders = SpecMatches(None)
+        self._spec_matches = [SpecMatch(spec) for spec in specs]
+        self._unmatched = list()
 
     @property
-    def unmatched_builders(self):
-        """Returns the builders for which no matching spec was found
-
-        These builders can be considered superfluous, and will generate a
-        warning in the future.
-        """
-        return self._unmatched_builders.builders
+    @docval(returns='The list of fields which did not match any specs', rtype=list)
+    def unmatched(self):
+        return self._unmatched
 
     @property
-    def spec_matches(self):
-        """Returns a list of tuples of: (spec, assigned builders)"""
-        return [(sm.spec, sm.builders) for sm in self._spec_matches]
+    @docval(returns='A list of `SpecMatch`s containing each spec and their matching fields', rtype=list)
+    def matches(self):
+        return self._spec_matches
 
-    def assign_to_specs(self, builders):
-        """Assigns a set of builders against a set of specs (many-to-one)
+    @docval({'name': 'fields', 'type': list, 'doc': 'a list of the fields to match against the specs'})
+    def assign_to_specs(self, **kwargs):
+        """Assigns a set of fields against the specs according to matching rules defined in a subclass
 
-        In the case that no matching spec is found, a builder will be
-        added to a list of unmatched builders.
+        In the case that no matching spec is found for a field, that field will be added to
+        the list of unmatched fields.
         """
-        for builder in builders:
-            spec_match = self._best_matching_spec(builder)
-            if spec_match is None:
-                self._unmatched_builders.add(builder)
+        fields = getargs('fields', kwargs)
+        for field in fields:
+            spec_match = self.choose_spec_match(field)
+            if spec_match is not None:
+                spec_match.add_match(field)
             else:
-                spec_match.add(builder)
+                self._unmatched.append(field)
 
-    def _best_matching_spec(self, builder):
+    @abstractmethod
+    @docval({'name': 'field', 'type': None, 'doc': 'the field to be matched against the specs'},
+            returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
+    def choose_spec_match(self, **kwargs):
+        """Determines which spec is the best match for a field and returns the appropriate SpecMatch
+
+        This method should be implemented in subclasses to define the matching rules.
+        """
+        pass
+
+
+class AttributeSpecMatcher(SpecMatcher):
+    """Matches attributes against AttributeSpecs with a 1-to-1 mapping"""
+
+    @docval({'name': 'field', 'type': None,
+             'doc': 'the name and value of the attribute to be matched against the specs'},
+            returns='The SpecMatch for the best matching spec, or `None` if no match is found', rtype=SpecMatch)
+    def choose_spec_match(self, **kwargs):
+        field = getargs('field', kwargs)
+        attr_name, attr_value = field
+        for spec_match in self._spec_matches:
+            if spec_match.spec.name == attr_name:
+                return spec_match
+        return None
+
+    @property
+    @docval(returns='A list of tuples containing each spec and their single matching `NamedAttribute`', rtype=list)
+    def one_to_one_matches(self):
+        """Returns attribute specs matched to attributes in a one-to-one mapping.
+
+        Since attribute specs always have a name, there can be at most one attribute matched to an
+        `AttributeSpec`. This function unwraps the one-to-many mapping returned by the `matches`
+        property to return a one-to-one mapping.
+
+        For each `SpecMatch`, a tuple containing the spec is returned along with a value
+        according to the following rules:
+          * If the `SpecMatch` tuple has exactly 1 `matches`, that attribute is returned.
+          * If the `SpecMatch` tuple has 0 `matches`, `None` is returned.
+          * Raises a `ValueError` if there are is more than one `matches` as this situation
+            should never occur when matching attributes.
+        """
+        return [(sm.spec, sm.single_match) for sm in self.matches]
+
+
+class BuilderSpecMatcher(SpecMatcher):
+    """Matches a set of builders against a set of specs with an N-to-1 mapping"""
+
+    @property
+    @docval(returns='A list of tuples containing each spec and their possibly multiple matches', rtype=list)
+    def one_to_many_matches(self):
+        """Returns specs and their matches as a sequence of tuples of the form (spec, matches)."""
+        return [(sm.spec, sm.matches) for sm in self.matches]
+
+    @docval({'name': 'field', 'type': None, 'doc': 'the field to be matched against the specs'},
+            returns='The SpecMatch for the best matching spec, or None if no match is found', rtype=SpecMatch)
+    def choose_spec_match(self, **kwargs):
         """Finds the best matching spec for builder
 
         The current algorithm is:
@@ -588,6 +748,7 @@ class SpecMatcher:
         inheritance hierarchy. Future improvements to this matching algorithm
         should resolve these discrepancies.
         """
+        builder = getargs('field', kwargs)
         candidates = self._filter_by_name(self._spec_matches, builder)
         candidates = self._filter_by_type(candidates, builder)
         if len(candidates) == 0:
@@ -615,19 +776,16 @@ class SpecMatcher:
         """Returns the candidate specs which have a data type consistent with
         the builder's data type.
         """
+        if isinstance(builder, LinkBuilder):
+            builder = builder.builder
+
         def compatible_type(spec_matches):
-            spec = spec_matches.spec
-            if isinstance(spec, LinkSpec):
-                validator = self.vmap.get_validator(spec.target_type)
-                spec = validator.spec
+            spec = _resolve_spec_links(spec_matches.spec, self.vmap)
             if spec.data_type is None:
                 return True
             valid_validators = self.vmap.valid_types(spec.data_type)
             valid_types = [v.spec.data_type for v in valid_validators]
-            if isinstance(builder, LinkBuilder):
-                dt = builder.builder.attributes.get(spec.type_key())
-            else:
-                dt = builder.attributes.get(spec.type_key())
+            dt = _resolve_builder_data_type(builder, spec)
             return dt in valid_types
 
         return list(filter(compatible_type, candidates))
@@ -638,7 +796,7 @@ class SpecMatcher:
         """
         def is_unsatisfied(spec_matches):
             spec = spec_matches.spec
-            n_match = len(spec_matches.builders)
+            n_match = len(spec_matches.matches)
             if spec.required and n_match == 0:
                 return True
             if isinstance(spec.quantity, int) and n_match < spec.quantity:
