@@ -774,9 +774,13 @@ class DynamicTable(Container):
             raise KeyError(key)
         return ret
 
-    def get(self, key, default=None, df=True, **kwargs):  # noqa: C901
+    def get(self, key, default=None, df=True, index=True, **kwargs):  # noqa: C901
         """
-        Select a subset from the table
+        Select a subset from the table. If the table includes a DynamicTableRegion column, then by default,
+        the index/indices of the DynamicTableRegion will be returned. If ``df=True`` and ``index=False``,
+        then the returned pandas DataFrame will contain a nested DataFrame in each row of the
+        DynamicTableRegion column. ``df=False`` and ``index=False`` where nested lists would be returned is
+        not yet supported.
 
         :param key: Key defining which elements of the table to select. This may be one of the following:
 
@@ -793,6 +797,9 @@ class DynamicTable(Container):
         :raises: KeyError
         """
         ret = None
+        if not df and not index:
+            # returning nested lists of lists for DTRs and ragged DTRs is complicated and not yet supported
+            raise ValueError('DynamicTable.get() with df=False and index=False is not yet supported.')
         if isinstance(key, tuple):
             # index by row and column --> return specific cell
             arg1 = key[0]
@@ -823,7 +830,12 @@ class DynamicTable(Container):
                 ret['id'] = self.id[arg]
                 for name in self.colnames:
                     col = self.__df_cols[self.__colids[name]]
-                    ret[name] = col.get(arg, df=df, **kwargs)
+                    if index and (isinstance(col, DynamicTableRegion) or
+                                  isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion)):
+                        # return indices (list/array/etc) for DTR
+                        ret[name] = col.get(arg, df=False, index=True, **kwargs)
+                    else:
+                        ret[name] = col.get(arg, df=df, index=index, **kwargs)
             except ValueError as ve:
                 x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
                 if x:
@@ -846,9 +858,10 @@ class DynamicTable(Container):
                     id_index = [id_index]
                 retdf = OrderedDict()
                 for k in ret:  # for each column
+                    col = self.__df_cols[self.__colids[k]]
                     if isinstance(ret[k], np.ndarray):
                         if ret[k].ndim == 1:
-                            if len(id_index) == 1:
+                            if len(id_index) == 1 and ret[k].shape[0] > 1:
                                 # k is a multi-dimension column, and
                                 # only one element has been selected
                                 retdf[k] = [ret[k]]
@@ -862,22 +875,23 @@ class DynamicTable(Container):
                             else:
                                 raise ValueError('unable to convert selection to DataFrame')
                     elif isinstance(ret[k], (list, tuple)):
-                        if len(id_index) == 1:
+                        if len(id_index) == 1 and len(ret[k]) > 1:
                             # k is a multi-dimension column, and
                             # only one element has been selected
                             retdf[k] = [ret[k]]
                         else:
                             retdf[k] = ret[k]
                     elif isinstance(ret[k], pd.DataFrame):
-                        retdf['%s_%s' % (k, ret[k].index.name)] = ret[k].index.values
-                        for col in ret[k].columns:
-                            newcolname = "%s_%s" % (k, col)
-                            retdf[newcolname] = ret[k][col].values
+                        if len(id_index) == 1:
+                            retdf[k] = [ret[k]]
+                        else:
+                            # multiple rows were selected and collapsed into a dataframe
+                            # split up the rows of the df into a list
+                            # TODO make this more efficient
+                            retdf[k] = [ret[k].iloc[[i]] for i in range(len(ret[k]))]
                     else:
                         retdf[k] = ret[k]
                 ret = pd.DataFrame(retdf, index=pd.Index(name=self.id.name, data=id_index))
-                # if isinstance(key, (int, np.integer)):
-                #     ret = ret.iloc[0]
             else:
                 ret = list(ret.values())
 
@@ -1060,11 +1074,15 @@ class DynamicTableRegion(VectorData):
 
         :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
                        and the int selects the row, 2) int or slice to select a subset of rows
-        :param df: Boolean indicating whether we want to return the result as a pandas dataframe
+        :param index: Boolean indicating whether to return indices of the DTR (default False)
+        :param df: Boolean indicating whether to return the result as a pandas DataFrame (default True)
 
         :return: Result from self.table[....] with the appropriate selection based on the
                  rows selected by this DynamicTableRegion
         """
+        if not df and not index:
+            # returning nested lists of lists for DTRs and ragged DTRs is complicated and not yet supported
+            raise ValueError('DynamicTableRegion.get() with df=False and index=False is not yet supported.')
         # treat the list of indices as data that can be indexed. then pass the
         # result to the table to get the data
         if isinstance(arg, tuple):
@@ -1076,13 +1094,13 @@ class DynamicTableRegion(VectorData):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
             if not index:
-                ret = self.table.get(ret, df=df, **kwargs)
+                ret = self.table.get(ret, df=df, index=index, **kwargs)
             return ret
         elif isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
 
             # get the data at the specified indices
-            if isinstance(self.data, (tuple, list)) and isinstance(idx, list):
+            if isinstance(self.data, (tuple, list)) and isinstance(idx, (list, np.ndarray)):
                 ret = [self.data[i] for i in idx]
             else:
                 ret = self.data[idx]
@@ -1099,7 +1117,7 @@ class DynamicTableRegion(VectorData):
                 # of the list we are returning. This is carried out by the recursive method _index_lol
                 uniq = np.unique(ret)
                 lut = {val: i for i, val in enumerate(uniq)}
-                values = self.table.get(uniq, df=df, **kwargs)
+                values = self.table.get(uniq, df=df, index=index, **kwargs)
                 if df:
                     ret = values.iloc[[lut[i] for i in ret]]
                 else:
@@ -1119,8 +1137,10 @@ class DynamicTableRegion(VectorData):
         for col in result:
             if isinstance(col, list):
                 if isinstance(col[0], list):
+                    # list of columns that need to be sorted
                     ret.append(self._index_lol(col, index, lut))
                 else:
+                    # list of elements, one for each row to return
                     ret.append([col[lut[i]] for i in index])
             elif isinstance(col, np.ndarray):
                 ret.append(np.array([col[lut[i]] for i in index], dtype=col.dtype))
