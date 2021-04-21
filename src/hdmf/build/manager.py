@@ -5,7 +5,7 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
+from ..spec import DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, call_docval_func, ExtenderMeta
 
@@ -448,7 +448,8 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, container_cls)
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
-        for custom_generators in type_map.__class_generator.custom_generators:
+        for custom_generators in reversed(type_map.__class_generator.custom_generators):
+            # iterate in reverse order because generators are stored internally as a stack
             self.register_generator(custom_generators)
 
     @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
@@ -511,19 +512,26 @@ class TypeMap:
         return cls
 
     def __check_dependent_types(self, spec, namespace):
-        """Ensure that classes for all types used by this type exist and generate them if not.
+        """Ensure that classes for all types used by this type exist in this namespace and generate them if not.
         """
+        def __check_dependent_types_helper(spec, namespace):
+            if isinstance(spec, (GroupSpec, DatasetSpec)):
+                if spec.data_type_inc is not None:
+                    self.get_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
+                if spec.data_type_def is not None:
+                    self.get_container_cls(spec.data_type_def, namespace)
+            elif isinstance(spec, LinkSpec):
+                if spec.target_type is not None:
+                    self.get_container_cls(spec.target_type, namespace)
+            if isinstance(spec, GroupSpec):
+                for child_spec in (spec.groups + spec.datasets + spec.links):
+                    __check_dependent_types_helper(child_spec, namespace)
+
         if spec.data_type_inc is not None:
             self.get_container_cls(spec.data_type_inc, namespace)
         if isinstance(spec, GroupSpec):
-            for child_spec in (spec.groups + spec.datasets):
-                if child_spec.data_type_inc is not None:
-                    self.get_container_cls(child_spec.data_type_inc, namespace)
-                if child_spec.data_type_def is not None:
-                    self.get_container_cls(child_spec.data_type_def, namespace)
-            for child_spec in spec.links:
-                if child_spec.target_type is not None:
-                    self.get_container_cls(child_spec.target_type, namespace)
+            for child_spec in (spec.groups + spec.datasets + spec.links):
+                __check_dependent_types_helper(child_spec, namespace)
 
     def __get_parent_cls(self, namespace, data_type, spec):
         dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)

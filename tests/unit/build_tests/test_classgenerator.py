@@ -26,7 +26,8 @@ class TestClassGenerator(TestCase):
                 return True
 
             @classmethod
-            def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map):
+            def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map,
+                                   spec):
                 # append attr_name to classdict['__custom_fields__'] list
                 classdict.setdefault('process_field_spec', list()).append(attr_name)
 
@@ -548,7 +549,8 @@ class TestBaseProcessFieldSpec(TestCase):
                     parent_cls=EmptyBar,  # <-- arbitrary class
                     attr_name=attr_name,
                     not_inherited_fields=not_inherited_fields,
-                    type_map=self.type_map
+                    type_map=self.type_map,
+                    spec=spec
                 )
                 self.assertListEqual(docval_args, expected[:(i+1)])  # compare with the first i elements of expected
 
@@ -570,7 +572,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute', 'shape': [None]}]
@@ -594,7 +597,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='dset1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'dset1', 'type': ('array_data', 'data'), 'doc': 'a string dataset', 'shape': [None]}]
@@ -619,7 +623,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': 'value'}]
@@ -643,7 +648,71 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
+        )
+
+        expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_update_docval_default_value_none_required_parent(self):
+        """Test that update_docval_args for an optional field with a required parent sets default: None."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            groups=[
+                GroupSpec(
+                    name='group1',
+                    doc='required untyped group',
+                    attributes=[
+                        AttributeSpec(name='attr1', doc='a string attribute', dtype='text', required=False)
+                    ]
+                )
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_group('group1').get_attribute('attr1')}
+
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap(),
+            spec=spec
+        )
+
+        expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
+        self.assertListEqual(docval_args, expected)
+
+    def test_update_docval_required_field_optional_parent(self):
+        """Test that update_docval_args for a required field with an optional parent sets default: None."""
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            groups=[
+                GroupSpec(
+                    name='group1',
+                    doc='required untyped group',
+                    attributes=[
+                        AttributeSpec(name='attr1', doc='a string attribute', dtype='text')
+                    ],
+                    quantity='?'
+                )
+            ]
+        )
+        not_inherited_fields = {'attr1': spec.get_group('group1').get_attribute('attr1')}
+
+        docval_args = list()
+        CustomClassGenerator.process_field_spec(
+            classdict={},
+            docval_args=docval_args,
+            parent_cls=EmptyBar,  # <-- arbitrary class
+            attr_name='attr1',
+            not_inherited_fields=not_inherited_fields,
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': str, 'doc': 'a string attribute', 'default': None}]
@@ -670,7 +739,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr1',
             not_inherited_fields=not_inherited_fields,
-            type_map=TypeMap()
+            type_map=TypeMap(),
+            spec=spec
         )
 
         expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
@@ -689,7 +759,8 @@ class TestBaseProcessFieldSpec(TestCase):
             parent_cls=EmptyBar,  # <-- arbitrary class
             attr_name='attr3',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=GroupSpec('dummy', 'doc')
         )
 
         expected = {'__fields__': [{'name': 'attr3', 'doc': 'a link'}]}
@@ -773,7 +844,8 @@ class TestMCIProcessFieldSpec(TestCase):
             parent_cls=Container,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=spec
         )
 
         expected = [
@@ -798,7 +870,8 @@ class TestMCIProcessFieldSpec(TestCase):
             parent_cls=Container,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=spec
         )
 
         expected = [{'name': 'empty_bars', 'type': (list, tuple, dict, EmptyBar), 'doc': 'test multi', 'default': None}]
@@ -815,7 +888,8 @@ class TestMCIProcessFieldSpec(TestCase):
             parent_cls=Container,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
-            type_map=self.type_map
+            type_map=self.type_map,
+            spec=spec
         )
 
         expected = [{'name': 'empty_bars', 'type': (list, tuple, dict, EmptyBar), 'doc': 'test multi'}]
@@ -828,9 +902,6 @@ class TestMCIProcessFieldSpec(TestCase):
             groups=[
                 GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
             ],
-            attributes=[
-                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
-            ]
         )
         classdict = dict(
             __clsconf__=[
@@ -847,3 +918,31 @@ class TestMCIProcessFieldSpec(TestCase):
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
         self.assertEqual(bases, [MultiContainerInterface, Container])
+
+    def test_post_process_already_multi(self):
+        class Multi1(MultiContainerInterface):
+            pass
+
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi and extends a multi',
+            data_type_def='Multi2',
+            data_type_inc='Multi1',
+            groups=[
+                GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
+            ],
+        )
+        classdict = dict(
+            __clsconf__=[
+                dict(
+                    attr='empty_bars',
+                    type=EmptyBar,
+                    add='add_empty_bars',
+                    get='get_empty_bars',
+                    create='create_empty_bars'
+                )
+            ]
+        )
+        bases = [Multi1]
+        docval_args = []
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        self.assertEqual(bases, [Multi1])

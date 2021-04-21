@@ -112,6 +112,7 @@ if os.path.exists(__resources['namespace_path']):
     from . import io as __io  # noqa: F401,E402
 
     from . import table  # noqa: F401,E402
+    from . import alignedtable  # noqa: F401,E402
     from . import sparse  # noqa: F401,E402
     from . import resources  # noqa: F401,E402
     from . import multi  # noqa: F401,E402
@@ -137,6 +138,7 @@ EnumData = __TYPE_MAP.get_container_cls('EnumData', EXP_NAMESPACE)
 CSRMatrix = __TYPE_MAP.get_container_cls('CSRMatrix', CORE_NAMESPACE)
 ExternalResources = __TYPE_MAP.get_container_cls('ExternalResources', EXP_NAMESPACE)
 SimpleMultiContainer = __TYPE_MAP.get_container_cls('SimpleMultiContainer', CORE_NAMESPACE)
+AlignedDynamicTable = __TYPE_MAP.get_container_cls('AlignedDynamicTable', CORE_NAMESPACE)
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),

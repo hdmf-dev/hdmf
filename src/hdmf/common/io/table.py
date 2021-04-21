@@ -50,18 +50,24 @@ class DynamicTableGenerator(CustomClassGenerator):
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
         """Return True if this is a DynamicTable and the field spec is a column."""
+        for b in bases:
+            if issubclass(b, DynamicTable):
+                break
+        else:  # return False if no base is a subclass of DynamicTable
+            return False
         dtype = cls._get_type(field_spec, type_map)
-        return DynamicTable in bases and issubclass(dtype, VectorData)
+        return isinstance(dtype, type) and issubclass(dtype, VectorData)
 
     @classmethod
-    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map):
+    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __columns__ to the classdict and update the docval args for the field spec with the given attribute name.
         :param classdict: The dict to update with __columns__.
         :param docval_args: The list of docval arguments.
         :param parent_cls: The parent class.
         :param attr_name: The attribute name of the field spec for the container class to generate.
-        :param spec: The spec for the container class to generate.
+        :param not_inherited_fields: Dictionary of fields not inherited from the parent class.
         :param type_map: The type map to use.
+        :param spec: The spec for the container class to generate.
         """
         if attr_name.endswith('_index'):  # do not add index columns to __columns__
             return
@@ -116,14 +122,16 @@ class DynamicTableGenerator(CustomClassGenerator):
 
     @classmethod
     def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
-        base_init = classdict['__init__']
+        base_init = classdict.get('__init__')
+        if base_init is None:  # pragma: no cover
+            raise ValueError("Generated class dictionary is missing base __init__ method.")
 
         @docval(*docval_args)
         def __init__(self, **kwargs):
             base_init(self, **kwargs)
 
             # set target attribute on DTR
-            target_tables = kwargs['target_tables']
+            target_tables = kwargs.get('target_tables')
             if target_tables:
                 for colname, table in target_tables.items():
                     if colname not in self:  # column has not yet been added (it is optional)
