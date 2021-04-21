@@ -12,19 +12,25 @@ __all__ = [
     "MissingDataType",
     "IllegalLinkError",
     "IncorrectDataType",
-    "IncorrectQuantityError"
+    "IncorrectQuantityError",
+    "ExtraFieldWarning"
 ]
+
+WARNING_SEVERITY = 0
+ERROR_SEVERITY = 10
 
 
 class Error:
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},
+            {'name': 'severity', 'type': int, 'doc': 'severity of the error', 'default': ERROR_SEVERITY},
             {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
     def __init__(self, **kwargs):
         self.__name = getargs('name', kwargs)
         self.__reason = getargs('reason', kwargs)
         self.__location = getargs('location', kwargs)
+        self.__severity = getargs('severity', kwargs)
         if self.__location is not None:
             self.__str = "%s (%s): %s" % (self.__name, self.__location, self.__reason)
         else:
@@ -41,6 +47,10 @@ class Error:
     @property
     def location(self):
         return self.__location
+
+    @property
+    def severity(self):
+        return self.__severity
 
     @location.setter
     def location(self, loc):
@@ -176,3 +186,13 @@ class IncorrectDataType(Error):
         reason = "incorrect data_type - expected '%s', got '%s'" % (expected, received)
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
+
+
+class ExtraFieldWarning(Error):
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component with the extra field'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the warning', 'default': None})
+    def __init__(self, **kwargs):
+        name = getargs('name', kwargs)
+        reason = "encountered extra field"
+        loc = getargs('location', kwargs)
+        super().__init__(name, reason, location=loc, severity=WARNING_SEVERITY)
