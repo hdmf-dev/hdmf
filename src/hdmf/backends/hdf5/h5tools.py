@@ -250,9 +250,9 @@ class HDF5IO(HDMFIO):
         Order namespaces according to dependency for loading into a NamespaceCatalog
 
         Args:
-            deps (dict): a dictionary that maps a namespace name to a list of names of
+            deps (dict): a dictionary that maps a namespace name to a list of name of
                          the namespaces on which the namespace is directly dependent
-                         Example: {'a': ['b', 'c'], 'b': ['d'], c: ['d'], 'd': []}
+                         Example: {'a': ['b', 'c'], 'b': ['d'], 'c': ['d'], 'd': []}
                          Expected output: ['d', 'b', 'c', 'a']
         """
         order = list()
