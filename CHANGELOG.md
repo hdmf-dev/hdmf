@@ -26,6 +26,7 @@
 - Update CI and copyright year. @rly (#523, #524)
 - Equality check for `DynamicTable` returns False if the other object is a `DynamicTable` instead of raising an error.
   @rly (#566)
+- Update ruamel.yaml usage to new API. @rly (#587)
 
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
@@ -36,6 +37,8 @@
   `MultiContainerInterface`. @rly (#567)
 - Fix `make clean` command for docs to clean up sphinx-gallery tutorial files. @oruebel (#571)
 - Make sure we cannot set ``AlignedDynamicTable`` as a category on an ``AlignedDynamicTable``. @oruebel (#571)
+- Fix included data type resolution between HDMF and custom classes that customize the data_type_inc key. @rly (#503)
+- Fix classification of attributes as new/overridden. @rly (#503)
 
 ## HDMF 2.4.0 (February 23, 2021)
 

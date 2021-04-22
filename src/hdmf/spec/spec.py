@@ -83,25 +83,20 @@ class ConstructableDict(dict, metaclass=ABCMeta):
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''
+        # main use cases are when spec_dict is a ConstructableDict or a spec dict read from a file
         return deepcopy(spec_dict)
 
     @classmethod
     def build_spec(cls, spec_dict):
         ''' Build a Spec object from the given Spec dict '''
+        # main use cases are when spec_dict is a ConstructableDict or a spec dict read from a file
         vargs = cls.build_const_args(spec_dict)
-        args = list()
         kwargs = dict()
-        try:
-            for x in get_docval(cls.__init__):
-                if not x['name'] in vargs:
-                    continue
-                if 'default' not in x:
-                    args.append(vargs.get(x['name']))
-                else:
-                    kwargs[x['name']] = vargs.get(x['name'])
-        except KeyError as e:
-            raise KeyError("'%s' not found in %s" % (e.args[0], str(spec_dict)))
-        return cls(*args, **kwargs)
+        # iterate through the Spec docval and construct kwargs based on matching values in spec_dict
+        for x in get_docval(cls.__init__):
+            if x['name'] in vargs:
+                kwargs[x['name']] = vargs.get(x['name'])
+        return cls(**kwargs)
 
 
 class Spec(ConstructableDict):
@@ -115,10 +110,9 @@ class Spec(ConstructableDict):
     def __init__(self, **kwargs):
         name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
         super().__init__()
+        self['doc'] = doc
         if name is not None:
             self['name'] = name
-        if doc is not None:
-            self['doc'] = doc
         if not required:
             self['required'] = required
         self._parent = parent
@@ -142,16 +136,13 @@ class Spec(ConstructableDict):
     def parent(self, spec):
         ''' Set the parent of this specification '''
         if self._parent is not None:
-            raise Exception('Cannot re-assign parent')
+            raise AttributeError('Cannot re-assign parent.')
         self._parent = spec
 
     @classmethod
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
         ret = super().build_const_args(spec_dict)
-        if 'doc' not in ret:
-            msg = "'doc' missing: %s" % str(spec_dict)
-            raise ValueError(msg)
         return ret
 
     def __hash__(self):
@@ -287,9 +278,8 @@ class AttributeSpec(Spec):
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
         ret = super().build_const_args(spec_dict)
-        if 'dtype' in ret:
-            if isinstance(ret['dtype'], dict):
-                ret['dtype'] = RefSpec.build_spec(ret['dtype'])
+        if isinstance(ret['dtype'], dict):
+            ret['dtype'] = RefSpec.build_spec(ret['dtype'])
         return ret
 
 
@@ -322,8 +312,8 @@ class BaseStorageSpec(Spec):
         name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
-            raise ValueError("Cannot create Group or Dataset spec with wildcard name "
-                             "without specifying 'data_type_def' and/or 'data_type_inc'")
+            raise ValueError("Cannot create Group or Dataset spec with no name "
+                             "without specifying '%s' and/or '%s'." % (self.def_key(), self.inc_key()))
         super().__init__(doc, name=name)
         default_name = getargs('default_name', kwargs)
         if default_name:
@@ -334,8 +324,8 @@ class BaseStorageSpec(Spec):
         self.__attributes = dict()
         if quantity in (ONE_OR_MANY, ZERO_OR_MANY):
             if name != NAME_WILDCARD:
-                raise ValueError(("Cannot give specific name to something that can ",
-                                  "exist multiple times: name='%s', quantity='%s'" % (name, quantity)))
+                raise ValueError("Cannot give specific name to something that can "
+                                 "exist multiple times: name='%s', quantity='%s'" % (name, quantity))
         if quantity != DEF_QUANTITY:
             self['quantity'] = quantity
         if not linkable:
@@ -349,8 +339,16 @@ class BaseStorageSpec(Spec):
         if data_type_def is not None:
             self.pop('required', None)
             self[self.def_key()] = data_type_def
+            # resolve inherited and overridden fields only if data_type_inc is a spec
+            # NOTE: this does not happen when loading specs from a file
             if data_type_inc is not None and isinstance(data_type_inc, BaseStorageSpec):
                 resolve = True
+
+        # self.attributes / self['attributes']: tuple/list of attributes
+        # self.__attributes: dict of all attributes, including attributes from parent (data_type_inc) types
+        # self.__new_attributes: set of attribute names that do not exist in the parent type
+        # self.__overridden_attributes: set of attribute names that exist in this spec and the parent type
+        # self.__new_attributes and self.__overridden_attributes are only set properly if resolve = True
         for attribute in attributes:
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
@@ -358,7 +356,6 @@ class BaseStorageSpec(Spec):
         self.__resolved = False
         if resolve:
             self.resolve_spec(data_type_inc)
-            self.__resolved = True
 
     @property
     def default_name(self):
@@ -376,18 +373,22 @@ class BaseStorageSpec(Spec):
 
     @docval({'name': 'inc_spec', 'type': 'BaseStorageSpec', 'doc': 'the data type this specification represents'})
     def resolve_spec(self, **kwargs):
+        """Add attributes from the inc_spec to this spec and track which attributes are new and overridden."""
         inc_spec = getargs('inc_spec', kwargs)
         for attribute in inc_spec.attributes:
-            self.__new_attributes.discard(attribute)
+            self.__new_attributes.discard(attribute.name)
             if attribute.name in self.__attributes:
                 self.__overridden_attributes.add(attribute.name)
-                continue
-            self.set_attribute(attribute)
+            else:
+                self.set_attribute(attribute)
+        self.__resolved = True
 
     @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
     def is_inherited_spec(self, **kwargs):
         '''
-        Return True if this spec was inherited from the parent type, False otherwise
+        Return True if this spec was inherited from the parent type, False otherwise.
+
+        Returns False if the spec is not found.
         '''
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
@@ -399,7 +400,9 @@ class BaseStorageSpec(Spec):
     @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
     def is_overridden_spec(self, **kwargs):
         '''
-        Return True if this spec overrides a specification from the parent type, False otherwise
+        Return True if this spec overrides a specification from the parent type, False otherwise.
+
+        Returns False if the spec is not found.
         '''
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
@@ -408,40 +411,44 @@ class BaseStorageSpec(Spec):
             return self.is_overridden_attribute(spec)
         return False
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to the Spec for'})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to check'})
     def is_inherited_attribute(self, **kwargs):
         '''
-        Return True if the attribute was inherited from the parent type, False otherwise
+        Return True if the attribute was inherited from the parent type, False otherwise.
+
+        Raises a ValueError if the spec is not found.
         '''
         name = getargs('name', kwargs)
         if name not in self.__attributes:
             raise ValueError("Attribute '%s' not found" % name)
         return name not in self.__new_attributes
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to the Spec for'})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to check'})
     def is_overridden_attribute(self, **kwargs):
         '''
-        Return True if the given attribute overrides the specification from the parent, False otherwise
+        Return True if the given attribute overrides the specification from the parent, False otherwise.
+
+        Raises a ValueError if the spec is not found.
         '''
         name = getargs('name', kwargs)
         if name not in self.__attributes:
             raise ValueError("Attribute '%s' not found" % name)
-        return name not in self.__overridden_attributes
+        return name in self.__overridden_attributes
 
     def is_many(self):
         return self.quantity not in (1, ZERO_OR_ONE)
 
     @classmethod
-    def get_data_type_spec(cls, data_type_def):
+    def get_data_type_spec(cls, data_type_def):  # unused
         return AttributeSpec(cls.type_key(), 'the data type of this object', 'text', value=data_type_def)
 
     @classmethod
-    def get_namespace_spec(cls):
+    def get_namespace_spec(cls):  # unused
         return AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
 
     @property
     def attributes(self):
-        ''' The attributes for this specification '''
+        ''' Tuple of attribute specifications for this specification '''
         return tuple(self.get('attributes', tuple()))
 
     @property
@@ -461,7 +468,8 @@ class BaseStorageSpec(Spec):
     def type_key(cls):
         ''' Get the key used to store data type on an instance
 
-        Override this method to use a different name for 'data_type'
+        Override this method to use a different name for 'data_type'. HDMF supports combining schema
+        that uses 'data_type' and at most one different name for 'data_type'.
         '''
         return cls.__type_key
 
@@ -469,7 +477,8 @@ class BaseStorageSpec(Spec):
     def inc_key(cls):
         ''' Get the key used to define a data_type include.
 
-        Override this method to use a different keyword for 'data_type_inc'
+        Override this method to use a different keyword for 'data_type_inc'. HDMF supports combining schema
+        that uses 'data_type_inc' and at most one different name for 'data_type_inc'.
         '''
         return cls.__inc_key
 
@@ -477,7 +486,8 @@ class BaseStorageSpec(Spec):
     def def_key(cls):
         ''' Get the key used to define a data_type definition.
 
-        Override this method to use a different keyword for 'data_type_def'
+        Override this method to use a different keyword for 'data_type_def' HDMF supports combining schema
+        that uses 'data_type_def' and at most one different name for 'data_type_def'.
         '''
         return cls.__def_key
 
@@ -516,15 +526,22 @@ class BaseStorageSpec(Spec):
         attributes = self.setdefault('attributes', list())
         if spec.parent is not None:
             spec = AttributeSpec.build_spec(spec)
+        # if attribute name already exists in self.__attributes,
+        # 1. find the attribute in self['attributes'] list and replace it with the given spec
+        # 2. replace the value for the name key in the self.__attributes dict
+        # otherwise, add the attribute spec to the self['attributes'] list and self.__attributes dict
+        # the values of self['attributes'] and self.__attributes should always be the same
+        # the former enables the spec to act like a dict with the 'attributes' key and
+        # the latter is useful for name-based access of attributes
         if spec.name in self.__attributes:
             idx = -1
-            for i, attribute in enumerate(attributes):
+            for i, attribute in enumerate(attributes):  # pragma: no cover (execution should break)
                 if attribute.name == spec.name:
                     idx = i
                     break
             if idx >= 0:
                 attributes[idx] = spec
-            else:
+            else:  # pragma: no cover
                 raise ValueError('%s in __attributes but not in spec record' % spec.name)
         else:
             attributes.append(spec)
@@ -894,8 +911,8 @@ class GroupSpec(BaseStorageSpec):
             self.__new_links.discard(link.name)
             if link.name in self.__links:
                 self.__overridden_links.add(link.name)
-                continue
-            self.set_link(link)
+            else:
+                self.set_link(link)
         # resolve inherited data_types
         for dt_spec in data_types:
             if isinstance(dt_spec, LinkSpec):
