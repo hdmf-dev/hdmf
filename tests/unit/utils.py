@@ -1,8 +1,10 @@
+import os
 import tempfile
 from copy import copy, deepcopy
 
+from hdmf.build import TypeMap
 from hdmf.container import Container
-from hdmf.spec import GroupSpec, DatasetSpec, SpecNamespace
+from hdmf.spec import GroupSpec, DatasetSpec, NamespaceCatalog, SpecCatalog, SpecNamespace, NamespaceBuilder
 from hdmf.utils import docval, getargs, get_docval
 
 CORE_NAMESPACE = 'test_core'
@@ -85,6 +87,73 @@ def get_temp_filepath():
     temp_file = tempfile.NamedTemporaryFile()
     temp_file.close()
     return temp_file.name
+
+
+def create_test_type_map(specs, container_classes, mappers=None):
+    """
+    Create a TypeMap with the specs registered under a test namespace, and classes and mappers registered to type names.
+    :param specs: list of specs
+    :param container_classes: dict of type name to container class
+    :param mappers: (optional) dict of type name to mapper class
+    :return: the constructed TypeMap
+    """
+    spec_catalog = SpecCatalog()
+    schema_file = 'test.yaml'
+    for s in specs:
+        spec_catalog.register_spec(s, schema_file)
+    namespace = SpecNamespace(
+        doc='a test namespace',
+        name=CORE_NAMESPACE,
+        schema=[{'source': schema_file}],
+        version='0.1.0',
+        catalog=spec_catalog
+    )
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    type_map = TypeMap(namespace_catalog)
+    for type_name, container_cls in container_classes.items():
+        type_map.register_container_type(CORE_NAMESPACE, type_name, container_cls)
+    if mappers:
+        for type_name, mapper_cls in mappers.items():
+            container_cls = container_classes[type_name]
+            type_map.register_map(container_cls, mapper_cls)
+    return type_map
+
+
+def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, type_map):
+    """
+    Create a TypeMap with the specs loaded from YAML files and dependencies resolved.
+
+    This writes namespaces and specs to YAML files, creates an empty TypeMap, and calls load_namespaces on the
+    TypeMap, instead of manually creating a SpecCatalog, SpecNamespace, NamespaceCatalog and manually registering
+    container types. Importantly, this process resolves dependencies across namespaces.
+
+    :param namespace_name: Name of the new namespace.
+    :param specs: List of specs of new data types to add.
+    :param incl_types: Dict mapping included namespace name to list of data types to include or None to include all.
+    :param type_map: The type map to load the namespace into.
+    """
+    ns_builder = NamespaceBuilder(
+        name=namespace_name,
+        doc='a test namespace',
+        version='0.1.0',
+    )
+    ns_filename = ns_builder.name + '.namespace.yaml'
+    ext_filename = ns_builder.name + '.extensions.yaml'
+
+    for ns, types in incl_types.items():
+        if types is None:  # include all types
+            ns_builder.include_namespace(ns)
+        else:
+            for dt in types:
+                ns_builder.include_type(dt, namespace=ns)
+
+    for data_type in specs:
+        ns_builder.add_spec(ext_filename, data_type)
+
+    ns_builder.export(ns_filename, outdir=output_dir)
+    ns_path = os.path.join(output_dir, ns_filename)
+    type_map.load_namespaces(ns_path)
 
 
 # ##### custom spec classes #####

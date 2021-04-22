@@ -14,7 +14,7 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.append(data, [arg])
+        return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1
@@ -50,6 +50,8 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
 
     Derived classes must ensure that all abstract methods and abstract properties are implemented, in
     particular, dtype, maxshape, __iter__, ___next__, recommended_chunk_shape, and recommended_data_shape.
+
+    Iterating over AbstractContainer objects is not yet supported.
     """
 
     @abstractmethod

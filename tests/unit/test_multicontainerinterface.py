@@ -329,14 +329,20 @@ class TestOverrideInit(TestCase):
 
 class TestNoClsConf(TestCase):
 
+    def test_mci_init(self):
+        """Test that MultiContainerInterface cannot be instantiated."""
+        msg = "Can't instantiate class MultiContainerInterface."
+        with self.assertRaisesWith(TypeError, msg):
+            MultiContainerInterface(name='a')
+
     def test_init_no_cls_conf(self):
-        """Test that an MCI class without a __clsconf__ can be declared but __init__ raises an error."""
+        """Test that defining an MCI subclass without __clsconf__ raises an error."""
 
         class Bar(MultiContainerInterface):
-
             pass
 
-        msg = "Cannot initialize an instance of MultiContainerInterface subclass Bar."
+        msg = ("MultiContainerInterface subclass Bar is missing __clsconf__ attribute. Please check that "
+               "the class is properly defined.")
         with self.assertRaisesWith(TypeError, msg):
             Bar(name='a')
 
@@ -344,7 +350,6 @@ class TestNoClsConf(TestCase):
         """Test that a subclass of an MCI class without a __clsconf__ can be initialized."""
 
         class Bar(MultiContainerInterface):
-
             pass
 
         class Qux(Bar):

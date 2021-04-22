@@ -23,7 +23,7 @@ class DtypeHelper:
     # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
     # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
     # hdmf.validate.validator.__allowable, and backend dtype maps
-    # see https://hdmf-schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
+    # see https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype
     primary_dtype_synonyms = {
         'float': ["float", "float32"],
         'double': ["double", "float64"],
@@ -493,13 +493,18 @@ class BaseStorageSpec(Spec):
 
     @property
     def data_type_inc(self):
-        ''' The data type of this specification '''
+        ''' The data type this specification inherits '''
         return self.get(self.inc_key())
 
     @property
     def data_type_def(self):
         ''' The data type this specification defines '''
         return self.get(self.def_key(), None)
+
+    @property
+    def data_type(self):
+        ''' The data type of this specification '''
+        return self.data_type_def or self.data_type_inc
 
     @property
     def quantity(self):

@@ -65,7 +65,8 @@ sphinx_gallery_conf = {
     'subsection_order': ExplicitOrder(['../gallery/general', '../gallery/domain']),
     'backreferences_dir': 'gen_modules/backreferences',
     'download_section_examples': False,
-    'min_reported_time': 5
+    'min_reported_time': 5,
+    'remove_config_comments': True
 }
 
 intersphinx_mapping = {
@@ -92,7 +93,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'HDMF'
-copyright = u'2017-2020, Hierarchical Data Modeling Framework'
+copyright = u'2017-2021, Hierarchical Data Modeling Framework'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

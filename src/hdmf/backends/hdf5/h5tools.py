@@ -29,6 +29,8 @@ H5_REGREF = special_dtype(ref=RegionReference)
 
 class HDF5IO(HDMFIO):
 
+    __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
+
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
@@ -38,12 +40,14 @@ class HDF5IO(HDMFIO):
                      'more details.')},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None})
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None})
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj = popargs('path', 'manager', 'mode', 'comm', 'file', kwargs)
+        path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
+                                                              kwargs)
 
         if isinstance(path, Path):
             path = str(path)
@@ -53,7 +57,7 @@ class HDF5IO(HDMFIO):
             msg += 'but supplied a file with filename: %s' % file_obj.filename
             raise ValueError(msg)
 
-        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+'):
+        if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
             raise UnsupportedOperation(msg)
 
@@ -65,6 +69,7 @@ class HDF5IO(HDMFIO):
             manager = BuildManager(TypeMap(NamespaceCatalog()))
         elif isinstance(manager, TypeMap):
             manager = BuildManager(manager)
+        self.__driver = driver
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
@@ -86,28 +91,17 @@ class HDF5IO(HDMFIO):
     def _file(self):
         return self.__file
 
-    @classmethod
-    @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
-             'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
-            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
-            returns="dict with the loaded namespaces", rtype=dict)
-    def load_namespaces(cls, **kwargs):
-        """Load cached namespaces from a file.
+    @property
+    def driver(self):
+        return self.__driver
 
-        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
-        namespaces will be read, and the File object will be closed. If `file` is supplied, then
-        the given File object will be read from and not closed.
-        """
-        namespace_catalog, path, namespaces, file_obj = popargs('namespace_catalog', 'path', 'namespaces', 'file',
-                                                                kwargs)
-
+    @staticmethod
+    def __resolve_file_obj(path, file_obj, driver):
         if isinstance(path, Path):
             path = str(path)
 
         if path is None and file_obj is None:
-            raise ValueError("Either the 'path' or 'file' argument must be supplied to load_namespaces.")
+            raise ValueError("Either the 'path' or 'file' argument must be supplied.")
 
         if path is not None and file_obj is not None:  # consistency check
             if os.path.abspath(file_obj.filename) != os.path.abspath(path):
@@ -116,27 +110,122 @@ class HDF5IO(HDMFIO):
                 raise ValueError(msg)
 
         if file_obj is None:
-            with File(path, 'r') as f:
-                return cls.__load_namespaces(namespace_catalog, namespaces, f)
-        else:
-            return cls.__load_namespaces(namespace_catalog, namespaces, file_obj)
+            file_kwargs = dict()
+            if driver is not None:
+                file_kwargs.update(driver=driver)
+            file_obj = File(path, 'r', **file_kwargs)
+        return file_obj
+
+    @classmethod
+    @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
+             'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
+            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
+                     "the included data types"),
+            rtype=dict)
+    def load_namespaces(cls, **kwargs):
+        """Load cached namespaces from a file.
+
+        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
+        namespaces will be read, and the File object will be closed. If `file` is supplied, then
+        the given File object will be read from and not closed.
+
+        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
+        """
+        namespace_catalog, path, namespaces, file_obj, driver = popargs(
+            'namespace_catalog', 'path', 'namespaces', 'file', 'driver', kwargs)
+
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        if file_obj is None:  # need to close the file object that we just opened
+            with open_file_obj:
+                return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
+        return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
 
     @classmethod
     def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
         d = {}
 
-        if SPEC_LOC_ATTR not in file_obj.attrs:
-            msg = "No cached namespaces found in %s" % file_obj.filename
-            warnings.warn(msg)
+        if not cls.__check_specloc(file_obj):
             return d
 
-        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
+        namespace_versions = cls.__get_namespaces(file_obj)
 
+        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
         if namespaces is None:
             namespaces = list(spec_group.keys())
 
         readers = dict()
         deps = dict()
+        for ns in namespaces:
+            latest_version = namespace_versions[ns]
+            ns_group = spec_group[ns][latest_version]
+            reader = H5SpecReader(ns_group)
+            readers[ns] = reader
+            # for each namespace in the 'namespace' dataset, track all included namespaces (dependencies)
+            for spec_ns in reader.read_namespace(cls.__ns_spec_path):
+                deps[ns] = list()
+                for s in spec_ns['schema']:
+                    dep = s.get('namespace')
+                    if dep is not None:
+                        deps[ns].append(dep)
+
+        order = cls._order_deps(deps)
+        for ns in order:
+            reader = readers[ns]
+            d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=reader))
+
+        return d
+
+    @classmethod
+    def __check_specloc(cls, file_obj):
+        if SPEC_LOC_ATTR not in file_obj.attrs:
+            # this occurs in legacy files
+            msg = "No cached namespaces found in %s" % file_obj.filename
+            warnings.warn(msg)
+            return False
+        return True
+
+    @classmethod
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
+            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            returns="dict mapping names to versions of the namespaces in the file", rtype=dict)
+    def get_namespaces(cls, **kwargs):
+        """Get the names and versions of the cached namespaces from a file.
+
+        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
+        namespaces will be read, and the File object will be closed. If `file` is supplied, then
+        the given File object will be read from and not closed.
+
+        If there are multiple versions of a namespace cached in the file, then only the latest one (using alphanumeric
+        ordering) is returned. This is the version of the namespace that is loaded by HDF5IO.load_namespaces(...).
+
+        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
+        """
+        path, file_obj, driver = popargs('path', 'file', 'driver', kwargs)
+
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        if file_obj is None:  # need to close the file object that we just opened
+            with open_file_obj:
+                return cls.__get_namespaces(open_file_obj)
+        return cls.__get_namespaces(open_file_obj)
+
+    @classmethod
+    def __get_namespaces(cls, file_obj):
+        """Return a dict mapping namespace name to version string for the latest version of that namespace in the file.
+
+        If there are multiple versions of a namespace cached in the file, then only the latest one (using alphanumeric
+        ordering) is returned. This is the version of the namespace that is loaded by HDF5IO.load_namespaces(...).
+        """
+        used_version_names = dict()
+        if not cls.__check_specloc(file_obj):
+            return used_version_names
+
+        spec_group = file_obj[file_obj.attrs[SPEC_LOC_ATTR]]
+        namespaces = list(spec_group.keys())
         for ns in namespaces:
             ns_group = spec_group[ns]
             # NOTE: by default, objects within groups are iterated in alphanumeric order
@@ -151,23 +240,9 @@ class HDF5IO(HDMFIO):
                 # make sure that if there is another group representing a newer version, that is read instead
                 if 'None' in version_names:
                     version_names.remove('None')
-            latest_version = version_names[-1]
-            ns_group = ns_group[latest_version]
-            reader = H5SpecReader(ns_group)
-            readers[ns] = reader
-            for spec_ns in reader.read_namespace('namespace'):
-                deps[ns] = list()
-                for s in spec_ns['schema']:
-                    dep = s.get('namespace')
-                    if dep is not None:
-                        deps[ns].append(dep)
+            used_version_names[ns] = version_names[-1]  # save the largest in alphanumeric order
 
-        order = cls._order_deps(deps)
-        for ns in order:
-            reader = readers[ns]
-            d.update(namespace_catalog.load_namespaces('namespace', reader=reader))
-
-        return d
+        return used_version_names
 
     @classmethod
     def _order_deps(cls, deps):
@@ -348,7 +423,7 @@ class HDF5IO(HDMFIO):
                 continue
             ns_group = spec_group.create_group(group_name)
             writer = H5SpecWriter(ns_group)
-            ns_builder.export('namespace', writer=writer)
+            ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
         {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
@@ -681,10 +756,13 @@ class HDF5IO(HDMFIO):
     def open(self):
         if self.__file is None:
             open_flag = self.__mode
+            kwargs = dict()
             if self.comm:
-                kwargs = {'driver': 'mpio', 'comm': self.comm}
-            else:
-                kwargs = {}
+                kwargs.update(driver='mpio', comm=self.comm)
+
+            if self.driver is not None:
+                kwargs.update(driver=self.driver)
+
             self.__file = File(self.source, open_flag, **kwargs)
 
     def close(self):
@@ -840,26 +918,30 @@ class HDF5IO(HDMFIO):
     def set_attributes(self, **kwargs):
         obj, attributes = getargs('obj', 'attributes', kwargs)
         for key, value in attributes.items():
-            if isinstance(value, (set, list, tuple)):
-                tmp = tuple(value)
-                if len(tmp) > 0:
-                    if isinstance(tmp[0], str):
-                        value = [np.unicode_(s) for s in tmp]
-                    elif isinstance(tmp[0], bytes):
-                        value = [np.string_(s) for s in tmp]
-                    elif isinstance(tmp[0], Container):  # a list of references
-                        self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
-                    else:
-                        value = np.array(value)
-                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
-                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
-                obj.attrs[key] = value
-            elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
-                self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
-            else:
-                self.logger.debug("Setting %s '%s' attribute '%s' to %s"
-                                  % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
-                obj.attrs[key] = value                   # a regular scalar
+            try:
+                if isinstance(value, (set, list, tuple)):
+                    tmp = tuple(value)
+                    if len(tmp) > 0:
+                        if isinstance(tmp[0], str):
+                            value = [np.unicode_(s) for s in tmp]
+                        elif isinstance(tmp[0], bytes):
+                            value = [np.string_(s) for s in tmp]
+                        elif isinstance(tmp[0], Container):  # a list of references
+                            self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
+                        else:
+                            value = np.array(value)
+                    self.logger.debug("Setting %s '%s' attribute '%s' to %s"
+                                      % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                    obj.attrs[key] = value
+                elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
+                    self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
+                else:
+                    self.logger.debug("Setting %s '%s' attribute '%s' to %s"
+                                      % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                    obj.attrs[key] = value                   # a regular scalar
+            except Exception as e:
+                msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)
+                raise RuntimeError(msg) from e
 
     def _make_attr_ref_filler(self, obj, key, value):
         '''

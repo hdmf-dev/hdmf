@@ -261,6 +261,21 @@ class GroupSpecTests(TestCase):
 
         self.assertEqual(attribute.path, 'root/GroupType/DatasetType/attribute1')
 
+    def test_data_type_property_value(self):
+        """Test that the property data_type has the expected value"""
+        test_cases = {
+            ('Foo', 'Bar'): 'Bar',
+            ('Foo', None): 'Foo',
+            (None, 'Bar'): 'Bar',
+            (None, None): None,
+        }
+        for (data_type_inc, data_type_def), data_type in test_cases.items():
+            with self.subTest(data_type_inc=data_type_inc,
+                              data_type_def=data_type_def, data_type=data_type):
+                dataset = DatasetSpec('A dataset', 'int', name='dataset',
+                                      data_type_inc=data_type_inc, data_type_def=data_type_def)
+                self.assertEqual(dataset.data_type, data_type)
+
     def test_get_data_type_spec(self):
         expected = AttributeSpec('data_type', 'the data type of this object', 'text', value='MyType')
         self.assertDictEqual(GroupSpec.get_data_type_spec('MyType'), expected)

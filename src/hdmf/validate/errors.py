@@ -11,7 +11,8 @@ __all__ = [
     "ShapeError",
     "MissingDataType",
     "IllegalLinkError",
-    "IncorrectDataType"
+    "IncorrectDataType",
+    "IncorrectQuantityError"
 ]
 
 
@@ -100,6 +101,20 @@ class MissingDataType(Error):
         return self.__data_type
 
 
+class IncorrectQuantityError(Error):
+    """A validation error indicating that a child group/dataset/link has the incorrect quantity of matching elements"""
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
+            {'name': 'data_type', 'type': str, 'doc': 'the data type which has the incorrect quantity'},
+            {'name': 'expected', 'type': (str, int), 'doc': 'the expected quantity'},
+            {'name': 'received', 'type': (str, int), 'doc': 'the received quantity'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    def __init__(self, **kwargs):
+        name, data_type, expected, received = getargs('name', 'data_type', 'expected', 'received', kwargs)
+        reason = "expected a quantity of %s for data type %s, received %s" % (str(expected), data_type, str(received))
+        loc = getargs('location', kwargs)
+        super().__init__(name, reason, location=loc)
+
+
 class ExpectedArrayError(Error):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
@@ -140,7 +155,7 @@ class IllegalLinkError(Error):
             {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
-        reason = "illegal use of link"
+        reason = "illegal use of link (linked object will not be validated)"
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
 

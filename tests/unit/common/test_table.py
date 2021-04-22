@@ -4,10 +4,11 @@ import numpy as np
 import pandas as pd
 import unittest
 
+
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
-from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers,
-                         DynamicTableRegion, VocabData, get_manager, SimpleMultiContainer)
+from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
+                         DynamicTableRegion, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 
 
@@ -506,6 +507,107 @@ Fields:
         with self.assertRaisesWith(IndexError, msg):
             table[5]
 
+    def test_multidim_col(self):
+        multidim_data = [
+            [[1, 2], [3, 4], [5, 6]],
+            ((1, 2), (3, 4), (5, 6)),
+            [(1, 'a', True), (2, 'b', False), (3, 'c', True)],
+        ]
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, multidim_data)
+        ]
+        table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'foo': multidim_data[0],
+                            'bar': multidim_data[1],
+                            'baz': multidim_data[2]},
+                           index=pd.Index(name='id', data=[0, 1, 2]))
+        pd.testing.assert_frame_equal(df, df2)
+
+        df3 = pd.DataFrame({'foo': [multidim_data[0][0]],
+                            'bar': [multidim_data[1][0]],
+                            'baz': [multidim_data[2][0]]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(table.get(0), df3)
+
+    def test_multidim_col_one_elt_list(self):
+        data = [[1, 2]]
+        col = VectorData(name='data', description='desc', data=data)
+        table = DynamicTable('test', 'desc', columns=(col, ))
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'data': [x for x in data]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(table.get(0), df2)
+
+    def test_multidim_col_one_elt_tuple(self):
+        data = [(1, 2)]
+        col = VectorData(name='data', description='desc', data=data)
+        table = DynamicTable('test', 'desc', columns=(col, ))
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'data': [x for x in data]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(table.get(0), df2)
+
+    def test_eq(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertTrue(table == test_table)
+
+    def test_eq_from_df(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard']
+        }).loc[:, ('foo', 'bar', 'baz')]
+
+        test_table = DynamicTable.from_dataframe(df, 'with_columns_and_data', table_description='a test table')
+        table = self.with_columns_and_data()
+        self.assertTrue(table == test_table)
+
+    def test_eq_diff_missing_col(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        del columns[-1]
+        test_table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_diff_name(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("wrong name", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_diff_desc(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("with_columns_and_data", 'wrong description', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_bad_type(self):
+        container = Container('test_container')
+        table = self.with_columns_and_data()
+        self.assertFalse(table == container)
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -515,7 +617,7 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('bar', 'a float column')
         table.add_column('baz', 'a string column')
         table.add_column('qux', 'a boolean column')
-        table.add_column('quux', 'a vocab column', vocab=True)
+        table.add_column('quux', 'an enum column', enum=True)
         table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
         table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
         return table
@@ -868,7 +970,8 @@ class SubTable(DynamicTable):
         {'name': 'col6', 'description': 'optional region', 'table': True},
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
-        {'name': 'col10', 'description': 'required, indexed vocab column', 'index': True, 'class': VocabData},
+        {'name': 'col10', 'description': 'optional, indexed enum column', 'index': True, 'class': EnumData},
+        {'name': 'col11', 'description': 'optional, enumerable column', 'enum': True, 'index': True},
     )
 
 
@@ -902,8 +1005,8 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertIsNone(table.col6)
         self.assertIsNone(table.col8)
         self.assertIsNone(table.col8_index)
-        self.assertIsNone(table.col10)
-        self.assertIsNone(table.col10_index)
+        self.assertIsNone(table.col11)
+        self.assertIsNone(table.col11_index)
 
         # uninitialized optional predefined columns cannot be accessed in this manner
         with self.assertRaisesWith(KeyError, "'col2'"):
@@ -952,8 +1055,11 @@ class TestDynamicTableClassColumns(TestCase):
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
 
-        table.add_column(name='col10', description='column #10', index=True, col_cls=VocabData)
-        self.assertIsInstance(table.col10, VocabData)
+        table.add_column(name='col10', description='column #10', index=True, col_cls=EnumData)
+        self.assertIsInstance(table.col10, EnumData)
+
+        table.add_column(name='col11', description='column #11', enum=True, index=True)
+        self.assertIsInstance(table.col11, EnumData)
 
     def test_add_opt_column_mismatched_table_true(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
@@ -1008,7 +1114,7 @@ class TestDynamicTableClassColumns(TestCase):
     def test_add_opt_column_mismatched_col_cls(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
         table = SubTable(name='subtable', description='subtable description')
-        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.VocabData'> "
+        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.EnumData'> "
                "which does not match the entered col_cls "
                "argument. The predefined class spec will be ignored. "
                "Please ensure the new column complies with the spec. "
@@ -1102,63 +1208,103 @@ class TestDynamicTableClassColumns(TestCase):
             SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
 
 
-class TestVocabData(TestCase):
+class TestEnumData(TestCase):
 
     def test_init(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        self.assertIsInstance(vd.vocabulary, np.ndarray)
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        self.assertIsInstance(ed.elements, VectorData)
 
     def test_get(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd[2]
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed[2]
         self.assertEqual(dat, 'b')
-        dat = vd[-1]
+        dat = ed[-1]
         self.assertEqual(dat, 'c')
-        dat = vd[0]
+        dat = ed[0]
         self.assertEqual(dat, 'a')
 
     def test_get_list(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd[[0, 1, 2]]
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed[[0, 1, 2]]
         np.testing.assert_array_equal(dat, ['a', 'a', 'b'])
 
     def test_get_list_join(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], join=True)
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed.get([0, 1, 2], join=True)
         self.assertEqual(dat, 'aab')
 
     def test_get_list_indices(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], index=True)
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed.get([0, 1, 2], index=True)
         np.testing.assert_array_equal(dat, [0, 0, 1])
 
     def test_get_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData',
-                       vocabulary=['a', 'b', 'c'],
-                       data=np.array([[0, 0], [1, 1], [2, 2]]))
-        dat = vd[0]
+        ed = EnumData('cv_data', 'a test EnumData',
+                      elements=['a', 'b', 'c'],
+                      data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = ed[0]
         np.testing.assert_array_equal(dat, ['a', 'a'])
 
     def test_get_2d_w_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData',
-                       vocabulary=['a', 'b', 'c'],
-                       data=np.array([[0, 0], [1, 1], [2, 2]]))
-        dat = vd[[0, 1]]
+        ed = EnumData('cv_data', 'a test EnumData',
+                      elements=['a', 'b', 'c'],
+                      data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = ed[[0, 1]]
         np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])
 
     def test_add_row(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
-        vd.add_row('b')
-        vd.add_row('a')
-        vd.add_row('c')
-        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        ed.add_row('b')
+        ed.add_row('a')
+        ed.add_row('c')
+        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
 
     def test_add_row_index(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
-        vd.add_row(1, index=True)
-        vd.add_row(0, index=True)
-        vd.add_row(2, index=True)
-        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        ed.add_row(1, index=True)
+        ed.add_row(0, index=True)
+        ed.add_row(2, index=True)
+        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
+
+
+class TestIndexedEnumData(TestCase):
+
+    def test_init(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        idx = VectorIndex('enum_index', [2, 4, 6], target=ed)
+        self.assertIsInstance(ed.elements, VectorData)
+        self.assertIsInstance(idx.target, EnumData)
+
+    def test_add_row(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row(['a', 'a', 'a'])
+        idx.add_row(['b', 'b'])
+        idx.add_row(['c', 'c', 'c', 'c'])
+        np.testing.assert_array_equal(idx[0], ['a', 'a', 'a'])
+        np.testing.assert_array_equal(idx[1], ['b', 'b'])
+        np.testing.assert_array_equal(idx[2], ['c', 'c', 'c', 'c'])
+
+    def test_add_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row([0, 0, 0], index=True)
+        idx.add_row([1, 1], index=True)
+        idx.add_row([2, 2, 2, 2], index=True)
+        np.testing.assert_array_equal(idx[0], ['a', 'a', 'a'])
+        np.testing.assert_array_equal(idx[1], ['b', 'b'])
+        np.testing.assert_array_equal(idx[2], ['c', 'c', 'c', 'c'])
+
+    @unittest.skip("feature is not yet supported")
+    def test_add_2d_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row([['a', 'a'], ['a', 'a'], ['a', 'a']])
+        idx.add_row([['b', 'b'], ['b', 'b']])
+        idx.add_row([['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
+        np.testing.assert_array_equal(idx[0], [['a', 'a'], ['a', 'a'], ['a', 'a']])
+        np.testing.assert_array_equal(idx[1], [['b', 'b'], ['b', 'b']])
+        np.testing.assert_array_equal(idx[2], [['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
 
 
 class TestIndexing(TestCase):
@@ -1355,6 +1501,45 @@ class TestDynamicTableAddIndexRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('foo', 'an int column', index=True)
         table.add_row(foo=[1, 2, 3])
         return table
+
+
+class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an enumerable column', enum=True)
+        table.add_row(bar='a')
+        table.add_row(bar='b')
+        table.add_row(bar='a')
+        table.add_row(bar='c')
+        return table
+
+
+class TestDynamicTableAddEnum(TestCase):
+
+    def test_enum(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an enumerable column', enum=True)
+        table.add_row(bar='a')
+        table.add_row(bar='b')
+        table.add_row(bar='a')
+        table.add_row(bar='c')
+        rec = table.to_dataframe()
+        exp = pd.DataFrame(data={'bar': ['a', 'b', 'a', 'c']}, index=pd.Series(name='id', data=[0, 1, 2, 3]))
+        pd.testing.assert_frame_equal(exp, rec)
+
+    def test_enum_index(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an indexed enumerable column', enum=True, index=True)
+        table.add_row(bar=['a', 'a', 'a'])
+        table.add_row(bar=['b', 'b', 'b', 'b'])
+        table.add_row(bar=['c', 'c'])
+        rec = table.to_dataframe()
+        exp = pd.DataFrame(data={'bar': [['a', 'a', 'a'],
+                                         ['b', 'b', 'b', 'b'],
+                                         ['c', 'c']]},
+                           index=pd.Series(name='id', data=[0, 1, 2]))
+        pd.testing.assert_frame_equal(exp, rec)
 
 
 class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):

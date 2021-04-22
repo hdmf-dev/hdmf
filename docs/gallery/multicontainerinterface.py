@@ -44,6 +44,7 @@ This is a guide to creating custom API classes with the ``MultiContainerInterfac
 # The ``'add'`` key should map to a string value that is the name of the
 # method to be generated that allows users to add a container to the collection.
 
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_multicontainerinterface.png'
 from hdmf.container import Container, MultiContainerInterface
 
 
