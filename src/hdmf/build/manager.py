@@ -5,7 +5,7 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
+from ..spec import DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, call_docval_func, ExtenderMeta
 
@@ -448,7 +448,8 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, container_cls)
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
-        for custom_generators in type_map.__class_generator.custom_generators:
+        for custom_generators in reversed(type_map.__class_generator.custom_generators):
+            # iterate in reverse order because generators are stored internally as a stack
             self.register_generator(custom_generators)
 
     @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
@@ -474,38 +475,63 @@ class TypeMap:
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
-                    container_cls = self.get_container_cls(src_ns, dt)
+                    container_cls = self.get_container_cls(dt, src_ns, autogen=False)
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
-            {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+    @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+            {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+            {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
         """Get the container class from data type specification.
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
-        namespace, data_type = getargs('namespace', 'data_type', kwargs)
+        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+
+        # namespace is unknown, so look it up
+        if namespace is None:
+            for key, val in self.__container_types.items():
+                # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
+                # but the same type_name should point to the same class
+                if data_type in val:
+                    namespace = key
+                    break
+
         cls = self.__get_container_cls(namespace, data_type)
-        if cls is None:  # dynamically generate a class
+        if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
-            if isinstance(spec, GroupSpec):
-                self.__resolve_child_container_classes(spec, namespace)
+            self.__check_dependent_types(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
             cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 
-    def __resolve_child_container_classes(self, spec, namespace):
-        for child_spec in (spec.groups + spec.datasets):
-            if child_spec.data_type_inc is not None:
-                self.get_container_cls(namespace, child_spec.data_type_inc)
-            elif child_spec.data_type_def is not None:
-                self.get_container_cls(namespace, child_spec.data_type_def)
+    def __check_dependent_types(self, spec, namespace):
+        """Ensure that classes for all types used by this type exist in this namespace and generate them if not.
+        """
+        def __check_dependent_types_helper(spec, namespace):
+            if isinstance(spec, (GroupSpec, DatasetSpec)):
+                if spec.data_type_inc is not None:
+                    self.get_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
+                if spec.data_type_def is not None:
+                    self.get_container_cls(spec.data_type_def, namespace)
+            elif isinstance(spec, LinkSpec):
+                if spec.target_type is not None:
+                    self.get_container_cls(spec.target_type, namespace)
+            if isinstance(spec, GroupSpec):
+                for child_spec in (spec.groups + spec.datasets + spec.links):
+                    __check_dependent_types_helper(child_spec, namespace)
+
+        if spec.data_type_inc is not None:
+            self.get_container_cls(spec.data_type_inc, namespace)
+        if isinstance(spec, GroupSpec):
+            for child_spec in (spec.groups + spec.datasets + spec.links):
+                __check_dependent_types_helper(child_spec, namespace)
 
     def __get_parent_cls(self, namespace, data_type, spec):
         dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
@@ -527,15 +553,17 @@ class TypeMap:
         return parent_cls
 
     def __get_container_cls(self, namespace, data_type):
+        """Get the container class for the namespace, data_type. If the class doesn't exist yet, generate it."""
         if namespace not in self.__container_types:
             return None
         if data_type not in self.__container_types[namespace]:
             return None
         ret = self.__container_types[namespace][data_type]
-        if isinstance(ret, TypeSource):
-            ret = self.__get_container_cls(ret.namespace, ret.data_type)
-            if ret is not None:
-                self.register_container_type(namespace, data_type, ret)
+        if isinstance(ret, TypeSource):  # data_type is a dependency from ret.namespace
+            cls = self.get_container_cls(ret.data_type, ret.namespace)  # get class / generate class
+            # register the same class into this namespace (replaces TypeSource)
+            self.register_container_type(namespace, data_type, cls)
+            ret = cls
         return ret
 
     @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),
@@ -591,7 +619,7 @@ class TypeMap:
         namespace = self.get_builder_ns(builder)
         if namespace is None:
             raise ValueError("No namespace found for builder %s" % builder.path)
-        return self.get_container_cls(namespace, data_type)
+        return self.get_container_cls(data_type, namespace)
 
     @docval({'name': 'spec', 'type': (DatasetSpec, GroupSpec), 'doc': 'the parent spec to search'},
             {'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
@@ -683,8 +711,9 @@ class TypeMap:
         self.__container_types.setdefault(namespace, dict())
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))
-        setattr(container_cls, spec.type_key(), data_type)
-        setattr(container_cls, 'namespace', namespace)
+        if not isinstance(container_cls, TypeSource):
+            setattr(container_cls, spec.type_key(), data_type)
+            setattr(container_cls, 'namespace', namespace)
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
