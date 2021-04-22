@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 2.5.0 (Upcoming)
+## HDMF 2.5.0 (April 5, 2021)
 
 ### New features
 - `DynamicTable` can be automatically generated using `get_class`. Now the HDMF API can read files with extensions
@@ -8,9 +8,18 @@
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
-- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
-  (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
-  a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
+- Use HDMF common schema 1.5.0.
+  - Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
+    (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
+    a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
+  - `ExternalResources` was changed to support storing both names and URIs for resources. @mavaylon (#517, #548)
+  - The `VocabData` data type was replaced by `EnumData` to provide more flexible support for data from a set of
+    fixed values.
+  - Added `AlignedDynamicTable`, which defines a `DynamicTable` that supports storing a collection of sub-tables. 
+    Each sub-table is itself a `DynamicTable` that is aligned with the main table by row index. Each sub-table 
+    defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
+  - See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html#april-19-2021 for more
+    details.
 - Add `EnumData` type for storing data that comes from a fixed set of values. This replaces `VocabData` i.e.
   `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
   `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
@@ -24,6 +33,7 @@
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
+- Refactor class generation code. @rly (#533, #535)
 - Equality check for `DynamicTable` returns False if the other object is a `DynamicTable` instead of raising an error.
   @rly (#566)
 - Update ruamel.yaml usage to new API. @rly (#587)
@@ -33,6 +43,7 @@
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
   attached to a `GroupBuilder`. @dsleiter (#526)
+- Fix bug for generating classes from link specs and ignored 'help' fields. @rly (#535)
 - Various fixes for dynamic class generation. @rly (#561)
 - Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
   `MultiContainerInterface`. @rly (#567)

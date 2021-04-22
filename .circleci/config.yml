@@ -63,7 +63,8 @@ references:
           name: Run the tests
           command: |
             . ../venv/bin/activate
-            if [[ "${TEST_TOX_ENV}" == "py39" ]]; then
+            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9
+            if [[ "${TEST_TOX_ENV}" == *"py39"* ]]; then
               sudo apt-get install libhdf5-dev
             fi
             pip install tox
@@ -134,6 +135,10 @@ references:
           name: Run the gallery tests
           command: |
             . ../venv/bin/activate
+            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9
+            if [[ "${TEST_TOX_ENV}" == *"py39"* ]]; then
+              sudo apt-get install libhdf5-dev
+            fi
             pip install tox
             tox -e $TEST_TOX_ENV
           no_output_timeout: 30m
@@ -204,6 +209,22 @@ jobs:
     environment:
       - TEST_TOX_ENV: "py38-upgrade-dev-pre"
       - BUILD_TOX_ENV: "build-py38-upgrade-dev-pre"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
+  python39-upgrade-dev:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "py39-upgrade-dev"
+      - BUILD_TOX_ENV: "build-py39-upgrade-dev"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *ci-steps
+
+  python39-upgrade-dev-pre:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "py39-upgrade-dev-pre"
+      - BUILD_TOX_ENV: "build-py39-upgrade-dev-pre"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
@@ -285,6 +306,18 @@ jobs:
     <<: *py38
     environment:
       - TEST_TOX_ENV: "gallery-py38-upgrade-dev-pre"
+    <<: *gallery-steps
+
+  gallery39-upgrade-dev:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "gallery-py39-upgrade-dev"
+    <<: *gallery-steps
+
+  gallery39-upgrade-dev-pre:
+    <<: *py39
+    environment:
+      - TEST_TOX_ENV: "gallery-py39-upgrade-dev-pre"
     <<: *gallery-steps
 
   gallery36-min-req:
@@ -376,17 +409,17 @@ workflows:
     jobs:
       - flake8:
           <<: *no_filters
-      - python38:
-          <<: *no_filters
       - python36-min-req:
+          <<: *no_filters
+      - python38:
           <<: *no_filters
       - miniconda36:
           <<: *no_filters
       - miniconda38:
           <<: *no_filters
-      - gallery38:
-          <<: *no_filters
       - gallery36-min-req:
+          <<: *no_filters
+      - gallery38:
           <<: *no_filters
       - deploy-dev:
           requires:
@@ -442,15 +475,21 @@ workflows:
           <<: *no_filters
       - python36:
           <<: *no_filters
+      - python36-min-req:
+          <<: *no_filters
       - python37:
           <<: *no_filters
       - python38:
           <<: *no_filters
-      - python39:
-          <<: *no_filters
       - python38-upgrade-dev:
           <<: *no_filters
-      - python36-min-req:
+      - python38-upgrade-dev-pre:
+          <<: *no_filters
+      - python39:
+          <<: *no_filters
+      - python39-upgrade-dev:
+          <<: *no_filters
+      - python39-upgrade-dev-pre:
           <<: *no_filters
       - miniconda36:
           <<: *no_filters
@@ -462,17 +501,19 @@ workflows:
           <<: *no_filters
       - gallery36:
           <<: *no_filters
+      - gallery36-min-req:
+          <<: *no_filters
       - gallery37:
           <<: *no_filters
       - gallery38:
           <<: *no_filters
-      - gallery39:
-          <<: *no_filters
       - gallery38-upgrade-dev:
           <<: *no_filters
-      - gallery36-min-req:
-          <<: *no_filters
-      - python38-upgrade-dev-pre:
-          <<: *no_filters
       - gallery38-upgrade-dev-pre:
+          <<: *no_filters
+      - gallery39:
+          <<: *no_filters
+      - gallery39-upgrade-dev:
+          <<: *no_filters
+      - gallery39-upgrade-dev-pre:
           <<: *no_filters

@@ -277,9 +277,12 @@ class TestCatchDupNS(TestCase):
         ns_catalog = NamespaceCatalog()
         ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
 
+        # no warning should be raised (but don't just check for 0 warnings -- warnings can come from other sources)
+        msg = "Ignoring cached namespace 'test_ext' version 0.1.0 because version 0.1.0 is already loaded."
         with warnings.catch_warnings(record=True) as ws:
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
-        self.assertEqual(len(ws), 0)
+        for w in ws:
+            self.assertTrue(str(w) != msg)
 
 
 class TestCustomSpecClasses(TestCase):

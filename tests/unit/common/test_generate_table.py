@@ -8,7 +8,7 @@ from hdmf.build import BuildManager, TypeMap
 from hdmf.common import get_type_map, DynamicTable
 from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
-# from hdmf.validate import ValidatorMap
+from hdmf.validate import ValidatorMap
 
 from tests.unit.utils import CORE_NAMESPACE
 
@@ -114,13 +114,6 @@ class TestDynamicDynamicTable(TestCase):
             [
                 dict(
                     namespace='hdmf-common',
-                    data_types=[
-                         'DynamicTable',
-                         'VectorData',
-                         'ElementIdentifiers',
-                         'DynamicTableRegion',
-                         'VectorIndex',
-                     ]
                 ),
                 dict(source='test.yaml'),
             ],
@@ -135,9 +128,8 @@ class TestDynamicDynamicTable(TestCase):
         writer.write_namespace(self.namespace, namespace_fpath)
         self.namespace_catalog = NamespaceCatalog()
         hdmf_typemap = get_type_map()
-        self.namespace_catalog.merge(hdmf_typemap.namespace_catalog)
         self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.merge(hdmf_typemap)
+        self.type_map.merge(hdmf_typemap, ns_catalog=True)
         self.type_map.load_namespaces(namespace_fpath)
         self.manager = BuildManager(self.type_map)
 
@@ -242,7 +234,7 @@ class TestDynamicDynamicTable(TestCase):
         test_table.add_row(
             my_col=3.0, indexed_col=[1.0, 3.0], dynamic_column=4, optional_col2=.5,
         )
-        self.filename = 'test_TestTable.h5'
+        self.filename = os.path.join(self.test_dir, 'test_TestTable.h5')
 
         with HDF5IO(self.filename, manager=self.manager, mode='w') as write_io:
             write_io.write(test_table, cache_spec=True)
@@ -258,10 +250,11 @@ class TestDynamicDynamicTable(TestCase):
         # thus, ignore the name of the container when comparing original container vs read container
         self.assertContainerEqual(read_container, test_table, ignore_name=True)
 
-        # builder = self.reader.read_builder()
-        # # TODO fix ValueError: No specification for 'Container' in namespace 'test_core'
-        # validator = ValidatorMap(self.manager.namespace_catalog.get_namespace(name=CORE_NAMESPACE))
-        # errors = validator.validate(builder)
-        # if errors:
-        #     for err in errors:
-        #         raise Exception(err)
+        builder = self.reader.read_builder()
+        # TODO fix ValueError: No specification for 'Container' in namespace 'test_core'
+        validator = ValidatorMap(self.manager.namespace_catalog.get_namespace(name=CORE_NAMESPACE))
+        errors = validator.validate(builder)
+        if errors:
+            for err in errors:
+                raise Exception(err)
+        self.reader.close()
