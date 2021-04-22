@@ -10,7 +10,7 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError)
+                                  IncorrectQuantityError, IllegalLinkError, ExtraFieldWarning, ERROR_SEVERITY)
 
 CORE_NAMESPACE = 'test_core'
 
@@ -188,9 +188,10 @@ class TestNestedTypes(ValidatorTestBase):
                                    groups=[bar_builder])
 
         results = self.vmap.validate(foo_builder)
-        self.assertEqual(len(results), 1)
-        self.assertValidationError(results[0], MissingDataType, name='Foo')
-        self.assertEqual(results[0].data_type, 'Bar')
+        self.assertEqual(len(results), 2)
+        error = next(err for err in results if err.severity == ERROR_SEVERITY)
+        self.assertValidationError(error, MissingDataType, name='Foo')
+        self.assertEqual(error.data_type, 'Bar')
 
     def test_invalid_missing_unnamed_req_group(self):
         """Test that a MissingDataType is returned when a required unnamed nested data type is missing."""
@@ -821,3 +822,92 @@ class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
         builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
+
+
+class TestExtraFields(TestCase):
+    """Test the ExtraFieldWarnings are correctly generated whenever an object includes fields that
+    are not part of the spec. Extra fields include Groups, Datasets, Links, and Attributes
+    """
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        parent_group_spec = GroupSpec('A test group specification', data_type_def='Foo')
+        child_group_spec = GroupSpec('A child group', data_type_def='Bar')
+        child_dataset_spec = GroupSpec('A child dataset', data_type_def='Baz')
+        for spec in [parent_group_spec, child_group_spec, child_dataset_spec]:
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def validate_extra_fields_test_case(self, builder):
+        """Validate that builder generates exactly one ExtraFieldWarning and no Errors"""
+        self.set_up_spec()
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ExtraFieldWarning)
+
+    def test_extra_typed_group(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is a typed group"""
+        groups = [GroupBuilder('bar', attributes={'data_type': 'Bar'})]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, groups=groups)
+        self.validate_extra_fields_test_case(builder)
+
+    def test_extra_untyped_group(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is an untyped group"""
+        groups = [GroupBuilder('bar')]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, groups=groups)
+        self.validate_extra_fields_test_case(builder)
+
+    def test_extra_typed_dataset(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is a typed dataset"""
+        datasets = [DatasetBuilder('baz', attributes={'data_type': 'Baz'})]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, datasets=datasets)
+        self.validate_extra_fields_test_case(builder)
+
+    def test_extra_untyped_dataset(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is an untyped dataset"""
+        datasets = [DatasetBuilder('baz')]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, datasets=datasets)
+        self.validate_extra_fields_test_case(builder)
+
+    def test_extra_link(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is a link"""
+        links = [LinkBuilder(GroupBuilder('bar', attributes={'data_type': 'Bar'}), 'bar_link')]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, links=links)
+        self.validate_extra_fields_test_case(builder)
+
+    def test_extra_attribute(self):
+        """Test that an ExtraFieldWarning is returned when there is an extra field which is an attribute"""
+        extra_attribute = {'x': 42}
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo', **extra_attribute})
+        self.validate_extra_fields_test_case(builder)
+
+    def test_reserved_attributes_are_ok(self):
+        """Test that ExtraFieldWarnings are not generated for the presence of reserved attributes"""
+        reserved_attributes = {'data_type': 'Foo', 'namespace': CORE_NAMESPACE, 'object_id': 1324}
+        builder = GroupBuilder('foo', attributes=reserved_attributes)
+        self.set_up_spec()
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_fields_from_inheriting_types_do_not_raise_warning(self):
+        """Test that no warnings are generated if a child builder inherits from the type in the spec"""
+        self.set_up_inheriting_specs_special_case()
+        groups = [GroupBuilder('qux', attributes={'data_type': 'Qux', 'quux': 42})]
+        builder = GroupBuilder('foo', attributes={'data_type': 'Foo'}, groups=groups)
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def set_up_inheriting_specs_special_case(self):
+        spec_catalog = SpecCatalog()
+        group_spec = GroupSpec('A child group', data_type_def='Bar')
+        group_spec_inh = GroupSpec('An inheriting child group', data_type_def='Qux', data_type_inc='Bar',
+                                   attributes=[AttributeSpec('quux', 'A new attribute', 'int')])
+        parent_group_spec = GroupSpec('A test group specification', data_type_def='Foo',
+                                      groups=[group_spec])
+        for spec in [parent_group_spec, group_spec, group_spec_inh]:
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)

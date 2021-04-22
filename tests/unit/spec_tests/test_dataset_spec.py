@@ -245,3 +245,17 @@ class DatasetSpecTests(TestCase):
                 group = GroupSpec('A group', name='group',
                                   data_type_inc=data_type_inc, data_type_def=data_type_def)
                 self.assertEqual(group.data_type, data_type)
+
+    def test_namespace_key(self):
+        """The namespace_key function should have the value 'namespace'"""
+        self.assertEqual(DatasetSpec.namespace_key(), 'namespace')
+
+    def test_reserved_attrs(self):
+        """The reserved_attrs function should return the expected list"""
+        self.assertEqual(DatasetSpec.reserved_attrs(), ('namespace', 'data_type', 'object_id'))
+
+    def test_get_namespace_spec(self):
+        """get_namespace_spec should return an AttributeSpec with the name of 'namespace'"""
+        spec = DatasetSpec.get_namespace_spec()
+        self.assertIsInstance(spec, AttributeSpec)
+        self.assertEqual(spec.name, 'namespace')
