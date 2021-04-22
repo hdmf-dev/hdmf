@@ -26,6 +26,7 @@
 - Update CI and copyright year. @rly (#523, #524)
 - Equality check for `DynamicTable` returns False if the other object is a `DynamicTable` instead of raising an error.
   @rly (#566)
+- Update ruamel.yaml usage to new API. @rly (#587)
 
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
