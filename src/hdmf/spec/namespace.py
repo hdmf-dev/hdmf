@@ -1,12 +1,11 @@
 import os.path
+import ruamel.yaml as yaml
 import string
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 from warnings import warn
-
-import ruamel.yaml as yaml
 
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec
@@ -202,7 +201,8 @@ class YAMLSpecReader(SpecReader):
     def read_namespace(self, namespace_path):
         namespaces = None
         with open(namespace_path, 'r') as stream:
-            d = yaml.safe_load(stream)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            d = yaml_obj.load(stream)
             namespaces = d.get('namespaces')
             if namespaces is None:
                 raise ValueError("no 'namespaces' found in %s" % namespace_path)
@@ -211,7 +211,8 @@ class YAMLSpecReader(SpecReader):
     def read_spec(self, spec_path):
         specs = None
         with open(self.__get_spec_path(spec_path), 'r') as stream:
-            specs = yaml.safe_load(stream)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            specs = yaml_obj.load(stream)
             if not ('datasets' in specs or 'groups' in specs):
                 raise ValueError("no 'groups' or 'datasets' found in %s" % spec_path)
         return specs
