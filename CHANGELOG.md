@@ -36,6 +36,7 @@
   `MultiContainerInterface`. @rly (#567)
 - Fix `make clean` command for docs to clean up sphinx-gallery tutorial files. @oruebel (#571)
 - Make sure we cannot set ``AlignedDynamicTable`` as a category on an ``AlignedDynamicTable``. @oruebel (#571)
+- Fix included data type resolution between HDMF and custom classes that customize the data_type_inc key. @rly (#586)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
