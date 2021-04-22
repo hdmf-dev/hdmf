@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 2.5.0 (April 5, 2021)
+## HDMF 2.5.0 (April 22, 2021)
 
 ### New features
 - `DynamicTable` can be automatically generated using `get_class`. Now the HDMF API can read files with extensions
@@ -15,8 +15,8 @@
   - `ExternalResources` was changed to support storing both names and URIs for resources. @mavaylon (#517, #548)
   - The `VocabData` data type was replaced by `EnumData` to provide more flexible support for data from a set of
     fixed values.
-  - Added `AlignedDynamicTable`, which defines a `DynamicTable` that supports storing a collection of sub-tables. 
-    Each sub-table is itself a `DynamicTable` that is aligned with the main table by row index. Each sub-table 
+  - Added `AlignedDynamicTable`, which defines a `DynamicTable` that supports storing a collection of sub-tables.
+    Each sub-table is itself a `DynamicTable` that is aligned with the main table by row index. Each sub-table
     defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   - See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html#april-19-2021 for more
     details.
