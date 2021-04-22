@@ -4,7 +4,6 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from copy import copy
 from datetime import datetime
-from itertools import chain
 from warnings import warn
 
 import ruamel.yaml as yaml
@@ -378,14 +377,14 @@ class NamespaceCatalog:
 
         def __reg_spec(spec_cls, spec_dict):
             parent_cls = GroupSpec if issubclass(spec_cls, GroupSpec) else DatasetSpec
-            dt_def = spec_dict.get(spec_cls.def_key(), spec_dict.get(parent_cls.def_key()))
+            dt_def = spec_dict.get(spec_cls.def_key()) or spec_dict.get(parent_cls.def_key())
             if dt_def is None:
                 msg = 'no %s or %s found in spec %s' % (spec_cls.def_key(), parent_cls.def_key(), spec_source)
                 raise ValueError(msg)
             if dtypes and dt_def not in dtypes:
                 return
             if resolve:
-                self.__resolve_includes(spec_dict, catalog)
+                self.__resolve_includes(spec_dict, spec_cls, catalog)
             spec_obj = spec_cls.build_spec(spec_dict)
             return catalog.auto_register(spec_obj, spec_source)
 
@@ -403,21 +402,25 @@ class NamespaceCatalog:
             self.__loaded_specs[spec_source] = ret
         return ret
 
-    def __resolve_includes(self, spec_dict, catalog):
-        """
-            Pull in any attributes, datasets, or groups included
-        """
-        dt_inc = spec_dict.get(self.__group_spec_cls.inc_key())
-        dt_def = spec_dict.get(self.__group_spec_cls.def_key())
+    def __resolve_includes(self, spec_dict, spec_cls, catalog):
+        """Pull in any attributes, datasets, or groups included."""
+        spec_parent_cls = GroupSpec if issubclass(spec_cls, GroupSpec) else DatasetSpec
+        dt_inc = spec_dict.get(spec_cls.inc_key()) or spec_dict.get(spec_parent_cls.inc_key())
+        dt_def = spec_dict.get(spec_cls.def_key()) or spec_dict.get(spec_parent_cls.def_key())
         if dt_inc is not None and dt_def is not None:
             parent_spec = catalog.get_spec(dt_inc)
             if parent_spec is None:
                 msg = "Cannot resolve include spec '%s' for type '%s'" % (dt_inc, dt_def)
                 raise ValueError(msg)
-            spec_dict[self.__group_spec_cls.inc_key()] = parent_spec
-        it = chain(spec_dict.get('groups', list()), spec_dict.get('datasets', list()))
-        for subspec_dict in it:
-            self.__resolve_includes(subspec_dict, catalog)
+            if spec_cls.inc_key() not in spec_dict:  # only parent inc/def keys found. set those
+                inc_key = spec_parent_cls.inc_key()
+            else:
+                inc_key = spec_cls.inc_key()
+            spec_dict[inc_key] = parent_spec
+        for subspec_dict in spec_dict.get('groups', list()):
+            self.__resolve_includes(subspec_dict, self.__group_spec_cls, catalog)
+        for subspec_dict in spec_dict.get('datasets', list()):
+            self.__resolve_includes(subspec_dict, self.__dataset_spec_cls, catalog)
 
     def __load_namespace(self, namespace, reader, types_key, resolve=True):
         ns_name = namespace['name']
