@@ -1,6 +1,7 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
+from warnings import warn
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
@@ -475,14 +476,14 @@ class TypeMap:
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
-                    container_cls = self.get_container_cls(dt, src_ns, autogen=False)
+                    container_cls = self.get_dt_container_cls(dt, src_ns, autogen=False)
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
-            {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+    @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
+            {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
@@ -490,15 +491,31 @@ class TypeMap:
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
+        # NOTE: this internally used function get_container_cls will be removed in favor of get_dt_container_cls
+        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+        return self.get_dt_container_cls(data_type, namespace, autogen)
+
+    @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+            {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+            {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
+            returns='the class for the given namespace and data_type', rtype=type)
+    def get_dt_container_cls(self, **kwargs):
+        """Get the container class from data type specification.
+        If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
+        created and returned.
+
+        Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
+        all namespaces.
+        """
         namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
 
         # namespace is unknown, so look it up
         if namespace is None:
-            for key, val in self.__container_types.items():
+            for ns_key, ns_data_types in self.__container_types.items():
                 # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
                 # but the same type_name should point to the same class
-                if data_type in val:
-                    namespace = key
+                if data_type in ns_data_types:
+                    namespace = ns_key
                     break
 
         cls = self.__get_container_cls(namespace, data_type)
@@ -517,18 +534,18 @@ class TypeMap:
         def __check_dependent_types_helper(spec, namespace):
             if isinstance(spec, (GroupSpec, DatasetSpec)):
                 if spec.data_type_inc is not None:
-                    self.get_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
+                    self.get_dt_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
                 if spec.data_type_def is not None:
-                    self.get_container_cls(spec.data_type_def, namespace)
+                    self.get_dt_container_cls(spec.data_type_def, namespace)
             elif isinstance(spec, LinkSpec):
                 if spec.target_type is not None:
-                    self.get_container_cls(spec.target_type, namespace)
+                    self.get_dt_container_cls(spec.target_type, namespace)
             if isinstance(spec, GroupSpec):
                 for child_spec in (spec.groups + spec.datasets + spec.links):
                     __check_dependent_types_helper(child_spec, namespace)
 
         if spec.data_type_inc is not None:
-            self.get_container_cls(spec.data_type_inc, namespace)
+            self.get_dt_container_cls(spec.data_type_inc, namespace)
         if isinstance(spec, GroupSpec):
             for child_spec in (spec.groups + spec.datasets + spec.links):
                 __check_dependent_types_helper(child_spec, namespace)
@@ -560,7 +577,7 @@ class TypeMap:
             return None
         ret = self.__container_types[namespace][data_type]
         if isinstance(ret, TypeSource):  # data_type is a dependency from ret.namespace
-            cls = self.get_container_cls(ret.data_type, ret.namespace)  # get class / generate class
+            cls = self.get_dt_container_cls(ret.data_type, ret.namespace)  # get class / generate class
             # register the same class into this namespace (replaces TypeSource)
             self.register_container_type(namespace, data_type, cls)
             ret = cls
@@ -619,7 +636,7 @@ class TypeMap:
         namespace = self.get_builder_ns(builder)
         if namespace is None:
             raise ValueError("No namespace found for builder %s" % builder.path)
-        return self.get_container_cls(data_type, namespace)
+        return self.get_dt_container_cls(data_type, namespace)
 
     @docval({'name': 'spec', 'type': (DatasetSpec, GroupSpec), 'doc': 'the parent spec to search'},
             {'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
