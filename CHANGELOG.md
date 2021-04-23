@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 2.5.1 (April 23, 2021)
+
+### Bug fix
+- Revert breaking change in `TypeMap.get_container_cls`. While this function is returned to its original behavior,
+  it will be modified at the next major release. Please use the new `TypeMap.get_dt_container_cls` instead. @rly (#590)
+
 ## HDMF 2.5.0 (April 22, 2021)
 
 ### New features
