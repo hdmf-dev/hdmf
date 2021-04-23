@@ -1,7 +1,6 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
-from warnings import warn
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
