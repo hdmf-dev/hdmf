@@ -4,8 +4,11 @@ import ruamel.yaml as yaml
 from tempfile import gettempdir
 import warnings
 
+from hdmf.common import get_type_map
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
 from hdmf.testing import TestCase, remove_test_file
+
+from tests.unit.utils import CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace
 
 
 class TestSpecLoad(TestCase):
@@ -68,7 +71,9 @@ class TestSpecLoad(TestCase):
         self.specs_path = 'test_load_namespace.specs.yaml'
         self.namespace_path = 'test_load_namespace.namespace.yaml'
         with open(self.specs_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
         ns_dict = {
             'doc': 'a test namespace',
             'name': self.NS_NAME,
@@ -80,7 +85,9 @@ class TestSpecLoad(TestCase):
         self.namespace = SpecNamespace.build_namespace(**ns_dict)
         to_dump = {'namespaces': [self.namespace]}
         with open(self.namespace_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
         self.ns_catalog = NamespaceCatalog()
 
     def tearDown(self):
@@ -126,7 +133,9 @@ class TestSpecLoadEdgeCase(TestCase):
         # write basically empty specs file
         to_dump = {'groups': []}
         with open(self.specs_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
 
     def tearDown(self):
         remove_test_file(self.namespace_path)
@@ -166,7 +175,9 @@ class TestSpecLoadEdgeCase(TestCase):
         # write the namespace to file without version key
         to_dump = {'namespaces': [namespace]}
         with open(self.namespace_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
@@ -194,7 +205,9 @@ class TestSpecLoadEdgeCase(TestCase):
         # write the namespace to file without version key
         to_dump = {'namespaces': [namespace]}
         with open(self.namespace_path, 'w') as tmp:
-            yaml.safe_dump(json.loads(json.dumps(to_dump)), tmp, default_flow_style=False)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            yaml_obj.default_flow_style = False
+            yaml_obj.dump(json.loads(json.dumps(to_dump)), tmp)
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
@@ -264,6 +277,82 @@ class TestCatchDupNS(TestCase):
         ns_catalog = NamespaceCatalog()
         ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
 
+        # no warning should be raised (but don't just check for 0 warnings -- warnings can come from other sources)
+        msg = "Ignoring cached namespace 'test_ext' version 0.1.0 because version 0.1.0 is already loaded."
         with warnings.catch_warnings(record=True) as ws:
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
-        self.assertEqual(len(ws), 0)
+        for w in ws:
+            self.assertTrue(str(w) != msg)
+
+
+class TestCustomSpecClasses(TestCase):
+
+    def setUp(self):  # noqa: C901
+        self.ns_catalog = NamespaceCatalog(CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+        hdmf_typemap = get_type_map()
+        self.ns_catalog.merge(hdmf_typemap.namespace_catalog)
+
+    def test_constructor_getters(self):
+        self.assertEqual(self.ns_catalog.dataset_spec_cls, CustomDatasetSpec)
+        self.assertEqual(self.ns_catalog.group_spec_cls, CustomGroupSpec)
+        self.assertEqual(self.ns_catalog.spec_namespace_cls, CustomSpecNamespace)
+
+    def test_load_namespaces(self):
+        namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
+        namespace_deps = self.ns_catalog.load_namespaces(namespace_path)
+
+        # test that the dependencies are correct
+        expected = set(['Data', 'Container', 'DynamicTable'])
+        self.assertSetEqual(set(namespace_deps['test']['hdmf-common']), expected)
+
+        # test that the types are loaded
+        types = self.ns_catalog.get_types('test.base.yaml')
+        expected = ('TestData', 'TestContainer', 'TestTable')
+        self.assertTupleEqual(types, expected)
+
+        # test that the namespace is correct and the types_key is updated for test ns
+        test_namespace = self.ns_catalog.get_namespace('test')
+        expected = {'doc': 'Test namespace',
+                    'schema': [{'namespace': 'hdmf-common',
+                                'my_data_types': ['Data', 'DynamicTable', 'Container']},
+                               {'doc': 'This source module contains base data types.',
+                                'source': 'test.base.yaml',
+                                'title': 'Base data types'}],
+                    'name': 'test',
+                    'full_name': 'Test',
+                    'version': '0.1.0',
+                    'author': ['Test test'],
+                    'contact': ['test@test.com']}
+        self.assertDictEqual(test_namespace, expected)
+
+        # test that the def_key is updated for test ns
+        test_data_spec = self.ns_catalog.get_spec('test', 'TestData')
+        self.assertTrue('my_data_type_def' in test_data_spec)
+        self.assertTrue('my_data_type_inc' in test_data_spec)
+
+        # test that the def_key is maintained for hdmf-common
+        data_spec = self.ns_catalog.get_spec('hdmf-common', 'Data')
+        self.assertTrue('data_type_def' in data_spec)
+
+    def test_load_namespaces_ext(self):
+        namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
+        self.ns_catalog.load_namespaces(namespace_path)
+
+        ext_namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test-ext.namespace.yaml')
+        ext_namespace_deps = self.ns_catalog.load_namespaces(ext_namespace_path)
+
+        # test that the dependencies are correct
+        expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'DynamicTable'])
+        self.assertSetEqual(set(ext_namespace_deps['test-ext']['test']), expected_deps)
+
+    def test_load_namespaces_bad_path(self):
+        namespace_path = 'test.namespace.yaml'
+        msg = "namespace file 'test.namespace.yaml' not found"
+        with self.assertRaisesWith(IOError, msg):
+            self.ns_catalog.load_namespaces(namespace_path)
+
+    def test_load_namespaces_twice(self):
+        namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
+        namespace_deps1 = self.ns_catalog.load_namespaces(namespace_path)
+        namespace_deps2 = self.ns_catalog.load_namespaces(namespace_path)
+        self.assertDictEqual(namespace_deps1, namespace_deps2)
