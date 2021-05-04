@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## Upcoming
+
+### Bug fix
+- Add explicit `setuptools` requirement. @hrnciar (#596)
+
 ## HDMF 2.5.1 (April 23, 2021)
 
 ### Bug fix

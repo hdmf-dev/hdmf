@@ -6,3 +6,4 @@ scipy==1.1,<2
 pandas==0.23,<2
 ruamel.yaml==0.15,<1
 jsonschema==2.6.0,<4
+setuptools
