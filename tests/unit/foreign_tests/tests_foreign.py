@@ -7,7 +7,7 @@ from hdmf.foreign import ForeignField
 
 class SimpleContainer(Container):
 
-    __fields__ = ('foo')
+    __fields__ = ('foo',)
 
     def __init__(self, foo):
         self.foo = foo

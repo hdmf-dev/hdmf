@@ -96,6 +96,10 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
         """The location of this Builder in its source."""
         return self.__location
 
+    @property
+    def foreign_fields(self):
+        return tuple(self.__foreign)
+
     @location.setter
     def location(self, val):
         self.__location = val

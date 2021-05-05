@@ -40,6 +40,13 @@ class ForeignField(object):
         self.__object_id = kwargs['object_id']
         self.__manager = kwargs['manager']
 
+        if self.namespace is not None:
+            if self.data_type is None:
+                raise ValueError("Found 'namespace' but no 'data_type' on ForeignField pointing to %s" % self.uri)
+        else:
+            if self.data_type is not None:
+                raise ValueError("Found 'data_type' but no 'namespace' on ForeignField pointing to %s" % self.uri)
+
     @property
     def uri(self):
         '''the URI for retreiving the foreign field'''

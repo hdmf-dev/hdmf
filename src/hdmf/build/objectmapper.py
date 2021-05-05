@@ -551,7 +551,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
-            if attr_val is not None:
+            if attr_val is not None and not isinstance(attr_val, ForeignField):
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:
@@ -622,6 +622,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
         Return None, an AbstractContainer, or a list of AbstractContainers
         """
+        if isinstance(attr_value, ForeignField):
+            if attr_value.data_type == spec_dt:
+                return attr_value
+            else:
+                if attr_value.namespace is not None and attr_value.data_type is not None:
+                    ns_cat = build_manager.type_map.namespace_catalog
+                    spec = None
+                    try:
+                        spec = ns_cat.get_spec(attr_value.namespace, attr_value.data_type)
+                    except ValueError:
+                        pass
+                    if spec is None:
+                        raise ValueError("No specification found for data_type '%s' in namespace '%s'")
+                return None
         if isinstance(attr_value, AbstractContainer):
             if build_manager.is_sub_data_type(attr_value, spec_dt):
                 return attr_value
@@ -642,6 +656,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(ret) == 0:
                 ret = None
         else:
+            # make this a specific exception type
+
             raise ValueError("Unexpected type for attr_value: %s. Only AbstractContainer, list, tuple, set, dict, are "
                              "allowed." % type(attr_value))
         return ret
@@ -1112,9 +1128,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(value, list):
             for container in value:
                 self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
-        elif self.__is_foreign(attr_value):
-            attr_value.path = attr_value.name
-            builder.add_foreign_field(attr_value)
+        elif self.__is_foreign(value):
+            if value.path is None:
+                if spec.is_many():
+                    msg = ("ambiguous ForeignField found for ambiguous spec -- "
+                           "ForeignField found on %s '%s' in attribute '%s' must have 'path' set")
+                    msg = msg % (parent_container.__class__.__name__, parent_container.name, self.__spec2attr[spec])
+                    raise ValueError(msg)
+                else:
+                    value.path = spec.name
+            builder.add_foreign_field(value)
             self.logger.debug("        Storing group as foreign field")
         else:  # pragma: no cover
             msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
