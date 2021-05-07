@@ -101,6 +101,18 @@ def available_namespaces():
     return __TYPE_MAP.namespace_catalog.namespaces
 
 
+# a function to get the container class for a give type
+@docval({'name': 'data_type', 'type': str,
+         'doc': 'the data_type to get the Container class for'},
+        {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
+        is_method=False)
+def get_class(**kwargs):
+    """Get the class object of the Container subclass corresponding to a given neurdata_type.
+    """
+    data_type, namespace = getargs('data_type', 'namespace', kwargs)
+    return __TYPE_MAP.get_dt_container_cls(data_type, namespace)
+
+
 # load the hdmf-common namespace
 __resources = __get_resources()
 if os.path.exists(__resources['namespace_path']):
@@ -129,16 +141,16 @@ else:
     raise RuntimeError("Unable to load a TypeMap - no namespace file found")
 
 
-DynamicTable = __TYPE_MAP.get_container_cls('DynamicTable', CORE_NAMESPACE)
-VectorData = __TYPE_MAP.get_container_cls('VectorData', CORE_NAMESPACE)
-VectorIndex = __TYPE_MAP.get_container_cls('VectorIndex', CORE_NAMESPACE)
-ElementIdentifiers = __TYPE_MAP.get_container_cls('ElementIdentifiers', CORE_NAMESPACE)
-DynamicTableRegion = __TYPE_MAP.get_container_cls('DynamicTableRegion', CORE_NAMESPACE)
-EnumData = __TYPE_MAP.get_container_cls('EnumData', EXP_NAMESPACE)
-CSRMatrix = __TYPE_MAP.get_container_cls('CSRMatrix', CORE_NAMESPACE)
-ExternalResources = __TYPE_MAP.get_container_cls('ExternalResources', EXP_NAMESPACE)
-SimpleMultiContainer = __TYPE_MAP.get_container_cls('SimpleMultiContainer', CORE_NAMESPACE)
-AlignedDynamicTable = __TYPE_MAP.get_container_cls('AlignedDynamicTable', CORE_NAMESPACE)
+DynamicTable = get_class('DynamicTable', CORE_NAMESPACE)
+VectorData = get_class('VectorData', CORE_NAMESPACE)
+VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
+ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
+DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
+EnumData = get_class('EnumData', EXP_NAMESPACE)
+CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
+ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
+SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
+AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
@@ -188,18 +200,6 @@ def get_manager(**kwargs):
     '''
     type_map = call_docval_func(get_type_map, kwargs)
     return BuildManager(type_map)
-
-
-# a function to get the container class for a give type
-@docval({'name': 'data_type', 'type': str,
-         'doc': 'the data_type to get the Container class for'},
-        {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
-        is_method=False)
-def get_class(**kwargs):
-    """Get the class object of the Container subclass corresponding to a given neurdata_type.
-    """
-    data_type, namespace = getargs('data_type', 'namespace', kwargs)
-    return __TYPE_MAP.get_container_cls(data_type, namespace)
 
 
 @docval({'name': 'io', 'type': HDMFIO,

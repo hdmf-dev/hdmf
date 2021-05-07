@@ -122,6 +122,9 @@ class DynamicTableGenerator(CustomClassGenerator):
 
     @classmethod
     def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
+        if '__columns__' not in classdict:
+            return
+
         base_init = classdict.get('__init__')
         if base_init is None:  # pragma: no cover
             raise ValueError("Generated class dictionary is missing base __init__ method.")

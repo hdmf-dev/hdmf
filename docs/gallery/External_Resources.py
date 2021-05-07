@@ -31,6 +31,7 @@ improve the structure and access of data stored with this type for your use case
 # allows us to link the two. To reduce data redundancy and improve data integrity,
 # ``ExternalResources`` stores this data internally in a collection of
 # interlinked tables.
+#
 # * :py:class:`~hdmf.common.resources.KeyTable` where each row describes a
 #   :py:class:`~hdmf.common.resources.Key`
 # * :py:class:`~hdmf.common.resources.ResourceTable` where each row describes a
@@ -40,7 +41,7 @@ improve the structure and access of data stored with this type for your use case
 # * :py:class:`~hdmf.common.resources.ObjectTable` where each row descibes an
 #   :py:class:`~hdmf.common.resources.Object`
 # * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
-#  :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
+#   :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
 #   are used by which objects.
 #
 # The :py:class:`~hdmf.common.resources.ExternalResources` class then provides
