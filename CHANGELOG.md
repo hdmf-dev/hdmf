@@ -6,6 +6,7 @@
 - Add explicit `setuptools` requirement. @hrnciar (#596)
 - Fix issue with generated custom classes that use a custom fields name (e.g., PyNWB uses `__nwbfields__` instead
   of `__fields__`). @rly (#598)
+- Fix issue with Sphinx Gallery. @rly (#601)
 
 ## HDMF 2.5.1 (April 23, 2021)
 
