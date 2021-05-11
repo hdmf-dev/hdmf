@@ -64,7 +64,6 @@ sphinx_gallery_conf = {
     'gallery_dirs': ['tutorials'],
     'subsection_order': ExplicitOrder(['../gallery/general', '../gallery/domain']),
     'backreferences_dir': 'gen_modules/backreferences',
-    'download_section_examples': False,
     'min_reported_time': 5,
     'remove_config_comments': True
 }
