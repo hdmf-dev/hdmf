@@ -62,7 +62,7 @@ sphinx_gallery_conf = {
     'examples_dirs': ['../gallery'],
     # path where to save gallery generated examples
     'gallery_dirs': ['tutorials'],
-    'subsection_order': ExplicitOrder(['../gallery/general', '../gallery/domain']),
+    # 'subsection_order': ExplicitOrder(['../gallery/section1', '../gallery/section2']),
     'backreferences_dir': 'gen_modules/backreferences',
     'min_reported_time': 5,
     'remove_config_comments': True
@@ -73,7 +73,7 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     'matplotlib': ('https://matplotlib.org', None),
-    'h5py': ('http://docs.h5py.org/en/latest/', None),
+    'h5py': ('https://docs.h5py.org/en/latest/', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
 }
 
