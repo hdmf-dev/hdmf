@@ -208,7 +208,7 @@ class CustomClassGenerator:
     @classmethod
     def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __fields__ to the classdict and update the docval args for the field spec with the given attribute name.
-        :param classdict: The dict to update with __fields__.
+        :param classdict: The dict to update with __fields__ (or a different parent_cls._fieldsname).
         :param docval_args: The list of docval arguments.
         :param parent_cls: The parent class.
         :param attr_name: The attribute name of the field spec for the container class to generate.
@@ -224,7 +224,7 @@ class CustomClassGenerator:
             fields_conf['child'] = True
         # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
         #     fields_conf['settable'] = False
-        classdict.setdefault('__fields__', list()).append(fields_conf)
+        classdict.setdefault(parent_cls._fieldsname, list()).append(fields_conf)
 
         docval_arg = dict(
             name=attr_name,
@@ -262,15 +262,15 @@ class CustomClassGenerator:
     @classmethod
     def post_process(cls, classdict, bases, docval_args, spec):
         """Convert classdict['__fields__'] to tuple and update docval args for a fixed name and default name.
-        :param classdict: The class dictionary to convert.
+        :param classdict: The class dictionary to convert with '__fields__' key (or a different bases[0]._fieldsname)
         :param bases: The list of base classes.
         :param docval_args: The dict of docval arguments.
         :param spec: The spec for the container class to generate.
         """
         # convert classdict['__fields__'] from list to tuple if present
-        fields = classdict.get('__fields__')
+        fields = classdict.get(bases[0]._fieldsname)
         if fields is not None:
-            classdict['__fields__'] = tuple(fields)
+            classdict[bases[0]._fieldsname] = tuple(fields)
 
         # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
         # be passed for a name positional or keyword arg
