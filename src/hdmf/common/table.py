@@ -497,7 +497,7 @@ class DynamicTable(Container):
                 data = list(df[name].values)
             index = d.get('index', False)
             if index is not False:
-                if isinstance(index, int):
+                if isinstance(index, int) and index > 1:
                     raise ValueError('Creating nested index columns using this method is not yet supported. Use '
                                      'add_column or define the columns using __columns__ instead.')
                 index_data = None
