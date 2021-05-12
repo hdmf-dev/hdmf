@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 2.5.3 (May 12, 2021)
+
+### Bug fix
+- Fix issue where tables with multi-indexed columns defined using `__columns__` did not have attributes properly set.
+  @rly (#605)
+
 ## HDMF 2.5.2 (May 11, 2021)
 
 ### Bug fix

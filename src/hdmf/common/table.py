@@ -467,9 +467,17 @@ class DynamicTable(Container):
 
                     # set the table attributes for not yet init optional predefined columns
                     setattr(self, col['name'], None)
-                    if col.get('index', False):
-                        self.__uninit_cols[col['name'] + '_index'] = col
-                        setattr(self, col['name'] + '_index', None)
+                    index = col.get('index', False)
+                    if index is not False:
+                        if index is True:
+                            index = 1
+                        if isinstance(index, int):
+                            assert index > 0, ValueError("integer index value must be greater than 0")
+                            index_name = col['name']
+                            for i in range(index):
+                                index_name = index_name + '_index'
+                                self.__uninit_cols[index_name] = col
+                                setattr(self, index_name, None)
                     if col.get('enum', False):
                         self.__uninit_cols[col['name'] + '_elements'] = col
                         setattr(self, col['name'] + '_elements', None)
@@ -487,7 +495,11 @@ class DynamicTable(Container):
             data = None
             if df is not None:
                 data = list(df[name].values)
-            if d.get('index', False):
+            index = d.get('index', False)
+            if index is not False:
+                if isinstance(index, int) and index > 1:
+                    raise ValueError('Creating nested index columns using this method is not yet supported. Use '
+                                     'add_column or define the columns using __columns__ instead.')
                 index_data = None
                 if data is not None:
                     index_data = [len(data[0])]
