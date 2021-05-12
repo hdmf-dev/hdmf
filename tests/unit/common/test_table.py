@@ -222,20 +222,54 @@ class TestDynamicTable(TestCase):
                       ]
                       )
 
+    def test_auto_multi_index_required(self):
+
+        class TestTable(DynamicTable):
+            __columns__ = (dict(name='qux', description='qux column', index=2, required=True),)
+
+        table = TestTable('table_name', 'table_description')
+        self.assertIsInstance(table.qux, VectorData)  # check that the attribute is set
+        table.add_row(
+            qux=[
+                [1, 2, 3],
+                [1, 2, 3, 4]
+            ]
+        )
+        table.add_row(
+            qux=[
+                [1, 2]
+            ]
+        )
+
+        expected = [
+            [
+                [1, 2, 3],
+                [1, 2, 3, 4]
+            ],
+            [
+                [1, 2]
+            ]
+        ]
+        self.assertListEqual(table['qux'][:], expected)
+
     def test_auto_multi_index(self):
 
         class TestTable(DynamicTable):
-            __columns__ = (dict(name='qux', description='qux column', index=2),)
+            __columns__ = (dict(name='qux', description='qux column', index=2),)  # this is optional
 
         table = TestTable('table_name', 'table_description')
-        table.add_row(qux=[
-                          [1, 2, 3],
-                          [1, 2, 3, 4]
-                      ])
-        table.add_row(qux=[
-                          [1, 2]
-                      ]
-                      )
+        self.assertIsNone(table.qux)  # qux is reserved as an attribute but not yet initialized
+        table.add_row(
+            qux=[
+                [1, 2, 3],
+                [1, 2, 3, 4]
+            ]
+        )
+        table.add_row(
+            qux=[
+                [1, 2]
+            ]
+        )
 
         expected = [
             [
