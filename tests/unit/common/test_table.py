@@ -229,6 +229,8 @@ class TestDynamicTable(TestCase):
 
         table = TestTable('table_name', 'table_description')
         self.assertIsInstance(table.qux, VectorData)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index, VectorIndex)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index, VectorIndex)  # check that the attribute is set
         table.add_row(
             qux=[
                 [1, 2, 3],
@@ -258,7 +260,9 @@ class TestDynamicTable(TestCase):
             __columns__ = (dict(name='qux', description='qux column', index=2),)  # this is optional
 
         table = TestTable('table_name', 'table_description')
-        self.assertIsNone(table.qux)  # qux is reserved as an attribute but not yet initialized
+        self.assertIsNone(table.qux)  # these are reserved as attributes but not yet initialized
+        self.assertIsNone(table.qux_index)
+        self.assertIsNone(table.qux_index_index)
         table.add_row(
             qux=[
                 [1, 2, 3],
@@ -651,9 +655,10 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('bar', 'a float column')
         table.add_column('baz', 'a string column')
         table.add_column('qux', 'a boolean column')
+        table.add_column('corge', 'a doubly indexed int column', index=2)
         table.add_column('quux', 'an enum column', enum=True)
-        table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
-        table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
+        table.add_row(foo=27, bar=28.0, baz="cat", corge=[[1, 2, 3], [4, 5, 6]], qux=True, quux='a')
+        table.add_row(foo=37, bar=38.0, baz="dog", corge=[[11, 12, 13], [14, 15, 16]], qux=False, quux='b')
         return table
 
     def test_index_out_of_bounds(self):
