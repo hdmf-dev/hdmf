@@ -262,16 +262,18 @@ class TestDynamicTable(TestCase):
             ]
         ]
         self.assertListEqual(table['qux'][:], expected)
+        self.assertEqual(table.qux_index_index_index.data, [1, 2])
 
     def test_auto_multi_index(self):
 
         class TestTable(DynamicTable):
-            __columns__ = (dict(name='qux', description='qux column', index=2),)  # this is optional
+            __columns__ = (dict(name='qux', description='qux column', index=3),)  # this is optional
 
         table = TestTable('table_name', 'table_description')
         self.assertIsNone(table.qux)  # these are reserved as attributes but not yet initialized
         self.assertIsNone(table.qux_index)
         self.assertIsNone(table.qux_index_index)
+        self.assertIsNone(table.qux_index_index_index)
         table.add_row(
             qux=[
                     [
@@ -302,6 +304,7 @@ class TestDynamicTable(TestCase):
             ]
         ]
         self.assertListEqual(table['qux'][:], expected)
+        self.assertEqual(table.qux_index_index_index.data, [1, 2])
 
     def test_getitem_row_num(self):
         table = self.with_spec()
