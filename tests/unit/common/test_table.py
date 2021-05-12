@@ -225,31 +225,40 @@ class TestDynamicTable(TestCase):
     def test_auto_multi_index_required(self):
 
         class TestTable(DynamicTable):
-            __columns__ = (dict(name='qux', description='qux column', index=2, required=True),)
+            __columns__ = (dict(name='qux', description='qux column', index=3, required=True),)
 
         table = TestTable('table_name', 'table_description')
         self.assertIsInstance(table.qux, VectorData)  # check that the attribute is set
         self.assertIsInstance(table.qux_index, VectorIndex)  # check that the attribute is set
-        self.assertIsInstance(table.qux_index, VectorIndex)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index_index, VectorIndex)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index_index_index, VectorIndex)  # check that the attribute is set
         table.add_row(
             qux=[
-                [1, 2, 3],
-                [1, 2, 3, 4]
-            ]
+                    [
+                        [1, 2, 3],
+                        [1, 2, 3, 4]
+                    ]
+                ]
         )
         table.add_row(
             qux=[
-                [1, 2]
-            ]
+                    [
+                        [1, 2]
+                    ]
+                ]
         )
 
         expected = [
             [
-                [1, 2, 3],
-                [1, 2, 3, 4]
+                [
+                    [1, 2, 3],
+                    [1, 2, 3, 4]
+                ]
             ],
             [
-                [1, 2]
+                [
+                    [1, 2]
+                ]
             ]
         ]
         self.assertListEqual(table['qux'][:], expected)
@@ -265,23 +274,31 @@ class TestDynamicTable(TestCase):
         self.assertIsNone(table.qux_index_index)
         table.add_row(
             qux=[
-                [1, 2, 3],
-                [1, 2, 3, 4]
-            ]
+                    [
+                        [1, 2, 3],
+                        [1, 2, 3, 4]
+                    ]
+                ]
         )
         table.add_row(
             qux=[
-                [1, 2]
-            ]
+                    [
+                        [1, 2]
+                    ]
+                ]
         )
 
         expected = [
             [
-                [1, 2, 3],
-                [1, 2, 3, 4]
+                [
+                    [1, 2, 3],
+                    [1, 2, 3, 4]
+                ]
             ],
             [
-                [1, 2]
+                [
+                    [1, 2]
+                ]
             ]
         ]
         self.assertListEqual(table['qux'][:], expected)
