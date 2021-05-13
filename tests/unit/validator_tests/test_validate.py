@@ -821,3 +821,78 @@ class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
         builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
+
+
+class TestExtendedIncDataTypes(TestCase):
+    """Test validation against specs where a data type is included via data_type_inc
+    and modified by adding new fields or constraining existing files but is not
+    defined as a new type via data_type_inc.
+
+    For the purpose of this test class: we are calling a data type which is nested
+    inside a group an "inner" data type. When an inner data inherits from a data type
+    via data_type_inc and has fields that are either added or modified from the base
+    data type, we are labeling that data type as an "extension". When the inner data
+    type extension does not define a new data type via data_type_def we say that it is
+    an "anonymous extension".
+
+    Anonymous data type extensions should be avoided in for new specs, but
+    it does occur in existing nwb
+    specs, so we need to allow and validate against it.
+    One example is the `Units.spike_times` dataset attached to Units in the `core`
+    nwb namespace, which extends `VectorData` via neurodata_type_inc but adds a new
+    attribute named `resolution` without defining a new data type via neurodata_type_def.
+    """
+
+    def setup_spec(self):
+        """Prepare a set of specs for tests which includes an anonymous data type extension"""
+        spec_catalog = SpecCatalog()
+        attr_foo = AttributeSpec(name='foo', doc='an attribute', dtype='text')
+        attr_bar = AttributeSpec(name='bar', doc='an attribute', dtype='numeric')
+        d1_spec = DatasetSpec(doc='type D1', data_type_def='D1', dtype='numeric',
+                              attributes=[attr_foo])
+        d2_spec = DatasetSpec(doc='type D2', data_type_def='D2', data_type_inc=d1_spec)
+        g1_spec = GroupSpec(doc='type G1', data_type_def='G1',
+                            datasets=[DatasetSpec(doc='D1 extension', data_type_inc=d1_spec,
+                                                  attributes=[attr_foo, attr_bar])])
+        for spec in [d1_spec, d2_spec, g1_spec]:
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_missing_additional_attribute_on_anonymous_data_type_extension(self):
+        """Verify that a MissingError is returned when a required attribute from an
+        anonymous extension is not present
+        """
+        self.setup_spec()
+        dataset = DatasetBuilder('test_d1', 42.0, attributes={'data_type': 'D1', 'foo': 'xyz'})
+        builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        error = result[0]
+        self.assertIsInstance(error, MissingError)
+        self.assertTrue('G1/D1/bar' in str(error))
+
+    def test_validate_child_type_against_anonymous_data_type_extension(self):
+        """Verify that a MissingError is returned when a required attribute from an
+        anonymous extension is not present on a data type which inherits from the data
+        type included in the anonymous extension.
+        """
+        self.setup_spec()
+        dataset = DatasetBuilder('test_d2', 42.0, attributes={'data_type': 'D2', 'foo': 'xyz'})
+        builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        error = result[0]
+        self.assertIsInstance(error, MissingError)
+        self.assertTrue('G1/D1/bar' in str(error))
+
+    def test_redundant_attribute_in_spec(self):
+        """Test that only one MissingError is returned when an attribute is missing
+        which is redundantly defined in both a base data type and an inner data type
+        """
+        self.setup_spec()
+        dataset = DatasetBuilder('test_d2', 42.0, attributes={'data_type': 'D2', 'bar': 5})
+        builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)

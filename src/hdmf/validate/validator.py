@@ -2,7 +2,7 @@ import re
 from abc import ABCMeta, abstractmethod
 from copy import copy
 from itertools import chain
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import numpy as np
 
@@ -418,7 +418,7 @@ class GroupValidator(BaseStorageValidator):
 
         errors = super().validate(builder)
         errors.extend(self.__validate_children(builder))
-        return errors
+        return self._remove_duplicates(errors)
 
     def __validate_children(self, parent_builder):
         """Validates the children of the group builder against the children in the spec.
@@ -491,8 +491,8 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        child_validator = self.__get_child_validator(child_spec)
-        yield from child_validator.validate(child_builder)
+        for child_validator in self.__get_child_validators(child_spec):
+            yield from child_validator.validate(child_builder)
 
     def __construct_illegal_link_error(self, child_spec, parent_builder):
         name_of_erroneous = self.get_spec_loc(child_spec)
@@ -503,21 +503,47 @@ class GroupValidator(BaseStorageValidator):
     def __cannot_be_link(spec):
         return not isinstance(spec, LinkSpec) and not spec.linkable
 
-    def __get_child_validator(self, spec):
-        """Returns the appropriate validator for a child spec
+    def __get_child_validators(self, spec):
+        """Returns the appropriate list of validators for a child spec
 
-        If a specific data type can be resolved, the validator is acquired from
-        the ValidatorMap, otherwise a new Validator is created.
+        Due to the fact that child specs can both inherit a data type via data_type_inc
+        and also modify the type without defining a new data type via data_type_def,
+        we need to validate against both the spec for the base data type and the spec
+        at the current hierarchy of the data type in case there have been any
+        modifications.
+
+        If a specific data type can be resolved, a validator for that type is acquired
+        from the ValidatorMap and included in the returned validators. If the spec is
+        a GroupSpec or a DatasetSpec, then a new Validator is created and also
+        returned. If the spec is a LinkSpec, no additional Validator is returned
+        because the LinkSpec cannot add or modify fields and the target_type will be
+        validated by the Validator returned from the ValidatorMap.
         """
         if _resolve_data_type(spec) is not None:
-            return self.vmap.get_validator(_resolve_data_type(spec))
-        elif isinstance(spec, GroupSpec):
-            return GroupValidator(spec, self.vmap)
+            yield self.vmap.get_validator(_resolve_data_type(spec))
+
+        if isinstance(spec, GroupSpec):
+            yield GroupValidator(spec, self.vmap)
         elif isinstance(spec, DatasetSpec):
-            return DatasetValidator(spec, self.vmap)
+            yield DatasetValidator(spec, self.vmap)
+        elif isinstance(spec, LinkSpec):
+            return
         else:
             msg = "Unable to resolve a validator for spec %s" % spec
             raise ValueError(msg)
+
+    @staticmethod
+    def _remove_duplicates(errors):
+        """Return a list of validation errors where duplicates have been removed
+
+        In some cases a child of a group to be validated against two specs which can
+        redundantly define the same fields/children. If the builder doesn't match the
+        spec, it is possible for duplicate errors to be generated.
+        """
+        ordered_errors = OrderedDict()
+        for error in errors:
+            ordered_errors[error] = error
+        return list(ordered_errors)
 
 
 class SpecMatches:
