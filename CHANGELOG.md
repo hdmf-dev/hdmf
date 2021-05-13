@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## Upcoming Changes
+
+### Bug fix
+- Update the validator to allow extensions to data types which only define data_type_inc @dsleiter (#609)
+
 ## HDMF 2.5.3 (May 12, 2021)
 
 ### Bug fix
