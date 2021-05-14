@@ -783,7 +783,7 @@ class TestBaseProcessFieldSpec(TestCase):
         )
 
         classdict = {}
-        bases = []
+        bases = [Container]
         docval_args = [{'name': 'name', 'type': str, 'doc': 'name'},
                        {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
                         'shape': [None]}]
@@ -810,7 +810,7 @@ class TestBaseProcessFieldSpec(TestCase):
         )
 
         classdict = {}
-        bases = []
+        bases = [Container]
         docval_args = [{'name': 'name', 'type': str, 'doc': 'name'},
                        {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
                         'shape': [None]}]
