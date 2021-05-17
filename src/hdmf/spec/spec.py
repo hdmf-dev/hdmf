@@ -836,14 +836,30 @@ class LinkSpec(Spec):
 
 _group_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-    {'name': 'name', 'type': str, 'doc': 'the name of this group', 'default': None},
+    {
+        'name': 'name',
+        'type': str,
+        'doc': 'the name of the Group that is written to the file. If this argument is omitted, users will be '
+               'required to enter a ``name`` field when creating instances of this data type in the API. Another '
+               'option is to specify ``default_name``, in which case this name will be used as the name of the Group '
+               'if no other name is provided.',
+        'default': None,
+    },
     {'name': 'default_name', 'type': str, 'doc': 'The default name of this group', 'default': None},
     {'name': 'groups', 'type': list, 'doc': 'the subgroups in this group', 'default': list()},
     {'name': 'datasets', 'type': list, 'doc': 'the datasets in this group', 'default': list()},
     {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
     {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
     {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
+    {
+        'name': 'quantity',
+        'type': (str, int),
+        'doc': "the allowable number of instance of this group in a certain location. See table of options "
+               "`here <https://schema-language.readthedocs.io/en/latest/description.html#quantity>`_. Note that if you"
+               "specify ``name``, ``quantity`` cannot be ``'*'``, ``'+'``, or an integer greater that 1, because you "
+               "cannot have more than one group of the same name in the same parent group.",
+        'default': 1,
+    },
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
     {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
      'doc': 'the data type this specification data_type_inc', 'default': None},
