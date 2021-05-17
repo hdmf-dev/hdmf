@@ -489,8 +489,7 @@ class NamespaceCatalog:
                 if spec.data_type_def is not None:
                     self.__register_type(spec.data_type_def, inc_ns, catalog, registered_types)
             elif isinstance(spec, LinkSpec):
-                if spec.target_type is not None:
-                    self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
+                self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
             if isinstance(spec, GroupSpec):
                 for child_spec in (spec.groups + spec.datasets + spec.links):
                     __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)

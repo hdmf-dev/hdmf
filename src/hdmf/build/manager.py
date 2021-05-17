@@ -537,8 +537,7 @@ class TypeMap:
                 if spec.data_type_def is not None:
                     self.get_dt_container_cls(spec.data_type_def, namespace)
             elif isinstance(spec, LinkSpec):
-                if spec.target_type is not None:
-                    self.get_dt_container_cls(spec.target_type, namespace)
+                self.get_dt_container_cls(spec.target_type, namespace)
             if isinstance(spec, GroupSpec):
                 for child_spec in (spec.groups + spec.datasets + spec.links):
                     __check_dependent_types_helper(child_spec, namespace)
