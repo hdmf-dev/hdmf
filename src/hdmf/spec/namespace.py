@@ -8,7 +8,7 @@ from datetime import datetime
 from warnings import warn
 
 from .catalog import SpecCatalog
-from .spec import DatasetSpec, GroupSpec
+from .spec import DatasetSpec, GroupSpec, LinkSpec
 from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 
 _namespace_args = [
@@ -455,21 +455,51 @@ class NamespaceCatalog:
                     raise ValueError("Could not load namespace '%s'" % s['namespace']) from e
                 if types_to_load is None:
                     types_to_load = inc_ns.get_registered_types()  # load all types in namespace
+                registered_types = set()
                 for ndt in types_to_load:
-                    spec = inc_ns.get_spec(ndt)
-                    spec_file = inc_ns.catalog.get_spec_source_file(ndt)
-                    if isinstance(spec, DatasetSpec):
-                        spec = self.dataset_spec_cls.build_spec(spec)
-                    else:
-                        spec = self.group_spec_cls.build_spec(spec)
-                    catalog.register_spec(spec, spec_file)
-                included_types[s['namespace']] = tuple(types_to_load)
+                    self.__register_type(ndt, inc_ns, catalog, registered_types)
+                included_types[s['namespace']] = tuple(sorted(registered_types))
             else:
                 raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
         # construct namespace
         ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
         self.__namespaces[ns_name] = ns
         return included_types
+
+    def __register_type(self, ndt, inc_ns, catalog, registered_types):
+        spec = inc_ns.get_spec(ndt)
+        spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+        self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
+        if isinstance(spec, DatasetSpec):
+            built_spec = self.dataset_spec_cls.build_spec(spec)
+        else:
+            built_spec = self.group_spec_cls.build_spec(spec)
+        registered_types.add(ndt)
+        catalog.register_spec(built_spec, spec_file)
+
+    def __register_dependent_types(self, spec, inc_ns, catalog, registered_types):
+        """Ensure that classes for all types used by this type are registered
+        """
+        # TODO test cross-namespace registration...
+        def __register_dependent_types_helper(spec, inc_ns, catalog, registered_types):
+            if isinstance(spec, (GroupSpec, DatasetSpec)):
+                if spec.data_type_inc is not None:
+                    # TODO handle recursive definitions
+                    self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
+                if spec.data_type_def is not None:
+                    self.__register_type(spec.data_type_def, inc_ns, catalog, registered_types)
+            elif isinstance(spec, LinkSpec):
+                if spec.target_type is not None:
+                    self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
+            if isinstance(spec, GroupSpec):
+                for child_spec in (spec.groups + spec.datasets + spec.links):
+                    __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)
+
+        if spec.data_type_inc is not None:
+            self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
+        if isinstance(spec, GroupSpec):
+            for child_spec in (spec.groups + spec.datasets + spec.links):
+                __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve',

@@ -1980,23 +1980,27 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_with_dependencies(self):
         """Test loading namespaces where one includes another."""
-        file_spec = GroupSpec(doc="A FooFile", data_type_def='FooFile')
+        class MyFoo(Container):
+            pass
+
+        myfoo_spec = GroupSpec(doc="A MyFoo", data_type_def='MyFoo', data_type_inc='Foo')
         spec_catalog = SpecCatalog()
         name = 'test_core2'
         namespace = SpecNamespace(
             doc='a test namespace',
             name=name,
-            schema=[{'source': 'test.yaml', 'namespace': 'test_core'}],  # depends on test_core
+            schema=[{'source': 'test2.yaml', 'namespace': 'test_core'}],  # depends on test_core
             version='0.1.0',
             catalog=spec_catalog
         )
-        spec_catalog.register_spec(file_spec, 'test.yaml')
+        spec_catalog.register_spec(myfoo_spec, 'test2.yaml')
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(name, namespace)
         type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(name, 'FooFile', FooFile)
+        type_map.register_container_type(name, 'MyFoo', MyFoo)
+        type_map.merge(self.manager.type_map, ns_catalog=True)
         manager = BuildManager(type_map)
-        container = FooFile()
+        container = MyFoo(name='myfoo')
         with HDF5IO(self.path, manager=manager, mode='a') as io:  # append to file
             io.write(container)
 
