@@ -5,7 +5,7 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..spec import DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, SpecReader
+from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, call_docval_func, ExtenderMeta
 
@@ -536,7 +536,7 @@ class TypeMap:
                     self.get_dt_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
                 if spec.data_type_def is not None:  # nested type definition
                     self.get_dt_container_cls(spec.data_type_def, namespace)
-            elif isinstance(spec, LinkSpec):
+            else:  # spec is a LinkSpec
                 self.get_dt_container_cls(spec.target_type, namespace)
             if isinstance(spec, GroupSpec):
                 for child_spec in (spec.groups + spec.datasets + spec.links):

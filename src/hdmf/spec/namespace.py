@@ -8,7 +8,7 @@ from datetime import datetime
 from warnings import warn
 
 from .catalog import SpecCatalog
-from .spec import DatasetSpec, GroupSpec, LinkSpec
+from .spec import DatasetSpec, GroupSpec
 from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 
 _namespace_args = [
@@ -488,7 +488,7 @@ class NamespaceCatalog:
                     self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
                 if spec.data_type_def is not None:  # nested type definition
                     self.__register_type(spec.data_type_def, inc_ns, catalog, registered_types)
-            elif isinstance(spec, LinkSpec):
+            else:  # spec is a LinkSpec
                 self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
             if isinstance(spec, GroupSpec):
                 for child_spec in (spec.groups + spec.datasets + spec.links):
