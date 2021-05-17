@@ -534,7 +534,7 @@ class TypeMap:
             if isinstance(spec, (GroupSpec, DatasetSpec)):
                 if spec.data_type_inc is not None:
                     self.get_dt_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
-                if spec.data_type_def is not None:
+                if spec.data_type_def is not None:  # nested type definition
                     self.get_dt_container_cls(spec.data_type_def, namespace)
             elif isinstance(spec, LinkSpec):
                 self.get_dt_container_cls(spec.target_type, namespace)

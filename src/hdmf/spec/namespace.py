@@ -486,7 +486,7 @@ class NamespaceCatalog:
                 if spec.data_type_inc is not None:
                     # TODO handle recursive definitions
                     self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
-                if spec.data_type_def is not None:
+                if spec.data_type_def is not None:  # nested type definition
                     self.__register_type(spec.data_type_def, inc_ns, catalog, registered_types)
             elif isinstance(spec, LinkSpec):
                 self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
