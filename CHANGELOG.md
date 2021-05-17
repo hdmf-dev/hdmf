@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 2.5.5 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#614)
+
 ## HDMF 2.5.4 (May 17, 2021)
 
 ### Bug fix
