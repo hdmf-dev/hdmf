@@ -3,7 +3,7 @@
 h5py==2.9,<3  # support for setting attrs to lists of utf-8 added in 2.9
 numpy==1.16,<1.21
 scipy==1.1,<2
-pandas==0.23,<2
+pandas==1.0.5,<2
 ruamel.yaml==0.15,<1
 jsonschema==2.6.0,<4
 setuptools
