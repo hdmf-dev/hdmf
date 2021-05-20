@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 2.5.6 (May 19, 2021)
+
+### Bug fix
+- Raise minimum version of pandas from 0.23 to 1.0.5 to be compatible with numpy 1.20. @rly (#618)
+
 ## HDMF 2.5.5 (May 17, 2021)
 
 ### Bug fix
