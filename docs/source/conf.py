@@ -313,7 +313,7 @@ def run_apidoc(_):
     apidoc_main(['-f', '-e', '--no-toc', '-o', out_dir, src_dir])
 
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractproperty
 
 def skip(app, what, name, obj, skip, options):
     if isinstance(obj, abstractproperty) or getattr(obj, '__isabstractmethod__', False):
