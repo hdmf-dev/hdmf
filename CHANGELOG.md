@@ -4,6 +4,7 @@
 
 ### Bug fix
 - Raise minimum version of pandas from 0.23 to 1.0.5 to be compatible with numpy 1.20. @rly (#618)
+- Update documentation and update structure of requirements files. @rly
 
 ## HDMF 2.5.5 (May 17, 2021)
 
