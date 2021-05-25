@@ -1,5 +1,22 @@
 # HDMF Changelog
 
+## HDMF 2.5.6 (May 19, 2021)
+
+### Bug fix
+- Raise minimum version of pandas from 0.23 to 1.0.5 to be compatible with numpy 1.20. @rly (#618)
+- Update documentation and update structure of requirements files. @rly (#619)
+
+## HDMF 2.5.5 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#614)
+
+## HDMF 2.5.4 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#607)
+- Fix issue where dependencies of included types were not being loaded in namespaces / extensions. @rly (#613)
+
 ## HDMF 2.5.3 (May 12, 2021)
 
 ### Bug fix
