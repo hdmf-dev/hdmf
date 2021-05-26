@@ -6,6 +6,7 @@ from functools import partial
 from pathlib import Path
 
 import numpy as np
+import h5py
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
@@ -17,7 +18,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval, StrDataset
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -25,6 +26,8 @@ H5_TEXT = special_dtype(vlen=str)
 H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
+
+H5PY_3 = h5py.__version__.startswith('3')
 
 
 class HDF5IO(HDMFIO):
@@ -699,7 +702,7 @@ class HDF5IO(HDMFIO):
             if h5obj.dtype.kind == 'O' and len(h5obj) > 0:
                 elem1 = h5obj[0]
                 if isinstance(elem1, (str, bytes)):
-                    d = h5obj
+                    d = self._check_str_dtype(h5obj)
                 elif isinstance(elem1, RegionReference):  # read list of references
                     d = BuilderH5RegionDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
@@ -719,6 +722,13 @@ class HDF5IO(HDMFIO):
         ret = DatasetBuilder(name, **kwargs)
         self.__set_written(ret)
         return ret
+
+    def _check_str_dtype(self, h5obj):
+        dtype = h5obj.dtype
+        if dtype.kind == 'O':
+            if dtype.metadata.get('vlen') == str and H5PY_3:
+                return StrDataset(h5obj, None)
+        return h5obj
 
     @classmethod
     def __compound_dtype_to_list(cls, h5obj_dtype, dset_dtype):
@@ -922,10 +932,8 @@ class HDF5IO(HDMFIO):
                 if isinstance(value, (set, list, tuple)):
                     tmp = tuple(value)
                     if len(tmp) > 0:
-                        if isinstance(tmp[0], str):
-                            value = [np.unicode_(s) for s in tmp]
-                        elif isinstance(tmp[0], bytes):
-                            value = [np.string_(s) for s in tmp]
+                        if isinstance(tmp[0], (str, bytes)):
+                            value = np.array(value, dtype=special_dtype(vlen=type(tmp[0])))
                         elif isinstance(tmp[0], Container):  # a list of references
                             self.__queue_ref(self._make_attr_ref_filler(obj, key, tmp))
                         else:
@@ -938,6 +946,8 @@ class HDF5IO(HDMFIO):
                 else:
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
+                    if isinstance(value, np.ndarray) and value.dtype.kind == 'U':
+                        value = np.array(value, dtype=H5_TEXT)
                     obj.attrs[key] = value                   # a regular scalar
             except Exception as e:
                 msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)

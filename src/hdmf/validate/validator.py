@@ -415,7 +415,6 @@ class GroupValidator(BaseStorageValidator):
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):  # noqa: C901
         builder = getargs('builder', kwargs)
-
         errors = super().validate(builder)
         errors.extend(self.__validate_children(builder))
         return errors

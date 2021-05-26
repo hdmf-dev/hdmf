@@ -101,6 +101,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr1, (float, np.floating)):
                 np.testing.assert_allclose(arr1, arr2)
             else:
+                if isinstance(arr1, bytes):
+                    arr1 = arr1.decode('utf-8')
+                if isinstance(arr2, bytes):
+                    arr2 = arr2.decode('utf-8')
                 self.assertEqual(arr1, arr2)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2))
