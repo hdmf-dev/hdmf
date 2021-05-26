@@ -1,5 +1,25 @@
 # HDMF Changelog
 
+## HDMF 3.0.0 (Upcoming)
+
+### New features
+-
+-
+-
+-
+
+### Internal improvements
+-
+-
+-
+-
+
+### Bug fixes
+-
+-
+-
+-
+
 ## HDMF 2.5.6 (May 19, 2021)
 
 ### Bug fix
