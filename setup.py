@@ -16,7 +16,7 @@ reqs = [
     'numpy>=1.16,<1.21',
     'scipy>=1.1,<2',
     'pandas>=1.0.5,<2',
-    'ruamel.yaml>=0.15.1,<1',
+    'ruamel.yaml>=0.16,<1',
     'jsonschema>=2.6.0,<4',
     'setuptools',
 ]

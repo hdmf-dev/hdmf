@@ -3,6 +3,6 @@ h5py==2.9  # support for setting attrs to lists of utf-8 added in 2.9
 numpy==1.16
 scipy==1.1
 pandas==1.0.5
-ruamel.yaml~=0.15.1  # cannot find 0.15.* release that works for all OS
+ruamel.yaml==0.16
 jsonschema==2.6.0
 setuptools
