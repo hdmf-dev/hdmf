@@ -1,5 +1,5 @@
 # pinned dependencies to reproduce an entire development environment to use HDMF
-h5py==3.1.0
+h5py==3.2.1
 numpy==1.19.3
 scipy==1.5.4
 pandas==1.1.5

@@ -683,7 +683,7 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
     def test_index_out_of_bounds(self):
         table = self.roundtripContainer()
-        msg = "Index (5) out of range for (0-1)"
+        msg = "Row index 5 out of range for DynamicTable 'root' (length 2)."
         with self.assertRaisesWith(IndexError, msg):
             table[5]
 
@@ -891,7 +891,7 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         return table[arg]
 
     def test_getitem_oor(self):
-        msg = "Index (12) out of range for (0-4)"
+        msg = 'Row index 12 out of range for DynamicTable \'table_with_dtr\' (length 5).'
         with self.assertRaisesWith(IndexError, msg):
             self._getitem(12)
 
