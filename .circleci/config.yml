@@ -399,7 +399,7 @@ workflows:
               ignore: /.*/
           context:
             - docker-hub-creds
-      - pynwb-dev-python38:
+      - pynwb-dev-python39:
           filters:
             branches:
               ignore: dev
