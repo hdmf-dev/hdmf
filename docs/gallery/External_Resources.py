@@ -108,6 +108,13 @@ er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_
 # a resource. To disambiguate between these different fields, you can set the
 # 'field' keyword.
 
+# In most cases, the field is the name of a dataset or attribute,
+# but it could be a little more complicated. Let's say the attribute is not a string
+# but a compound data type with columns/fields 'x', 'y', and 'z', and each
+# column/field is associated with different ontologies. The 'field' value also needs
+# to account for this. This should done using '/' as a separator, e.g.,
+# field='data/unit/x'.
+
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')

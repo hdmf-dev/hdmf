@@ -360,7 +360,34 @@ class ExternalResources(Container):
             entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
             self._add_external_reference(object_field, key)
 
-        return key, resource_table_idx, entity
+        return key
+
+    def get_entity_resource_object(self, **kwargs):
+        """
+        Get all entities/resources associated with an object
+        """
+        container = kwargs['container']
+        field = kwargs['field']
+
+        object_idx = self._check_object_field(container, field)
+        
+        #Get all the keys associated with the object
+        keys = []
+        entity_idx = []
+        l=[]
+        if container is not None and field is not None:
+            # if same key is used multiple times, determine
+            # which instance based on the Container
+            keys=[]
+            object_field = self._check_object_field(container, field)
+            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                keys.append(self.object_keys['keys_idx', row_idx])
+            for key_idx in list(set(keys)):
+                entity_idx.append(self.entities.which(keys_idx=key_idx))
+            for idx in entity_idx:
+                l.append(self.entities.__getitem__(idx))
+            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'enitity_id', 'entity_uri'])
+        return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,
              'doc': 'the Key(s) to get external resource data for'},
