@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 2.5.7 (June 4, 2021)
+
+### Bug fix
+- Fix generation of extension classes that extend MultiContainerInterface and use a custom _fieldsname. @rly (#626)
+
 ## HDMF 2.5.6 (May 19, 2021)
 
 ### Bug fix
