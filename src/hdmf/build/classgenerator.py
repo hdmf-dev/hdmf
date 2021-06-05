@@ -268,9 +268,10 @@ class CustomClassGenerator:
         :param spec: The spec for the container class to generate.
         """
         # convert classdict['__fields__'] from list to tuple if present
-        fields = classdict.get(bases[0]._fieldsname)
-        if fields is not None:
-            classdict[bases[0]._fieldsname] = tuple(fields)
+        for b in bases:
+            fields = classdict.get(b._fieldsname)
+            if fields is not None and not isinstance(fields, tuple):
+                classdict[b._fieldsname] = tuple(fields)
 
         # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
         # be passed for a name positional or keyword arg
