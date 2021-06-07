@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Table, Row, Container, AbstractContainer
@@ -361,6 +362,41 @@ class ExternalResources(Container):
             self._add_external_reference(object_field, key)
 
         return key, resource_table_idx, entity
+    @docval({'name': 'container', 'type': (str, AbstractContainer), 
+             'doc': 'the Container/data object that is linked to resources/entities',
+             'default': None},
+            {'name': 'field', 'type': str,
+             'doc': 'the field of the Container',
+             'default': None})
+    def get_object_resources(self, **kwargs):
+        """
+        Get all entities/resources associated with an object
+        """
+        container = kwargs['container']
+        field = kwargs['field']
+        
+        keys = []
+        entity_idx = []
+        l=[]
+        if container is None or field is None:
+            msg = "Neither Container nor the Container field can be None"
+            raise ValueError(msg)
+        else:
+            object_field = self._check_object_field(container, field)
+            # retrieve the keys associated with the Container
+            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                keys.append(self.object_keys['keys_idx', row_idx])
+            # retrieve the entity row indices associated with the keys    
+            for key_idx in keys:
+                entity_idx.append(self.entities.which(keys_idx=key_idx))
+#            
+
+            entity_idx = list(np.concatenate(entity_idx).flat)
+            # retrieve the entity rows from the EntityTable
+            for idx in entity_idx:
+                l.append(self.entities[idx]) # == __getitem__(idx))
+            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
+        return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,
              'doc': 'the Key(s) to get external resource data for'},
