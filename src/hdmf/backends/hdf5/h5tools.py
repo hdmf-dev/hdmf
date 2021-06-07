@@ -697,10 +697,10 @@ class HDF5IO(HDMFIO):
                 kwargs['dtype'] = d.dtype
             else:
                 kwargs["data"] = scalar
-        elif ndims == 1:
+        else:
             d = None
             if h5obj.dtype.kind == 'O' and len(h5obj) > 0:
-                elem1 = h5obj[0]
+                elem1 = h5obj[tuple([0] * (h5obj.ndim - 1) + [0])]
                 if isinstance(elem1, (str, bytes)):
                     d = self._check_str_dtype(h5obj)
                 elif isinstance(elem1, RegionReference):  # read list of references
@@ -717,8 +717,6 @@ class HDF5IO(HDMFIO):
             else:
                 d = h5obj
             kwargs["data"] = d
-        else:
-            kwargs["data"] = h5obj
         ret = DatasetBuilder(name, **kwargs)
         self.__set_written(ret)
         return ret
