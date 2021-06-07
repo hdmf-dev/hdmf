@@ -330,6 +330,8 @@ class ExternalResources(Container):
                 if key_idx in key_idx_matches:
                     msg = "Use Key Object when referencing an existing (container, field, key)"
                     raise ValueError(msg)
+                else:
+                    self._add_external_reference(object_field, key) # Check this with test
 
         if not isinstance(key, Key):
             key = self._add_key(key)
@@ -359,9 +361,9 @@ class ExternalResources(Container):
 
         if add_entity:
             entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
-            self._add_external_reference(object_field, key)
 
         return key, resource_table_idx, entity
+
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'the Container/data object that is linked to resources/entities',
              'default': None},
@@ -375,23 +377,18 @@ class ExternalResources(Container):
         container = kwargs['container']
         field = kwargs['field']
 
-        object_idx = self._check_object_field(container, field)
-
-        #Get all the keys associated with the object
         keys = []
         entity_idx = []
         l=[]
         if container is not None and field is not None:
-            # if same key is used multiple times, determine
-            # which instance based on the Container
-            keys=[]
             object_field = self._check_object_field(container, field)
+            # Find all keys associated with the object
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 keys.append(self.object_keys['keys_idx', row_idx])
-            for key_idx in list(set(keys)):
-                entity_idx.append(self.entities.which(keys_idx=key_idx))
-            for idx in entity_idx:
-                l.append(self.entities.__getitem__(idx))
+            # Find all the entities/resources for each key.
+            for key_idx in list(set(keys)): # Change to just keys.
+                entity_idx = self.entities.which(keys_idx=key_idx)
+                l.append(self.entities.__getitem__(entity_idx))
             df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'enitity_id', 'entity_uri'])
         return df
 
