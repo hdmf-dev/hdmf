@@ -362,7 +362,7 @@ class ExternalResources(Container):
             self._add_external_reference(object_field, key)
 
         return key, resource_table_idx, entity
-    @docval({'name': 'container', 'type': (str, AbstractContainer), 
+    @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'the Container/data object that is linked to resources/entities',
              'default': None},
             {'name': 'field', 'type': str,
@@ -374,28 +374,25 @@ class ExternalResources(Container):
         """
         container = kwargs['container']
         field = kwargs['field']
-        
+
+        object_idx = self._check_object_field(container, field)
+
+        #Get all the keys associated with the object
         keys = []
         entity_idx = []
         l=[]
-        if container is None or field is None:
-            msg = "Neither Container nor the Container field can be None"
-            raise ValueError(msg)
-        else:
+        if container is not None and field is not None:
+            # if same key is used multiple times, determine
+            # which instance based on the Container
+            keys=[]
             object_field = self._check_object_field(container, field)
-            # retrieve the keys associated with the Container
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 keys.append(self.object_keys['keys_idx', row_idx])
-            # retrieve the entity row indices associated with the keys    
-            for key_idx in keys:
+            for key_idx in list(set(keys)):
                 entity_idx.append(self.entities.which(keys_idx=key_idx))
-#            
-
-            entity_idx = list(np.concatenate(entity_idx).flat)
-            # retrieve the entity rows from the EntityTable
             for idx in entity_idx:
-                l.append(self.entities[idx]) # == __getitem__(idx))
-            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
+                l.append(self.entities.__getitem__(idx))
+            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'enitity_id', 'entity_uri'])
         return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,
