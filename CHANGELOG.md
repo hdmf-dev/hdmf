@@ -3,6 +3,21 @@
 ## HDMF 3.0.0 (Upcoming)
 
 ### New features
+- Add support for Python 3.9, drop support for Python 3.6. @rly (#620)
+- Add support for h5py 3. @ajtritt (#480)
+  - h5py 3 introduced [breaking changes regarding how strings are handled]
+  (https://docs.h5py.org/en/latest/whatsnew/3.0.html#breaking-changes-deprecations), specifically that
+  variable-length UTF-8 strings in datasets are now read as `bytes` objects instead of `str` by default.
+  To reduce the impact of this change on HDMF users, when HDMF reads a variable-length UTF-8 string
+  dataset, instead of returning an `h5py.Dataset` that is read as `bytes` objects, HDMF will return a
+  `hdmf.utils.StrDataset` object that extends `h5py.Dataset` and is read as `str` objects, which preserves
+  previous behavior. For example, under HDMF 2.x, an HDF5 dataset `d` with data ['a', 'b'] is read as a
+  `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
+  as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
+-
+-
+
+### Breaking changes and deprecations
 -
 -
 -
