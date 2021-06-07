@@ -52,6 +52,7 @@ improve the structure and access of data stored with this type for your use case
 from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
+import numpy as np
 
 er = ExternalResources(name='example')
 
@@ -115,13 +116,6 @@ er.add_ref(container=genotypes, field='genotype_name', key='Rorb', resource_name
            resource_uri='http://www.informatics.jax.org/', entity_id='MGI:1346434',
            entity_uri="http://www.informatics.jax.org/probe/key/804614")
 
-# In most cases, the field is the name of a dataset or attribute,
-# but it could be a little more complicated. Let's say the attribute is not a string
-# but a compound data type with columns/fields 'x', 'y', and 'z', and each
-# column/field is associated with different ontologies. The 'field' value also needs
-# to account for this. This should done using '/' as a separator, e.g.,
-# field='data/unit/x'.
-
 ###############################################################################
 # Using the get_keys method
 # ------------------------------------------------------
@@ -161,3 +155,29 @@ er.add_ref(container=genotypes, field='genotype_name', key=key_object, resource_
 
 # Let's use get_keys to visualize
 er.get_keys()
+
+###############################################################################
+# Special Case: Using add_ref with multi-level fields
+# ------------------------------------------------------
+# In most cases, the field is the name of a dataset or attribute,
+# but it could be a little more complicated. Let's say the attribute is not a string
+# but a compound data type with columns/fields 'x', 'y', and 'z', and each
+# column/field is associated with different ontologies. The 'field' value also needs
+# to account for this. This should done using '/' as a separator, e.g.,
+# field='data/unit/x'.
+
+# Let's create a new instance of ExternalResources.
+er = ExternalResources(name='example')
+
+data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+            dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+er.add_ref(container=data, field='data/species', key='Mus musculus', resource_name='NCBI_Taxonomy',
+           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+           entity_id='NCBI:txid10090',
+           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+er.add_ref(container=data, field='data/species', key='Homo sapiens',resource_name='NCBI_Taxonomy',
+           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+           entity_id='NCBI:txid9606',
+           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
