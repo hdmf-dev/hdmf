@@ -4,8 +4,8 @@
 Installing HDMF for Developers
 ------------------------------
 
-Setup
------
+Set up a virtual environment
+----------------------------
 
 For development, we recommend installing HDMF in a virtual environment in editable mode. For beginners and for Windows
 developers, we recommend using the `conda package and environment management system`_ for managing local virtual
