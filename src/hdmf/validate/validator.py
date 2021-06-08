@@ -15,6 +15,9 @@ from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
 from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
 
+from hdmf.backends.hdf5.h5_utils import BuilderH5ReferenceDataset, BuilderH5TableDataset
+
+
 __synonyms = DtypeHelper.primary_dtype_synonyms
 
 __additional = {
@@ -107,6 +110,8 @@ def get_type(data):
         return 'region'
     elif isinstance(data, ReferenceBuilder):
         return 'object'
+    elif isinstance(data, BuilderH5ReferenceDataset):
+        return 'object'
     elif isinstance(data, np.ndarray):
         if data.size == 0:
             raise EmptyArrayError()
@@ -117,6 +122,8 @@ def get_type(data):
         return type(data).__name__
     else:
         if hasattr(data, 'dtype'):
+            if isinstance(data, BuilderH5TableDataset):
+                return data.dtype
             if isinstance(data.dtype, list):
                 return [get_type(data[0][i]) for i in range(len(data.dtype))]
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
