@@ -35,7 +35,7 @@ On Windows, run the following to activate your new virtual environment:
 
 .. code:: batch
 
-    venv\bin\activate
+    venv\Scripts\activate
 
 This virtual environment is a space where you can install Python packages that are isolated from other virtual
 environments. This is especially useful when working on multiple Python projects that have different package
