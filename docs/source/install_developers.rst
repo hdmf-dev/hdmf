@@ -60,7 +60,31 @@ You can run the full test suite with the following command:
 
    python test.py
 
-You could also run the full test suite by installing and running the ``pytest`` tool.
+You could also run the full test suite by installing and running the ``pytest`` tool,
+a popular testing tool that provides more options for configuring test runs.
+
+First, install ``pytest``:
+
+.. code::
+
+   pip install pytest
+   
+Then run the full test suite:
+
+.. code::
+
+   pytest
+
+You can also run a specific test module or class, or you can configure ``pytest`` to start the 
+Python debugger (PDB) prompt on an error, e.g., 
+
+.. code::
+
+   pytest tests/unit/test_container.py                                   # run all tests in the module
+   pytest tests/unit/test_container.py::TestContainer                    # run all tests in this class
+   pytest tests/unit/test_container.py::TestContainer::test_constructor  # run this test method
+   pytest --pdb tests/unit/test_container.py                             # start pdb on error
+
 
 Finally, you can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
 create a virtual environment, install dependencies, and run the test suite for Python 3.6, 3.7, 3.8, and 3.9.
