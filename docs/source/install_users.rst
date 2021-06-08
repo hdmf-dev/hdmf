@@ -10,8 +10,8 @@ commonly used packages for scientific computing and data science.
 
 HDMF can be installed with ``pip``, ``conda``, or from source. HDMF works on Windows, macOS, and Linux.
 
-Using pip
----------
+Option 1: Using pip
+-------------------
 
 If you are a beginner to programming in Python and using Python tools, we recommend that you install HDMF by running
 the following command in a terminal or command prompt:
@@ -20,8 +20,8 @@ the following command in a terminal or command prompt:
 
    pip install hdmf
 
-Using conda
------------
+Option 2: Using conda
+---------------------
 
 You can also install HDMF using ``conda`` by running the following command in a terminal or command prompt:
 
