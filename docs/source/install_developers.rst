@@ -15,8 +15,8 @@ the virtualenv_ tool to create a new virtual environment.
 .. _conda package and environment management system: https://conda.io/projects/conda/en/latest/index.html
 .. _virtualenv: https://virtualenv.pypa.io/en/stable/
 
-Using conda
-^^^^^^^^^^^
+Option 1: Using conda
+^^^^^^^^^^^^^^^^^^^^^^^
 
 Create and activate a new virtual environment called "hdmf-dev" with Python 3.8 installed.
 
