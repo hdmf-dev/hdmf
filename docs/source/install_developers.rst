@@ -25,8 +25,8 @@ Create and activate a new virtual environment called "hdmf-dev" with Python 3.8 
     $ conda create --name hdmf-dev python=3.8
     $ conda activate hdmf-dev
 
-Using virtualenv
-^^^^^^^^^^^^^^^^
+Option 2: Using virtualenv
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 First, create a new virtual environment located at `~/hdmf`.
 
