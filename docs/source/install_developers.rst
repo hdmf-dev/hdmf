@@ -20,20 +20,20 @@ Option 1: Using virtualenv
 First, install the latest version of the ``virtualenv`` tool and use it to create a new virtual environment. This
 virtual environment will be stored in the ``venv`` directory in the current directory.
 
-.. code::
+.. code:: bash
 
     pip install -U virtualenv
     virtualenv venv
 
 On macOS or Linux, run the following to activate your new virtual environment:
 
-.. code::
+.. code:: bash
 
     source venv/bin/activate
 
 On Windows, run the following to activate your new virtual environment:
 
-.. code::
+.. code:: batch
 
     venv\bin\activate
 
@@ -47,10 +47,10 @@ deactivate it using the ``deactivate`` command to return to the base environment
 Option 2: Using conda
 ^^^^^^^^^^^^^^^^^^^^^
 
-First, install [Anaconda](https://www.anaconda.com/distribution) to install the ``conda`` tool. Then create and
+First, install Anaconda_ to install the ``conda`` tool. Then create and
 activate a new virtual environment called "venv" with Python 3.8 installed.
 
-.. code::
+.. code:: bash
 
     conda create --name venv python=3.8
     conda activate venv
@@ -63,6 +63,8 @@ in a conda environment.
 Activate your newly created virtual environment using the above command whenever you want to work on HDMF. You can also
 deactivate it using the ``conda deactivate`` command to return to the base environment.
 
+.. _Anaconda: https://www.anaconda.com/distribution
+
 Install from GitHub
 -------------------
 
@@ -71,7 +73,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
 .. _pip: https://pip.pypa.io/en/stable/
 
-.. code::
+.. code:: bash
 
     git clone --recurse-submodules https://github.com/hdmf-dev/hdmf.git
     cd hdmf
@@ -80,18 +82,19 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
 .. note::
 
- 	  When using ``conda``, dependencies should be installed via
-    :code:`conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt`.
+   When using ``conda``, you may use ``pip install`` to install dependencies as shown above; however, it is generally
+   recommended that dependencies should be installed via ``conda install``, e.g.,
 
-    The pinned dependencies in the above file have been tested to work with ``pip``. The versions may need to be
-    changed to work with the available packages in ``conda-forge``.
+   .. code:: bash
+
+      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt
 
 Run tests
 ---------
 
 You can run the full test suite with the following command:
 
-.. code::
+.. code:: bash
 
     python test.py
 
@@ -100,20 +103,20 @@ a popular testing tool that provides more options for configuring test runs.
 
 First, install ``pytest``:
 
-.. code::
+.. code:: bash
 
     pip install pytest
 
 Then run the full test suite:
 
-.. code::
+.. code:: bash
 
     pytest
 
 You can also run a specific test module or class, or you can configure ``pytest`` to start the
 Python debugger (PDB) prompt on an error, e.g.,
 
-.. code::
+.. code:: bash
 
     pytest tests/unit/test_container.py                                   # run all tests in the module
     pytest tests/unit/test_container.py::TestContainer                    # run all tests in this class
@@ -128,7 +131,7 @@ This can take some time to run.
 .. _pytest: https://docs.pytest.org/
 .. _tox: https://tox.readthedocs.io/en/latest/
 
-.. code::
+.. code:: bash
 
     tox
 
@@ -138,6 +141,6 @@ Install latest pre-release
 To try out the latest features or set up continuous integration of your own project against the
 latest version of HDMF, install the latest release from GitHub.
 
-.. code::
+.. code:: bash
 
     pip install -U hdmf --find-links https://github.com/hdmf-dev/hdmf/releases/tag/latest --no-index
