@@ -1,6 +1,6 @@
 .. _extending-standard:
 
-Extending standards
+Extending Standards
 ===================
 
 The following page will discuss how to extend a standard using HDMF.
