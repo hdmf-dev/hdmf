@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 2.5.8 (Upcoming)
+
+### Minor improvements
+- Improve Sphinx documentation. @rly (#627)
+
 ## HDMF 2.5.7 (June 4, 2021)
 
 ### Bug fix
