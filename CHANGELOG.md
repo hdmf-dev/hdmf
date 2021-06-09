@@ -1,9 +1,17 @@
 # HDMF Changelog
 
-## Upcoming Changes
+## HDMF 2.5.8 (Upcoming)
+
+### Minor improvements
+- Improve Sphinx documentation. @rly (#627)
 
 ### Bug fix
 - Update the validator to allow extensions to data types which only define data_type_inc @dsleiter (#609)
+
+## HDMF 2.5.7 (June 4, 2021)
+
+### Bug fix
+- Fix generation of extension classes that extend MultiContainerInterface and use a custom _fieldsname. @rly (#626)
 
 ## HDMF 2.5.6 (May 19, 2021)
 

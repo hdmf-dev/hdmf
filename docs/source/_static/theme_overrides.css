@@ -1,0 +1,7 @@
+.wy-side-nav-search .wy-dropdown>a.icon img.logo, .wy-side-nav-search>a.icon img.logo {
+  width: 150px;
+}
+
+.wy-nav-content {
+  max-width: 1000px !important;
+}
