@@ -213,7 +213,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'obj', 'type': (int, Object), 'doc': 'the Object to that uses the Key'},
             {'name': 'key', 'type': (int, Key), 'doc': 'the Key that the Object uses'})
-    def _add_external_reference(self, **kwargs):
+    def _add_object_key(self, **kwargs):
         """
         Specify that an object (i.e. container and field) uses a key to reference
         an external resource
@@ -330,11 +330,10 @@ class ExternalResources(Container):
                 if key_idx in key_idx_matches:
                     msg = "Use Key Object when referencing an existing (container, field, key)"
                     raise ValueError(msg)
-                else:
-                    self._add_external_reference(object_field, key) # Check this with test
 
         if not isinstance(key, Key):
             key = self._add_key(key)
+            self._add_object_key(object_field, key)
 
         if kwargs['resources_idx'] is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
             resource_table_idx = kwargs['resources_idx']
@@ -378,7 +377,6 @@ class ExternalResources(Container):
         field = kwargs['field']
 
         keys = []
-        entity_idx = []
         l=[]
         if container is not None and field is not None:
             object_field = self._check_object_field(container, field)
@@ -386,10 +384,10 @@ class ExternalResources(Container):
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 keys.append(self.object_keys['keys_idx', row_idx])
             # Find all the entities/resources for each key.
-            for key_idx in list(set(keys)): # Change to just keys.
+            for key_idx in keys:
                 entity_idx = self.entities.which(keys_idx=key_idx)
-                l.append(self.entities.__getitem__(entity_idx))
-            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'enitity_id', 'entity_uri'])
+                l.append(self.entities.__getitem__(entity_idx[0]))
+            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
         return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,

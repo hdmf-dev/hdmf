@@ -3,6 +3,7 @@ import pandas as pd
 from hdmf.common.resources import ExternalResources, Key, Resource
 from hdmf import Data
 from hdmf.testing import TestCase, H5RoundTripMixin
+import numpy as np
 
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
@@ -43,7 +44,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         obj = er._add_object('object', 'species')
 
         # This could also be wrapped up under NWBFile
-        er._add_external_reference(obj, key)
+        er._add_object_key(obj, key)
 
         self.assertEqual(er.keys.data, [('mouse',)])
         self.assertEqual(er.entities.data,
@@ -220,6 +221,21 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
+    def test_get_object_resources(self):
+        er = ExternalResources('terms')
+        data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(container=data, field='data/species', key='Mus musculus', resource_name='NCBI_Taxonomy',
+                   resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        received = er.get_object_resources(data, 'data/species')
+        expected = pd.DataFrame(
+            data=[[0, 0, 'NCBI:txid10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090']],
+            columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
+        pd.testing.assert_frame_equal(received, expected)
+
     def test_check_object_field_add(self):
         er = ExternalResources('terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
@@ -291,42 +307,3 @@ class TestExternalResourcesGetKey(TestCase):
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
         with self.assertRaisesRegex(ValueError, "key 'bad_key' does not exist"):
             self.er.get_key('bad_key')
-
-    def test_get_key_same_keyname_all(self):
-        self.er = ExternalResources('terms')
-        key1 = self.er._add_key('key1')
-        key2 = self.er._add_key('key1')
-        self.er.add_ref(
-            'uuid1', 'field1', key1, resource_name='resource1',
-            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref(
-            'uuid2', 'field2', key2, resource_name='resource2',
-            resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
-        self.er.add_ref(
-            'uuid1', 'field1', self.er.get_key('key1', 'uuid1', 'field1'), resource_name='resource3',
-            resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
-
-        keys = self.er.get_key('key1')
-
-        self.assertIsInstance(keys, list)
-        self.assertEqual(keys[0].key, 'key1')
-        self.assertEqual(keys[1].key, 'key1')
-
-    def test_get_key_same_keyname_specific(self):
-        self.er = ExternalResources('terms')
-        key1 = self.er._add_key('key1')
-        key2 = self.er._add_key('key1')
-        self.er.add_ref(
-            'uuid1', 'field1', key1, resource_name='resource1',
-            resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref(
-            'uuid2', 'field2', key2, resource_name='resource2',
-            resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
-        self.er.add_ref(
-            'uuid1', 'field1', self.er.get_key('key1', 'uuid1', 'field1'), resource_name='resource3',
-            resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
-
-        keys = self.er.get_key('key1', 'uuid1', 'field1')
-        self.assertIsInstance(keys, Key)
-        self.assertEqual(keys.key, 'key1')
-        self.assertEqual(self.er.keys.data, [('key1',), ('key1',)])
