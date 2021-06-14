@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Table, Row, Container, AbstractContainer
@@ -377,7 +376,7 @@ class ExternalResources(Container):
         field = kwargs['field']
 
         keys = []
-        l=[]
+        entities = []
         if container is not None and field is not None:
             object_field = self._check_object_field(container, field)
             # Find all keys associated with the object
@@ -386,8 +385,8 @@ class ExternalResources(Container):
             # Find all the entities/resources for each key.
             for key_idx in keys:
                 entity_idx = self.entities.which(keys_idx=key_idx)
-                l.append(self.entities.__getitem__(entity_idx[0]))
-            df = pd.DataFrame(l, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
+                entities.append(self.entities.__getitem__(entity_idx[0]))
+            df = pd.DataFrame(entities, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
         return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,

@@ -177,7 +177,7 @@ er.add_ref(container=data, field='data/species', key='Mus musculus', resource_na
            entity_id='NCBI:txid10090',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
-er.add_ref(container=data, field='data/species', key='Homo sapiens',resource_name='NCBI_Taxonomy',
+er.add_ref(container=data, field='data/species', key='Homo sapiens', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
            entity_id='NCBI:txid9606',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
