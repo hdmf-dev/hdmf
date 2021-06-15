@@ -228,6 +228,23 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
         pd.testing.assert_frame_equal(received, expected)
 
+    def test_object_key_unqiueness(self):
+        er = ExternalResources('terms')
+        data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(container=data, field='data/species', key='Mus musculus', resource_name='NCBI_Taxonomy',
+                   resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(container=data, field='data/species', key=existing_key, resource_name='resource2',
+                   resource_uri='resource_uri2',
+                   entity_id='entity2',
+                   entity_uri='entity_uri2')
+
+        self.assertEqual(er.object_keys.data, [(0, 0)])
+
     def test_check_object_field_add(self):
         er = ExternalResources('terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
