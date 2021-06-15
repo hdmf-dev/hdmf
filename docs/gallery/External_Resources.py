@@ -48,7 +48,26 @@ improve the structure and access of data stored with this type for your use case
 # to treat ``ExternalResources`` as a single large table as much as possible.
 
 ###############################################################################
+# Rules to ExternalResources
+# ------------------------------------------------------
+# When using the :py:class:`~hdmf.common.resources.ExternalResources` class, there
+# are rules to how users store information in the interlinked tables.
+
+# 1. Multiple :py:class:`~hdmf.common.resources.Key` objects can share the same name.
+# 2. In order to query specific records, the :py:class:`~hdmf.common.resources.ExternalResources` class
+#    uses '(object_id, field, Key)' as the unique identifier.
+# 3. :py:class:`~hdmf.common.resources.Object` can have multiple :py:class:`~hdmf.common.resources.Key`
+#    objects.
+# 4. Multiple :py:class:`~hdmf.common.resources.Object` objects can use the same :py:class:`~hdmf.common.resources.Key`.
+# 5. Do not use the private methods to add into the :py:class:`~hdmf.common.resources.KeyTable`,
+#    :py:class:`~hdmf.common.resources.ResourceTable`, :py:class:`~hdmf.common.resources.EntityTable`,
+#    :py:class:`~hdmf.common.resources.ObjectTable`, :py:class:`~hdmf.common.resources.ObjectKeyTable`
+#    individually.
+
+###############################################################################
 # Creating an instance of the ExternalResources class
+# ------------------------------------------------------
+
 from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
@@ -136,9 +155,7 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # Using the get_key method
 # ------------------------------------------------------
 # This method will return a ``Key`` object. In the current version of ``ExternalResources``,
-# duplicate keys are allowed; however, each key needs a unique linking Object.
-# In other words, each combination of (container, field, key) can exist only once in
-# ``ExternalResources``.
+# duplicate keys are allowed.
 
 # The get_key method will return the key object of the unique (key, container, field).
 key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_name')
@@ -146,8 +163,8 @@ key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_na
 ###############################################################################
 # Using the add_ref method with a key_object
 # ------------------------------------------------------
-# Sometimes you want to reference a specific key that already exists when adding
-# new ontology data into ``ExternalResources``.
+# Sometimes you want to use an existing key when adding new ontology data into ``ExternalResources``.
+# The user must use the actual :py:class:`~hdmf.common.resources.Key` object and not the 'key_name'.
 
 er.add_ref(container=genotypes, field='genotype_name', key=key_object, resource_name='Ensembl',
            resource_uri='https://uswest.ensembl.org/index.html', entity_id='ENSG00000198963',
@@ -155,6 +172,15 @@ er.add_ref(container=genotypes, field='genotype_name', key=key_object, resource_
 
 # Let's use get_keys to visualize
 er.get_keys()
+
+###############################################################################
+# Using get_object_resources
+# ------------------------------------------------------
+# This method will return information regarding keys, resources and entities for
+# an ``Object``. You can use either the name of the container or the container itself,
+# along with the field.
+
+er.get_object_resources(container=genotypes, field='genotype_name')
 
 ###############################################################################
 # Special Case: Using add_ref with multi-level fields
