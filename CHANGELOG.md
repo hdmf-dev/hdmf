@@ -1,14 +1,19 @@
 # HDMF Changelog
 
-## HDMF 2.5.8 (Upcoming)
+## HDMF 2.5.8 (June 16, 2021)
 
 ### Minor improvements
 - Improve Sphinx documentation. @rly (#627)
 
+### Bug fix
+- Fix error with representing an indexed table column when the `VectorIndex` dtype precision is upgraded more
+  than one step, e.g., uint8 to uint32. This can happen when, for example, a single `add_row` call is used to
+  add more than 65535 elements to an empty indexed column. @rly (#631)
+
 ## HDMF 2.5.7 (June 4, 2021)
 
 ### Bug fix
-- Fix generation of extension classes that extend MultiContainerInterface and use a custom _fieldsname. @rly (#626)
+- Fix generation of extension classes that extend `MultiContainerInterface` and use a custom _fieldsname. @rly (#626)
 
 ## HDMF 2.5.6 (May 19, 2021)
 
