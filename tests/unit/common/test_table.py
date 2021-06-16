@@ -1838,3 +1838,66 @@ class TestDTRReferences(TestCase):
                                      'y': [read_group1, read_group2]},
                                     index=pd.Index(data=[102, 103], name='id'))
             pd.testing.assert_frame_equal(ret, expected)
+
+
+class TestVectorIndexDtype(TestCase):
+
+    def set_up_array_index(self):
+        data = VectorData(name='data', description='desc')
+        index = VectorIndex(name='index', data=np.array([]), target=data)
+        return index
+
+    def set_up_list_index(self):
+        data = VectorData(name='data', description='desc')
+        index = VectorIndex(name='index', data=[], target=data)
+        return index
+
+    def test_array_inc_precision(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((255, )))
+        self.assertEqual(index.data[0], 255)
+        self.assertEqual(index.data.dtype, np.uint8)
+
+    def test_array_inc_precision_1step(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((65535, )))
+        self.assertEqual(index.data[0], 65535)
+        self.assertEqual(index.data.dtype, np.uint16)
+
+    def test_array_inc_precision_2steps(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((65536, )))
+        self.assertEqual(index.data[0], 65536)
+        self.assertEqual(index.data.dtype, np.uint32)
+
+    def test_array_prev_data_inc_precision_2steps(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((255, )))  # dtype is still uint8
+        index.add_vector(np.empty((65536, )))
+        self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
+        self.assertEqual(index.data.dtype, np.uint32)
+
+    def test_list_inc_precision(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(255)))
+        self.assertEqual(index.data[0], 255)
+        self.assertEqual(type(index.data[0]), np.uint8)
+
+    def test_list_inc_precision_1step(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(65535)))
+        self.assertEqual(index.data[0], 65535)
+        self.assertEqual(type(index.data[0]), np.uint16)
+
+    def test_list_inc_precision_2steps(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(65536)))
+        self.assertEqual(index.data[0], 65536)
+        self.assertEqual(type(index.data[0]), np.uint32)
+
+    def test_list_prev_data_inc_precision_2steps(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(255)))
+        index.add_vector(list(range(65536 - 255)))
+        self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
+        self.assertEqual(type(index.data[0]), np.uint32)
