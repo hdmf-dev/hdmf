@@ -107,28 +107,33 @@ class VectorIndex(VectorData):
 
     def __check_precision(self, idx):
         """
-        Check precision of current dataset and, if
-        necessary, adjust precision to accommodate new value.
+        Check precision of current dataset and, if necessary, adjust precision to accommodate new value.
 
         Returns:
             unsigned integer encoding of idx
         """
         if idx > self.__maxval:
-            nbits = (np.log2(self.__maxval + 1) * 2)
+            while idx > self.__maxval:
+                nbits = (np.log2(self.__maxval + 1) * 2)  # 8->16, 16->32, 32->64
+                if nbits == 128:  # pragma: no cover
+                    msg = ('Cannot store more than 18446744073709551615 elements in a VectorData. Largest dtype '
+                           'allowed for VectorIndex is uint64.')
+                    raise ValueError(msg)
+                self.__maxval = 2 ** nbits - 1
             self.__uint = np.dtype('uint%d' % nbits).type
-            self.__maxval = 2 ** nbits - 1
             self.__adjust_precision(self.__uint)
         return self.__uint(idx)
 
     def __adjust_precision(self, uint):
         """
-        Adjust precision of data to specificied unsigned integer precision
+        Adjust precision of data to specificied unsigned integer precision.
         """
         if isinstance(self.data, list):
             for i in range(len(self.data)):
                 self.data[i] = uint(self.data[i])
         elif isinstance(self.data, np.ndarray):
-            self._VectorIndex__data = self.data.astype(uint)
+            # use self._Data__data to work around restriction on resetting self.data
+            self._Data__data = self.data.astype(uint)
         else:
             raise ValueError("cannot adjust precision of type %s to %s", (type(self.data), uint))
 
