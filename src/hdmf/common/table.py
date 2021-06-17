@@ -107,28 +107,33 @@ class VectorIndex(VectorData):
 
     def __check_precision(self, idx):
         """
-        Check precision of current dataset and, if
-        necessary, adjust precision to accommodate new value.
+        Check precision of current dataset and, if necessary, adjust precision to accommodate new value.
 
         Returns:
             unsigned integer encoding of idx
         """
         if idx > self.__maxval:
-            nbits = (np.log2(self.__maxval + 1) * 2)
+            while idx > self.__maxval:
+                nbits = (np.log2(self.__maxval + 1) * 2)  # 8->16, 16->32, 32->64
+                if nbits == 128:  # pragma: no cover
+                    msg = ('Cannot store more than 18446744073709551615 elements in a VectorData. Largest dtype '
+                           'allowed for VectorIndex is uint64.')
+                    raise ValueError(msg)
+                self.__maxval = 2 ** nbits - 1
             self.__uint = np.dtype('uint%d' % nbits).type
-            self.__maxval = 2 ** nbits - 1
             self.__adjust_precision(self.__uint)
         return self.__uint(idx)
 
     def __adjust_precision(self, uint):
         """
-        Adjust precision of data to specificied unsigned integer precision
+        Adjust precision of data to specificied unsigned integer precision.
         """
         if isinstance(self.data, list):
             for i in range(len(self.data)):
                 self.data[i] = uint(self.data[i])
         elif isinstance(self.data, np.ndarray):
-            self._VectorIndex__data = self.data.astype(uint)
+            # use self._Data__data to work around restriction on resetting self.data
+            self._Data__data = self.data.astype(uint)
         else:
             raise ValueError("cannot adjust precision of type %s to %s", (type(self.data), uint))
 
@@ -837,6 +842,7 @@ class DynamicTable(Container):
                     col = self.__df_cols[self.__colids[name]]
                     ret[name] = col.get(arg, df=df, **kwargs)
             except ValueError as ve:
+                # in h5py <2, this was a ValueError. in h5py 3+, this became an IndexError
                 x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
                 if x:
                     msg = ("Row index %s out of range for %s '%s' (length %d)."
@@ -845,7 +851,12 @@ class DynamicTable(Container):
                 else:  # pragma: no cover
                     raise ve
             except IndexError as ie:
-                if str(ie) == 'list index out of range':
+                x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
+                if x:
+                    msg = ("Row index %s out of range for %s '%s' (length %d)."
+                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                    raise IndexError(msg)
+                elif str(ie) == 'list index out of range':
                     msg = ("Row index out of range for %s '%s' (length %d)."
                            % (self.__class__.__name__, self.name, len(self)))
                     raise IndexError(msg)

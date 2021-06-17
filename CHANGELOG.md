@@ -1,17 +1,55 @@
 # HDMF Changelog
 
-## HDMF 2.5.8 (Upcoming)
+## HDMF 3.0.0 (Upcoming)
+
+### New features
+- Add support for Python 3.9, drop support for Python 3.6. @rly (#620)
+- Add support for h5py 3. @ajtritt (#480)
+  - h5py 3 introduced [breaking changes regarding how strings are handled]
+  (https://docs.h5py.org/en/latest/whatsnew/3.0.html#breaking-changes-deprecations), specifically that
+  variable-length UTF-8 strings in datasets are now read as `bytes` objects instead of `str` by default.
+  To reduce the impact of this change on HDMF users, when HDMF reads a variable-length UTF-8 string
+  dataset, instead of returning an `h5py.Dataset` that is read as `bytes` objects, HDMF will return a
+  `hdmf.utils.StrDataset` object that extends `h5py.Dataset` and is read as `str` objects, which preserves
+  previous behavior. For example, under HDMF 2.x, an HDF5 dataset `d` with data ['a', 'b'] is read as a
+  `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
+  as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
+-
+-
+
+### Breaking changes and deprecations
+-
+-
+-
+-
+
+### Internal improvements
+-
+-
+-
+-
+
+### Bug fixes
+- Update the validator to allow extensions to data types which only define data_type_inc @dsleiter (#609)
+- Fix error when validating lazy-loaded datasets containing references @dsleiter (#609)
+-
+-
+-
+
+## HDMF 2.5.8 (June 16, 2021)
 
 ### Minor improvements
 - Improve Sphinx documentation. @rly (#627)
 
 ### Bug fix
-- Update the validator to allow extensions to data types which only define data_type_inc @dsleiter (#609)
+- Fix error with representing an indexed table column when the `VectorIndex` dtype precision is upgraded more
+  than one step, e.g., uint8 to uint32. This can happen when, for example, a single `add_row` call is used to
+  add more than 65535 elements to an empty indexed column. @rly (#631)
 
 ## HDMF 2.5.7 (June 4, 2021)
 
 ### Bug fix
-- Fix generation of extension classes that extend MultiContainerInterface and use a custom _fieldsname. @rly (#626)
+- Fix generation of extension classes that extend `MultiContainerInterface` and use a custom _fieldsname. @rly (#626)
 
 ## HDMF 2.5.6 (May 19, 2021)
 
