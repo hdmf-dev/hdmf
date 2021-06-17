@@ -4,13 +4,15 @@ from unittest import mock, skip
 
 import numpy as np
 from dateutil.tz import tzlocal
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, LinkSpec
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, TypeMap, BuildManager
+from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace,
+                       LinkSpec, RefSpec, NamespaceCatalog, DtypeSpec)
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
-from hdmf.testing import TestCase
+from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError)
+from hdmf.backends.hdf5 import HDF5IO
 
 CORE_NAMESPACE = 'test_core'
 
@@ -896,3 +898,114 @@ class TestExtendedIncDataTypes(TestCase):
         builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
+
+
+class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
+    """Test that no errors occur when when datasets containing references either in an
+    array or as part of a compound type are written out to file, read back in, and
+    then validated.
+
+    In order to support lazy reading on loading, datasets containing references are
+    wrapped in lazy-loading ReferenceResolver objects. These tests verify that the
+    validator can work with these ReferenceResolver objects.
+    """
+
+    def setUp(self):
+        self.filename = 'test_ref_dataset.h5'
+        super().setUp()
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+        super().tearDown()
+
+    def getSpecs(self):
+        qux_spec = DatasetSpec(
+            doc='a simple scalar dataset',
+            data_type_def='Qux',
+            dtype='int',
+            shape=None
+        )
+        baz_spec = DatasetSpec(
+            doc='a dataset with a compound datatype that includes a reference',
+            data_type_def='Baz',
+            dtype=[
+                DtypeSpec('x', doc='x-value', dtype='int'),
+                DtypeSpec('y', doc='y-ref', dtype=RefSpec('Qux', reftype='object'))
+            ],
+            shape=None
+        )
+        bar_spec = DatasetSpec(
+            doc='a dataset of an array of references',
+            dtype=RefSpec('Qux', reftype='object'),
+            data_type_def='Bar',
+            shape=(None,)
+        )
+        foo_spec = GroupSpec(
+            doc='a base group for containing test datasets',
+            data_type_def='Foo',
+            datasets=[
+                DatasetSpec(doc='optional Bar', data_type_inc=bar_spec, quantity=ZERO_OR_ONE),
+                DatasetSpec(doc='optional Baz', data_type_inc=baz_spec, quantity=ZERO_OR_ONE),
+                DatasetSpec(doc='multiple qux', data_type_inc=qux_spec, quantity=ONE_OR_MANY)
+            ]
+        )
+        return (foo_spec, bar_spec, baz_spec, qux_spec)
+
+    def runBuilderRoundTrip(self, builder):
+        """Executes a round-trip test for a builder
+
+        1. First writes the builder to file,
+        2. next reads a new builder from disk
+        3. and finally runs the builder through the validator.
+        The test is successful if there are no validation errors."""
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.add_namespace(self.namespace.name, self.namespace)
+        typemap = TypeMap(ns_catalog)
+        self.manager = BuildManager(typemap)
+
+        with HDF5IO(self.filename, manager=self.manager, mode='w') as write_io:
+            write_io.write_builder(builder)
+
+        with HDF5IO(self.filename, manager=self.manager, mode='r') as read_io:
+            read_builder = read_io.read_builder()
+            errors = self.vmap.validate(read_builder)
+            self.assertEqual(len(errors), 0, errors)
+
+    def test_round_trip_validation_of_reference_dataset_array(self):
+        """Verify that a dataset builder containing an array of references passes
+        validation after a round trip"""
+        qux1 = DatasetBuilder('q1', 5, attributes={'data_type': 'Qux'})
+        qux2 = DatasetBuilder('q2', 10, attributes={'data_type': 'Qux'})
+        bar = DatasetBuilder(
+            name='bar',
+            data=[ReferenceBuilder(qux1), ReferenceBuilder(qux2)],
+            attributes={'data_type': 'Bar'},
+            dtype='object'
+        )
+        foo = GroupBuilder(
+            name='foo',
+            datasets=[bar, qux1, qux2],
+            attributes={'data_type': 'Foo'}
+        )
+        self.runBuilderRoundTrip(foo)
+
+    def test_round_trip_validation_of_compound_dtype_with_reference(self):
+        """Verify that a dataset builder containing data with a compound dtype
+        containing a reference passes validation after a round trip"""
+        qux1 = DatasetBuilder('q1', 5, attributes={'data_type': 'Qux'})
+        qux2 = DatasetBuilder('q2', 10, attributes={'data_type': 'Qux'})
+        baz = DatasetBuilder(
+            name='baz',
+            data=[(10, ReferenceBuilder(qux1))],
+            dtype=[
+                DtypeSpec('x', doc='x-value', dtype='int'),
+                DtypeSpec('y', doc='y-ref', dtype=RefSpec('Qux', reftype='object'))
+            ],
+            attributes={'data_type': 'Baz'}
+        )
+        foo = GroupBuilder(
+            name='foo',
+            datasets=[baz, qux1, qux2],
+            attributes={'data_type': 'Foo'}
+        )
+        self.runBuilderRoundTrip(foo)
