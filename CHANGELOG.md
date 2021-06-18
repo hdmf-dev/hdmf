@@ -34,7 +34,9 @@
 - Fix error when validating lazy-loaded datasets containing references @dsleiter (#609)
 -
 -
--
+
+## Future
+- Add RRID to docs @oruebel (#633)
 
 ## HDMF 2.5.8 (June 16, 2021)
 - Fix incorrect dtype precision upgrade for VectorIndex (#631)
