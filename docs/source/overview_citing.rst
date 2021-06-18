@@ -20,6 +20,11 @@ If you use HDMF in your research, please use the following citation:
     pages={165-179},
     doi={10.1109/BigData47090.2019.9005648}}
 
+Using RRID
+----------
+
+* **RRID:**  (Hierarchical Data Modeling Framework, RRID:SCR_021303)
+
 Using duecredit
 -----------------
 
