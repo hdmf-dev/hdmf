@@ -1,5 +1,8 @@
 # HDMF Changelog
 
+## Future
+- Add RRID to docs @oruebel (#633)
+
 ## HDMF 2.5.8 (June 16, 2021)
 
 ### Minor improvements
