@@ -63,6 +63,11 @@ improve the structure and access of data stored with this type for your use case
 #    :py:class:`~hdmf.common.resources.ResourceTable`, :py:class:`~hdmf.common.resources.EntityTable`,
 #    :py:class:`~hdmf.common.resources.ObjectTable`, :py:class:`~hdmf.common.resources.ObjectKeyTable`
 #    individually.
+# 6. URIs are optional, but highly recommended. If not known, an empty string may be used.
+# 7.Entity IDs should be the unique string identifying the entity in the given resource.
+#   This may or may not include a string representing the resource and a colon.
+#   Use the format provided by the resource. For example, Identifiers.org uses the ID ncbigene:22353
+#   but the NCBI Gene uses the ID 22353 for the same term.
 
 ###############################################################################
 # Creating an instance of the ExternalResources class
