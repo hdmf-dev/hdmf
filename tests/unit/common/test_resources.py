@@ -321,12 +321,13 @@ class TestExternalResourcesGetKey(TestCase):
     @unittest.skip('Outdated do to privatization')
     def test_get_key_same_keyname_all(self):
         self.er = ExternalResources('terms')
-
+        key1 = self.er._add_key('key1')
+        key2 = self.er._add_key('key1')
         self.er.add_ref(
-            'uuid1', 'field1', 'key1', resource_name='resource1',
+            'uuid1', 'field1', key1, resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
         self.er.add_ref(
-            'uuid2', 'field2', 'key2', resource_name='resource2',
+            'uuid2', 'field2', key2, resource_name='resource2',
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
         self.er.add_ref(
             'uuid1', 'field1', self.er.get_key('key1', 'uuid1', 'field1'), resource_name='resource3',
