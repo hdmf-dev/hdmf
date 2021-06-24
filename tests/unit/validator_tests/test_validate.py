@@ -831,7 +831,7 @@ class TestExtendedIncDataTypes(TestCase):
     defined as a new type via data_type_inc.
 
     For the purpose of this test class: we are calling a data type which is nested
-    inside a group an "inner" data type. When an inner data inherits from a data type
+    inside a group an "inner" data type. When an inner data type inherits from a data type
     via data_type_inc and has fields that are either added or modified from the base
     data type, we are labeling that data type as an "extension". When the inner data
     type extension does not define a new data type via data_type_def we say that it is
