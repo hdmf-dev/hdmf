@@ -827,7 +827,7 @@ class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
 
 class TestExtendedIncDataTypes(TestCase):
     """Test validation against specs where a data type is included via data_type_inc
-    and modified by adding new fields or constraining existing files but is not
+    and modified by adding new fields or constraining existing fields but is not
     defined as a new type via data_type_inc.
 
     For the purpose of this test class: we are calling a data type which is nested
