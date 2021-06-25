@@ -253,7 +253,7 @@ er.get_keys()
 # ------------------------------------------------------
 # This method will return information regarding keys, resources, and entities for
 # an ``Object``. You can pass either the ``AbstractContainer`` object or its
-# object ID for the ``container`` argument, and the name of the field 
+# object ID for the ``container`` argument, and the name of the field
 # (container attribute) for the ``field`` argument.
 
 er.get_object_resources(container=genotypes, field='genotype_name')
