@@ -16,7 +16,7 @@ improve the structure and access of data stored with this type for your use case
 # to organize and map user terms (keys) to multiple resources and entities
 # from the resources. A typical use case for external resources is to link data
 # stored in datasets or attributes to ontologies. For example, you may have a
-# dataset `country` storing locations. Using
+# dataset ``country`` storing locations. Using
 # :py:class:`~hdmf.common.resources.ExternalResources` allows us to link the
 # country names stored in the dataset to an ontology of all countries, enabling
 # more rigid standardization of the data and facilitating data query and
@@ -53,21 +53,25 @@ improve the structure and access of data stored with this type for your use case
 # When using the :py:class:`~hdmf.common.resources.ExternalResources` class, there
 # are rules to how users store information in the interlinked tables.
 
-# 1. Multiple :py:class:`~hdmf.common.resources.Key` objects can share the same name.
+# 1. Multiple :py:class:`~hdmf.common.resources.Key` objects can have the same name.
+#    They are disambiguated by the :py:class:`~hdmf.common.resources.Object` associated
+#    with each.
 # 2. In order to query specific records, the :py:class:`~hdmf.common.resources.ExternalResources` class
 #    uses '(object_id, field, Key)' as the unique identifier.
 # 3. :py:class:`~hdmf.common.resources.Object` can have multiple :py:class:`~hdmf.common.resources.Key`
 #    objects.
 # 4. Multiple :py:class:`~hdmf.common.resources.Object` objects can use the same :py:class:`~hdmf.common.resources.Key`.
+#    Note that the :py:class:`~hdmf.common.resources.Key` may already be associated with resources
+#    and entities.
 # 5. Do not use the private methods to add into the :py:class:`~hdmf.common.resources.KeyTable`,
 #    :py:class:`~hdmf.common.resources.ResourceTable`, :py:class:`~hdmf.common.resources.EntityTable`,
 #    :py:class:`~hdmf.common.resources.ObjectTable`, :py:class:`~hdmf.common.resources.ObjectKeyTable`
 #    individually.
 # 6. URIs are optional, but highly recommended. If not known, an empty string may be used.
-# 7. Entity IDs should be the unique string identifying the entity in the given resource.
-#   This may or may not include a string representing the resource and a colon.
-#   Use the format provided by the resource. For example, Identifiers.org uses the ID ncbigene:22353
-#   but the NCBI Gene uses the ID 22353 for the same term.
+# 7. An entity ID should be the unique string identifying the entity in the given resource.
+#    This may or may not include a string representing the resource and a colon.
+#    Use the format provided by the resource. For example, Identifiers.org uses the ID ``ncbigene:22353``
+#    but the NCBI Gene uses the ID ``22353`` for the same term.
 
 ###############################################################################
 # Creating an instance of the ExternalResources class
@@ -84,15 +88,21 @@ er = ExternalResources(name='example')
 # Using the add_ref method
 # ------------------------------------------------------
 # :py:func:`~hdmf.common.resources.ExternalResources.add_ref`
-# is a wrapper function provided by the ``ExternalResources`` class, that
+# is a wrapper function provided by the ``ExternalResources`` class that
 # simplifies adding data. Using ``add_ref`` allows us to treat new entries similar
 # to adding a new row to a flat table, with ``add_ref`` taking care of populating
 # the underlying data structures accordingly.
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Taxonomy',
-           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
-           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+er.add_ref(
+    container=data,
+    field='',
+    key='Homo sapiens',
+    resource_name='NCBI_Taxonomy',
+    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', 
+    entity_id='NCBI:txid9606',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+)
 
 er.add_ref(container=data, field='', key='Mus musculus', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid10090',
