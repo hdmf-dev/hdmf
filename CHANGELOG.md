@@ -30,7 +30,8 @@
 -
 
 ### Bug fixes
--
+- Update the validator to allow extensions to data types which only define data_type_inc @dsleiter (#609)
+- Fix error when validating lazy-loaded datasets containing references @dsleiter (#609)
 -
 -
 -
