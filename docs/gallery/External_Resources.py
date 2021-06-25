@@ -155,7 +155,7 @@ er.add_ref(
 # In the above example, the ``field`` keyword argument was empty because the data
 # of the :py:class:`~hdmf.container.Data` object passed in for the ``container``
 # argument was being associated with a resource. However, you may want to associate
-# an attribute of a :py:class:`~hdmf.container.Data` object with a resource or
+# an attribute of a :py:class:`~hdmf.container.Data` object with a resource, or
 # a dataset or attribute of a :py:class:`~hdmf.container.Container` object with
 # a resource. To disambiguate between these different fields, you can set the
 # 'field' keyword.
@@ -167,17 +167,18 @@ er.add_ref(
     container=genotypes,
     field='genotype_name',
     key='Rorb',
-    resource_name='MGI Ontology',
+    resource_name='MGI Database',
     resource_uri='http://www.informatics.jax.org/',
     entity_id='MGI:1346434',
-    entity_uri='http://www.informatics.jax.org/probe/key/804614'
+    entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
 )
 
 ###############################################################################
 # Using the get_keys method
 # ------------------------------------------------------
-# This method returns a DataFrame of key_name, resource_table_idx, entity_id,
-# and entity_uri. You can either have a single key object,
+# The :py:func:`~hdmf.common.resources.ExternalResources.get_keys` method
+# returns a `~pandas.DataFrame` of key_name, resource_table_idx, entity_id,
+# and entity_uri. You can either pass a single key object,
 # a list of key objects, or leave the input paramters empty to return all.
 
 # All Keys
@@ -192,7 +193,8 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 ###############################################################################
 # Using the get_key method
 # ------------------------------------------------------
-# This method will return a ``Key`` object. In the current version of ``ExternalResources``,
+# The :py:func:`~hdmf.common.resources.ExternalResources.get_key`
+# method will return a ``Key`` object. In the current version of ``ExternalResources``,
 # duplicate keys are allowed.
 
 # The get_key method will return the key object of the unique (key, container, field).
@@ -201,8 +203,11 @@ key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_na
 ###############################################################################
 # Using the add_ref method with a key_object
 # ------------------------------------------------------
-# Sometimes you want to use an existing key when adding new ontology data into ``ExternalResources``.
-# The user must use the actual :py:class:`~hdmf.common.resources.Key` object and not the 'key_name'.
+# Multiple :py:class:`~hdmf.common.resources.Object` objects can use the same
+# :py:class:`~hdmf.common.resources.Key`. To use an existing key when adding
+# new entries into ``ExternalResources``, pass the :py:class:`~hdmf.common.resources.Key`
+# object instead of the 'key_name' to the ``add_ref`` method. If a 'key_name' is used,
+# a new Key will be created.
 
 er.add_ref(
     container=genotypes,
@@ -214,13 +219,13 @@ er.add_ref(
     entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
 )
 
-# Let's use get_keys to visualize
+# Let's use get_keys to visualize all the keys that have been added up to now
 er.get_keys()
 
 ###############################################################################
 # Using get_object_resources
 # ------------------------------------------------------
-# This method will return information regarding keys, resources and entities for
+# This method will return information regarding keys, resources, and entities for
 # an ``Object``. You can use either the name of the container or the container itself,
 # along with the field.
 
@@ -230,11 +235,13 @@ er.get_object_resources(container=genotypes, field='genotype_name')
 # Special Case: Using add_ref with multi-level fields
 # ------------------------------------------------------
 # In most cases, the field is the name of a dataset or attribute,
-# but it could be a little more complicated. Let's say the attribute is not a string
-# but a compound data type with columns/fields 'x', 'y', and 'z', and each
-# column/field is associated with different ontologies. The 'field' value also needs
-# to account for this. This should done using '/' as a separator, e.g.,
-# field='data/unit/x'.
+# but if the dataset or attribute is a compound data type, then associating
+# external resources with a particular column/field of the compound data type requires
+# a special syntax. For example, if a dataset has a compound data type with
+# columns/fields 'x', 'y', and 'z', and each
+# column/field is associated with different ontologies, then use the 'field'
+# value to differentiate the different columns of the dataset.
+# This should done using '/' as a separator, e.g., field='data/unit/x'.
 
 # Let's create a new instance of ExternalResources.
 er = ExternalResources(name='example')
@@ -242,7 +249,7 @@ er = ExternalResources(name='example')
 data = Data(
     name='data_name',
     data=np.array(
-        [('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+        [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
         dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
     )
 )
@@ -256,6 +263,13 @@ er.add_ref(
     entity_id='NCBI:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
+
+# Note that because the container is a ``Data`` object, and the external resource is being
+# associated with the values of the dataset rather than an attribute of the dataset,
+# the field must be prefixed with 'data'. Normally, to associate an external resource
+# with the values of the dataset, the field can be left blank. This allows us to
+# differentiate between a dataset compound data type field named 'x' and a dataset
+# attribute named 'x'.
 
 er.add_ref(
     container=data,
