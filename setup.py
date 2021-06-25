@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 from setuptools import setup, find_packages
 
 import versioneer
@@ -12,10 +11,15 @@ print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
 
-with open('requirements-min.txt', 'r') as fp:
-    # replace == with >= and remove trailing comments and spaces
-    reqs = [x.replace('==', '>=').split('#')[0].strip() for x in fp]
-    reqs = [x for x in reqs if x]  # remove empty strings
+reqs = [
+    'h5py>=2.9,<3',
+    'numpy>=1.16,<1.21',
+    'scipy>=1.1,<2',
+    'pandas>=1.0.5,<2',
+    'ruamel.yaml>=0.15,<1',
+    'jsonschema>=2.6.0,<4',
+    'setuptools',
+]
 
 print(reqs)
 

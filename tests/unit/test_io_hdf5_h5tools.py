@@ -24,7 +24,8 @@ from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZER
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
+from tests.unit.utils import (Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath, CustomGroupSpec, CustomDatasetSpec,
+                              CustomSpecNamespace)
 
 
 class FooFile(Container):
@@ -1979,23 +1980,27 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_with_dependencies(self):
         """Test loading namespaces where one includes another."""
-        file_spec = GroupSpec(doc="A FooFile", data_type_def='FooFile')
+        class MyFoo(Container):
+            pass
+
+        myfoo_spec = GroupSpec(doc="A MyFoo", data_type_def='MyFoo', data_type_inc='Foo')
         spec_catalog = SpecCatalog()
         name = 'test_core2'
         namespace = SpecNamespace(
             doc='a test namespace',
             name=name,
-            schema=[{'source': 'test.yaml', 'namespace': 'test_core'}],  # depends on test_core
+            schema=[{'source': 'test2.yaml', 'namespace': 'test_core'}],  # depends on test_core
             version='0.1.0',
             catalog=spec_catalog
         )
-        spec_catalog.register_spec(file_spec, 'test.yaml')
+        spec_catalog.register_spec(myfoo_spec, 'test2.yaml')
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(name, namespace)
         type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(name, 'FooFile', FooFile)
+        type_map.register_container_type(name, 'MyFoo', MyFoo)
+        type_map.merge(self.manager.type_map, ns_catalog=True)
         manager = BuildManager(type_map)
-        container = FooFile()
+        container = MyFoo(name='myfoo')
         with HDF5IO(self.path, manager=manager, mode='a') as io:  # append to file
             io.write(container)
 
@@ -2015,6 +2020,59 @@ class TestLoadNamespaces(TestCase):
         with self.assertWarnsWith(UserWarning, msg):
             ret = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertDictEqual(ret, {})
+
+    def test_load_namespaces_resolve_custom_deps(self):
+        """Test that reading a file with a cached namespace and different def/inc keys works."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with h5py.File(self.path, mode='r+') as f:
+            # add two types where one extends the other and overrides an attribute
+            # check that the inherited attribute resolves correctly despite having a different def/inc key than those
+            # used in the namespace catalog
+            added_types = (',{"data_type_def":"BigFoo","data_type_inc":"Foo","doc":"doc","attributes":['
+                           '{"name":"my_attr","dtype":"text","doc":"an attr"}]},'
+                           '{"data_type_def":"BiggerFoo","data_type_inc":"BigFoo","doc":"doc"}]}')
+            old_test_source = f['/specifications/test_core/0.1.0/test']
+            old_test_source[()] = old_test_source[()][0:-2] + added_types  # strip the ]} from end, then add to groups
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":['
+                      '{"namespace":"test_core","my_data_types":["Foo"]},'
+                      '{"source":"test-ext.extensions"}'
+                      '],"name":"test-ext","version":"0.1.0"}]}')
+            f.create_dataset('/specifications/test-ext/0.1.0/namespace', data=new_ns)
+            new_ext = '{"groups":[{"my_data_type_def":"FooExt","my_data_type_inc":"Foo","doc":"doc"}]}'
+            f.create_dataset('/specifications/test-ext/0.1.0/test-ext.extensions', data=new_ext)
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog(CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+        namespace_deps = HDF5IO.load_namespaces(ns_catalog, self.path)
+
+        # test that the dependencies are correct
+        expected = ('Foo',)
+        self.assertTupleEqual((namespace_deps['test-ext']['test_core']), expected)
+
+        # test that the types are loaded
+        types = ns_catalog.get_types('test-ext.extensions')
+        expected = ('FooExt',)
+        self.assertTupleEqual(types, expected)
+
+        # test that the def_key is updated for test-ext ns
+        foo_ext_spec = ns_catalog.get_spec('test-ext', 'FooExt')
+        self.assertTrue('my_data_type_def' in foo_ext_spec)
+        self.assertTrue('my_data_type_inc' in foo_ext_spec)
+
+        # test that the data_type_def is replaced with my_data_type_def for test_core ns
+        bigger_foo_spec = ns_catalog.get_spec('test_core', 'BiggerFoo')
+        self.assertTrue('my_data_type_def' in bigger_foo_spec)
+        self.assertTrue('my_data_type_inc' in bigger_foo_spec)
+
+        # test that my_attr is properly inherited in BiggerFoo from BigFoo and attr1, attr3 are inherited from Foo
+        self.assertTrue(len(bigger_foo_spec.attributes) == 3)
 
 
 class TestGetNamespaces(TestCase):

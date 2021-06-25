@@ -1,5 +1,5 @@
-How to contribute to HDMF software and documents
-=================================================
+Contributing Guide
+==================
 
 .. _sec-code-of-conduct:
 
@@ -87,13 +87,27 @@ From your local copy directory, use the following commands.
 Styleguides
 -----------
 
+Python Code Styleguide
+^^^^^^^^^^^^^^^^^^^^^^
+
+Before you create a Pull Request, make sure you are following the HDMF style guide (PEP8_).
+To check whether your code conforms to the HDMF style guide, simply run the flake8_ tool in the project's root
+directory.
+
+.. _flake8: http://flake8.pycqa.org/en/latest/
+.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+
+.. code::
+
+   $ flake8
+
 Git Commit Message Styleguide
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 * Use the present tense ("Add feature" not "Added feature")
 * The first should be short and descriptive.
 * Additional details may be included in further paragraphs.
-* If a commit fixes an issues, then include "Fix #X" where X is the number of the issue.
+* If a commit fixes an issue, then include "Fix #X" where X is the number of the issue.
 * Reference relevant issues and pull requests liberally after the first line.
 
 Documentation Styleguide
@@ -101,18 +115,13 @@ Documentation Styleguide
 
 All documentations is written in reStructuredText (RST) using Sphinx.
 
-Python Code Styleguide
-^^^^^^^^^^^^^^^^^^^^^^
-
-Python coding style is checked via ``flake8`` for automatic checking of PEP8 style during pull requests.
-
 Endorsement
 -----------
 
 Please do not take working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It's okay to say e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
 
 License and Copyright
-=======================
+---------------------
 
 See the `license <https://raw.githubusercontent.com/hdmf-dev/hdmf/dev/license.txt>`_ files for details about the copyright and license.
 

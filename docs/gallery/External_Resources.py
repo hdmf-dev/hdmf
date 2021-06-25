@@ -40,7 +40,7 @@ improve the structure and access of data stored with this type for your use case
 # * :py:class:`~hdmf.common.resources.ObjectTable` where each row descibes an
 #   :py:class:`~hdmf.common.resources.Object`
 # * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
-#  :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
+#   :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
 #   are used by which objects.
 #
 # The :py:class:`~hdmf.common.resources.ExternalResources` class then provides
@@ -150,6 +150,30 @@ er.add_ref(
 )
 
 ###############################################################################
+# Using the add_ref method with get_resource
+# ------------------------------------------------------
+# When adding references to resources, you may want to refer to multiple entities
+# within the same resource. Resource names are unique, so if you call ``add_ref``
+# with the name of an existing resource, then that resource will be reused. You
+# can also use the :py:func:`~hdmf.common.resources.ExternalResources.get_resource`
+# method to get the ``Resource`` object and pass that in to ``add_ref`` to
+# reuse an existing resource.
+
+# Let's create a new instance of ExternalResources.
+er = ExternalResources(name='example')
+
+data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Taxonomy',
+           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
+           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+
+# Using get_resource
+existing_resource = er.get_resource('NCBI_Taxonomy')
+er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_resource,
+           entity_id='NCBI:txid10090',
+           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+###############################################################################
 # Using the add_ref method with a field
 # ------------------------------------------------------
 # In the above example, the ``field`` keyword argument was empty because the data
@@ -195,7 +219,9 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # ------------------------------------------------------
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key`
 # method will return a ``Key`` object. In the current version of ``ExternalResources``,
-# duplicate keys are allowed.
+# duplicate keys are allowed; however, each key needs a unique linking Object.
+# In other words, each combination of (container, field, key) can exist only once in
+# ``ExternalResources``.
 
 # The get_key method will return the key object of the unique (key, container, field).
 key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_name')

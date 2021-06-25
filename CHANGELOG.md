@@ -1,6 +1,61 @@
 # HDMF Changelog
 
-## HDMF 2.5.0 (Upcoming)
+## Future
+- Add RRID to docs @oruebel (#633)
+
+## HDMF 2.5.8 (June 16, 2021)
+
+### Minor improvements
+- Improve Sphinx documentation. @rly (#627)
+
+### Bug fix
+- Fix error with representing an indexed table column when the `VectorIndex` dtype precision is upgraded more
+  than one step, e.g., uint8 to uint32. This can happen when, for example, a single `add_row` call is used to
+  add more than 65535 elements to an empty indexed column. @rly (#631)
+
+## HDMF 2.5.7 (June 4, 2021)
+
+### Bug fix
+- Fix generation of extension classes that extend `MultiContainerInterface` and use a custom _fieldsname. @rly (#626)
+
+## HDMF 2.5.6 (May 19, 2021)
+
+### Bug fix
+- Raise minimum version of pandas from 0.23 to 1.0.5 to be compatible with numpy 1.20. @rly (#618)
+- Update documentation and update structure of requirements files. @rly (#619)
+
+## HDMF 2.5.5 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#614)
+
+## HDMF 2.5.4 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#607)
+- Fix issue where dependencies of included types were not being loaded in namespaces / extensions. @rly (#613)
+
+## HDMF 2.5.3 (May 12, 2021)
+
+### Bug fix
+- Fix issue where tables with multi-indexed columns defined using `__columns__` did not have attributes properly set.
+  @rly (#605)
+
+## HDMF 2.5.2 (May 11, 2021)
+
+### Bug fix
+- Add explicit `setuptools` requirement. @hrnciar (#596)
+- Fix issue with generated custom classes that use a custom fields name (e.g., PyNWB uses `__nwbfields__` instead
+  of `__fields__`). @rly (#598)
+- Fix issue with Sphinx Gallery. @rly (#601)
+
+## HDMF 2.5.1 (April 23, 2021)
+
+### Bug fix
+- Revert breaking change in `TypeMap.get_container_cls`. While this function is returned to its original behavior,
+  it will be modified at the next major release. Please use the new `TypeMap.get_dt_container_cls` instead. @rly (#590)
+
+## HDMF 2.5.0 (April 22, 2021)
 
 ### New features
 - `DynamicTable` can be automatically generated using `get_class`. Now the HDMF API can read files with extensions
@@ -8,9 +63,18 @@
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
-- Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
-  (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
-  a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
+- Use HDMF common schema 1.5.0.
+  - Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
+    (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
+    a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
+  - `ExternalResources` was changed to support storing both names and URIs for resources. @mavaylon (#517, #548)
+  - The `VocabData` data type was replaced by `EnumData` to provide more flexible support for data from a set of
+    fixed values.
+  - Added `AlignedDynamicTable`, which defines a `DynamicTable` that supports storing a collection of sub-tables.
+    Each sub-table is itself a `DynamicTable` that is aligned with the main table by row index. Each sub-table
+    defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
+  - See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html#april-19-2021 for more
+    details.
 - Add `EnumData` type for storing data that comes from a fixed set of values. This replaces `VocabData` i.e.
   `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
   `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
@@ -19,21 +83,29 @@
   Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
   defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   @oruebel (#551)
+- Add tutoral for new `AlignedDynamicTable` type. @oruebel (#571)
 - Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
+- Refactor class generation code. @rly (#533, #535)
 - Equality check for `DynamicTable` returns False if the other object is a `DynamicTable` instead of raising an error.
   @rly (#566)
+- Update ruamel.yaml usage to new API. @rly (#587)
+- Remove use of ColoredTestRunner for more readable verbose test output. @rly (#588)
 
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
   attached to a `GroupBuilder`. @dsleiter (#526)
+- Fix bug for generating classes from link specs and ignored 'help' fields. @rly (#535)
 - Various fixes for dynamic class generation. @rly (#561)
-
 - Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
   `MultiContainerInterface`. @rly (#567)
+- Fix `make clean` command for docs to clean up sphinx-gallery tutorial files. @oruebel (#571)
+- Make sure we cannot set ``AlignedDynamicTable`` as a category on an ``AlignedDynamicTable``. @oruebel (#571)
+- Fix included data type resolution between HDMF and custom classes that customize the data_type_inc key. @rly (#503)
+- Fix classification of attributes as new/overridden. @rly (#503)
 
 ## HDMF 2.4.0 (February 23, 2021)
 

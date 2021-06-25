@@ -72,6 +72,8 @@ For details on how to contribute to HDMF see our `contribution guidelines <docs/
 Citing HDMF
 ===========
 
+* **Manuscript:**
+
 .. code-block:: bibtex
 
   @INPROCEEDINGS{9005648,
@@ -82,7 +84,11 @@ Citing HDMF
     volume={},
     number={},
     pages={165-179},
-    doi={10.1109/BigData47090.2019.9005648}}
+    doi={10.1109/BigData47090.2019.9005648},
+    note={}}
+
+* **RRID:**  (Hierarchical Data Modeling Framework, RRID:SCR_021303)
+
 
 LICENSE
 =======
