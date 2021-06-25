@@ -1,9 +1,53 @@
 # HDMF Changelog
 
-## Upcoming
+## Future
+- Add RRID to docs @oruebel (#633)
+
+## HDMF 2.5.8 (June 16, 2021)
+
+### Minor improvements
+- Improve Sphinx documentation. @rly (#627)
+
+### Bug fix
+- Fix error with representing an indexed table column when the `VectorIndex` dtype precision is upgraded more
+  than one step, e.g., uint8 to uint32. This can happen when, for example, a single `add_row` call is used to
+  add more than 65535 elements to an empty indexed column. @rly (#631)
+
+## HDMF 2.5.7 (June 4, 2021)
+
+### Bug fix
+- Fix generation of extension classes that extend `MultiContainerInterface` and use a custom _fieldsname. @rly (#626)
+
+## HDMF 2.5.6 (May 19, 2021)
+
+### Bug fix
+- Raise minimum version of pandas from 0.23 to 1.0.5 to be compatible with numpy 1.20. @rly (#618)
+- Update documentation and update structure of requirements files. @rly (#619)
+
+## HDMF 2.5.5 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#614)
+
+## HDMF 2.5.4 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#607)
+- Fix issue where dependencies of included types were not being loaded in namespaces / extensions. @rly (#613)
+
+## HDMF 2.5.3 (May 12, 2021)
+
+### Bug fix
+- Fix issue where tables with multi-indexed columns defined using `__columns__` did not have attributes properly set.
+  @rly (#605)
+
+## HDMF 2.5.2 (May 11, 2021)
 
 ### Bug fix
 - Add explicit `setuptools` requirement. @hrnciar (#596)
+- Fix issue with generated custom classes that use a custom fields name (e.g., PyNWB uses `__nwbfields__` instead
+  of `__fields__`). @rly (#598)
+- Fix issue with Sphinx Gallery. @rly (#601)
 
 ## HDMF 2.5.1 (April 23, 2021)
 

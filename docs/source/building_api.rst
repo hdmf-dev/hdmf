@@ -1,4 +1,4 @@
-Building API classes
+Building API Classes
 ====================
 
 After you have written an extension, you will need a Pythonic way to interact with the data model. To do this,
