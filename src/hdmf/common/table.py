@@ -854,6 +854,7 @@ class DynamicTable(Container):
                     else:
                         ret[name] = col.get(arg, df=df, index=index, **kwargs)
             except ValueError as ve:
+                # in h5py <2, this was a ValueError. in h5py 3+, this became an IndexError
                 x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
                 if x:
                     msg = ("Row index %s out of range for %s '%s' (length %d)."
@@ -862,7 +863,12 @@ class DynamicTable(Container):
                 else:  # pragma: no cover
                     raise ve
             except IndexError as ie:
-                if str(ie) == 'list index out of range':
+                x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
+                if x:
+                    msg = ("Row index %s out of range for %s '%s' (length %d)."
+                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                    raise IndexError(msg)
+                elif str(ie) == 'list index out of range':
                     msg = ("Row index out of range for %s '%s' (length %d)."
                            % (self.__class__.__name__, self.name, len(self)))
                     raise IndexError(msg) from ie
