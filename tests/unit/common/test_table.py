@@ -7,10 +7,11 @@ import unittest
 
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
-from hdmf.backends.hdf5.h5tools import H5_TEXT
+from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
                          DynamicTableRegion, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
+from hdmf.utils import StrDataset
 
 from tests.unit.utils import get_temp_filepath
 
@@ -1910,7 +1911,11 @@ class TestIndexingH5Dataset(IndexTestMixin, TestCase):
         kwargs = dict()
         if isinstance(my_list[0], str):
             kwargs['dtype'] = H5_TEXT
-        return self.file.create_dataset('dset%d' % self.dset_counter, data=np.array(my_list, **kwargs))
+        dset = self.file.create_dataset('dset%d' % self.dset_counter, data=np.array(my_list, **kwargs))
+        if H5PY_3 and isinstance(my_list[0], str):
+            return StrDataset(dset, None)  # return a wrapper to read data as str instead of bytes
+        else:
+            return dset
 
     def _wrap_check(self, my_list):
         # getitem on h5dataset backed data will return np.array
