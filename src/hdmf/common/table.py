@@ -792,11 +792,15 @@ class DynamicTable(Container):
         return ret
 
     def get(self, key, default=None, df=True, index=True, **kwargs):  # noqa: C901
-        """
-        Select a subset from the table. If the table includes a DynamicTableRegion column, then by default,
+        """Select a subset from the table.
+
+        If the table includes a DynamicTableRegion column, then by default,
         the index/indices of the DynamicTableRegion will be returned. If ``df=True`` and ``index=False``,
         then the returned pandas DataFrame will contain a nested DataFrame in each row of the
-        DynamicTableRegion column. ``df=False`` and ``index=False`` where nested lists would be returned is
+        DynamicTableRegion column. If ``df=False`` and ``index=True``, then a list of lists will be returned
+        where the list containing the DynamicTableRegion column contains the indices of the DynamicTableRegion.
+        Note that in this case, the DynamicTable referenced by the DynamicTableRegion can be accessed through
+        the ``table`` attribute of the DynamicTableRegion object. ``df=False`` and ``index=False`` is
         not yet supported.
 
         :param key: Key defining which elements of the table to select. This may be one of the following:
@@ -808,8 +812,8 @@ class DynamicTable(Container):
 
         :return: 1) If key is a string, then return array with the data of the selected column
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
-                 3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame consisting of one or
-                    more rows
+                 3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame or lists
+                    consisting of one or more rows
 
         :raises: KeyError
         """
@@ -835,45 +839,10 @@ class DynamicTable(Container):
             else:
                 return default
         else:
-            # index by int, list, np.ndarray, or slice --> return pandas Dataframe consisting of one or more rows
+            # index by int, list, np.ndarray, or slice -->
+            # return pandas Dataframe or lists consisting of one or more rows
             arg = key
-            ret = OrderedDict()
-            try:
-                # index with a python slice or single int to select one or multiple rows
-                if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
-                    raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
-                if isinstance(arg, np.ndarray) and len(arg.shape) != 1:
-                    raise ValueError("cannot index DynamicTable with multiple dimensions")
-                ret['id'] = self.id[arg]
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    if index and (isinstance(col, DynamicTableRegion) or
-                                  isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion)):
-                        # return indices (list/array/etc) for DTR
-                        ret[name] = col.get(arg, df=False, index=True, **kwargs)
-                    else:
-                        ret[name] = col.get(arg, df=df, index=index, **kwargs)
-            except ValueError as ve:
-                # in h5py <2, this was a ValueError. in h5py 3+, this became an IndexError
-                x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
-                if x:
-                    msg = ("Row index %s out of range for %s '%s' (length %d)."
-                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg) from ve
-                else:  # pragma: no cover
-                    raise ve
-            except IndexError as ie:
-                x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
-                if x:
-                    msg = ("Row index %s out of range for %s '%s' (length %d)."
-                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
-                elif str(ie) == 'list index out of range':
-                    msg = ("Row index out of range for %s '%s' (length %d)."
-                           % (self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg) from ie
-                else:  # pragma: no cover
-                    raise ie
+            ret = self.__get_columns_as_dict(arg, df, index, **kwargs)
             if df:
                 # reformat objects to fit into a pandas DataFrame
                 id_index = ret.pop('id')
@@ -919,6 +888,54 @@ class DynamicTable(Container):
                 ret = list(ret.values())
 
         return ret
+
+    def __get_columns_as_dict(self, arg, df, index, **kwargs):
+        """Return a dict mapping column names to values (lists/arrays or dataframes), using the column's get().
+
+        :param arg: key passed to get() to return one or more rows
+        :type arg: int, list, np.ndarray, or slice
+        """
+        if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
+            raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+        if isinstance(arg, np.ndarray) and len(arg.shape) != 1:
+            raise ValueError("cannot index DynamicTable with multiple dimensions")
+        ret = OrderedDict()
+        try:
+            # index with a python slice or single int to select one or multiple rows
+            ret['id'] = self.id[arg]
+            for name in self.colnames:
+                col = self.__df_cols[self.__colids[name]]
+                if index and (isinstance(col, DynamicTableRegion) or
+                              (isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion))):
+                    # return indices (in list, array, etc.) for DTR and ragged DTR
+                    ret[name] = col.get(arg, df=False, index=True, **kwargs)
+                else:
+                    ret[name] = col.get(arg, df=df, index=index, **kwargs)
+            return ret
+        # if index is out of range, different errors can be generated depending on the dtype of the column
+        # but despite the differences, raise an IndexError from that error
+        except ValueError as ve:
+            # in h5py <2, if the column is an h5py.Dataset, a ValueError was raised
+            # in h5py 3+, this became an IndexError
+            x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
+            if x:
+                msg = ("Row index %s out of range for %s '%s' (length %d)."
+                       % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                raise IndexError(msg) from ve
+            else:  # pragma: no cover
+                raise ve
+        except IndexError as ie:
+            x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
+            if x:
+                msg = ("Row index %s out of range for %s '%s' (length %d)."
+                       % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                raise IndexError(msg)
+            elif str(ie) == 'list index out of range':
+                msg = ("Row index out of range for %s '%s' (length %d)."
+                       % (self.__class__.__name__, self.name, len(self)))
+                raise IndexError(msg) from ie
+            else:  # pragma: no cover
+                raise ie
 
     def __contains__(self, val):
         """
