@@ -915,18 +915,16 @@ class DynamicTable(Container):
         df_input = OrderedDict()
         for k in cols:  # for each column
             if isinstance(cols[k], np.ndarray):
-                if cols[k].ndim == 1:
-                    if len(id_index) == 1 and cols[k].shape[0] > 1:
-                        # k is a multi-dimension column, and only one element has been selected
-                        df_input[k] = [cols[k]]
-                    else:
-                        df_input[k] = cols[k]
+                if len(id_index) == 1 and cols[k].shape[0] > 1:  # one row selected, column is ragged
+                    df_input[k] = [cols[k]]  # wrap array in list
+                elif cols[k].ndim == 1:  # column is not ragged
+                    df_input[k] = cols[k]
+                elif len(id_index) == cols[k].shape[0]:
+                    # k is a multi-dimension / compound dtype column, more than one row selected, column is not ragged
+                    df_input[k] = list(cols[k])  # convert multi-dim array to list of inner arrays
                 else:
-                    if len(id_index) == cols[k].shape[0]:
-                        # k is a multi-dimension column, and more than one element has been selected
-                        df_input[k] = list(cols[k])
-                    else:
-                        raise ValueError('unable to convert selection to DataFrame')
+                    # TODO k is a multi-dimension / compound dtype column, more than one row selected, column is ragged
+                    raise ValueError('Unable to convert selection to DataFrame')
             elif isinstance(cols[k], (list, tuple)):
                 if len(id_index) == 1 and len(cols[k]) > 1:
                     # k is a multi-dimension column, and only one element has been selected

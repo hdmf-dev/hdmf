@@ -1511,12 +1511,15 @@ class SelectionTestMixin:
         self.table1.add_column('qux', 'DTR column', table=self.table2, data=self._wrap([0, 1]))
         self.table1.add_column('corge', 'ragged DTR column', index=self._wrap([2, 3]), table=self.table2,
                                data=self._wrap([0, 1, 2]))
+        self.table1.add_column('barz', 'ragged column of tuples (cpd type)', index=self._wrap([2, 3]),
+                               data=self._wrap([('r', 11), ('r', 12), ('r', 21)]))
 
         # generate expected dataframe for table1 *without DTR*
         data = OrderedDict()
         data['foo'] = [0.0, 1.0]
         data['bar'] = [['r11', 'r12'], ['r21']]
         data['baz'] = [[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]
+        data['barz'] = [[('r', 11), ('r', 12)], [('r', 21)]]
         idx = [0, 1]
         self.table1_df = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
 
@@ -1528,6 +1531,7 @@ class SelectionTestMixin:
                        self._wrap_check([20.0, 21.0, 22.0])]
         data['qux'] = self._wrap_check([0, 1])
         data['corge'] = [self._wrap_check([0, 1]), self._wrap_check([2])]
+        data['barz'] = [self._wrap_check([('r', 11), ('r', 12)]), self._wrap_check([('r', 21)])]
         idx = [0, 1]
         exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
         pd.testing.assert_frame_equal(rec, exp)
@@ -1562,6 +1566,7 @@ class SelectionTestMixin:
         data['baz'] = [self._wrap_check([10.0, 11.0, 12.0])]
         data['qux'] = self._wrap_check([0])
         data['corge'] = [self._wrap_check([0, 1])]
+        data['barz'] = [self._wrap_check([('r', 11), ('r', 12)])]
         idx = [0]
         exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
         pd.testing.assert_frame_equal(rec, exp)
@@ -1662,94 +1667,6 @@ class SelectionTestMixin:
         for i, j in zip(rec[5], expected):
             np.testing.assert_array_equal(i, j)
 
-    # TODO this test is removed until df=False, index=False (return nested lists for non-ragged and ragged DTRs) is
-    # supported. the expected values should be revisited.
-    # def _check_two_rows_no_df_nested(self, rec):
-    #     self.assertEqual(rec[0], [0, 1])
-    #     np.testing.assert_array_equal(rec[1], self._wrap_check([0.0, 1.0]))
-    #     expected = [self._wrap_check(['r11', 'r12']), self._wrap_check(['r21'])]
-    #     self._assertNestedRaggedArrayEqual(rec[2], expected)
-    #     np.testing.assert_array_equal(rec[3], self._wrap_check([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
-    #     expected = [  # each recent has length 2
-    #         [10, 11],
-    #         self._wrap_check([10.0, 11.0]),
-    #         [self._wrap_check(['s11', 's12']), self._wrap_check(['s21'])],  # ragged array -- wrap in a list
-    #         self._wrap_check([[110., 111., 112.], [120., 121., 122.]]),
-    #         [
-    #             [20, 21],  # nested non-ragged DTR TODO should len be 2? i think so
-    #             self._wrap_check([20.0, 21.0]),
-    #             [self._wrap_check(['t11', 't12']), self._wrap_check(['t21'])],
-    #             self._wrap_check([[210., 211., 212.], [220., 221., 222.]])
-    #         ],
-    #         [  # ragged DTR -- still has two elements, but each element has different number of sub-elements
-    #             [
-    #                 [20, 21],
-    #                 self._wrap_check([20.0, 21.0]),
-    #                 [self._wrap_check(['t11', 't12']), self._wrap_check(['t21'])],
-    #                 self._wrap_check([[210., 211., 212.], [220., 221., 222.]])
-    #             ],
-    #             [
-    #                 [22],
-    #                 self._wrap_check([22]),
-    #                 [self._wrap_check(['t31', 't32', 't33'])],
-    #                 self._wrap_check([[230., 231., 232.]])
-    #             ]
-    #         ]
-    #     ]
-    #     for i, j in zip(rec[4], expected):
-    #         self._assertNestedRaggedArrayEqual(i, j)
-    #     expected = [  # each element has length 2
-    #         [
-    #             [10, 11],
-    #             self._wrap_check([10.0, 11.0]),
-    #             [self._wrap_check(['s11', 's12']), self._wrap_check(['s21'])],
-    #             self._wrap_check([[110., 111., 112.], [120., 121., 122.]]),
-    #             [  # should this have length 2 like for the ragged DTR?
-    #                 [20, 21],
-    #                 self._wrap_check([20.0, 21.0]),
-    #                 [self._wrap_check(['t11', 't12']), self._wrap_check(['t21'])],
-    #                 self._wrap_check([[210., 211., 212.], [220., 221., 222.]])
-    #             ],
-    #             [  # ragged DTR -- still has two elements, but each element has different number of sub-elements
-    #                 [
-    #                     [20, 21],
-    #                     self._wrap_check([20.0, 21.0]),
-    #                     [self._wrap_check(['t11', 't12']), self._wrap_check(['t21'])],
-    #                     self._wrap_check([[210., 211., 212.], [220., 221., 222.]])
-    #                 ],
-    #                 [
-    #                     [22],
-    #                     self._wrap_check([22]),
-    #                     [self._wrap_check(['t31', 't32', 't33'])],
-    #                     self._wrap_check([[230., 231., 232.]])
-    #                 ]
-    #             ]
-    #         ],
-    #         [
-    #             [12],
-    #             self._wrap_check([12.0]),
-    #             [self._wrap_check(['s31', 's32', 's33'])],
-    #             self._wrap_check([[130., 131., 132.]]),
-    #             [
-    #                 [20],
-    #                 self._wrap_check([20.0]),
-    #                 [self._wrap_check(['t11', 't12'])],
-    #                 self._wrap_check([[210., 211., 212.]])
-    #             ],
-    #             [
-    #                 [
-    #                     [20, 21, 22],
-    #                     self._wrap_check([20.0, 21.0, 22.0]),
-    #                     [self._wrap_check(['t11', 't12']), self._wrap_check(['t21']),
-    #                      self._wrap_check(['t31', 't32', 't33'])],
-    #                     self._wrap_check([[210., 211., 212.], [220., 221., 222.], [230., 231., 232.]])
-    #                 ]
-    #             ],
-    #         ]
-    #     ]
-    #     for i, j in zip(rec[5], expected):
-    #         self._assertNestedRaggedArrayEqual(i, j)
-
     def _check_one_row_no_df(self, rec):
         self.assertEqual(rec[0], 0)
         self.assertEqual(rec[1], 0.0)
@@ -1757,6 +1674,7 @@ class SelectionTestMixin:
         np.testing.assert_array_equal(rec[3], self._wrap_check([10.0, 11.0, 12.0]))
         self.assertEqual(rec[4], 0)
         np.testing.assert_array_equal(rec[5], self._wrap_check([0, 1]))
+        np.testing.assert_array_equal(rec[6], self._wrap_check([('r', 11), ('r', 12)]))
 
     def _check_one_row_multiselect_no_df(self, rec):
         # difference from _check_one_row_no_df is that everything is wrapped in a list
@@ -1766,6 +1684,7 @@ class SelectionTestMixin:
         np.testing.assert_array_equal(rec[3], [self._wrap_check([10.0, 11.0, 12.0])])
         self.assertEqual(rec[4], [0])
         np.testing.assert_array_equal(rec[5], [self._wrap_check([0, 1])])
+        np.testing.assert_array_equal(rec[6], [self._wrap_check([('r', 11), ('r', 12)])])
 
     def _assertNestedRaggedArrayEqual(self, arr1, arr2):
         """
@@ -1918,6 +1837,8 @@ class TestSelectionH5Dataset(SelectionTestMixin, TestCase):
         kwargs = dict()
         if isinstance(my_list[0], str):
             kwargs['dtype'] = H5_TEXT
+        elif isinstance(my_list[0], tuple):  # compound dtype
+            kwargs['dtype'] = HDF5IO.__resolve_dtype__(None, my_list[0])
         dset = self.file.create_dataset('dset%d' % self.dset_counter, data=np.array(my_list, **kwargs))
         if H5PY_3 and isinstance(my_list[0], str):
             return StrDataset(dset, None)  # return a wrapper to read data as str instead of bytes
