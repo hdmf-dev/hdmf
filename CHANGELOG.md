@@ -14,7 +14,7 @@
   previous behavior. For example, under HDMF 2.x, an HDF5 dataset `d` with data ['a', 'b'] is read as a
   `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
   as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
--
+- Add RRID to docs. @oruebel (#633)
 -
 
 ### Breaking changes and deprecations
