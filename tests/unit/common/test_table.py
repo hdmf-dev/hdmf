@@ -1447,7 +1447,7 @@ class TestIndexedEnumData(TestCase):
         np.testing.assert_array_equal(idx[2], [['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
 
 
-class IndexTestMixin:
+class SelectionTestMixin:
 
     def setUp(self):
         # table1 contains a non-ragged DTR and a ragged DTR, both of which point to table2
@@ -1500,25 +1500,24 @@ class IndexTestMixin:
         self.table1 = DynamicTable(
             name='table1',
             description='a table to test slicing',
-            id=[0, 1, 2]
+            id=[0, 1]
         )
-        self.table1.add_column('foo', 'scalar column', data=self._wrap([0.0, 1.0, 2.0]))
-        self.table1.add_column('bar', 'ragged column', index=self._wrap([2, 3, 6]),
-                               data=self._wrap(['r11', 'r12', 'r21', 'r31', 'r32', 'r33']))
+        self.table1.add_column('foo', 'scalar column', data=self._wrap([0.0, 1.0]))
+        self.table1.add_column('bar', 'ragged column', index=self._wrap([2, 3]),
+                               data=self._wrap(['r11', 'r12', 'r21']))
         self.table1.add_column('baz', 'multi-dimension column',
                                data=self._wrap([[10.0, 11.0, 12.0],
-                                                [20.0, 21.0, 22.0],
-                                                [30.0, 31.0, 32.0]]))
-        self.table1.add_column('qux', 'DTR column', table=self.table2, data=self._wrap([0, 1, 0]))
-        self.table1.add_column('corge', 'ragged DTR column', index=self._wrap([2, 3, 6]), table=self.table2,
-                               data=self._wrap([0, 1, 2, 0, 1, 2]))
+                                                [20.0, 21.0, 22.0]]))
+        self.table1.add_column('qux', 'DTR column', table=self.table2, data=self._wrap([0, 1]))
+        self.table1.add_column('corge', 'ragged DTR column', index=self._wrap([2, 3]), table=self.table2,
+                               data=self._wrap([0, 1, 2]))
 
         # generate expected dataframe for table1 *without DTR*
         data = OrderedDict()
-        data['foo'] = [0.0, 1.0, 2.0]
-        data['bar'] = [['r11', 'r12'], ['r21'], ['r31', 'r32', 'r33']]
-        data['baz'] = [[10.0, 11.0, 12.0], [20.0, 21.0, 22.0], [30.0, 31.0, 32.0]]
-        idx = [0, 1, 2]
+        data['foo'] = [0.0, 1.0]
+        data['bar'] = [['r11', 'r12'], ['r21']]
+        data['baz'] = [[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]
+        idx = [0, 1]
         self.table1_df = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
 
     def _check_two_rows_df(self, rec):
@@ -1873,8 +1872,16 @@ class IndexTestMixin:
         rec = self.table1.get(np.array([0]), df=False)
         self._check_one_row_multiselect_no_df(rec)
 
+    def test_to_dataframe_nested(self):
+        rec = self.table1.to_dataframe()
+        self._check_two_rows_df_nested(rec)
 
-class TestIndexingArray(IndexTestMixin, TestCase):
+    def test_to_dataframe(self):
+        rec = self.table1.to_dataframe(index=True)
+        self._check_two_rows_df(rec)
+
+
+class TestSelectionArray(SelectionTestMixin, TestCase):
 
     def _wrap(self, my_list):
         return np.array(my_list)
@@ -1883,7 +1890,7 @@ class TestIndexingArray(IndexTestMixin, TestCase):
         return self._wrap(my_list)
 
 
-class TestIndexingList(IndexTestMixin, TestCase):
+class TestSelectionList(SelectionTestMixin, TestCase):
 
     def _wrap(self, my_list):
         return my_list
@@ -1892,7 +1899,7 @@ class TestIndexingList(IndexTestMixin, TestCase):
         return self._wrap(my_list)
 
 
-class TestIndexingH5Dataset(IndexTestMixin, TestCase):
+class TestSelectionH5Dataset(SelectionTestMixin, TestCase):
 
     def setUp(self):
         self.path = get_temp_filepath()

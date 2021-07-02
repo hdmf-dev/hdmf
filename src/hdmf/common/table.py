@@ -9,7 +9,6 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
-from h5py import Dataset
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
@@ -851,7 +850,7 @@ class DynamicTable(Container):
 
         return ret
 
-    def __get_selection_as_dict(self, arg, df, index, **kwargs):
+    def __get_selection_as_dict(self, arg, df, index, exclude=None, **kwargs):
         """Return a dict mapping column names to values (lists/arrays or dataframes) for the given selection.
         Uses each column's get() method, passing kwargs as necessary.
 
@@ -862,11 +861,15 @@ class DynamicTable(Container):
             raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
         if isinstance(arg, np.ndarray) and len(arg.shape) != 1:
             raise ValueError("cannot index DynamicTable with multiple dimensions")
+        if exclude is None:
+            exclude = set([])
         ret = OrderedDict()
         try:
             # index with a python slice or single int to select one or multiple rows
             ret['id'] = self.id[arg]
             for name in self.colnames:
+                if name in exclude:
+                    continue
                 col = self.__df_cols[self.__colids[name]]
                 if index and (isinstance(col, DynamicTableRegion) or
                               (isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion))):
@@ -949,26 +952,25 @@ class DynamicTable(Container):
         """
         return val in self.__colids or val in self.__indices
 
-    @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
+    @docval({'name': 'exclude', 'type': set, 'doc': 'Set of column names to exclude from the dataframe',
+             'default': None},
+            {'name': 'index', 'type': bool,
+             'doc': ('Whether to return indices for a DynamicTableRegion column. If False, nested dataframes will be '
+                     'returned.'),
+             'default': False}
+            )
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
+
+        If this table contains a DynamicTableRegion, by default,
+
+        If exclude is None, this is equivalent to table.get(slice(None, None, None), index=False).
         """
-        exclude = popargs('exclude', kwargs)
-        if exclude is None:
-            exclude = set([])
-        data = OrderedDict()
-        for name in self.colnames:
-            if name in exclude:
-                continue
-            col = self.__df_cols[self.__colids[name]]
-
-            if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                data[name] = [x for x in col[:]]
-            else:
-                data[name] = col[:]
-
-        return pd.DataFrame(data, index=pd.Index(name=self.id.name, data=self.id.data))
+        arg = slice(None, None, None)  # select all rows
+        sel = self.__get_selection_as_dict(arg, df=True, **kwargs)
+        ret = self.__get_selection_as_df(sel)
+        return ret
 
     @classmethod
     @docval(
