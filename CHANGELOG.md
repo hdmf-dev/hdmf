@@ -15,7 +15,7 @@
   `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
   as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
 - Add RRID to docs. @oruebel (#633)
-- Allow passing ``index=True`` to ``DynamicTable.to_dataframe()``. @rly (#579)
+- Allow passing ``index=True`` to ``DynamicTable.to_dataframe()`` to support returning `DynamicTableRegion`` columns as indices or Pandas DataFrame. @rly (#579)
 - Updated external resources tutorial. @mavaylon (#611)
 
 ### Breaking changes and deprecations
