@@ -1512,14 +1512,15 @@ class SelectionTestMixin:
         self.table1.add_column('corge', 'ragged DTR column', index=self._wrap([2, 3]), table=self.table2,
                                data=self._wrap([0, 1, 2]))
         self.table1.add_column('barz', 'ragged column of tuples (cpd type)', index=self._wrap([2, 3]),
-                               data=self._wrap([('r', 11), ('r', 12), ('r', 21)]))
+                               data=self._wrap([(1.0, 11), (2.0, 12), (3.0, 21)]))
 
         # generate expected dataframe for table1 *without DTR*
         data = OrderedDict()
-        data['foo'] = [0.0, 1.0]
-        data['bar'] = [['r11', 'r12'], ['r21']]
-        data['baz'] = [[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]
-        data['barz'] = [[('r', 11), ('r', 12)], [('r', 21)]]
+        data['foo'] = self._wrap_check([0.0, 1.0])
+        data['bar'] = [self._wrap_check(['r11', 'r12']), self._wrap_check(['r21'])]
+        data['baz'] = [self._wrap_check([10.0, 11.0, 12.0]),
+                       self._wrap_check([20.0, 21.0, 22.0])]
+        data['barz'] = [self._wrap_check([(1.0, 11), (2.0, 12)]), self._wrap_check([(3.0, 21)])]
         idx = [0, 1]
         self.table1_df = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
 
@@ -1531,7 +1532,7 @@ class SelectionTestMixin:
                        self._wrap_check([20.0, 21.0, 22.0])]
         data['qux'] = self._wrap_check([0, 1])
         data['corge'] = [self._wrap_check([0, 1]), self._wrap_check([2])]
-        data['barz'] = [self._wrap_check([('r', 11), ('r', 12)]), self._wrap_check([('r', 21)])]
+        data['barz'] = [self._wrap_check([(1.0, 11), (2.0, 12)]), self._wrap_check([(3.0, 21)])]
         idx = [0, 1]
         exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
         pd.testing.assert_frame_equal(rec, exp)
@@ -1566,7 +1567,7 @@ class SelectionTestMixin:
         data['baz'] = [self._wrap_check([10.0, 11.0, 12.0])]
         data['qux'] = self._wrap_check([0])
         data['corge'] = [self._wrap_check([0, 1])]
-        data['barz'] = [self._wrap_check([('r', 11), ('r', 12)])]
+        data['barz'] = [self._wrap_check([(1.0, 11), (2.0, 12)])]
         idx = [0]
         exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
         pd.testing.assert_frame_equal(rec, exp)
@@ -1674,7 +1675,7 @@ class SelectionTestMixin:
         np.testing.assert_array_equal(rec[3], self._wrap_check([10.0, 11.0, 12.0]))
         self.assertEqual(rec[4], 0)
         np.testing.assert_array_equal(rec[5], self._wrap_check([0, 1]))
-        np.testing.assert_array_equal(rec[6], self._wrap_check([('r', 11), ('r', 12)]))
+        np.testing.assert_array_equal(rec[6], self._wrap_check([(1.0, 11), (2.0, 12)]))
 
     def _check_one_row_multiselect_no_df(self, rec):
         # difference from _check_one_row_no_df is that everything is wrapped in a list
@@ -1684,7 +1685,7 @@ class SelectionTestMixin:
         np.testing.assert_array_equal(rec[3], [self._wrap_check([10.0, 11.0, 12.0])])
         self.assertEqual(rec[4], [0])
         np.testing.assert_array_equal(rec[5], [self._wrap_check([0, 1])])
-        np.testing.assert_array_equal(rec[6], [self._wrap_check([('r', 11), ('r', 12)])])
+        np.testing.assert_array_equal(rec[6], [self._wrap_check([(1.0, 11), (2.0, 12)])])
 
     def _assertNestedRaggedArrayEqual(self, arr1, arr2):
         """
@@ -1838,11 +1839,15 @@ class TestSelectionH5Dataset(SelectionTestMixin, TestCase):
         if isinstance(my_list[0], str):
             kwargs['dtype'] = H5_TEXT
         elif isinstance(my_list[0], tuple):  # compound dtype
-            kwargs['dtype'] = HDF5IO.__resolve_dtype__(None, my_list[0])
+            # normally for cpd dtype, __resolve_dtype__ takes a list of DtypeSpec objects
+            cpd_type = [dict(name='cpd_float', dtype=np.dtype('float64')),
+                        dict(name='cpd_int', dtype=np.dtype('int32'))]
+            kwargs['dtype'] = HDF5IO.__resolve_dtype__(cpd_type, my_list[0])
         dset = self.file.create_dataset('dset%d' % self.dset_counter, data=np.array(my_list, **kwargs))
         if H5PY_3 and isinstance(my_list[0], str):
             return StrDataset(dset, None)  # return a wrapper to read data as str instead of bytes
         else:
+            # NOTE: h5py.Dataset with compound dtype are read as numpy arrays with compound dtype, not tuples
             return dset
 
     def _wrap_check(self, my_list):
@@ -1850,6 +1855,11 @@ class TestSelectionH5Dataset(SelectionTestMixin, TestCase):
         kwargs = dict()
         if isinstance(my_list[0], str):
             kwargs['dtype'] = H5_TEXT
+        elif isinstance(my_list[0], tuple):
+            cpd_type = [dict(name='cpd_float', dtype=np.dtype('float64')),
+                        dict(name='cpd_int', dtype=np.dtype('int32'))]
+            kwargs['dtype'] = np.dtype([(x['name'], x['dtype']) for x in cpd_type])
+            # compound dtypes with str are read as bytes, see https://github.com/h5py/h5py/issues/1751
         return np.array(my_list, **kwargs)
 
 
