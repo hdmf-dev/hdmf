@@ -807,7 +807,10 @@ class DynamicTable(Container):
             1) string with the name of the column to select
             2) a tuple consisting of (str, int) where the string identifies the column to select by name
                and the int selects the row
-            3) int, list of ints, or slice selecting a set of full rows in the table
+            3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
+               scalars are returned for each column that has a single value. If a list, array, or slice is used and
+               df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
+               single row.
 
         :return: 1) If key is a string, then return array with the data of the selected column
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
@@ -840,11 +843,13 @@ class DynamicTable(Container):
         else:
             # index by int, list, np.ndarray, or slice -->
             # return pandas Dataframe or lists consisting of one or more rows
-            arg = key
-            sel = self.__get_selection_as_dict(arg, df, index, **kwargs)
+            sel = self.__get_selection_as_dict(key, df, index, **kwargs)
             if df:
                 # reformat objects to fit into a pandas DataFrame
-                ret = self.__get_selection_as_df(sel)
+                if np.isscalar(key):
+                    ret = self.__get_selection_as_df_single_row(sel)
+                else:
+                    ret = self.__get_selection_as_df(sel)
             else:
                 ret = list(sel.values())
 
@@ -859,8 +864,8 @@ class DynamicTable(Container):
         """
         if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
             raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
-        if isinstance(arg, np.ndarray) and len(arg.shape) != 1:
-            raise ValueError("cannot index DynamicTable with multiple dimensions")
+        if isinstance(arg, np.ndarray) and arg.ndim != 1:
+            raise ValueError("Cannot index DynamicTable with multiple dimensions")
         if exclude is None:
             exclude = set([])
         ret = OrderedDict()
@@ -903,44 +908,48 @@ class DynamicTable(Container):
             else:  # pragma: no cover
                 raise ie
 
-    def __get_selection_as_df(self, cols):
+    def __get_selection_as_df_single_row(self, coldata):
+        """Return a pandas dataframe for the given row and columns with the id column as the index.
+
+        This is a special case of __get_selection_as_df where a single row was requested.
+
+        :param coldata: dict mapping column names to values (list/arrays or dataframes)
+        :type coldata: dict
+        """
+        id_index_orig = coldata.pop('id')
+        id_index = [id_index_orig]
+        df_input = OrderedDict()
+        for k in coldata:  # for each column
+            if isinstance(coldata[k], (np.ndarray, list, tuple, pd.DataFrame)):
+                # wrap in a list because coldata[k] may be an array/list/tuple with multiple elements (ragged or
+                # multi-dim column) and pandas needs to have one element per index row (=1 in this case)
+                df_input[k] = [coldata[k]]
+            else:  # scalar, don't wrap
+                df_input[k] = coldata[k]
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        return ret
+
+    def __get_selection_as_df(self, coldata):
         """Return a pandas dataframe for the given rows and columns with the id column as the index.
 
-        :param cols: dict mapping column names to values (list/arrays or dataframes)
-        :type cols: dict
+        This is used when multiple row indices are selected (or a list/array/slice of a single index is passed to get).
+        __get_selection_as_df_single_row should be used if a single index is passed to get.
+
+        :param coldata: dict mapping column names to values (list/arrays or dataframes)
+        :type coldata: dict
         """
-        id_index = cols.pop('id')
-        if np.isscalar(id_index):
-            id_index = [id_index]
+        id_index = coldata.pop('id')
         df_input = OrderedDict()
-        for k in cols:  # for each column
-            if isinstance(cols[k], np.ndarray):
-                if len(id_index) == 1 and cols[k].shape[0] > 1:  # one row selected, column is ragged
-                    df_input[k] = [cols[k]]  # wrap array in list
-                elif cols[k].ndim == 1:  # column is not ragged
-                    df_input[k] = cols[k]
-                elif len(id_index) == cols[k].shape[0]:
-                    # k is a multi-dimension / compound dtype column, more than one row selected, column is not ragged
-                    df_input[k] = list(cols[k])  # convert multi-dim array to list of inner arrays
-                else:
-                    # TODO k is a multi-dimension / compound dtype column, more than one row selected, column is ragged
-                    raise ValueError('Unable to convert selection to DataFrame')
-            elif isinstance(cols[k], (list, tuple)):
-                if len(id_index) == 1 and len(cols[k]) > 1:
-                    # k is a multi-dimension column, and only one element has been selected
-                    df_input[k] = [cols[k]]
-                else:
-                    df_input[k] = cols[k]
-            elif isinstance(cols[k], pd.DataFrame):
-                if len(id_index) == 1:
-                    df_input[k] = [cols[k]]
-                else:
-                    # multiple rows were selected and collapsed into a dataframe
-                    # split up the rows of the df into a list
-                    # TODO make this more efficient
-                    df_input[k] = [cols[k].iloc[[i]] for i in range(len(cols[k]))]
+        for k in coldata:  # for each column
+            if isinstance(coldata[k], np.ndarray) and coldata[k].ndim > 1:
+                df_input[k] = list(coldata[k])  # convert multi-dim array to list of inner arrays
+            elif isinstance(coldata[k], pd.DataFrame):
+                # multiple rows were selected and collapsed into a dataframe
+                # split up the rows of the df into a list of dataframes, one per row
+                # TODO make this more efficient
+                df_input[k] = [coldata[k].iloc[[i]] for i in range(len(coldata[k]))]
             else:
-                df_input[k] = cols[k]
+                df_input[k] = coldata[k]
         ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
         return ret
 
