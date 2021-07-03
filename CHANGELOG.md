@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.0.0 (July 2, 2021)
+## HDMF 3.0.0 (July 3, 2021)
 
 ### New features
 - Add support for Python 3.9, drop support for Python 3.6. @rly (#620)
