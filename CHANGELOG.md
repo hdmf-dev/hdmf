@@ -16,6 +16,7 @@
   as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
 - Add RRID to docs. @oruebel (#633)
 - Allow passing ``index=True`` to ``DynamicTable.to_dataframe()``. @rly (#579)
+- Updated external resources tutorial. @mavaylon (#611)
 
 ### Breaking changes and deprecations
 - Previously, when using ``DynamicTable.__getitem__`` or ``DynamicTable.get`` to access a selection of a
