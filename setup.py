@@ -12,7 +12,7 @@ print('found these packages:', pkgs)
 schema_dir = 'common/hdmf-common-schema/common'
 
 reqs = [
-    'h5py>=2.9,<4',
+    'h5py>=2.10,<4',
     'numpy>=1.16,<1.21',
     'scipy>=1.1,<2',
     'pandas>=1.0.5,<2',
