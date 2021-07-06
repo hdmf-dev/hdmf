@@ -621,7 +621,7 @@ table_double_ragged_col['col7'][0]  # same as line above
 # :py:class:`~hdmf.common.table.VectorData` object
 
 table_double_ragged_col['col7']  # returns col7_ind_ind
-table_double_ragged_col.col7  # returns col7
+table_double_ragged_col.col7  # returns the col7 VectorData object
 
 ###############################################################################
 # Accessing data from a ``DynamicTable`` that contain references to rows of other ``DynamicTable`` objects
@@ -640,10 +640,6 @@ table_double_ragged_col.col7  # returns col7
 # table. To return the contents of the referenced table as a nested
 # :py:class:`~pandas.DataFrame` containing only the referenced rows, use
 # :py:meth:`DynamicTable.get <hdmf.common.table.DynamicTable.get>` with ``index=False``.
-#
-# You can also get rows from a :py:class:`~hdmf.common.table.DynamicTable` as a list of
-# lists where the i-th nested list contains the values for the i-th row. This method is
-# generally not recommended.
 
 # create a new table of users
 users_table = DynamicTable(
@@ -726,6 +722,12 @@ users_table.get([0, 1])
 # get the first two rows of the users table with nested dataframes
 # of the addresses table in the address column
 users_table.get([0, 1], index=False)
+
+###############################################################################
+# .. note::
+#   You can also get rows from a :py:class:`~hdmf.common.table.DynamicTable` as a list of
+#   lists where the i-th nested list contains the values for the i-th row. This method is
+#   generally not recommended.
 
 ###############################################################################
 # Displaying the contents of a table with references to another table
