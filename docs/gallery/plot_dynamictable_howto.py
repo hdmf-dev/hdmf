@@ -1,6 +1,9 @@
 """
-DynamicTable
-============
+
+.. _dynamictable-howtoguide:
+
+DynamicTable How-To Guide
+=========================
 
 This is a user guide to interacting with ``DynamicTable`` objects.
 
@@ -11,9 +14,10 @@ This is a user guide to interacting with ``DynamicTable`` objects.
 # ------------
 # The :py:class:`~hdmf.common.table.DynamicTable` class represents a column-based table
 # to which you can add custom columns. It consists of a name, a description, a list of
-# row IDs, and a list of columns. Columns are represented by
-# :py:class:`~hdmf.common.table.VectorData`, :py:class:`~hdmf.common.table.VectorIndex`,
-# and :py:class:`~hdmf.common.table.DynamicTableRegion` objects.
+# row IDs, and a list of columns. Columns are represented by objects of the class
+# :py:class:`~hdmf.common.table.VectorData`, including subclasses of
+# :py:class:`~hdmf.common.table.VectorData`, such as :py:class:`~hdmf.common.table.VectorIndex`,
+# and :py:class:`~hdmf.common.table.DynamicTableRegion`.
 
 ###############################################################################
 # Constructing a table
@@ -26,7 +30,7 @@ This is a user guide to interacting with ``DynamicTable`` objects.
 from hdmf.common import DynamicTable
 
 table = DynamicTable(
-    name='my table',
+    name='my_table',
     description='an example table',
 )
 
@@ -44,7 +48,7 @@ table = DynamicTable(
 # :py:class:`~hdmf.common.table.DynamicTable` constructor using the ``id``
 # argument. If IDs are passed in, there should be the same number of rows as
 # the column data. If IDs are not passed in, then the IDs will be set to
-# ``range(0, len(column_data))`` by default.
+# ``range(len(column_data))`` by default.
 
 from hdmf.common import VectorData, VectorIndex
 
@@ -66,19 +70,19 @@ table = DynamicTable(
     columns=[col1, col2],
 )
 
-# this table will have two rows with ids 100 and 200
+# this table will have two rows with ids 0 and 1
 table_set_ids = DynamicTable(
     name='my table',
     description='an example table',
     columns=[col1, col2],
-    id=[100, 200],
+    id=[0, 1],
 )
 
 ###############################################################################
 # If a list of integers in passed to ``id``,
 # :py:class:`~hdmf.common.table.DynamicTable` automatically creates
 # an :py:class:`~hdmf.common.table.ElementIdentifiers` object, which is the data type
-# that stores row IDs. The above command is equivalent to
+# that stores row IDs. The above command is equivalent to:
 
 from hdmf.common.table import ElementIdentifiers
 
@@ -86,7 +90,7 @@ table_set_ids = DynamicTable(
     name='my table',
     description='an example table',
     columns=[col1, col2],
-    id=ElementIdentifiers(name='id', data=[100, 200]),
+    id=ElementIdentifiers(name='id', data=[0, 1]),
 )
 
 ###############################################################################
@@ -95,29 +99,26 @@ table_set_ids = DynamicTable(
 # You can also add rows to a :py:class:`~hdmf.common.table.DynamicTable` using
 # :py:meth:`DynamicTable.add_row <hdmf.common.table.DynamicTable.add_row>`.
 # A keyword argument for every column in the table must be supplied.
+# You may also supply an optional row ID.
 
 table.add_row(
     col1=3,
     col2='c',
-)
-
-###############################################################################
-# You can supply an optional row ID to
-# :py:meth:`DynamicTable.add_row <hdmf.common.table.DynamicTable.add_row>`.
-# If no ID is supplied, the automatic row IDs count up from 0.
-
-table.add_row(
-    col1=4,
-    col2='d',
-    id=10,
+    id=2,
 )
 
 ###############################################################################
 # .. note::
-#
-#   Row IDs are not required to be unique. However, if ``enforce_unique_id=True``
-#   is passed, then adding a row with an ID that already exists in the table will
-#   raise an error.
+#   If no ID is supplied, the row ID is automatically set to the number of rows of the table prior to adding the new
+#   row. This can result in duplicate IDs. In general, IDs should be unique, but this is not enforced by default.
+#   Pass `enforce_unique_id=True` to :py:meth:`DynamicTable.add_row <hdmf.common.table.DynamicTable.add_row>`
+#   to raise an error if the ID is set to an existing ID value.
+
+# this row will have ID 3 by default
+table.add_row(
+    col1=4,
+    col2='d',
+)
 
 ###############################################################################
 # Adding columns
@@ -125,7 +126,7 @@ table.add_row(
 # You can add columns to a :py:class:`~hdmf.common.table.DynamicTable` using
 # :py:meth:`DynamicTable.add_column <hdmf.common.table.DynamicTable.add_column>`.
 # If the table already has rows, then the ``data`` argument must be supplied
-# as a list of values, one for each row in the table.
+# as a list of values, one for each row already in the table.
 
 table.add_column(
     name='col3',
@@ -134,39 +135,38 @@ table.add_column(
 )
 
 ###############################################################################
-# Enumerated Data
-# ---------------
+# Enumerated (categorical) data
+# -----------------------------
 # :py:class:`~hdmf.common.table.EnumData` is a special type of column for storing
 # an enumerated data type. This way each unique value is stored once, and the data
 # references those values by index. Using this method is more efficient than storing
-# a single value many types, and has the advantage of communicating to downstream
+# a single value many times, and has the advantage of communicating to downstream
 # tools that the data is categorical in nature.
 
 from hdmf.common.table import EnumData
 
-# this column has a length of 5, not 3
+# this column has a length of 5, not 3. the first row has value "aa"
 enum_col = EnumData(
-    name="cell_type",
-    description="this column holds categorical variables",
+    name='cell_type',
+    description='this column holds categorical variables',
     data=[0, 1, 2, 1, 0],
-    elements=["aa", "bb", "cc"]
+    elements=['aa', 'bb', 'cc']
 )
 
 my_table = DynamicTable(
-    name='my table',
+    name='my_table',
     description='an example table',
     columns=[enum_col],
 )
-
 
 ###############################################################################
 # Ragged array columns
 # --------------------
 # A table column with a different number of elements for each row is called a
-# ragged array. To initialize a :py:class:`~hdmf.common.table.DynamicTable`
+# "ragged array column". To initialize a :py:class:`~hdmf.common.table.DynamicTable`
 # with a ragged array column, pass both
 # the :py:class:`~hdmf.common.table.VectorIndex` and its target
-# :py:class:`~hdmf.common.table.VectorData` object in for the ``columns``
+# :py:class:`~hdmf.common.table.VectorData` in for the ``columns``
 # argument in the constructor. For instance, the following code creates a column
 # called ``col1`` where the first cell is ['1a', '1b', '1c'] and the second cell
 # is ['2a'].
@@ -176,6 +176,8 @@ col1 = VectorData(
     description='column #1',
     data=['1a', '1b', '1c', '2a'],
 )
+# the 3 signifies that elements 0 to 3 (exclusive) of the target column belong to the first row
+# the 4 signifies that elements 3 to 4 (exclusive) of the target column belong to the second row
 col1_ind = VectorIndex(
     name='col1_index',
     target=col1,
@@ -189,6 +191,11 @@ table_ragged_col = DynamicTable(
 )
 
 ####################################################################################
+# .. note::
+#   By convention, the name of the :py:class:`~hdmf.common.table.VectorIndex` should be
+#   the name of the target column with the added suffix "_index".
+
+####################################################################################
 # VectorIndex.data provides the indices for how to break VectorData.data into cells
 #
 # You can add an empty ragged array column to an existing
@@ -197,7 +204,7 @@ table_ragged_col = DynamicTable(
 # This method only works if run before any rows have been added to the table.
 
 new_table = DynamicTable(
-    name='my table',
+    name='my_table',
     description='an example table',
 )
 
@@ -213,17 +220,17 @@ new_table.add_column(
 # the ``data`` argument that correspond to each row as a list/tuple/array of values for
 # the ``index`` argument.
 
-table.add_column(
+table.add_column(  # <-- this table already has 4 rows
     name='col4',
     description='column #4',
     data=[1, 0, -1, 0, -1, 1, 1, -1],
-    index=[3, 4, 6, 8],  # specify the end indices of data for each row
+    index=[3, 4, 6, 8],  # specify the end indices (exclusive) of data for each row
 )
 
 ###############################################################################
 # Referencing rows of other tables
 # --------------------------------
-# You can create a column that references rows of another table using adding a
+# You can create a column that references rows of another table by adding a
 # :py:class:`~hdmf.common.table.DynamicTableRegion` object as a column of your
 # :py:class:`~hdmf.common.table.DynamicTable`. This is analogous to
 # a foreign key in a relational database.
@@ -233,7 +240,7 @@ from hdmf.common.table import DynamicTableRegion
 dtr_col = DynamicTableRegion(
     name='table1_ref',
     description='references rows of earlier table',
-    data=[0, 1, 0, 0],
+    data=[0, 1, 0, 0],  # refers to row indices of the 'table' variable
     table=table
 )
 
@@ -244,7 +251,7 @@ data_col = VectorData(
 )
 
 table2 = DynamicTable(
-    name='my table',
+    name='my_table',
     description='an example table',
     columns=[dtr_col, data_col],
 )
@@ -254,7 +261,7 @@ table2 = DynamicTable(
 #
 # .. note::
 #   The ``data`` values of :py:class:`~hdmf.common.table.DynamicTableRegion` map to the row
-#   index, not the row ID, though if you are using default IDs. these values will be the
+#   index, not the row ID, though if you are using default IDs, these values will be the
 #   same.
 #
 # Reference more than one row of another table with a
@@ -268,6 +275,8 @@ indexed_dtr_col = DynamicTableRegion(
     table=table
 )
 
+# row 0 refers to rows [0, 0], row 1 refers to rows [1], row 2 refers to rows [1, 0], row 3 refers to rows [0, 1] of
+# the "table" variable
 dtr_idx = VectorIndex(
     name='table1_ref2_index',
     target=indexed_dtr_col,
@@ -275,7 +284,7 @@ dtr_idx = VectorIndex(
 )
 
 table3 = DynamicTable(
-    name='my table',
+    name='my_table',
     description='an example table',
     columns=[dtr_idx, indexed_dtr_col],
 )
@@ -288,33 +297,30 @@ table3 = DynamicTable(
 # possible to add a new row. If you want to be able to save this file, load it, and add
 # more rows to the table, you will need to set this up when you create the
 # :py:class:`~hdmf.common.table.DynamicTable`. You do this by wrapping the data with
-# :py:class:`~hdmf.backends.hdf5.h5_utils.H5DataIO`.
+# :py:class:`~hdmf.backends.hdf5.h5_utils.H5DataIO` and the argument ``maxshape=(None, )``.
 
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 col1 = VectorData(
-    name='expandable col1',
+    name='expandable_col1',
     description='column #1',
     data=H5DataIO(data=[1, 2], maxshape=(None,)),
 )
 col2 = VectorData(
-    name='expandable col2',
+    name='expandable_col2',
     description='column #2',
     data=H5DataIO(data=['a', 'b'], maxshape=(None,)),
 )
 
-# Don't forget to wrap the row IDs too!
+# don't forget to wrap the row IDs too!
 ids = ElementIdentifiers(
     name='id',
-    data=H5DataIO(
-        data=[0, 1],
-        maxshape=(None,)
-    )
+    data=H5DataIO(data=[0, 1], maxshape=(None,)),
 )
 
 expandable_table = DynamicTable(
-    name='table that can be expanded after being saved to file',
-    description='an example table',
+    name='expandable_table',
+    description='an example table that can be expanded after being saved to a file',
     columns=[col1, col2],
     id=ids,
 )
@@ -325,16 +331,15 @@ expandable_table = DynamicTable(
 # 1-dimensional matrix that can expand indefinitely along its single dimension. You
 # could also use an integer in place of ``None``. For instance, ``maxshape=(8,)`` would
 # allow the column to grow up to a length of 8. Whichever ``maxshape`` you choose,
-# it should be the same for all :py:class:`~hdmf.common.table.VectorData`,
-# :py:class:`~hdmf.common.table.ElementIdentifiers`, and
-# :py:class:`~hdmf.common.table.DynamicTableRegion` objects in the
+# it should be the same for all :py:class:`~hdmf.common.table.VectorData` and
+# :py:class:`~hdmf.common.table.ElementIdentifiers` objects in the
 # :py:class:`~hdmf.common.table.DynamicTable`, since they must always be the same
 # length. The default :py:class:`~hdmf.common.table.ElementIdentifiers` automatically
 # generated when you pass a list of integers to the ``id`` argument of the
 # :py:class:`~hdmf.common.table.DynamicTable` constructor is not expandable, so do not
 # forget to create a :py:class:`~hdmf.common.table.ElementIdentifiers` object, and wrap
-# that data as well. If any of the columns are indexed, the ``data`` arg of
-# :py:class:`~hdmf.common.table.VectorIndex` will also need to be wrapped in
+# that data as well. If any of the columns are indexed, the ``data`` argument of
+# :py:class:`~hdmf.common.table.VectorIndex` will also need to be wrapped with
 # :py:class:`~hdmf.backends.hdf5.h5_utils.H5DataIO`.
 #
 #
@@ -345,8 +350,8 @@ expandable_table = DynamicTable(
 # :py:class:`~pandas.DataFrame` using
 # :py:meth:`DynamicTable.to_dataframe <hdmf.common.table.DynamicTable.to_dataframe>`.
 # Accessing the table as a :py:class:`~pandas.DataFrame` provides you with powerful,
-# standard methods for indexing, selecting, and querying tabular data from `pandas`_,
-# and is recommended. See also the `pandas indexing documentation`_.
+# standard methods for indexing, selecting, and querying tabular data from `pandas`_.
+# This is the recommended method of reading data from your table. See also the `pandas indexing documentation`_.
 # Printing a :py:class:`~hdmf.common.table.DynamicTable` as a :py:class:`~pandas.DataFrame`
 # or displaying the :py:class:`~pandas.DataFrame` in Jupyter shows a more intuitive
 # tabular representation of the data than printing the
@@ -370,7 +375,7 @@ df = table.to_dataframe()
 # :py:meth:`DynamicTable.from_dataframe <hdmf.common.table.DynamicTable.from_dataframe>`.
 
 table_from_df = DynamicTable.from_dataframe(
-    name='my table',
+    name='my_table',
     df=df,
 )
 
@@ -397,10 +402,14 @@ table[0, 'col4']  # returns [1, 0, -1]
 import numpy as np
 
 table[:2, 'col1']  # get a list of elements from the first two rows at column 'col1'
-table[0:10:2, 'col1']  # get a list of elements from rows 0 to 10 (exclusive) in steps of 2 at column 'col1'
-table[10::-1, 'col1']  # get a list of elements from rows 10 to 0 in reverse order at column 'col1'
-table[slice(0, 10, 2), 'col1']  # equivalent to table[0:4:2, 'col1']
-table[np.s_[0:10:2], 'col1']  # equivalent to table[0:10:2, 'col1']
+table[0:3:2, 'col1']  # get a list of elements from rows 0 to 3 (exclusive) in steps of 2 at column 'col1'
+table[3::-1, 'col1']  # get a list of elements from rows 3 to 0 in reverse order at column 'col1'
+
+# the following are equivalent to table[0:3:2, 'col1']
+table[slice(0, 3, 2), 'col1']
+table[np.s_[0:3:2], 'col1']
+table[[0, 2], 'col1']
+table[np.array([0, 2]), 'col1']
 
 ###############################################################################
 # If the column is a ragged array, instead of a list of row values being returned,
@@ -411,7 +420,7 @@ table[:2, 'col4']  # returns [[1, 0, -1], [0]]
 ###############################################################################
 # .. note::
 #
-#   You cannot supply a list/tuple for the row index or column name. For this
+#   You cannot supply a list/tuple for the column name. For this
 #   kind of access, first convert the :py:class:`~hdmf.common.table.DynamicTable`
 #   to a :py:class:`~pandas.DataFrame`.
 
@@ -434,16 +443,12 @@ table[:, 'col4']  # returns [[1, 0, -1], [0], [-1, 1], [1, -1]]
 
 table[0]  # get the 0th row of the table as a DataFrame
 table[:2]  # get the first two rows
-table[0:10:2]  # get rows 0 to 10 (exclusive) in steps of 2
-table[10::-1]  # get rows 10 to 0 in reverse order
+table[0:3:2]  # get rows 0 to 3 (exclusive) in steps of 2
+table[3::-1]  # get rows 3 to 0 in reverse order
 
-# the following are equivalent to table[0:10:2]
-table[slice(0, 10, 2)]
-table[np.s_[0:10:2]]
-
-# you can also index a DynamicTable with a list or 1-dimensional numpy array of
-# integer values. This will raise an IndexError if any of the index values is
-# out of bounds of the table.
+# the following are equivalent to table[0:3:2]
+table[slice(0, 3, 2)]
+table[np.s_[0:3:2]]
 table[[0, 2]]
 table[np.array([0, 2])]
 
@@ -451,14 +456,6 @@ table[np.array([0, 2])]
 # .. note::
 #
 #   The syntax ``table[i]`` returns the i-th row, NOT the row with ID of `i`.
-
-###############################################################################
-# .. note::
-#
-#   Do not access a set of rows by supplying a list/tuple of row indices. This
-#   syntax will instead return the table element at the row index corresponding to
-#   the first element of the list/tuple and the column index corresponding to
-#   the second element.
 
 ###############################################################################
 # Iterating over rows
@@ -480,7 +477,7 @@ for row in df.itertuples():
 # To access the :py:class:`~hdmf.common.table.VectorData` or
 # :py:class:`~hdmf.common.table.VectorIndex` object representing a column, you
 # can use three different methods. Use the column name in square brackets, e.g.,
-# ``table.[col_name]``, use the
+# ``table[col_name]``, use the
 # :py:meth:`DynamicTable.get <hdmf.common.table.DynamicTable.get>` method, or
 # use the column name as an attribute, e.g., ``table.col_name``.
 
@@ -523,16 +520,12 @@ table.get('col4', default=0)  # you can change the default return value
 
 table['col1'][0]  # get the 0th element from column 'col1'
 table['col1'][:2]  # get a list of the 0th and 1st elements
-table['col1'][0:10:2]  # get a list of the 0th to 10th (exclusive) elements in steps of 2
-table['col1'][10::-1]  # get a list of the 10th to 0th elements in reverse order
+table['col1'][0:3:2]  # get a list of the 0th to 3rd (exclusive) elements in steps of 2
+table['col1'][3::-1]  # get a list of the 3rd to 0th elements in reverse order
 
-# the following are equivalent to table['col1'][0:10:2]
-table['col1'][slice(0, 10, 2)]
-table['col1'][np.s_[0:10:2]]
-
-# you can also index a column with a list or 1-dimensional numpy array of
-# integer values. This will raise an IndexError if any of the index values is
-# out of bounds of the table.
+# the following are equivalent to table['col1'][0:3:2]
+table['col1'][slice(0, 3, 2)]
+table['col1'][np.s_[0:3:2]]
 table['col1'][[0, 2]]
 table['col1'][np.array([0, 2])]
 
@@ -545,32 +538,38 @@ table['col4'][:2]  # get a list of the 0th and 1st list elements
 #   The syntax ``table[col_name][i]`` is equivalent to ``table[i, col_name]``.
 
 ###############################################################################
-# .. note::
-#
-#   It is also possible to access columns by column index using ``table[:, j]``
-#   and elements by row index and column index using ``table[i, j]``. These are
-#   equivalent to ``table.columns[j][:]`` and ``table.columns[j][i]`` and are
-#   not recommended because they interact with the internal list of columns.
-
-###############################################################################
-# Nested ragged array columns
-# ---------------------------
-# Each element within a column can be an n-dimensional array, and this is true
-# for ragged array columns as well.
+# Multi-dimensional columns
+# -------------------------
+# A column can be represented as a multi-dimensional rectangular array or a list of lists, each containing the
+# same number of elements.
 
 col5 = VectorData(
     name='col5',
     description='column #5',
     data=[['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i']],
 )
-col5_ind = VectorIndex(
-    name='col5_index',
-    target=col5,
+
+###############################################################################
+# Ragged multi-dimensional columns
+# ---------------------------------
+# Each element within a column can be an n-dimensional array or list or lists.
+# This is true for ragged array columns as well.
+
+col6 = VectorData(
+    name='col6',
+    description='column #6',
+    data=[['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i']],
+)
+col6_ind = VectorIndex(
+    name='col6_index',
+    target=col6,
     data=[2, 3],
 )
 
 ###############################################################################
-# The ragged array column above has two rows. The first row has two elements,
+# Nested ragged array columns
+# ---------------------------
+# In the example above, the ragged array column above has two rows. The first row has two elements,
 # where each element has 3 sub-elements. This can be thought of as a 2x3 array.
 # The second row has one element with 3 sub-elements, or a 1x3 array. This
 # works only if the data for ``col5`` is a rectangular array, that is, each row
@@ -584,27 +583,27 @@ col5_ind = VectorIndex(
 # third row might be a 1x1 array. This cannot be represented by a singly
 # indexed column, but can be represented by a nested ragged array column.
 
-col6 = VectorData(
-    name='col6',
+col7 = VectorData(
+    name='col7',
     description='column #6',
     data=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'],
 )
-col6_ind = VectorIndex(
-    name='col6_index',
-    target=col6,
+col7_ind = VectorIndex(
+    name='col7_index',
+    target=col7,
     data=[3, 6, 8, 10, 12, 13],
 )
-col6_ind_ind = VectorIndex(
-    name='col6_index_index',
-    target=col6_ind,
+col7_ind_ind = VectorIndex(
+    name='col7_index_index',
+    target=col7_ind,
     data=[2, 5, 6],
 )
 
-# All indices must be added to the table
+# all indices must be added to the table
 table_double_ragged_col = DynamicTable(
     name='my table',
     description='an example table',
-    columns=[col6, col6_ind, col6_ind_ind],
+    columns=[col7, col7_ind, col7_ind_ind],
 )
 
 ###############################################################################
@@ -612,18 +611,162 @@ table_double_ragged_col = DynamicTable(
 # lists is returned. You can then index the resulting list of lists to access
 # the individual elements.
 
-table_double_ragged_col[0, 'col6']  # returns [['a', 'b', 'c'], ['d', 'e', 'f']]
-table_double_ragged_col['col6'][0]  # same as line above
-table_double_ragged_col['col6'][0][1]  # returns ['d', 'e', 'f']
+table_double_ragged_col[0, 'col7']  # returns [['a', 'b', 'c'], ['d', 'e', 'f']]
+table_double_ragged_col['col7'][0]  # same as line above
 
 ###############################################################################
-# Accessing the column named 'col6' using square bracket notation will return
+# Accessing the column named 'col7' using square bracket notation will return
 # the top-level :py:class:`~hdmf.common.table.VectorIndex` for the column.
-# Accessing the column named 'col6' using dot notation will return the
+# Accessing the column named 'col7' using dot notation will return the
 # :py:class:`~hdmf.common.table.VectorData` object
 
-table_double_ragged_col['col6']  # returns col6_ind_ind
-table_double_ragged_col.col6  # returns col6
+table_double_ragged_col['col7']  # returns col7_ind_ind
+table_double_ragged_col.col7  # returns col7
+
+###############################################################################
+# Accessing data from a ``DynamicTable`` that contain references to rows of other ``DynamicTable`` objects
+# --------------------------------------------------------------------------------------------------------
+# By default, when
+# :py:meth:`DynamicTable.__getitem__ <hdmf.common.table.DynamicTable.__getitem__>`
+# and :py:meth:`DynamicTable.get <hdmf.common.table.DynamicTable.get>` are supplied
+# with an int, list of ints, numpy array, or a slice representing rows to return,
+# a pandas :py:class:`~pandas.DataFrame` is returned. If the
+# :py:class:`~hdmf.common.table.DynamicTable` contains a
+# :py:class:`~hdmf.common.table.DynamicTableRegion` column that references rows
+# of other ``DynamicTable`` objects, then by default, the
+# :py:meth:`DynamicTable.__getitem__ <hdmf.common.table.DynamicTable.__getitem__>`
+# and :py:meth:`DynamicTable.get <hdmf.common.table.DynamicTable.get>` methods will
+# return row indices of the referenced table, and not the contents of the referenced
+# table. To return the contents of the referenced table as a nested
+# :py:class:`~pandas.DataFrame` containing only the referenced rows, use
+# :py:meth:`DynamicTable.get <hdmf.common.table.DynamicTable.get>` with ``index=False``.
+#
+# You can also get rows from a :py:class:`~hdmf.common.table.DynamicTable` as a list of
+# lists where the i-th nested list contains the values for the i-th row. This method is
+# generally not recommended.
+
+# create a new table of users
+users_table = DynamicTable(
+    name='users',
+    description='a table containing data/metadata about users, one user per row',
+)
+
+# add simple columns to this table
+users_table.add_column(
+    name='first_name',
+    description='the first name of the user',
+)
+users_table.add_column(
+    name='last_name',
+    description='the last name of the user',
+)
+
+# create a new table of addresses to reference
+addresses_table = DynamicTable(
+    name='addresses',
+    description='a table containing data/metadata about addresses, one address per row',
+)
+addresses_table.add_column(
+    name='street_address',
+    description='the street number and address',
+)
+addresses_table.add_column(
+    name='city',
+    description='the city of the address',
+)
+
+# add rows to the addresses table
+addresses_table.add_row(
+    street_address='123 Main St',
+    city='Springfield'
+)
+addresses_table.add_row(
+    street_address='45 British Way',
+    city='London'
+)
+
+# add a column to the users table that references rows of the addresses table
+users_table.add_column(
+    name='address',
+    description='the address of the user',
+    table=addresses_table
+)
+
+# add rows to the users table
+users_table.add_row(
+    first_name='Grace',
+    last_name='Hopper',
+    address=0  # <-- row index of the address table
+)
+
+users_table.add_row(
+    first_name='Alan',
+    last_name='Turing',
+    address=1  # <-- row index of the address table
+)
+
+# get the first row of the users table
+users_table.get(0)
+
+###############################################################################
+#
+
+# get the first row of the users table with a nested dataframe
+users_table.get(0, index=False)
+
+###############################################################################
+#
+
+# get the first two rows of the users table
+users_table.get([0, 1])
+
+###############################################################################
+#
+
+# get the first two rows of the users table with nested dataframes
+# of the addresses table in the address column
+users_table.get([0, 1], index=False)
+
+###############################################################################
+# Displaying the contents of a table with references to another table
+# -------------------------------------------------------------------
+# Earlier, we converted a :py:class:`~hdmf.common.table.DynamicTable` to a
+# :py:class:`~pandas.DataFrame` using
+# :py:meth:`DynamicTable.to_dataframe <hdmf.common.table.DynamicTable.to_dataframe>`
+# and printed the :py:class:`~pandas.DataFrame` to see its contents.
+# This also works when the :py:class:`~hdmf.common.table.DynamicTable` contains a column
+# that references another table. However, the entries for this column for each row
+# will be printed as a nested :py:class:`~pandas.DataFrame`. This can be difficult to
+# read, so to view only the row indices of the referenced table, pass
+# ``index=True`` to
+# :py:meth:`DynamicTable.to_dataframe <hdmf.common.table.DynamicTable.to_dataframe>`.
+users_df = users_table.to_dataframe(index=True)
+users_df
+
+###############################################################################
+# You can then access the referenced table using the ``table`` attribute of the
+# column object. This is useful when reading a table from a file where you may not have
+# a variable to access the referenced table.
+#
+# First, use :py:meth:`DynamicTable.__getitem__ <hdmf.common.table.DynamicTable.__getitem__>`
+# (square brackets notation) to get the
+# :py:class:`~hdmf.common.table.DynamicTableRegion` object representing the column.
+# Then access its ``table`` attribute to get the addresses table and convert the table
+# to a :py:class:`~pandas.DataFrame`.
+address_column = users_table['address']
+read_addresses_table = address_column.table
+addresses_df = read_addresses_table.to_dataframe()
+
+###############################################################################
+# Get the addresses corresponding to the rows of the users table:
+address_indices = users_df['address']  # pandas Series of row indices into the addresses table
+addresses_df.iloc[address_indices]  # use .iloc because these are row indices not ID values
+
+###############################################################################
+# .. note::
+#   The indices returned by ``users_df['address']`` are row indices and not
+#   the ID values of the table. However, if you are using default IDs, these
+#   values will be the same.
 
 ###############################################################################
 # Creating custom DynamicTable subclasses
