@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.0.0 (July 3, 2021)
+## HDMF 3.0.0 (July 6, 2021)
 
 ### New features
 - Add support for Python 3.9, drop support for Python 3.6. @rly (#620)
@@ -15,7 +15,9 @@
   `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
   as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
 - Add RRID to docs. @oruebel (#633)
-- Allow passing ``index=True`` to ``DynamicTable.to_dataframe()`` to support returning `DynamicTableRegion`` columns as indices or Pandas DataFrame. @rly (#579)
+- Allow passing ``index=True`` to ``DynamicTable.to_dataframe()`` to support returning `DynamicTableRegion` columns
+  as indices or Pandas DataFrame. @rly (#579)
+- Improve ``DynamicTable`` documentation. @rly (#639)
 - Updated external resources tutorial. @mavaylon (#611)
 
 ### Breaking changes and deprecations
