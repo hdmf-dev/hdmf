@@ -565,7 +565,12 @@ class H5IOTest(TestCase):
                 self.assertEqual(dset.io_settings['compression'], 'szip')
         else:
             with self.assertRaises(ValueError):
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with warnings.catch_warnings(record=True) as w:
+                    dset = H5DataIO(np.arange(30),
+                                    compression='szip',
+                                    compression_opts=('ec', 16))
+                    self.assertEqual(len(w), 1)
+                    self.assertEqual(dset.io_settings['compression'], 'szip')
         # Make sure a warning is issued when using lzf compression
         with warnings.catch_warnings(record=True) as w:
             dset = H5DataIO(np.arange(30),
@@ -584,11 +589,13 @@ class H5IOTest(TestCase):
                     "recommended to ensure portability of the generated HDF5 files.")
         if "szip" not in h5py_filters.encode:
             with self.assertRaises(ValueError):
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with warnings.catch_warnings(record=True):  # warning will be raised, this is checked in above test
+                    H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
         else:
             try:
                 with self.assertWarnsWith(UserWarning, warn_msg):
-                    H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                    with warnings.catch_warnings(record=True):  # warning will be raised, this is checked in above test
+                        H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
             except ValueError:
                 self.fail("SZIP is installed but H5DataIO still raises an error")
         # Test error on illegal (i.e., a made-up compressor)
