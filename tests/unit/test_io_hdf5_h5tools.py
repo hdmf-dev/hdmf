@@ -594,8 +594,7 @@ class H5IOTest(TestCase):
         else:
             try:
                 with self.assertWarnsWith(UserWarning, warn_msg):
-                    with warnings.catch_warnings(record=True):  # warning will be raised, this is checked in above test
-                        H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                    H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
             except ValueError:
                 self.fail("SZIP is installed but H5DataIO still raises an error")
         # Test error on illegal (i.e., a made-up compressor)
