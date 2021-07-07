@@ -556,27 +556,28 @@ class H5IOTest(TestCase):
             self.assertEqual(len(w), 0)
             self.assertEqual(dset.io_settings['compression'], 'gzip')
         # Make sure a warning is issued when using szip (even if installed)
+        warn_msg = ("szip compression may not be available on all installations of HDF5. Use of gzip is "
+                    "recommended to ensure portability of the generated HDF5 files.")
         if "szip" in h5py_filters.encode:
-            with warnings.catch_warnings(record=True) as w:
+            with self.assertWarnsWith(UserWarning, warn_msg):
                 dset = H5DataIO(np.arange(30),
                                 compression='szip',
                                 compression_opts=('ec', 16))
-                self.assertEqual(len(w), 1)
-                self.assertEqual(dset.io_settings['compression'], 'szip')
+            self.assertEqual(dset.io_settings['compression'], 'szip')
         else:
             with self.assertRaises(ValueError):
-                with warnings.catch_warnings(record=True) as w:
+                with self.assertWarnsWith(UserWarning, warn_msg):
                     dset = H5DataIO(np.arange(30),
                                     compression='szip',
                                     compression_opts=('ec', 16))
-                    self.assertEqual(len(w), 1)
-                    self.assertEqual(dset.io_settings['compression'], 'szip')
+                self.assertEqual(dset.io_settings['compression'], 'szip')
         # Make sure a warning is issued when using lzf compression
-        with warnings.catch_warnings(record=True) as w:
+        warn_msg = ("lzf compression may not be available on all installations of HDF5. Use of gzip is "
+                    "recommended to ensure portability of the generated HDF5 files.")
+        with self.assertWarnsWith(UserWarning, warn_msg):
             dset = H5DataIO(np.arange(30),
                             compression='lzf')
-            self.assertEqual(len(w), 1)
-            self.assertEqual(dset.io_settings['compression'], 'lzf')
+        self.assertEqual(dset.io_settings['compression'], 'lzf')
 
     def test_error_on_unsupported_compression_filter(self):
         # Make sure gzip does not raise an error
@@ -589,7 +590,7 @@ class H5IOTest(TestCase):
                     "recommended to ensure portability of the generated HDF5 files.")
         if "szip" not in h5py_filters.encode:
             with self.assertRaises(ValueError):
-                with warnings.catch_warnings(record=True):  # warning will be raised, this is checked in above test
+                with self.assertWarnsWith(UserWarning, warn_msg):
                     H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
         else:
             try:
