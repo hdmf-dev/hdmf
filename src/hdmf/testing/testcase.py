@@ -101,6 +101,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr1, (float, np.floating)):
                 np.testing.assert_allclose(arr1, arr2)
             else:
+                if isinstance(arr1, bytes):
+                    arr1 = arr1.decode('utf-8')
+                if isinstance(arr2, bytes):
+                    arr2 = arr2.decode('utf-8')
                 self.assertEqual(arr1, arr2)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2))
@@ -109,7 +113,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
-                np.testing.assert_allclose(arr1, arr2)
+                if np.issubdtype(arr1.dtype, np.number):
+                    np.testing.assert_allclose(arr1, arr2)
+                else:
+                    np.testing.assert_array_equal(arr1, arr2)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):

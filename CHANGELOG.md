@@ -1,9 +1,42 @@
 # HDMF Changelog
 
-## Future
-- Add RRID to docs @oruebel (#633)
+## HDMF 3.0.0 (July 6, 2021)
+
+### New features
+- Add support for Python 3.9, drop support for Python 3.6. @rly (#620)
+- Add support for h5py 3. @ajtritt (#480)
+  - h5py 3 introduced [breaking changes regarding how strings are handled]
+  (https://docs.h5py.org/en/latest/whatsnew/3.0.html#breaking-changes-deprecations), specifically that
+  variable-length UTF-8 strings in datasets are now read as `bytes` objects instead of `str` by default.
+  To reduce the impact of this change on HDMF users, when HDMF reads a variable-length UTF-8 string
+  dataset, instead of returning an `h5py.Dataset` that is read as `bytes` objects, HDMF will return a
+  `hdmf.utils.StrDataset` object that extends `h5py.Dataset` and is read as `str` objects, which preserves
+  previous behavior. For example, under HDMF 2.x, an HDF5 dataset `d` with data ['a', 'b'] is read as a
+  `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
+  as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
+- Add RRID to docs. @oruebel (#633)
+- Allow passing ``index=True`` to ``DynamicTable.to_dataframe()`` to support returning `DynamicTableRegion` columns
+  as indices or Pandas DataFrame. @rly (#579)
+- Improve ``DynamicTable`` documentation. @rly (#639)
+- Updated external resources tutorial. @mavaylon (#611)
+
+### Breaking changes and deprecations
+- Previously, when using ``DynamicTable.__getitem__`` or ``DynamicTable.get`` to access a selection of a
+  ``DynamicTable`` containing a ``DynamicTableRegion``, new columns with mangled names for the table data referred to
+  by the ``DynamicTableRegion`` were added to the returned DataFrame. This did not work properly for ragged
+  ``DynamicTableRegion``, multiple levels of nesting, or multiple rows returned.
+  Now, these methods will by default return columns of indices of the ``DynamicTableRegion``. If ``index=False`` is
+  passed to ``DynamicTable.get``, then nested DataFrames will be returned, one DataFrame per row of the original
+  resulting DataFrame. @rly (#579)
+
+### Bug fixes
+- Update the validator to allow extensions to data types which only define data_type_inc. @dsleiter (#609)
+- Fix error when validating lazy-loaded datasets containing references. @dsleiter (#609)
+- Fix error when using ``DynamicTable.__getitem__`` or ``DynamicTable.get`` when table has a ragged
+  ``DynamicTableRegion``. @rly (#579)
 
 ## HDMF 2.5.8 (June 16, 2021)
+- Fix incorrect dtype precision upgrade for VectorIndex (#631)
 
 ### Minor improvements
 - Improve Sphinx documentation. @rly (#627)
