@@ -1,5 +1,15 @@
 # HDMF Changelog
 
+## Upcoming (TBD)
+
+### Bug fixes
+- Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
+
+## HDMF 3.0.1 (July 7, 2021)
+
+### Bug fixes
+- Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#641)
+
 ## HDMF 3.0.0 (July 6, 2021)
 
 ### New features
