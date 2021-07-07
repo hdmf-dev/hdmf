@@ -170,7 +170,6 @@ jobs:
       - TEST_TOX_ENV: "py38"
       - BUILD_TOX_ENV: "build-py38"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
-      - UPLOAD_WHEELS: "true"
     <<: *ci-steps
 
   python39:
@@ -179,6 +178,7 @@ jobs:
       - TEST_TOX_ENV: "py39"
       - BUILD_TOX_ENV: "build-py39"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
+      - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
     <<: *ci-steps
 
   python39-upgrade-dev:
