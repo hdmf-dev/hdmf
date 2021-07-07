@@ -424,7 +424,7 @@ class TestDtypeValidation(TestCase):
     def test_bool_for_numeric(self):
         """Test that validator does not allow bool data where numeric is specified."""
         self.set_up_spec('numeric')
-        value = np.bool(1)
+        value = True
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': value},
                                    datasets=[DatasetBuilder('data', value)])
