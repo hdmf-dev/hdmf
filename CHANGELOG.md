@@ -29,6 +29,9 @@
   passed to ``DynamicTable.get``, then nested DataFrames will be returned, one DataFrame per row of the original
   resulting DataFrame. @rly (#579)
 
+### Minor improvements
+- Updated requirements and tests. @rly (#640)
+
 ### Bug fixes
 - Update the validator to allow extensions to data types which only define data_type_inc. @dsleiter (#609)
 - Fix error when validating lazy-loaded datasets containing references. @dsleiter (#609)
