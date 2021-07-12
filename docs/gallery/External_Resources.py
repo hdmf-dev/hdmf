@@ -77,6 +77,7 @@ improve the structure and access of data stored with this type for your use case
 # Creating an instance of the ExternalResources class
 # ------------------------------------------------------
 
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
