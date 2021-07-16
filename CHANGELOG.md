@@ -12,10 +12,7 @@
       the current table via ``DynamicTableRegion``
     - Added new module ``hdmf.common.hierarchicaltable`` with helper functions to faciliate interaction with
       hiearchically nested ``DynamicTable`` objects via the following new functions:
-      - ``get_nested_columns_from_dataframe`` which give a nested pandas DataFrame generated from a DynamicTable
-        identifies which columns contain nested DataFrame objects
-      - ``denormalize_nested_dataframe`` to generated a single flattened pandas DataFrame from a nested
-        DataFrame
+      - ``to_hierarchical_dataframe`` and ``to_denormalized_dataframe`` to merge linked tables into a single consolidated pandas DataFrame.
 
 ### Minor improvements
 - Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
