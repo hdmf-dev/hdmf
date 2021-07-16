@@ -927,6 +927,7 @@ class DynamicTable(Container):
             else:  # scalar, don't wrap
                 df_input[k] = coldata[k]
         ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret.name = self.name
         return ret
 
     def __get_selection_as_df(self, coldata):
@@ -951,6 +952,7 @@ class DynamicTable(Container):
             else:
                 df_input[k] = coldata[k]
         ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret.name = self.name
         return ret
 
     def __contains__(self, val):
@@ -958,6 +960,61 @@ class DynamicTable(Container):
         Check if the given value (i.e., column) exists in this table
         """
         return val in self.__colids or val in self.__indices
+
+    def get_foreign_columns(self):
+        """
+        Determine the names of all columns that link to another DynamicTable, i.e.,
+        find all DynamicTableRegion type columns. Similar to a foreign key in a
+        database, a DynamicTableRegion column references elements in another table.
+
+        :returns: List of strings with the column names
+        """
+        col_names = []
+        for col_index, col in enumerate(self.columns):
+            if isinstance(col, DynamicTableRegion):
+                col_names.append(col.name)
+        return col_names
+
+    def has_foreign_columns(self):
+        """
+        Does the table contain DynamicTableRegion columns
+
+        :returns: True if the table contains a DynamicTableRegion columnd, else False
+        """
+        for col_index, col in enumerate(self.columns):
+            if isinstance(col, DynamicTableRegion):
+                return True
+        return False
+
+    def get_linked_tables(self):
+        """
+        Get a list of the full list of all tables that are being linked to directly or indirectly
+        from this table via foreign DynamicTableColumns included in this table or in any table that
+        can be reached through DynamicTableRegion columns
+
+        Returns: List of dicts with the following keys:
+                * 'source_table' : The source table containing the DynamicTableRegion column
+                * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
+                * 'target_table' : The target DynamicTable; same as source_column.table.
+
+        """
+        curr_tables = [self, ]  # Set of tables
+        curr_index = 0
+        foreign_cols = []
+        while curr_index < len(curr_tables):
+            for col_index, col in enumerate(curr_tables[curr_index].columns):
+                if isinstance(col, DynamicTableRegion):
+                    foreign_cols.append({'source_table': curr_tables[curr_index],
+                                         'source_column': col,
+                                         'target_table': col.table})
+                    curr_table_visited = False
+                    for t in curr_tables:
+                        if t is col.table:
+                            curr_table_visited = True
+                    if not curr_table_visited:
+                        curr_tables.append(col.table)
+            curr_index += 1
+        return foreign_cols
 
     @docval({'name': 'exclude', 'type': set, 'doc': 'Set of column names to exclude from the dataframe',
              'default': None},
