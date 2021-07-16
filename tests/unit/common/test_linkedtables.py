@@ -1,6 +1,4 @@
 import numpy as np
-from pandas.testing import assert_frame_equal
-import warnings
 from hdmf.common import DynamicTable
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
@@ -64,6 +62,7 @@ class DynamicTableMultiDTR(DynamicTable):
         if self['child_table_ref2'].target.table is None:
             self['child_table_ref2'].target.table = popargs('child_table2', kwargs)
 
+
 class TestLinkedDynamicTables(TestCase):
     """
     Test functionality specific to DynamicTables containing DynamicTableRegion columns.
@@ -125,7 +124,7 @@ class TestLinkedDynamicTables(TestCase):
                                        index=False)
         # Level 1 table
         self.table_level1.add_row(id=0, child_table_ref1=[0, 1], child_table_ref2=[0])
-        self.table_level1.add_row(id=1, child_table_ref1=[2], child_table_ref2=[1,2])
+        self.table_level1.add_row(id=1, child_table_ref1=[2], child_table_ref2=[1, 2])
         self.table_level1.add_row(id=2, child_table_ref1=[3], child_table_ref2=[3])
         self.table_level1.add_column(data=['tag1', 'tag2', 'tag2'],
                                      name='tag',
@@ -151,7 +150,7 @@ class TestLinkedDynamicTables(TestCase):
         self.assertListEqual(self.table_level0_0['tags'][:],
                              [['tag1'], ['tag2'], ['tag2', 'tag1'], ['tag3', 'tag4', 'tag5']])
         self.assertListEqual(self.table_level0_0['myid'][:].tolist(), np.arange(0, 4, 1).tolist())
-         # Check level0 1 data
+        # Check level0 1 data
         self.assertListEqual(self.table_level0_1.id[:], np.arange(14, 18, 1).tolist())
         self.assertListEqual(self.table_level0_1['tags'][:],
                              [['tag1', 'tag1'], ['tag2', 'tag2'], ['tag3', 'tag3'], ['tag4']])
@@ -201,7 +200,7 @@ class TestLinkedDynamicTables(TestCase):
         self.assertEqual(temp[1]['source_table'].name, self.table_level1.name)
         self.assertEqual(temp[1]['source_column'].name, 'child_table_ref2')
         self.assertEqual(temp[1]['target_table'].name, self.table_level0_1.name)
-         # check level2
+        # check level2
         temp = self.table_level2.get_linked_tables()
         self.assertEqual(len(temp), 3)
         self.assertEqual(temp[0]['source_table'].name, self.table_level2.name)
@@ -222,7 +221,6 @@ class TestLinkedDynamicTables(TestCase):
                              ['child_table_ref1', 'child_table_ref2'])
         self.assertListEqual(get_nested_columns_from_dataframe(self.table_level2.to_dataframe()),
                              ['child_table_ref1'])
-
 
     # def test_to_denormalized_dataframe(self):
     #     """
