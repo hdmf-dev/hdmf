@@ -14,6 +14,9 @@
       hiearchically nested ``DynamicTable`` objects via the following new functions:
       - ``to_hierarchical_dataframe`` and ``to_denormalized_dataframe`` to merge linked tables into a single consolidated pandas DataFrame.
 
+### Bug fixes
+- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to referenece ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
+
 ### Minor improvements
 - Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
   on generated pandas DataFrame objects. @oruebel (#645)

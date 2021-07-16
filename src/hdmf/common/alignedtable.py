@@ -224,6 +224,9 @@ class AlignedDynamicTable(DynamicTable):
         return res
 
     def __getitem__(self, item):
+        return self.get(item)
+
+    def get(self, item, **kwargs):
         """
         :param item: Selection defining the items of interest. This may be a
 
@@ -239,7 +242,7 @@ class AlignedDynamicTable(DynamicTable):
         """
         if isinstance(item, (int, list, np.ndarray, slice)):
             # get a single full row from all tables
-            dfs = ([super().__getitem__(item).reset_index(), ] +
+            dfs = ([super().get(item, **kwargs).reset_index(), ] +
                    [category[item].reset_index() for category in self.category_tables.values()])
             names = [self.name, ] + list(self.category_tables.keys())
             res = pd.concat(dfs, axis=1, keys=names)
@@ -248,7 +251,7 @@ class AlignedDynamicTable(DynamicTable):
         elif isinstance(item, str) or item is None:
             if item in self.colnames:
                 # get a specific column
-                return super().__getitem__(item)
+                return super().get(item, **kwargs)
             else:
                 # get a single category
                 return self.get_category(item).to_dataframe()
