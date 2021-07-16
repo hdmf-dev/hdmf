@@ -5,7 +5,7 @@
 
 ### New features
 - Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
-  ``DynamicTableRegion`` columns:
+  ``DynamicTableRegion`` columns. @oruebel (#645)
     - Added ``DynamicTable.get_foreign_columns`` to find all columns in a table that are a ``DynamicTableRegion``
     - Added ``DynamicTable.has_foreign_columns`` to identify if a ``DynamicTable`` contains ``DynamicTableRegion`` columns
     - Added ``DynamicTable.get_lined_tables`` to retrieve all tables linked to either directly or indirectly from
@@ -19,7 +19,7 @@
 
 ### Minor improvements
 - Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
-  on generated pandas DataFrame objects @oruebel (#???)
+  on generated pandas DataFrame objects. @oruebel (#645)
 
 ## HDMF 3.0.0 (July 6, 2021)
 
