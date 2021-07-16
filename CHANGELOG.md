@@ -1,5 +1,26 @@
 # HDMF Changelog
 
+## HDMF 3.1.0 (???, 2021)
+
+
+### New features
+- Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
+  ``DynamicTableRegion`` columns:
+    - Added ``DynamicTable.get_foreign_columns`` to find all columns in a table that are a ``DynamicTableRegion``
+    - Added ``DynamicTable.has_foreign_columns`` to identify if a ``DynamicTable`` contains ``DynamicTableRegion`` columns
+    - Added ``DynamicTable.get_lined_tables`` to retrieve all tables linked to either directly or indirectly from
+      the current table via ``DynamicTableRegion``
+    - Added new module ``hdmf.common.hierarchicaltable`` with helper functions to faciliate interaction with
+      hiearchically nested ``DynamicTable`` objects via the following new functions:
+      - ``get_nested_columns_from_dataframe`` which give a nested pandas DataFrame generated from a DynamicTable
+        identifies which columns contain nested DataFrame objects
+      - ``denormalize_nested_dataframe`` to generated a single flattened pandas DataFrame from a nested
+        DataFrame
+
+### Minor improvements
+- Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
+  on generated pandas DataFrame objects @oruebel (#???)
+
 ## HDMF 3.0.0 (July 6, 2021)
 
 ### New features
