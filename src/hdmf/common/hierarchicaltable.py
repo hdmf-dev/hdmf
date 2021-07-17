@@ -13,7 +13,7 @@ from collections import OrderedDict
 # TODO: Check if we can remove to_denormalized_dataframe and simply replace it with a reset_index or make it a parameter on to_hierarchical_dataframe
 # TODO: Need to deal with the case where we have more than one DynamicTableRegion column in a given table
 
-def to_hierarchical_dataframe(dynamic_table, flat_column_index=False):
+def to_hierarchical_dataframe(dynamic_table):
     """
     Create a Pandas dataframe with a hierarchical MultiIndex index that represents the
     hierarchical dynamic table.
@@ -70,29 +70,23 @@ def to_hierarchical_dataframe(dynamic_table, flat_column_index=False):
                     index_names = ([(dynamic_table.name, 'id')] +
                                    [(dynamic_table.name, colname)
                                     for colname in dynamic_table.colnames if colname != hcol_name])
-                    if flat_column_index:
-                        columns = [(hcol_target.name, 'id'), ] + list(row_df.columns)
-                    else:
-                        columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
-                                                            [(hcol_target.name, c) for c in row_df.columns],
-                                                            names=('source_table', 'label'))
+                    columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
+                                                        [(hcol_target.name, c) for c in row_df.columns],
+                                                        names=('source_table', 'label'))
         #  if we had an empty data table then at least define the columns
         if index_names is None:
             index_names = ([(dynamic_table.name, 'id')] +
                            [(dynamic_table.name, colname)
                             for colname in dynamic_table.colnames if colname != hcol_name])
-            if flat_column_index:
-                columns = [(hcol_target.name, 'id'), ] + list(hcol_target.colnames)
-            else:
-                columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
-                                                    [(hcol_target.name, c) for c in hcol_target.colnames],
-                                                    names=('source_table', 'label'))
+            columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
+                                                [(hcol_target.name, c) for c in hcol_target.colnames],
+                                                names=('source_table', 'label'))
 
     # Case 2:  Our DynamicTableRegion columns points to another table with a DynamicTableRegion
     else:
         # 1) First we need to recursively flatten the hierarchy by calling 'to_hierarchical_dataframe()'
         #    (i.e., this function) on the target of our hierarchical column
-        hcol_hdf = to_hierarchical_dataframe(hcol_target, flat_column_index=flat_column_index)
+        hcol_hdf = to_hierarchical_dataframe(hcol_target)
         # 2) Iterate over all rows in our hierarchcial columns (i.e,. the DynamicTableRegion column)
         for row_index, row_df_level1 in enumerate(hcol[:]):   # need hcol[:] here  in case this is an h5py.Dataset
             # 1.1): Since hcol is a DynamicTableRegion, each row returns another DynamicTable so we
@@ -134,26 +128,6 @@ def to_hierarchical_dataframe(dynamic_table, flat_column_index=False):
     # Update the dataframe to remove id columns if requested
     return out_df
 
-
-def to_denormalized_dataframe(dynamic_table, flat_column_index=False):
-    """
-    Shorthand for 'self.to_hierarchical_dataframe().reset_index()'
-
-    The function denormalizes the hierarchical table and represents all data as
-    columns in the resulting dataframe.
-    """
-    hier_df = to_hierarchical_dataframe(dynamic_table=dynamic_table, flat_column_index=flat_column_index)
-    flat_df = hier_df.reset_index()
-    if not flat_column_index:
-        # cn[0] is the level, cn[1:] is the label. If cn has only 2 elements than use cn[1] instead to
-        # avoid creating column labels that are tuples with just one element
-        mi_tuples = [(cn[0], cn[1:] if len(cn) > 2 else cn[1])
-                     for cn in flat_df.columns]
-        flat_df.columns = pd.MultiIndex.from_tuples(mi_tuples, names=('source_table', 'label'))
-
-    return flat_df
-
-
 def __get_col_name(col):
     """
     Internal helper function to get the actual name of a pandas DataFrame column from a
@@ -164,6 +138,7 @@ def __get_col_name(col):
     while isinstance(curr_val, tuple):
         curr_val = curr_val[-1]
     return curr_val
+
 
 def __flatten_column_name(col):
     """
@@ -249,3 +224,5 @@ def flatten_column_index(dataframe, max_levels=None, inplace=False):
     re = dataframe if inplace else dataframe.copy()
     re.columns = col_names
     return re
+
+
