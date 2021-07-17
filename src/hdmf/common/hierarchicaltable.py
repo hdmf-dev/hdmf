@@ -5,13 +5,7 @@ tables containing DynamicTableRegion references.
 import pandas as pd
 import numpy as np
 from hdmf.common.table import DynamicTableRegion, VectorIndex
-from collections import OrderedDict
 
-
-# TODO: Add test for DyanmicTableRegion pointing to AlignedDynamicTable to check that the data from all columns is loaded
-# TODO: Remove flat_column_index parameter from to_hierarchical_dataframe and to_denormalized_dataframe
-# TODO: Check if we can remove to_denormalized_dataframe and simply replace it with a reset_index or make it a parameter on to_hierarchical_dataframe
-# TODO: Need to deal with the case where we have more than one DynamicTableRegion column in a given table
 
 def to_hierarchical_dataframe(dynamic_table):
     """
@@ -60,7 +54,8 @@ def to_hierarchical_dataframe(dynamic_table):
                 #        table, ii) all columns (except the hierarchical column we are flattening), and
                 #        iii) the index (i.e., id) from our target row
                 index_data = ([dynamic_table.id[row_index], ] +
-                              [dynamic_table[row_index, colname] for colname in dynamic_table.colnames if colname != hcol_name])
+                              [dynamic_table[row_index, colname]
+                               for colname in dynamic_table.colnames if colname != hcol_name])
                 for i in indexed_column_indicies:  # Fix data from indexed columns
                     index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
                 index.append(tuple(index_data))
@@ -102,7 +97,8 @@ def to_hierarchical_dataframe(dynamic_table):
                     data.append(row_tuple_level3[1:])
                     # 1.1.2.2) Determine the multi-index tuple for our row,
                     index_data = ([dynamic_table.id[row_index], ] +
-                                  [dynamic_table[row_index, colname] for colname in dynamic_table.colnames if colname != hcol_name] +
+                                  [dynamic_table[row_index, colname]
+                                   for colname in dynamic_table.colnames if colname != hcol_name] +
                                   list(row_tuple_level3[0]))
                     for i in indexed_column_indicies:  # Fix data from indexed columns
                         index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
@@ -127,6 +123,7 @@ def to_hierarchical_dataframe(dynamic_table):
     out_df = pd.DataFrame(data=data, index=multi_index, columns=columns)
     # Update the dataframe to remove id columns if requested
     return out_df
+
 
 def __get_col_name(col):
     """
@@ -157,7 +154,7 @@ def __flatten_column_name(col):
                 if isinstance(v, tuple):
                     temp += list(v)
                 else:
-                    temp += [v,]
+                    temp += [v, ]
             re = temp
         return tuple(re)
     else:
@@ -224,5 +221,3 @@ def flatten_column_index(dataframe, max_levels=None, inplace=False):
     re = dataframe if inplace else dataframe.copy()
     re.columns = col_names
     return re
-
-
