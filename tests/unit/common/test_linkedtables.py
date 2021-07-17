@@ -2,7 +2,7 @@ import numpy as np
 from hdmf.common import DynamicTable
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
-from hdmf.common.hierarchicaltable import get_nested_columns_from_dataframe
+# from hdmf.common.hierarchicaltable import get_nested_columns_from_dataframe
 
 
 class DynamicTableSingleDTR(DynamicTable):
@@ -212,15 +212,6 @@ class TestLinkedDynamicTables(TestCase):
         self.assertEqual(temp[2]['source_table'].name, self.table_level1.name)
         self.assertEqual(temp[2]['source_column'].name, 'child_table_ref2')
         self.assertEqual(temp[2]['target_table'].name, self.table_level0_1.name)
-
-    def test_get_nested_columns_from_dataframe(self):
-        self.popolate_tables()
-        self.assertListEqual(get_nested_columns_from_dataframe(self.table_level0_0.to_dataframe()), [])
-        self.assertListEqual(get_nested_columns_from_dataframe(self.table_level0_1.to_dataframe()), [])
-        self.assertListEqual(get_nested_columns_from_dataframe(self.table_level1.to_dataframe()),
-                             ['child_table_ref1', 'child_table_ref2'])
-        self.assertListEqual(get_nested_columns_from_dataframe(self.table_level2.to_dataframe()),
-                             ['child_table_ref1'])
 
     # def test_to_denormalized_dataframe(self):
     #     """
