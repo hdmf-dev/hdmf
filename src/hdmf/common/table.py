@@ -47,9 +47,22 @@ class VectorData(Data):
         self.append(val)
 
     def get(self, key, **kwargs):
+        """
+        Retrieve elements from this VectorData
+
+        :param key: Selection of the elements
+        :param **kwargs: Ignored
+        """
         return super().get(key)
 
     def extend(self, ar, **kwargs):
+        """
+        The extend_data method adds all the elements of the iterable arg to the end of this VectorData.
+
+        Each subclass of VectorData should have its own extend method to ensure functionality and efficiency.
+
+        :param arg: The iterable to add to the end of this VectorData
+        """
         #################################################################################
         # Each subclass of VectorData should have its own extend method to ensure
         # functionality AND efficiency of the extend operation. However, because currently
