@@ -1,9 +1,9 @@
 import pandas as pd
-
+import re
 from . import register_class, EXP_NAMESPACE
+from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer
 from ..utils import docval, popargs
-
 
 class KeyTable(Table):
     """
@@ -293,7 +293,8 @@ class ExternalResources(Container):
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
-            {'name': 'field', 'type': str, 'doc': 'the field of the Container/Data that uses the key', 'default': None},
+            #{'name': 'field', 'type': str, 'doc': 'the field of the Container/Data that uses the key', 'default': None},
+            {'name': 'attribute', 'type': str, 'doc': 'the attribute of the container for the external reference', 'default': None},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
             {'name': 'resources_idx', 'type': Resource, 'doc': 'the resourcetable id', 'default': None},
@@ -311,15 +312,72 @@ class ExternalResources(Container):
         keys must be added separately using _add_key and passed to the *key* argument
         in separate calls of this method. If a resource with the same name already
         exists, then it will be used and the resource_uri will be ignored.
+
+        In the current version of add_ref, the user adds a container and inputs a field of the
+        attribute that is linked to/using some external resource. This is a problem when future
+        users want to query the data. The creator of the data could name fields something others
+        than what field is supposed to be, i.e the path to the attribute.
+
+        Another issue was the oversight on which container we should be using. For example,
+        DynamicTable is itself a data_type, but also contains data_types, i.e the columns of VectorData.
+        When we are adding some external resource, we are saying that the column is linked to
+        that resource and not the table. As a result, it is the VectorData object_id that should be
+        added to the ObjectTable and not the DynamicTable object_id.
+
+        We are then presented with cases that need to be supported:
+        1. Trivial Case: The container is the same as the attribute that has an external resource.
+        The object_id is the id of the attribute and the field is blank. Why is the field blank?
+
+        2. Attribute Case: An attribute of a container is being linked to an external resource.
+        (Non-nested, i.e along the lines that just the VectorData column of a DynamicTable).
+        The object_id is is that of the attribute (in this case the attribute is a data_type) and
+        the field is blank.
+
+        3. Non-DataType Attribute Case: Similar to the Attribute Case prior; however, the attribute is
+        not a data_type and so does not have an id. The object_id to be added to the ObjectTable will be
+        the nearest data_type parent and the field is the path to the attribute.
+
         """
+        ###############################################################
         container = kwargs['container']
-        field = kwargs['field']
+        attribute = kwargs['attribute']
         key = kwargs['key']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         add_entity = False
 
-        object_field = self._check_object_field(container, field)
+        if attribute is None: # Trivial Case
+            field = ''
+            object_field = self._check_object_field(container, field)
+        else: # DataType Attribute Case
+            attribute_object = getattr(container, attribute) # returns attribute object
+            if isinstance(attribute_object, AbstractContainer):
+                field = ''
+                object_field = self._check_object_field(attribute_object, field)
+            else: # Non-DataType Attribute Case:
+                type_map = get_type_map()
+                obj_mapper = type_map.get_map(container)
+                spec = obj_mapper.get_attr_spec(attr_name=attribute)
+                parent_spec = spec.parent # return the parent spec of the attribute
+                if parent_spec.data_type is None:
+                    while parent_spec.data_type is None:
+                        parent_spec = parent_spec.parent # find the closest parent with a data_type
+                    parent_cls=type_map.get_dt_container_cls(data_type=parent_spec.data_type, namespace=parent_spec.namespace, autogen=False)
+                    if isinstance(container, parent_cls):
+                        parent_id = container.object_id
+                        # We need to get the path of the spec for field
+                        absolute_path = spec.path
+                        field = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                        object_field = self._check_object_field(parent_id, field)
+                    else:
+                        msg = 'Container not the nearest data_type'
+                        raise ValueError(msg)
+                else:
+                    parent_id =  container.object_id # container needs to be the parent
+                    absolute_path = spec.path
+                    field = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                    object_field = self._check_object_field(parent_id, field)
+
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
         # if same key is used multiple times, determine
