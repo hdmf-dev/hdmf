@@ -17,6 +17,7 @@ def to_hierarchical_dataframe(dynamic_table):
     first DynamicTableRegio column found for each table. Any additional DynamicTableRegion columns will remain
     nested.
     """
+    # TODO: Need to deal with the case where we have more than one DynamicTableRegion column in a given table
     # Get the references column
     foreign_columns = dynamic_table.get_foreign_columns()
     if len(foreign_columns) == 0:
