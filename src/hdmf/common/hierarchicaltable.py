@@ -15,18 +15,19 @@ from hdmf.utils import docval, getargs
         is_method=False)
 def to_hierarchical_dataframe(dynamic_table):
     """
-    Create a pandas.DataFrame with a hierarchical pandas.MultiIndex index that represents the
-    hierarchical dynamic table.
+    Create a hierarchical pandas.DataFrame that represents all data from a collection of linked DynamicTable.
 
     **LIMITATIONS:** Currently this function only supports DynamicTables with a single DynamicTableRegion column.
     If a table has more than one foreign DynamicTableRegion column then the function will expand only the
     first DynamicTableRegio column found for each table. Any additional DynamicTableRegion columns will remain
     nested.
 
-    **NOTE:** Some useful functions for further processing of the generated DataFrame include:
-     * pandas.DataFrame.reset_index to turn the data from the pandas.MultiIndex into columns
-     * :py:meth:`~hdmf.common.hierarchicaltable.drop_id_columns` to remove all 'id' columns
-     * :py:math:`~hdmf.common.hierarchicaltable.flatten_column_index` to flatten the column index
+    **NOTE:** Some useful functions for further processing of the generated
+    DataFrame include:
+
+    * pandas.DataFrame.reset_index to turn the data from the pandas.MultiIndex into columns
+    * :py:meth:`~hdmf.common.hierarchicaltable.drop_id_columns` to remove all 'id' columns
+    * :py:meth:`~hdmf.common.hierarchicaltable.flatten_column_index` to flatten the column index
     """
     # TODO: Need to deal with the case where we have more than one DynamicTableRegion column in a given table
     # Get the references column
@@ -218,8 +219,12 @@ def drop_id_columns(**kwargs):
         is_method=False)
 def flatten_column_index(**kwargs):
     """
-    Flatten the column index of a pandas DataFrame, i.e., changing it from a MultiIndex to a normal Index,
-    with each column usually being identified by a tuple of strings.
+    Flatten the column index of a pandas DataFrame.
+
+    The functions changes the dataframe.columns from a pandas.MultiIndex to a normal Index,
+    with each column usually being identified by a tuple of strings. This function is
+    typically used in conjunction with DataFrames generated
+    by :py:meth:`~hdmf.common.hierarchicaltable.to_hierarchical_dataframe`
 
     :raises ValueError: In case the num_levels is not >0
     :raises TypeError: In case that dataframe parameter is not a pandas.Dataframe.
