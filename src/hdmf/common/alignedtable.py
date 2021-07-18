@@ -262,3 +262,24 @@ class AlignedDynamicTable(DynamicTable):
                 return self.get_category(item[0])[item[1]][item[2]]
             else:
                 raise ValueError("Expected tuple of length 2 or 3 with (category, column, row) as value.")
+
+    @docval({'name': 'ignore_category_tables', 'type': bool,
+             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
+            allow_extra=False)
+    def has_foreign_columns(self, **kwargs):
+        """
+        Does the table contain DynamicTableRegion columns
+
+        :returns: True if the table or any of the category tables contains a DynamicTableRegion column, else False
+        """
+        ignore_category_tables = getargs('ignore_category_tables', kwargs)
+        if super().has_foreign_columns():
+            return True
+        if not ignore_category_tables:
+            for table in self.category_tables.values():
+                if table.has_foreign_columns():
+                    return True
+        return False
+
+# TODO Implement DynamicTable.get_foreign_columns
+# TODO Implement DynamicTable.get_linked_tables
