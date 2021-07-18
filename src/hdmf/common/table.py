@@ -992,7 +992,7 @@ class DynamicTable(Container):
         """
         Does the table contain DynamicTableRegion columns
 
-        :returns: True if the table contains a DynamicTableRegion columnd, else False
+        :returns: True if the table contains a DynamicTableRegion column, else False
         """
         for col_index, col in enumerate(self.columns):
             if isinstance(col, DynamicTableRegion):
