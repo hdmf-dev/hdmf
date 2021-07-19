@@ -4,6 +4,7 @@
 
 ### Bug fixes
 - Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
+- Fix documentation for `DynamicTable.get` and `DynamicTableRegion.get`. @rly (#650)
 
 ## HDMF 3.0.1 (July 7, 2021)
 
