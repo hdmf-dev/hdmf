@@ -384,7 +384,7 @@ class TestHierarchicalTable(TestCase):
         del self.aligned_table
         del self.parent_table
 
-    def test_to_hierarchical_table_no_dtr_on_top_level(self):
+    def test_to_hierarchical_dataframe_no_dtr_on_top_level(self):
         # Cover the case where our top dtr is flat (i.e., without a VectorIndex)
         dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(4), table=self.parent_table)
         spttable = DynamicTable(name='super_parent_table',
@@ -398,7 +398,7 @@ class TestHierarchicalTable(TestCase):
                             ('aligned_table', ('level0_0', 'tags')), ('aligned_table', ('level0_0', 'myid'))]
         self.assertListEqual(hier_df.columns.to_list(), expected_columns)
 
-    def test_to_hierarchical_table_indexed_dtr_on_last_level(self):
+    def test_to_hierarchical_dataframe_indexed_dtr_on_last_level(self):
         # Parent table
         dtr_p1 = DynamicTableRegion(name='l1', description='l1', data=np.arange(4), table=self.aligned_table)
         vi_dtr_p1 = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_p1)
@@ -419,7 +419,7 @@ class TestHierarchicalTable(TestCase):
         self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list(),
                              [['tag1'], ['tag2'], ['tag2', 'tag1']])
 
-    def test_to_hierarchical_table_empty_tables(self):
+    def test_to_hierarchical_dataframe_empty_tables(self):
         # Setup empty tables with the following hierarchy
         # super_parent_table --->  parent_table --->  child_table
         a1 = DynamicTable(name='level0_0', description="level0_0 DynamicTable",
@@ -438,7 +438,7 @@ class TestHierarchicalTable(TestCase):
                             ('level0_0', 'id'), ('level0_0', 'l0')]
         self.assertListEqual(hier_df.columns.to_list(), expected_columns)
 
-    def test_to_hierarchical_table_multilevel(self):
+    def test_to_hierarchical_dataframe_multilevel(self):
         hier_df = to_hierarchical_dataframe(self.super_parent_table).reset_index()
         expected_cols = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'),
                          ('parent_table', 'id'), ('parent_table', 'p1'),
@@ -454,7 +454,7 @@ class TestHierarchicalTable(TestCase):
                              [['tag1'], ['tag2'], ['tag2', 'tag1']])
         self.assertListEqual(hier_df[('aligned_table', ('aligned_table', 'a1'))].to_list(), list(range(3)))
 
-    def test_to_hierarchical_table(self):
+    def test_to_hierarchical_dataframe(self):
         hier_df = to_hierarchical_dataframe(self.parent_table)
         self.assertEqual(len(hier_df), 4)
         self.assertEqual(len(hier_df.columns), 5)
@@ -476,7 +476,7 @@ class TestHierarchicalTable(TestCase):
         for i, v in enumerate(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list()):
             self.assertListEqual(v, tags[i])
 
-    def test_to_hierarchical_table_flat_table(self):
+    def test_to_hierarchical_dataframe_flat_table(self):
         hier_df = to_hierarchical_dataframe(self.category0)
         assert_frame_equal(hier_df, self.category0.to_dataframe())
         hier_df = to_hierarchical_dataframe(self.aligned_table)
