@@ -203,8 +203,8 @@ class TestLinkedAlignedDynamicTables(TestCase):
         self.assertListEqual(temp_aligned_table.get_foreign_columns(), [])
         self.assertListEqual(temp_aligned_table.get_foreign_columns(ignore_category_tables=True), [])
 
-    def test_get_foreign_column_in_main_table(self):
-        temp_table0 = DynamicTable(name='t1', description='t1',
+    def test_get_foreign_column_in_main_and_category_table(self):
+        temp_table0 = DynamicTable(name='t0', description='t1',
                                    colnames=['c1', 'c2'],
                                    columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
                                             VectorData(name='c2', description='c2', data=np.arange(4))])
@@ -224,6 +224,107 @@ class TestLinkedAlignedDynamicTables(TestCase):
         self.assertListEqual(temp_aligned_table.get_foreign_columns(), [(None, 'a2'), ('t1', 'c2')])
         # We should only get the column from the main table
         self.assertListEqual(temp_aligned_table.get_foreign_columns(ignore_category_tables=True), [(None, 'a2')])
+
+    def test_get_linked_tables(self):
+        # check without subcateogries
+        linked_table = self.aligned_table.get_linked_tables(ignore_category_tables=True)
+        self.assertListEqual(linked_table, [])
+        # check with subcateogries
+        linked_tables = self.aligned_table.get_linked_tables()
+        self.assertEqual(len(linked_tables), 2)
+        self.assertTupleEqual((linked_tables[0]['source_table'].name,
+                               linked_tables[0]['source_column'].name,
+                               linked_tables[0]['target_table'].name),
+                              ('category0', 'child_table_ref1', 'level0_0'))
+        self.assertTupleEqual((linked_tables[1]['source_table'].name,
+                               linked_tables[1]['source_column'].name,
+                               linked_tables[1]['target_table'].name),
+                              ('category1', 'child_table_ref1', 'level0_1'))
+
+    def test_get_linked_tables_none(self):
+        """Test false if there are no DynamicTableRegionColumns"""
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          VectorData(name='a2', description='c2', data=np.arange(4))])
+        self.assertListEqual(temp_aligned_table.get_linked_tables(), [])
+        self.assertListEqual(temp_aligned_table.get_linked_tables(ignore_category_tables=True), [])
+
+    def test_get_linked_tables_complex_link(self):
+        temp_table0 = DynamicTable(name='t0', description='t1',
+                                   colnames=['c1', 'c2'],
+                                   columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                            VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           DynamicTableRegion(name='c2', description='c2',
+                                                              data=np.arange(4), table=temp_table0)])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          DynamicTableRegion(name='a2', description='c2',
+                                                                             data=np.arange(4), table=temp_table)])
+        # NOTE: in this example templ_aligned_table both points to temp_table and at the
+        #       same time contains temp_table as a category. This could lead to temp_table
+        #       visited multiple times and we want to make sure this doesn't happen
+        # We should get both the DynamicTableRegion from the main table and the category 't1'
+        linked_tables = temp_aligned_table.get_linked_tables()
+        self.assertEqual(len(linked_tables), 2)
+        for i, v in enumerate([('my_aligned_table', 'a2', 't1'), ('t1', 'c2', 't0')]):
+            self.assertTupleEqual((linked_tables[i]['source_table'].name,
+                                   linked_tables[i]['source_column'].name,
+                                   linked_tables[i]['target_table'].name), v)
+        # Now, since our main table links to the category table the result should remain the same
+        # even if we ignore the category table
+        linked_tables = temp_aligned_table.get_linked_tables(ignore_category_tables=True)
+        self.assertEqual(len(linked_tables), 2)
+        for i, v in enumerate([('my_aligned_table', 'a2', 't1'), ('t1', 'c2', 't0')]):
+            self.assertTupleEqual((linked_tables[i]['source_table'].name,
+                                   linked_tables[i]['source_column'].name,
+                                   linked_tables[i]['target_table'].name), v)
+
+    def test_get_linked_tables_simple_link(self):
+        temp_table0 = DynamicTable(name='t0', description='t1',
+                                   colnames=['c1', 'c2'],
+                                   columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                            VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           DynamicTableRegion(name='c2', description='c2',
+                                                              data=np.arange(4), table=temp_table0)])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          DynamicTableRegion(name='a2', description='c2',
+                                                                             data=np.arange(4), table=temp_table0)])
+        # NOTE: in this example temp_aligned_table and temp_table both point to temp_table0
+        # We should get both the DynamicTableRegion from the main table and the category 't1'
+        linked_tables = temp_aligned_table.get_linked_tables()
+        self.assertEqual(len(linked_tables), 2)
+        for i, v in enumerate([('my_aligned_table', 'a2', 't0'), ('t1', 'c2', 't0')]):
+            self.assertTupleEqual((linked_tables[i]['source_table'].name,
+                                   linked_tables[i]['source_column'].name,
+                                   linked_tables[i]['target_table'].name), v)
+        # Since no table ever link to our category temp_table we should only get the link from our
+        # main table here, in contrast to what happens in the test_get_linked_tables_complex_link case
+        linked_tables = temp_aligned_table.get_linked_tables()
+        self.assertEqual(len(linked_tables), 2)
+        for i, v in enumerate([('my_aligned_table', 'a2', 't0'), ]):
+            self.assertTupleEqual((linked_tables[i]['source_table'].name,
+                                   linked_tables[i]['source_column'].name,
+                                   linked_tables[i]['target_table'].name), v)
 
 
 class TestLinkedDynamicTables(TestCase):

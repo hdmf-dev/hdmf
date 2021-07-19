@@ -999,7 +999,12 @@ class DynamicTable(Container):
                 return True
         return False
 
-    def get_linked_tables(self):
+    @docval({'name': 'other_tables', 'type': (list, tuple, set),
+             'doc': "List of additional tables to consider in the search. Usually this "
+                    "parameter is used for internal purposes, e.g., when we need to "
+                    "consider AlignedDynamicTable", 'default': None},
+            allow_extra=False)
+    def get_linked_tables(self, **kwargs):
         """
         Get a list of the full list of all tables that are being linked to directly or indirectly
         from this table via foreign DynamicTableColumns included in this table or in any table that
@@ -1009,9 +1014,11 @@ class DynamicTable(Container):
                 * 'source_table' : The source table containing the DynamicTableRegion column
                 * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
                 * 'target_table' : The target DynamicTable; same as source_column.table.
-
         """
         curr_tables = [self, ]  # Set of tables
+        other_tables = getargs('other_tables', kwargs)
+        if other_tables is not None:
+            curr_tables += other_tables
         curr_index = 0
         foreign_cols = []
         while curr_index < len(curr_tables):
