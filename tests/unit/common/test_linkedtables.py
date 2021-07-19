@@ -7,6 +7,7 @@ from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTa
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
 from hdmf.common.hierarchicaltable import to_hierarchical_dataframe, drop_id_columns, flatten_column_index
+from pandas.testing import assert_frame_equal
 
 
 class DynamicTableSingleDTR(DynamicTable):
@@ -399,6 +400,12 @@ class TestHierarchicalTable(TestCase):
         tags = [['tag1'], ['tag2'], ['tag2', 'tag1'], ['tag3', 'tag4', 'tag5']]
         for i, v in enumerate(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list()):
             self.assertListEqual(v, tags[i])
+
+    def test_to_hierarchical_table_flat_table(self):
+        hier_df = to_hierarchical_dataframe(self.category0)
+        assert_frame_equal(hier_df, self.category0.to_dataframe())
+        hier_df = to_hierarchical_dataframe(self.aligned_table)
+        assert_frame_equal(hier_df, self.aligned_table.to_dataframe())
 
     def test_drop_id_columns(self):
         hier_df = to_hierarchical_dataframe(self.parent_table)
