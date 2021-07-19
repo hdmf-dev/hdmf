@@ -403,13 +403,15 @@ class TestHierarchicalTable(TestCase):
     def test_drop_id_columns(self):
         hier_df = to_hierarchical_dataframe(self.parent_table)
         cols = hier_df.columns.to_list()
-        drop_id_columns(hier_df, inplace=False)
+        mod_df = drop_id_columns(hier_df, inplace=False)
+        expected_cols = [('aligned_table', ('aligned_table', 'a1')),
+                         ('aligned_table', ('level0_0', 'tags')),
+                         ('aligned_table', ('level0_0', 'myid'))]
         self.assertListEqual(hier_df.columns.to_list(), cols)  # Test that no columns are dropped with inplace=False
+        self.assertListEqual(mod_df.columns.to_list(), expected_cols)   # Assert that we got back a modified dataframe
         drop_id_columns(hier_df, inplace=True)
         self.assertListEqual(hier_df.columns.to_list(),
-                             [('aligned_table', ('aligned_table', 'a1')),
-                              ('aligned_table', ('level0_0', 'tags')),
-                              ('aligned_table', ('level0_0', 'myid'))])
+                             expected_cols)
         flat_df = to_hierarchical_dataframe(self.parent_table).reset_index(inplace=False)
         drop_id_columns(flat_df, inplace=True)
         self.assertListEqual(flat_df.columns.to_list(),
@@ -418,13 +420,47 @@ class TestHierarchicalTable(TestCase):
                               ('aligned_table',    ('level0_0', 'tags')),
                               ('aligned_table',    ('level0_0', 'myid'))])
 
+    def test_flatten_column_index(self):
+        hier_df = to_hierarchical_dataframe(self.parent_table).reset_index()
+        cols = hier_df.columns.to_list()
+        expexted_cols = [('parent_table', 'id'),
+                         ('parent_table', 'p1'),
+                         ('aligned_table', 'id'),
+                         ('aligned_table', 'aligned_table', 'a1'),
+                         ('aligned_table', 'level0_0', 'id'),
+                         ('aligned_table', 'level0_0', 'tags'),
+                         ('aligned_table', 'level0_0', 'myid')]
+        df = flatten_column_index(hier_df, inplace=False)
+        # Test that our columns have not changed with inplace=False
+        self.assertListEqual(hier_df.columns.to_list(), cols)
+        self.assertListEqual(df.columns.to_list(), expexted_cols)  # make sure we got back a modified dataframe
+        flatten_column_index(hier_df, inplace=True)  # make sure we can also directly flatten inplace
+        self.assertListEqual(hier_df.columns.to_list(), expexted_cols)
+        # Test that we can apply flatten_column_index again on our already modified dataframe to reduce the levels
+        flatten_column_index(hier_df, inplace=True, max_levels=2)
+        expexted_cols = [('parent_table', 'id'), ('parent_table', 'p1'), ('aligned_table', 'id'),
+                         ('aligned_table', 'a1'), ('level0_0', 'id'), ('level0_0', 'tags'), ('level0_0', 'myid')]
+        self.assertListEqual(hier_df.columns.to_list(), expexted_cols)
+        # Test that we can directly reduce the max_levels to just 1
+        hier_df = to_hierarchical_dataframe(self.parent_table).reset_index()
+        flatten_column_index(hier_df, inplace=True, max_levels=1)
+        expexted_cols = ['id', 'p1', 'id', 'a1', 'id', 'tags', 'myid']
+        self.assertListEqual(hier_df.columns.to_list(), expexted_cols)
+
+    def test_flatten_column_index_bad_maxlevels(self):
+        hier_df = to_hierarchical_dataframe(self.parent_table)
+        with self.assertRaisesWith(ValueError, 'max_levels must be greater than 0'):
+            flatten_column_index(dataframe=hier_df, inplace=True, max_levels=-1)
+        with self.assertRaisesWith(ValueError, 'max_levels must be greater than 0'):
+            flatten_column_index(dataframe=hier_df, inplace=True, max_levels=0)
+
 
 class TestLinkedDynamicTables(TestCase):
     """
     Test functionality specific to DynamicTables containing DynamicTableRegion columns.
 
     Since these functions only implements front-end convenient functions for DynamicTable
-    we do not need to worry about I/O here (that is tested elsewere), but it is sufficient if
+    we do not need to worry about I/O here (that is tested elsewere), ut it is sufficient if
     we test with container class. The only time I/O becomes relevant is on read in case that, e.g., a
     h5py.Dataset may behave differently than a numpy array.
     """
