@@ -247,8 +247,12 @@ def flatten_column_index(**kwargs):
     dataframe, max_levels, inplace = getargs('dataframe', 'max_levels', 'inplace', kwargs)
     if max_levels is not None and max_levels <= 0:
         raise ValueError('max_levels must be greater than 0')
+    # Compute the new column names
+    col_names = [__flatten_column_name(col) for col in dataframe.columns.values]
+    # Apply the max_levels filter. Make sure to do this only for columns that are actually tuples
+    # in order not ot accidentally shorten the actual string name of columns
     select_levels = slice(None) if max_levels is None else slice(-max_levels, None) if max_levels > 1 else -1
-    col_names = [__flatten_column_name(col)[select_levels] for col in dataframe.columns.values]
+    col_names = [col[select_levels] if isinstance(col, tuple) else col for col in col_names]
     re = dataframe if inplace else dataframe.copy()
     re.columns = col_names
     return re

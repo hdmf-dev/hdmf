@@ -475,6 +475,15 @@ class TestHierarchicalTable(TestCase):
         expexted_cols = ['id', 'p1', 'id', 'a1', 'id', 'tags', 'myid']
         self.assertListEqual(hier_df.columns.to_list(), expexted_cols)
 
+    def test_flatten_column_index_already_flat_index(self):
+        hier_df = to_hierarchical_dataframe(self.parent_table).reset_index()
+        flatten_column_index(hier_df, inplace=True, max_levels=1)
+        expexted_cols = ['id', 'p1', 'id', 'a1', 'id', 'tags', 'myid']
+        self.assertListEqual(hier_df.columns.to_list(), expexted_cols)
+        # Now try to flatten the already flat columns again to make sure nothing changes
+        flatten_column_index(hier_df, inplace=True, max_levels=1)
+        self.assertListEqual(hier_df.columns.to_list(), expexted_cols)
+
     def test_flatten_column_index_bad_maxlevels(self):
         hier_df = to_hierarchical_dataframe(self.parent_table)
         with self.assertRaisesWith(ValueError, 'max_levels must be greater than 0'):
