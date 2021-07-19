@@ -384,7 +384,7 @@ class TestHierarchicalTable(TestCase):
         del self.aligned_table
         del self.parent_table
 
-    def test_to_hierarhcial_table_empty_tables(self):
+    def test_to_hierarchical_table_empty_tables(self):
         # Setup empty tables with the following hierarchy
         # super_parent_table --->  parent_table --->  child_table
         a1 = DynamicTable(name='level0_0', description="level0_0 DynamicTable",
