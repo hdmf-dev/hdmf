@@ -384,6 +384,25 @@ class TestHierarchicalTable(TestCase):
         del self.aligned_table
         del self.parent_table
 
+    def test_to_hierarhcial_table_empty_tables(self):
+        # Setup empty tables with the following hierarchy
+        # super_parent_table --->  parent_table --->  child_table
+        a1 = DynamicTable(name='level0_0', description="level0_0 DynamicTable",
+                          columns=[VectorData(name='l0', description='l0', data=[])])
+        p1 = DynamicTable(name='parent_table', description='parent_table',
+                          columns=[DynamicTableRegion(name='l1', description='l1', data=[], table=a1),
+                                   VectorData(name='p1c', description='l0', data=[])])
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(4), table=p1)
+        vi_dtr_sp = VectorIndex(name='sl1_index', data=[], target=dtr_sp)
+        spt = DynamicTable(name='super_parent_table', description='super_parent_table',
+                           columns=[dtr_sp, vi_dtr_sp, VectorData(name='sptc', description='l0', data=[])])
+        # Convert to hierarchical dataframe and make sure we get the right columns
+        hier_df = to_hierarchical_dataframe(spt).reset_index()
+        expected_columns = [('super_parent_table', 'id'), ('super_parent_table', 'sptc'),
+                            ('parent_table', 'id'), ('parent_table', 'p1c'),
+                            ('level0_0', 'id'), ('level0_0', 'l0')]
+        self.assertListEqual(hier_df.columns.to_list(), expected_columns)
+
     def test_to_hierarchical_table_multilevel(self):
         hier_df = to_hierarchical_dataframe(self.super_parent_table).reset_index()
         expected_cols = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'),
