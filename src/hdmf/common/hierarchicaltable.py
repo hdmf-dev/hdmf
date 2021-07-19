@@ -56,8 +56,17 @@ def to_hierarchical_dataframe(dynamic_table):
     #          If this is the case than we need to de-normalize the data and flatten the hierarchy
     if not hcol_target.has_foreign_columns():
         # 1) Iterate over all rows in our hierarchical columns (i.e,. the DynamicTableRegion column)
-        for row_index, row_df in enumerate(hcol.get(slice(None), index=False, df=True)):
-            # 1.1): Since hcol is a DynamicTableRegion, each row returns another DynamicTable so we
+        #    First we here get a list of DataFrames, one for each row. If our hcol is a VectorIndex
+        #    (i.e., out column is a ragged array), then simply loading the data from the VectorIndex
+        #    will do the trick. If we have a regular VectorData column, then we need to load the
+        #    elements ourselves (using slice syntax to make sure we get DataFrames) one-row-at-a-time
+        if isinstance(hcol, VectorIndex):
+            rows = hcol.get(slice(None), index=False, df=True)
+        else:
+            rows = [hcol[i:(i+1)] for i in range(len(hcol))]
+        # Now we iterate over the rows, where each row is described by a DataFrame with one-or-more rows
+        for row_index, row_df in enumerate(rows):
+            # 1.1): Since hcol is a DynamicTableRegion, each row returns another pandas.DataFrame so we
             #       next need to iterate over all rows in that table to denormalize our data
             for row in row_df.itertuples(index=True):
                 # 1.1.1) Determine the column data for our row. Each selected row from our target table
@@ -94,9 +103,17 @@ def to_hierarchical_dataframe(dynamic_table):
     else:
         # 1) First we need to recursively flatten the hierarchy by calling 'to_hierarchical_dataframe()'
         #    (i.e., this function) on the target of our hierarchical column
+        #    First we here get a list of DataFrames, one for each row. If our hcol is a VectorIndex
+        #    (i.e., out column is a ragged array), then simply loading the data from the VectorIndex
+        #    will do the trick. If we have a regular VectorData column, then we need to load the
+        #    elements ourselves (using slice syntax to make sure we get DataFrames) one-row-at-a-time
         hcol_hdf = to_hierarchical_dataframe(hcol_target)
-        # 2) Iterate over all rows in our hierarchcial columns (i.e,. the DynamicTableRegion column)
-        for row_index, row_df_level1 in enumerate(hcol[:]):   # need hcol[:] here  in case this is an h5py.Dataset
+        if isinstance(hcol, VectorIndex):
+            rows = hcol.get(slice(None), index=False, df=True)
+        else:
+            rows = [hcol[i:(i+1)] for i in range(len(hcol))]
+        # 2) Iterate over all rows, where each row is described by a DataFrame with one-or-more rows
+        for row_index, row_df_level1 in enumerate(rows):   # need hcol[:] here  in case this is an h5py.Dataset
             # 1.1): Since hcol is a DynamicTableRegion, each row returns another DynamicTable so we
             #       next need to iterate over all rows in that table to denormalize our data
             for row_df_level2 in row_df_level1.itertuples(index=True):
