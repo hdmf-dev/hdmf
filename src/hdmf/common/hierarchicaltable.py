@@ -217,8 +217,8 @@ def drop_id_columns(**kwargs):
     for col in dataframe.columns:
         if __get_col_name(col) == col_name:
             drop_labels.append(col)
-    dataframe.drop(labels=drop_labels, axis=1, inplace=inplace)
-    return dataframe
+    re = dataframe.drop(labels=drop_labels, axis=1, inplace=inplace)
+    return dataframe if inplace else re
 
 
 @docval({'name': 'dataframe', 'type': pd.DataFrame,
@@ -247,10 +247,8 @@ def flatten_column_index(**kwargs):
     :raises TypeError: In case that dataframe parameter is not a pandas.Dataframe.
     """
     dataframe, max_levels, inplace = getargs('dataframe', 'max_levels', 'inplace', kwargs)
-    if not isinstance(dataframe, pd.DataFrame):
-        raise TypeError('dataframe parameter must be a pandas.DataFrame not %s' % str(type(dataframe)))
-    if max_levels <= 0:
-        raise ValueError('num_levels must be greater than 0')
+    if max_levels is not None and max_levels <= 0:
+        raise ValueError('max_levels must be greater than 0')
     select_levels = slice(None) if max_levels is None else slice(-max_levels, None) if max_levels > 1 else -1
     col_names = [__flatten_column_name(col)[select_levels] for col in dataframe.columns.values]
     re = dataframe if inplace else dataframe.copy()
