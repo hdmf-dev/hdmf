@@ -6,7 +6,7 @@ import numpy as np
 from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
-from hdmf.common.hierarchicaltable import to_hierarchical_dataframe  # , drop_id_columns, flatten_column_index
+from hdmf.common.hierarchicaltable import to_hierarchical_dataframe, drop_id_columns, flatten_column_index
 
 
 class DynamicTableSingleDTR(DynamicTable):
@@ -399,6 +399,24 @@ class TestHierarchicalTable(TestCase):
         tags = [['tag1'], ['tag2'], ['tag2', 'tag1'], ['tag3', 'tag4', 'tag5']]
         for i, v in enumerate(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list()):
             self.assertListEqual(v, tags[i])
+
+    def test_drop_id_columns(self):
+        hier_df = to_hierarchical_dataframe(self.parent_table)
+        cols = hier_df.columns.to_list()
+        drop_id_columns(hier_df, inplace=False)
+        self.assertListEqual(hier_df.columns.to_list(), cols)  # Test that no columns are dropped with inplace=False
+        drop_id_columns(hier_df, inplace=True)
+        self.assertListEqual(hier_df.columns.to_list(),
+                             [('aligned_table', ('aligned_table', 'a1')),
+                              ('aligned_table', ('level0_0', 'tags')),
+                              ('aligned_table', ('level0_0', 'myid'))])
+        flat_df = to_hierarchical_dataframe(self.parent_table).reset_index(inplace=False)
+        drop_id_columns(flat_df, inplace=True)
+        self.assertListEqual(flat_df.columns.to_list(),
+                             [('parent_table',                    'p1'),
+                              ('aligned_table', ('aligned_table', 'a1')),
+                              ('aligned_table',    ('level0_0', 'tags')),
+                              ('aligned_table',    ('level0_0', 'myid'))])
 
 
 class TestLinkedDynamicTables(TestCase):
