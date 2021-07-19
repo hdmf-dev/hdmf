@@ -81,24 +81,8 @@ class TestLinkedAlignedDynamicTables(TestCase):
            |
            +--> category1 ---> table_level_0_1
         """
-        self.table_level0_0 = DynamicTable(name='level0_0', description="level0_0 DynamicTable")
-        self.table_level0_1 = DynamicTable(name='level0_1', description="level0_1 DynamicTable")
-        self.category0 = DynamicTableSingleDTR(name='category0', child_table1=self.table_level0_0)
-        self.category1 = DynamicTableSingleDTR(name='category1', child_table1=self.table_level0_1)
-        self.aligned_table = AlignedDynamicTable(name='my_aligned_table',
-                                                 description='my test table',
-                                                 category_tables=[self.category0, self.category1])
-
-    def tearDown(self):
-        del self.table_level0_0
-        del self.table_level0_1
-        del self.category0
-        del self.category1
-        del self.aligned_table
-
-    def popuplate_tables(self):
-        """Helper function to populate our tables generate in setUp with some simple data"""
         # Level 0 0 table. I.e., first table on level 0
+        self.table_level0_0 = DynamicTable(name='level0_0', description="level0_0 DynamicTable")
         self.table_level0_0.add_row(id=10)
         self.table_level0_0.add_row(id=11)
         self.table_level0_0.add_row(id=12)
@@ -112,6 +96,7 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                        description='custom ids',
                                        index=False)
         # Level 0 1 table. I.e., second table on level 0
+        self.table_level0_1 = DynamicTable(name='level0_1', description="level0_1 DynamicTable")
         self.table_level0_1.add_row(id=14)
         self.table_level0_1.add_row(id=15)
         self.table_level0_1.add_row(id=16)
@@ -124,40 +109,44 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                        name='myid',
                                        description='custom ids',
                                        index=False)
+
         # category 0 table
-        self.category0.add_row(id=0, child_table_ref1=[0, 1], child_table_ref2=[0])
-        self.category0.add_row(id=1, child_table_ref1=[2], child_table_ref2=[1, 2])
-        self.category0.add_row(id=2, child_table_ref1=[3], child_table_ref2=[3])
-        self.category0.add_column(data=['tag1', 'tag2', 'tag2'],
-                                  name='tag',
-                                  description='custom tag',
+        self.category0 = DynamicTableSingleDTR(name='category0', child_table1=self.table_level0_0)
+        self.category0.add_row(id=0, child_table_ref1=[0, ])
+        self.category0.add_row(id=1, child_table_ref1=[1, 2])
+        self.category0.add_row(id=1, child_table_ref1=[3, ])
+        self.category0.add_column(data=[10, 11, 12],
+                                  name='filter',
+                                  description='filter value',
                                   index=False)
-        self.category0.add_column(data=['tag1', 'tag2', 'tag2', 'tag3', 'tag3', 'tag4', 'tag5'],
-                                  name='tags',
-                                  description='custom tags',
-                                  index=[2, 4, 7])
 
         # category 1 table
-        self.category1.add_row(id=0, child_table_ref1=[0, 1], child_table_ref2=[0])
-        self.category1.add_row(id=1, child_table_ref1=[2], child_table_ref2=[1, 2])
-        self.category1.add_row(id=2, child_table_ref1=[3], child_table_ref2=[3])
-        self.category1.add_column(data=['tag1', 'tag2', 'tag2'],
-                                  name='tag',
-                                  description='custom tag',
+        self.category1 = DynamicTableSingleDTR(name='category1', child_table1=self.table_level0_1)
+        self.category1.add_row(id=0, child_table_ref1=[0, 1])
+        self.category1.add_row(id=1, child_table_ref1=[2, 3])
+        self.category1.add_row(id=1, child_table_ref1=[1, 3])
+        self.category1.add_column(data=[1, 2, 3],
+                                  name='filter',
+                                  description='filter value',
                                   index=False)
-        self.category1.add_column(data=['tag1', 'tag2', 'tag2', 'tag3', 'tag3', 'tag4', 'tag5'],
-                                  name='tags',
-                                  description='custom tags',
-                                  index=[2, 4, 7])
-        # aligned table
-        self.aligned_table.column(data=['at1', 'at2', 'at3'],
-                                  name='at_col',
-                                  description='custom at column',
-                                  index=False)
+        # Aligned table
+        self.aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 columns=[VectorData(name='a1', description='a1', data=np.arange(3)), ],
+                                                 colnames=['a1', ],
+                                                 category_tables=[self.category0, self.category1])
+
+    def tearDown(self):
+        del self.table_level0_0
+        del self.table_level0_1
+        del self.category0
+        del self.category1
+        del self.aligned_table
 
     def test_has_foreign_columns_in_category_tables(self):
         """Test confirming working order for DynamicTableRegions in subtables"""
         self.assertTrue(self.aligned_table.has_foreign_columns())
+        self.assertFalse(self.aligned_table.has_foreign_columns(ignore_category_tables=True))
 
     def test_has_foreign_columns_false(self):
         """Test false if there are no DynamicTableRegionColumns"""
@@ -172,6 +161,7 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                                  columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
                                                           VectorData(name='a2', description='c2', data=np.arange(4))])
         self.assertFalse(temp_aligned_table.has_foreign_columns())
+        self.assertFalse(temp_aligned_table.has_foreign_columns(ignore_category_tables=True))
 
     def test_has_foreign_column_in_main_table(self):
         temp_table = DynamicTable(name='t1', description='t1',
@@ -186,6 +176,54 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                                           DynamicTableRegion(name='a2', description='c2',
                                                                              data=np.arange(4), table=temp_table)])
         self.assertTrue(temp_aligned_table.has_foreign_columns())
+        self.assertTrue(temp_aligned_table.has_foreign_columns(ignore_category_tables=True))
+
+    def test_get_foreign_columns(self):
+        # check without subcateogries
+        foreign_cols = self.aligned_table.get_foreign_columns(ignore_category_tables=True)
+        self.assertListEqual(foreign_cols, [])
+        # check with subcateogries
+        foreign_cols = self.aligned_table.get_foreign_columns()
+        self.assertEqual(len(foreign_cols), 2)
+        for i, v in enumerate([('category0', 'child_table_ref1'), ('category1', 'child_table_ref1')]):
+            self.assertTupleEqual(foreign_cols[i], v)
+
+    def test_get_foreign_columns_none(self):
+        """Test false if there are no DynamicTableRegionColumns"""
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          VectorData(name='a2', description='c2', data=np.arange(4))])
+        self.assertListEqual(temp_aligned_table.get_foreign_columns(), [])
+        self.assertListEqual(temp_aligned_table.get_foreign_columns(ignore_category_tables=True), [])
+
+    def test_get_foreign_column_in_main_table(self):
+        temp_table0 = DynamicTable(name='t1', description='t1',
+                                   colnames=['c1', 'c2'],
+                                   columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                            VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           DynamicTableRegion(name='c2', description='c2',
+                                                              data=np.arange(4), table=temp_table0)])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          DynamicTableRegion(name='a2', description='c2',
+                                                                             data=np.arange(4), table=temp_table)])
+        # We should get both the DynamicTableRegion from the main table and the category 't1'
+        self.assertListEqual(temp_aligned_table.get_foreign_columns(), [(None, 'a2'), ('t1', 'c2')])
+        # We should only get the column from the main table
+        self.assertListEqual(temp_aligned_table.get_foreign_columns(ignore_category_tables=True), [(None, 'a2')])
 
 
 class TestLinkedDynamicTables(TestCase):

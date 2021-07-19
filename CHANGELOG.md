@@ -10,6 +10,8 @@
     - Added ``DynamicTable.has_foreign_columns`` to identify if a ``DynamicTable`` contains ``DynamicTableRegion`` columns
     - Added ``DynamicTable.get_linked_tables`` to retrieve all tables linked to either directly or indirectly from
       the current table via ``DynamicTableRegion``
+    - Implemented the new ``get_foreign_columns``, ``has_foreign_columns``, and ``get_linked_tables`` also for
+      ``AlignedDynamicTable``
     - Added new module ``hdmf.common.hierarchicaltable`` with helper functions to facilitate conversion of
       hiearchically nested ``DynamicTable`` objects via the following new functions:
       - ``to_hierarchical_dataframe`` to merge linked tables into a single consolidated pandas DataFrame.

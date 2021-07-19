@@ -281,5 +281,22 @@ class AlignedDynamicTable(DynamicTable):
                     return True
         return False
 
-# TODO Implement DynamicTable.get_foreign_columns
+    @docval({'name': 'ignore_category_tables', 'type': bool,
+             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
+            allow_extra=False)
+    def get_foreign_columns(self, **kwargs):
+        """
+        Determine the names of all columns that link to another DynamicTable, i.e.,
+        find all DynamicTableRegion type columns. Similar to a foreign key in a
+        database, a DynamicTableRegion column references elements in another table.
+
+        :returns: List of tuples of strings with the column names
+        """
+        ignore_category_tables = getargs('ignore_category_tables', kwargs)
+        col_names = [(None, col_name) for col_name in super().get_foreign_columns()]
+        if not ignore_category_tables:
+            for table in self.category_tables.values():
+                col_names += [(table.name, col_name) for col_name in table.get_foreign_columns()]
+        return col_names
+
 # TODO Implement DynamicTable.get_linked_tables
