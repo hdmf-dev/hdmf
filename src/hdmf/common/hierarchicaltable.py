@@ -48,9 +48,9 @@ def to_hierarchical_dataframe(dynamic_table):
     # If we have indexed columns (other than our hierarchical column) then our index data for our
     # MultiIndex will contain lists as elements (which are not hashable) and as such create an error.
     # As such we need to check if we have any affected columns so we can  fix our data
-    indexed_column_indicies = np.where([isinstance(dynamic_table[colname], VectorIndex)
-                                        for colname in dynamic_table.colnames if colname != hcol_name])[0]
-    indexed_column_indicies += 1  # Need to increment by 1 since we add the row id in our iteration below
+    #indexed_column_indicies = np.where([isinstance(dynamic_table[colname], VectorIndex)
+    #                                    for colname in dynamic_table.colnames if colname != hcol_name])[0]
+    #indexed_column_indicies += 1  # Need to increment by 1 since we add the row id in our iteration below
 
     # Case 1:  Our DynamicTableRegion column points to a regular DynamicTable
     #          If this is the case than we need to de-normalize the data and flatten the hierarchy
@@ -78,8 +78,8 @@ def to_hierarchical_dataframe(dynamic_table):
                 index_data = ([dynamic_table.id[row_index], ] +
                               [dynamic_table[row_index, colname]
                                for colname in dynamic_table.colnames if colname != hcol_name])
-                for i in indexed_column_indicies:  # Fix data from indexed columns
-                    index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
+                #for i in indexed_column_indicies:  # Fix data from indexed columns
+                #    index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
                 index.append(tuple(index_data))
                 # Determine the names for our index and columns of our output table if this is the first row.
                 # These are constant for all rows so we only need to do this onle once for the first row.
@@ -130,8 +130,8 @@ def to_hierarchical_dataframe(dynamic_table):
                                   [dynamic_table[row_index, colname]
                                    for colname in dynamic_table.colnames if colname != hcol_name] +
                                   list(row_tuple_level3[0]))
-                    for i in indexed_column_indicies:  # Fix data from indexed columns
-                        index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
+                    #for i in indexed_column_indicies:  # Fix data from indexed columns
+                    #    index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
                     index.append(tuple(index_data))
                     # Determine the names for our index and columns of our output table if this is the first row
                     if row_index == 0:
