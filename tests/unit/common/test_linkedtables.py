@@ -3,7 +3,7 @@ Module for testing functions specific to tables containing DynamicTableRegion co
 """
 
 import numpy as np
-from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion
+from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion, VectorIndex
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
 from hdmf.common.hierarchicaltable import to_hierarchical_dataframe, drop_id_columns, flatten_column_index
@@ -339,9 +339,9 @@ class TestHierarchicalTable(TestCase):
         """
         Create basic set of linked tables consisting of
 
-        parent_table ---> aligned_table
-                               |
-                               +--> table_level_0_0
+        super_parent_table --->  parent_table ---> aligned_table
+                                                        |
+                                                        +--> category0
         """
         # Level 0 0 table. I.e., first table on level 0
         self.category0 = DynamicTable(name='level0_0', description="level0_0 DynamicTable")
@@ -371,11 +371,34 @@ class TestHierarchicalTable(TestCase):
                                          columns=[VectorData(name='p1', description='p1', data=np.arange(4)),
                                                   DynamicTableRegion(name='l1', description='l1',
                                                                      data=np.arange(4), table=self.aligned_table)])
+        # Super-parent table
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(4), table=self.parent_table)
+        vi_dtr_sp = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_sp)
+        self.super_parent_table = DynamicTable(name='super_parent_table',
+                                               description='super_parent_table',
+                                               columns=[VectorData(name='sp1', description='sp1', data=np.arange(3)),
+                                                        dtr_sp, vi_dtr_sp])
 
     def tearDown(self):
         del self.category0
         del self.aligned_table
         del self.parent_table
+
+    def test_to_hierarchical_table_multilevel(self):
+        hier_df = to_hierarchical_dataframe(self.super_parent_table).reset_index()
+        expected_cols = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'),
+                         ('parent_table', 'id'), ('parent_table', 'p1'),
+                         ('aligned_table', 'id'),
+                         ('aligned_table', ('aligned_table', 'a1')),
+                         ('aligned_table', ('level0_0', 'id')),
+                         ('aligned_table', ('level0_0', 'tags')),
+                         ('aligned_table', ('level0_0', 'myid'))]
+        # Check that we have all the columns
+        self.assertListEqual(hier_df.columns.to_list(), expected_cols)
+        # Spot-check the data in two columns
+        self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list(),
+                             [['tag1'], ['tag2'], ['tag2', 'tag1']])
+        self.assertListEqual(hier_df[('aligned_table', ('aligned_table', 'a1'))].to_list(), list(range(3)))
 
     def test_to_hierarchical_table(self):
         hier_df = to_hierarchical_dataframe(self.parent_table)
@@ -390,10 +413,8 @@ class TestHierarchicalTable(TestCase):
         for i, c in enumerate(hier_df.columns):
             self.assertTupleEqual(c, columns[i])
         index_names = [('parent_table', 'id'), ('parent_table', 'p1')]
-        for i, c in enumerate(hier_df.index.names):
-            self.assertTupleEqual(c, index_names[i])
-        for i, ii in enumerate(hier_df.index):
-            self.assertTupleEqual(ii, (i, i))
+        self.assertListEqual(hier_df.index.names, index_names)
+        self.assertListEqual(hier_df.index.to_list(), [(i, i) for i in range(4)])
         self.assertListEqual(hier_df[('aligned_table', ('aligned_table', 'a1'))].to_list(), list(range(4)))
         self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'id'))].to_list(), list(range(10, 14)))
         self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'myid'))].to_list(), list(range(4)))
