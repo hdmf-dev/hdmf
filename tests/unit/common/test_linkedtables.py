@@ -6,6 +6,7 @@ import numpy as np
 from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion
 from hdmf.testing import TestCase
 from hdmf.utils import docval, popargs, get_docval, call_docval_func
+from hdmf.common.hierarchicaltable import to_hierarchical_dataframe  # , drop_id_columns, flatten_column_index
 
 
 class DynamicTableSingleDTR(DynamicTable):
@@ -329,6 +330,75 @@ class TestLinkedAlignedDynamicTables(TestCase):
             self.assertTupleEqual((linked_tables[i]['source_table'].name,
                                    linked_tables[i]['source_column'].name,
                                    linked_tables[i]['target_table'].name), v)
+
+
+class TestHierarchicalTable(TestCase):
+
+    def setUp(self):
+        """
+        Create basic set of linked tables consisting of
+
+        parent_table ---> aligned_table
+                               |
+                               +--> table_level_0_0
+        """
+        # Level 0 0 table. I.e., first table on level 0
+        self.category0 = DynamicTable(name='level0_0', description="level0_0 DynamicTable")
+        self.category0.add_row(id=10)
+        self.category0.add_row(id=11)
+        self.category0.add_row(id=12)
+        self.category0.add_row(id=13)
+        self.category0.add_column(data=['tag1', 'tag2', 'tag2', 'tag1', 'tag3', 'tag4', 'tag5'],
+                                  name='tags',
+                                  description='custom tags',
+                                  index=[1, 2, 4, 7])
+        self.category0.add_column(data=np.arange(4),
+                                  name='myid',
+                                  description='custom ids',
+                                  index=False)
+
+        # Aligned table
+        self.aligned_table = AlignedDynamicTable(name='aligned_table',
+                                                 description='parent_table',
+                                                 columns=[VectorData(name='a1', description='a1', data=np.arange(4)), ],
+                                                 colnames=['a1', ],
+                                                 category_tables=[self.category0, ])
+
+        # Parent table
+        self.parent_table = DynamicTable(name='parent_table',
+                                         description='parent_table',
+                                         columns=[VectorData(name='p1', description='p1', data=np.arange(4)),
+                                                  DynamicTableRegion(name='l1', description='l1',
+                                                                     data=np.arange(4), table=self.aligned_table)])
+
+    def tearDown(self):
+        del self.category0
+        del self.aligned_table
+        del self.parent_table
+
+    def test_to_hierarchical_table(self):
+        hier_df = to_hierarchical_dataframe(self.parent_table)
+        self.assertEqual(len(hier_df), 4)
+        self.assertEqual(len(hier_df.columns), 5)
+        self.assertEqual(len(hier_df.index.names), 2)
+        columns = [('aligned_table',                    'id'),
+                   ('aligned_table', ('aligned_table', 'a1')),
+                   ('aligned_table',      ('level0_0', 'id')),
+                   ('aligned_table',    ('level0_0', 'tags')),
+                   ('aligned_table',    ('level0_0', 'myid'))]
+        for i, c in enumerate(hier_df.columns):
+            self.assertTupleEqual(c, columns[i])
+        index_names = [('parent_table', 'id'), ('parent_table', 'p1')]
+        for i, c in enumerate(hier_df.index.names):
+            self.assertTupleEqual(c, index_names[i])
+        for i, ii in enumerate(hier_df.index):
+            self.assertTupleEqual(ii, (i, i))
+        self.assertListEqual(hier_df[('aligned_table', ('aligned_table', 'a1'))].to_list(), list(range(4)))
+        self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'id'))].to_list(), list(range(10, 14)))
+        self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'myid'))].to_list(), list(range(4)))
+        tags = [['tag1'], ['tag2'], ['tag2', 'tag1'], ['tag3', 'tag4', 'tag5']]
+        for i, v in enumerate(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list()):
+            self.assertListEqual(v, tags[i])
 
 
 class TestLinkedDynamicTables(TestCase):
