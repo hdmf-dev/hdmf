@@ -1,7 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.1.0 (???, 2021)
-
+## Upcoming (TBD)
 
 ### New features
 - Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
@@ -19,11 +18,17 @@
       - ``flatten_column_index`` to replace a ``pandas.MultiIndex`` with a regular ``pandas.Index``
 
 ### Bug fixes
+- Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
 - ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to referenece ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
 
 ### Minor improvements
 - Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
   on generated pandas DataFrame objects. @oruebel (#645)
+
+## HDMF 3.0.1 (July 7, 2021)
+
+### Bug fixes
+- Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#641)
 
 ## HDMF 3.0.0 (July 6, 2021)
 

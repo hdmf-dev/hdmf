@@ -38,6 +38,7 @@ setup_args = {
     'packages': pkgs,
     'package_dir': {'': 'src'},
     'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
+    'python_requires': '>=3.7',
     'classifiers': [
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.7",
