@@ -3,13 +3,19 @@ from pandas.testing import assert_frame_equal
 import warnings
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable
+from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable, DynamicTableRegion
 from hdmf.testing import TestCase, remove_test_file
 
 
 class TestAlignedDynamicTableContainer(TestCase):
     """
     Test the AlignedDynamicTable Container class.
+
+    NOTE: Functions specific to linked tables, specifically the:
+    * has_foreign_columns
+    * get_foreign_columns
+    * get_linked_tables
+    methods are tested in the test_linkedtables.TestLinkedAlignedDynamicTables class instead of here.
     """
     def setUp(self):
         warnings.simplefilter("always")  # Trigger all warnings
@@ -497,3 +503,33 @@ class TestAlignedDynamicTableContainer(TestCase):
         msg = "Category is an AlignedDynamicTable. Nesting of AlignedDynamicTable is currently not supported."
         with self.assertRaisesWith(ValueError, msg):
             adt.add_category(adt_category)
+
+    def test_dynamictable_region_to_aligneddynamictable(self):
+        """
+        Test to ensure data is being retrieved correctly when pointing to an AlignedDynamicTable.
+        In particular, make sure that all columns are being used, including those of the
+        category tables, not just the ones from the main table.
+        """
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          VectorData(name='a2', description='c1', data=np.arange(4))])
+        dtr = DynamicTableRegion(name='test', description='test', data=np.arange(4), table=temp_aligned_table)
+        dtr_df = dtr[:]
+        # Full number of rows
+        self.assertEqual(len(dtr_df), 4)
+        # Test num columns: 2 columns from the main table, 2 columns from the category, 1 id columns from the category
+        self.assertEqual(len(dtr_df.columns), 5)
+        # Test that the data is correct
+        for i, v in enumerate([('my_aligned_table', 'a1'), ('my_aligned_table', 'a2'),
+                               ('t1', 'id'), ('t1', 'c1'), ('t1', 'c2')]):
+            self.assertTupleEqual(dtr_df.columns[i], v)
+        # Test the column data
+        for c in dtr_df.columns:
+            self.assertListEqual(dtr_df[c].to_list(), list(range(4)))

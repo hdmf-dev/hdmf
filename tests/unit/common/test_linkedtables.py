@@ -1,3 +1,7 @@
+"""
+Module for testing functions specific to tables containing DynamicTableRegion columns
+"""
+
 import numpy as np
 from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion
 from hdmf.testing import TestCase
