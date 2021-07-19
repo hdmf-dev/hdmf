@@ -210,8 +210,6 @@ def drop_id_columns(**kwargs):
     :raises TypeError: In case that dataframe parameter is not a pandas.Dataframe.
     """
     dataframe, inplace = getargs('dataframe', 'inplace', kwargs)
-    if not isinstance(dataframe, pd.DataFrame):
-        raise TypeError('dataframe parameter must be a pandas.DataFrame not %s' % str(type(dataframe)))
     col_name = 'id'
     drop_labels = []
     for col in dataframe.columns:
