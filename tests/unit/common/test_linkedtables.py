@@ -384,6 +384,20 @@ class TestHierarchicalTable(TestCase):
         del self.aligned_table
         del self.parent_table
 
+    def test_to_hierarchical_table_no_dtr_on_top_level(self):
+        # Cover the case where our top dtr is flat (i.e., without a VectorIndex)
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(4), table=self.parent_table)
+        spttable = DynamicTable(name='super_parent_table',
+                                description='super_parent_table',
+                                columns=[VectorData(name='sp1', description='sp1', data=np.arange(4)), dtr_sp])
+        hier_df = to_hierarchical_dataframe(spttable).reset_index()
+        expected_columns = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'),
+                            ('parent_table', 'id'), ('parent_table', 'p1'),
+                            ('aligned_table', 'id'),
+                            ('aligned_table', ('aligned_table', 'a1')), ('aligned_table', ('level0_0', 'id')),
+                            ('aligned_table', ('level0_0', 'tags')), ('aligned_table', ('level0_0', 'myid'))]
+        self.assertListEqual(hier_df.columns.to_list(), expected_columns)
+
     def test_to_hierarchical_table_empty_tables(self):
         # Setup empty tables with the following hierarchy
         # super_parent_table --->  parent_table --->  child_table
