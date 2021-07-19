@@ -398,6 +398,27 @@ class TestHierarchicalTable(TestCase):
                             ('aligned_table', ('level0_0', 'tags')), ('aligned_table', ('level0_0', 'myid'))]
         self.assertListEqual(hier_df.columns.to_list(), expected_columns)
 
+    def test_to_hierarchical_table_indexed_dtr_on_last_level(self):
+        # Parent table
+        dtr_p1 = DynamicTableRegion(name='l1', description='l1', data=np.arange(4), table=self.aligned_table)
+        vi_dtr_p1 = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_p1)
+        p1 = DynamicTable(name='parent_table', description='parent_table',
+                          columns=[VectorData(name='p1', description='p1', data=np.arange(3)), dtr_p1, vi_dtr_p1])
+        # Super-parent table
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(4), table=p1)
+        vi_dtr_sp = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_sp)
+        spt = DynamicTable(name='super_parent_table', description='super_parent_table',
+                           columns=[VectorData(name='sp1', description='sp1', data=np.arange(3)), dtr_sp, vi_dtr_sp])
+        hier_df = to_hierarchical_dataframe(spt).reset_index()
+        expected_columns = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'),
+                            ('parent_table', 'id'), ('parent_table', 'p1'),
+                            ('aligned_table', 'id'),
+                            ('aligned_table', ('aligned_table', 'a1')), ('aligned_table', ('level0_0', 'id')),
+                            ('aligned_table', ('level0_0', 'tags')), ('aligned_table', ('level0_0', 'myid'))]
+        self.assertListEqual(hier_df.columns.to_list(), expected_columns)  # make sure we have the right columns
+        self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list(),
+                             [['tag1'], ['tag2'], ['tag2', 'tag1']])
+
     def test_to_hierarchical_table_empty_tables(self):
         # Setup empty tables with the following hierarchy
         # super_parent_table --->  parent_table --->  child_table
