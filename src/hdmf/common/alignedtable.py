@@ -290,7 +290,9 @@ class AlignedDynamicTable(DynamicTable):
         find all DynamicTableRegion type columns. Similar to a foreign key in a
         database, a DynamicTableRegion column references elements in another table.
 
-        :returns: List of tuples of strings with the column names
+        :returns: List of tuples (str, str) where the first string is the name of the
+                  category table (or None if the column is in the main table) and the
+                  second string is the column name.
         """
         ignore_category_tables = getargs('ignore_category_tables', kwargs)
         col_names = [(None, col_name) for col_name in super().get_foreign_columns()]
