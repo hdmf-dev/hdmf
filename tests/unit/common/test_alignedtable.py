@@ -416,10 +416,20 @@ class TestAlignedDynamicTableContainer(TestCase):
         self.assertListEqual(temp['test1', 'c1'][:].tolist(), (np.arange(num_rows) + 3).tolist())
         # Test getting a specific cell
         self.assertEqual(temp[None, 'main_c1', 1], 3)
+        self.assertEqual(temp[1, None, 'main_c1'], 3)
         # Test bad selection tuple
         with self.assertRaisesWith(ValueError,
                                    "Expected tuple of length 2 or 3 with (category, column, row) as value."):
             temp[('main_c1',)]
+        # Test selecting a single cell or row of a category table by having a
+        # [int, str] or [int, (str, str)] type selection
+        # Select row 0 from category 'test1'
+        re = temp[0, 'test1']
+        self.assertListEqual(re.columns.to_list(), ['id', 'c1', 'c2'])
+        self.assertListEqual(re.index.names, [('test_aligned_table', 'id')])
+        self.assertListEqual(re.values.tolist()[0], [0, 3, 4])
+        # Select a single cell from a columm
+        self.assertEqual(temp[1, ('test_aligned_table', 'main_c1')], 3)
 
     def test_to_dataframe(self):
         """Test that the to_dataframe method works"""

@@ -278,9 +278,29 @@ class AlignedDynamicTable(DynamicTable):
                 return self.get_category(item).to_dataframe()
         elif isinstance(item, tuple):
             if len(item) == 2:
-                return self.get_category(item[0])[item[1]]
+                if isinstance(item[0], (int, np.integer)):
+                    # Select a single cell based on row-index and the column or set of cells
+                    # based on row_index and category
+                    re = self[item[0]][item[1]]
+                    # re is a pandas.Series or pandas.Dataframe. If we selected a single cell
+                    # then return the value of the cell
+                    if re.size == 1:
+                        re = re.values[0]
+                        # If we selected a single cell from a ragged column then we need to change the list to a tuple
+                        if isinstance(re, list):
+                            re = tuple(re)
+                    # We selected part of a whole table, not just a single column.
+                    # Change from a pandas.Series to a pandas.DataFrame for consistency with DynamicTable
+                    if isinstance(re, pd.Series):
+                        re = re.to_frame()
+                    return re
+                else:
+                    return self.get_category(item[0])[item[1]]
             elif len(item) == 3:
-                return self.get_category(item[0])[item[1]][item[2]]
+                if isinstance(item[0], (int, np.integer)):
+                    return self.get_category(item[1])[item[2]][item[0]]
+                else:
+                    return self.get_category(item[0])[item[1]][item[2]]
             else:
                 raise ValueError("Expected tuple of length 2 or 3 with (category, column, row) as value.")
 
