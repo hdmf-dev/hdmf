@@ -5,6 +5,7 @@ tables containing DynamicTableRegion references.
 import pandas as pd
 import numpy as np
 from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorIndex
+from hdmf.common.alignedtable import AlignedDynamicTable
 from hdmf.utils import docval, getargs
 
 
@@ -76,26 +77,25 @@ def to_hierarchical_dataframe(dynamic_table):
                               [dynamic_table[row_index, colname]
                                for colname in dynamic_table.colnames if colname != hcol_name])
                 index.append(tuple(index_data))
-                # Determine the names for our index and columns of our output table if this is the first row.
-                # These are constant for all rows so we only need to do this only once for the first row.
-                if row_index == 0:
-                    index_names = ([(dynamic_table.name, 'id')] +
-                                   [(dynamic_table.name, colname)
-                                    for colname in dynamic_table.colnames if colname != hcol_name])
-                    columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
-                                                        [(hcol_target.name, c) for c in row_df.columns],
-                                                        names=('source_table', 'label'))
-        # if we had an empty data table then at least define the columns.
-        # NOTE: In contrast to the corresponding code in our for loop above, we here cannot determine
-        #       columns based on our row_df dataframe but we have to rely on the column names of our hcol_target
-        #       instead.
-        if index_names is None:
-            index_names = ([(dynamic_table.name, 'id')] +
-                           [(dynamic_table.name, colname)
-                            for colname in dynamic_table.colnames if colname != hcol_name])
-            columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
-                                                [(hcol_target.name, c) for c in hcol_target.colnames],
-                                                names=('source_table', 'label'))
+
+        # Determine the names for our index and columns of our output table
+        # We need to do this even if our table was empty (i.e. even is len(rows)==0)
+        # NOTE: While for a regular DynamicTable the "colnames" property will give us the full list of column names,
+        #       for AlignedDynamicTable we need to use the get_colnames() function instead to make sure we include
+        #       the category table columns as well.
+        iter_columns = (dynamic_table.get_colnames(include_category_tables=True, ignore_category_ids=False)
+                        if isinstance(dynamic_table, AlignedDynamicTable)
+                        else dynamic_table.colnames)
+        index_names = ([(dynamic_table.name, 'id')] +
+                       [(dynamic_table.name, colname)
+                        for colname in iter_columns if colname != hcol_name])
+        # Determine the name of our columns
+        iter_columns = (hcol_target.get_colnames(include_category_tables=True, ignore_category_ids=False)
+                        if isinstance(hcol_target, AlignedDynamicTable)
+                        else hcol_target.colnames)
+        columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
+                                            [(hcol_target.name, c) for c in iter_columns],
+                                            names=('source_table', 'label'))
 
     # Case 2:  Our DynamicTableRegion columns points to another table with a DynamicTableRegion, i.e.,
     #          we need to recursively resolve more levels of the table hieararchy
@@ -123,11 +123,14 @@ def to_hierarchical_dataframe(dynamic_table):
                                    for colname in dynamic_table.colnames if colname != hcol_name] +
                                   list(row_tuple_level3[0]))
                     index.append(tuple(index_data))
-        # Determine the names for our index and columns of our output table if this is the first row
+        # Determine the names for our index and columns of our output table
         # We need to do this even if our table was empty (i.e. even is len(rows)==0)
+        iter_columns = (dynamic_table.get_colnames(include_category_tables=True, ignore_category_ids=False)
+                        if isinstance(dynamic_table, AlignedDynamicTable)
+                        else dynamic_table.colnames)
         index_names = ([(dynamic_table.name, "id")] +
                        [(dynamic_table.name, colname)
-                        for colname in dynamic_table.colnames if colname != hcol_name] +
+                        for colname in iter_columns if colname != hcol_name] +
                        hcol_hdf.index.names)
         columns = hcol_hdf.columns
 
