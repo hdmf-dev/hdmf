@@ -32,11 +32,13 @@ def to_hierarchical_dataframe(dynamic_table):
     # TODO: Need to deal with the case where we have more than one DynamicTableRegion column in a given table
     # Get the references column
     foreign_columns = dynamic_table.get_foreign_columns()
+    # if table does not contain any DynamicTableRegion columns then we can just convert it to a dataframe
     if len(foreign_columns) == 0:
         return dynamic_table.to_dataframe()
-    hcol_name = foreign_columns[0]  # We only denormalize the first foreign column for now
-    hcol = dynamic_table[hcol_name]
-    # If our foreign column is a vectorindex
+    hcol_name = foreign_columns[0]   # We only denormalize the first foreign column for now
+    hcol = dynamic_table[hcol_name]  # Either a VectorIndex pointing to a DynamicTableRegion or a DynamicTableRegion
+    # Get the target DynamicTable that hcol is pointing to. If hcol is a VectorIndex then we first need
+    # to get the target of it before we look up the table.
     hcol_target = hcol.table if isinstance(hcol, DynamicTableRegion) else hcol.target.table
 
     # Create the data variables we need to collect the data for our output dataframe and associated index
@@ -45,41 +47,34 @@ def to_hierarchical_dataframe(dynamic_table):
     columns = None
     index_names = None
 
-    # If we have indexed columns (other than our hierarchical column) then our index data for our
-    # MultiIndex will contain lists as elements (which are not hashable) and as such create an error.
-    # As such we need to check if we have any affected columns so we can  fix our data
-    # indexed_column_indicies = np.where([isinstance(dynamic_table[colname], VectorIndex)
-    #                                    for colname in dynamic_table.colnames if colname != hcol_name])[0]
-    # indexed_column_indicies += 1  # Need to increment by 1 since we add the row id in our iteration below
+    #  First we here get a list of DataFrames, one for each row of the column we need to process.
+    #  If  hcol is a VectorIndex (i.e., our column is a ragged array of row indices), then simply loading
+    #  the data from the VectorIndex will do the trick. If we have a regular DynamicTableRegion column,
+    #  then we need to load the elements ourselves (using slice syntax to make sure we get DataFrames)
+    #  one-row-at-a-time
+    if isinstance(hcol, VectorIndex):
+        rows = hcol.get(slice(None), index=False, df=True)
+    else:
+        rows = [hcol[i:(i+1)] for i in range(len(hcol))]
 
-    # Case 1:  Our DynamicTableRegion column points to a regular DynamicTable
+    # Case 1:  Our DynamicTableRegion column points to a DynamicTable that itself does not contain
+    #          any DynamicTableRegion references (i.e., we have reached the end of our table hierarchy).
     #          If this is the case than we need to de-normalize the data and flatten the hierarchy
     if not hcol_target.has_foreign_columns():
-        # 1) Iterate over all rows in our hierarchical columns (i.e,. the DynamicTableRegion column)
-        #    First we here get a list of DataFrames, one for each row. If our hcol is a VectorIndex
-        #    (i.e., our column is a ragged array), then simply loading the data from the VectorIndex
-        #    will do the trick. If we have a regular VectorData column, then we need to load the
-        #    elements ourselves (using slice syntax to make sure we get DataFrames) one-row-at-a-time
-        if isinstance(hcol, VectorIndex):
-            rows = hcol.get(slice(None), index=False, df=True)
-        else:
-            rows = [hcol[i:(i+1)] for i in range(len(hcol))]
-        # Now we iterate over the rows, where each row is described by a DataFrame with one-or-more rows
+        # Iterate over all rows, where each row is described by a DataFrame with one-or-more rows
         for row_index, row_df in enumerate(rows):
-            # 1.1): Since hcol is a DynamicTableRegion, each row returns another pandas.DataFrame so we
-            #       next need to iterate over all rows in that table to denormalize our data
+            # Since each row contains a pandas.DataFrame (with possible multiple rows), we
+            # next need to iterate over all rows in that table to denormalize our data
             for row in row_df.itertuples(index=True):
-                # 1.1.1) Determine the column data for our row. Each selected row from our target table
-                #        becomes a row in our flattened table
+                # Determine the column data for our row. Each selected row from our target table
+                # becomes a row in our flattened table
                 data.append(row)
-                # 1.1.2) Determine the multi-index tuple for our row, consisting of: i) id of the row in this
-                #        table, ii) all columns (except the hierarchical column we are flattening), and
-                #        iii) the index (i.e., id) from our target row
+                #  Determine the multi-index tuple for our row, consisting of: i) id of the row in this
+                #  table, ii) all columns (except the hierarchical column we are flattening), and
+                #  iii) the index (i.e., id) from our target row
                 index_data = ([dynamic_table.id[row_index], ] +
                               [dynamic_table[row_index, colname]
                                for colname in dynamic_table.colnames if colname != hcol_name])
-                # for i in indexed_column_indicies:  # Fix data from indexed columns
-                #    index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
                 index.append(tuple(index_data))
                 # Determine the names for our index and columns of our output table if this is the first row.
                 # These are constant for all rows so we only need to do this only once for the first row.
@@ -90,7 +85,10 @@ def to_hierarchical_dataframe(dynamic_table):
                     columns = pd.MultiIndex.from_tuples([(hcol_target.name, 'id'), ] +
                                                         [(hcol_target.name, c) for c in row_df.columns],
                                                         names=('source_table', 'label'))
-        #  if we had an empty data table then at least define the columns
+        # if we had an empty data table then at least define the columns.
+        # NOTE: In contrast to the corresponding code in our for loop above, we here cannot determine
+        #       columns based on our row_df dataframe but we have to rely on the column names of our hcol_target
+        #       instead.
         if index_names is None:
             index_names = ([(dynamic_table.name, 'id')] +
                            [(dynamic_table.name, colname)
@@ -99,54 +97,39 @@ def to_hierarchical_dataframe(dynamic_table):
                                                 [(hcol_target.name, c) for c in hcol_target.colnames],
                                                 names=('source_table', 'label'))
 
-    # Case 2:  Our DynamicTableRegion columns points to another table with a DynamicTableRegion
+    # Case 2:  Our DynamicTableRegion columns points to another table with a DynamicTableRegion, i.e.,
+    #          we need to recursively resolve more levels of the table hieararchy
     else:
-        # 1) First we need to recursively flatten the hierarchy by calling 'to_hierarchical_dataframe()'
-        #    (i.e., this function) on the target of our hierarchical column
-        #    First we here get a list of DataFrames, one for each row. If our hcol is a VectorIndex
-        #    (i.e., our column is a ragged array), then simply loading the data from the VectorIndex
-        #    will do the trick. If we have a regular VectorData column, then we need to load the
-        #    elements ourselves (using slice syntax to make sure we get DataFrames) one-row-at-a-time
+        # First we need to recursively flatten the hierarchy by calling 'to_hierarchical_dataframe()'
+        # (i.e., this function) on the target of our hierarchical column
         hcol_hdf = to_hierarchical_dataframe(hcol_target)
-        if isinstance(hcol, VectorIndex):
-            rows = hcol.get(slice(None), index=False, df=True)
-        else:
-            rows = [hcol[i:(i+1)] for i in range(len(hcol))]
-        # 2) Iterate over all rows, where each row is described by a DataFrame with one-or-more rows
+        # Iterate over all rows, where each row is described by a DataFrame with one-or-more rows
         for row_index, row_df_level1 in enumerate(rows):
-            # 1.1): Since hcol is a DynamicTableRegion, each row returns another DynamicTable so we
-            #       next need to iterate over all rows in that table to denormalize our data
+            # Since each row contains a pandas.DataFrame (with possible multiple rows), we
+            # next need to iterate over all rows in that table to denormalize our data
             for row_df_level2 in row_df_level1.itertuples(index=True):
-                # 1.1.2) Since our target is itself a HierarchicalDynamicTable each target row itself
-                #        may expand into multiple rows in flattened hcol_hdf. So we now need to look
-                #        up the rows in hcol_hdf that correspond to the rows in row_df_level2.
-                #        NOTE: In this look-up we assume that the ids (and hence the index) of
-                #              each row in the table are in fact unique.
+                # Since our target is itself a a DynamicTable with a DynamicTableRegion columns,
+                # each target row itself may expand into multiple rows in the flattened hcol_hdf.
+                # So we now need to look up the rows in hcol_hdf that correspond to the rows in
+                # row_df_level2.
+                # NOTE: In this look-up we assume that the ids (and hence the index) of
+                #       each row in the table are in fact unique.
                 for row_tuple_level3 in hcol_hdf.loc[[row_df_level2[0]]].itertuples(index=True):
-                    # 1.1.2.1) Determine the column data for our row.
+                    # Determine the column data for our row.
                     data.append(row_tuple_level3[1:])
-                    # 1.1.2.2) Determine the multi-index tuple for our row,
+                    # Determine the multi-index tuple for our row,
                     index_data = ([dynamic_table.id[row_index], ] +
                                   [dynamic_table[row_index, colname]
                                    for colname in dynamic_table.colnames if colname != hcol_name] +
                                   list(row_tuple_level3[0]))
-                    # for i in indexed_column_indicies:  # Fix data from indexed columns
-                    #    index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
                     index.append(tuple(index_data))
-                    # Determine the names for our index and columns of our output table if this is the first row
-                    if row_index == 0:
-                        index_names = ([(dynamic_table.name, "id")] +
-                                       [(dynamic_table.name, colname)
-                                        for colname in dynamic_table.colnames if colname != hcol_name] +
-                                       hcol_hdf.index.names)
-                        columns = hcol_hdf.columns
-        # if we had an empty table, then at least define the columns
-        if index_names is None:
-            index_names = ([(dynamic_table.name, "id")] +
-                           [(dynamic_table.name, colname)
-                            for colname in dynamic_table.colnames if colname != hcol_name] +
-                           hcol_hdf.index.names)
-            columns = hcol_hdf.columns
+        # Determine the names for our index and columns of our output table if this is the first row
+        # We need to do this even if our table was empty (i.e. even is len(rows)==0)
+        index_names = ([(dynamic_table.name, "id")] +
+                       [(dynamic_table.name, colname)
+                        for colname in dynamic_table.colnames if colname != hcol_name] +
+                       hcol_hdf.index.names)
+        columns = hcol_hdf.columns
 
     # Construct the pandas dataframe with the hierarchical multi-index
     multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
