@@ -15,11 +15,11 @@ from hdmf.utils import docval, getargs
         is_method=False)
 def to_hierarchical_dataframe(dynamic_table):
     """
-    Create a hierarchical pandas.DataFrame that represents all data from a collection of linked DynamicTable.
+    Create a hierarchical pandas.DataFrame that represents all data from a collection of linked DynamicTables.
 
     **LIMITATIONS:** Currently this function only supports DynamicTables with a single DynamicTableRegion column.
-    If a table has more than one foreign DynamicTableRegion column then the function will expand only the
-    first DynamicTableRegio column found for each table. Any additional DynamicTableRegion columns will remain
+    If a table has more than one DynamicTableRegion column then the function will expand only the
+    first DynamicTableRegion column found for each table. Any additional DynamicTableRegion columns will remain
     nested.
 
     **NOTE:** Some useful functions for further processing of the generated
