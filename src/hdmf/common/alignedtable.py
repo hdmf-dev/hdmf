@@ -20,6 +20,10 @@ class AlignedDynamicTable(DynamicTable):
     defines a 2-level table in which the main data is stored in the main table implemented by this type
     and additional columns of the table are grouped into categories, with each category being'
     represented by a separate DynamicTable stored within the group.
+
+    NOTE: To remain compatavibility with DynamicTable, the attribute colnames represents only the
+          columns of the main table (not including the category tables). To get the full list of
+          columns names uses the get_colnames() function instead.
     """
     __fields__ = ({'name': 'category_tables', 'child': True}, )
 
@@ -208,6 +212,23 @@ class AlignedDynamicTable(DynamicTable):
         # Add the data to all out dynamic table categories
         for category, values in category_data.items():
             self.category_tables[category].add_row(**values)
+
+    @docval({'name': 'include_category_tables', 'type': bool,
+             'doc': "Ignore sub-category tables and just look at the main table", 'default': False},
+            {'name': 'ignore_category_ids', 'type': bool,
+             'doc': "Ignore id columns of sub-category tables", 'default': False})
+    def get_colnames(self, **kwargs):
+        """Get the full list of names of columns for this table"""
+        if not getargs('include_category_tables', kwargs):
+            return self.colnames
+        else:
+            ignore_category_ids = getargs('ignore_category_ids', kwargs)
+            columns = [(self.name, c) for c in self.colnames]
+            for category in self.category_tables.values():
+                if not ignore_category_ids:
+                    columns += [(category.name, 'id'), ]
+                columns += [(category.name, c) for c in category.colnames]
+            return columns
 
     @docval({'name': 'ignore_category_ids', 'type': bool,
              'doc': "Ignore id columns of sub-category tables", 'default': False})

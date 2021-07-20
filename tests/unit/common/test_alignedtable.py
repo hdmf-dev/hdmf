@@ -533,3 +533,44 @@ class TestAlignedDynamicTableContainer(TestCase):
         # Test the column data
         for c in dtr_df.columns:
             self.assertListEqual(dtr_df[c].to_list(), list(range(4)))
+
+    def test_get_colnames(self):
+        """
+        Test the AlignedDynamicTable.get_colnames function
+        """
+        category_names = ['test1', 'test2', 'test3']
+        num_rows = 10
+        categories = [DynamicTable(name=val,
+                                   description=val+" description",
+                                   columns=[VectorData(name=t,
+                                                       description=val+t+' description',
+                                                       data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']]
+                                   ) for val in category_names]
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            category_tables=categories,
+            columns=[VectorData(name='main_' + t,
+                                description='main_'+t+'_description',
+                                data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']])
+        # Default, only get the colnames of the main table. Same as adt.colnames property
+        expected_colnames = ('main_c1', 'main_c2', 'main_c3')
+        self.assertTupleEqual(adt.get_colnames(), expected_colnames)
+        # Same as default because if we don't include the catgories than ignore_category_ids has no effect
+        self.assertTupleEqual(adt.get_colnames(include_category_tables=False, ignore_category_ids=True),
+                              expected_colnames)
+        # Full set of columns
+        expected_colnames = [('test_aligned_table', 'main_c1'), ('test_aligned_table', 'main_c2'),
+                             ('test_aligned_table', 'main_c3'), ('test1', 'id'), ('test1', 'c1'),
+                             ('test1', 'c2'), ('test1', 'c3'), ('test2', 'id'), ('test2', 'c1'),
+                             ('test2', 'c2'), ('test2', 'c3'), ('test3', 'id'), ('test3', 'c1'),
+                             ('test3', 'c2'), ('test3', 'c3')]
+        self.assertListEqual(adt.get_colnames(include_category_tables=True, ignore_category_ids=False),
+                             expected_colnames)
+        # All columns without the id columns of the category tables
+        expected_colnames = [('test_aligned_table', 'main_c1'), ('test_aligned_table', 'main_c2'),
+                             ('test_aligned_table', 'main_c3'), ('test1', 'c1'), ('test1', 'c2'),
+                             ('test1', 'c3'), ('test2', 'c1'), ('test2', 'c2'), ('test2', 'c3'),
+                             ('test3', 'c1'), ('test3', 'c2'), ('test3', 'c3')]
+        self.assertListEqual(adt.get_colnames(include_category_tables=True, ignore_category_ids=True),
+                             expected_colnames)
