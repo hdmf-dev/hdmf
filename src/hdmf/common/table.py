@@ -56,8 +56,7 @@ class VectorData(Data):
         return super().get(key)
 
     def extend(self, ar, **kwargs):
-        """
-        The extend_data method adds all the elements of the iterable arg to the end of this VectorData.
+        """Add all elements of the iterable arg to the end of this VectorData.
 
         Each subclass of VectorData should have its own extend method to ensure functionality and efficiency.
 
