@@ -137,7 +137,6 @@ def to_hierarchical_dataframe(dynamic_table):
     # Construct the pandas dataframe with the hierarchical multi-index
     multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
     out_df = pd.DataFrame(data=data, index=multi_index, columns=columns)
-    # Update the dataframe to remove id columns if requested
     return out_df
 
 
