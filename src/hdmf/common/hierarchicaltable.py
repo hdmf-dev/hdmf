@@ -104,7 +104,7 @@ def to_hierarchical_dataframe(dynamic_table):
         # 1) First we need to recursively flatten the hierarchy by calling 'to_hierarchical_dataframe()'
         #    (i.e., this function) on the target of our hierarchical column
         #    First we here get a list of DataFrames, one for each row. If our hcol is a VectorIndex
-        #    (i.e., out column is a ragged array), then simply loading the data from the VectorIndex
+        #    (i.e., our column is a ragged array), then simply loading the data from the VectorIndex
         #    will do the trick. If we have a regular VectorData column, then we need to load the
         #    elements ourselves (using slice syntax to make sure we get DataFrames) one-row-at-a-time
         hcol_hdf = to_hierarchical_dataframe(hcol_target)
