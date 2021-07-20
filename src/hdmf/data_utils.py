@@ -27,8 +27,7 @@ def append_data(data, arg):
 
 
 def extend_data(data, arg):
-    """
-    The extend_data method adds all the elements of the iterable arg to the end of  data.
+    """Add all the elements of the iterable arg to the end of data.
 
     :param data: The array to extend
     :type data: list, DataIO, np.ndarray, h5py.Dataset
