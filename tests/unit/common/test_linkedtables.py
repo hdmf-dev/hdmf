@@ -149,6 +149,25 @@ class TestLinkedAlignedDynamicTables(TestCase):
         del self.category1
         del self.aligned_table
 
+    def test_to_hierarchical_dataframe(self):
+        """Test that converting an AlignedDynamicTable with links works"""
+        hier_df = to_hierarchical_dataframe(self.aligned_table)
+        self.assertListEqual(hier_df.columns.to_list(),
+                             [('level0_0', 'id'), ('level0_0', 'tags'), ('level0_0', 'myid')])
+        self.assertListEqual(hier_df.index.names,
+                             [('my_aligned_table', 'id'), ('my_aligned_table', ('my_aligned_table', 'a1')),
+                              ('my_aligned_table', ('category0', 'id')), ('my_aligned_table', ('category0', 'filter')),
+                              ('my_aligned_table', ('category1', 'id')),
+                              ('my_aligned_table', ('category1', 'child_table_ref1')),
+                              ('my_aligned_table', ('category1', 'filter'))])
+        self.assertListEqual(hier_df.index.to_list(),
+                             [(0, 0, 0, 10, 0, (0, 1), 1),
+                              (1, 1, 1, 11, 1, (2, 3), 2),
+                              (1, 1, 1, 11, 1, (2, 3), 2),
+                              (2, 2, 1, 12, 1, (1, 3), 3)])
+        self.assertListEqual(hier_df[('level0_0', 'tags')].values.tolist(),
+                             [['tag1'], ['tag2'], ['tag2', 'tag1'], ['tag3', 'tag4', 'tag5']])
+
     def test_has_foreign_columns_in_category_tables(self):
         """Test confirming working order for DynamicTableRegions in subtables"""
         self.assertTrue(self.aligned_table.has_foreign_columns())
