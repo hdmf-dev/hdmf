@@ -82,7 +82,7 @@ def to_hierarchical_dataframe(dynamic_table):
                 #    index_data[i] = tuple(index_data[i])  # Convert from list to tuple (which is hashable)
                 index.append(tuple(index_data))
                 # Determine the names for our index and columns of our output table if this is the first row.
-                # These are constant for all rows so we only need to do this onle once for the first row.
+                # These are constant for all rows so we only need to do this only once for the first row.
                 if row_index == 0:
                     index_names = ([(dynamic_table.name, 'id')] +
                                    [(dynamic_table.name, colname)
