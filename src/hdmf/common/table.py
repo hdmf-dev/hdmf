@@ -805,8 +805,8 @@ class DynamicTable(Container):
         :param key: Key defining which elements of the table to select. This may be one of the following:
 
             1) string with the name of the column to select
-            2) a tuple consisting of (str, int) where the string identifies the column to select by name
-               and the int selects the row
+            2) a tuple consisting of (int, str) where the int selects the row and the string identifies the
+               column to select by name
             3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
                scalars are returned for each column that has a single value. If a list, array, or slice is used and
                df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
@@ -1127,12 +1127,19 @@ class DynamicTableRegion(VectorData):
         """
         Subset the DynamicTableRegion
 
-        :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
-                       and the int selects the row, 2) int or slice to select a subset of rows
+        :param arg: Key defining which elements of the table to select. This may be one of the following:
+
+            1) a tuple consisting of (int, str) where the int selects the row and the string identifies the
+               column to select by name
+            3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
+               scalars are returned for each column that has a single value. If a list, array, or slice is used and
+               df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
+               single row.
+
         :param index: Boolean indicating whether to return indices of the DTR (default False)
         :param df: Boolean indicating whether to return the result as a pandas DataFrame (default True)
 
-        :return: Result from self.table[....] with the appropriate selection based on the
+        :return: Result from self.table[...] with the appropriate selection based on the
                  rows selected by this DynamicTableRegion
         """
         if not df and not index:
