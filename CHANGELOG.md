@@ -24,6 +24,7 @@
 ### Minor improvements
 - Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
   on generated pandas DataFrame objects. @oruebel (#645)
+- Fix documentation for `DynamicTable.get` and `DynamicTableRegion.get`. @rly (#650)
 
 ## HDMF 3.0.1 (July 7, 2021)
 
