@@ -113,7 +113,7 @@ def to_hierarchical_dataframe(dynamic_table):
         else:
             rows = [hcol[i:(i+1)] for i in range(len(hcol))]
         # 2) Iterate over all rows, where each row is described by a DataFrame with one-or-more rows
-        for row_index, row_df_level1 in enumerate(rows):   # need hcol[:] here  in case this is an h5py.Dataset
+        for row_index, row_df_level1 in enumerate(rows):
             # 1.1): Since hcol is a DynamicTableRegion, each row returns another DynamicTable so we
             #       next need to iterate over all rows in that table to denormalize our data
             for row_df_level2 in row_df_level1.itertuples(index=True):
