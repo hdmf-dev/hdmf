@@ -21,9 +21,9 @@ class AlignedDynamicTable(DynamicTable):
     and additional columns of the table are grouped into categories, with each category being'
     represented by a separate DynamicTable stored within the group.
 
-    NOTE: To remain compatavibility with DynamicTable, the attribute colnames represents only the
+    NOTE: To remain compatible with DynamicTable, the attribute colnames represents only the
           columns of the main table (not including the category tables). To get the full list of
-          columns names uses the get_colnames() function instead.
+          column names, use the get_colnames() function instead.
     """
     __fields__ = ({'name': 'category_tables', 'child': True}, )
 
