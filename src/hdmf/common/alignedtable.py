@@ -219,7 +219,7 @@ class AlignedDynamicTable(DynamicTable):
              'doc': "Ignore id columns of sub-category tables", 'default': False})
     def get_colnames(self, **kwargs):
         """Get the full list of names of columns for this table
-        
+
         :returns: List of tuples (str, str) where the first string is the name of the DynamicTable
                   that contains the column and the second string is the name of the column. If
                   include_category_tables is False, then a list of column names is returned.
@@ -250,21 +250,59 @@ class AlignedDynamicTable(DynamicTable):
         return res
 
     def __getitem__(self, item):
+        """
+        Called to implement standard array slicing syntax.
+
+        Same as ``self.get(item)``. See :py:meth:`~hdmf.common.alignedtable.AlignedDynamicTable.get` for details.
+        """
         return self.get(item)
 
     def get(self, item, **kwargs):
         """
-        :param item: Selection defining the items of interest. This may be a
+        Access elements (rows, columns, category tables etc.) from the table. Instead of calling
+        this function directly, the class also implements standard array slicing syntax
+        via :py:meth:`~hdmf.common.alignedtable.AlignedDynamicTable.__getitem__`
+        (which calls this function). For example, instead of calling
+        ``self.get(item=slice(2,5))`` we may use the often more convenient form of ``self[2:5]`` instead.
 
-        * **int, list, array, slice** : Return one or multiple row of the table as a DataFrame
-        * **string** : Return a single category table as a DynamicTable or a single column of the
-          primary table as a
-        * **tuple**: Get a column, row, or cell from a particular category. The tuple is expected to consist
-          of (category, selection) where category may be a string with the name of the sub-category
-          or None (or the name of this AlignedDynamicTable) if we want to slice into the main table.
+        :param item: Selection defining the items of interest. This may be either a:
 
-        :returns: DataFrame when retrieving a row or category. Returns scalar when selecting a cell.
-                 Returns a VectorData/VectorIndex when retrieving a single column.
+        * **int, list, array, slice** : Return one or multiple row of the table as a pandas.DataFrame. For example:
+              * ``self[0]`` : Select the first row of the table
+              * ``self[[0,3]]`` : Select the first and fourth row of the table
+              * ``self[1:4]`` : Select the rows with index 1,2,3 from the table
+
+        * **string** : Return a column from the main table or a category table. For example:
+              * ``self['column']`` : Return the column from the main table.
+              * ``self['my_category']`` : Returns a DataFrame of the ``my_category`` category table.
+                This is a shorthand for ``self.get_category.to_dataframe()``.
+
+        * **tuple**: Get a column, row, or cell from a particular category table.
+               The tuple is expected to consist of the following elements:
+
+               * ``category``: string with the name of the category. To select from the main
+                 table use ``self.name`` or ``None``.
+               * ``column``: string with the name of the column, and
+               * ``row``: integer index of the row.
+
+               The tuple itself then may take the following forms:
+
+               * Select a single column from a table via:
+                   * ``self[category, column]``
+               * Select a single full row of a given category table via:
+                   * ``self[row, category]`` (recommended, for consistency with DynamicTable)
+                   * ``self[category, row]``
+               * Select a single cell via:
+                   * ``self[row, (category, column)]`` (recommended, for consistency with DynamicTable))
+                   * ``self[row, category, column]``
+                   * ``self[category, column, row]``
+
+        :returns: Depending on the type of selection the function returns a:
+
+            * **pandas.DataFrame**: when retrieving a row or category table
+            * **array** : when retrieving a single column
+            * **single value** : when retrieving a single cell. The data type and shape will depend on the
+              data type and shape of the cell/column.
         """
         if isinstance(item, (int, list, np.ndarray, slice)):
             # get a single full row from all tables
@@ -283,19 +321,25 @@ class AlignedDynamicTable(DynamicTable):
                 return self.get_category(item).to_dataframe()
         elif isinstance(item, tuple):
             if len(item) == 2:
+                # DynamicTable allows selection of cells via the syntax [int, str], i.e,. [row_index, columnname]
+                # We support this syntax here as well with the additional caveat that in AlignedDynamicTable
+                # columns are identified by tuples of strings. As such [int, str] refers not to a cell but
+                # a single row in a particular category table (i.e., [row_index, category]). To select a cell
+                # the second part of the item then is a tuple of strings, i.e., [row_index, (category, column)]
                 if isinstance(item[0], (int, np.integer)):
-                    # Select a single cell based on row-index and the column or set of cells
-                    # based on row_index and category
+                    # Select a single cell or row of a sub-table based on row-index(item[0])
+                    # and the category (if item[1] is a string) or column (if item[1] is a tuple of (category, column)
                     re = self[item[0]][item[1]]
                     # re is a pandas.Series or pandas.Dataframe. If we selected a single cell
-                    # then return the value of the cell
+                    # (i.e., item[2] was a tuple defining a particular column) then return the value of the cell
                     if re.size == 1:
                         re = re.values[0]
                         # If we selected a single cell from a ragged column then we need to change the list to a tuple
                         if isinstance(re, list):
                             re = tuple(re)
-                    # We selected part of a whole table, not just a single column.
-                    # Change from a pandas.Series to a pandas.DataFrame for consistency with DynamicTable
+                    # We selected a row of a whole table (i.e., item[2] identified only the category table,
+                    # but not a particular column).
+                    # Change the result from a pandas.Series to a pandas.DataFrame for consistency with DynamicTable
                     if isinstance(re, pd.Series):
                         re = re.to_frame()
                     return re
@@ -307,7 +351,9 @@ class AlignedDynamicTable(DynamicTable):
                 else:
                     return self.get_category(item[0])[item[1]][item[2]]
             else:
-                raise ValueError("Expected tuple of length 2 or 3 with (category, column, row) as value.")
+                raise ValueError("Expected tuple of length 2 of the form [category, column], [row, category], "
+                                 "[row, (category, column)] or a tuple of length 3 of the form "
+                                 "[category, column, row], [row, category, column]")
 
     @docval({'name': 'ignore_category_tables', 'type': bool,
              'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
