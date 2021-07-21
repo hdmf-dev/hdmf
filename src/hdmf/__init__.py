@@ -1,3 +1,8 @@
+"""
+The Hierarchical Data Modeling Framework, or HDMF, is a Python package for working with hierarchical data.
+It provides APIs for specifying data models, reading and writing data to different storage backends,
+and representing data with Python object.
+"""
 from . import query  # noqa: F401
 from .container import Container, Data, DataRegion
 from .utils import docval, getargs

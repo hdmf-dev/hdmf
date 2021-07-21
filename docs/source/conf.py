@@ -50,6 +50,7 @@ autodoc_member_order = 'bysource'
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx_gallery.gen_gallery'
@@ -76,6 +77,9 @@ intersphinx_mapping = {
     'h5py': ('https://docs.h5py.org/en/latest/', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
 }
+
+# Enable sphinx.ext.autosummary to generate automatic summary for pynwb API docs
+autosummary_generate = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
