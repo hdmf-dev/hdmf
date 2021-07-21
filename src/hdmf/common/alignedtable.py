@@ -20,6 +20,10 @@ class AlignedDynamicTable(DynamicTable):
     defines a 2-level table in which the main data is stored in the main table implemented by this type
     and additional columns of the table are grouped into categories, with each category being'
     represented by a separate DynamicTable stored within the group.
+
+    NOTE: To remain compatible with DynamicTable, the attribute colnames represents only the
+          columns of the main table (not including the category tables). To get the full list of
+          column names, use the get_colnames() function instead.
     """
     __fields__ = ({'name': 'category_tables', 'child': True}, )
 
@@ -209,6 +213,28 @@ class AlignedDynamicTable(DynamicTable):
         for category, values in category_data.items():
             self.category_tables[category].add_row(**values)
 
+    @docval({'name': 'include_category_tables', 'type': bool,
+             'doc': "Ignore sub-category tables and just look at the main table", 'default': False},
+            {'name': 'ignore_category_ids', 'type': bool,
+             'doc': "Ignore id columns of sub-category tables", 'default': False})
+    def get_colnames(self, **kwargs):
+        """Get the full list of names of columns for this table
+
+        :returns: List of tuples (str, str) where the first string is the name of the DynamicTable
+                  that contains the column and the second string is the name of the column. If
+                  include_category_tables is False, then a list of column names is returned.
+        """
+        if not getargs('include_category_tables', kwargs):
+            return self.colnames
+        else:
+            ignore_category_ids = getargs('ignore_category_ids', kwargs)
+            columns = [(self.name, c) for c in self.colnames]
+            for category in self.category_tables.values():
+                if not ignore_category_ids:
+                    columns += [(category.name, 'id'), ]
+                columns += [(category.name, c) for c in category.colnames]
+            return columns
+
     @docval({'name': 'ignore_category_ids', 'type': bool,
              'doc': "Ignore id columns of sub-category tables", 'default': False})
     def to_dataframe(self, **kwargs):
@@ -225,21 +251,62 @@ class AlignedDynamicTable(DynamicTable):
 
     def __getitem__(self, item):
         """
-        :param item: Selection defining the items of interest. This may be a
+        Called to implement standard array slicing syntax.
 
-        * **int, list, array, slice** : Return one or multiple row of the table as a DataFrame
-        * **string** : Return a single category table as a DynamicTable or a single column of the
-          primary table as a
-        * **tuple**: Get a column, row, or cell from a particular category. The tuple is expected to consist
-          of (category, selection) where category may be a string with the name of the sub-category
-          or None (or the name of this AlignedDynamicTable) if we want to slice into the main table.
+        Same as ``self.get(item)``. See :py:meth:`~hdmf.common.alignedtable.AlignedDynamicTable.get` for details.
+        """
+        return self.get(item)
 
-        :returns: DataFrame when retrieving a row or category. Returns scalar when selecting a cell.
-                 Returns a VectorData/VectorIndex when retrieving a single column.
+    def get(self, item, **kwargs):
+        """
+        Access elements (rows, columns, category tables etc.) from the table. Instead of calling
+        this function directly, the class also implements standard array slicing syntax
+        via :py:meth:`~hdmf.common.alignedtable.AlignedDynamicTable.__getitem__`
+        (which calls this function). For example, instead of calling
+        ``self.get(item=slice(2,5))`` we may use the often more convenient form of ``self[2:5]`` instead.
+
+        :param item: Selection defining the items of interest. This may be either a:
+
+        * **int, list, array, slice** : Return one or multiple row of the table as a pandas.DataFrame. For example:
+              * ``self[0]`` : Select the first row of the table
+              * ``self[[0,3]]`` : Select the first and fourth row of the table
+              * ``self[1:4]`` : Select the rows with index 1,2,3 from the table
+
+        * **string** : Return a column from the main table or a category table. For example:
+              * ``self['column']`` : Return the column from the main table.
+              * ``self['my_category']`` : Returns a DataFrame of the ``my_category`` category table.
+                This is a shorthand for ``self.get_category('my_category').to_dataframe()``.
+
+        * **tuple**: Get a column, row, or cell from a particular category table.
+               The tuple is expected to consist of the following elements:
+
+               * ``category``: string with the name of the category. To select from the main
+                 table use ``self.name`` or ``None``.
+               * ``column``: string with the name of the column, and
+               * ``row``: integer index of the row.
+
+               The tuple itself then may take the following forms:
+
+               * Select a single column from a table via:
+                   * ``self[category, column]``
+               * Select a single full row of a given category table via:
+                   * ``self[row, category]`` (recommended, for consistency with DynamicTable)
+                   * ``self[category, row]``
+               * Select a single cell via:
+                   * ``self[row, (category, column)]`` (recommended, for consistency with DynamicTable)
+                   * ``self[row, category, column]``
+                   * ``self[category, column, row]``
+
+        :returns: Depending on the type of selection the function returns a:
+
+            * **pandas.DataFrame**: when retrieving a row or category table
+            * **array** : when retrieving a single column
+            * **single value** : when retrieving a single cell. The data type and shape will depend on the
+              data type and shape of the cell/column.
         """
         if isinstance(item, (int, list, np.ndarray, slice)):
             # get a single full row from all tables
-            dfs = ([super().__getitem__(item).reset_index(), ] +
+            dfs = ([super().get(item, **kwargs).reset_index(), ] +
                    [category[item].reset_index() for category in self.category_tables.values()])
             names = [self.name, ] + list(self.category_tables.keys())
             res = pd.concat(dfs, axis=1, keys=names)
@@ -248,14 +315,101 @@ class AlignedDynamicTable(DynamicTable):
         elif isinstance(item, str) or item is None:
             if item in self.colnames:
                 # get a specific column
-                return super().__getitem__(item)
+                return super().get(item, **kwargs)
             else:
                 # get a single category
                 return self.get_category(item).to_dataframe()
         elif isinstance(item, tuple):
             if len(item) == 2:
-                return self.get_category(item[0])[item[1]]
+                # DynamicTable allows selection of cells via the syntax [int, str], i.e,. [row_index, columnname]
+                # We support this syntax here as well with the additional caveat that in AlignedDynamicTable
+                # columns are identified by tuples of strings. As such [int, str] refers not to a cell but
+                # a single row in a particular category table (i.e., [row_index, category]). To select a cell
+                # the second part of the item then is a tuple of strings, i.e., [row_index, (category, column)]
+                if isinstance(item[0], (int, np.integer)):
+                    # Select a single cell or row of a sub-table based on row-index(item[0])
+                    # and the category (if item[1] is a string) or column (if item[1] is a tuple of (category, column)
+                    re = self[item[0]][item[1]]
+                    # re is a pandas.Series or pandas.Dataframe. If we selected a single cell
+                    # (i.e., item[2] was a tuple defining a particular column) then return the value of the cell
+                    if re.size == 1:
+                        re = re.values[0]
+                        # If we selected a single cell from a ragged column then we need to change the list to a tuple
+                        if isinstance(re, list):
+                            re = tuple(re)
+                    # We selected a row of a whole table (i.e., item[2] identified only the category table,
+                    # but not a particular column).
+                    # Change the result from a pandas.Series to a pandas.DataFrame for consistency with DynamicTable
+                    if isinstance(re, pd.Series):
+                        re = re.to_frame()
+                    return re
+                else:
+                    return self.get_category(item[0])[item[1]]
             elif len(item) == 3:
-                return self.get_category(item[0])[item[1]][item[2]]
+                if isinstance(item[0], (int, np.integer)):
+                    return self.get_category(item[1])[item[2]][item[0]]
+                else:
+                    return self.get_category(item[0])[item[1]][item[2]]
             else:
-                raise ValueError("Expected tuple of length 2 or 3 with (category, column, row) as value.")
+                raise ValueError("Expected tuple of length 2 of the form [category, column], [row, category], "
+                                 "[row, (category, column)] or a tuple of length 3 of the form "
+                                 "[category, column, row], [row, category, column]")
+
+    @docval({'name': 'ignore_category_tables', 'type': bool,
+             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
+            allow_extra=False)
+    def has_foreign_columns(self, **kwargs):
+        """
+        Does the table contain DynamicTableRegion columns
+
+        :returns: True if the table or any of the category tables contains a DynamicTableRegion column, else False
+        """
+        ignore_category_tables = getargs('ignore_category_tables', kwargs)
+        if super().has_foreign_columns():
+            return True
+        if not ignore_category_tables:
+            for table in self.category_tables.values():
+                if table.has_foreign_columns():
+                    return True
+        return False
+
+    @docval({'name': 'ignore_category_tables', 'type': bool,
+             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
+            allow_extra=False)
+    def get_foreign_columns(self, **kwargs):
+        """
+        Determine the names of all columns that link to another DynamicTable, i.e.,
+        find all DynamicTableRegion type columns. Similar to a foreign key in a
+        database, a DynamicTableRegion column references elements in another table.
+
+        :returns: List of tuples (str, str) where the first string is the name of the
+                  category table (or None if the column is in the main table) and the
+                  second string is the column name.
+        """
+        ignore_category_tables = getargs('ignore_category_tables', kwargs)
+        col_names = [(None, col_name) for col_name in super().get_foreign_columns()]
+        if not ignore_category_tables:
+            for table in self.category_tables.values():
+                col_names += [(table.name, col_name) for col_name in table.get_foreign_columns()]
+        return col_names
+
+    @docval(*get_docval(DynamicTable.get_linked_tables),
+            {'name': 'ignore_category_tables', 'type': bool,
+             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
+            allow_extra=False)
+    def get_linked_tables(self, **kwargs):
+        """
+        Get a list of the full list of all tables that are being linked to directly or indirectly
+        from this table via foreign DynamicTableColumns included in this table or in any table that
+        can be reached through DynamicTableRegion columns
+
+
+        Returns: List of dicts with the following keys:
+                * 'source_table' : The source table containing the DynamicTableRegion column
+                * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
+                * 'target_table' : The target DynamicTable; same as source_column.table.
+
+        """
+        ignore_category_tables = getargs('ignore_category_tables', kwargs)
+        other_tables = None if ignore_category_tables else list(self.category_tables.values())
+        return super().get_linked_tables(other_tables=other_tables)

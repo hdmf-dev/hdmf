@@ -492,6 +492,8 @@ def docval(*validator, **options):  # noqa: C901
     :param is_method: True if this is decorating an instance or class method, False otherwise (Default=True)
     :param enforce_shape: Enforce the dimensions of input arrays (Default=True)
     :param validator: :py:func:`dict` objects specifying the method parameters
+    :param allow_extra: Allow extra arguments (Default=False)
+    :param allow_positional: Allow positional arguments (Default=True)
     :param options: additional options for documenting and validating method parameters
     '''
     enforce_type = options.pop('enforce_type', True)

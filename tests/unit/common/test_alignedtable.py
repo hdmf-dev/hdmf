@@ -3,13 +3,19 @@ from pandas.testing import assert_frame_equal
 import warnings
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable
+from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable, DynamicTableRegion
 from hdmf.testing import TestCase, remove_test_file
 
 
 class TestAlignedDynamicTableContainer(TestCase):
     """
     Test the AlignedDynamicTable Container class.
+
+    NOTE: Functions specific to linked tables, specifically the:
+    * has_foreign_columns
+    * get_foreign_columns
+    * get_linked_tables
+    methods are tested in the test_linkedtables.TestLinkedAlignedDynamicTables class instead of here.
     """
     def setUp(self):
         warnings.simplefilter("always")  # Trigger all warnings
@@ -410,10 +416,22 @@ class TestAlignedDynamicTableContainer(TestCase):
         self.assertListEqual(temp['test1', 'c1'][:].tolist(), (np.arange(num_rows) + 3).tolist())
         # Test getting a specific cell
         self.assertEqual(temp[None, 'main_c1', 1], 3)
+        self.assertEqual(temp[1, None, 'main_c1'], 3)
         # Test bad selection tuple
         with self.assertRaisesWith(ValueError,
-                                   "Expected tuple of length 2 or 3 with (category, column, row) as value."):
+                                   "Expected tuple of length 2 of the form [category, column], [row, category], "
+                                   "[row, (category, column)] or a tuple of length 3 of the form "
+                                   "[category, column, row], [row, category, column]"):
             temp[('main_c1',)]
+        # Test selecting a single cell or row of a category table by having a
+        # [int, str] or [int, (str, str)] type selection
+        # Select row 0 from category 'test1'
+        re = temp[0, 'test1']
+        self.assertListEqual(re.columns.to_list(), ['id', 'c1', 'c2'])
+        self.assertListEqual(re.index.names, [('test_aligned_table', 'id')])
+        self.assertListEqual(re.values.tolist()[0], [0, 3, 4])
+        # Select a single cell from a columm
+        self.assertEqual(temp[1, ('test_aligned_table', 'main_c1')], 3)
 
     def test_to_dataframe(self):
         """Test that the to_dataframe method works"""
@@ -497,3 +515,74 @@ class TestAlignedDynamicTableContainer(TestCase):
         msg = "Category is an AlignedDynamicTable. Nesting of AlignedDynamicTable is currently not supported."
         with self.assertRaisesWith(ValueError, msg):
             adt.add_category(adt_category)
+
+    def test_dynamictable_region_to_aligneddynamictable(self):
+        """
+        Test to ensure data is being retrieved correctly when pointing to an AlignedDynamicTable.
+        In particular, make sure that all columns are being used, including those of the
+        category tables, not just the ones from the main table.
+        """
+        temp_table = DynamicTable(name='t1', description='t1',
+                                  colnames=['c1', 'c2'],
+                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                           VectorData(name='c2', description='c2', data=np.arange(4))])
+        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                 description='my test table',
+                                                 category_tables=[temp_table],
+                                                 colnames=['a1', 'a2'],
+                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                          VectorData(name='a2', description='c1', data=np.arange(4))])
+        dtr = DynamicTableRegion(name='test', description='test', data=np.arange(4), table=temp_aligned_table)
+        dtr_df = dtr[:]
+        # Full number of rows
+        self.assertEqual(len(dtr_df), 4)
+        # Test num columns: 2 columns from the main table, 2 columns from the category, 1 id columns from the category
+        self.assertEqual(len(dtr_df.columns), 5)
+        # Test that the data is correct
+        for i, v in enumerate([('my_aligned_table', 'a1'), ('my_aligned_table', 'a2'),
+                               ('t1', 'id'), ('t1', 'c1'), ('t1', 'c2')]):
+            self.assertTupleEqual(dtr_df.columns[i], v)
+        # Test the column data
+        for c in dtr_df.columns:
+            self.assertListEqual(dtr_df[c].to_list(), list(range(4)))
+
+    def test_get_colnames(self):
+        """
+        Test the AlignedDynamicTable.get_colnames function
+        """
+        category_names = ['test1', 'test2', 'test3']
+        num_rows = 10
+        categories = [DynamicTable(name=val,
+                                   description=val+" description",
+                                   columns=[VectorData(name=t,
+                                                       description=val+t+' description',
+                                                       data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']]
+                                   ) for val in category_names]
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            category_tables=categories,
+            columns=[VectorData(name='main_' + t,
+                                description='main_'+t+'_description',
+                                data=np.arange(num_rows)) for t in ['c1', 'c2', 'c3']])
+        # Default, only get the colnames of the main table. Same as adt.colnames property
+        expected_colnames = ('main_c1', 'main_c2', 'main_c3')
+        self.assertTupleEqual(adt.get_colnames(), expected_colnames)
+        # Same as default because if we don't include the catgories than ignore_category_ids has no effect
+        self.assertTupleEqual(adt.get_colnames(include_category_tables=False, ignore_category_ids=True),
+                              expected_colnames)
+        # Full set of columns
+        expected_colnames = [('test_aligned_table', 'main_c1'), ('test_aligned_table', 'main_c2'),
+                             ('test_aligned_table', 'main_c3'), ('test1', 'id'), ('test1', 'c1'),
+                             ('test1', 'c2'), ('test1', 'c3'), ('test2', 'id'), ('test2', 'c1'),
+                             ('test2', 'c2'), ('test2', 'c3'), ('test3', 'id'), ('test3', 'c1'),
+                             ('test3', 'c2'), ('test3', 'c3')]
+        self.assertListEqual(adt.get_colnames(include_category_tables=True, ignore_category_ids=False),
+                             expected_colnames)
+        # All columns without the id columns of the category tables
+        expected_colnames = [('test_aligned_table', 'main_c1'), ('test_aligned_table', 'main_c2'),
+                             ('test_aligned_table', 'main_c3'), ('test1', 'c1'), ('test1', 'c2'),
+                             ('test1', 'c3'), ('test2', 'c1'), ('test2', 'c2'), ('test2', 'c3'),
+                             ('test3', 'c1'), ('test3', 'c2'), ('test3', 'c3')]
+        self.assertListEqual(adt.get_colnames(include_category_tables=True, ignore_category_ids=True),
+                             expected_colnames)
