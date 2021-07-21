@@ -293,7 +293,7 @@ class AlignedDynamicTable(DynamicTable):
                    * ``self[row, category]`` (recommended, for consistency with DynamicTable)
                    * ``self[category, row]``
                * Select a single cell via:
-                   * ``self[row, (category, column)]`` (recommended, for consistency with DynamicTable))
+                   * ``self[row, (category, column)]`` (recommended, for consistency with DynamicTable)
                    * ``self[row, category, column]``
                    * ``self[category, column, row]``
 
