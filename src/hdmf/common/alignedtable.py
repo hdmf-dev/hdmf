@@ -218,7 +218,12 @@ class AlignedDynamicTable(DynamicTable):
             {'name': 'ignore_category_ids', 'type': bool,
              'doc': "Ignore id columns of sub-category tables", 'default': False})
     def get_colnames(self, **kwargs):
-        """Get the full list of names of columns for this table"""
+        """Get the full list of names of columns for this table
+        
+        :returns: List of tuples (str, str) where the first string is the name of the DynamicTable
+                  that contains the column and the second string is the name of the column. If
+                  include_category_tables is False, then a list of column names is returned.
+        """
         if not getargs('include_category_tables', kwargs):
             return self.colnames
         else:
