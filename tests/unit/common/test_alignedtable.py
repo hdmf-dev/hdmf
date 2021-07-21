@@ -419,7 +419,9 @@ class TestAlignedDynamicTableContainer(TestCase):
         self.assertEqual(temp[1, None, 'main_c1'], 3)
         # Test bad selection tuple
         with self.assertRaisesWith(ValueError,
-                                   "Expected tuple of length 2 or 3 with (category, column, row) as value."):
+                                   "Expected tuple of length 2 of the form [category, column], [row, category], "
+                                   "[row, (category, column)] or a tuple of length 3 of the form "
+                                   "[category, column, row], [row, category, column]"):
             temp[('main_c1',)]
         # Test selecting a single cell or row of a category table by having a
         # [int, str] or [int, (str, str)] type selection
