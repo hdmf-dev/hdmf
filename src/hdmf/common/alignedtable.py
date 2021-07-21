@@ -275,7 +275,7 @@ class AlignedDynamicTable(DynamicTable):
         * **string** : Return a column from the main table or a category table. For example:
               * ``self['column']`` : Return the column from the main table.
               * ``self['my_category']`` : Returns a DataFrame of the ``my_category`` category table.
-                This is a shorthand for ``self.get_category.to_dataframe()``.
+                This is a shorthand for ``self.get_category('my_category').to_dataframe()``.
 
         * **tuple**: Get a column, row, or cell from a particular category table.
                The tuple is expected to consist of the following elements:
