@@ -1,3 +1,4 @@
+"""Object mapper definitions for types implemented in :py:mod:`~hdmf.common.alignedtable`"""
 from .. import register_map
 from ..alignedtable import AlignedDynamicTable
 from .table import DynamicTableMap

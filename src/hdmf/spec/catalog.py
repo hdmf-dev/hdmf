@@ -1,3 +1,4 @@
+"""Catalog for managing a collection of format specifications"""
 import copy
 from collections import OrderedDict
 

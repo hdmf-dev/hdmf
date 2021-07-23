@@ -1,3 +1,7 @@
+"""
+Collection of warnings used during the data translation process to construct builders from containers and vice versa.
+"""
+
 class BuildWarning(UserWarning):
     """
     Base class for warnings that are raised during the building of a container.

@@ -1,3 +1,4 @@
+"""Module defining the base classes for defining an HDMF I/O backend"""
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
@@ -7,6 +8,16 @@ from ..utils import docval, getargs, popargs
 
 
 class HDMFIO(metaclass=ABCMeta):
+    """
+    Base class for implementing a new I/O backend for HDMF
+
+    Derived classes must implement the following abstract methods:
+
+    * :py:meth:`~hdmf.backends.io.HDMFIO.read_builder`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.write_builder`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.open`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.close`
+    """
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),

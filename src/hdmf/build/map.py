@@ -1,3 +1,4 @@
+"""DEPRECATED: Classes in map.py should be imported from :py:mod:`~hdmf.build` instead"""
 # this prevents breaking of code that imports these classes directly from map.py
 from .manager import Proxy, BuildManager, TypeSource, TypeMap  # noqa: F401
 from .objectmapper import ObjectMapper  # noqa: F401

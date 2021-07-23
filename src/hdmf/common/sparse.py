@@ -1,3 +1,4 @@
+"""Module with data structures for stroring sparse matrices """
 import h5py
 import numpy as np
 import scipy.sparse as sps

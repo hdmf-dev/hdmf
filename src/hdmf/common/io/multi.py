@@ -1,3 +1,4 @@
+"""Object mapper definitions for types implemented in :py:mod:`~hdmf.common.multi`"""
 from .. import register_map
 from ..multi import SimpleMultiContainer
 from ...build import ObjectMapper

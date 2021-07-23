@@ -1,3 +1,4 @@
+"""Collection of utility classes used for HDF5 I/O, e.g., HDF5 dataset wrapper classes to support lazy read."""
 import json
 import os
 import warnings
