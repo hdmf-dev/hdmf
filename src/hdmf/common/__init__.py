@@ -1,5 +1,5 @@
-'''This package will contain functions, classes, and objects
-for reading and writing data in according to the HDMF-common specification
+'''
+Package for reading and writing data in accordance with the HDMF-common-schema specification
 '''
 import os.path
 from copy import deepcopy
