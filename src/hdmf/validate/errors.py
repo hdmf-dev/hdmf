@@ -25,10 +25,6 @@ class Error:
         self.__name = getargs('name', kwargs)
         self.__reason = getargs('reason', kwargs)
         self.__location = getargs('location', kwargs)
-        if self.__location is not None:
-            self.__str = "%s (%s): %s" % (self.__name, self.__location, self.__reason)
-        else:
-            self.__str = "%s: %s" % (self.name, self.reason)
 
     @property
     def name(self):
@@ -45,13 +41,48 @@ class Error:
     @location.setter
     def location(self, loc):
         self.__location = loc
-        self.__str = "%s (%s): %s" % (self.__name, self.__location, self.__reason)
 
     def __str__(self):
-        return self.__str
+        return self.__format_str(self.name, self.location, self.reason)
+
+    @staticmethod
+    def __format_str(name, location, reason):
+        if location is not None:
+            return "%s (%s): %s" % (name, location, reason)
+        else:
+            return "%s: %s" % (name, reason)
 
     def __repr__(self):
         return self.__str__()
+
+    def __hash__(self):
+        """Returns the hash value of this Error
+
+        Note: if the location property is set after creation, the hash value will
+        change. Therefore, it is important to finalize the value of location
+        before getting the hash value.
+        """
+        return hash(self.__equatable_str())
+
+    def __equatable_str(self):
+        """A string representation of the error which can be used to check for equality
+
+        For a single error, name can end up being different depending on whether it is
+        generated from a base data type spec or from an inner type definition. These errors
+        should still be considered equal because they are caused by the same problem.
+
+        When a location is provided, we only consider the name of the field and drop the
+        rest of the spec name. However, when a location is not available, then we need to
+        use the fully-provided name.
+        """
+        if self.location is not None:
+            equatable_name = self.name.split('/')[-1]
+        else:
+            equatable_name = self.name
+        return self.__format_str(equatable_name, self.location, self.reason)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
 
 class DtypeError(Error):

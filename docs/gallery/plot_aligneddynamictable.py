@@ -77,7 +77,7 @@ customer_table = AlignedDynamicTable(
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #
 # The basic behavior of adding data and initalizing  :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
-# is the same as in :py:class:`~hdmf.common.table.DynamicTable`. See the :doc:`DynamicTable tutorial  <dynamictable>`
+# is the same as in :py:class:`~hdmf.common.table.DynamicTable`. See the :ref:`dynamictable-howtoguide`
 # for details. E.g., using  the ``columns`` and ``colnames`` parameters (which are inherited from
 # :py:class:`~hdmf.common.table.DynamicTable`) we can define the columns of the primary table.
 # All columns must have the same length.
@@ -286,7 +286,7 @@ _ = customer_table['home_address', 'city']
 # Accessing rows
 # ^^^^^^^^^^^^^^
 #
-# Accessing rows works much like in :doc:`DynamicTable <dynamictable>`
+# Accessing rows works much like in :ref:`dynamictable-howtoguide`
 #
 
 # Get a single row by index as a DataFrame

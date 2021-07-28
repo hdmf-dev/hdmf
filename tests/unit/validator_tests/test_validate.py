@@ -4,13 +4,15 @@ from unittest import mock, skip
 
 import numpy as np
 from dateutil.tz import tzlocal
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, LinkSpec
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, TypeMap, BuildManager
+from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace,
+                       LinkSpec, RefSpec, NamespaceCatalog, DtypeSpec)
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
-from hdmf.testing import TestCase
+from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError)
+from hdmf.backends.hdf5 import HDF5IO
 
 CORE_NAMESPACE = 'test_core'
 
@@ -422,7 +424,7 @@ class TestDtypeValidation(TestCase):
     def test_bool_for_numeric(self):
         """Test that validator does not allow bool data where numeric is specified."""
         self.set_up_spec('numeric')
-        value = np.bool(1)
+        value = True
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': value},
                                    datasets=[DatasetBuilder('data', value)])
@@ -821,3 +823,189 @@ class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
         builder = GroupBuilder('my_baz', attributes={'data_type': 'Baz'}, datasets=datasets)
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
+
+
+class TestExtendedIncDataTypes(TestCase):
+    """Test validation against specs where a data type is included via data_type_inc
+    and modified by adding new fields or constraining existing fields but is not
+    defined as a new type via data_type_inc.
+
+    For the purpose of this test class: we are calling a data type which is nested
+    inside a group an "inner" data type. When an inner data type inherits from a data type
+    via data_type_inc and has fields that are either added or modified from the base
+    data type, we are labeling that data type as an "extension". When the inner data
+    type extension does not define a new data type via data_type_def we say that it is
+    an "anonymous extension".
+
+    Anonymous data type extensions should be avoided in for new specs, but
+    it does occur in existing nwb
+    specs, so we need to allow and validate against it.
+    One example is the `Units.spike_times` dataset attached to Units in the `core`
+    nwb namespace, which extends `VectorData` via neurodata_type_inc but adds a new
+    attribute named `resolution` without defining a new data type via neurodata_type_def.
+    """
+
+    def setup_spec(self):
+        """Prepare a set of specs for tests which includes an anonymous data type extension"""
+        spec_catalog = SpecCatalog()
+        attr_foo = AttributeSpec(name='foo', doc='an attribute', dtype='text')
+        attr_bar = AttributeSpec(name='bar', doc='an attribute', dtype='numeric')
+        d1_spec = DatasetSpec(doc='type D1', data_type_def='D1', dtype='numeric',
+                              attributes=[attr_foo])
+        d2_spec = DatasetSpec(doc='type D2', data_type_def='D2', data_type_inc=d1_spec)
+        g1_spec = GroupSpec(doc='type G1', data_type_def='G1',
+                            datasets=[DatasetSpec(doc='D1 extension', data_type_inc=d1_spec,
+                                                  attributes=[attr_foo, attr_bar])])
+        for spec in [d1_spec, d2_spec, g1_spec]:
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def test_missing_additional_attribute_on_anonymous_data_type_extension(self):
+        """Verify that a MissingError is returned when a required attribute from an
+        anonymous extension is not present
+        """
+        self.setup_spec()
+        dataset = DatasetBuilder('test_d1', 42.0, attributes={'data_type': 'D1', 'foo': 'xyz'})
+        builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        error = result[0]
+        self.assertIsInstance(error, MissingError)
+        self.assertTrue('G1/D1/bar' in str(error))
+
+    def test_validate_child_type_against_anonymous_data_type_extension(self):
+        """Verify that a MissingError is returned when a required attribute from an
+        anonymous extension is not present on a data type which inherits from the data
+        type included in the anonymous extension.
+        """
+        self.setup_spec()
+        dataset = DatasetBuilder('test_d2', 42.0, attributes={'data_type': 'D2', 'foo': 'xyz'})
+        builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        error = result[0]
+        self.assertIsInstance(error, MissingError)
+        self.assertTrue('G1/D1/bar' in str(error))
+
+    def test_redundant_attribute_in_spec(self):
+        """Test that only one MissingError is returned when an attribute is missing
+        which is redundantly defined in both a base data type and an inner data type
+        """
+        self.setup_spec()
+        dataset = DatasetBuilder('test_d2', 42.0, attributes={'data_type': 'D2', 'bar': 5})
+        builder = GroupBuilder('test_g1', attributes={'data_type': 'G1'}, datasets=[dataset])
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+
+
+class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
+    """Test that no errors occur when when datasets containing references either in an
+    array or as part of a compound type are written out to file, read back in, and
+    then validated.
+
+    In order to support lazy reading on loading, datasets containing references are
+    wrapped in lazy-loading ReferenceResolver objects. These tests verify that the
+    validator can work with these ReferenceResolver objects.
+    """
+
+    def setUp(self):
+        self.filename = 'test_ref_dataset.h5'
+        super().setUp()
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+        super().tearDown()
+
+    def getSpecs(self):
+        qux_spec = DatasetSpec(
+            doc='a simple scalar dataset',
+            data_type_def='Qux',
+            dtype='int',
+            shape=None
+        )
+        baz_spec = DatasetSpec(
+            doc='a dataset with a compound datatype that includes a reference',
+            data_type_def='Baz',
+            dtype=[
+                DtypeSpec('x', doc='x-value', dtype='int'),
+                DtypeSpec('y', doc='y-ref', dtype=RefSpec('Qux', reftype='object'))
+            ],
+            shape=None
+        )
+        bar_spec = DatasetSpec(
+            doc='a dataset of an array of references',
+            dtype=RefSpec('Qux', reftype='object'),
+            data_type_def='Bar',
+            shape=(None,)
+        )
+        foo_spec = GroupSpec(
+            doc='a base group for containing test datasets',
+            data_type_def='Foo',
+            datasets=[
+                DatasetSpec(doc='optional Bar', data_type_inc=bar_spec, quantity=ZERO_OR_ONE),
+                DatasetSpec(doc='optional Baz', data_type_inc=baz_spec, quantity=ZERO_OR_ONE),
+                DatasetSpec(doc='multiple qux', data_type_inc=qux_spec, quantity=ONE_OR_MANY)
+            ]
+        )
+        return (foo_spec, bar_spec, baz_spec, qux_spec)
+
+    def runBuilderRoundTrip(self, builder):
+        """Executes a round-trip test for a builder
+
+        1. First writes the builder to file,
+        2. next reads a new builder from disk
+        3. and finally runs the builder through the validator.
+        The test is successful if there are no validation errors."""
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.add_namespace(self.namespace.name, self.namespace)
+        typemap = TypeMap(ns_catalog)
+        self.manager = BuildManager(typemap)
+
+        with HDF5IO(self.filename, manager=self.manager, mode='w') as write_io:
+            write_io.write_builder(builder)
+
+        with HDF5IO(self.filename, manager=self.manager, mode='r') as read_io:
+            read_builder = read_io.read_builder()
+            errors = self.vmap.validate(read_builder)
+            self.assertEqual(len(errors), 0, errors)
+
+    def test_round_trip_validation_of_reference_dataset_array(self):
+        """Verify that a dataset builder containing an array of references passes
+        validation after a round trip"""
+        qux1 = DatasetBuilder('q1', 5, attributes={'data_type': 'Qux'})
+        qux2 = DatasetBuilder('q2', 10, attributes={'data_type': 'Qux'})
+        bar = DatasetBuilder(
+            name='bar',
+            data=[ReferenceBuilder(qux1), ReferenceBuilder(qux2)],
+            attributes={'data_type': 'Bar'},
+            dtype='object'
+        )
+        foo = GroupBuilder(
+            name='foo',
+            datasets=[bar, qux1, qux2],
+            attributes={'data_type': 'Foo'}
+        )
+        self.runBuilderRoundTrip(foo)
+
+    def test_round_trip_validation_of_compound_dtype_with_reference(self):
+        """Verify that a dataset builder containing data with a compound dtype
+        containing a reference passes validation after a round trip"""
+        qux1 = DatasetBuilder('q1', 5, attributes={'data_type': 'Qux'})
+        qux2 = DatasetBuilder('q2', 10, attributes={'data_type': 'Qux'})
+        baz = DatasetBuilder(
+            name='baz',
+            data=[(10, ReferenceBuilder(qux1))],
+            dtype=[
+                DtypeSpec('x', doc='x-value', dtype='int'),
+                DtypeSpec('y', doc='y-ref', dtype=RefSpec('Qux', reftype='object'))
+            ],
+            attributes={'data_type': 'Baz'}
+        )
+        foo = GroupBuilder(
+            name='foo',
+            datasets=[baz, qux1, qux2],
+            attributes={'data_type': 'Foo'}
+        )
+        self.runBuilderRoundTrip(foo)
