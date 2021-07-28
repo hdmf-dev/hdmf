@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## Upcoming (TBD)
+## HDMF 3.1.0 (July 29, 2021)
 
 ### New features
 - Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
