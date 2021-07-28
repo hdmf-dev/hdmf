@@ -9,7 +9,7 @@ import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, SPEC_LOC_ATTR
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
@@ -556,22 +556,28 @@ class H5IOTest(TestCase):
             self.assertEqual(len(w), 0)
             self.assertEqual(dset.io_settings['compression'], 'gzip')
         # Make sure a warning is issued when using szip (even if installed)
+        warn_msg = ("szip compression may not be available on all installations of HDF5. Use of gzip is "
+                    "recommended to ensure portability of the generated HDF5 files.")
         if "szip" in h5py_filters.encode:
-            with warnings.catch_warnings(record=True) as w:
+            with self.assertWarnsWith(UserWarning, warn_msg):
                 dset = H5DataIO(np.arange(30),
                                 compression='szip',
                                 compression_opts=('ec', 16))
-                self.assertEqual(len(w), 1)
-                self.assertEqual(dset.io_settings['compression'], 'szip')
+            self.assertEqual(dset.io_settings['compression'], 'szip')
         else:
             with self.assertRaises(ValueError):
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with self.assertWarnsWith(UserWarning, warn_msg):
+                    dset = H5DataIO(np.arange(30),
+                                    compression='szip',
+                                    compression_opts=('ec', 16))
+                self.assertEqual(dset.io_settings['compression'], 'szip')
         # Make sure a warning is issued when using lzf compression
-        with warnings.catch_warnings(record=True) as w:
+        warn_msg = ("lzf compression may not be available on all installations of HDF5. Use of gzip is "
+                    "recommended to ensure portability of the generated HDF5 files.")
+        with self.assertWarnsWith(UserWarning, warn_msg):
             dset = H5DataIO(np.arange(30),
                             compression='lzf')
-            self.assertEqual(len(w), 1)
-            self.assertEqual(dset.io_settings['compression'], 'lzf')
+        self.assertEqual(dset.io_settings['compression'], 'lzf')
 
     def test_error_on_unsupported_compression_filter(self):
         # Make sure gzip does not raise an error
@@ -584,7 +590,8 @@ class H5IOTest(TestCase):
                     "recommended to ensure portability of the generated HDF5 files.")
         if "szip" not in h5py_filters.encode:
             with self.assertRaises(ValueError):
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with self.assertWarnsWith(UserWarning, warn_msg):
+                    H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
         else:
             try:
                 with self.assertWarnsWith(UserWarning, warn_msg):
@@ -714,6 +721,22 @@ class H5IOTest(TestCase):
     def test_list_fill_empty_no_dtype(self):
         with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
+
+    def test_read_str(self):
+        a = ['a', 'bb', 'ccc', 'dddd', 'e']
+        attr = 'foobar'
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={'test_attr': attr}, dtype='text'))
+        self.io.close()
+        with HDF5IO(self.path, 'r') as io:
+            bldr = io.read_builder()
+            np.array_equal(bldr['test_dataset'].data[:], ['a', 'bb', 'ccc', 'dddd', 'e'])
+            np.array_equal(bldr['test_dataset'].attributes['test_attr'], attr)
+            if H5PY_3:
+                self.assertEqual(str(bldr['test_dataset'].data),
+                                 '<StrDataset for HDF5 dataset "test_dataset": shape (5,), type "|O">')
+            else:
+                self.assertEqual(str(bldr['test_dataset'].data),
+                                 '<HDF5 dataset "test_dataset": shape (5,), type "|O">')
 
 
 def _get_manager():
@@ -2039,7 +2062,11 @@ class TestLoadNamespaces(TestCase):
                            '{"name":"my_attr","dtype":"text","doc":"an attr"}]},'
                            '{"data_type_def":"BiggerFoo","data_type_inc":"BigFoo","doc":"doc"}]}')
             old_test_source = f['/specifications/test_core/0.1.0/test']
-            old_test_source[()] = old_test_source[()][0:-2] + added_types  # strip the ]} from end, then add to groups
+            # strip the ]} from end, then add to groups
+            if H5PY_3:  # string datasets are returned as bytes
+                old_test_source[()] = old_test_source[()][0:-2].decode('utf-8') + added_types
+            else:
+                old_test_source[()] = old_test_source[()][0:-2] + added_types
             new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":['
                       '{"namespace":"test_core","my_data_types":["Foo"]},'
                       '{"source":"test-ext.extensions"}'

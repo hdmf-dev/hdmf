@@ -8,6 +8,7 @@ from enum import Enum
 import h5py
 import numpy as np
 
+
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float, bytes, bool],
@@ -491,6 +492,8 @@ def docval(*validator, **options):  # noqa: C901
     :param is_method: True if this is decorating an instance or class method, False otherwise (Default=True)
     :param enforce_shape: Enforce the dimensions of input arrays (Default=True)
     :param validator: :py:func:`dict` objects specifying the method parameters
+    :param allow_extra: Allow extra arguments (Default=False)
+    :param allow_positional: Allow positional arguments (Default=True)
     :param options: additional options for documenting and validating method parameters
     '''
     enforce_type = options.pop('enforce_type', True)
@@ -999,3 +1002,38 @@ class LabelledDict(dict):
     def update(self, other):
         """update is not supported. A TypeError will be raised."""
         raise TypeError('update is not supported for %s' % self.__class__.__name__)
+
+
+@docval_macro('array_data')
+class StrDataset(h5py.Dataset):
+    """Wrapper to decode strings on reading the dataset"""
+    def __init__(self, dset, encoding, errors='strict'):
+        self.dset = dset
+        if encoding is None:
+            encoding = h5py.h5t.check_string_dtype(dset.dtype).encoding
+        self.encoding = encoding
+        self.errors = errors
+
+    def __getattr__(self, name):
+        return getattr(self.dset, name)
+
+    def __repr__(self):
+        return '<StrDataset for %s>' % repr(self.dset)[1:-1]
+
+    def __len__(self):
+        return len(self.dset)
+
+    def __getitem__(self, args):
+        bytes_arr = self.dset[args]
+        # numpy.char.decode() seems like the obvious thing to use. But it only
+        # accepts numpy string arrays, not object arrays of bytes (which we
+        # return from HDF5 variable-length strings). And the numpy
+        # implementation is not faster than doing it with a loop; in fact, by
+        # not converting the result to a numpy unicode array, the
+        # naive way can be faster! (Comparing with numpy 1.18.4, June 2020)
+        if np.isscalar(bytes_arr):
+            return bytes_arr.decode(self.encoding, self.errors)
+
+        return np.array([
+            b.decode(self.encoding, self.errors) for b in bytes_arr.flat
+        ], dtype=object).reshape(bytes_arr.shape)
