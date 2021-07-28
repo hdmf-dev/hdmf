@@ -551,6 +551,12 @@ class Data(AbstractContainer):
         self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
+        """
+        The extend_data method adds all the elements of the iterable arg to the
+        end of the data of this Data container.
+
+        :param arg: The iterable to add to the end of this VectorData
+        """
         self.__data = extend_data(self.__data, arg)
 
 

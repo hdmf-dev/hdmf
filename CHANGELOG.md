@@ -2,8 +2,32 @@
 
 ## Upcoming (TBD)
 
+### New features
+- Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
+  ``DynamicTableRegion`` columns. @oruebel (#645)
+    - Added ``DynamicTable.get_foreign_columns`` to find all columns in a table that are a ``DynamicTableRegion``
+    - Added ``DynamicTable.has_foreign_columns`` to identify if a ``DynamicTable`` contains ``DynamicTableRegion`` columns
+    - Added ``DynamicTable.get_linked_tables`` to retrieve all tables linked to either directly or indirectly from
+      the current table via ``DynamicTableRegion``
+    - Implemented the new ``get_foreign_columns``, ``has_foreign_columns``, and ``get_linked_tables`` also for
+      ``AlignedDynamicTable``
+    - Added new module ``hdmf.common.hierarchicaltable`` with helper functions to facilitate conversion of
+      hierarchically nested ``DynamicTable`` objects via the following new functions:
+      - ``to_hierarchical_dataframe`` to merge linked tables into a single consolidated pandas DataFrame.
+      - ``drop_id_columns`` to remove "id" columns from a DataFrame.
+      - ``flatten_column_index`` to replace a ``pandas.MultiIndex`` with a regular ``pandas.Index``
+
 ### Bug fixes
 - Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
+- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to referenece ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
+- Fixed #651 to support selection of cells in an ``AlignedDynamicTable`` via slicing with  ``[int, (str, str)]``(and ``[int, str, str]``) to select a single cell, and ``[int, str]`` to select a single row of a category table. @oruebel (#645)
+
+### Minor improvements
+- Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
+  on generated pandas DataFrame objects. @oruebel (#645)
+- Added ``AlignedDynamicTable.get_colnames(...)`` to support look-up of the full list of columns as the
+  ``AlignedDynamicTable.colnames`` property only includes the columns of the main table for compliance with
+  ``DynamicTable`` @oruebel (#645)
 - Fix documentation for `DynamicTable.get` and `DynamicTableRegion.get`. @rly (#650)
 
 ## HDMF 3.0.1 (July 7, 2021)
