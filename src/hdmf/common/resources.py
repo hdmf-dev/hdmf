@@ -4,6 +4,7 @@ from . import register_class, EXP_NAMESPACE
 from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer
 from ..utils import docval, popargs
+from ..build import TypeMap
 
 class KeyTable(Table):
     """
@@ -87,8 +88,12 @@ class ObjectTable(Table):
     __columns__ = (
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data'},
+        {'name': 'relative_path', 'type': str,
+         'doc': ('The relative_path of the attribute on the Container/Data that uses',
+                'an external resource reference key')},
         {'name': 'field', 'type': str,
-         'doc': 'The field on the Container/Data that uses an external resource reference key'},
+         'doc': ('the field of the compound data type using'
+                 'an external resource')}
     )
 
 
@@ -162,7 +167,7 @@ class ExternalResources(Container):
         Add a key to be used for making references to external resources
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and field. To do so, this method must be called for the two different resources.
+        used within the same object and relative_path. To do so, this method must be called for the two different resources.
         The returned Key objects must be managed by the caller so as to be appropriately passed to subsequent calls
         to methods for storing information about the different resources.
         """
@@ -199,75 +204,90 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'the Container/Data object to add or the object_id for the Container/Data object to add'},
-            {'name': 'field', 'type': str, 'doc': 'the field on the Container to add'})
+            {'name': 'relative_path', 'type': str, 'doc': 'the relative_path on the Container to add'},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': ('the field of the compound data type using'
+                     'an external resource')})
     def _add_object(self, **kwargs):
         """
         Add an object that references an external resource
         """
-        container, field = popargs('container', 'field', kwargs)
+        container, relative_path, field = popargs('container', 'relative_path', 'field', kwargs)
         if isinstance(container, AbstractContainer):
             container = container.object_id
-        obj = Object(container, field, table=self.objects)
+        obj = Object(container, relative_path, field, table=self.objects)
         return obj
 
     @docval({'name': 'obj', 'type': (int, Object), 'doc': 'the Object to that uses the Key'},
             {'name': 'key', 'type': (int, Key), 'doc': 'the Key that the Object uses'})
     def _add_object_key(self, **kwargs):
         """
-        Specify that an object (i.e. container and field) uses a key to reference
+        Specify that an object (i.e. container and relative_path) uses a key to reference
         an external resource
         """
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    def _check_object_field(self, container, field):
+    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('the Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key')},
+            {'name': 'relative_path', 'type': str, 'doc': 'the relative_path of the Container that uses the key', 'default': None},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': ('the field of the compound data type using'
+                     'an external resource')})
+    def _check_object_field(self, container, relative_path, field):
         """
-        A helper function for checking if a container and field have been added.
+        A helper function for checking if a container and relative_path have been added.
 
         The container can be either an object_id string or a AbstractContainer.
 
-        If the container and field have not been added, add the pair and return
+        If the container and relative_path have not been added, add the pair and return
         the corresponding Object. Otherwise, just return the Object.
         """
+        if field is None:
+            field=''
         if isinstance(container, str):
             objecttable_idx = self.objects.which(object_id=container)
         else:
             objecttable_idx = self.objects.which(object_id=container.object_id)
 
         if len(objecttable_idx) > 0:
-            field_idx = self.objects.which(field=field)
+            field_idx = self.objects.which(relative_path=relative_path)
             objecttable_idx = list(set(objecttable_idx) & set(field_idx))
 
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0:
-            return self._add_object(container, field)
+            return self._add_object(container, relative_path, field)
         else:
-            raise ValueError("Found multiple instances of the same object_id and field in object table")
+            raise ValueError("Found multiple instances of the same object_id and relative_path in object table")
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'the name of the key to get'},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
-            {'name': 'field', 'type': str, 'doc': 'the field of the Container that uses the key', 'default': None})
+            {'name': 'relative_path', 'type': str, 'doc': 'the relative_path of the Container that uses the key', 'default': None},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': ('the field of the compound data type using'
+                     'an external resource')})
     def get_key(self, **kwargs):
         """
         Return a Key or a list of Key objects that correspond to the given key.
 
-        If container and field are provided, the Key that corresponds to the given name of the key
-        for the given container and field is returned.
+        If container and relative_path are provided, the Key that corresponds to the given name of the key
+        for the given container and relative_path is returned.
         """
-        key_name, container, field = popargs('key_name', 'container', 'field', kwargs)
+        key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
-        if container is not None and field is not None:
+        if container is not None and relative_path is not None:
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._check_object_field(container, field)
+            object_field = self._check_object_field(container, relative_path, field)
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
                     return self.keys.row[key_idx]
-            raise ValueError("No key with name '%s' for container '%s' and field '%s'" % (key_name, container, field))
+            raise ValueError("No key with name '%s' for container '%s' and relative_path '%s'" % (key_name, container, relative_path))
         else:
             if len(key_idx_matches) == 0:
                 # the key has never been used before
@@ -293,7 +313,6 @@ class ExternalResources(Container):
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
-            #{'name': 'field', 'type': str, 'doc': 'the field of the Container/Data that uses the key', 'default': None},
             {'name': 'attribute', 'type': str, 'doc': 'the attribute of the container for the external reference', 'default': None},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
@@ -301,22 +320,26 @@ class ExternalResources(Container):
             {'name': 'resource_name', 'type': str, 'doc': 'the name of the resource to be created', 'default': None},
             {'name': 'resource_uri', 'type': str, 'doc': 'the uri of the resource to be created', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'the identifier for the entity at the resource', 'default': None},
-            {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None})
+            {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None},
+            {'name': 'type_map', 'type': TypeMap, 'doc': 'type_map used', 'default': None},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': ('the field of the compound data type using'
+                     'an external resource')})
     def add_ref(self, **kwargs):
         """
         Add information about an external reference used in this file.
 
         It is possible to use the same name of the key to refer to different resources
-        so long as the name of the key is not used within the same object and field.
+        so long as the name of the key is not used within the same object and relative_path.
         This method does not support such functionality by default. The different
         keys must be added separately using _add_key and passed to the *key* argument
         in separate calls of this method. If a resource with the same name already
         exists, then it will be used and the resource_uri will be ignored.
 
-        In the current version of add_ref, the user adds a container and inputs a field of the
+        In the current version of add_ref, the user adds a container and inputs a relative_path of the
         attribute that is linked to/using some external resource. This is a problem when future
-        users want to query the data. The creator of the data could name fields something others
-        than what field is supposed to be, i.e the path to the attribute.
+        users want to query the data. The creator of the data could name relative_path something others
+        than what relative_path is supposed to be, i.e the path to the attribute.
 
         Another issue was the oversight on which container we should be using. For example,
         DynamicTable is itself a data_type, but also contains data_types, i.e the columns of VectorData.
@@ -326,57 +349,61 @@ class ExternalResources(Container):
 
         We are then presented with cases that need to be supported:
         1. Trivial Case: The container is the same as the attribute that has an external resource.
-        The object_id is the id of the attribute and the field is blank. Why is the field blank?
+        The object_id is the id of the attribute and the relative_path is blank. Why is the relative_path blank?
 
         2. Attribute Case: An attribute of a container is being linked to an external resource.
         (Non-nested, i.e along the lines that just the VectorData column of a DynamicTable).
         The object_id is is that of the attribute (in this case the attribute is a data_type) and
-        the field is blank.
+        the relative_path is blank.
 
         3. Non-DataType Attribute Case: Similar to the Attribute Case prior; however, the attribute is
         not a data_type and so does not have an id. The object_id to be added to the ObjectTable will be
-        the nearest data_type parent and the field is the path to the attribute.
+        the nearest data_type parent and the relative_path is the path to the attribute.
 
         """
         ###############################################################
         container = kwargs['container']
         attribute = kwargs['attribute']
         key = kwargs['key']
+        field = kwargs['field']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
+        type_map = kwargs['type_map']
         add_entity = False
 
+        if type_map is None:
+            type_map=get_type_map()
         if attribute is None: # Trivial Case
-            field = ''
-            object_field = self._check_object_field(container, field)
+            relative_path = ''
+            object_field = self._check_object_field(container, relative_path, field)
         else: # DataType Attribute Case
             attribute_object = getattr(container, attribute) # returns attribute object
             if isinstance(attribute_object, AbstractContainer):
-                field = ''
-                object_field = self._check_object_field(attribute_object, field)
+                relative_path = ''
+                object_field = self._check_object_field(attribute_object, relative_path, field)
             else: # Non-DataType Attribute Case:
-                type_map = get_type_map()
+                # type_map = get_type_map()
                 obj_mapper = type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
                 parent_spec = spec.parent # return the parent spec of the attribute
                 if parent_spec.data_type is None:
                     while parent_spec.data_type is None:
                         parent_spec = parent_spec.parent # find the closest parent with a data_type
-                    parent_cls=type_map.get_dt_container_cls(data_type=parent_spec.data_type, namespace=parent_spec.namespace, autogen=False)
+                    parent_cls=type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
                     if isinstance(container, parent_cls):
                         parent_id = container.object_id
-                        # We need to get the path of the spec for field
+                        # We need to get the path of the spec for relative_path
                         absolute_path = spec.path
-                        field = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
-                        object_field = self._check_object_field(parent_id, field)
+                        relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                        object_field = self._check_object_field(parent_id, relative_path, field)
                     else:
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
                 else:
                     parent_id =  container.object_id # container needs to be the parent
                     absolute_path = spec.path
-                    field = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
-                    object_field = self._check_object_field(parent_id, field)
+                    relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                    object_field = self._check_object_field(parent_id, relative_path, field)
 
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
@@ -385,7 +412,7 @@ class ExternalResources(Container):
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
-                    msg = "Use Key Object when referencing an existing (container, field, key)"
+                    msg = "Use Key Object when referencing an existing (container, relative_path, key)"
                     raise ValueError(msg)
 
         if not isinstance(key, Key):
@@ -423,20 +450,24 @@ class ExternalResources(Container):
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'the Container/data object that is linked to resources/entities',
              'default': None},
-            {'name': 'field', 'type': str,
-             'doc': 'the field of the Container',
-             'default': None})
+            {'name': 'relative_path', 'type': str,
+             'doc': 'the relative_path of the Container',
+             'default': None},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': ('the field of the compound data type using'
+                     'an external resource')})
     def get_object_resources(self, **kwargs):
         """
         Get all entities/resources associated with an object
         """
         container = kwargs['container']
+        relative_path = kwargs['relative_path']
         field = kwargs['field']
 
         keys = []
         entities = []
-        if container is not None and field is not None:
-            object_field = self._check_object_field(container, field)
+        if container is not None and relative_path is not None:
+            object_field = self._check_object_field(container, relative_path, field)
             # Find all keys associated with the object
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 keys.append(self.object_keys['keys_idx', row_idx])
@@ -460,7 +491,7 @@ class ExternalResources(Container):
             - *entity_uri*:   the URI for the entity at the external resource
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and field. This method does not support such functionality by default. To
+        used within the same object and relative_path. This method does not support such functionality by default. To
         select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
         if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
         be required to keep the different instances separate. If a single call is made, it is left up to the caller to
