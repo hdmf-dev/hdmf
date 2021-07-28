@@ -954,7 +954,11 @@ class DynamicTable(Container):
         id_index = coldata.pop('id')
         df_input = OrderedDict()
         for k in coldata:  # for each column
-            if isinstance(coldata[k], np.ndarray) and coldata[k].ndim > 1:
+            if isinstance(coldata[k], np.ma.masked_array):
+                df_input[k] = coldata[k].filled()
+                if coldata[k].ndim > 1:
+                    df_input[k] = list(df_input[k])  # wrap in single list
+            elif isinstance(coldata[k], np.ndarray) and coldata[k].ndim > 1:
                 df_input[k] = list(coldata[k])  # convert multi-dim array to list of inner arrays
             elif isinstance(coldata[k], pd.DataFrame):
                 # multiple rows were selected and collapsed into a dataframe
