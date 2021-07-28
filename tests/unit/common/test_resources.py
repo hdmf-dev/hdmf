@@ -59,7 +59,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.resources.data, [('resource1', 'uri1')])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
-        self.assertEqual(er.objects.data, [(data.object_id, '')])
+        self.assertEqual(er.objects.data, [(data.object_id, '', '')])
 
     def test_add_ref_duplicate_resource(self):
         er = ExternalResources('terms')
@@ -107,7 +107,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.resources.data,
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2')])
-        self.assertEqual(er.objects.data, [('uuid1', '')])
+        self.assertEqual(er.objects.data, [('uuid1', '', '')])
         self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'), (0, 1, 'id12', 'url21')])
 
     def test_get_resources(self):
@@ -135,8 +135,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                           ('resource2', 'resource_uri2')])
         self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'), (1, 1, 'id12', 'url21')])
 
-        self.assertEqual(er.objects.data, [('uuid1', ''),
-                                           ('uuid2', '')])
+        self.assertEqual(er.objects.data, [('uuid1', '', ''),
+                                           ('uuid2', '', '')])
 
     def test_add_ref_same_key_diff_objfield(self):
         er = ExternalResources('terms')
@@ -152,8 +152,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.resources.data,
                          [('resource1',  'resource_uri1'),
                           ('resource2', 'resource_uri2')])
-        self.assertEqual(er.objects.data, [('uuid1', ''),
-                                           ('uuid2', '')])
+        self.assertEqual(er.objects.data, [('uuid1', '', ''),
+                                           ('uuid2', '', '')])
 
     def test_add_ref_same_keyname(self):
         er = ExternalResources('terms')
@@ -177,9 +177,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             [(0, 0, 'id11', 'url11'),
              (1, 1, 'id12', 'url21'),
              (2, 2, 'id13', 'url31')])
-        self.assertEqual(er.objects.data, [('uuid1', ''),
-                                           ('uuid2', ''),
-                                           ('uuid3', '')])
+        self.assertEqual(er.objects.data, [('uuid1', '', ''),
+                                           ('uuid2', '', ''),
+                                           ('uuid3', '', '')])
 
     def test_get_keys(self):
         er = ExternalResources('terms')
@@ -260,7 +260,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er._check_object_field('uuid1', '')
         er._check_object_field(data, '')
 
-        self.assertEqual(er.objects.data, [('uuid1', ''), (data.object_id, '')])
+        self.assertEqual(er.objects.data, [('uuid1', '', ''), (data.object_id, '', '')])
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
@@ -281,14 +281,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.resources.data, [('resource0', 'resource0_uri')])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
-        self.assertEqual(er.objects.data, [(table.id.object_id, '')])
+        self.assertEqual(er.objects.data, [(table.id.object_id, '', '')])
 
 class TestExternalResourcesNestedAttributes(TestCase):
 
     def setUp(self):
         self.attr1 = AttributeSpec(name='attr1', doc='a string attribute', dtype='text')
         self.attr2 = AttributeSpec(name='attr2', doc='an integer attribute', dtype='int')
-        self.attr3 = AttributeSpec(name='attr3', doc='an integer attribute', dtype='int')
         self.bar_spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Bar',
@@ -304,7 +303,10 @@ class TestExternalResourcesNestedAttributes(TestCase):
         specs = [self.bar_spec]
         containers = {'Bar': Bar}
         self.type_map = create_test_type_map(specs, containers)
-        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
+        self.cls = self.type_map.get_dt_container_cls(self.bar_spec.data_type)
+        self.bar = self.cls(name='bar', data=[1], attr1='attr1', attr2=1)
+        obj_mapper = self.type_map.get_map(self.bar)
+        obj_mapper.map_spec('attr2', spec=self.attr2)
 
     def test_add_ref_nested(self):
         table = DynamicTable(name='table', description='table')
@@ -322,28 +324,19 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.resources.data, [('resource0', 'resource0_uri')])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
-        self.assertEqual(er.objects.data, [(table.object_id, 'DynamicTable/description')])
+        self.assertEqual(er.objects.data, [(table.object_id, 'DynamicTable/description', '')])
 
     def test_add_ref_deep_nested(self):
-        # The parent of the attribute doesn't have a data_type
-        cls = self.type_map.get_dt_container_cls(self.bar_spec.data_type)
-        bar = cls(name='bar', data=[1], attr1='attr1', attr2=1)
-        type_map = self.type_map
-        obj_mapper = type_map.get_map(bar)
-        obj_mapper.map_attr(attr_name='attr2', spec=self.attr2)
-        spec = obj_mapper.get_attr_spec(attr_name='attr2')
-        parent_spec = spec.parent # return the parent spec of the attribute
-        if parent_spec.data_type is None:
-            while parent_spec.data_type is None:
-                parent_spec = parent_spec.parent # find the closest parent with a data_type
-            parent_cls=type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
-            if isinstance(bar, parent_cls):
-                parent_id = bar.object_id
-                # We need to get the path of the spec for field
-                absolute_path = spec.path
-                field = re.sub("^.+?(?="+bar.data_type+")", "", absolute_path)
-                self.assertIsInstance(parent_id, str)
-                self.assertEqual(field, 'Bar/data/attr2')
+        er = ExternalResources(name='example')
+        er.add_ref(container=self.bar,
+                   attribute='attr2',
+                   key='key1',
+                   resource_name='resource0',
+                   resource_uri='resource0_uri',
+                   entity_id='entity_0',
+                   entity_uri='entity_0_uri',
+                   type_map=self.type_map)
+        self.assertEqual(er.objects.data[0][1], 'Bar/data/attr2', '')
 
 class TestExternalResourcesGetKey(TestCase):
 
