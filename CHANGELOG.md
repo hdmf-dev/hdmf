@@ -29,6 +29,8 @@
   ``AlignedDynamicTable.colnames`` property only includes the columns of the main table for compliance with
   ``DynamicTable`` @oruebel (#645)
 - Fix documentation for `DynamicTable.get` and `DynamicTableRegion.get`. @rly (#650)
+- Allow passing string column name to `DynamicTableRegion`, i.e., `dtr['col_name']` is a shortcut to
+  `dtr.table['col_name']`. @rly (#657)
 
 ## HDMF 3.0.1 (July 7, 2021)
 
