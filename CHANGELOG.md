@@ -3,8 +3,8 @@
 ## HDMF 3.1.1 (July 29, 2021)
 
 ### Fixes
-- Update the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
-  objects rather than lists of dicts @oruebel (#660)
+- Updated the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
+  objects rather than lists of dicts. @oruebel (#660)
 
 ## HDMF 3.1.0 (July 29, 2021)
 
