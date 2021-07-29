@@ -824,7 +824,7 @@ class DynamicTable(Container):
                df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
                single row.
 
-        :return: 1) If key is a string, then return array with the data of the selected column
+        :return: 1) If key is a string, then return the VectorData object representing the column with the string name
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
                  3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame or lists
                     consisting of one or more rows
@@ -1205,7 +1205,8 @@ class DynamicTableRegion(VectorData):
 
         :param arg: Key defining which elements of the table to select. This may be one of the following:
 
-            1) a tuple consisting of (int, str) where the int selects the row and the string identifies the
+            1) string with the name of the column to select
+            2) a tuple consisting of (int, str) where the int selects the row and the string identifies the
                column to select by name
             3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
                scalars are returned for each column that has a single value. If a list, array, or slice is used and
@@ -1227,6 +1228,8 @@ class DynamicTableRegion(VectorData):
             arg1 = arg[0]
             arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
+        elif isinstance(arg, str):
+            return self.table[arg]
         elif np.issubdtype(type(arg), np.integer):
             if arg >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
