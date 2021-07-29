@@ -257,13 +257,13 @@ class TestLinkedAlignedDynamicTables(TestCase):
         # check with subcateogries
         linked_tables = self.aligned_table.get_linked_tables()
         self.assertEqual(len(linked_tables), 2)
-        self.assertTupleEqual((linked_tables[0]['source_table'].name,
-                               linked_tables[0]['source_column'].name,
-                               linked_tables[0]['target_table'].name),
+        self.assertTupleEqual((linked_tables[0].source_table.name,
+                               linked_tables[0].source_column.name,
+                               linked_tables[0].target_table.name),
                               ('category0', 'child_table_ref1', 'level0_0'))
-        self.assertTupleEqual((linked_tables[1]['source_table'].name,
-                               linked_tables[1]['source_column'].name,
-                               linked_tables[1]['target_table'].name),
+        self.assertTupleEqual((linked_tables[1].source_table.name,
+                               linked_tables[1].source_column.name,
+                               linked_tables[1].target_table.name),
                               ('category1', 'child_table_ref1', 'level0_1'))
 
     def test_get_linked_tables_none(self):
@@ -305,17 +305,17 @@ class TestLinkedAlignedDynamicTables(TestCase):
         linked_tables = temp_aligned_table.get_linked_tables()
         self.assertEqual(len(linked_tables), 2)
         for i, v in enumerate([('my_aligned_table', 'a2', 't1'), ('t1', 'c2', 't0')]):
-            self.assertTupleEqual((linked_tables[i]['source_table'].name,
-                                   linked_tables[i]['source_column'].name,
-                                   linked_tables[i]['target_table'].name), v)
+            self.assertTupleEqual((linked_tables[i].source_table.name,
+                                   linked_tables[i].source_column.name,
+                                   linked_tables[i].target_table.name), v)
         # Now, since our main table links to the category table the result should remain the same
         # even if we ignore the category table
         linked_tables = temp_aligned_table.get_linked_tables(ignore_category_tables=True)
         self.assertEqual(len(linked_tables), 2)
         for i, v in enumerate([('my_aligned_table', 'a2', 't1'), ('t1', 'c2', 't0')]):
-            self.assertTupleEqual((linked_tables[i]['source_table'].name,
-                                   linked_tables[i]['source_column'].name,
-                                   linked_tables[i]['target_table'].name), v)
+            self.assertTupleEqual((linked_tables[i].source_table.name,
+                                   linked_tables[i].source_column.name,
+                                   linked_tables[i].target_table.name), v)
 
     def test_get_linked_tables_simple_link(self):
         temp_table0 = DynamicTable(name='t0', description='t1',
@@ -339,17 +339,17 @@ class TestLinkedAlignedDynamicTables(TestCase):
         linked_tables = temp_aligned_table.get_linked_tables()
         self.assertEqual(len(linked_tables), 2)
         for i, v in enumerate([('my_aligned_table', 'a2', 't0'), ('t1', 'c2', 't0')]):
-            self.assertTupleEqual((linked_tables[i]['source_table'].name,
-                                   linked_tables[i]['source_column'].name,
-                                   linked_tables[i]['target_table'].name), v)
+            self.assertTupleEqual((linked_tables[i].source_table.name,
+                                   linked_tables[i].source_column.name,
+                                   linked_tables[i].target_table.name), v)
         # Since no table ever link to our category temp_table we should only get the link from our
         # main table here, in contrast to what happens in the test_get_linked_tables_complex_link case
         linked_tables = temp_aligned_table.get_linked_tables()
         self.assertEqual(len(linked_tables), 2)
         for i, v in enumerate([('my_aligned_table', 'a2', 't0'), ]):
-            self.assertTupleEqual((linked_tables[i]['source_table'].name,
-                                   linked_tables[i]['source_column'].name,
-                                   linked_tables[i]['target_table'].name), v)
+            self.assertTupleEqual((linked_tables[i].source_table.name,
+                                   linked_tables[i].source_column.name,
+                                   linked_tables[i].target_table.name), v)
 
 
 class TestHierarchicalTable(TestCase):
@@ -696,21 +696,21 @@ class TestLinkedDynamicTables(TestCase):
         # check level1
         temp = self.table_level1.get_linked_tables()
         self.assertEqual(len(temp), 2)
-        self.assertEqual(temp[0]['source_table'].name, self.table_level1.name)
-        self.assertEqual(temp[0]['source_column'].name, 'child_table_ref1')
-        self.assertEqual(temp[0]['target_table'].name, self.table_level0_0.name)
-        self.assertEqual(temp[1]['source_table'].name, self.table_level1.name)
-        self.assertEqual(temp[1]['source_column'].name, 'child_table_ref2')
-        self.assertEqual(temp[1]['target_table'].name, self.table_level0_1.name)
+        self.assertEqual(temp[0].source_table.name, self.table_level1.name)
+        self.assertEqual(temp[0].source_column.name, 'child_table_ref1')
+        self.assertEqual(temp[0].target_table.name, self.table_level0_0.name)
+        self.assertEqual(temp[1].source_table.name, self.table_level1.name)
+        self.assertEqual(temp[1].source_column.name, 'child_table_ref2')
+        self.assertEqual(temp[1].target_table.name, self.table_level0_1.name)
         # check level2
         temp = self.table_level2.get_linked_tables()
         self.assertEqual(len(temp), 3)
-        self.assertEqual(temp[0]['source_table'].name, self.table_level2.name)
-        self.assertEqual(temp[0]['source_column'].name, 'child_table_ref1')
-        self.assertEqual(temp[0]['target_table'].name, self.table_level1.name)
-        self.assertEqual(temp[1]['source_table'].name, self.table_level1.name)
-        self.assertEqual(temp[1]['source_column'].name, 'child_table_ref1')
-        self.assertEqual(temp[1]['target_table'].name, self.table_level0_0.name)
-        self.assertEqual(temp[2]['source_table'].name, self.table_level1.name)
-        self.assertEqual(temp[2]['source_column'].name, 'child_table_ref2')
-        self.assertEqual(temp[2]['target_table'].name, self.table_level0_1.name)
+        self.assertEqual(temp[0].source_table.name, self.table_level2.name)
+        self.assertEqual(temp[0].source_column.name, 'child_table_ref1')
+        self.assertEqual(temp[0].target_table.name, self.table_level1.name)
+        self.assertEqual(temp[1].source_table.name, self.table_level1.name)
+        self.assertEqual(temp[1].source_column.name, 'child_table_ref1')
+        self.assertEqual(temp[1].target_table.name, self.table_level0_0.name)
+        self.assertEqual(temp[2].source_table.name, self.table_level1.name)
+        self.assertEqual(temp[2].source_column.name, 'child_table_ref2')
+        self.assertEqual(temp[2].target_table.name, self.table_level0_1.name)
