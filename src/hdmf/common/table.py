@@ -5,6 +5,7 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 
 import re
 from collections import OrderedDict
+from typing import NamedTuple, Union
 from warnings import warn
 
 import numpy as np
@@ -1009,11 +1010,15 @@ class DynamicTable(Container):
         from this table via foreign DynamicTableColumns included in this table or in any table that
         can be reached through DynamicTableRegion columns
 
-        Returns: List of dicts with the following keys:
+        Returns: List of NamedTuple objects with:
                 * 'source_table' : The source table containing the DynamicTableRegion column
                 * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
                 * 'target_table' : The target DynamicTable; same as source_column.table.
         """
+        link_type = NamedTuple('DynamicTableLink',
+                               [('source_table', DynamicTable),
+                                ('source_column', Union[DynamicTableRegion, VectorIndex]),
+                                ('target_table', DynamicTable)])
         curr_tables = [self, ]  # Set of tables
         other_tables = getargs('other_tables', kwargs)
         if other_tables is not None:
@@ -1023,9 +1028,9 @@ class DynamicTable(Container):
         while curr_index < len(curr_tables):
             for col_index, col in enumerate(curr_tables[curr_index].columns):
                 if isinstance(col, DynamicTableRegion):
-                    foreign_cols.append({'source_table': curr_tables[curr_index],
-                                         'source_column': col,
-                                         'target_table': col.table})
+                    foreign_cols.append(link_type(source_table=curr_tables[curr_index],
+                                                  source_column=col,
+                                                  target_table=col.table))
                     curr_table_visited = False
                     for t in curr_tables:
                         if t is col.table:
