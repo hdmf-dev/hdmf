@@ -51,6 +51,7 @@ if "%1" == "clean" (
 	del /q /s %BUILDDIR%\*
 	del /q %RSTDIR%\%PKGNAME%*.rst
 	rmdir /q /s %RSTDIR%\tutorials
+	rmdir /q /s %RSTDIR%\_autosummary
 	goto end
 )
 
