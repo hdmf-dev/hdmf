@@ -2,7 +2,7 @@ from .. import register_map
 from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
 from ...build import ObjectMapper, BuildManager, CustomClassGenerator
 from ...spec import Spec
-from ...utils import docval, getargs
+from ...utils import docval, getargs, AllowPositional
 
 
 @register_map(DynamicTable)
@@ -129,7 +129,7 @@ class DynamicTableGenerator(CustomClassGenerator):
         if base_init is None:  # pragma: no cover
             raise ValueError("Generated class dictionary is missing base __init__ method.")
 
-        @docval(*docval_args)
+        @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
             base_init(self, **kwargs)
 

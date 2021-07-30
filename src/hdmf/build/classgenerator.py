@@ -6,7 +6,7 @@ import numpy as np
 from ..container import Container, Data, DataRegion, MultiContainerInterface
 from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
-from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
+from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args, AllowPositional
 
 
 class ClassGenerator:
@@ -294,7 +294,7 @@ class CustomClassGenerator:
             if attr_name not in parent_docval_args:
                 new_args.append(attr_name)
 
-        @docval(*docval_args)
+        @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)

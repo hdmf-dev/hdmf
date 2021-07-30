@@ -14,7 +14,7 @@ import pandas as pd
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
+from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr, AllowPositional
 
 
 @register_class('VectorData')
@@ -36,7 +36,8 @@ class VectorData(Data):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()})
+             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self.description = getargs('description', kwargs)
@@ -91,7 +92,8 @@ class VectorIndex(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a 1D dataset containing indexes that apply to VectorData object'},
             {'name': 'target', 'type': VectorData,
-             'doc': 'the target dataset that this index applies to'})
+             'doc': 'the target dataset that this index applies to'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         target = getargs('target', kwargs)
         kwargs['description'] = "Index for VectorData '%s'" % target.name
@@ -207,7 +209,8 @@ class ElementIdentifiers(Data):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
-             'default': list()})
+             'default': list()},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
 
@@ -285,7 +288,8 @@ class DynamicTable(Container):
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data',
              'doc': 'the ordered names of the columns in this table. columns must also be provided.',
-             'default': None})
+             'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
         call_docval_func(super().__init__, kwargs)
@@ -1170,7 +1174,8 @@ class DynamicTableRegion(VectorData):
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors'},
             {'name': 'description', 'type': str, 'doc': 'a description of what this region represents'},
             {'name': 'table', 'type': DynamicTable,
-             'doc': 'the DynamicTable this region applies to', 'default': None})
+             'doc': 'the DynamicTable this region applies to', 'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         t = popargs('table', kwargs)
         call_docval_func(super().__init__, kwargs)
@@ -1351,7 +1356,8 @@ class EnumData(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'integers that index into elements for the value of each row', 'default': list()},
             {'name': 'elements', 'type': ('array_data', 'data', VectorData), 'default': list(),
-             'doc': 'lookup values for each integer in ``data``'})
+             'doc': 'lookup values for each integer in ``data``'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         elements = popargs('elements', kwargs)
         super().__init__(**kwargs)

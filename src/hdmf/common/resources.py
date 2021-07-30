@@ -2,7 +2,7 @@ import pandas as pd
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Table, Row, Container, AbstractContainer
-from ..utils import docval, popargs
+from ..utils import docval, popargs, AllowPositional
 
 
 class KeyTable(Table):
@@ -145,7 +145,8 @@ class ExternalResources(Container):
             {'name': 'objects', 'type': ObjectTable, 'default': None,
              'doc': 'the table storing object information'},
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
-             'doc': 'the table storing object-resource relationships'})
+             'doc': 'the table storing object-resource relationships'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         name = popargs('name', kwargs)
         super().__init__(name)

@@ -4,7 +4,7 @@ import scipy.sparse as sps
 
 from . import register_class
 from ..container import Container
-from ..utils import docval, getargs, call_docval_func, to_uint_array
+from ..utils import docval, getargs, call_docval_func, to_uint_array, AllowPositional
 
 
 @register_class('CSRMatrix')
@@ -16,7 +16,8 @@ class CSRMatrix(Container):
             {'name': 'indices', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index array', 'default': None},
             {'name': 'indptr', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index pointer array', 'default': None},
             {'name': 'shape', 'type': (list, tuple, np.ndarray), 'doc': 'the shape of the matrix', 'default': None},
-            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'})
+            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         data = getargs('data', kwargs)

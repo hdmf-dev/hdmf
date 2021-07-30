@@ -230,10 +230,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
 
         if args:
             if allow_positional == AllowPositional.WARNING:
-                msg = 'Positional arguments are discouraged and may be forbidden in a future release.'
+                msg = ('Using positional arguments for this method is discouraged and will be deprecated '
+                       'in a future major release. Please use keyword arguments to ensure future compatibility.')
                 future_warnings.append(msg)
             elif allow_positional == AllowPositional.ERROR:
-                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.'
+                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed for this method.'
                 syntax_errors.append(msg)
 
         # iterate through the docval specification and find a matching value in args / kwargs

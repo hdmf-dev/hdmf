@@ -11,7 +11,7 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
-                    popargs, LabelledDict)
+                    popargs, LabelledDict, AllowPositional)
 
 
 def _set_exp(cls):
@@ -187,7 +187,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.parent = kwargs.pop('parent', None)
         return inst
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if '/' in name:
@@ -485,7 +486,8 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self.__data = getargs('data', kwargs)
@@ -758,7 +760,7 @@ class MultiContainerInterface(Container):
 
         args.append({'name': 'name', 'type': str, 'doc': 'the name of this container', 'default': cls.__name__})
 
-        @docval(*args, func_name='__init__')
+        @docval(*args, func_name='__init__', allow_positional=AllowPositional.WARNING)
         def _func(self, **kwargs):
             call_docval_func(super(cls, self).__init__, kwargs)
             for conf in clsconf:
@@ -1036,7 +1038,8 @@ class Table(Data):
 
                 @docval(name,
                         {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the data in this table',
-                         'default': list()})
+                         'default': list()},
+                        allow_positional=AllowPositional.WARNING)
                 def __init__(self, **kwargs):
                     name, data = getargs('name', 'data', kwargs)
                     colnames = [i['name'] for i in columns]
@@ -1054,7 +1057,8 @@ class Table(Data):
 
     @docval({'name': 'columns', 'type': (list, tuple), 'doc': 'a list of the columns in this table'},
             {'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data', 'default': list()})
+            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data', 'default': list()},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         self.__columns = tuple(popargs('columns', kwargs))
         self.__col_index = {name: idx for idx, name in enumerate(self.__columns)}
