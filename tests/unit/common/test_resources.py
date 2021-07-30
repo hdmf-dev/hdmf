@@ -1,15 +1,13 @@
 import pandas as pd
-import re
 from hdmf.common.resources import ExternalResources, Key, Resource
 from hdmf import Data
-from hdmf.common import DynamicTable, get_type_map
+from hdmf.common import DynamicTable
 from hdmf.testing import TestCase, H5RoundTripMixin
 import numpy as np
 import unittest
 from tests.unit.build_tests.test_io_map import Bar
-from tests.unit.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
-from hdmf.utils import get_docval
+from tests.unit.utils import create_test_type_map
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
@@ -361,6 +359,7 @@ class TestExternalResourcesNestedAttributes(TestCase):
                    type_map=self.type_map)
         self.assertEqual(er.objects.data[0][1], 'Bar/data/attr2', '')
 
+
 class TestExternalResourcesGetKey(TestCase):
 
     def setUp(self):
@@ -368,7 +367,7 @@ class TestExternalResourcesGetKey(TestCase):
 
     def test_get_key(self):
         self.er.add_ref(
-            'uuid1', key= 'key1', resource_name='resource1',
+            'uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
         self.er.add_ref(
             'uuid2', key='key1', resource_name='resource2',
@@ -381,7 +380,7 @@ class TestExternalResourcesGetKey(TestCase):
     def test_get_key_bad_arg(self):
         self.er._add_key('key2')
         self.er.add_ref(
-            'uuid1', key= 'key1', resource_name='resource1',
+            'uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
         with self.assertRaises(ValueError):
             self.er.get_key('key2', 'uuid1', '')
@@ -417,7 +416,7 @@ class TestExternalResourcesGetKey(TestCase):
 
     def test_get_key_doesnt_exist(self):
         self.er.add_ref(
-            'uuid1', key= 'key1', resource_name='resource1',
+            'uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
         self.er.add_ref(
             'uuid2', key='key1', resource_name='resource2',
@@ -431,13 +430,13 @@ class TestExternalResourcesGetKey(TestCase):
         key1 = self.er._add_key('key1')
         key2 = self.er._add_key('key1')
         self.er.add_ref(
-            'uuid1', key= key1, resource_name='resource1',
+            'uuid1', key=key1, resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
         self.er.add_ref(
             'uuid2', key=key2, resource_name='resource2',
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url12')
         self.er.add_ref(
-            'uuid1', key= self.er.get_key('key1', 'uuid1', ''), resource_name='resource3',
+            'uuid1', key=self.er.get_key('key1', 'uuid1', ''), resource_name='resource3',
             resource_uri='resource_uri3', entity_id="id13", entity_uri='url13')
 
         keys = self.er.get_key('key1')
