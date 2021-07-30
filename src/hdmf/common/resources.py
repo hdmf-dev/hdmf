@@ -464,6 +464,9 @@ class ExternalResources(Container):
         relative_path = kwargs['relative_path']
         field = kwargs['field']
 
+        if relative_path is None:
+            relative_path = ''
+
         keys = []
         entities = []
         if container is not None and relative_path is not None:
