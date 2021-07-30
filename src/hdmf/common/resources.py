@@ -6,6 +6,7 @@ from ..container import Table, Row, Container, AbstractContainer
 from ..utils import docval, popargs
 from ..build import TypeMap
 
+
 class KeyTable(Table):
     """
     A table for storing keys used to reference external resources
@@ -90,7 +91,7 @@ class ObjectTable(Table):
          'doc': 'The object ID for the Container/Data'},
         {'name': 'relative_path', 'type': str,
          'doc': ('The relative_path of the attribute on the Container/Data that uses',
-                'an external resource reference key')},
+                 'an external resource reference key')},
         {'name': 'field', 'type': str,
          'doc': ('the field of the compound data type using'
                  'an external resource')}
@@ -167,7 +168,9 @@ class ExternalResources(Container):
         Add a key to be used for making references to external resources
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and relative_path. To do so, this method must be called for the two different resources.
+        used within the same object and relative_path. To do so, this method must be called for the
+        two different resources.
+
         The returned Key objects must be managed by the caller so as to be appropriately passed to subsequent calls
         to methods for storing information about the different resources.
         """
@@ -231,7 +234,8 @@ class ExternalResources(Container):
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
-            {'name': 'relative_path', 'type': str, 'doc': 'the relative_path of the Container that uses the key', 'default': None},
+            {'name': 'relative_path', 'type': str,
+             'doc': 'the relative_path of the Container that uses the key', 'default': None},
             {'name': 'field', 'type': str, 'default': None,
              'doc': ('the field of the compound data type using'
                      'an external resource')})
@@ -245,7 +249,7 @@ class ExternalResources(Container):
         the corresponding Object. Otherwise, just return the Object.
         """
         if field is None:
-            field=''
+            field = ''
         if isinstance(container, str):
             objecttable_idx = self.objects.which(object_id=container)
         else:
@@ -266,7 +270,8 @@ class ExternalResources(Container):
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
-            {'name': 'relative_path', 'type': str, 'doc': 'the relative_path of the Container that uses the key', 'default': None},
+            {'name': 'relative_path', 'type': str, 'doc': 'the relative_path of the Container that uses the key',
+            'default': None},
             {'name': 'field', 'type': str, 'default': None,
              'doc': ('the field of the compound data type using'
                      'an external resource')})
@@ -287,7 +292,8 @@ class ExternalResources(Container):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
                     return self.keys.row[key_idx]
-            raise ValueError("No key with name '%s' for container '%s' and relative_path '%s'" % (key_name, container, relative_path))
+            msg = "No key '%s' for container '%s' and relative_path '%s'" % (key_name, container, relative_path)
+            raise ValueError(msg)
         else:
             if len(key_idx_matches) == 0:
                 # the key has never been used before
@@ -313,7 +319,8 @@ class ExternalResources(Container):
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('the Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key')},
-            {'name': 'attribute', 'type': str, 'doc': 'the attribute of the container for the external reference', 'default': None},
+            {'name': 'attribute', 'type': str,
+             'doc': 'the attribute of the container for the external reference', 'default': None},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
             {'name': 'resources_idx', 'type': Resource, 'doc': 'the resourcetable id', 'default': None},
@@ -372,24 +379,24 @@ class ExternalResources(Container):
         add_entity = False
 
         if type_map is None:
-            type_map=get_type_map()
-        if attribute is None: # Trivial Case
+            type_map = get_type_map()
+        if attribute is None:  # Trivial Case
             relative_path = ''
             object_field = self._check_object_field(container, relative_path, field)
-        else: # DataType Attribute Case
-            attribute_object = getattr(container, attribute) # returns attribute object
+        else:  # DataType Attribute Case
+            attribute_object = getattr(container, attribute)  # returns attribute object
             if isinstance(attribute_object, AbstractContainer):
                 relative_path = ''
                 object_field = self._check_object_field(attribute_object, relative_path, field)
-            else: # Non-DataType Attribute Case:
+            else:  # Non-DataType Attribute Case:
                 # type_map = get_type_map()
                 obj_mapper = type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
-                parent_spec = spec.parent # return the parent spec of the attribute
+                parent_spec = spec.parent  # return the parent spec of the attribute
                 if parent_spec.data_type is None:
                     while parent_spec.data_type is None:
-                        parent_spec = parent_spec.parent # find the closest parent with a data_type
-                    parent_cls=type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
+                    parent_cls = type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
                     if isinstance(container, parent_cls):
                         parent_id = container.object_id
                         # We need to get the path of the spec for relative_path
@@ -400,7 +407,7 @@ class ExternalResources(Container):
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
                 else:
-                    parent_id =  container.object_id # container needs to be the parent
+                    parent_id = container.object_id  # container needs to be the parent
                     absolute_path = spec.path
                     relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
                     object_field = self._check_object_field(parent_id, relative_path, field)

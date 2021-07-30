@@ -412,7 +412,7 @@ class TestExternalResourcesGetKey(TestCase):
             'uuid2', key='key1', resource_name='resource2',
             resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
 
-        with self.assertRaisesRegex(ValueError, "No key with name 'key2'"):
+        with self.assertRaisesRegex(ValueError, "No key 'key2'"):
             self.er.get_key('key2', 'uuid1', '')
 
     def test_get_key_doesnt_exist(self):
