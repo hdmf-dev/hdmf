@@ -231,7 +231,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        received = er.get_object_resources(data, '')
+        received = er.get_object_resources(data)
         expected = pd.DataFrame(
             data=[[0, 0, 'NCBI:txid10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090']],
             columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])

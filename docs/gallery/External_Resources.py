@@ -57,7 +57,7 @@ improve the structure and access of data stored with this type for your use case
 #    They are disambiguated by the :py:class:`~hdmf.common.resources.Object` associated
 #    with each.
 # 2. In order to query specific records, the :py:class:`~hdmf.common.resources.ExternalResources` class
-#    uses '(object_id, field, Key)' as the unique identifier.
+#    uses '(object_id, relative_path, field, Key)' as the unique identifier.
 # 3. :py:class:`~hdmf.common.resources.Object` can have multiple :py:class:`~hdmf.common.resources.Key`
 #    objects.
 # 4. Multiple :py:class:`~hdmf.common.resources.Object` objects can use the same :py:class:`~hdmf.common.resources.Key`.
@@ -97,7 +97,6 @@ er = ExternalResources(name='example')
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 er.add_ref(
     container=data,
-    field='',
     key='Homo sapiens',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -107,7 +106,6 @@ er.add_ref(
 
 er.add_ref(
     container=data,
-    field='',
     key='Mus musculus',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -131,7 +129,6 @@ er = ExternalResources(name='example')
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 er.add_ref(
     container=data,
-    field='',
     key='Homo sapiens',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -143,7 +140,6 @@ er.add_ref(
 existing_resource = er.get_resource('NCBI_Taxonomy')
 er.add_ref(
     container=data,
-    field='',
     key='Mus musculus',
     resources_idx=existing_resource,
     entity_id='NCBI:txid10090',
@@ -164,13 +160,13 @@ er.add_ref(
 er = ExternalResources(name='example')
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Taxonomy',
+er.add_ref(container=data, key='Homo sapiens', resource_name='NCBI_Taxonomy',
            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
 # Using get_resource
 existing_resource = er.get_resource('NCBI_Taxonomy')
-er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_resource,
+er.add_ref(container=data, key='Mus musculus', resources_idx=existing_resource,
            entity_id='NCBI:txid10090',
            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
@@ -189,8 +185,7 @@ genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
 er.add_ref(
-    container=genotypes,
-    field='genotype_name',
+    container=genotypes.columns[0],
     key='Rorb',
     resource_name='MGI Database',
     resource_uri='http://www.informatics.jax.org/',
@@ -237,8 +232,7 @@ key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_na
 # a new Key will be created.
 
 er.add_ref(
-    container=genotypes,
-    field='genotype_name',
+    container=genotypes.columns[0],
     key=key_object,
     resource_name='Ensembl',
     resource_uri='https://uswest.ensembl.org/index.html',
@@ -257,7 +251,7 @@ er.get_keys()
 # object ID for the ``container`` argument, and the name of the field
 # (container attribute) for the ``field`` argument.
 
-er.get_object_resources(container=genotypes, field='genotype_name')
+er.get_object_resources(container=genotypes.columns[0])
 
 ###############################################################################
 # Special Case: Using add_ref with multi-level fields
@@ -284,7 +278,7 @@ data = Data(
 
 er.add_ref(
     container=data,
-    field='data/species',
+    field='species',
     key='Mus musculus',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
