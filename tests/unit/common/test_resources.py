@@ -283,6 +283,29 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(table.id.object_id, '', '')])
 
+    def test_add_ref_compound_data(self):
+        er = ExternalResources(name='example')
+
+        data = Data(
+            name='data_name',
+            data=np.array(
+                [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
+                dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        er.add_ref(
+            container=data,
+            field='species',
+            key='Mus musculus',
+            resource_name='NCBI_Taxonomy',
+            resource_uri='resource0_uri',
+            entity_id='NCBI:txid10090',
+            entity_uri='entity_0_uri'
+        )
+        self.assertEqual(er.keys.data, [('Mus musculus',)])
+        self.assertEqual(er.resources.data, [('NCBI_Taxonomy', 'resource0_uri')])
+        self.assertEqual(er.entities.data, [(0, 0, 'NCBI:txid10090', 'entity_0_uri')])
+        self.assertEqual(er.objects.data, [(data.object_id, '', 'species')])
+
+
 class TestExternalResourcesNestedAttributes(TestCase):
 
     def setUp(self):
