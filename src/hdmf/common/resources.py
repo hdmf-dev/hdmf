@@ -250,6 +250,8 @@ class ExternalResources(Container):
         """
         if field is None:
             field = ''
+        if relative_path is None:
+            relative_path = ''
         if isinstance(container, str):
             objecttable_idx = self.objects.which(object_id=container)
         else:
@@ -284,7 +286,8 @@ class ExternalResources(Container):
         """
         key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
-        if container is not None and relative_path is not None:
+
+        if container is not None:
             # if same key is used multiple times, determine
             # which instance based on the Container
             object_field = self._check_object_field(container, relative_path, field)
@@ -471,12 +474,9 @@ class ExternalResources(Container):
         relative_path = kwargs['relative_path']
         field = kwargs['field']
 
-        if relative_path is None:
-            relative_path = ''
-
         keys = []
         entities = []
-        if container is not None and relative_path is not None:
+        if container is not None:
             object_field = self._check_object_field(container, relative_path, field)
             # Find all keys associated with the object
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
