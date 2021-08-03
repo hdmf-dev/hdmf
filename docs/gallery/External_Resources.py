@@ -200,10 +200,10 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key`
 # method will return a ``Key`` object. In the current version of ``ExternalResources``,
 # duplicate keys are allowed; however, each key needs a unique linking Object.
-# In other words, each combination of (container, field, key) can exist only once in
+# In other words, each combination of (container, relative_path, field, key) can exist only once in
 # ``ExternalResources``.
 
-# The get_key method will return the key object of the unique (key, container, field).
+# The get_key method will return the key object of the unique (key, container, relative_path, field).
 key_object = er.get_key(key_name='Rorb', container=genotypes.columns[0])
 
 ###############################################################################
@@ -232,8 +232,7 @@ er.get_keys()
 # ------------------------------------------------------
 # This method will return information regarding keys, resources, and entities for
 # an ``Object``. You can pass either the ``AbstractContainer`` object or its
-# object ID for the ``container`` argument, and the name of the field
-# (container attribute) for the ``field`` argument.
+# object ID for the ``container`` argument, and the corresponding relative_path and field.
 
 er.get_object_resources(container=genotypes.columns[0])
 

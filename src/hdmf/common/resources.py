@@ -168,7 +168,7 @@ class ExternalResources(Container):
         Add a key to be used for making references to external resources
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and relative_path. To do so, this method must be called for the
+        used within the same object, relative_path, and field. To do so, this method must be called for the
         two different resources.
 
         The returned Key objects must be managed by the caller so as to be appropriately passed to subsequent calls
@@ -340,36 +340,8 @@ class ExternalResources(Container):
         Add information about an external reference used in this file.
 
         It is possible to use the same name of the key to refer to different resources
-        so long as the name of the key is not used within the same object and relative_path.
-        This method does not support such functionality by default. The different
-        keys must be added separately using _add_key and passed to the *key* argument
-        in separate calls of this method. If a resource with the same name already
-        exists, then it will be used and the resource_uri will be ignored.
-
-        In the current version of add_ref, the user adds a container and inputs a relative_path of the
-        attribute that is linked to/using some external resource. This is a problem when future
-        users want to query the data. The creator of the data could name relative_path something others
-        than what relative_path is supposed to be, i.e the path to the attribute.
-
-        Another issue was the oversight on which container we should be using. For example,
-        DynamicTable is itself a data_type, but also contains data_types, i.e the columns of VectorData.
-        When we are adding some external resource, we are saying that the column is linked to
-        that resource and not the table. As a result, it is the VectorData object_id that should be
-        added to the ObjectTable and not the DynamicTable object_id.
-
-        We are then presented with cases that need to be supported:
-        1. Trivial Case: The container is the same as the attribute that has an external resource.
-        The object_id is the id of the attribute and the relative_path is blank. Why is the relative_path blank?
-
-        2. Attribute Case: An attribute of a container is being linked to an external resource.
-        (Non-nested, i.e along the lines that just the VectorData column of a DynamicTable).
-        The object_id is is that of the attribute (in this case the attribute is a data_type) and
-        the relative_path is blank.
-
-        3. Non-DataType Attribute Case: Similar to the Attribute Case prior; however, the attribute is
-        not a data_type and so does not have an id. The object_id to be added to the ObjectTable will be
-        the nearest data_type parent and the relative_path is the path to the attribute.
-
+        so long as the name of the key is not used within the same object, relative_path, and
+        field combination. This method does not support such functionality by default.
         """
         ###############################################################
         container = kwargs['container']
@@ -501,7 +473,7 @@ class ExternalResources(Container):
             - *entity_uri*:   the URI for the entity at the external resource
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and relative_path. This method does not support such functionality by default. To
+        used within the same object, relative_path, field. This method does not support such functionality by default. To
         select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
         if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
         be required to keep the different instances separate. If a single call is made, it is left up to the caller to
