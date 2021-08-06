@@ -185,7 +185,8 @@ class AlignedDynamicTable(DynamicTable):
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
              'default': False},
-            allow_extra=True)
+            allow_extra=True,
+            allow_positional=AllowPositional.WARNING)
     def add_row(self, **kwargs):
         """
         We can either provide the row data as a single dict or by specifying a dict for each category

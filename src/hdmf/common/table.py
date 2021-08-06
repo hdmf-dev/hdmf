@@ -562,7 +562,8 @@ class DynamicTable(Container):
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
              'default': False},
-            allow_extra=True)
+            allow_extra=True,
+            allow_positional=AllowPositional.WARNING)
     def add_row(self, **kwargs):
         """
         Add a row to the table. If *id* is not provided, it will auto-increment.
