@@ -113,7 +113,6 @@ def get_class(**kwargs):
     return __TYPE_MAP.get_dt_container_cls(data_type, namespace)
 
 
-
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
          'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
          'default': None},
@@ -191,6 +190,7 @@ def get_hdf5io(**kwargs):
         kwargs['manager'] = get_manager()
     cargs, ckwargs = fmt_docval_args(HDF5IO.__init__, kwargs)
     return HDF5IO(*cargs, **ckwargs)
+
 
 # load the hdmf-common namespace
 __resources = __get_resources()

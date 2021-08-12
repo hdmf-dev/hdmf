@@ -473,7 +473,7 @@ class ExternalResources(Container):
             - *entity_uri*:   the URI for the entity at the external resource
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object, relative_path, field. This method does not support such functionality by default. To
+        used within the same object, relative_path, field. This method doesn't support such functionality by default. To
         select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
         if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
         be required to keep the different instances separate. If a single call is made, it is left up to the caller to
