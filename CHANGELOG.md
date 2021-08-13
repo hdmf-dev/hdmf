@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.1.2 (Upcoming)
+
+### Fixes
+- Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
+
 ## HDMF 3.1.1 (July 29, 2021)
 
 ### Fixes
