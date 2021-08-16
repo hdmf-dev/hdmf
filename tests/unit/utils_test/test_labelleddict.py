@@ -33,7 +33,7 @@ class TestLabelledDict(TestCase):
     def test_set_key_attr(self):
         """Test that the key attribute cannot be set after initialization."""
         ld = LabelledDict(label='all_objects')
-        with self.assertRaisesWith(AttributeError, "can't set attribute"):
+        with self.assertRaises(AttributeError):
             ld.key_attr = 'another_name'
 
     def test_getitem_unknown_val(self):
