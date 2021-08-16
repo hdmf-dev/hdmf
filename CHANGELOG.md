@@ -1,8 +1,9 @@
 # HDMF Changelog
 
-## HDMF 3.1.2 (TBD)
+## HDMF 3.1.2 (Upcoming)
 
 ### Bug fixes
+- Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
 - Fix broken tests in Python 3.10. @rly (#664)
 
 ## HDMF 3.1.1 (July 29, 2021)
