@@ -142,15 +142,15 @@ def to_hierarchical_dataframe(dynamic_table):
         # occur when converting the index to pd.MultiIndex. If this is the case, then we need to
         # update the lists to tuples. Ideally we would detect this case when constructing the index
         # but it is easier to do this here and it should not be much more expensive
-        if len(index) > 0: # This should always be true
-            list_type_index_cols = [i for i, v in enumerate(index[0]) if isinstance(v, list)]
+        if len(index) > 0:  # This should always be true as otherwise not TypeError should have been raised
+            list_type_index_cols = [i for i, v in enumerate(index[0]) if isinstance(v, (list, np.ndarray))]
             for i, v in enumerate(index):
                 temp = list(v)
                 for ci in list_type_index_cols:
-                    temp[ci] =  tuple(temp[ci])
+                    temp[ci] = tuple(temp[ci])
                 index[i] = tuple(temp)
             multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
-        else: # pragma: no cover
+        else:  # pragma: no cover
             raise e
     out_df = pd.DataFrame(data=data, index=multi_index, columns=columns)
     return out_df
