@@ -4,6 +4,8 @@
 
 ### Fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
+- Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
+  @oruebel (#666)
 
 ## HDMF 3.1.1 (July 29, 2021)
 
