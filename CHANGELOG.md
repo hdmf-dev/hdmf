@@ -2,14 +2,15 @@
 
 ## HDMF 3.1.2 (Upcoming)
 
-### Fixes
+### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
+- Fix broken tests in Python 3.10. @rly (#664)
 - Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
   @oruebel (#666)
 
 ## HDMF 3.1.1 (July 29, 2021)
 
-### Fixes
+### Bug fixes
 - Updated the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
   objects rather than lists of dicts. @oruebel (#660)
 
