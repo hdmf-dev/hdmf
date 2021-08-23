@@ -101,7 +101,7 @@ def to_hierarchical_dataframe(dynamic_table):
                                             names=('source_table', 'label'))
 
     # Case 2:  Our DynamicTableRegion columns points to another table with a DynamicTableRegion, i.e.,
-    #          we need to recursively resolve more levels of the table hieararchy
+    #          we need to recursively resolve more levels of the table hierarchy
     else:
         # First we need to recursively flatten the hierarchy by calling 'to_hierarchical_dataframe()'
         # (i.e., this function) on the target of our hierarchical column
@@ -135,7 +135,23 @@ def to_hierarchical_dataframe(dynamic_table):
         columns = hcol_hdf.columns
 
     # Construct the pandas dataframe with the hierarchical multi-index
-    multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
+    try:
+        multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
+    except TypeError as e:
+        # If our table contains a VectorIndex column then "TypeError: unhashable type: 'list'" will
+        # occur when converting the index to pd.MultiIndex. If this is the case, then we need to
+        # update the lists to tuples. Ideally we would detect this case when constructing the index
+        # but it is easier to do this here and it should not be much more expensive
+        if len(index) > 0: # This should always be true
+            list_type_index_cols = [i for i, v in enumerate(index[0]) if isinstance(v, list)]
+            for i, v in enumerate(index):
+                temp = list(v)
+                for ci in list_type_index_cols:
+                    temp[ci] =  tuple(temp[ci])
+                index[i] = tuple(temp)
+            multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
+        else: # pragma: no cover
+            raise e
     out_df = pd.DataFrame(data=data, index=multi_index, columns=columns)
     return out_df
 
