@@ -134,24 +134,26 @@ def to_hierarchical_dataframe(dynamic_table):
                        hcol_hdf.index.names)
         columns = hcol_hdf.columns
 
+    # Check if the index contains any unhashable types. If a table contains a VectorIndex column
+    # (other than the DynamicTableRegion column) then "TypeError: unhashable type: 'list'" will
+    # occur when converting the index to pd.MultiIndex. To avoid this error, we next check if any
+    # of the columns in our index are of type list of np.ndarray
+    unhashable_index_cols = []
+    if len(index) > 0:
+        unhashable_index_cols = [i for i, v in enumerate(index[0]) if isinstance(v, (list, np.ndarray))]
+
+    # If we have any unhashable list or np.array objects in the index then update them to tuples.
+    # Ideally we would detect this case when constructing the index, but it is easier to do this
+    # here and it should not be much more expensive, but it requires iterating over all rows again
+    if len(unhashable_index_cols) > 0:
+        for i, v in enumerate(index):
+            temp = list(v)
+            for ci in unhashable_index_cols:
+                temp[ci] = tuple(temp[ci])
+            index[i] = tuple(temp)
+
     # Construct the pandas dataframe with the hierarchical multi-index
-    try:
-        multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
-    except TypeError as e:
-        # If our table contains a VectorIndex column then "TypeError: unhashable type: 'list'" will
-        # occur when converting the index to pd.MultiIndex. If this is the case, then we need to
-        # update the lists to tuples. Ideally we would detect this case when constructing the index
-        # but it is easier to do this here and it should not be much more expensive
-        if len(index) > 0:  # This should always be true as otherwise not TypeError should have been raised
-            list_type_index_cols = [i for i, v in enumerate(index[0]) if isinstance(v, (list, np.ndarray))]
-            for i, v in enumerate(index):
-                temp = list(v)
-                for ci in list_type_index_cols:
-                    temp[ci] = tuple(temp[ci])
-                index[i] = tuple(temp)
-            multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
-        else:  # pragma: no cover
-            raise e
+    multi_index = pd.MultiIndex.from_tuples(index, names=index_names)
     out_df = pd.DataFrame(data=data, index=multi_index, columns=columns)
     return out_df
 
