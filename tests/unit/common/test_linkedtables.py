@@ -438,6 +438,58 @@ class TestHierarchicalTable(TestCase):
         self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list(),
                              [['tag1'], ['tag2'], ['tag2', 'tag1']])
 
+    def test_to_hierarchical_dataframe_indexed_data_nparray(self):
+        # Test that we can convert a table that contains a VectorIndex column as regular data,
+        # i.e., it is not our DynamicTableRegion column that is index but a regular data column.
+        # In this test the data is defined as an numpy nd.array so that an nd.array is injected
+        # into the MultiIndex of the table. As a numpy array is not hashable this would normally
+        # create an error when creating the MultiIndex
+        # Parent table
+        dtr_p1 = DynamicTableRegion(name='l1', description='l1', data=np.arange(4), table=self.aligned_table)
+        vi_dtr_p1 = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_p1)
+        p1 = DynamicTable(name='parent_table', description='parent_table',
+                          columns=[VectorData(name='p1', description='p1', data=np.arange(3)), dtr_p1, vi_dtr_p1])
+        # Super-parent table
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(3), table=p1)
+        spt = DynamicTable(name='super_parent_table', description='super_parent_table',
+                           columns=[VectorData(name='sp1', description='sp1', data=np.arange(3)), dtr_sp])
+        spt.add_column(name='vic', description='vic', data=np.arange(9), index=[2, 4, 6])
+        hier_df = to_hierarchical_dataframe(spt).reset_index()
+        expected_columns = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'), ('super_parent_table', 'vic'),
+                            ('parent_table', 'id'), ('parent_table', 'p1'),
+                            ('aligned_table', 'id'),
+                            ('aligned_table', ('aligned_table', 'a1')), ('aligned_table', ('level0_0', 'id')),
+                            ('aligned_table', ('level0_0', 'tags')), ('aligned_table', ('level0_0', 'myid'))]
+        self.assertListEqual(hier_df.columns.to_list(), expected_columns)  # make sure we have the right columns
+        self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list(),
+                             [['tag1'], ['tag2'], ['tag2', 'tag1']])
+
+    def test_to_hierarchical_dataframe_indexed_data_list(self):
+        # Test that we can convert a table that contains a VectorIndex column as regular data,
+        # i.e., it is not our DynamicTableRegion column that is index but a regular data column.
+        # In this test the data is defined as an list  so that a list is injected
+        # into the MultiIndex of the table. As a list  is not hashable this would normally
+        # create an error when creating the MultiIndex
+        # Parent table
+        dtr_p1 = DynamicTableRegion(name='l1', description='l1', data=np.arange(4), table=self.aligned_table)
+        vi_dtr_p1 = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_p1)
+        p1 = DynamicTable(name='parent_table', description='parent_table',
+                          columns=[VectorData(name='p1', description='p1', data=np.arange(3)), dtr_p1, vi_dtr_p1])
+        # Super-parent table
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(3), table=p1)
+        spt = DynamicTable(name='super_parent_table', description='super_parent_table',
+                           columns=[VectorData(name='sp1', description='sp1', data=np.arange(3)), dtr_sp])
+        spt.add_column(name='vic', description='vic', data=list(range(9)), index=list([2, 4, 6]))
+        hier_df = to_hierarchical_dataframe(spt).reset_index()
+        expected_columns = [('super_parent_table', 'id'), ('super_parent_table', 'sp1'), ('super_parent_table', 'vic'),
+                            ('parent_table', 'id'), ('parent_table', 'p1'),
+                            ('aligned_table', 'id'),
+                            ('aligned_table', ('aligned_table', 'a1')), ('aligned_table', ('level0_0', 'id')),
+                            ('aligned_table', ('level0_0', 'tags')), ('aligned_table', ('level0_0', 'myid'))]
+        self.assertListEqual(hier_df.columns.to_list(), expected_columns)  # make sure we have the right columns
+        self.assertListEqual(hier_df[('aligned_table', ('level0_0', 'tags'))].to_list(),
+                             [['tag1'], ['tag2'], ['tag2', 'tag1']])
+
     def test_to_hierarchical_dataframe_empty_tables(self):
         # Setup empty tables with the following hierarchy
         # super_parent_table --->  parent_table --->  child_table
