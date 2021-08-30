@@ -970,6 +970,9 @@ class Row(object, metaclass=ExtenderMeta):
     def __eq__(self, other):
         return self.idx == other.idx and self.table is other.table
 
+    def __str__(self):
+        return "Row(%i, %s) = %s" % (self.idx, self.table.name, str(self.todict()))
+
 
 class RowGetter:
     """
