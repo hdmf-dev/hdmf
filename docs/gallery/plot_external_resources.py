@@ -31,6 +31,7 @@ improve the structure and access of data stored with this type for your use case
 # allows us to link the two. To reduce data redundancy and improve data integrity,
 # ``ExternalResources`` stores this data internally in a collection of
 # interlinked tables.
+#
 # * :py:class:`~hdmf.common.resources.KeyTable` where each row describes a
 #   :py:class:`~hdmf.common.resources.Key`
 # * :py:class:`~hdmf.common.resources.ResourceTable` where each row describes a
@@ -52,7 +53,7 @@ improve the structure and access of data stored with this type for your use case
 # ------------------------------------------------------
 # When using the :py:class:`~hdmf.common.resources.ExternalResources` class, there
 # are rules to how users store information in the interlinked tables.
-
+#
 # 1. Multiple :py:class:`~hdmf.common.resources.Key` objects can have the same name.
 #    They are disambiguated by the :py:class:`~hdmf.common.resources.Object` associated
 #    with each.
@@ -82,6 +83,8 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
 
 er = ExternalResources(name='example')
 
@@ -95,7 +98,7 @@ er = ExternalResources(name='example')
 # the underlying data structures accordingly.
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(
+_ = er.add_ref(
     container=data,
     field='',
     key='Homo sapiens',
@@ -105,7 +108,7 @@ er.add_ref(
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
-er.add_ref(
+key, resource, entity = er.add_ref(
     container=data,
     field='',
     key='Mus musculus',
@@ -114,6 +117,11 @@ er.add_ref(
     entity_id='NCBI:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
+
+# Print result from the last add_ref call
+print(key)
+print(resource)
+print(entity)
 
 ###############################################################################
 # Using the add_ref method with get_resource
@@ -129,7 +137,8 @@ er.add_ref(
 er = ExternalResources(name='example')
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(
+
+_ = er.add_ref(
     container=data,
     field='',
     key='Homo sapiens',
@@ -141,7 +150,7 @@ er.add_ref(
 
 # Using get_resource
 existing_resource = er.get_resource('NCBI_Taxonomy')
-er.add_ref(
+_ = er.add_ref(
     container=data,
     field='',
     key='Mus musculus',
@@ -164,15 +173,24 @@ er.add_ref(
 er = ExternalResources(name='example')
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(container=data, field='', key='Homo sapiens', resource_name='NCBI_Taxonomy',
-           resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy', entity_id='NCBI:txid9606',
-           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+_ = er.add_ref(
+    container=data,
+    field='',
+    key='Homo sapiens',
+    resource_name='NCBI_Taxonomy',
+    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+    entity_id='NCBI:txid9606',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
 # Using get_resource
 existing_resource = er.get_resource('NCBI_Taxonomy')
-er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_resource,
-           entity_id='NCBI:txid10090',
-           entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+_ = er.add_ref(
+    container=data,
+    field='',
+    key='Mus musculus',
+    resources_idx=existing_resource,
+    entity_id='NCBI:txid10090',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
 ###############################################################################
 # Using the add_ref method with a field
@@ -188,7 +206,7 @@ er.add_ref(container=data, field='', key='Mus musculus', resources_idx=existing_
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
-er.add_ref(
+_ = er.add_ref(
     container=genotypes,
     field='genotype_name',
     key='Rorb',
@@ -202,9 +220,9 @@ er.add_ref(
 # Using the get_keys method
 # ------------------------------------------------------
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_keys` method
-# returns a `~pandas.DataFrame` of key_name, resource_table_idx, entity_id,
-# and entity_uri. You can either pass a single key object,
-# a list of key objects, or leave the input paramters empty to return all.
+# returns a :py:class:`~pandas.DataFrame` of ``key_name``, ``resource_table_idx``, ``entity_id``,
+# and ``entity_uri``. You can either pass a single key object,
+# a list of key objects, or leave the input parameters empty to return all.
 
 # All Keys
 er.get_keys()
@@ -236,7 +254,7 @@ key_object = er.get_key(key_name='Rorb', container=genotypes, field='genotype_na
 # object instead of the 'key_name' to the ``add_ref`` method. If a 'key_name' is used,
 # a new Key will be created.
 
-er.add_ref(
+_ = er.add_ref(
     container=genotypes,
     field='genotype_name',
     key=key_object,
@@ -282,7 +300,7 @@ data = Data(
     )
 )
 
-er.add_ref(
+_ = er.add_ref(
     container=data,
     field='data/species',
     key='Mus musculus',
@@ -299,7 +317,7 @@ er.add_ref(
 # differentiate between a dataset compound data type field named 'x' and a dataset
 # attribute named 'x'.
 
-er.add_ref(
+_ = er.add_ref(
     container=data,
     field='data/species',
     key='Homo sapiens',

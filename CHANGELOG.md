@@ -6,6 +6,10 @@
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
 - Fix broken tests in Python 3.10. @rly (#664)
 
+### Minor improvements
+- Add ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel
+- Plot results in external resources tutorial.  @oruebel
+
 ## HDMF 3.1.1 (July 29, 2021)
 
 ### Bug fixes
