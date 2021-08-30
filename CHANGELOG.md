@@ -7,8 +7,8 @@
 - Fix broken tests in Python 3.10. @rly (#664)
 
 ### Minor improvements
-- Add ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel
-- Plot results in external resources tutorial.  @oruebel
+- Add ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
+- Plot results in external resources tutorial.  @oruebel (#667)
 
 ## HDMF 3.1.1 (July 29, 2021)
 

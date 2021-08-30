@@ -83,6 +83,7 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
 import numpy as np
+# Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
 
