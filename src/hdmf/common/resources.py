@@ -424,3 +424,60 @@ class ExternalResources(Container):
                 data.append(rsc_row)
         return pd.DataFrame(data=data, columns=['key_name', 'resources_idx',
                                                 'entity_id', 'entity_uri'])
+
+    def to_dataframe(self):
+        """
+        Convert the data from the keys, resources, entities, objects, and object_keys tables
+        to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
+        are used across multiple enities or objects will duplicated across the corresponding
+        rows
+
+        Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
+
+        """
+        # Step 1: Combine the entities, keys, and resources,table
+        entities_df = self.entities.to_dataframe()
+        # Map the keys to the entities by 1) convert to dataframe, 2) select rows based on the keys_idx
+        # from the entities table, expanding the dataframe to have the same number of rows as the
+        # entities, and 3) reset the index to avoid duplicate values in the index, which causes errors when merging
+        keys_mapped_df = self.keys.to_dataframe().iloc[entities_df['keys_idx']].reset_index(drop=True)
+        # Map the resources to entities using the same strategy as for the keys
+        resources_mapped_df = self.resources.to_dataframe().iloc[entities_df['resources_idx']].reset_index(drop=True)
+        # Merge the mapped keys and resources with the entities tables
+        entities_df = pd.concat(objs=[entities_df, keys_mapped_df, resources_mapped_df],
+                                axis=1, verify_integrity=False)
+        # Add a column for the entity id (for consistency with the other tables and to facilitate query)
+        entities_df['entity_idx'] = entities_df.index
+
+        # Step 2: Combine the the object_keys and objects tables
+        object_keys_df = self.object_keys.to_dataframe()
+        objects_mapped_df = self.objects.to_dataframe().iloc[object_keys_df['objects_idx']].reset_index(drop=True)
+        object_keys_df = pd.concat(objs=[object_keys_df, objects_mapped_df],
+                                   axis=1,
+                                   verify_integrity=False)
+
+        # Step 3: merge the combined entities_df and object_keys_df DataFrames
+        result_df = pd.concat(
+            # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
+            objs=[pd.merge(
+                    # Find all entities that correspond to the row i of the object_keys_table
+                    entities_df[entities_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
+                    # Get a DataFrame for row i of the objects_keys_table
+                    object_keys_df.iloc[[i, ]],
+                    # Merge the entities and object_keys on the keys_idx column so that the values from the single
+                    # object_keys_table row are copied across all corresponding rows in the entities table
+                    on='keys_idx')
+                  for i in range(len(object_keys_df))],
+            # Concatenate the rows of the objs
+            axis=0,
+            verify_integrity=False)
+
+        # Step 4: Clean up the index and sort columns by table type and name
+        result_df.reset_index(inplace=True, drop=True)
+        result_df = result_df.reindex(labels=['objects_idx', 'object_id', 'field',
+                                              'keys_idx', 'key',
+                                              'resources_idx', 'resource', 'resource_uri',
+                                              'entity_idx', 'entity_id', 'entity_uri'],
+                                      axis=1)
+        # return the result
+        return result_df
