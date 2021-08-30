@@ -1,14 +1,20 @@
 # HDMF Changelog
 
+## HDMF 3.2 (Upcoming)
+
+### New features
+- Add ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
+- Add ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization @oruebel (#667)
+
+### Minor improvements
+- Plot results in external resources tutorial.  @oruebel (#667)
+
+
 ## HDMF 3.1.2 (Upcoming)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
 - Fix broken tests in Python 3.10. @rly (#664)
-
-### Minor improvements
-- Add ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
-- Plot results in external resources tutorial.  @oruebel (#667)
 
 ## HDMF 3.1.1 (July 29, 2021)
 

@@ -329,3 +329,117 @@ _ = er.add_ref(
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
+
+
+###############################################################################
+# Test Convert to DataFrame
+# -------------------------
+#
+
+er = ExternalResources(name='example')
+
+data1 = Data(
+    name='data_name',
+    data=np.array(
+        [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
+        dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
+    )
+)
+
+k1, r1, e1 = er.add_ref(
+    container=data1,
+    field='data/species',
+    key='Mus musculus',
+    resource_name='NCBI_Taxonomy',
+    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+    entity_id='NCBI:txid10090',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+)
+
+
+k2, r2, e2 = er.add_ref(
+    container=data1,
+    field='data/species',
+    key='Homo sapiens',
+    resource_name='NCBI_Taxonomy',
+    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+    entity_id='NCBI:txid9606',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+)
+
+# Want to use the same key, resources, and entities for both. But we'll add an extra key just for this one
+data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus', 'Pongo abelii'])
+
+o2 = er._add_object(data2, field='')
+er._add_object_key(o2, k1)
+er._add_object_key(o2, k2)
+
+k2, r2, e2 = er.add_ref(
+    container=data2,
+    field='',
+    key='Pongo abelii',
+    resource_name='NCBI_Taxonomy',
+    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+    entity_id='NCBI:txid9601',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601'
+)
+
+# Question:
+# - Can add_ref be used to associate two different objects with the same keys, resources, and entities?
+#    - Here we use the private _add_object, and _add_object_key methods to do this but should this not be possible
+#      with add_ref? Specifically, add_ref allows Resource, Key, objects to be reused on input but not Entity? Why?
+#      E.g., should we be able to do:
+#      er.add_ref(
+#         container=data2,
+#         field='',
+#         key=k1,
+#         resources_idx=r1,
+#         entity_id=e1      # <-- not allowed
+#      )
+#
+
+genotypes = DynamicTable(name='genotypes', description='My genotypes')
+genotypes.add_column(name='genotype_name', description="Name of genotypes")
+genotypes.add_row(id=0, genotype_name='Rorb')
+k3, r3, e3 = er.add_ref(
+    container=genotypes['genotype_name'],
+    field='',
+    key='Rorb',
+    resource_name='MGI Database',
+    resource_uri='http://www.informatics.jax.org/',
+    entity_id='MGI:1346434',
+    entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
+)
+_ = er.add_ref(
+    container=genotypes['genotype_name'],
+    field='',
+    key=k3,
+    resource_name='Ensembl',
+    resource_uri='https://uswest.ensembl.org/index.html',
+    entity_id='ENSG00000198963',
+    entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
+)
+
+
+
+###############################################################################
+# Convert the individual tables to DataFrames
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+er.keys.to_dataframe()
+###############################################################################
+#
+er.resources.to_dataframe()
+###############################################################################
+# Note that key 3 has 2 entities assigned to it in the entities table
+er.entities.to_dataframe()
+###############################################################################
+#
+er.objects.to_dataframe()
+###############################################################################
+# Note that key 0 and 1 are used by both object 0 and object 1 in the object_keys table
+er.object_keys.to_dataframe()
+###############################################################################
+# Convert the whole ExternalResources to a single DataFrame
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+er.to_dataframe()
