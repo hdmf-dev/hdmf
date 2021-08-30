@@ -110,7 +110,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         )
         # Convert to dataframe and compare against the expected result
         result_df = er.to_dataframe()
-        expected_df = pd.DataFrame.from_dict(
+        expected_df_data = \
             {'objects_idx': {0: 0, 1: 0, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2},
              'object_id': {0: data1.object_id, 1: data1.object_id,
                            2: data2.object_id, 3: data2.object_id, 4: data2.object_id,
@@ -126,7 +126,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                               2: 'https://www.ncbi.nlm.nih.gov/taxonomy', 3: 'https://www.ncbi.nlm.nih.gov/taxonomy',
                               4: 'https://www.ncbi.nlm.nih.gov/taxonomy', 5: 'http://www.informatics.jax.org/',
                               6: 'https://uswest.ensembl.org/index.html'},
-             'entity_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4},
+             'entities_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4},
              'entity_id': {0: 'NCBI:txid10090', 1: 'NCBI:txid9606', 2: 'NCBI:txid10090', 3: 'NCBI:txid9606',
                            4: 'NCBI:txid9601', 5: 'MGI:1346434', 6: 'ENSG00000198963'},
              'entity_uri': {0: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
@@ -135,7 +135,19 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                             3: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606',
                             4: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601',
                             5: 'http://www.informatics.jax.org/marker/MGI:1343464',
-                            6: 'https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'}})
+                            6: 'https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        pd.testing.assert_frame_equal(result_df, expected_df)
+
+        # Convert to dataframe with categories and compare against the expected result
+        result_df = er.to_dataframe(use_categories=True)
+        cols_with_categories = [
+            ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+            ('keys', 'keys_idx'), ('keys', 'key'),
+            ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
+            ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
+        expected_df_data = {c: expected_df_data[c[1]] for c in cols_with_categories}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_add_ref(self):

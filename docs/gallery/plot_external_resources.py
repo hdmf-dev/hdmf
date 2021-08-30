@@ -440,4 +440,23 @@ er.object_keys.to_dataframe()
 ###############################################################################
 # Convert the whole ExternalResources to a single DataFrame
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# Using the :py:class:`~hdmf.common.resources.ExternalResources.to_dataframe` method of the
+# :py:class:`~hdmf.common.resources.ExternalResources` we can convert the data from the corresponding
+# :py:class:`~hdmf.common.resources.Keys`, :py:class:`~hdmf.common.resources.Resources`,
+# :py:class:`~hdmf.common.resources.Entities`, :py:class:`~hdmf.common.resources.Objects`, and
+# :py:class:`~hdmf.common.resources.ObjectKeys` tables to a single joint :py:class:`~pandas.DataFrame`.
+# In this conversion the data is being denormalized, such that e.g.,
+# the :py:class:`~hdmf.common.resources.Keys` that are used across multiple :py:class:`~hdmf.common.resources.Enitites`
+# are duplicated across the corresponding rows. Here this is the case, e.g., for the keys ``Homo sapiens`` and
+# ``Mus musculus`` which are used in the first two objects (rows with ``index=[0, 1, 2, 3]``), or the
+# ``Rorb`` key which appears in both the ``MGI Database`` and  ``Ensembl`` resource (rows with ``index=[5,6]``).
 er.to_dataframe()
+
+###############################################################################
+# By setting ``use_categories=True`` the function will use a :py:class:`pandas.MultiIndex` on the columns
+# instead to indicate for each column also the category (i.e., ``objects``, ``keys``, ``entities``, and ``resources``
+# the columns belong to. **Note:** The category in the combined table is not the same as the name of the source table
+# but rather represents the semantic category, e.g., ``keys_idx`` appears as a foreign key in both the
+# :py:class:`~hdmf.common.resources.ObjectKeys` and :py:class:`~hdmf.common.resources.Entities` tables
+# but in terms of the combined table is a logical property of the ``keys``.
+er.to_dataframe(use_categories=True)

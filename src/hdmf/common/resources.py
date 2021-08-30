@@ -425,7 +425,10 @@ class ExternalResources(Container):
         return pd.DataFrame(data=data, columns=['key_name', 'resources_idx',
                                                 'entity_id', 'entity_uri'])
 
-    def to_dataframe(self):
+    @docval({'name': 'use_categories', 'type': bool, 'default': False,
+             'doc': 'Use a multi-index on the columns to indicate which category each column belongs to'},
+            rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
+    def to_dataframe(self, **kwargs):
         """
         Convert the data from the keys, resources, entities, objects, and object_keys tables
         to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
@@ -435,6 +438,7 @@ class ExternalResources(Container):
         Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
 
         """
+        use_categories = popargs('use_categories', kwargs)
         # Step 1: Combine the entities, keys, and resources,table
         entities_df = self.entities.to_dataframe()
         # Map the keys to the entities by 1) convert to dataframe, 2) select rows based on the keys_idx
@@ -447,7 +451,7 @@ class ExternalResources(Container):
         entities_df = pd.concat(objs=[entities_df, keys_mapped_df, resources_mapped_df],
                                 axis=1, verify_integrity=False)
         # Add a column for the entity id (for consistency with the other tables and to facilitate query)
-        entities_df['entity_idx'] = entities_df.index
+        entities_df['entities_idx'] = entities_df.index
 
         # Step 2: Combine the the object_keys and objects tables
         object_keys_df = self.object_keys.to_dataframe()
@@ -474,10 +478,15 @@ class ExternalResources(Container):
 
         # Step 4: Clean up the index and sort columns by table type and name
         result_df.reset_index(inplace=True, drop=True)
-        result_df = result_df.reindex(labels=['objects_idx', 'object_id', 'field',
-                                              'keys_idx', 'key',
-                                              'resources_idx', 'resource', 'resource_uri',
-                                              'entity_idx', 'entity_id', 'entity_uri'],
+        column_labels = [('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+                         ('keys', 'keys_idx'), ('keys', 'key'),
+                         ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
+                         ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
+        # sort the columns based on our custom order
+        result_df = result_df.reindex(labels=[c[1] for c in column_labels],
                                       axis=1)
+        # Add the categories if requested
+        if use_categories:
+            result_df.columns = pd.MultiIndex.from_tuples(column_labels)
         # return the result
         return result_df
