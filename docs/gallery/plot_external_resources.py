@@ -311,7 +311,8 @@ _ = er.add_ref(
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
-# Note that because the container is a ``Data`` object, and the external resource is being
+###############################################################################
+# Note that because the container is a :py:class:`~hdmf.container.Data` object, and the external resource is being
 # associated with the values of the dataset rather than an attribute of the dataset,
 # the field must be prefixed with 'data'. Normally, to associate an external resource
 # with the values of the dataset, the field can be left blank. This allows us to
@@ -327,3 +328,4 @@ _ = er.add_ref(
     entity_id='NCBI:txid9606',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
+
