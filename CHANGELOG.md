@@ -4,14 +4,14 @@
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
-- Fix broken tests in Python 3.10. @rly (#664)
+- Fixed broken tests in Python 3.10. @rly (#664)
+- Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
 
 ## HDMF 3.1.1 (July 29, 2021)
 
 ### Bug fixes
 - Updated the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
   objects rather than lists of dicts. @oruebel (#660)
-- Update docstring of ``AlignedDynamicTable.get`` to fix broken latex PDF build of the docs. @oruebel (#669)
 
 ## HDMF 3.1.0 (July 29, 2021)
 
