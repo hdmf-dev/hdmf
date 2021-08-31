@@ -1,7 +1,7 @@
 import pandas as pd
+from hdmf.common import DynamicTable
 from hdmf.common.resources import ExternalResources, Key, Resource
 from hdmf import Data
-from hdmf.common import DynamicTable
 from hdmf.testing import TestCase, H5RoundTripMixin
 import numpy as np
 import unittest
@@ -348,15 +348,14 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.objects.data, [(table.object_id, 'DynamicTable/description', '')])
 
     def test_add_ref_deep_nested(self):
-        er = ExternalResources(name='example')
+        er = ExternalResources(name='example', type_map=self.type_map)
         er.add_ref(container=self.bar,
                    attribute='attr2',
                    key='key1',
                    resource_name='resource0',
                    resource_uri='resource0_uri',
                    entity_id='entity_0',
-                   entity_uri='entity_0_uri',
-                   type_map=self.type_map)
+                   entity_uri='entity_0_uri')
         self.assertEqual(er.objects.data[0][1], 'Bar/data/attr2', '')
 
 

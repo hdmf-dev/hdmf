@@ -151,7 +151,9 @@ class ExternalResources(Container):
             {'name': 'objects', 'type': ObjectTable, 'default': None,
              'doc': 'the table storing object information'},
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
-             'doc': 'the table storing object-resource relationships'})
+             'doc': 'the table storing object-resource relationships'},
+            {'name': 'type_map', 'type': TypeMap, 'default': None,
+             'doc': 'the type_map'})
     def __init__(self, **kwargs):
         name = popargs('name', kwargs)
         super().__init__(name)
@@ -160,6 +162,7 @@ class ExternalResources(Container):
         self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
+        self.type_map = kwargs['type_map'] or get_type_map()
 
     @docval({'name': 'key_name', 'type': str,
              'doc': 'the name of the key to be added'})
@@ -331,7 +334,6 @@ class ExternalResources(Container):
             {'name': 'resource_uri', 'type': str, 'doc': 'the uri of the resource to be created', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'the identifier for the entity at the resource', 'default': None},
             {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None},
-            {'name': 'type_map', 'type': TypeMap, 'doc': 'type_map used', 'default': None},
             {'name': 'field', 'type': str, 'default': None,
              'doc': ('the field of the compound data type using'
                      'an external resource')})
@@ -350,11 +352,8 @@ class ExternalResources(Container):
         field = kwargs['field']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        type_map = kwargs['type_map']
         add_entity = False
 
-        if type_map is None:
-            type_map = get_type_map()
         if attribute is None:  # Trivial Case
             relative_path = ''
             object_field = self._check_object_field(container, relative_path, field)
@@ -364,14 +363,13 @@ class ExternalResources(Container):
                 relative_path = ''
                 object_field = self._check_object_field(attribute_object, relative_path, field)
             else:  # Non-DataType Attribute Case:
-                # type_map = get_type_map()
-                obj_mapper = type_map.get_map(container)
+                obj_mapper = self.type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
                 parent_spec = spec.parent  # return the parent spec of the attribute
                 if parent_spec.data_type is None:
                     while parent_spec.data_type is None:
                         parent_spec = parent_spec.parent  # find the closest parent with a data_type
-                    parent_cls = type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
                     if isinstance(container, parent_cls):
                         parent_id = container.object_id
                         # We need to get the path of the spec for relative_path
