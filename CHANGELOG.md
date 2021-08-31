@@ -11,6 +11,7 @@
 ### Bug fixes
 - Updated the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
   objects rather than lists of dicts. @oruebel (#660)
+- Update docstring of ``AlignedDynamicTable.get`` to fix broken latex PDF build of the docs. @oruebel (#669)
 
 ## HDMF 3.1.0 (July 29, 2021)
 
