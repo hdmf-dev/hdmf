@@ -494,6 +494,25 @@ class ExternalResources(Container):
     @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'},
             rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
     def export_to_sqlite(self, db_file):
+        """
+        Save the  keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
+
+        The function will first create the tables (if they do not already exists) and then populate
+        add the data from this ExternalResource object to the database. If the database file already
+        exists, then the data will be appended as rows to the existing database tables.
+
+        Note, the index values of foreign keys (e.g,. keys_idx, objects_idx, resources_idx) in the tables
+        will not match between the ExternalResources here and the exported database, but they are adjusted
+        automatically here, to ensure the foreign keys point to the correct rows in the exported database.
+        This is because: 1) uses 0-based indexing for foreign keys, while SQLite uses 1-based indexing
+        and 2) if data is appended to existing  tables then a corresponding additional offset must be
+        applied to the relevant foreign keys.
+
+        :raises: The function will raise errors in case connection to the database fails. If
+                 the given db_file already exists then there is also the possibility that
+                 certain updates may result in errors in case there are collisions between the
+                 new and existing data.
+        """
         import sqlite3
         # connect to the database
         connection = sqlite3.connect(db_file)
