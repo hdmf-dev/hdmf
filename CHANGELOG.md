@@ -3,8 +3,9 @@
 ## HDMF 3.2 (Upcoming)
 
 ### New features
-- Add ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
-- Add ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization @oruebel (#667)
+- Added ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
+- Added ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization @oruebel (#667)
+- Added ``export_to_sqlite`` method for ``hdmf.common.resources.ExternalResource``  @oruebel (#667)
 
 ### Minor improvements
 - Plot results in external resources tutorial.  @oruebel (#667)

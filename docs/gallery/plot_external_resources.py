@@ -331,8 +331,8 @@ _ = er.add_ref(
 
 
 ###############################################################################
-# Test Convert to DataFrame
-# -------------------------
+# Convert ExternalResources to a single DataFrame
+# -----------------------------------------------
 #
 
 er = ExternalResources(name='example')
@@ -460,3 +460,43 @@ er.to_dataframe()
 # :py:class:`~hdmf.common.resources.ObjectKeys` and :py:class:`~hdmf.common.resources.Entities` tables
 # but in terms of the combined table is a logical property of the ``keys``.
 er.to_dataframe(use_categories=True)
+
+###############################################################################
+# Export ExternalResources to SQLite
+# ----------------------------------
+
+# Set the database file to use and clean up the file if it exists
+import os
+db_file = "test_externalresources.sqlite"
+if os.path.exists((db_file)):
+    os.remove(db_file)
+
+###############################################################################
+# Export the data stored in the :py:class:`~hdmf.common.resources.ExternalResources`
+# object to a SQLite database.
+er.export_to_sqlite(db_file)
+
+###############################################################################
+# Test that the generated SQLite database is correct
+
+import sqlite3
+import pandas as pd
+with sqlite3.connect(db_file) as db:
+    cursor = db.cursor()
+    # read all tables
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = cursor.fetchall()
+    # convert all tables to pandas and compare with the original tables
+    for table_name in tables:
+        table_name = table_name[0]
+        table = pd.read_sql_query("SELECT * from %s" % table_name, db)
+        table.set_index('id', inplace=True)
+        ref_table = getattr(er, table_name).to_dataframe()
+        assert(np.all(np.array(table.index) == np.array(ref_table.index) + 1))
+        for c in table.columns:
+            # NOTE: SQLite uses 1-based row-indices so we need adjust for that
+            if np.issubdtype(table[c].dtype, np.integer):
+                assert(np.all(np.array(table[c]) == np.array(ref_table[c]) + 1))
+            else:
+                assert(np.all(np.array(table[c]) == np.array(ref_table[c])))
+    cursor.close()

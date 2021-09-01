@@ -490,3 +490,72 @@ class ExternalResources(Container):
             result_df.columns = pd.MultiIndex.from_tuples(column_labels)
         # return the result
         return result_df
+
+    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'},
+            rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
+    def export_to_sqlite(self, db_file):
+        import sqlite3
+        # connect to the database
+        connection = sqlite3.connect(db_file)
+        cursor = connection.cursor()
+        # sql calls to setup the tables
+        sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
+                                        id integer PRIMARY KEY,
+                                        key text NOT NULL
+                                    ); """
+        sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
+                                            id integer PRIMARY KEY,
+                                            object_id text NOT NULL,
+                                            field text
+                                       ); """
+        sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
+                                             id integer PRIMARY KEY,
+                                             resource text NOT NULL,
+                                             resource_uri text NOT NULL
+                                        ); """
+        sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
+                                               id integer PRIMARY KEY,
+                                               objects_idx int NOT NULL,
+                                               keys_idx int NOT NULL,
+                                               FOREIGN KEY (objects_idx) REFERENCES objects (id),
+                                               FOREIGN KEY (keys_idx) REFERENCES keys (id)
+                                        ); """
+        sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
+                                             id integer PRIMARY KEY,
+                                             keys_idx int NOT NULL,
+                                             resources_idx int NOT NULL,
+                                             entity_id text NOT NULL,
+                                             entity_uri text NOT NULL,
+                                             FOREIGN KEY (keys_idx) REFERENCES keys (id),
+                                             FOREIGN KEY (resources_idx) REFERENCES resources (id)
+                                        ); """
+        # execute setting up the tables
+        cursor.execute(sql_create_keys_table)
+        cursor.execute(sql_create_objects_table)
+        cursor.execute(sql_create_resources_table)
+        cursor.execute(sql_create_object_keys_table)
+        cursor.execute(sql_create_entities_table)
+
+        # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
+        # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
+        keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
+        objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
+        resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
+
+        # populate the tables and fix foreign keys during insert
+        cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
+        connection.commit()
+        cursor.executemany(" INSERT INTO objects(object_id, field) VALUES(?, ?) ", self.objects[:])
+        connection.commit()
+        cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
+        connection.commit()
+        cursor.executemany(
+            " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
+            self.object_keys[:])
+        connection.commit()
+        cursor.executemany(
+            " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
+            % (keys_offset, resources_offset),
+            self.entities[:])
+        connection.commit()
+        connection.close()
