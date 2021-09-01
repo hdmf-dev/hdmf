@@ -277,22 +277,22 @@ class AlignedDynamicTable(DynamicTable):
               * ``self['my_category']`` : Returns a DataFrame of the ``my_category`` category table.
                 This is a shorthand for ``self.get_category('my_category').to_dataframe()``.
 
-        * **tuple**: Get a column, row, or cell from a particular category table.
-               The tuple is expected to consist of the following elements:
+        * **tuple**: Get a column, row, or cell from a particular category table. The tuple is expected to
+          consist of the following elements:
 
-               * ``category``: string with the name of the category. To select from the main
-                 table use ``self.name`` or ``None``.
-               * ``column``: string with the name of the column, and
-               * ``row``: integer index of the row.
+              * ``category``: string with the name of the category. To select from the main
+                table use ``self.name`` or ``None``.
+              * ``column``: string with the name of the column, and
+              * ``row``: integer index of the row.
 
-               The tuple itself then may take the following forms:
+          The tuple itself then may take the following forms:
 
-               * Select a single column from a table via:
+              * Select a single column from a table via:
                    * ``self[category, column]``
-               * Select a single full row of a given category table via:
+              * Select a single full row of a given category table via:
                    * ``self[row, category]`` (recommended, for consistency with DynamicTable)
                    * ``self[category, row]``
-               * Select a single cell via:
+              * Select a single cell via:
                    * ``self[row, (category, column)]`` (recommended, for consistency with DynamicTable)
                    * ``self[row, category, column]``
                    * ``self[category, column, row]``
