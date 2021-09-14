@@ -799,7 +799,7 @@ class TestDynamicTableRegion(TestCase):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
         with self.assertRaises(ValueError):
-            _ = dynamic_table_region['bad index']
+            _ = dynamic_table_region[True]
 
     def test_dynamic_table_region_table_prop(self):
         table = self.with_columns_and_data()
@@ -1050,6 +1050,20 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         rec = self._get_nodf(slice(0, 2, None))
         exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']), np.array([0, 1])]
         self._assert_list_of_ndarray_equal(exp, rec)
+
+    def test_getitem_int_str(self):
+        """Test DynamicTableRegion.__getitem__ with (int, str)."""
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        rec = table['dtr'][0, 'qux']
+        self.assertEqual(rec, 'qux_1')
+
+    def test_getitem_str(self):
+        """Test DynamicTableRegion.__getitem__ with str."""
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        rec = table['dtr']['qux']
+        self.assertIs(rec, mc.containers['target_table']['qux'])
 
 
 class TestElementIdentifiers(TestCase):

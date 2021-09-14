@@ -5,6 +5,7 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 
 import re
 from collections import OrderedDict
+from typing import NamedTuple, Union
 from warnings import warn
 
 import numpy as np
@@ -824,7 +825,7 @@ class DynamicTable(Container):
                df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
                single row.
 
-        :return: 1) If key is a string, then return array with the data of the selected column
+        :return: 1) If key is a string, then return the VectorData object representing the column with the string name
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
                  3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame or lists
                     consisting of one or more rows
@@ -1009,11 +1010,15 @@ class DynamicTable(Container):
         from this table via foreign DynamicTableColumns included in this table or in any table that
         can be reached through DynamicTableRegion columns
 
-        Returns: List of dicts with the following keys:
+        Returns: List of NamedTuple objects with:
                 * 'source_table' : The source table containing the DynamicTableRegion column
                 * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
                 * 'target_table' : The target DynamicTable; same as source_column.table.
         """
+        link_type = NamedTuple('DynamicTableLink',
+                               [('source_table', DynamicTable),
+                                ('source_column', Union[DynamicTableRegion, VectorIndex]),
+                                ('target_table', DynamicTable)])
         curr_tables = [self, ]  # Set of tables
         other_tables = getargs('other_tables', kwargs)
         if other_tables is not None:
@@ -1023,9 +1028,9 @@ class DynamicTable(Container):
         while curr_index < len(curr_tables):
             for col_index, col in enumerate(curr_tables[curr_index].columns):
                 if isinstance(col, DynamicTableRegion):
-                    foreign_cols.append({'source_table': curr_tables[curr_index],
-                                         'source_column': col,
-                                         'target_table': col.table})
+                    foreign_cols.append(link_type(source_table=curr_tables[curr_index],
+                                                  source_column=col,
+                                                  target_table=col.table))
                     curr_table_visited = False
                     for t in curr_tables:
                         if t is col.table:
@@ -1205,7 +1210,8 @@ class DynamicTableRegion(VectorData):
 
         :param arg: Key defining which elements of the table to select. This may be one of the following:
 
-            1) a tuple consisting of (int, str) where the int selects the row and the string identifies the
+            1) string with the name of the column to select
+            2) a tuple consisting of (int, str) where the int selects the row and the string identifies the
                column to select by name
             3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
                scalars are returned for each column that has a single value. If a list, array, or slice is used and
@@ -1227,6 +1233,8 @@ class DynamicTableRegion(VectorData):
             arg1 = arg[0]
             arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
+        elif isinstance(arg, str):
+            return self.table[arg]
         elif np.issubdtype(type(arg), np.integer):
             if arg >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))

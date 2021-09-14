@@ -1,6 +1,19 @@
 # HDMF Changelog
 
-## Upcoming (TBD)
+## HDMF 3.1.2 (Upcoming)
+
+### Bug fixes
+- Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
+- Fixed broken tests in Python 3.10. @rly (#664)
+- Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
+
+## HDMF 3.1.1 (July 29, 2021)
+
+### Bug fixes
+- Updated the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
+  objects rather than lists of dicts. @oruebel (#660)
+
+## HDMF 3.1.0 (July 29, 2021)
 
 ### New features
 - Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
@@ -29,6 +42,8 @@
   ``AlignedDynamicTable.colnames`` property only includes the columns of the main table for compliance with
   ``DynamicTable`` @oruebel (#645)
 - Fix documentation for `DynamicTable.get` and `DynamicTableRegion.get`. @rly (#650)
+- Allow passing string column name to `DynamicTableRegion`, i.e., `dtr['col_name']` is a shortcut to
+  `dtr.table['col_name']`. @rly (#657)
 
 ## HDMF 3.0.1 (July 7, 2021)
 
