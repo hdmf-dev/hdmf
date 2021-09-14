@@ -493,3 +493,157 @@ class ExternalResources(Container):
                 data.append(rsc_row)
         return pd.DataFrame(data=data, columns=['key_name', 'resources_idx',
                                                 'entity_id', 'entity_uri'])
+
+    @docval({'name': 'use_categories', 'type': bool, 'default': False,
+             'doc': 'Use a multi-index on the columns to indicate which category each column belongs to'},
+            rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
+    def to_dataframe(self, **kwargs):
+        """
+        Convert the data from the keys, resources, entities, objects, and object_keys tables
+        to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
+        are used across multiple enities or objects will duplicated across the corresponding
+        rows
+
+        Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
+
+        """
+        use_categories = popargs('use_categories', kwargs)
+        # Step 1: Combine the entities, keys, and resources,table
+        entities_df = self.entities.to_dataframe()
+        # Map the keys to the entities by 1) convert to dataframe, 2) select rows based on the keys_idx
+        # from the entities table, expanding the dataframe to have the same number of rows as the
+        # entities, and 3) reset the index to avoid duplicate values in the index, which causes errors when merging
+        keys_mapped_df = self.keys.to_dataframe().iloc[entities_df['keys_idx']].reset_index(drop=True)
+        # Map the resources to entities using the same strategy as for the keys
+        resources_mapped_df = self.resources.to_dataframe().iloc[entities_df['resources_idx']].reset_index(drop=True)
+        # Merge the mapped keys and resources with the entities tables
+        entities_df = pd.concat(objs=[entities_df, keys_mapped_df, resources_mapped_df],
+                                axis=1, verify_integrity=False)
+        # Add a column for the entity id (for consistency with the other tables and to facilitate query)
+        entities_df['entities_idx'] = entities_df.index
+
+        # Step 2: Combine the the object_keys and objects tables
+        object_keys_df = self.object_keys.to_dataframe()
+        objects_mapped_df = self.objects.to_dataframe().iloc[object_keys_df['objects_idx']].reset_index(drop=True)
+        object_keys_df = pd.concat(objs=[object_keys_df, objects_mapped_df],
+                                   axis=1,
+                                   verify_integrity=False)
+
+        # Step 3: merge the combined entities_df and object_keys_df DataFrames
+        result_df = pd.concat(
+            # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
+            objs=[pd.merge(
+                    # Find all entities that correspond to the row i of the object_keys_table
+                    entities_df[entities_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
+                    # Get a DataFrame for row i of the objects_keys_table
+                    object_keys_df.iloc[[i, ]],
+                    # Merge the entities and object_keys on the keys_idx column so that the values from the single
+                    # object_keys_table row are copied across all corresponding rows in the entities table
+                    on='keys_idx')
+                  for i in range(len(object_keys_df))],
+            # Concatenate the rows of the objs
+            axis=0,
+            verify_integrity=False)
+
+        # Step 4: Clean up the index and sort columns by table type and name
+        result_df.reset_index(inplace=True, drop=True)
+        column_labels = [('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+                         ('keys', 'keys_idx'), ('keys', 'key'),
+                         ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
+                         ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
+        # sort the columns based on our custom order
+        result_df = result_df.reindex(labels=[c[1] for c in column_labels],
+                                      axis=1)
+        # Add the categories if requested
+        if use_categories:
+            result_df.columns = pd.MultiIndex.from_tuples(column_labels)
+        # return the result
+        return result_df
+
+    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'},
+            rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
+    def export_to_sqlite(self, db_file):
+        """
+        Save the  keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
+
+        The function will first create the tables (if they do not already exists) and then populate
+        add the data from this ExternalResource object to the database. If the database file already
+        exists, then the data will be appended as rows to the existing database tables.
+
+        Note, the index values of foreign keys (e.g,. keys_idx, objects_idx, resources_idx) in the tables
+        will not match between the ExternalResources here and the exported database, but they are adjusted
+        automatically here, to ensure the foreign keys point to the correct rows in the exported database.
+        This is because: 1) uses 0-based indexing for foreign keys, while SQLite uses 1-based indexing
+        and 2) if data is appended to existing  tables then a corresponding additional offset must be
+        applied to the relevant foreign keys.
+
+        :raises: The function will raise errors in case connection to the database fails. If
+                 the given db_file already exists then there is also the possibility that
+                 certain updates may result in errors in case there are collisions between the
+                 new and existing data.
+        """
+        import sqlite3
+        # connect to the database
+        connection = sqlite3.connect(db_file)
+        cursor = connection.cursor()
+        # sql calls to setup the tables
+        sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
+                                        id integer PRIMARY KEY,
+                                        key text NOT NULL
+                                    ); """
+        sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
+                                            id integer PRIMARY KEY,
+                                            object_id text NOT NULL,
+                                            field text
+                                       ); """
+        sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
+                                             id integer PRIMARY KEY,
+                                             resource text NOT NULL,
+                                             resource_uri text NOT NULL
+                                        ); """
+        sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
+                                               id integer PRIMARY KEY,
+                                               objects_idx int NOT NULL,
+                                               keys_idx int NOT NULL,
+                                               FOREIGN KEY (objects_idx) REFERENCES objects (id),
+                                               FOREIGN KEY (keys_idx) REFERENCES keys (id)
+                                        ); """
+        sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
+                                             id integer PRIMARY KEY,
+                                             keys_idx int NOT NULL,
+                                             resources_idx int NOT NULL,
+                                             entity_id text NOT NULL,
+                                             entity_uri text NOT NULL,
+                                             FOREIGN KEY (keys_idx) REFERENCES keys (id),
+                                             FOREIGN KEY (resources_idx) REFERENCES resources (id)
+                                        ); """
+        # execute setting up the tables
+        cursor.execute(sql_create_keys_table)
+        cursor.execute(sql_create_objects_table)
+        cursor.execute(sql_create_resources_table)
+        cursor.execute(sql_create_object_keys_table)
+        cursor.execute(sql_create_entities_table)
+
+        # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
+        # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
+        keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
+        objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
+        resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
+
+        # populate the tables and fix foreign keys during insert
+        cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
+        connection.commit()
+        cursor.executemany(" INSERT INTO objects(object_id, field) VALUES(?, ?) ", self.objects[:])
+        connection.commit()
+        cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
+        connection.commit()
+        cursor.executemany(
+            " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
+            self.object_keys[:])
+        connection.commit()
+        cursor.executemany(
+            " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
+            % (keys_offset, resources_offset),
+            self.entities[:])
+        connection.commit()
+        connection.close()
