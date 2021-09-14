@@ -116,3 +116,9 @@ class TestRow(TestCase):
     def test_todict(self):
         row1 = self.MyRow(col1='foo', col2=100, table=self.table)
         self.assertEqual(row1.todict(), {'col1': 'foo', 'col2': 100})
+
+    def test___str__(self):
+        row1 = self.MyRow(col1='foo', col2=100, table=self.table)
+        row1_str = str(row1)
+        expected_str = "Row(0, test_table) = {'col1': 'foo', 'col2': 100}"
+        self.assertEqual(row1_str, expected_str)

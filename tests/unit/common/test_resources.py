@@ -44,6 +44,112 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                          [(0, 0, '10090', 'uri')])
         self.assertEqual(er.objects.data, [('object', 'species')])
 
+    def test_to_dataframe(self):
+        # Setup complex external resources with keys reused across objects and
+        # multiple resources per key
+        er = ExternalResources(name='example')
+        # Add a species dataset with 2 keys
+        data1 = Data(
+            name='data_name',
+            data=np.array(
+                [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
+                dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
+            )
+        )
+        k1, r1, e1 = er.add_ref(
+            container=data1,
+            field='data/species',
+            key='Mus musculus',
+            resource_name='NCBI_Taxonomy',
+            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+            entity_id='NCBI:txid10090',
+            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+        )
+        k2, r2, e2 = er.add_ref(
+            container=data1,
+            field='data/species',
+            key='Homo sapiens',
+            resource_name='NCBI_Taxonomy',
+            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+            entity_id='NCBI:txid9606',
+            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+        )
+        # Add a second species dataset that uses the same keys as the first dataset and add an additional key
+        data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus', 'Pongo abelii'])
+        o2 = er._add_object(data2, field='')
+        er._add_object_key(o2, k1)
+        er._add_object_key(o2, k2)
+        k2, r2, e2 = er.add_ref(
+            container=data2,
+            field='',
+            key='Pongo abelii',
+            resource_name='NCBI_Taxonomy',
+            resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+            entity_id='NCBI:txid9601',
+            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601'
+        )
+        # Add a third data object, this time with 2 entities for a key
+        data3 = Data(name="genotypes", data=['Rorb'])
+        k3, r3, e3 = er.add_ref(
+            container=data3,
+            field='',
+            key='Rorb',
+            resource_name='MGI Database',
+            resource_uri='http://www.informatics.jax.org/',
+            entity_id='MGI:1346434',
+            entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
+        )
+        _ = er.add_ref(
+            container=data3,
+            field='',
+            key=k3,
+            resource_name='Ensembl',
+            resource_uri='https://uswest.ensembl.org/index.html',
+            entity_id='ENSG00000198963',
+            entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
+        )
+        # Convert to dataframe and compare against the expected result
+        result_df = er.to_dataframe()
+        expected_df_data = \
+            {'objects_idx': {0: 0, 1: 0, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2},
+             'object_id': {0: data1.object_id, 1: data1.object_id,
+                           2: data2.object_id, 3: data2.object_id, 4: data2.object_id,
+                           5: data3.object_id, 6: data3.object_id},
+             'field': {0: 'data/species', 1: 'data/species', 2: '', 3: '', 4: '', 5: '', 6: ''},
+             'keys_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 3},
+             'key': {0: 'Mus musculus', 1: 'Homo sapiens', 2: 'Mus musculus', 3: 'Homo sapiens',
+                     4: 'Pongo abelii', 5: 'Rorb', 6: 'Rorb'},
+             'resources_idx': {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 2},
+             'resource': {0: 'NCBI_Taxonomy', 1: 'NCBI_Taxonomy', 2: 'NCBI_Taxonomy', 3: 'NCBI_Taxonomy',
+                          4: 'NCBI_Taxonomy', 5: 'MGI Database', 6: 'Ensembl'},
+             'resource_uri': {0: 'https://www.ncbi.nlm.nih.gov/taxonomy', 1: 'https://www.ncbi.nlm.nih.gov/taxonomy',
+                              2: 'https://www.ncbi.nlm.nih.gov/taxonomy', 3: 'https://www.ncbi.nlm.nih.gov/taxonomy',
+                              4: 'https://www.ncbi.nlm.nih.gov/taxonomy', 5: 'http://www.informatics.jax.org/',
+                              6: 'https://uswest.ensembl.org/index.html'},
+             'entities_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4},
+             'entity_id': {0: 'NCBI:txid10090', 1: 'NCBI:txid9606', 2: 'NCBI:txid10090', 3: 'NCBI:txid9606',
+                           4: 'NCBI:txid9601', 5: 'MGI:1346434', 6: 'ENSG00000198963'},
+             'entity_uri': {0: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
+                            1: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606',
+                            2: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
+                            3: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606',
+                            4: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601',
+                            5: 'http://www.informatics.jax.org/marker/MGI:1343464',
+                            6: 'https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        pd.testing.assert_frame_equal(result_df, expected_df)
+
+        # Convert to dataframe with categories and compare against the expected result
+        result_df = er.to_dataframe(use_categories=True)
+        cols_with_categories = [
+            ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+            ('keys', 'keys_idx'), ('keys', 'key'),
+            ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
+            ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
+        expected_df_data = {c: expected_df_data[c[1]] for c in cols_with_categories}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        pd.testing.assert_frame_equal(result_df, expected_df)
+
     def test_add_ref(self):
         er = ExternalResources('terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
