@@ -594,6 +594,7 @@ class ExternalResources(Container):
         sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
                                             id integer PRIMARY KEY,
                                             object_id text NOT NULL,
+                                            relative_path text NOT NULL,
                                             field text
                                        ); """
         sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
@@ -633,7 +634,7 @@ class ExternalResources(Container):
         # populate the tables and fix foreign keys during insert
         cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
         connection.commit()
-        cursor.executemany(" INSERT INTO objects(object_id, field) VALUES(?, ?) ", self.objects[:])
+        cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
         connection.commit()
         cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
         connection.commit()

@@ -61,7 +61,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         )
         k1, r1, e1 = er.add_ref(
             container=data1,
-            field='data/species',
+            field='species',
             key='Mus musculus',
             resource_name='NCBI_Taxonomy',
             resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -70,7 +70,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         )
         k2, r2, e2 = er.add_ref(
             container=data1,
-            field='data/species',
+            field='species',
             key='Homo sapiens',
             resource_name='NCBI_Taxonomy',
             resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -79,7 +79,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         )
         # Add a second species dataset that uses the same keys as the first dataset and add an additional key
         data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus', 'Pongo abelii'])
-        o2 = er._add_object(data2, field='')
+        o2 = er._add_object(data2, relative_path='', field='')
         er._add_object_key(o2, k1)
         er._add_object_key(o2, k2)
         k2, r2, e2 = er.add_ref(
@@ -118,7 +118,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
              'object_id': {0: data1.object_id, 1: data1.object_id,
                            2: data2.object_id, 3: data2.object_id, 4: data2.object_id,
                            5: data3.object_id, 6: data3.object_id},
-             'field': {0: 'data/species', 1: 'data/species', 2: '', 3: '', 4: '', 5: '', 6: ''},
+             'field': {0: 'species', 1: 'species', 2: '', 3: '', 4: '', 5: '', 6: ''},
              'keys_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 3},
              'key': {0: 'Mus musculus', 1: 'Homo sapiens', 2: 'Mus musculus', 3: 'Homo sapiens',
                      4: 'Pongo abelii', 5: 'Rorb', 6: 'Rorb'},

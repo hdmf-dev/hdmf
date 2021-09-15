@@ -106,7 +106,7 @@ er = ExternalResources(name='example')
 # the underlying data structures accordingly.
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-_ = er.add_ref(
+er.add_ref(
     container=data,
     key='Homo sapiens',
     resource_name='NCBI_Taxonomy',
@@ -144,7 +144,7 @@ er = ExternalResources(name='example')
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 
-_ = er.add_ref(
+er.add_ref(
     container=data,
     key='Homo sapiens',
     resource_name='NCBI_Taxonomy',
@@ -155,7 +155,7 @@ _ = er.add_ref(
 
 # Using get_resource
 existing_resource = er.get_resource('NCBI_Taxonomy')
-_ = er.add_ref(
+er.add_ref(
     container=data,
     key='Mus musculus',
     resources_idx=existing_resource,
@@ -177,7 +177,7 @@ _ = er.add_ref(
 er = ExternalResources(name='example')
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-_ = er.add_ref(
+er.add_ref(
     container=data,
     field='',
     key='Homo sapiens',
@@ -188,7 +188,7 @@ _ = er.add_ref(
 
 # Using get_resource
 existing_resource = er.get_resource('NCBI_Taxonomy')
-_ = er.add_ref(
+er.add_ref(
     container=data,
     field='',
     key='Mus musculus',
@@ -211,9 +211,9 @@ _ = er.add_ref(
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
-_ = er.add_ref(
+er.add_ref(
     container=genotypes,
-    field='genotype_name',
+    attribute='genotype_name',
     key='Rorb',
     resource_name='MGI Database',
     resource_uri='http://www.informatics.jax.org/',
@@ -259,9 +259,9 @@ key_object = er.get_key(key_name='Rorb', container=genotypes.columns[0])
 # object instead of the 'key_name' to the ``add_ref`` method. If a 'key_name' is used,
 # a new Key will be created.
 
-_ = er.add_ref(
+er.add_ref(
     container=genotypes,
-    field='genotype_name',
+    attribute='genotype_name',
     key=key_object,
     resource_name='Ensembl',
     resource_uri='https://uswest.ensembl.org/index.html',
@@ -302,7 +302,7 @@ data = Data(
     )
 )
 
-_ = er.add_ref(
+er.add_ref(
     container=data,
     field='species',
     key='Mus musculus',
@@ -320,9 +320,9 @@ _ = er.add_ref(
 # differentiate between a dataset compound data type field named 'x' and a dataset
 # attribute named 'x'.
 
-_ = er.add_ref(
+er.add_ref(
     container=data,
-    field='data/species',
+    field='species',
     key='Homo sapiens',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -348,7 +348,7 @@ data1 = Data(
 
 k1, r1, e1 = er.add_ref(
     container=data1,
-    field='data/species',
+    field='species',
     key='Mus musculus',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -359,7 +359,7 @@ k1, r1, e1 = er.add_ref(
 
 k2, r2, e2 = er.add_ref(
     container=data1,
-    field='data/species',
+    field='species',
     key='Homo sapiens',
     resource_name='NCBI_Taxonomy',
     resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
@@ -370,7 +370,7 @@ k2, r2, e2 = er.add_ref(
 # Want to use the same key, resources, and entities for both. But we'll add an extra key just for this one
 data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus', 'Pongo abelii'])
 
-o2 = er._add_object(data2, field='')
+o2 = er._add_object(data2, relative_path='', field='')
 er._add_object_key(o2, k1)
 er._add_object_key(o2, k2)
 
@@ -410,7 +410,7 @@ k3, r3, e3 = er.add_ref(
     entity_id='MGI:1346434',
     entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
 )
-_ = er.add_ref(
+er.add_ref(
     container=genotypes['genotype_name'],
     field='',
     key=k3,
