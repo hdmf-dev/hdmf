@@ -79,7 +79,10 @@ improve the structure and access of data stored with this type for your use case
 # 9. The :py:class:`~hdmf.common.resources.Object` object we add to the
 #    :py:class:`~hdmf.common.resources.ObjectTable` has a data_type.
 # 10. In some cases, the attribute that needs an external reference is not a object with a 'data_type'.
-#     The user must then use the nearest object that has a data type to be used as the container.
+#     The user must then use the nearest object that has a data type to be used as the container. When
+#     adding an external resource for an object with a data type, users should not provide an attribute.
+#     When adding an external resource for an attribute of an object, users need to provide
+#     the name of the attribute.
 
 ###############################################################################
 # Creating an instance of the ExternalResources class
@@ -206,7 +209,7 @@ er.add_ref(
 # A common example would be with the :py:class:`~hdmf.common.table.DynamicTable` class, which holds
 # :py:class:`~hdmf.common.table.VectorData` objects as columns. If we wanted to add an external
 # reference on a column from a :py:class:`~hdmf.common.table.DynamicTable`, then we would use the
-# column as the object and not the :py:class:`~hdmf.common.table.DynamicTable`.
+# column as the object and not the :py:class:`~hdmf.common.table.DynamicTable` (Refer to rule 10).
 
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
