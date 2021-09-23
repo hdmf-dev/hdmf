@@ -153,7 +153,7 @@ class ExternalResources(Container):
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
              'doc': 'the table storing object-resource relationships'},
             {'name': 'type_map', 'type': TypeMap, 'default': None,
-             'doc': 'the type_map'})
+             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'})
     def __init__(self, **kwargs):
         name = popargs('name', kwargs)
         super().__init__(name)
