@@ -327,16 +327,16 @@ class ExternalResources(Container):
                      'the object_id for the Container/Data object that uses the key')},
             {'name': 'attribute', 'type': str,
              'doc': 'the attribute of the container for the external reference', 'default': None},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': ('the field of the compound data type using an external resource')},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
             {'name': 'resources_idx', 'type': Resource, 'doc': 'the resourcetable id', 'default': None},
             {'name': 'resource_name', 'type': str, 'doc': 'the name of the resource to be created', 'default': None},
             {'name': 'resource_uri', 'type': str, 'doc': 'the uri of the resource to be created', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'the identifier for the entity at the resource', 'default': None},
-            {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None},
-            {'name': 'field', 'type': str, 'default': None,
-             'doc': ('the field of the compound data type using'
-                     'an external resource')})
+            {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None}
+            )
     def add_ref(self, **kwargs):
         """
         Add information about an external reference used in this file.
