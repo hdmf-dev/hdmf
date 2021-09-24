@@ -254,8 +254,9 @@ class ExternalResources(Container):
             objecttable_idx = self.objects.which(object_id=container.object_id)
 
         if len(objecttable_idx) > 0:
-            field_idx = self.objects.which(relative_path=relative_path)
-            objecttable_idx = list(set(objecttable_idx) & set(field_idx))
+            relative_path_idx = self.objects.which(relative_path=relative_path)
+            field_idx = self.objects.which(field=field)
+            objecttable_idx = list(set(objecttable_idx) & set(relative_path_idx) & set(field_idx))
 
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
@@ -378,6 +379,7 @@ class ExternalResources(Container):
                     parent_id = container.object_id  # container needs to be the parent
                     absolute_path = spec.path
                     relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                    # this regex removes everything prior to the container on the absolute_path
                     object_field = self._check_object_field(parent_id, relative_path, field)
 
         if not isinstance(key, Key):

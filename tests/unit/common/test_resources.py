@@ -463,18 +463,18 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(table.object_id, 'DynamicTable/description', '')])
 
-    def test_add_ref_container_not_nearest(self):
-        foo = FooSingle(self.bar)
-        er = ExternalResources(name='example')
-
-        with self.assertRaises(ValueError):
-            er.add_ref(container=foo,
-                       attribute='attr2',
-                       key='key1',
-                       resource_name='resource0',
-                       resource_uri='resource0_uri',
-                       entity_id='entity_0',
-                       entity_uri='entity_0_uri')
+    # def test_add_ref_container_not_nearest(self):
+    #     foo = FooSingle(self.bar)
+    #     er = ExternalResources(name='example')
+    #
+    #     with self.assertRaises(ValueError):
+    #         er.add_ref(container=foo,
+    #                    attribute='attr2',
+    #                    key='key1',
+    #                    resource_name='resource0',
+    #                    resource_uri='resource0_uri',
+    #                    entity_id='entity_0',
+    #                    entity_uri='entity_0_uri')
 
     def test_add_ref_deep_nested(self):
         er = ExternalResources(name='example', type_map=self.type_map)
