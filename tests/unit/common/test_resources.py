@@ -9,6 +9,8 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.utils import create_test_type_map
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
+from tests.unit.test_multicontainerinterface import FooSingle
+
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
 
@@ -366,6 +368,14 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         self.assertEqual(er.objects.data, [('uuid1', '', ''), (data.object_id, '', '')])
 
+    def test_check_object_field_error(self):
+        er = ExternalResources('terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er._check_object_field(data, '')
+        er._add_object(data, '', '')
+        with self.assertRaises(ValueError):
+            er._check_object_field(data, '')
+
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
         # for the ecternal reference.
@@ -452,6 +462,19 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.resources.data, [('resource0', 'resource0_uri')])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(table.object_id, 'DynamicTable/description', '')])
+
+    def test_add_ref_container_not_nearest(self):
+        foo = FooSingle(self.bar)
+        er = ExternalResources(name='example')
+
+        with self.assertRaises(ValueError):
+            er.add_ref(container=foo,
+                       attribute='attr2',
+                       key='key1',
+                       resource_name='resource0',
+                       resource_uri='resource0_uri',
+                       entity_id='entity_0',
+                       entity_uri='entity_0_uri')
 
     def test_add_ref_deep_nested(self):
         er = ExternalResources(name='example', type_map=self.type_map)
