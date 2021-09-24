@@ -237,22 +237,18 @@ class ExternalResources(Container):
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str,
-             'doc': 'The relative path of the Container that uses the key.', 'default': None},
-            {'name': 'field', 'type': str, 'default': None,
+             'doc': 'The relative path of the Container that uses the key.', 'default': ''},
+            {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})
     def _check_object_field(self, container, relative_path, field):
         """
-        A helper function for checking if a container and relative_path have been added.
+        Check if a container, relative path, and field have been added.
 
-        The container can be either an object_id string or a AbstractContainer.
+        The container can be either an object_id string or an AbstractContainer.
 
-        If the container and relative_path have not been added, add the pair and return
-        the corresponding Object. Otherwise, just return the Object.
+        If the container, relative_path, and field have not been added, add them
+        and return the corresponding Object. Otherwise, just return the Object.
         """
-        if field is None:
-            field = ''
-        if relative_path is None:
-            relative_path = ''
         if isinstance(container, str):
             objecttable_idx = self.objects.which(object_id=container)
         else:
@@ -267,7 +263,8 @@ class ExternalResources(Container):
         elif len(objecttable_idx) == 0:
             return self._add_object(container, relative_path, field)
         else:
-            raise ValueError("Found multiple instances of the same object id and relative path in object table")
+            raise ValueError("Found multiple instances of the same object id, relative path, "
+                             "and field in objects table.")
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
