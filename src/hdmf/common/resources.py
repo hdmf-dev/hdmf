@@ -94,7 +94,7 @@ class ObjectTable(Table):
                  'an external resource reference key. Use an empty string if not applicable.')},
         {'name': 'field', 'type': str,
          'doc': ('The field of the compound data type using an external resource. '
-                 'Use an empty string if not applicable.)}
+                 'Use an empty string if not applicable.')}
     )
 
 
