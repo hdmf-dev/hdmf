@@ -271,15 +271,15 @@ class ExternalResources(Container):
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str, 'doc': 'The relative path of the Container that uses the key.',
-            'default': None},
+             'default': None},
             {'name': 'field', 'type': str, 'default': None,
              'doc': ('The field of the compound data type using an external resource.')})
     def get_key(self, **kwargs):
         """
         Return a Key or a list of Key objects that correspond to the given key.
 
-        If container and relative_path are provided, the Key that corresponds to the given name of the key
-        for the given container and relative_path is returned.
+        If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
+        for the given container, relative_path, and field is returned.
         """
         key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
