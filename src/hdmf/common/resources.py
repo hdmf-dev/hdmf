@@ -292,7 +292,8 @@ class ExternalResources(Container):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
                     return self.keys.row[key_idx]
-            msg = "No key '%s' for container '%s' and relative_path '%s'" % (key_name, container, relative_path)
+            msg = ("No key '%s' found for container '%s', relative_path '%s', and field '%s'"
+                   % (key_name, container, relative_path, field))
             raise ValueError(msg)
         else:
             if len(key_idx_matches) == 0:
