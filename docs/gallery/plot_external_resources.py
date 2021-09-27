@@ -56,7 +56,10 @@ improve the structure and access of data stored with this type for your use case
 #
 # 1. Multiple :py:class:`~hdmf.common.resources.Key` objects can have the same name.
 #    They are disambiguated by the :py:class:`~hdmf.common.resources.Object` associated
-#    with each.
+#    with each. I.e.,  we may have keys with the same name in different objects, but for a particular object
+#    all keys must be unique. This means the :py:class:`~hdmf.common.resources.KeyTable` may contain
+#    duplicate entries, but the :py:class:`~hdmf.common.resources.ObjectKeyTable` then must not assign 
+#    duplicate keys to the same object.
 # 2. In order to query specific records, the :py:class:`~hdmf.common.resources.ExternalResources` class
 #    uses '(object_id, relative_path, field, Key)' as the unique identifier.
 # 3. :py:class:`~hdmf.common.resources.Object` can have multiple :py:class:`~hdmf.common.resources.Key`
