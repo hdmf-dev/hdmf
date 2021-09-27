@@ -82,7 +82,7 @@ improve the structure and access of data stored with this type for your use case
 # 9. The :py:class:`~hdmf.common.resources.Object` object we add to the
 #    :py:class:`~hdmf.common.resources.ObjectTable` has a data_type.
 # 10. In some cases, the attribute that needs an external reference is not a object with a 'data_type'.
-#     The user must then use the nearest object that has a data type to be used as the container. When
+#     The user must then use the nearest object that has a data type to be used as the parent object. When
 #     adding an external resource for an object with a data type, users should not provide an attribute.
 #     When adding an external resource for an attribute of an object, users need to provide
 #     the name of the attribute.
