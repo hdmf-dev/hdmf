@@ -9,8 +9,6 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
-from tests.unit.test_multicontainerinterface import FooSingle
-
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
 
@@ -466,36 +464,6 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.resources.data, [('resource0', 'resource0_uri')])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(table.object_id, 'DynamicTable/description', '')])
-
-    def test_add_ref_container_not_nearest(self):
-        baz_spec = GroupSpec(
-            doc='A test group specification with a data type',
-            data_type_def='Baz',
-            data_type_inc=self.bar_spec,
-            groups=[
-                GroupSpec(
-                    doc='A test group specification with a data type',
-                    data_type_inc='Bar')
-            ],
-            attributes=[self.attr3])
-
-        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
-        baz_cls = self.type_map.get_dt_container_cls(baz_spec.data_type)
-        # baz = baz_cls(name='baz', bar= self.bar(data=[1], attr1='attr1', attr2=1))
-        # obj_mapper_baz = self.type_map.get_map(baz)
-        # obj_mapper_baz.map_spec('attr3', spec=self.attr2)
-
-        # foo = FooSingle(baz)
-        # er = ExternalResources(name='example')
-        #
-        # with self.assertRaises(ValueError):
-        #     er.add_ref(container=foo,
-        #                attribute='attr2',
-        #                key='key1',
-        #                resource_name='resource0',
-        #                resource_uri='resource0_uri',
-        #                entity_id='entity_0',
-        #                entity_uri='entity_0_uri')
 
     def test_add_ref_deep_nested(self):
         er = ExternalResources(name='example', type_map=self.type_map)
