@@ -90,7 +90,7 @@ class ObjectTable(Table):
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
         {'name': 'relative_path', 'type': str,
-         'doc': ('The relative_path of the attribute on the Container/Data that uses ',
+         'doc': ('The relative_path of the attribute of the object that uses ',
                  'an external resource reference key. Use an empty string if not applicable.')},
         {'name': 'field', 'type': str,
          'doc': ('The field of the compound data type using an external resource. '
@@ -209,7 +209,9 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'relative_path', 'type': str, 'doc': 'The relative path on the object to add.'},
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.')},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})
     def _add_object(self, **kwargs):
@@ -236,7 +238,9 @@ class ExternalResources(Container):
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str,
-             'doc': 'The relative path to the object that uses the key.', 'default': ''},
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
+             'default': ''},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})
     def _check_object_field(self, container, relative_path, field):
@@ -270,7 +274,9 @@ class ExternalResources(Container):
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
-            {'name': 'relative_path', 'type': str, 'doc': 'The relative path of the Container that uses the key.',
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
              'default': ''},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})
@@ -426,7 +432,9 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/data object that is linked to resources/entities.'},
-            {'name': 'relative_path', 'type': str, 'doc': 'The relative path of the Container.',
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
              'default': ''},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})

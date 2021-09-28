@@ -58,7 +58,7 @@ improve the structure and access of data stored with this type for your use case
 #    They are disambiguated by the :py:class:`~hdmf.common.resources.Object` associated
 #    with each. I.e.,  we may have keys with the same name in different objects, but for a particular object
 #    all keys must be unique. This means the :py:class:`~hdmf.common.resources.KeyTable` may contain
-#    duplicate entries, but the :py:class:`~hdmf.common.resources.ObjectKeyTable` then must not assign 
+#    duplicate entries, but the :py:class:`~hdmf.common.resources.ObjectKeyTable` then must not assign
 #    duplicate keys to the same object.
 # 2. In order to query specific records, the :py:class:`~hdmf.common.resources.ExternalResources` class
 #    uses '(object_id, relative_path, field, Key)' as the unique identifier.
@@ -79,13 +79,11 @@ improve the structure and access of data stored with this type for your use case
 # 8. In a majority of cases, :py:class:`~hdmf.common.resources.Object` objects will have an empty string
 #    for 'field'. The :py:class:`~hdmf.common.resources.ExternalResources` class supports compound data_types.
 #    In that case, 'field' would be the field of the compound data_type that has an external reference.
-# 9. The :py:class:`~hdmf.common.resources.Object` object we add to the
-#    :py:class:`~hdmf.common.resources.ObjectTable` has a data_type.
-# 10. In some cases, the attribute that needs an external reference is not a object with a 'data_type'.
-#     The user must then use the nearest object that has a data type to be used as the parent object. When
-#     adding an external resource for an object with a data type, users should not provide an attribute.
-#     When adding an external resource for an attribute of an object, users need to provide
-#     the name of the attribute.
+# 9. In some cases, the attribute that needs an external reference is not a object with a 'data_type'.
+#    The user must then use the nearest object that has a data type to be used as the parent object. When
+#    adding an external resource for an object with a data type, users should not provide an attribute.
+#    When adding an external resource for an attribute of an object, users need to provide
+#    the name of the attribute.
 
 ###############################################################################
 # Creating an instance of the ExternalResources class
@@ -205,10 +203,12 @@ er.add_ref(
 ###############################################################################
 # Using the add_ref method with a field
 # ------------------------------------------------------
-# It is important to keep in mind that the :py:class:`~hdmf.common.resources.Object` object
-# we add to the :py:class:`~hdmf.common.resources.ObjectTable` is the object
-# holding the attribute or the closest parent object. Recall that the objects in the
-# :py:class:`~hdmf.common.resources.ObjectTable` must have a 'data_type'.
+# It is important to keep in mind that when adding and :py:class:~hdmf.common.resources.Object`` to
+# the :py:class:~hdmf.common.resources.ObjectTable, the parent object identified by
+# :py:class:~hdmf.common.resources.Object.object_id must be the closest parent to the target object
+# (i.e., :py:class:~hdmf.common.resources.Object.relative_pathmust be the shortest possible path and
+# as such cannot contain any objects with adata_typeand associatedobject_id`).
+
 # A common example would be with the :py:class:`~hdmf.common.table.DynamicTable` class, which holds
 # :py:class:`~hdmf.common.table.VectorData` objects as columns. If we wanted to add an external
 # reference on a column from a :py:class:`~hdmf.common.table.DynamicTable`, then we would use the
