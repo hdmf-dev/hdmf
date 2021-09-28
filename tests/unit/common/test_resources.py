@@ -447,6 +447,8 @@ class TestExternalResourcesNestedAttributes(TestCase):
         obj_mapper_bar = self.type_map.get_map(self.bar)
         obj_mapper_bar.map_spec('attr2', spec=self.attr2)
 
+    def test_nested_remap(self):
+        pass
     def test_add_ref_nested(self):
         table = DynamicTable(name='table', description='table')
         table.add_column(name='col1', description="column")
