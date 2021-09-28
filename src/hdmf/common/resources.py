@@ -222,7 +222,7 @@ class ExternalResources(Container):
         obj = Object(container, relative_path, field, table=self.objects)
         return obj
 
-    @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object to that uses the Key.'},
+    @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
             {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the Object uses.'})
     def _add_object_key(self, **kwargs):
         """
