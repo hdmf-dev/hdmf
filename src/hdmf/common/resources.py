@@ -1,13 +1,15 @@
 import pandas as pd
-
+import re
 from . import register_class, EXP_NAMESPACE
+from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer
 from ..utils import docval, popargs
+from ..build import TypeMap
 
 
 class KeyTable(Table):
     """
-    A table for storing keys used to reference external resources
+    A table for storing keys used to reference external resources.
     """
 
     __defaultname__ = 'keys'
@@ -20,7 +22,7 @@ class KeyTable(Table):
 
 class Key(Row):
     """
-    A Row class for representing rows in the KeyTable
+    A Row class for representing rows in the KeyTable.
     """
 
     __table__ = KeyTable
@@ -28,7 +30,7 @@ class Key(Row):
 
 class ResourceTable(Table):
     """
-    A table for storing names of ontology sources and their uri
+    A table for storing names and URIs of ontology sources.
     """
 
     __defaultname__ = 'resources'
@@ -43,7 +45,7 @@ class ResourceTable(Table):
 
 class Resource(Row):
     """
-    A Row class for representing rows in the ResourceTable
+    A Row class for representing rows in the ResourceTable.
     """
 
     __table__ = ResourceTable
@@ -51,7 +53,7 @@ class Resource(Row):
 
 class EntityTable(Table):
     """
-    A table for storing the external resources a key refers to
+    A table for storing the external resources a key refers to.
     """
 
     __defaultname__ = 'entities'
@@ -71,7 +73,7 @@ class EntityTable(Table):
 
 class Entity(Row):
     """
-    A Row class for representing rows in the EntityTable
+    A Row class for representing rows in the EntityTable.
     """
 
     __table__ = EntityTable
@@ -79,22 +81,26 @@ class Entity(Row):
 
 class ObjectTable(Table):
     """
-    A table for storing objects (i.e. Containers) that contain keys that refer to external resources
+    A table for storing objects (i.e. Containers) that contain keys that refer to external resources.
     """
 
     __defaultname__ = 'objects'
 
     __columns__ = (
         {'name': 'object_id', 'type': str,
-         'doc': 'The object ID for the Container/Data'},
+         'doc': 'The object ID for the Container/Data.'},
+        {'name': 'relative_path', 'type': str,
+         'doc': ('The relative_path of the attribute of the object that uses ',
+                 'an external resource reference key. Use an empty string if not applicable.')},
         {'name': 'field', 'type': str,
-         'doc': 'The field on the Container/Data that uses an external resource reference key'},
+         'doc': ('The field of the compound data type using an external resource. '
+                 'Use an empty string if not applicable.')}
     )
 
 
 class Object(Row):
     """
-    A Row class for representing rows in the ObjectTable
+    A Row class for representing rows in the ObjectTable.
     """
 
     __table__ = ObjectTable
@@ -102,22 +108,22 @@ class Object(Row):
 
 class ObjectKeyTable(Table):
     """
-    A table for identifying which keys are used by which objects for referring to external resources
+    A table for identifying which keys are used by which objects for referring to external resources.
     """
 
     __defaultname__ = 'object_keys'
 
     __columns__ = (
         {'name': 'objects_idx', 'type': (int, Object),
-         'doc': 'the index into the objects table for the object that uses the key'},
+         'doc': 'The index into the objects table for the Object that uses the Key.'},
         {'name': 'keys_idx', 'type': (int, Key),
-         'doc': 'the index into the key table that is used to make an external resource reference'}
+         'doc': 'The index into the keys table that is used to make an external resource reference.'}
     )
 
 
 class ObjectKey(Row):
     """
-    A Row class for representing rows in the ObjectKeyTable
+    A Row class for representing rows in the ObjectKeyTable.
     """
 
     __table__ = ObjectKeyTable
@@ -135,17 +141,19 @@ class ExternalResources(Container):
         {'name': 'entities', 'child': True},
     )
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this ExternalResources container'},
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this ExternalResources container.'},
             {'name': 'keys', 'type': KeyTable, 'default': None,
-             'doc': 'the table storing user keys for referencing resources'},
+             'doc': 'The table storing user keys for referencing resources.'},
             {'name': 'resources', 'type': ResourceTable, 'default': None,
-             'doc': 'the table for storing names of resources and their uri'},
+             'doc': 'The table for storing names and URIs of resources.'},
             {'name': 'entities', 'type': EntityTable, 'default': None,
-             'doc': 'the table storing entity information'},
+             'doc': 'The table storing entity information.'},
             {'name': 'objects', 'type': ObjectTable, 'default': None,
-             'doc': 'the table storing object information'},
+             'doc': 'The table storing object information.'},
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
-             'doc': 'the table storing object-resource relationships'})
+             'doc': 'The table storing object-resource relationships.'},
+            {'name': 'type_map', 'type': TypeMap, 'default': None,
+             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'})
     def __init__(self, **kwargs):
         name = popargs('name', kwargs)
         super().__init__(name)
@@ -154,28 +162,30 @@ class ExternalResources(Container):
         self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
+        self.type_map = kwargs['type_map'] or get_type_map()
 
-    @docval({'name': 'key_name', 'type': str,
-             'doc': 'the name of the key to be added'})
+    @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the key to be added.'})
     def _add_key(self, **kwargs):
         """
-        Add a key to be used for making references to external resources
+        Add a key to be used for making references to external resources.
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and field. To do so, this method must be called for the two different resources.
+        used within the same object, relative_path, and field. To do so, this method must be called for the
+        two different resources.
+
         The returned Key objects must be managed by the caller so as to be appropriately passed to subsequent calls
         to methods for storing information about the different resources.
         """
         key = kwargs['key_name']
         return Key(key, table=self.keys)
 
-    @docval({'name': 'key', 'type': (str, Key), 'doc': 'the key to associate the entity with'},
-            {'name': 'resources_idx', 'type': (int, Resource), 'doc': 'the id of the resource'},
-            {'name': 'entity_id', 'type': str, 'doc': 'unique entity id'},
-            {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the entity'})
+    @docval({'name': 'key', 'type': (str, Key), 'doc': 'The key to associate the entity with.'},
+            {'name': 'resources_idx', 'type': (int, Resource), 'doc': 'The id of the resource.'},
+            {'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
     def _add_entity(self, **kwargs):
         """
-        Add an entity that will be referenced to using the given key
+        Add an entity that will be referenced to using the given key.
         """
         key = kwargs['key']
         resources_idx = kwargs['resources_idx']
@@ -186,11 +196,11 @@ class ExternalResources(Container):
         resource_entity = Entity(key, resources_idx, entity_id, entity_uri, table=self.entities)
         return resource_entity
 
-    @docval({'name': 'resource', 'type': str, 'doc': 'the name of the ontology resource'},
-            {'name': 'uri', 'type': str, 'doc': 'uri associated with ontology resource'})
+    @docval({'name': 'resource', 'type': str, 'doc': 'The name of the ontology resource.'},
+            {'name': 'uri', 'type': str, 'doc': 'The URI associated with ontology resource.'})
     def _add_resource(self, **kwargs):
         """
-        Add resource name and uri to ResourceTable that will be referenced by the ResourceTable idx.
+        Add resource name and URI to ResourceTable that will be referenced by the ResourceTable idx.
         """
         resource_name = kwargs['resource']
         uri = kwargs['uri']
@@ -198,36 +208,49 @@ class ExternalResources(Container):
         return resource
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
-             'doc': 'the Container/Data object to add or the object_id for the Container/Data object to add'},
-            {'name': 'field', 'type': str, 'doc': 'the field on the Container to add'})
+             'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.')},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')})
     def _add_object(self, **kwargs):
         """
-        Add an object that references an external resource
+        Add an object that references an external resource.
         """
-        container, field = popargs('container', 'field', kwargs)
+        container, relative_path, field = popargs('container', 'relative_path', 'field', kwargs)
         if isinstance(container, AbstractContainer):
             container = container.object_id
-        obj = Object(container, field, table=self.objects)
+        obj = Object(container, relative_path, field, table=self.objects)
         return obj
 
-    @docval({'name': 'obj', 'type': (int, Object), 'doc': 'the Object to that uses the Key'},
-            {'name': 'key', 'type': (int, Key), 'doc': 'the Key that the Object uses'})
+    @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
+            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the Object uses.'})
     def _add_object_key(self, **kwargs):
         """
-        Specify that an object (i.e. container and field) uses a key to reference
-        an external resource
+        Specify that an object (i.e. container and relative_path) uses a key to reference
+        an external resource.
         """
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    def _check_object_field(self, container, field):
+    @docval({'name': 'container', 'type': (str, AbstractContainer),
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object id for the Container/Data object that uses the key.')},
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
+             'default': ''},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')})
+    def _check_object_field(self, container, relative_path, field):
         """
-        A helper function for checking if a container and field have been added.
+        Check if a container, relative path, and field have been added.
 
-        The container can be either an object_id string or a AbstractContainer.
+        The container can be either an object_id string or an AbstractContainer.
 
-        If the container and field have not been added, add the pair and return
-        the corresponding Object. Otherwise, just return the Object.
+        If the container, relative_path, and field have not been added, add them
+        and return the corresponding Object. Otherwise, just return the Object.
         """
         if isinstance(container, str):
             objecttable_idx = self.objects.which(object_id=container)
@@ -235,39 +258,49 @@ class ExternalResources(Container):
             objecttable_idx = self.objects.which(object_id=container.object_id)
 
         if len(objecttable_idx) > 0:
+            relative_path_idx = self.objects.which(relative_path=relative_path)
             field_idx = self.objects.which(field=field)
-            objecttable_idx = list(set(objecttable_idx) & set(field_idx))
+            objecttable_idx = list(set(objecttable_idx) & set(relative_path_idx) & set(field_idx))
 
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0:
-            return self._add_object(container, field)
+            return self._add_object(container, relative_path, field)
         else:
-            raise ValueError("Found multiple instances of the same object_id and field in object table")
+            raise ValueError("Found multiple instances of the same object id, relative path, "
+                             "and field in objects table.")
 
-    @docval({'name': 'key_name', 'type': str, 'doc': 'the name of the key to get'},
+    @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('the Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key')},
-            {'name': 'field', 'type': str, 'doc': 'the field of the Container that uses the key', 'default': None})
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object id for the Container/Data object that uses the key.')},
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
+             'default': ''},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')})
     def get_key(self, **kwargs):
         """
         Return a Key or a list of Key objects that correspond to the given key.
 
-        If container and field are provided, the Key that corresponds to the given name of the key
-        for the given container and field is returned.
+        If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
+        for the given container, relative_path, and field is returned.
         """
-        key_name, container, field = popargs('key_name', 'container', 'field', kwargs)
+        key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
-        if container is not None and field is not None:
+
+        if container is not None:
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._check_object_field(container, field)
+            object_field = self._check_object_field(container, relative_path, field)
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
                     return self.keys.row[key_idx]
-            raise ValueError("No key with name '%s' for container '%s' and field '%s'" % (key_name, container, field))
+            msg = ("No key '%s' found for container '%s', relative_path '%s', and field '%s'"
+                   % (key_name, container, relative_path, field))
+            raise ValueError(msg)
         else:
             if len(key_idx_matches) == 0:
                 # the key has never been used before
@@ -277,7 +310,7 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_idx_matches[0]]
 
-    @docval({'name': 'resource_name', 'type': str, 'default': None})
+    @docval({'name': 'resource_name', 'type': str, 'doc': 'The name of the resource.'})
     def get_resource(self, **kwargs):
         """
         Retrieve resource object with the given resource_name.
@@ -291,35 +324,70 @@ class ExternalResources(Container):
             return self.resources.row[resource_table_idx[0]]
 
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('the Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key')},
-            {'name': 'field', 'type': str, 'doc': 'the field of the Container/Data that uses the key', 'default': None},
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'the name of the key or the Row object from the KeyTable for the key to add a resource for'},
-            {'name': 'resources_idx', 'type': Resource, 'doc': 'the resourcetable id', 'default': None},
-            {'name': 'resource_name', 'type': str, 'doc': 'the name of the resource to be created', 'default': None},
-            {'name': 'resource_uri', 'type': str, 'doc': 'the uri of the resource to be created', 'default': None},
-            {'name': 'entity_id', 'type': str, 'doc': 'the identifier for the entity at the resource', 'default': None},
-            {'name': 'entity_uri', 'type': str, 'doc': 'the URI for the identifier at the resource', 'default': None})
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'resources_idx', 'type': Resource, 'doc': 'The Resource from the ResourceTable.', 'default': None},
+            {'name': 'resource_name', 'type': str, 'doc': 'The name of the resource to be created.', 'default': None},
+            {'name': 'resource_uri', 'type': str, 'doc': 'The URI of the resource to be created.', 'default': None},
+            {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.',
+             'default': None},
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None}
+            )
     def add_ref(self, **kwargs):
         """
         Add information about an external reference used in this file.
 
         It is possible to use the same name of the key to refer to different resources
-        so long as the name of the key is not used within the same object and field.
-        This method does not support such functionality by default. The different
-        keys must be added separately using _add_key and passed to the *key* argument
-        in separate calls of this method. If a resource with the same name already
-        exists, then it will be used and the resource_uri will be ignored.
+        so long as the name of the key is not used within the same object, relative_path, and
+        field combination. This method does not support such functionality by default.
         """
+        ###############################################################
         container = kwargs['container']
-        field = kwargs['field']
+        attribute = kwargs['attribute']
         key = kwargs['key']
+        field = kwargs['field']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         add_entity = False
 
-        object_field = self._check_object_field(container, field)
+        if attribute is None:  # Trivial Case
+            relative_path = ''
+            object_field = self._check_object_field(container, relative_path, field)
+        else:  # DataType Attribute Case
+            attribute_object = getattr(container, attribute)  # returns attribute object
+            if isinstance(attribute_object, AbstractContainer):
+                relative_path = ''
+                object_field = self._check_object_field(attribute_object, relative_path, field)
+            else:  # Non-DataType Attribute Case:
+                obj_mapper = self.type_map.get_map(container)
+                spec = obj_mapper.get_attr_spec(attr_name=attribute)
+                parent_spec = spec.parent  # return the parent spec of the attribute
+                if parent_spec.data_type is None:
+                    while parent_spec.data_type is None:
+                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
+                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+                    if isinstance(container, parent_cls):
+                        parent_id = container.object_id
+                        # We need to get the path of the spec for relative_path
+                        absolute_path = spec.path
+                        relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                        object_field = self._check_object_field(parent_id, relative_path, field)
+                    else:
+                        msg = 'Container not the nearest data_type'
+                        raise ValueError(msg)
+                else:
+                    parent_id = container.object_id  # container needs to be the parent
+                    absolute_path = spec.path
+                    relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
+                    # this regex removes everything prior to the container on the absolute_path
+                    object_field = self._check_object_field(parent_id, relative_path, field)
+
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
         # if same key is used multiple times, determine
@@ -327,7 +395,7 @@ class ExternalResources(Container):
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
-                    msg = "Use Key Object when referencing an existing (container, field, key)"
+                    msg = "Use Key Object when referencing an existing (container, relative_path, key)"
                     raise ValueError(msg)
 
         if not isinstance(key, Key):
@@ -363,34 +431,36 @@ class ExternalResources(Container):
         return key, resource_table_idx, entity
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
-             'doc': 'the Container/data object that is linked to resources/entities',
-             'default': None},
-            {'name': 'field', 'type': str,
-             'doc': 'the field of the Container',
-             'default': None})
+             'doc': 'The Container/data object that is linked to resources/entities.'},
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
+             'default': ''},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')})
     def get_object_resources(self, **kwargs):
         """
-        Get all entities/resources associated with an object
+        Get all entities/resources associated with an object.
         """
         container = kwargs['container']
+        relative_path = kwargs['relative_path']
         field = kwargs['field']
 
         keys = []
         entities = []
-        if container is not None and field is not None:
-            object_field = self._check_object_field(container, field)
-            # Find all keys associated with the object
-            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
-                keys.append(self.object_keys['keys_idx', row_idx])
-            # Find all the entities/resources for each key.
-            for key_idx in keys:
-                entity_idx = self.entities.which(keys_idx=key_idx)
-                entities.append(self.entities.__getitem__(entity_idx[0]))
-            df = pd.DataFrame(entities, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
+        object_field = self._check_object_field(container, relative_path, field)
+        # Find all keys associated with the object
+        for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+            keys.append(self.object_keys['keys_idx', row_idx])
+        # Find all the entities/resources for each key.
+        for key_idx in keys:
+            entity_idx = self.entities.which(keys_idx=key_idx)
+            entities.append(self.entities.__getitem__(entity_idx[0]))
+        df = pd.DataFrame(entities, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
         return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,
-             'doc': 'the Key(s) to get external resource data for'},
+             'doc': 'The Key(s) to get external resource data for.'},
             rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
     def get_keys(self, **kwargs):
         """
@@ -402,7 +472,7 @@ class ExternalResources(Container):
             - *entity_uri*:   the URI for the entity at the external resource
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object and field. This method does not support such functionality by default. To
+        used within the same object, relative_path, field. This method doesn't support such functionality by default. To
         select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
         if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
         be required to keep the different instances separate. If a single call is made, it is left up to the caller to
@@ -426,14 +496,14 @@ class ExternalResources(Container):
                                                 'entity_id', 'entity_uri'])
 
     @docval({'name': 'use_categories', 'type': bool, 'default': False,
-             'doc': 'Use a multi-index on the columns to indicate which category each column belongs to'},
-            rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
+             'doc': 'Use a multi-index on the columns to indicate which category each column belongs to.'},
+            rtype=pd.DataFrame, returns='A DataFrame with all data merged into a flat, denormalized table.')
     def to_dataframe(self, **kwargs):
         """
         Convert the data from the keys, resources, entities, objects, and object_keys tables
         to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
         are used across multiple enities or objects will duplicated across the corresponding
-        rows
+        rows.
 
         Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
 
@@ -492,25 +562,25 @@ class ExternalResources(Container):
         return result_df
 
     @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'},
-            rtype=pd.DataFrame, returns='a DataFrame with all data maerged into a flat, denormalized table')
+            rtype=pd.DataFrame, returns='A DataFrame with all data merged into a flat, denormalized table.')
     def export_to_sqlite(self, db_file):
         """
-        Save the  keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
+        Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
 
-        The function will first create the tables (if they do not already exists) and then populate
+        The function will first create the tables (if they do not already exist) and then
         add the data from this ExternalResource object to the database. If the database file already
         exists, then the data will be appended as rows to the existing database tables.
 
-        Note, the index values of foreign keys (e.g,. keys_idx, objects_idx, resources_idx) in the tables
+        Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
         will not match between the ExternalResources here and the exported database, but they are adjusted
         automatically here, to ensure the foreign keys point to the correct rows in the exported database.
-        This is because: 1) uses 0-based indexing for foreign keys, while SQLite uses 1-based indexing
-        and 2) if data is appended to existing  tables then a corresponding additional offset must be
-        applied to the relevant foreign keys.
+        This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
+        1-based indexing and 2) if data is appended to existing tables then a corresponding additional
+        offset must be applied to the relevant foreign keys.
 
-        :raises: The function will raise errors in case connection to the database fails. If
-                 the given db_file already exists then there is also the possibility that
-                 certain updates may result in errors in case there are collisions between the
+        :raises: The function will raise errors if connection to the database fails. If
+                 the given db_file already exists, then there is also the possibility that
+                 certain updates may result in errors if there are collisions between the
                  new and existing data.
         """
         import sqlite3
@@ -525,6 +595,7 @@ class ExternalResources(Container):
         sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
                                             id integer PRIMARY KEY,
                                             object_id text NOT NULL,
+                                            relative_path text NOT NULL,
                                             field text
                                        ); """
         sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
@@ -564,7 +635,7 @@ class ExternalResources(Container):
         # populate the tables and fix foreign keys during insert
         cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
         connection.commit()
-        cursor.executemany(" INSERT INTO objects(object_id, field) VALUES(?, ?) ", self.objects[:])
+        cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
         connection.commit()
         cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
         connection.commit()
