@@ -212,8 +212,12 @@ er.add_ref(
 # A common example would be with the :py:class:`~hdmf.common.table.DynamicTable` class, which holds
 # :py:class:`~hdmf.common.table.VectorData` objects as columns. If we wanted to add an external
 # reference on a column from a :py:class:`~hdmf.common.table.DynamicTable`, then we would use the
-# column as the object and not the :py:class:`~hdmf.common.table.DynamicTable` (Refer to rule 10).
+# column as the object and not the :py:class:`~hdmf.common.table.DynamicTable` (Refer to rule 9).
 
+# Note: :py:func:`~hdmf.common.resources.ExternalResources.add_ref` internally resolves the object
+# to the closest parent, so that er.add_ref(container=genotypes, attribute='genotype_name') and
+# er.add_ref(container=genotypes.genotype_name, attribute=None) will ultimatly both use the object_id
+# of the genotypes.genotype_name VectorData column and not the object_id of the genotypes table.
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
