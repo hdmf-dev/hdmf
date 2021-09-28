@@ -236,7 +236,7 @@ class ExternalResources(Container):
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str,
-             'doc': 'The relative path of the Container that uses the key.', 'default': ''},
+             'doc': 'The relative path to the object that uses the key.', 'default': ''},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})
     def _check_object_field(self, container, relative_path, field):
