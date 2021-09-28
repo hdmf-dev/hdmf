@@ -209,7 +209,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'relative_path', 'type': str, 'doc': 'The relative path on the Container to add.'},
+            {'name': 'relative_path', 'type': str, 'doc': 'The relative path on the object to add.'},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')})
     def _add_object(self, **kwargs):
