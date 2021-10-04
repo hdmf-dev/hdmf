@@ -8,3 +8,4 @@ flake8-print==4.0.0
 importlib-metadata==4.6.1
 python-dateutil==2.8.2
 tox==3.24.0
+psutil==5.8.0

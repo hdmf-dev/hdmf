@@ -6,3 +6,4 @@ pandas==1.0.5
 ruamel.yaml==0.16
 jsonschema==2.6.0
 setuptools
+psutil==5.8.0
