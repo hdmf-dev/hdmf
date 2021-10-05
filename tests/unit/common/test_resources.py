@@ -6,6 +6,7 @@ from hdmf.testing import TestCase, H5RoundTripMixin
 import numpy as np
 import unittest
 from tests.unit.build_tests.test_io_map import Bar
+from hdmf.build import ObjectMapper
 from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
@@ -423,7 +424,6 @@ class TestExternalResourcesNestedAttributes(TestCase):
     def setUp(self):
         self.attr1 = AttributeSpec(name='attr1', doc='a string attribute', dtype='text')
         self.attr2 = AttributeSpec(name='attr2', doc='an integer attribute', dtype='int')
-        self.attr3 = AttributeSpec(name='attr3', doc='an integer attribute', dtype='int')
         self.bar_spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Bar',
@@ -447,8 +447,6 @@ class TestExternalResourcesNestedAttributes(TestCase):
         obj_mapper_bar = self.type_map.get_map(self.bar)
         obj_mapper_bar.map_spec('attr2', spec=self.attr2)
 
-    def test_nested_remap(self):
-        pass
     def test_add_ref_nested(self):
         table = DynamicTable(name='table', description='table')
         table.add_column(name='col1', description="column")
@@ -478,6 +476,24 @@ class TestExternalResourcesNestedAttributes(TestCase):
                    entity_uri='entity_0_uri')
         self.assertEqual(er.objects.data[0][1], 'Bar/data/attr2', '')
 
+    def test_remapped_attr(self):
+        baz_spec = GroupSpec('doc', default_name='baz', data_type_def='Baz',
+                             attributes=[AttributeSpec('attr4', 'another text attribute', 'text')],
+                             datasets=[
+                                 DatasetSpec(
+                                     doc='a dataset',
+                                     dtype='int',
+                                     name='data',
+                                     attributes=[self.attr1]
+                                 )])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        baz_cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
+
+        mapper = ObjectMapper(baz_spec)
+        data_spec = mapper.spec.get_dataset('data')
+        mapper.map_spec('attr4', data_spec.get_attribute('attr1'))
+
+        # baz_inst = baz_cls(name='baz', data=1, attr4='attr4', data__attr1='attr1')
 
 class TestExternalResourcesGetKey(TestCase):
 
