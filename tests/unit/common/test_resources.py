@@ -1,7 +1,7 @@
 import pandas as pd
 from hdmf.common import DynamicTable
 from hdmf.common.resources import ExternalResources, Key, Resource
-from hdmf import Data
+from hdmf import Data, Container
 from hdmf.testing import TestCase, H5RoundTripMixin
 import numpy as np
 import unittest
@@ -478,7 +478,6 @@ class TestExternalResourcesNestedAttributes(TestCase):
 
     def test_remapped_attr(self):
         baz_spec = GroupSpec('doc', default_name='baz', data_type_def='Baz',
-                             attributes=[AttributeSpec('attr4', 'another text attribute', 'text')],
                              datasets=[
                                  DatasetSpec(
                                      doc='a dataset',
@@ -493,7 +492,51 @@ class TestExternalResourcesNestedAttributes(TestCase):
         data_spec = mapper.spec.get_dataset('data')
         mapper.map_spec('attr4', data_spec.get_attribute('attr1'))
 
-        # baz_inst = baz_cls(name='baz', data=1, attr4='attr4', data__attr1='attr1')
+        baz_inst = baz_cls(name='baz', data=1, attr4='attr4', attr1='attr1')
+
+
+class TestRemappedAttr(TestCase):
+
+    def test_remapped_attr(self):
+        spec = GroupSpec(
+            doc='doc',
+            data_type_def='MyType',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    dtype='int',
+                    name='data',
+                    attributes=[
+                        AttributeSpec(
+                            doc='an attribute',
+                            dtype='text',
+                            name='attr1'
+                        )
+                    ]
+                )
+            ]
+        )
+
+        class MyTypeClass(Container):
+            def __init__(self, name, data, attr4):
+                super().__init__(name)
+                self.data = data
+                self.attr4 = attr4
+
+        # specs = [spec]
+        # containers = {'MyType': MyTypeClass}
+        # type_map = create_test_type_map(specs, containers)
+
+        mapper = ObjectMapper(spec)
+        data_spec = mapper.spec.get_dataset('data')
+        mapper.map_spec('attr4', data_spec.get_attribute('attr1'))
+
+        instance = MyTypeClass(name='baz', data=1, attr4='hi')
+        breakpoint()
+        print()
+
+
+
 
 class TestExternalResourcesGetKey(TestCase):
 

@@ -378,6 +378,9 @@ class ExternalResources(Container):
                         absolute_path = spec.path
                         relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
                         object_field = self._check_object_field(parent_id, relative_path, field)
+                    # elif:
+                    #
+                    #     pass
                     else:
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
