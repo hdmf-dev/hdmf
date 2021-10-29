@@ -217,6 +217,21 @@ class AbstractContainer(metaclass=ExtenderMeta):
             p = p.parent
         return None
 
+    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to search for'})
+    def get_ancestor_container(self, **kwargs):
+        """
+        Traverse parent hierarchy and return first instance that contains the specified data_type
+        """
+        data_type = getargs('data_type', kwargs)
+
+        p = self.parent
+        while p is not None:
+            for child in p.children:
+                if getattr(child, child._data_type_attr) == data_type:
+                    return p
+                p = p.parent
+        return None
+
     @property
     def fields(self):
         return self.__field_values
@@ -477,6 +492,42 @@ class Container(AbstractContainer):
             out += '\n' + indent_in + Container.__smart_str(keys[-1], num_indent + 1) + ' ' + str(type(d[keys[-1]]))
         out += '\n' + indent + right_br
         return out
+
+    @docval({'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'ontology', 'type': Ontology,
+             'doc': 'The ontology to be used as the external resource'})
+    def add_ontology_browser(self, **kwargs):
+        container = self
+        attribute =  kwargs=['attribute']
+        key = kwargs['key']
+        ontology = kwargs['ontology']
+
+        ontology_name = ontology.ontology_name
+        ontology_uri = ontology.ontology_uri
+
+        # Retrieve entity_id and entity_uri
+        entity_id, entity_uri = ontology.get_entity_browser(key=key)
+
+        container = self.get_ancestor_container(data_type='ExternalResources')  # check container for external_resources.
+        if container is None:
+            msg = "Cannot find Container with ExternalResources"
+            raise ValueError(msg)
+
+        er = container.external_resources.add_ref(
+            container=self,
+            attribute=attribute,
+            key=key,
+            resource_name=ontology_name,
+            resource_uri=ontology_uri,
+            entity_id=entity_id,
+            entity_uri=entity_uri
+        )
+        return er
 
 
 class Data(AbstractContainer):
