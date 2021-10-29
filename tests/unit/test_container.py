@@ -1,7 +1,8 @@
 import numpy as np
 from hdmf.container import AbstractContainer, Container, Data
+from hdmf.common import ExternalResources
 from hdmf.testing import TestCase
-from hdmf.utils import docval
+from hdmf.utils import docval, call_docval_func
 
 
 class Subcontainer(Container):
@@ -193,6 +194,27 @@ class TestContainer(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             Container('obj1')._remove_child(Container('dummy'))
 
+class TestContainerExternalResources(TestCase):
+
+    def test_get_ancestor_container(self):
+        class ContainerExternalResources(Container):
+            __fields__ = ({'name': 'external_resources', 'child': True},)
+
+            def __init__(self, **kwargs):
+                call_docval_func(super().__init__, kwargs)
+                self.external_resources = ExternalResources('external_resources')
+
+        er_container = ContainerExternalResources(name='example')
+        self.assertEqual(er_container.get_ancestor_container(data_type='ExternalResources'), er_container)
+
+    def test_none_get_ancestor_container(self):
+        pass
+
+    def test_add_ontology_browser(self):
+        pass
+
+    def test_add_ontology_browser_raise_value_error(self):
+        pass
 
 class TestData(TestCase):
 

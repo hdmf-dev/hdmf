@@ -4,7 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
 from warnings import warn
-
+from .ontology import Ontology
 import h5py
 import numpy as np
 import pandas as pd
@@ -224,12 +224,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         data_type = getargs('data_type', kwargs)
 
-        p = self.parent
+        p = self
         while p is not None:
             for child in p.children:
                 if getattr(child, child._data_type_attr) == data_type:
                     return p
-                p = p.parent
+            p = p.parent
         return None
 
     @property
@@ -497,12 +497,11 @@ class Container(AbstractContainer):
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
+            {'name': 'key', 'type': str, 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'ontology', 'type': Ontology,
              'doc': 'The ontology to be used as the external resource'})
     def add_ontology_browser(self, **kwargs):
-        container = self
         attribute =  kwargs=['attribute']
         key = kwargs['key']
         ontology = kwargs['ontology']
