@@ -496,13 +496,13 @@ class Container(AbstractContainer):
     @docval({'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': str, 'default': None,
+             'doc': ('The field of the compound data type using an external resource.'), 'default': None},
+            {'name': 'key', 'type': str,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'ontology', 'type': Ontology,
              'doc': 'The ontology to be used as the external resource'})
     def add_ontology_browser(self, **kwargs):
-        attribute =  kwargs=['attribute']
+        attribute =  kwargs['attribute']
         key = kwargs['key']
         ontology = kwargs['ontology']
 

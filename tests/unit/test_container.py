@@ -1,5 +1,6 @@
 import numpy as np
 from hdmf.container import AbstractContainer, Container, Data
+from hdmf import Ontology, EnsemblOntology
 from hdmf.common import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval, call_docval_func
@@ -196,25 +197,43 @@ class TestContainer(TestCase):
 
 class TestContainerExternalResources(TestCase):
 
+    class ContainerExternalResources(Container):
+        __fields__ = ({'name': 'child_container', 'child': True},
+                      {'name': 'external_resources', 'child': True},)
+        @docval({'name': 'name', 'type': str, 'doc': 'The name of this container.'},
+                {'name': 'external_resources', 'type': ExternalResources,
+                 'doc': 'TBD', 'default': ExternalResources('external_resources')},
+                {'name': 'child_container', 'type': Container,
+                 'doc': 'TBD', 'default': None})
+        def __init__(self, **kwargs):
+            call_docval_func(super().__init__, kwargs)
+            self.external_resources = kwargs['external_resources']
+            self.child_container = kwargs['child_container']
+
     def test_get_ancestor_container(self):
-        class ContainerExternalResources(Container):
-            __fields__ = ({'name': 'external_resources', 'child': True},)
-
-            def __init__(self, **kwargs):
-                call_docval_func(super().__init__, kwargs)
-                self.external_resources = ExternalResources('external_resources')
-
-        er_container = ContainerExternalResources(name='example')
-        self.assertEqual(er_container.get_ancestor_container(data_type='ExternalResources'), er_container)
+        child_container = Container(name='example')
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example', child_container=child_container)
+        self.assertEqual(child_container.get_ancestor_container(data_type='ExternalResources'), er_container)
 
     def test_none_get_ancestor_container(self):
-        pass
+        container = Container(name='example')
+        self.assertEqual(container.get_ancestor_container(data_type='ExternalResources'), None)
 
     def test_add_ontology_browser(self):
-        pass
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
+        ontology = EnsemblOntology(name='example')
+        er_container.add_ontology_browser(key='Homo sapiens', ontology=ontology)
+
+        self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
+        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
+        self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
 
     def test_add_ontology_browser_raise_value_error(self):
-        pass
+        container = Container(name='example')
+        ontology = EnsemblOntology(name='example')
+        with self.assertRaises(ValueError):
+            container.add_ontology_browser(key='Homo sapiens', ontology=ontology)
 
 class TestData(TestCase):
 

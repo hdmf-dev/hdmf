@@ -39,7 +39,7 @@ class EnsemblOntology(Ontology):
 
     """
 
-    _ontology_name = 'Ensembl'
+    ontology_name = 'Ensembl'
 
     @docval(*get_docval(Ontology.__init__, 'name'),
             {'name': 'ontology_uri', 'type': str, 'doc': 'The uri of the ontology/the resource from ExternalResources.', 'default': 'https://rest.ensembl.org'},
