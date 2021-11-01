@@ -1,4 +1,4 @@
-from hdmf import Ontology, EnsemblOntology
+from hdmf import Ontology, EnsemblOntology, BrowserOntology
 from hdmf.testing import TestCase
 import numpy as np
 
@@ -12,13 +12,16 @@ class TestOntology(TestCase):
         self.assertEqual(ontology.ontology_uri, 'ontology_uri')
         self.assertEqual(ontology.extension, 'extension')
 
+
+class TestBrowserOntology(TestCase):
+
     def test_get_entity_browser(self):
-        ontology = Ontology(name='example', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
+        ontology = BrowserOntology(name='example', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
 
         self.assertEqual(ontology.get_entity_browser(key='Homo sapiens'), ('9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens'))
 
     def test_bad_entity_browser_request(self):
-        ontology = Ontology(name='example', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
+        ontology = BrowserOntology(name='example', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
         with self.assertRaises(ValueError):
             ontology.get_entity_browser(key='Invalid Key')
 
@@ -38,4 +41,4 @@ class TestEnsemblOntology(TestCase):
     def test_bad_entity_browser_request(self):
         ontology = EnsemblOntology(name='example')
         with self.assertRaises(ValueError):
-            ontology.get_entity_browser(key='Invalid Key') 
+            ontology.get_entity_browser(key='Invalid Key')

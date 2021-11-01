@@ -20,6 +20,16 @@ class Ontology():
     def __init__(self, **kwargs):
         self.name, self.ontology_name, self.ontology_uri, self.extension = popargs('name', 'ontology_name', 'ontology_uri', 'extension', kwargs)
 
+
+class BrowserOntology(Ontology):
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this ontology Container.'},
+            {'name': 'ontology_name', 'type': str, 'doc': 'The name of the ontology/the resource from ExternalResources.'},
+            {'name': 'ontology_uri', 'type': str, 'doc': 'The uri of the ontology/the resource from ExternalResources.'},
+            {'name': 'extension', 'type': str, 'doc': 'URI extension to the ontology URI', 'default': None})
+    def __init__(self, **kwargs):
+        call_docval_func(super().__init__, kwargs)
+
     @docval({'name': 'key', 'type': str, 'doc': 'The key name from the object to return the ontology entity.'})
     def get_entity_browser(self, **kwargs):
         key = kwargs['key']
@@ -34,7 +44,8 @@ class Ontology():
             entity_id = request_json['id']
             return entity_id, entity_uri
 
-class EnsemblOntology(Ontology):
+
+class EnsemblOntology(BrowserOntology):
     """
 
     """
