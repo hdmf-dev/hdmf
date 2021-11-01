@@ -503,6 +503,7 @@ class Container(AbstractContainer):
              'doc': 'The ontology to be used as the external resource'})
     def add_ontology_browser(self, **kwargs):
         attribute =  kwargs['attribute']
+        field = kwargs['field']
         key = kwargs['key']
         ontology = kwargs['ontology']
 
