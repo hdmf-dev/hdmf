@@ -6,13 +6,6 @@ class Ontology():
 
     """
 
-    __fields__ = (
-        'name',
-        'ontology_name',
-        'ontology_uri',
-        'extension'
-    )
-
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this ontology Container.'},
             {'name': 'ontology_name', 'type': str, 'doc': 'The name of the ontology/the resource from ExternalResources.'},
             {'name': 'ontology_uri', 'type': str, 'doc': 'The uri of the ontology/the resource from ExternalResources.'},
