@@ -5,12 +5,11 @@ import numpy as np
 class TestOntology(TestCase):
 
     def test_constructor(self):
-        ontology = Ontology(name='example', ontology_name='ontology_name', ontology_uri='ontology_uri', extension='extension')
+        ontology = Ontology(name='example', ontology_name='ontology_name', ontology_uri='ontology_uri')
 
         self.assertEqual(ontology.name, 'example')
         self.assertEqual(ontology.ontology_name, 'ontology_name')
         self.assertEqual(ontology.ontology_uri, 'ontology_uri')
-        self.assertEqual(ontology.extension, 'extension')
 
 
 class TestBrowserOntology(TestCase):
