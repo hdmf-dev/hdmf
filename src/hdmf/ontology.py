@@ -22,6 +22,9 @@ class Ontology():
 
 
 class BrowserOntology(Ontology):
+    """
+
+    """
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this ontology Container.'},
             {'name': 'ontology_name', 'type': str, 'doc': 'The name of the ontology/the resource from ExternalResources.'},
