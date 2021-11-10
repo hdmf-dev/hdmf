@@ -218,7 +218,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         return None
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to search for'})
-    def get_ancestor_container(self, **kwargs):
+    def get_ancestor_child(self, **kwargs):
         """
         Traverse parent hierarchy and return first instance that contains the specified data_type
         """
@@ -501,7 +501,7 @@ class Container(AbstractContainer):
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'ontology', 'type': Ontology,
              'doc': 'The ontology to be used as the external resource'})
-    def add_ontology_browser(self, **kwargs):
+    def add_web_api_ontology(self, **kwargs):
         attribute =  kwargs['attribute']
         field = kwargs['field']
         key = kwargs['key']
@@ -511,9 +511,9 @@ class Container(AbstractContainer):
         ontology_uri = ontology.ontology_uri
 
         # Retrieve entity_id and entity_uri
-        entity_id, entity_uri = ontology.get_entity_browser(key=key)
+        entity_id, entity_uri = ontology.get_api_entity(key=key)
 
-        container = self.get_ancestor_container(data_type='ExternalResources')  # check container for external_resources.
+        container = self.get_ancestor_child(data_type='ExternalResources')  # check container for external_resources.
         if container is None:
             msg = "Cannot find Container with ExternalResources"
             raise ValueError(msg)
@@ -527,7 +527,7 @@ class Container(AbstractContainer):
             entity_id=entity_id,
             entity_uri=entity_uri
         )
-        return er
+        return er #return two list of entity(success) and list of failed keys
 
 
 class Data(AbstractContainer):
