@@ -19,8 +19,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
-from ...utils import (docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval,
-                      StrDataset, LabelledDict)
+from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval, StrDataset
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -1562,32 +1561,35 @@ class HDF5IO(HDMFIO):
         # in-place update of the builder
         # the sidecar json will have the same name as the file but have suffix .json
         f_builder = getargs('f_builder', kwargs)
-        sidecar_filename = Path(self.__file.filename).with_suffix('.json')
-        f = open(sidecar_filename, 'r')
-        versions = json.load(f)['versions']
+        sidecar_path = Path(self.__file.filename).with_suffix('.json')
+        if not sidecar_path.is_file():
+            return
 
-        builder_map = self.__get_object_id_map(f_builder)
-        for version_dict in versions:
-            for change_dict in version_dict.get('changes'):
-                object_id = change_dict['object_id']
-                relative_path = change_dict.get('relative_path')
-                new_value = change_dict['new_value']
+        with open(sidecar_path, 'r') as f:
+            versions = json.load(f)['versions']
 
-                builder = builder_map[object_id]
-                if relative_path in builder.attributes:
-                    # TODO handle different dtypes
-                    builder.attributes[relative_path] = new_value
-                elif isinstance(builder, GroupBuilder):
-                    obj = builder.get(relative_path)
-                    if isinstance(obj, DatasetBuilder):  # update data in sub-DatasetBuilder
-                        self.__update_dataset_builder(obj, new_value)
-                    else:
-                        raise ValueError("Relative path '%s' not recognized as a dataset or attribute")
-                else:  # DatasetBuilder has object_id
-                    if not relative_path:  # update data
-                        self.__update_dataset_builder(builder, new_value)
-                    else:
-                        raise ValueError("Relative path '%s' not recognized as None or attribute")
+            builder_map = self.__get_object_id_map(f_builder)
+            for version_dict in versions:
+                for change_dict in version_dict.get('changes'):
+                    object_id = change_dict['object_id']
+                    relative_path = change_dict.get('relative_path')
+                    new_value = change_dict['new_value']
+
+                    builder = builder_map[object_id]
+                    if relative_path in builder.attributes:
+                        # TODO handle different dtypes
+                        builder.attributes[relative_path] = new_value
+                    elif isinstance(builder, GroupBuilder):
+                        obj = builder.get(relative_path)
+                        if isinstance(obj, DatasetBuilder):  # update data in sub-DatasetBuilder
+                            self.__update_dataset_builder(obj, new_value)
+                        else:
+                            raise ValueError("Relative path '%s' not recognized as a dataset or attribute")
+                    else:  # DatasetBuilder has object_id
+                        if not relative_path:  # update data
+                            self.__update_dataset_builder(builder, new_value)
+                        else:
+                            raise ValueError("Relative path '%s' not recognized as None or attribute")
         # TODO handle compound dtypes
 
         return f_builder
