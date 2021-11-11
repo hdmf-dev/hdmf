@@ -52,7 +52,7 @@ class TestBasic(TestCase):
 
         self.json_path = "./tests/unit/io_tests/test_sidecar.json"
         with open(self.json_path, 'w') as outfile:
-            json.dump(sidecar, outfile)
+            json.dump(sidecar, outfile, indent=4)
 
     def tearDown(self):
         if os.path.exists(self.h5_path):
