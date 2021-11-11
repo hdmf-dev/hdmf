@@ -495,9 +495,9 @@ class Container(AbstractContainer):
 
     @docval({'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.'), 'default': None},
-            {'name': 'key', 'type': str,
+            {'name': 'field', 'type': str,
+             'doc': ('The field of the compound data type using an external resource.'), 'default': ''},
+            {'name': 'key', 'type': (str, list),
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'ontology', 'type': Ontology,
              'doc': 'The ontology to be used as the external resource'})
@@ -510,24 +510,53 @@ class Container(AbstractContainer):
         ontology_name = ontology.ontology_name
         ontology_uri = ontology.ontology_uri
 
-        # Retrieve entity_id and entity_uri
-        entity_id, entity_uri = ontology.get_api_entity(key=key)
-
         container = self.get_ancestor_child(data_type='ExternalResources')  # check container for external_resources.
         if container is None:
             msg = "Cannot find Container with ExternalResources"
             raise ValueError(msg)
 
-        er = container.external_resources.add_ref(
-            container=self,
-            attribute=attribute,
-            key=key,
-            resource_name=ontology_name,
-            resource_uri=ontology_uri,
-            entity_id=entity_id,
-            entity_uri=entity_uri
-        )
-        return er #return two list of entity(success) and list of failed keys
+        # Retrieve entity_id and entity_uri for single key
+        if isinstance(key, str):
+            entity_id, entity_uri = ontology.get_api_entity(key=key)
+            container.external_resources.add_ref(
+                container=self,
+                attribute=attribute,
+                field=field,
+                key=key,
+                resource_name=ontology_name,
+                resource_uri=ontology_uri,
+                entity_id=entity_id,
+                entity_uri=entity_uri
+            )
+            return key
+        else: #List of keys
+            valid_keys=[]
+            invalid_keys=[]
+            for key_value in key:
+                try:
+                    entity_id, entity_uri = ontology.get_api_entity(key=key_value)
+                    container.external_resources.add_ref(
+                        container=self,
+                        attribute=attribute,
+                        field=field,
+                        key=key_value,
+                        resource_name=ontology_name,
+                        resource_uri=ontology_uri,
+                        entity_id=entity_id,
+                        entity_uri=entity_uri
+                    )
+                    valid_keys.append(key_value)
+                except:
+                    invalid_keys.append(key_value)
+                    continue
+            return valid_keys, invalid_keys
+
+
+    def add_local_ontology(self, **kwargs):
+        pass
+
+    def add_ontology(self, **kwargs):
+        pass
 
 
 class Data(AbstractContainer):

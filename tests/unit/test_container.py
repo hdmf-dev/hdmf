@@ -213,27 +213,40 @@ class TestContainerExternalResources(TestCase):
     def test_get_ancestor_container(self):
         child_container = Container(name='example')
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example', child_container=child_container)
-        self.assertEqual(child_container.get_ancestor_container(data_type='ExternalResources'), er_container)
+        self.assertEqual(child_container.get_ancestor_child(data_type='ExternalResources'), er_container)
 
     def test_none_get_ancestor_container(self):
         container = Container(name='example')
-        self.assertEqual(container.get_ancestor_container(data_type='ExternalResources'), None)
+        self.assertEqual(container.get_ancestor_child(data_type='ExternalResources'), None)
 
-    def test_add_ontology_browser(self):
+    def test_add_web_api_ontology_single_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
-        ontology = EnsemblOntology(name='example')
-        er_container.add_ontology_browser(key='Homo sapiens', ontology=ontology)
+        ontology = EnsemblOntology(version='1.0')
+        key = er_container.add_web_api_ontology(key='Homo sapiens', ontology=ontology)
 
+        self.assertEqual(key, 'Homo sapiens')
         self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
         self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
         self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
         self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
 
-    def test_add_ontology_browser_raise_value_error(self):
+    def test_add_web_api_ontology_multiple_key(self):
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
+        ontology = EnsemblOntology(version='1.0')
+        valid_keys, invalid_keys = er_container.add_web_api_ontology(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
+
+        self.assertEqual(valid_keys, ['Homo sapiens'])
+        self.assertEqual(invalid_keys, ['INVALID_KEY'])
+        self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
+        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
+        self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
+
+    def test_add_web_api_ontology_raise_value_error(self):
         container = Container(name='example')
-        ontology = EnsemblOntology(name='example')
+        ontology = EnsemblOntology(version='1.0')
         with self.assertRaises(ValueError):
-            container.add_ontology_browser(key='Homo sapiens', ontology=ontology)
+            container.add_web_api_ontology(key='Homo sapiens', ontology=ontology)
 
 class TestData(TestCase):
 
