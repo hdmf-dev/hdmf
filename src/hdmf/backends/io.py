@@ -4,6 +4,7 @@ from pathlib import Path
 from ..build import BuildManager, GroupBuilder
 from ..container import Container
 from ..utils import docval, getargs, popargs
+from .builderupdater import BuilderUpdater
 
 
 class HDMFIO(metaclass=ABCMeta):
@@ -38,6 +39,7 @@ class HDMFIO(metaclass=ABCMeta):
         if all(len(v) == 0 for v in f_builder.values()):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
+        BuilderUpdater.update_from_sidecar_json(f_builder, self.__source)
         container = self.__manager.construct(f_builder)
         return container
 
