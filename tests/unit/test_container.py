@@ -1,6 +1,6 @@
 import numpy as np
 from hdmf.container import AbstractContainer, Container, Data
-from hdmf import Ontology, EnsemblOntology
+from hdmf import Ontology, EnsemblOntology, NCBI_Taxonomy
 from hdmf.common import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval, call_docval_func
@@ -219,22 +219,22 @@ class TestContainerExternalResources(TestCase):
         container = Container(name='example')
         self.assertEqual(container.get_ancestor_child(data_type='ExternalResources'), None)
 
-    def test_add_web_api_ontology_single_key(self):
+    def test_add_ontology_single_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
         ontology = EnsemblOntology(version='1.0')
-        key = er_container.add_web_api_ontology(key='Homo sapiens', ontology=ontology)
+        key = er_container.add_ontology(key=['Homo sapiens'], ontology=ontology)
 
-        self.assertEqual(key, 'Homo sapiens')
+        self.assertEqual(key, (['Homo sapiens'], []))
         self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
         self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
         self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
         self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
 
-    def test_add_web_api_ontology_multiple_key(self):
+    def test_add_ontology_multiple_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
         ontology = EnsemblOntology(version='1.0')
         with self.assertWarns(Warning):
-            valid_keys, invalid_keys = er_container.add_web_api_ontology(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
+            valid_keys, invalid_keys = er_container.add_ontology(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
 
         self.assertEqual(valid_keys, ['Homo sapiens'])
         self.assertEqual(invalid_keys, ['INVALID_KEY'])
@@ -243,11 +243,25 @@ class TestContainerExternalResources(TestCase):
         self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
         self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
 
-    def test_add_web_api_ontology_raise_value_error(self):
+    def test_add_ontology_raise_value_error(self):
         container = Container(name='example')
         ontology = EnsemblOntology(version='1.0')
         with self.assertRaises(ValueError):
-            container.add_web_api_ontology(key='Homo sapiens', ontology=ontology)
+            container.add_ontology(key=['Homo sapiens'], ontology=ontology)
+
+    def test_local_ontology_multiple_keys(self):
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
+        ontology = NCBI_Taxonomy(version='1.0')
+        with self.assertWarns(Warning):
+            valid_keys, invalid_keys = er_container.add_ontology(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
+
+        self.assertEqual(valid_keys, ['Homo sapiens'])
+        self.assertEqual(invalid_keys, ['INVALID_KEY'])
+        self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er_container.external_resources.resources.data, [('NCBI_Taxonomy', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi')])
+        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
+
 
 class TestData(TestCase):
 

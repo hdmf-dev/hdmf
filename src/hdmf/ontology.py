@@ -24,7 +24,7 @@ class WebAPIOntology(Ontology): #webapi
         self.extension = kwargs['extension']
 
     @docval({'name': 'key', 'type': str, 'doc': 'The key name from the object to return the ontology entity.'})
-    def get_api_entity(self, **kwargs):
+    def get_ontology_entity(self, **kwargs):
         key = kwargs['key']
         entity_uri = self.ontology_uri+self.extension+key
 
@@ -66,8 +66,8 @@ class LocalOntology(Ontology):
     @docval({'name': 'key', 'type': str, 'doc': 'The ontology term to be retrieved'})
     def get_ontology_entity(self, **kwargs):
         key = kwargs['key']
-
-        return key, self.ontology_entities[key]
+        entity_id, entity_uri = self.ontology_entities[key]
+        return entity_id, entity_uri
 
 class EnsemblOntology(WebAPIOntology):
     """

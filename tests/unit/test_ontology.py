@@ -16,12 +16,12 @@ class TestWebAPIOntology(TestCase):
     def test_get_entity_browser(self):
         ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
 
-        self.assertEqual(ontology.get_api_entity(key='Homo sapiens'), ('9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens'))
+        self.assertEqual(ontology.get_ontology_entity(key='Homo sapiens'), ('9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens'))
 
     def test_bad_entity_browser_request(self):
         ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
         with self.assertRaises(ValueError):
-            ontology.get_api_entity(key='Invalid Key')
+            ontology.get_ontology_entity(key='Invalid Key')
 
 class TestLocalOntology(TestCase):
     ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
@@ -49,7 +49,7 @@ class TestLocalOntology(TestCase):
     def test_get_ontology_entity(self):
         ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', ontology_entities=TestLocalOntology.ontology_entities)
 
-        self.assertEqual(ontology.get_ontology_entity('Homo sapiens'), ('Homo sapiens', ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']))
+        self.assertEqual(ontology.get_ontology_entity('Homo sapiens'), ('9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
 
 
 class TestEnsemblOntology(TestCase):
@@ -63,12 +63,12 @@ class TestEnsemblOntology(TestCase):
 
     def test_get_entity_browser(self):
         ontology = EnsemblOntology(version='1.0')
-        self.assertEqual(ontology.get_api_entity(key='Homo sapiens'), ('9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens'))
+        self.assertEqual(ontology.get_ontology_entity(key='Homo sapiens'), ('9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens'))
 
     def test_bad_entity_browser_request(self):
         ontology = EnsemblOntology(version='1.0')
         with self.assertRaises(ValueError):
-            ontology.get_api_entity(key='Invalid Key')
+            ontology.get_ontology_entity(key='Invalid Key')
 
 
 class TestNCBITaxonomy(TestCase):
