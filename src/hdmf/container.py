@@ -549,7 +549,11 @@ class Container(AbstractContainer):
                 except:
                     invalid_keys.append(key_value)
                     continue
-            return valid_keys, invalid_keys
+            if len(invalid_keys)>0:
+                warn("There are exists some Invalid Keys")
+                return valid_keys, invalid_keys
+            else:
+                return valid_keys, invalid_keys
 
 
     def add_local_ontology(self, **kwargs):

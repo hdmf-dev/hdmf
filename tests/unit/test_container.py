@@ -233,7 +233,8 @@ class TestContainerExternalResources(TestCase):
     def test_add_web_api_ontology_multiple_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
         ontology = EnsemblOntology(version='1.0')
-        valid_keys, invalid_keys = er_container.add_web_api_ontology(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
+        with self.assertWarns(Warning):
+            valid_keys, invalid_keys = er_container.add_web_api_ontology(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
 
         self.assertEqual(valid_keys, ['Homo sapiens'])
         self.assertEqual(invalid_keys, ['INVALID_KEY'])
