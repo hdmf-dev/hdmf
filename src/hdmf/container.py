@@ -8,6 +8,7 @@ from .ontology import Ontology
 import h5py
 import numpy as np
 import pandas as pd
+from .errors import WebAPIOntologyException, LocalOntologyException
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
@@ -510,17 +511,21 @@ class Container(AbstractContainer):
         ontology_name = ontology.ontology_name
         ontology_uri = ontology.ontology_uri
 
-        container = self.get_ancestor_child(data_type='ExternalResources')  # check container for external_resources.
+        container = self.get_ancestor_child(data_type='ExternalResources')# check container for external_resources.
         if container is None:
             msg = "Cannot find Container with ExternalResources"
             raise ValueError(msg)
 
-        valid_keys=[]
+        valid_ref=[]
         invalid_keys=[]
         for key_value in key:
             try:
                 entity_id, entity_uri = ontology.get_ontology_entity(key=key_value)
-                container.external_resources.add_ref(
+            except (WebAPIOntologyException, LocalOntologyException):
+                invalid_keys.append(key_value)
+                continue
+            else:
+                er = container.external_resources.add_ref(
                     container=self,
                     attribute=attribute,
                     field=field,
@@ -530,13 +535,10 @@ class Container(AbstractContainer):
                     entity_id=entity_id,
                     entity_uri=entity_uri
                 )
-                valid_keys.append(key_value)
-            except:
-                invalid_keys.append(key_value)
-                continue
+                valid_ref.append(er)
         if len(invalid_keys)>0:
             warn("There exists some Invalid Keys")
-        return valid_keys, invalid_keys
+        return valid_ref, invalid_keys
 
 
 class Data(AbstractContainer):

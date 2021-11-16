@@ -1,4 +1,4 @@
-from hdmf import Ontology, EnsemblOntology, WebAPIOntology, LocalOntology, NCBI_Taxonomy
+from hdmf import Ontology, EnsemblOntology, WebAPIOntology, LocalOntology, NCBI_Taxonomy, WebAPIOntologyException, LocalOntologyException
 from hdmf.testing import TestCase
 
 class TestOntology(TestCase):
@@ -20,37 +20,41 @@ class TestWebAPIOntology(TestCase):
 
     def test_bad_entity_browser_request(self):
         ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(WebAPIOntologyException):
             ontology.get_ontology_entity(key='Invalid Key')
 
 class TestLocalOntology(TestCase):
-    ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
+    _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
 
     def test_constructor(self):
-        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', ontology_entities=TestLocalOntology.ontology_entities)
+        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
 
         self.assertEqual(ontology.version, '1.0')
         self.assertEqual(ontology.ontology_name, 'ontology_name')
         self.assertEqual(ontology.ontology_uri, 'ontology_uri')
-        self.assertEqual(ontology.ontology_entities, TestLocalOntology.ontology_entities)
+        self.assertEqual(ontology._ontology_entities, TestLocalOntology._ontology_entities)
 
     def test_add_ontology_entity(self):
         ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri')
         ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
 
-        self.assertEqual(ontology.ontology_entities, TestLocalOntology.ontology_entities)
+        self.assertEqual(ontology._ontology_entities, TestLocalOntology._ontology_entities)
 
     def test_remove_ontology_entity(self):
-        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', ontology_entities=TestLocalOntology.ontology_entities)
+        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
         ontology.remove_ontology_entity('Homo sapiens')
 
-        self.assertEqual(ontology.ontology_entities, {})
+        self.assertEqual(ontology._ontology_entities, {})
 
     def test_get_ontology_entity(self):
-        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', ontology_entities=TestLocalOntology.ontology_entities)
+        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
 
         self.assertEqual(ontology.get_ontology_entity('Homo sapiens'), ('9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
 
+    def test_get_ontology_entity_bad_arg(self):
+        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
+        with self.assertRaises(LocalOntologyException):
+            ontology.get_ontology_entity(key='Invalid Key')
 
 class TestEnsemblOntology(TestCase):
 
@@ -67,13 +71,13 @@ class TestEnsemblOntology(TestCase):
 
     def test_bad_entity_browser_request(self):
         ontology = EnsemblOntology(version='1.0')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(WebAPIOntologyException):
             ontology.get_ontology_entity(key='Invalid Key')
 
 
 class TestNCBITaxonomy(TestCase):
 
-    ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
+    _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
 
     def test_constructor(self):
         ontology = NCBI_Taxonomy(version='1.0')
@@ -81,4 +85,4 @@ class TestNCBITaxonomy(TestCase):
         self.assertEqual(ontology.version, '1.0')
         self.assertEqual(ontology.ontology_name, 'NCBI_Taxonomy')
         self.assertEqual(ontology.ontology_uri, 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi')
-        self.assertEqual(ontology.ontology_entities, TestNCBITaxonomy.ontology_entities)
+        self.assertEqual(ontology._ontology_entities, TestNCBITaxonomy._ontology_entities)
