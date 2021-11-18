@@ -17,30 +17,37 @@ references:
       python -m virtualenv ../venv || python -m venv ../venv
       . ../venv/bin/activate
 
+  py310: &py310
+    docker:
+    - image: circleci/python:3.10
+      auth:
+        username: hdmf
+        password: $DOCKERHUB_PASSWORD
+
   py39: &py39
     docker:
-    - image: circleci/python:3.9.2-buster
+    - image: circleci/python:3.9
       auth:
         username: hdmf
         password: $DOCKERHUB_PASSWORD
 
   py38: &py38
     docker:
-    - image: circleci/python:3.8.8-buster
+    - image: circleci/python:3.8
       auth:
         username: hdmf
         password: $DOCKERHUB_PASSWORD
 
   py37: &py37
     docker:
-    - image: circleci/python:3.7.10-buster
+    - image: circleci/python:3.7
       auth:
         username: hdmf
         password: $DOCKERHUB_PASSWORD
 
   conda-image: &conda-image
     docker:
-    - image: continuumio/miniconda3:4.9.2
+    - image: continuumio/miniconda3:latest
       auth:
         username: hdmf
         password: $DOCKERHUB_PASSWORD
@@ -56,8 +63,8 @@ references:
           name: Run the tests
           command: |
             . ../venv/bin/activate
-            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9
-            if [[ "${TEST_TOX_ENV}" == *"py39"* ]]; then
+            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
+            if [[ "${TEST_TOX_ENV}" == *"py39"* ]] || [[ "${TEST_TOX_ENV}" == *"py310"* ]]; then
               sudo apt-get install libhdf5-dev
             fi
             pip install tox
@@ -128,8 +135,8 @@ references:
           name: Run the gallery tests
           command: |
             . ../venv/bin/activate
-            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9
-            if [[ "${TEST_TOX_ENV}" == *"py39"* ]]; then
+            # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
+            if [[ "${TEST_TOX_ENV}" == *"py39"* ]] || [[ "${TEST_TOX_ENV}" == *"py310"* ]]; then
               sudo apt-get install libhdf5-dev
             fi
             pip install tox
@@ -148,7 +155,7 @@ references:
 
 jobs:
   flake8:
-    <<: *py38
+    <<: *py39
     steps:
       - checkout
       - run:
@@ -181,19 +188,28 @@ jobs:
       - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
     <<: *ci-steps
 
-  python39-upgrade-dev:
-    <<: *py39
+  python310:
+    <<: *py310
     environment:
-      - TEST_TOX_ENV: "py39-upgrade-dev"
-      - BUILD_TOX_ENV: "build-py39-upgrade-dev"
+      - TEST_TOX_ENV: "py310"
+      - BUILD_TOX_ENV: "build-py310"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+      - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
+    <<: *ci-steps
+
+  python310-upgrade-dev:
+    <<: *py310
+    environment:
+      - TEST_TOX_ENV: "py310-upgrade-dev"
+      - BUILD_TOX_ENV: "build-py310-upgrade-dev"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
-  python39-upgrade-dev-pre:
-    <<: *py39
+  python310-upgrade-dev-pre:
+    <<: *py310
     environment:
-      - TEST_TOX_ENV: "py39-upgrade-dev-pre"
-      - BUILD_TOX_ENV: "build-py39-upgrade-dev-pre"
+      - TEST_TOX_ENV: "py310-upgrade-dev-pre"
+      - BUILD_TOX_ENV: "build-py310-upgrade-dev-pre"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *ci-steps
 
@@ -232,6 +248,15 @@ jobs:
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
     <<: *conda-steps
 
+  miniconda310:
+    <<: *conda-image
+    environment:
+      - CONDA_PYTHON_VER: "3.10"
+      - TEST_TOX_ENV: "py310"
+      - BUILD_TOX_ENV: "build-py310"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+    <<: *conda-steps
+
   gallery37:
     <<: *py37
     environment:
@@ -250,16 +275,22 @@ jobs:
       - TEST_TOX_ENV: "gallery-py39"
     <<: *gallery-steps
 
-  gallery39-upgrade-dev:
-    <<: *py39
+  gallery310:
+    <<: *py310
     environment:
-      - TEST_TOX_ENV: "gallery-py39-upgrade-dev"
+      - TEST_TOX_ENV: "gallery-py310"
     <<: *gallery-steps
 
-  gallery39-upgrade-dev-pre:
-    <<: *py39
+  gallery310-upgrade-dev:
+    <<: *py310
     environment:
-      - TEST_TOX_ENV: "gallery-py39-upgrade-dev-pre"
+      - TEST_TOX_ENV: "gallery-py310-upgrade-dev"
+    <<: *gallery-steps
+
+  gallery310-upgrade-dev-pre:
+    <<: *py310
+    environment:
+      - TEST_TOX_ENV: "gallery-py310-upgrade-dev-pre"
     <<: *gallery-steps
 
   gallery37-min-req:
@@ -424,15 +455,19 @@ workflows:
           <<: *no_filters
       - python39:
           <<: *no_filters
-      - python39-upgrade-dev:
+      - python310:
           <<: *no_filters
-      - python39-upgrade-dev-pre:
+      - python310-upgrade-dev:
+          <<: *no_filters
+      - python310-upgrade-dev-pre:
           <<: *no_filters
       - miniconda37:
           <<: *no_filters
       - miniconda38:
           <<: *no_filters
       - miniconda39:
+          <<: *no_filters
+      - miniconda310:
           <<: *no_filters
       - gallery37:
           <<: *no_filters
@@ -442,7 +477,9 @@ workflows:
           <<: *no_filters
       - gallery39:
           <<: *no_filters
-      - gallery39-upgrade-dev:
+      - gallery310:
           <<: *no_filters
-      - gallery39-upgrade-dev-pre:
+      - gallery310-upgrade-dev:
+          <<: *no_filters
+      - gallery310-upgrade-dev-pre:
           <<: *no_filters
