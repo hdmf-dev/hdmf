@@ -196,6 +196,7 @@ class TestContainer(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             Container('obj1')._remove_child(Container('dummy'))
 
+
 class TestContainerExternalResources(TestCase):
 
     class ContainerExternalResources(Container):

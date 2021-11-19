@@ -29,7 +29,7 @@ class WebAPIOntology(Ontology):
         call_docval_func(super().__init__, kwargs)
         self.extension = kwargs['extension']
 
-    @docval({'name': 'key', 'type': str, 'doc': 'The key name from the object to return the ontology entity.'})
+    @docval(*get_docval(Ontology.get_ontology_entity, 'key'))
     def get_ontology_entity(self, **kwargs): #make abstract in base ontology class
         key = kwargs['key']
         entity_uri = self.ontology_uri+self.extension+key
@@ -68,7 +68,7 @@ class LocalOntology(Ontology):
         self._ontology_entities.pop(key)
         return self._ontology_entities
 
-    @docval({'name': 'key', 'type': str, 'doc': 'The ontology term to be retrieved'})
+    @docval(*get_docval(Ontology.get_ontology_entity, 'key'))
     def get_ontology_entity(self, **kwargs):
         key = kwargs['key']
         try:

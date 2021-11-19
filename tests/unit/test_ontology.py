@@ -23,6 +23,7 @@ class TestWebAPIOntology(TestCase):
         with self.assertRaises(WebAPIOntologyException):
             ontology.get_ontology_entity(key='Invalid Key')
 
+
 class TestLocalOntology(TestCase):
     _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
 
@@ -55,6 +56,7 @@ class TestLocalOntology(TestCase):
         ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
         with self.assertRaises(LocalOntologyException):
             ontology.get_ontology_entity(key='Invalid Key')
+
 
 class TestEnsemblOntology(TestCase):
 
