@@ -130,16 +130,6 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
 
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
-    
-    __docval_init = (
-        {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
-        {'name': 'maxshape', 'type': tuple,
-         'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
-         'default': None},
-        {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
-        {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
-        {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
-    )
 
     @docval(
         {'name': 'chunk_mb', 'type': float,
@@ -162,30 +152,37 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
-    def _get_default_buffer_shape(self, buffer_gb):
+    @docval(
+        {'name': 'buffer_gb', 'type': float,
+         'doc': 'Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.',
+         'default': None}
+    )
+    def _get_default_buffer_shape(self, **kwargs):
         """
         Select buffer size less than the threshold of buffer_gb, keeping the dimensional ratios of the original data.
 
         Assumes the chunk_shape has already been set.
-
-        Parameters
-        ----------
-        buffer_gb : float
-            The maximum amount of RAM to use to buffer the chunks.
         """
+        buffer_gb = getargs('buffer_gb', kwargs)
+
         k = np.floor(
             (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
         )
         return tuple([min(int(x), self.maxshape[j]) for j, x in enumerate(k * np.array(self.chunk_shape))])
 
+    __docval_init = (
+        {'name': 'buffer_gb', 'type': float,
+         'doc': 'If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold. '
+         'Defaults to 1 GB.', 'default': None},
+        {'name': 'buffer_shape', 'type': float, 'doc': 'Manually defined shape of the buffer.', 'default': None},
+        {'name': 'chunk_mb', 'type': float,
+         'doc': 'If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold. '
+         'Defaults to 1 MB.', 'default': None},
+        {'name': 'chunk_shape', 'type': float, 'doc': 'Manually defined shape of the chunks.', 'default': None}
+    )
+
     @docval(*__docval_init)
-    def __init__(
-        self,
-        buffer_gb: Optional[float] = None,
-        buffer_shape: Optional[tuple] = None,
-        chunk_mb: Optional[float] = None,
-        chunk_shape: Optional[tuple] = None,
-    ):
+    def __init__(self, **kwargs):
         """
         Break a dataset into buffers containing multiple chunks to be written into an HDF5 dataset.
 
@@ -196,20 +193,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
-
-        Parameters
-        ----------
-        buffer_gb : float, optional
-            If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold.
-            Defaults to 1 GB.
-        buffer_shape : tuple, optional
-            Manually defined shape of the buffer. Defaults to None.
-        chunk_mb : float, optional
-            If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold.
-            Defaults to 1 MB.
-        chunk_shape : tuple, optional
-            Manually defined shape of the chunks. Defaults to None.
         """
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs('buffer_gb',
+                                                                 'buffer_shape',
+                                                                 'chunk_mb',
+                                                                 'chunk_shape',
+                                                                 kwargs)
+
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
