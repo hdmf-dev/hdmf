@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
 from typing import Optional, Tuple
-from itertools import product
+from itertools import product, chain
 
 import h5py
 import numpy as np
@@ -130,16 +130,25 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
 
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
+    
+    __docval_init = (
+        {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
+        {'name': 'maxshape', 'type': tuple,
+         'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
+         'default': None},
+        {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
+        {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
+        {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
+    )
 
-    def _set_chunk_shape(self, chunk_mb):
-        """
-        Select chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data.
+    @docval(
+        {'name': 'chunk_mb', 'type': float,
+         'doc': 'Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.', 'default': None}
+    )
+    def _get_default_chunk_shape(self, **kwargs):
+        """Select chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data."""
+        chunk_mb = getargs('chunk_mb', kwargs)
 
-        Parameters
-        ----------
-        chunk_mb : float
-            H5 reccomends setting this to around 1 MB for optimal performance.
-        """
         n_dims = len(self.maxshape)
         itemsize = self.dtype.itemsize
         chunk_bytes = chunk_mb * 1e6
@@ -151,25 +160,25 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             v[v_ind] = np.floor(next_v / np.min(next_v))
             prod_v = np.prod(v)
         k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
-        self.chunk_shape = tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
+        return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
-    def _set_buffer_shape(self, buffer_gb):
+    def _get_default_buffer_shape(self, buffer_gb):
         """
         Select buffer size less than the threshold of buffer_gb, keeping the dimensional ratios of the original data.
+
+        Assumes the chunk_shape has already been set.
 
         Parameters
         ----------
         buffer_gb : float
             The maximum amount of RAM to use to buffer the chunks.
         """
-        assert (
-            buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
-        ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
         k = np.floor(
             (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
         )
-        self.buffer_shape = tuple([min(int(x), self.maxshape[j]) for j, x in enumerate(k * np.array(self.chunk_shape))])
+        return tuple([min(int(x), self.maxshape[j]) for j, x in enumerate(k * np.array(self.chunk_shape))])
 
+    @docval(*__docval_init)
     def __init__(
         self,
         buffer_gb: Optional[float] = None,
@@ -178,11 +187,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         chunk_shape: Optional[tuple] = None,
     ):
         """
-        Break a dataset into buffers containing chunks, with the chunk as they are written into the H5 dataset.
+        Break a dataset into buffers containing multiple chunks to be written into an HDF5 dataset.
 
-        Basic users should set the buffer_gb argument to as much free RAM space as can be safely allowed.
-        Advanced users are offered full control over the shape paramters for the buffer and the chunks.
+        Basic users should set the buffer_gb argument to as much free RAM space as can be safely allocated.
+        Advanced users are offered full control over the shape paramters for the buffer and the chunks; however,
+        the chunk shape must perfectly divide the buffer shape along each axis.
 
+        HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
+        See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
+        for more details.
+
+        Parameters
+        ----------
         buffer_gb : float, optional
             If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold.
             Defaults to 1 GB.
@@ -190,7 +206,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             Manually defined shape of the buffer. Defaults to None.
         chunk_mb : float, optional
             If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold.
-            H5 reccomends setting this to around 1 MB (our default) for optimal performance.
+            Defaults to 1 MB.
         chunk_shape : tuple, optional
             Manually defined shape of the chunks. Defaults to None.
         """
@@ -208,22 +224,52 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is None:
-            self._set_chunk_shape(chunk_mb=chunk_mb)
+            self.chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
         else:
-            assert np.all(
-                chunk_shape <= self.maxshape
-            ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
             self.chunk_shape = chunk_shape
         if buffer_shape is None:
-            self._set_buffer_shape(buffer_gb=buffer_gb)
+            self.buffer_shape = self._get_default_buffer_shape(buffer_gb=buffer_gb)
         else:
-            assert np.all(
-                buffer_shape <= self.maxshape
-            ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
             self.buffer_shape = buffer_shape
+            buffer_gb = np.prod(self.buffer_shape) * np.dtype(self._dtype).itemsize / 1e9
 
-        self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
-        self.chunk_idx_generator = product(*[range(x) for x in self.num_chunks])
+        array_chunk_shape = np.array(self.chunk_shape)
+        array_buffer_shape = np.array(self.buffer_shape)
+        array_maxshape = np.array(self.maxshape)
+        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert (
+            buffer_gb < psutil.virtual_memory().available / 1e9
+        ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
+        assert all(array_chunk_shape > 0), f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
+        assert all(array_buffer_shape > 0), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
+        assert all(
+            array_buffer_shape <= array_maxshape
+        ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+        assert all(
+            array_chunk_shape <= array_buffer_shape
+        ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the manual buffer shape ({self.buffer_shape})!"
+        assert all((array_buffer_shape % array_chunk_shape == 0)[array_buffer_shape != array_maxshape]), (
+            f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
+            f"evenly divide the buffer shape ({self.buffer_shape})!"
+        )
+
+        self.buffer_selection_generator = (
+            tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
+            for lower_bounds, upper_bounds in zip(
+                product(
+                    *[
+                        range(0, max_shape_axis, buffer_shape_axis)
+                        for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
+                    ]
+                ),
+                product(
+                    *[
+                        chain(range(buffer_shape_axis, max_shape_axis, buffer_shape_axis), [max_shape_axis])
+                        for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
+                    ]
+                ),
+            )
+        )
 
     def recommended_chunk_shape(self) -> tuple:
         return self.chunk_shape
@@ -234,23 +280,24 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def __iter__(self):
         return self
 
-    def _chunk_map(self, chunk_idx: tuple) -> tuple:
-        return tuple(
-            [
-                slice(n * self.chunk_shape[j], min((n + 1) * self.chunk_shape[j], self.maxshape[j]))
-                for j, n in enumerate(chunk_idx)
-            ]
-        )
-
     def __next__(self):
-        """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved."""
-        selection = self._chunk_map(chunk_idx=next(self.chunk_idx_generator))
-        data = self._get_data(selection=selection)
-        return DataChunk(data=data, selection=selection)
+        """Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary."""
+        buffer_selection = next(self.buffer_selection_generator)
+        return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
 
     @abstractmethod
-    def _get_data(self, selection: Tuple[slice]) -> Iterable:
-        """Retrieve the data specified by the selection using absolute minimal I/O."""
+    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+        """
+        Retrieve the data specified by the selection using minimal I/O.
+
+        The developer of a new implementation of the GenericDataChunkIterator must ensure the data is actually
+        loaded into memory, and not simply mapped.
+
+        Parameters
+        ----------
+        selection : tuple of slices
+            Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
+        """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
     @property
@@ -259,7 +306,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
     @abstractmethod
     def _get_dtype(self) -> np.dtype:
-        """Retrieve the dtype of the data using absolute minimal I/O."""
+        """Retrieve the dtype of the data using minimal I/O."""
         raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
 
     @property
@@ -268,7 +315,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
     @abstractmethod
     def _get_maxshape(self) -> tuple:
-        """Retrieve the maximum bounds of the data shape using absolute minimal I/O."""
+        """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
 
 
