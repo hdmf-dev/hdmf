@@ -10,6 +10,7 @@
 ### Minor improvements
 - Plot results in external resources tutorial. @oruebel (#667)
 - Add testing against Python 3.10. @rly (#679)
+- Update requirements. @rly @TheChymera (#681)
 
 
 ## HDMF 3.1.2 (Upcoming)
