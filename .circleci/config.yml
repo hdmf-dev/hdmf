@@ -395,6 +395,22 @@ workflows:
           <<: *no_filters
       - gallery39:
           <<: *no_filters
+      ## temporary
+      - python310:
+          <<: *no_filters
+      - python310-upgrade-dev:
+          <<: *no_filters
+      - python310-upgrade-dev-pre:
+          <<: *no_filters
+      - miniconda310:
+          <<: *no_filters
+      - gallery310:
+          <<: *no_filters
+      - gallery310-upgrade-dev:
+          <<: *no_filters
+      - gallery310-upgrade-dev-pre:
+          <<: *no_filters
+      ##
       - deploy-dev:
           requires:
             - flake8
