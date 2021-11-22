@@ -9,9 +9,8 @@
 
 ### Minor improvements
 - Plot results in external resources tutorial. @oruebel (#667)
-- Add testing against Python 3.10. @rly (#679)
+- Add support for Python 3.10. @rly (#679)
 - Update requirements. @rly @TheChymera (#681)
-
 
 ## HDMF 3.1.2 (Upcoming)
 
@@ -19,6 +18,7 @@
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
 - Fixed broken tests in Python 3.10. @rly (#664)
 - Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
+
 
 ## HDMF 3.1.1 (July 29, 2021)
 

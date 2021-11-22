@@ -6,7 +6,7 @@ Dependencies
 
 HDMF has the following minimum requirements, which must be installed before you can get started using HDMF.
 
-#. Python 3.7, 3.8, or 3.9
+#. Python 3.7, 3.8, 3.9, or 3.10
 #. pip
 
 ------------
@@ -82,7 +82,7 @@ work better on Windows.
 
 .. code::
 
-    $ conda create --name hdmf-dev python=3.9
+    $ conda create --name hdmf-dev python=3.10
     $ conda activate hdmf-dev
 
 Then clone the git repository for HDMF, install the HDMF package requirements using the pip_ Python package manager, and
