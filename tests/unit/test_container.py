@@ -462,6 +462,28 @@ class TestContainerFieldsConf(TestCase):
         obj2 = ContainerWithChild()
         self.assertIsNone(obj2.field1)
 
+    def test_setter_set_modified(self):
+        class ContainerWithChild(Container):
+            __fields__ = ({'name': 'field1', 'child': True}, )
+
+            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+            def __init__(self, **kwargs):
+                super().__init__('test name')
+                self.field1 = kwargs['field1']
+
+        child_obj1 = Container('test child 1')
+        obj1 = ContainerWithChild()
+        obj1.set_modified(False)  # set to False so that we can test that it is set to True next
+        obj1.field1 = child_obj1
+        self.assertTrue(obj1.modified)
+        self.assertIs(obj1.field1, child_obj1)
+
+        obj3 = ContainerWithChild()
+        obj3.set_modified(False)  # set to False so that we can test that it is set to True next
+        obj3.field1 = child_obj1  # child_obj1 already has a parent
+        self.assertTrue(obj3.modified)
+        self.assertIs(obj3.field1, child_obj1)
+
 
 class TestChangeFieldsName(TestCase):
 
