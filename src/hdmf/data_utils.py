@@ -271,7 +271,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         return self
 
     def __next__(self):
-        """Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary."""
+        """
+        Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary.
+        
+        :returns: DataChunk object with the data and selection of the current buffer.
+        :rtype: DataChunk
+        """
         buffer_selection = next(self.buffer_selection_generator)
         return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
 
@@ -283,21 +288,17 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         The developer of a new implementation of the GenericDataChunkIterator must ensure the data is actually
         loaded into memory, and not simply mapped.
 
+        :param selection: Tuple of slices, each indicating the selection indexed with respect to maxshape for that axis
+        :type selection: tuple of slices
+
+        :returns: Array of data specified by selection
+        :rtype: np.ndarray
         Parameters
         ----------
         selection : tuple of slices
             Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
         """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @abstractmethod
-    def _get_dtype(self) -> np.dtype:
-        """Retrieve the dtype of the data using minimal I/O."""
-        raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
 
     @property
     def maxshape(self):
@@ -307,6 +308,15 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def _get_maxshape(self) -> tuple:
         """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @abstractmethod
+    def _get_dtype(self) -> np.dtype:
+        """Retrieve the dtype of the data using minimal I/O."""
+        raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
 
 
 class DataChunkIterator(AbstractDataChunkIterator):
