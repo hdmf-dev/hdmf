@@ -125,7 +125,7 @@ Python debugger (PDB) prompt on an error, e.g.,
 
 
 Finally, you can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
-create a virtual environment, install dependencies, and run the test suite for Python 3.6, 3.7, 3.8, and 3.9.
+create a virtual environment, install dependencies, and run the test suite for Python 3.7, 3.8, 3.9, and 3.10.
 This can take some time to run.
 
 .. _pytest: https://docs.pytest.org/
