@@ -137,7 +137,7 @@ def to_hierarchical_dataframe(dynamic_table):
     # Check if the index contains any unhashable types. If a table contains a VectorIndex column
     # (other than the DynamicTableRegion column) then "TypeError: unhashable type: 'list'" will
     # occur when converting the index to pd.MultiIndex. To avoid this error, we next check if any
-    # of the columns in our index are of type list of np.ndarray
+    # of the columns in our index are of type list or np.ndarray
     unhashable_index_cols = []
     if len(index) > 0:
         unhashable_index_cols = [i for i, v in enumerate(index[0]) if isinstance(v, (list, np.ndarray))]
