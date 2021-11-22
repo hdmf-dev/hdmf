@@ -174,11 +174,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         {'name': 'buffer_gb', 'type': float,
          'doc': 'If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold. '
          'Defaults to 1 GB.', 'default': None},
-        {'name': 'buffer_shape', 'type': float, 'doc': 'Manually defined shape of the buffer.', 'default': None},
+        {'name': 'buffer_shape', 'type': tuple, 'doc': 'Manually defined shape of the buffer.', 'default': None},
         {'name': 'chunk_mb', 'type': float,
          'doc': 'If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold. '
          'Defaults to 1 MB.', 'default': None},
-        {'name': 'chunk_shape', 'type': float, 'doc': 'Manually defined shape of the chunks.', 'default': None}
+        {'name': 'chunk_shape', 'type': tuple, 'doc': 'Manually defined shape of the chunks.', 'default': None}
     )
 
     @docval(*__docval_init)
