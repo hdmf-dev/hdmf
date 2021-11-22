@@ -18,6 +18,8 @@
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
 - Fixed broken tests in Python 3.10. @rly (#664)
 - Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
+- Fixed adding containers as a child to a parent container sometimes not marking the parent container as modified. @rly
+  (#683)
 
 
 ## HDMF 3.1.1 (July 29, 2021)
