@@ -8,11 +8,10 @@
 - Added ``export_to_sqlite`` method for ``hdmf.common.resources.ExternalResource``. @oruebel (#667)
 
 ### Minor improvements
-- Plot results in external resources tutorial. @oruebel (#667)
-- Add support for Python 3.10. @rly (#679)
-- Update requirements. @rly @TheChymera (#681)
-
-## HDMF 3.1.2 (Upcoming)
+- Plotted results in external resources tutorial. @oruebel (#667)
+- Added support for Python 3.10. @rly (#679)
+- Updated requirements. @rly @TheChymera (#681)
+- Improved testing for `ExternalResources`. @mavaylon (#673)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
