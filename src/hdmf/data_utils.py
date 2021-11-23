@@ -2,7 +2,7 @@ import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 from itertools import product, chain
 
 import h5py
@@ -132,7 +132,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
     @docval(
-        {'name': 'chunk_mb', 'type': float,
+        {'name': 'chunk_mb', 'type': (float, int),
          'doc': 'Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.', 'default': None}
     )
     def _get_default_chunk_shape(self, **kwargs):
@@ -153,7 +153,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
     @docval(
-        {'name': 'buffer_gb', 'type': float,
+        {'name': 'buffer_gb', 'type': (float, int),
          'doc': 'Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.',
          'default': None}
     )
@@ -168,14 +168,17 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         k = np.floor(
             (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
         )
-        return tuple([min(int(x), self.maxshape[j]) for j, x in enumerate(k * np.array(self.chunk_shape))])
+        return tuple([
+            min(max(int(x), self.chunk_shape[j]), self.maxshape[j])
+            for j, x in enumerate(k * np.array(self.chunk_shape))
+        ])
 
     __docval_init = (
-        {'name': 'buffer_gb', 'type': float,
+        {'name': 'buffer_gb', 'type': (float, int),
          'doc': 'If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold. '
          'Defaults to 1 GB.', 'default': None},
         {'name': 'buffer_shape', 'type': tuple, 'doc': 'Manually defined shape of the buffer.', 'default': None},
-        {'name': 'chunk_mb', 'type': float,
+        {'name': 'chunk_mb', 'type': (float, int),
          'doc': 'If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold. '
          'Defaults to 1 MB.', 'default': None},
         {'name': 'chunk_shape', 'type': tuple, 'doc': 'Manually defined shape of the chunks.', 'default': None}

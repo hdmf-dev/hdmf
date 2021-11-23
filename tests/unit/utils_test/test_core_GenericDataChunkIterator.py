@@ -73,3 +73,23 @@ class GenericDataChunkIteratorTests(TestCase):
             iterator_options=iterator_options,
         )
         self.check_hdf5_write(iterator_options=iterator_options)
+
+    def test_buffer_gb_option(self):
+        # buffer is smaller than default chunk; should collapse to chunk shape
+        resulting_buffer_shape = (1580, 316)
+        iterator_options = dict(buffer_gb=0.0005)
+        self.check_first_chunk_call(
+            expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in resulting_buffer_shape]),
+            iterator_options=iterator_options,
+        )
+        self.check_hdf5_write(iterator_options=iterator_options)
+
+        # buffer is larger than total data size; should collapse to maxshape
+        resulting_buffer_shape = (2000, 384)
+        for buffer_gb_input_dtype_pass in [2, 2.]:
+            iterator_options = dict(buffer_gb=2)
+            self.check_first_chunk_call(
+                expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in resulting_buffer_shape]),
+                iterator_options=iterator_options,
+            )
+            self.check_hdf5_write(iterator_options=iterator_options)
