@@ -376,7 +376,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
-        # for the ecternal reference.
+        # for the external reference.
         table = DynamicTable(name='table', description='table')
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
@@ -394,6 +394,27 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.resources.data, [('resource0', 'resource0_uri')])
         self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(table.id.object_id, '', '')])
+
+    def test_add_ref_column_as_attribute(self):
+        # Test to make sure the attribute object is being used for the id
+        # for the external reference.
+        table = DynamicTable(name='table', description='table')
+        table.add_column(name='col1', description="column")
+        table.add_row(id=0, col1='data')
+
+        er = ExternalResources(name='example')
+        er.add_ref(container=table,
+                   attribute='col1',
+                   key='key1',
+                   resource_name='resource0',
+                   resource_uri='resource0_uri',
+                   entity_id='entity_0',
+                   entity_uri='entity_0_uri')
+
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.resources.data, [('resource0', 'resource0_uri')])
+        self.assertEqual(er.entities.data, [(0, 0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.objects.data, [(table['col1'].object_id, '', '')])
 
     def test_add_ref_compound_data(self):
         er = ExternalResources(name='example')

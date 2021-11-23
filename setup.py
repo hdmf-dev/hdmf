@@ -23,7 +23,7 @@ reqs = [
     'scipy>=1.1,<2',
     'pandas>=1.0.5,<2',
     'ruamel.yaml>=0.16,<1',
-    'jsonschema>=2.6.0,<4',
+    'jsonschema>=2.6.0,<5',
     'psutil>=2.0.0,<6',
     'setuptools',
 ]
@@ -51,6 +51,7 @@ setup_args = {
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: BSD License",
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
