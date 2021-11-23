@@ -19,6 +19,8 @@
 - Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
 - Fixed adding containers as a child to a parent container sometimes not marking the parent container as modified. @rly
   (#683)
+- Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
+  @oruebel (#666)
 
 
 ## HDMF 3.1.1 (July 29, 2021)
