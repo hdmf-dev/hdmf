@@ -61,7 +61,7 @@ class GenericDataChunkIteratorTests(TestCase):
             "_get_data, _get_dtype, _get_maxshape"
         )
 
-    def test_option_assertions(self):
+    def test_joint_option_assertions(self):
         with self.assertRaises(AssertionError) as error:
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=(2000, 384), buffer_gb=1)
         self.assertEqual(str(error.exception), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!")
@@ -69,6 +69,59 @@ class GenericDataChunkIteratorTests(TestCase):
         with self.assertRaises(AssertionError) as error:
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=(1580, 316), chunk_mb=1)
         self.assertEqual(str(error.exception), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!")
+
+        buffer_shape = (1000, 192)
+        chunk_shape = (100, 384)
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
+        self.assertEqual(
+            str(error.exception),
+            f"Some dimensions of chunk_shape ({chunk_shape}) exceed the manual buffer shape ({buffer_shape})!"
+        )
+
+        buffer_shape = (1000, 192)
+        chunk_shape = (1000, 5)
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
+        self.assertEqual(
+            str(error.exception),
+            f"Some dimensions of chunk_shape ({chunk_shape}) do not evenly divide the buffer shape ({buffer_shape})!"
+        )
+
+    def test_buffer_option_assertions(self):
+        buffer_gb = -1
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
+        self.assertEqual(str(error.exception), f"buffer_gb ({buffer_gb}) must be greater than zero!")
+
+        buffer_gb = 99999
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
+        self.assertEqual(str(error.exception), f"Not enough memory in system handle buffer_gb of {buffer_gb}!")
+
+        buffer_shape = (-1, 384)
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
+        self.assertEqual(str(error.exception), f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!")
+
+        buffer_shape = (2001, 384)
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
+        self.assertEqual(
+            str(error.exception),
+            f"Some dimensions of buffer_shape ({buffer_shape}) exceed the data dimensions ({self.test_array.shape})!"
+        )
+
+    def test_chunk_option_assertions(self):
+        chunk_mb = -1
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=chunk_mb)
+        self.assertEqual(str(error.exception), f"chunk_mb ({chunk_mb}) must be greater than zero!")
+
+        chunk_shape = (-1, 384)
+        with self.assertRaises(AssertionError) as error:
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
+        self.assertEqual(str(error.exception), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!")
 
     def test_numpy_array_chunk_iterator(self):
         iterator_options = dict()

@@ -132,12 +132,17 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
     @docval(
-        {'name': 'chunk_mb', 'type': (float, int),
-         'doc': 'Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.', 'default': None}
+        dict(
+            name="chunk_mb",
+            type=(float, int),
+            doc="Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.",
+            default=None,
+        )
     )
     def _get_default_chunk_shape(self, **kwargs):
         """Select chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data."""
         chunk_mb = getargs('chunk_mb', kwargs)
+        assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         n_dims = len(self.maxshape)
         itemsize = self.dtype.itemsize
@@ -153,9 +158,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
     @docval(
-        {'name': 'buffer_gb', 'type': (float, int),
-         'doc': 'Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.',
-         'default': None}
+        dict(
+           name="buffer_gb",
+           type=(float, int),
+           doc="Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.",
+           default=None,
+        )
     )
     def _get_default_buffer_shape(self, **kwargs):
         """
@@ -164,6 +172,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Assumes the chunk_shape has already been set.
         """
         buffer_gb = getargs('buffer_gb', kwargs)
+        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert all(np.array(self.chunk_shape) > 0), f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
 
         k = np.floor(
             (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
@@ -174,14 +184,36 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ])
 
     __docval_init = (
-        {'name': 'buffer_gb', 'type': (float, int),
-         'doc': 'If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold. '
-         'Defaults to 1 GB.', 'default': None},
-        {'name': 'buffer_shape', 'type': tuple, 'doc': 'Manually defined shape of the buffer.', 'default': None},
-        {'name': 'chunk_mb', 'type': (float, int),
-         'doc': 'If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold. '
-         'Defaults to 1 MB.', 'default': None},
-        {'name': 'chunk_shape', 'type': tuple, 'doc': 'Manually defined shape of the chunks.', 'default': None}
+        dict(
+            name="buffer_gb",
+            type=(float, int),
+            doc=(
+                "If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold.",
+                "Defaults to 1GB."
+            ),
+            default=None,
+        ),
+        dict(
+            name="buffer_shape",
+            type=tuple,
+            doc="Manually defined shape of the buffer.",
+            default=None,
+        ),
+        dict(
+            name="chunk_mb",
+            type=(float, int),
+            doc=(
+                "If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold.",
+                "Defaults to 1MB."
+            ),
+            default=None,
+        ),
+        dict(
+            name="chunk_shape",
+            type=tuple,
+            doc="Manually defined shape of the chunks.",
+            default=None,
+        ),
     )
 
     @docval(*__docval_init)
@@ -197,11 +229,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs('buffer_gb',
-                                                                 'buffer_shape',
-                                                                 'chunk_mb',
-                                                                 'chunk_shape',
-                                                                 kwargs)
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs(
+            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", kwargs
+        )
 
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
@@ -229,11 +259,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         array_chunk_shape = np.array(self.chunk_shape)
         array_buffer_shape = np.array(self.buffer_shape)
         array_maxshape = np.array(self.maxshape)
-        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
             buffer_gb < psutil.virtual_memory().available / 1e9
         ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
-        assert all(array_chunk_shape > 0), f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
         assert all(array_buffer_shape > 0), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
         assert all(
             array_buffer_shape <= array_maxshape
