@@ -6,8 +6,6 @@ from shutil import rmtree
 import h5py
 
 from hdmf.data_utils import GenericDataChunkIterator
-# from hdmf.backends.hdf5.h5tools import HDF5IO
-# from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.testing import TestCase
 
 
@@ -108,18 +106,17 @@ class GenericDataChunkIteratorTests(TestCase):
             )
             self.check_direct_hdf5_write(iterator_options=iterator_options)
 
-    # TODO: need to figure out how to use a HDF5IO with a H5DataIO to test intercommunication
-    # def test_chunk_shape_option(self):
-    #     test_chunk_shape = (1580, 316)
-    #     iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=test_chunk_shape)
-    #     self.assertEqual(iterator.chunk_shape, test_chunk_shape)
+    def test_chunk_shape_option(self):
+        test_chunk_shape = (1580, 316)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=test_chunk_shape)
+        self.assertEqual(iterator.chunk_shape, test_chunk_shape)
 
-    # def test_chunk_mb_option(self):
-    #     test_chunk_shape = (1115, 223)
-    #     iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=.5)
-    #     self.assertEqual(iterator.chunk_shape, test_chunk_shape)
+    def test_chunk_mb_option(self):
+        test_chunk_shape = (1115, 223)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=.5)
+        self.assertEqual(iterator.chunk_shape, test_chunk_shape)
 
-    #     # chunk is larger than total data size; should collapse to maxshape
-    #     test_chunk_shape = (2000, 384)
-    #     iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=2)
-    #     self.assertEqual(iterator.chunk_shape, test_chunk_shape)
+        # chunk is larger than total data size; should collapse to maxshape
+        test_chunk_shape = (2000, 384)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=2)
+        self.assertEqual(iterator.chunk_shape, test_chunk_shape)
