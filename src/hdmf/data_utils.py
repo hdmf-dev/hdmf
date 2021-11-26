@@ -2,7 +2,7 @@ import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
-from typing import Optional, Tuple, Union
+from typing import Tuple
 from itertools import product, chain
 
 import h5py
