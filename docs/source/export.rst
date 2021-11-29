@@ -5,8 +5,8 @@ Export is a new feature in HDMF 2.0. You can use export to take a container that
 a different file, with or without modifications to the container in memory.
 The in-memory container being exported will be written to the exported file as if it was never read from a file.
 
-To export a container, first read the container from a file, then create a new 
-:py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` object for exporting the data, then call 
+To export a container, first read the container from a file, then create a new
+:py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` object for exporting the data, then call
 :py:meth:`~hdmf.backends.hdf5.h5tools.HDF5IO.export` on the
 :py:class:`~hdmf.backends.hdf5.h5tools.HDF5IO` object, passing in the IO object used to read the container
 and optionally, the container itself, which may be modified in memory between reading and exporting.
@@ -33,10 +33,21 @@ file and not the read file.
   :py:meth:`Container.set_modified() <hdmf.container.AbstractContainer.set_modified>` must be called
   on the container before exporting.
 
+.. code-block:: python
+
+   with HDF5IO(self.read_path, manager=manager, mode='r') as read_io:
+       container = read_io.read()
+       # ...  # modify container
+       container.set_modified()  # this may be necessary if the modifications are changes to attributes
+       with HDF5IO(self.export_path, mode='w') as export_io:
+           export_io.export(src_io=read_io, container=container)
+
 .. note::
 
   Modifications to :py:class:`h5py.Dataset <h5py.Dataset>` objects act *directly* on the read file on disk.
-  Changes are applied immediately and do not require exporting or writing the file. If you want to modify a dataset only in the new file, than you should replace the whole object with a new array holding the modified data. To prevent unintentional changes to the source file, the source file should be opened with ``mode='r'``.
+  Changes are applied immediately and do not require exporting or writing the file. If you want to modify a dataset
+  only in the new file, than you should replace the whole object with a new array holding the modified data. To
+  prevent unintentional changes to the source file, the source file should be opened with ``mode='r'``.
 
 Can I export a newly instantiated container?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -91,3 +102,11 @@ new IDs. Note: calling the :py:meth:`generate_new_id <hdmf.container.AbstractCon
 changes the object IDs of the containers in memory. These changes are not reflected in the original file from
 which the containers were read unless the :py:meth:`HDF5IO.write <hdmf.backends.hdf5.h5tools.HDF5IO.write>`
 method is subsequently called.
+
+.. code-block:: python
+
+   with HDF5IO(self.read_path, manager=manager, mode='r') as read_io:
+       container = read_io.read()
+       container.generate_new_id()
+       with HDF5IO(self.export_path, mode='w') as export_io:
+           export_io.export(src_io=read_io, container=container)
