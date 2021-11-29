@@ -17,7 +17,7 @@ with creating a specific instance for your data format or API access pattern.
 # Introduction
 # ------------
 # The :py:class:`~hdmf.data_utils.GenericDataChunkIterator` class represents a semi-abstract
-# version of a DataChunkIterator that automatically handles the selection of buffer regions
+# version of a :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` that automatically handles the selection of buffer regions
 # and resolves communication of compatible chunk regions within a H5DataIO wrapper. It does not,
 # however, know how data (values) or metadata (data type, full shape) ought to be directly
 # accessed. This is by intention to be fully agnostic to a range of indexing methods and
