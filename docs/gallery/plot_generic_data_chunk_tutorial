@@ -3,7 +3,7 @@
 .. _dynamictable-tutorial:
 
 GenericDataChunkIterator Tutorial
-=====================
+==================================
 
 This is a tutorial for interacting with ``GenericDataChunkIterator`` objects. This tutorial
 is written for beginners and does not describe the full capabilities and nuances
