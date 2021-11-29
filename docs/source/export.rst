@@ -45,7 +45,9 @@ file and not the read file.
 .. note::
 
   Modifications to :py:class:`h5py.Dataset <h5py.Dataset>` objects act *directly* on the read file on disk.
-  Changes are applied immediately and do not require exporting or writing the file. If you want to modify a dataset only in the new file, than you should replace the whole object with a new array holding the modified data. To prevent unintentional changes to the source file, the source file should be opened with ``mode='r'``.
+  Changes are applied immediately and do not require exporting or writing the file. If you want to modify a dataset
+  only in the new file, than you should replace the whole object with a new array holding the modified data. To
+  prevent unintentional changes to the source file, the source file should be opened with ``mode='r'``.
 
 Can I export a newly instantiated container?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
