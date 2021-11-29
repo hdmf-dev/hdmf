@@ -12,6 +12,7 @@
 - Added support for Python 3.10. @rly (#679)
 - Updated requirements. @rly @TheChymera (#681)
 - Improved testing for `ExternalResources`. @mavaylon (#673)
+- Improved docs for export. @rly (#674)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
