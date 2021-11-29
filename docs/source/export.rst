@@ -33,6 +33,15 @@ file and not the read file.
   :py:meth:`Container.set_modified() <hdmf.container.AbstractContainer.set_modified>` must be called
   on the container before exporting.
 
+.. code-block:: python
+
+   with HDF5IO(self.read_path, manager=manager, mode='r') as read_io:
+       container = read_io.read()
+       # ...  # modify container
+       container.set_modified()  # this may be necessary if the modifications are changes to attributes
+       with HDF5IO(self.export_path, mode='w') as export_io:
+           export_io.export(src_io=read_io, container=container)
+
 .. note::
 
   Modifications to :py:class:`h5py.Dataset <h5py.Dataset>` objects act *directly* on the read file on disk.
