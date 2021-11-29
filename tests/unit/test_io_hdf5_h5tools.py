@@ -2925,6 +2925,26 @@ class TestExport(TestCase):
                 with self.assertRaisesWith(UnsupportedOperation, msg):
                     export_io.export(src_io=read_io)
 
+    def test_with_new_id(self):
+        """Test that exporting with a src_io without a manager raises an error."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+            data = read_io.read()
+            original_id = data.object_id
+            data.generate_new_id()
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=data)
+
+        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+            data = read_io.read()
+            self.assertTrue(original_id != data.object_id)
+
 
 class TestDatasetRefs(TestCase):
 
