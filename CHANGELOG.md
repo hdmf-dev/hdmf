@@ -4,19 +4,25 @@
 
 ### New features
 - Added ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
-- Added ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization @oruebel (#667)
-- Added ``export_to_sqlite`` method for ``hdmf.common.resources.ExternalResource``  @oruebel (#667)
+- Added ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization. @oruebel (#667)
+- Added ``export_to_sqlite`` method for ``hdmf.common.resources.ExternalResource``. @oruebel (#667)
 
 ### Minor improvements
-- Plot results in external resources tutorial.  @oruebel (#667)
-
-
-## HDMF 3.1.2 (Upcoming)
+- Plotted results in external resources tutorial. @oruebel (#667)
+- Added support for Python 3.10. @rly (#679)
+- Updated requirements. @rly @TheChymera (#681)
+- Improved testing for `ExternalResources`. @mavaylon (#673)
+- Improved docs for export. @rly (#674)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
 - Fixed broken tests in Python 3.10. @rly (#664)
 - Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
+- Fixed adding containers as a child to a parent container sometimes not marking the parent container as modified. @rly
+  (#683)
+- Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
+  @oruebel (#666)
+
 
 ## HDMF 3.1.1 (July 29, 2021)
 
