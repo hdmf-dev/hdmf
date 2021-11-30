@@ -21,7 +21,7 @@ with creating a specific instance for your data format or API access pattern.
 # and resolves communication of compatible chunk regions within a H5DataIO wrapper. It does not,
 # however, know how data (values) or metadata (data type, full shape) ought to be directly
 # accessed. This is by intention to be fully agnostic to a range of indexing methods and
-# format-independent APIs, rather than make strong assumptions about how data ranges are to be sliced..
+# format-independent APIs, rather than make strong assumptions about how data ranges are to be sliced.
 
 ###############################################################################
 # Constructing a simple child class
@@ -82,7 +82,7 @@ for j, buffer in enumerate(my_custom_iterator, start=1):
 
 ###############################################################################
 # Writing to an HDF5 file with full control of shape arguments
-# -----------------------
+# ------------------------------------------------------------
 # The true intention of returning data selections of this form, and within a DataChunk object,
 # is to write these piecewise to an HDF5 dataset.
 
