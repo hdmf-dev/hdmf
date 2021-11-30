@@ -10,7 +10,6 @@ from hdmf.testing import TestCase
 
 
 class GenericDataChunkIteratorTests(TestCase):
-
     class TestNumpyArrayDataChunkIterator(GenericDataChunkIterator):
         def __init__(self, array: np.ndarray, **kwargs):
             self.array = array
@@ -28,22 +27,35 @@ class GenericDataChunkIteratorTests(TestCase):
     def setUp(self):
         np.random.seed(seed=0)
         self.test_dir = Path(mkdtemp())
-        self.test_array = np.random.randint(low=-2**15, high=2**15-1, size=(2000, 384), dtype="int16")
+        self.test_array = np.random.randint(
+            low=-(2 ** 15), high=2 ** 15 - 1, size=(2000, 384), dtype="int16"
+        )
 
     def tearDown(self):
         rmtree(self.test_dir)
 
     def check_first_chunk_call(self, expected_selection, iterator_options):
-        test = self.TestNumpyArrayDataChunkIterator(array=self.test_array, **iterator_options)
+        test = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, **iterator_options
+        )
         first_data_chunk = next(test)
         self.assertEqual(first_data_chunk.selection, expected_selection)
-        np.testing.assert_array_equal(first_data_chunk, self.test_array[expected_selection])
+        np.testing.assert_array_equal(
+            first_data_chunk, self.test_array[expected_selection]
+        )
 
     def check_direct_hdf5_write(self, iterator_options):
-        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, **iterator_options)
-        with h5py.File(name=self.test_dir / "test_generic_iterator_array.hdf5", mode="w") as f:
+        iterator = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, **iterator_options
+        )
+        with h5py.File(
+            name=self.test_dir / "test_generic_iterator_array.hdf5", mode="w"
+        ) as f:
             dset = f.create_dataset(
-                name="test", shape=self.test_array.shape, dtype="int16", chunks=iterator.chunk_shape
+                name="test",
+                shape=self.test_array.shape,
+                dtype="int16",
+                chunks=iterator.chunk_shape,
             )
             for chunk in iterator:
                 dset[chunk.selection] = chunk.data
@@ -53,80 +65,127 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_abstract_assertions(self):
         class TestGenericDataChunkIterator(GenericDataChunkIterator):
             pass
-        with self.assertRaises(TypeError) as error:
+
+        with self.assertRaisesWith(
+            exc_type=TypeError,
+            exc_msg=(
+                "Can't instantiate abstract class TestGenericDataChunkIterator with abstract methods "
+                "_get_data, _get_dtype, _get_maxshape"
+            ),
+        ):
             TestGenericDataChunkIterator()
-        self.assertEqual(
-            str(error.exception),
-            "Can't instantiate abstract class TestGenericDataChunkIterator with abstract methods "
-            "_get_data, _get_dtype, _get_maxshape"
-        )
 
     def test_joint_option_assertions(self):
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=(2000, 384), buffer_gb=1)
-        self.assertEqual(str(error.exception), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="Only one of 'buffer_gb' or 'buffer_shape' can be specified!",
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, buffer_shape=(2000, 384), buffer_gb=1
+            )
 
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=(1580, 316), chunk_mb=1)
-        self.assertEqual(str(error.exception), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="Only one of 'chunk_mb' or 'chunk_shape' can be specified!",
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, chunk_shape=(1580, 316), chunk_mb=1
+            )
 
         buffer_shape = (1000, 192)
         chunk_shape = (100, 384)
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
-        self.assertEqual(
-            str(error.exception),
-            f"Some dimensions of chunk_shape ({chunk_shape}) exceed the manual buffer shape ({buffer_shape})!"
-        )
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                f"Some dimensions of chunk_shape ({chunk_shape}) exceed the manual "
+                f"buffer shape ({buffer_shape})!"
+            ),
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                buffer_shape=buffer_shape,
+                chunk_shape=chunk_shape,
+            )
 
         buffer_shape = (1000, 192)
         chunk_shape = (1000, 5)
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
-        self.assertEqual(
-            str(error.exception),
-            f"Some dimensions of chunk_shape ({chunk_shape}) do not evenly divide the buffer shape ({buffer_shape})!"
-        )
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                f"Some dimensions of chunk_shape ({chunk_shape}) do not evenly divide the "
+                f"buffer shape ({buffer_shape})!"
+            ),
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                buffer_shape=buffer_shape,
+                chunk_shape=chunk_shape,
+            )
 
     def test_buffer_option_assertions(self):
         buffer_gb = -1
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
-        self.assertEqual(str(error.exception), f"buffer_gb ({buffer_gb}) must be greater than zero!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, buffer_gb=buffer_gb
+            )
 
         buffer_gb = 99999
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
-        self.assertEqual(str(error.exception), f"Not enough memory in system handle buffer_gb of {buffer_gb}!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, buffer_gb=buffer_gb
+            )
 
         buffer_shape = (-1, 384)
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
-        self.assertEqual(str(error.exception), f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, buffer_shape=buffer_shape
+            )
 
         buffer_shape = (2001, 384)
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
-        self.assertEqual(
-            str(error.exception),
-            f"Some dimensions of buffer_shape ({buffer_shape}) exceed the data dimensions ({self.test_array.shape})!"
-        )
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                f"Some dimensions of buffer_shape ({buffer_shape}) exceed the data "
+                f"dimensions ({self.test_array.shape})!"
+            )
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, buffer_shape=buffer_shape
+            )
 
     def test_chunk_option_assertions(self):
         chunk_mb = -1
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=chunk_mb)
-        self.assertEqual(str(error.exception), f"chunk_mb ({chunk_mb}) must be greater than zero!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"chunk_mb ({chunk_mb}) must be greater than zero!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, chunk_mb=chunk_mb
+            )
 
         chunk_shape = (-1, 384)
-        with self.assertRaises(AssertionError) as error:
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
-        self.assertEqual(str(error.exception), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, chunk_shape=chunk_shape
+            )
 
     def test_numpy_array_chunk_iterator(self):
         iterator_options = dict()
         self.check_first_chunk_call(
-          expected_selection=(slice(0, 2000), slice(0, 384)), iterator_options=iterator_options
+            expected_selection=(slice(0, 2000), slice(0, 384)),
+            iterator_options=iterator_options,
         )
         self.check_direct_hdf5_write(iterator_options=iterator_options)
 
@@ -134,7 +193,9 @@ class GenericDataChunkIteratorTests(TestCase):
         test_buffer_shape = (1580, 316)
         iterator_options = dict(buffer_shape=test_buffer_shape)
         self.check_first_chunk_call(
-            expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in test_buffer_shape]),
+            expected_selection=tuple(
+                [slice(0, buffer_shape_axis) for buffer_shape_axis in test_buffer_shape]
+            ),
             iterator_options=iterator_options,
         )
         self.check_direct_hdf5_write(iterator_options=iterator_options)
@@ -144,32 +205,48 @@ class GenericDataChunkIteratorTests(TestCase):
         resulting_buffer_shape = (1580, 316)
         iterator_options = dict(buffer_gb=0.0005)
         self.check_first_chunk_call(
-            expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in resulting_buffer_shape]),
+            expected_selection=tuple(
+                [
+                    slice(0, buffer_shape_axis)
+                    for buffer_shape_axis in resulting_buffer_shape
+                ]
+            ),
             iterator_options=iterator_options,
         )
         self.check_direct_hdf5_write(iterator_options=iterator_options)
 
         # buffer is larger than total data size; should collapse to maxshape
         resulting_buffer_shape = (2000, 384)
-        for buffer_gb_input_dtype_pass in [2, 2.]:
+        for buffer_gb_input_dtype_pass in [2, 2.0]:
             iterator_options = dict(buffer_gb=2)
             self.check_first_chunk_call(
-                expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in resulting_buffer_shape]),
+                expected_selection=tuple(
+                    [
+                        slice(0, buffer_shape_axis)
+                        for buffer_shape_axis in resulting_buffer_shape
+                    ]
+                ),
                 iterator_options=iterator_options,
             )
             self.check_direct_hdf5_write(iterator_options=iterator_options)
 
     def test_chunk_shape_option(self):
         test_chunk_shape = (1580, 316)
-        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=test_chunk_shape)
+        iterator = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, chunk_shape=test_chunk_shape
+        )
         self.assertEqual(iterator.chunk_shape, test_chunk_shape)
 
     def test_chunk_mb_option(self):
         test_chunk_shape = (1115, 223)
-        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=.5)
+        iterator = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, chunk_mb=0.5
+        )
         self.assertEqual(iterator.chunk_shape, test_chunk_shape)
 
         # chunk is larger than total data size; should collapse to maxshape
         test_chunk_shape = (2000, 384)
-        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=2)
+        iterator = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, chunk_mb=2
+        )
         self.assertEqual(iterator.chunk_shape, test_chunk_shape)
