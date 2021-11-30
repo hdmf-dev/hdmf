@@ -7,7 +7,6 @@ from itertools import product, chain
 
 import h5py
 import numpy as np
-import psutil
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
@@ -259,9 +258,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         array_chunk_shape = np.array(self.chunk_shape)
         array_buffer_shape = np.array(self.buffer_shape)
         array_maxshape = np.array(self.maxshape)
-        assert (
-            buffer_gb < psutil.virtual_memory().available / 1e9
-        ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
         assert all(array_buffer_shape > 0), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
         assert all(
             array_buffer_shape <= array_maxshape
@@ -304,7 +300,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def __next__(self):
         """
         Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary.
-        
+
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """

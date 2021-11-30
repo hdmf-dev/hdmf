@@ -24,7 +24,6 @@ reqs = [
     'pandas>=1.0.5,<2',
     'ruamel.yaml>=0.16,<1',
     'jsonschema>=2.6.0,<5',
-    'psutil>=2.0.0,<6',
     'setuptools',
 ]
 

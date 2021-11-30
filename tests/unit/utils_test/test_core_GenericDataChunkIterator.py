@@ -132,15 +132,6 @@ class GenericDataChunkIteratorTests(TestCase):
                 array=self.test_array, buffer_gb=buffer_gb
             )
 
-        buffer_gb = 99999
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg=f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
-        ):
-            self.TestNumpyArrayDataChunkIterator(
-                array=self.test_array, buffer_gb=buffer_gb
-            )
-
         buffer_shape = (-1, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
