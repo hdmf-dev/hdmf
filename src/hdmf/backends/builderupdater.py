@@ -31,30 +31,36 @@ class BuilderUpdater:
                 for change_dict in version_dict.get('changes'):
                     object_id = change_dict['object_id']
                     relative_path = change_dict.get('relative_path')
-                    new_value = change_dict['new_value']
+                    new_value = change_dict['value']
 
                     builder = builder_map[object_id]
+                    # TODO handle paths to links
+                    # TODO handle object references
                     if relative_path in builder.attributes:
-                        # TODO handle different dtypes
+                        # TODO handle different dtypes including compound dtypes
                         builder.attributes[relative_path] = new_value
-                    elif isinstance(builder, GroupBuilder):
-                        obj = builder.get(relative_path)
-                        if isinstance(obj, DatasetBuilder):  # update data in sub-DatasetBuilder
-                            cls.__update_dataset_builder(obj, new_value)
-                        else:
-                            raise ValueError("Relative path '%s' not recognized as a dataset or attribute")
+                    elif isinstance(builder, GroupBuilder):  # GroupBuilder has object_id
+                        sub_dset_builder, attr_name = builder.get_subbuilder(relative_path)
+                        if sub_dset_builder is None:
+                            raise ValueError("Relative path '%s' not recognized as a dataset or attribute"
+                                             % relative_path)
+                        if attr_name is None:  # update data in sub-DatasetBuilder
+                            cls.__update_dataset_builder(sub_dset_builder, new_value)
+                        else:  # update attribute
+                            sub_dset_builder.attributes[attr_name] = new_value
+
                     else:  # DatasetBuilder has object_id
                         if not relative_path:  # update data
                             cls.__update_dataset_builder(builder, new_value)
                         else:
-                            raise ValueError("Relative path '%s' not recognized as None or attribute")
-        # TODO handle compound dtypes
+                            raise ValueError("Relative path '%s' not recognized as None or attribute" % relative_path)
 
         return f_builder
 
     @classmethod
     def __update_dataset_builder(cls, dset_builder, value):
-        # TODO handle different dtypes
+        # TODO handle different dtypes including compound dtypes
+        # TODO consider replacing slices of a dataset or attribute
         dset_builder['data'] = value
 
     @classmethod

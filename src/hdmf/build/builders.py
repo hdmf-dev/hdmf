@@ -277,6 +277,33 @@ class GroupBuilder(BaseBuilder):
         else:
             if key_ar[0] in self.groups:
                 return self.groups[key_ar[0]].__get_rec(key_ar[1:])
+            elif key_ar[0] in self.datasets:  # "dset/x" must be an attribute on dset
+                assert len(key_ar) == 2
+                return self.datasets[key_ar[0]].attributes[key_ar[1]]
+        raise KeyError(key_ar[0])
+
+    def get_subbuilder(self, key, default=None):
+        """Like dict.get, but looks in groups and datasets sub-dictionaries and ignores trailing attributes and links.
+        """
+        try:
+            key_ar = _posixpath.normpath(key).split('/')
+            return self.__get_subbuilder_rec(key_ar)
+        except KeyError:
+            return default
+
+    def __get_subbuilder_rec(self, key_ar):
+        # recursive helper for get_subbuilder
+        # returns sub-builder and attribute name if present
+        if key_ar[0] in self.groups:
+            if len(key_ar) == 1:
+                return self.groups[key_ar[0]], None
+            elif key_ar[1] in (self.groups + self.datasets):
+                return self.groups[key_ar[0]].__get_subbuilder_rec(key_ar[1:])
+        elif key_ar[0] in self.datasets:  # "dset/x" must be an attribute on dset
+            if len(key_ar) == 1:
+                return self.datasets[key_ar[0]], None
+            assert len(key_ar) == 2
+            return self.datasets[key_ar[0]], key_ar[1]
         raise KeyError(key_ar[0])
 
     def __setitem__(self, args, val):

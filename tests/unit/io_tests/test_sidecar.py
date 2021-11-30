@@ -20,35 +20,53 @@ class TestBasic(TestCase):
 
         version2 = {
             "label": "version 2",
-            "description": "change attr1 from 'old' to 'my experiment' and my_data from [1, 2, 3] to [4, 5, 6, 7]",
+            "description": "change attr1 from 'old' to 'my experiment' and my_data from [1, 2, 3] to [4, 5]",
+            "datetime": "2020-10-29T19:15:15.789Z",
+            "agent": "John Doe",
             "changes": [
                 {
                     "object_id": foo1.object_id,
                     "relative_path": "attr1",
-                    "new_value": "my experiment"
+                    "value": "my experiment"
                 },
                 {
                     "object_id": foo1.object_id,
                     "relative_path": "my_data",
-                    "new_value": [4, 5, 6, 7]
+                    "value": [4, 5],
+                    "dtype": "int32"
                 }
             ]
         }
 
         version3 = {
             "label": "version 3",
-            "description": "change sub_foo/my_data from [-1, -2, -3] to [[0]]",
+            "description": ("change sub_foo/my_data from [-1, -2, -3] to [[0]], delete my_data/attr2, and change "
+                            "my_data from [4, 5] to [6, 7]"),
+            "datetime": "2021-11-30T20:16:16.790Z",
+            "agent": "Jane Doe",
             "changes": [
                 {
                     "object_id": foo2.object_id,
                     "relative_path": "my_data",
-                    "new_value": [[0]]
-                }
+                    "value": [[0]]
+                },
+                {
+                    "object_id": foo1.object_id,
+                    "relative_path": "my_data/attr2",
+                    "value": None  # will be encoded on disk as null
+                },
+                {
+                    "object_id": foo1.object_id,
+                    "relative_path": "my_data",
+                    "value": [6, 7],
+                    "dtype": "int8"
+                },
             ]
         }
 
         sidecar = dict()
         sidecar["versions"] = [version2, version3]
+        sidecar["schema_version"] = "0.1.0"
 
         self.json_path = "./tests/unit/io_tests/test_sidecar.json"
         with open(self.json_path, 'w') as outfile:
@@ -64,8 +82,9 @@ class TestBasic(TestCase):
         io = HDF5IO(self.h5_path, 'r', manager=_get_manager())
         foo1 = io.read()
         assert foo1.attr1 == "my experiment"
-        assert foo1.my_data == [4, 5, 6, 7]
+        assert foo1.my_data == [6, 7]  # TODO test dtype
         assert foo1.sub_foo.my_data == [[0]]
+        assert foo1.attr2 is None
 
 
 class Foo(Container):
@@ -73,7 +92,7 @@ class Foo(Container):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
             {'name': 'my_data', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer dataset'},
             {'name': 'attr1', 'type': str, 'doc': 'a string attribute'},
-            {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute'},
+            {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
             {'name': 'sub_foo', 'type': 'Foo', 'doc': 'a child Foo', 'default': None})
     def __init__(self, **kwargs):
         name, my_data, attr1, attr2, sub_foo = getargs('name', 'my_data', 'attr1', 'attr2', 'sub_foo', kwargs)
@@ -127,6 +146,7 @@ def _get_manager():
                         doc='a 1-D integer attribute',
                         dtype='int',
                         shape=[None, ],
+                        required=False
                     )
                 ]
             )
