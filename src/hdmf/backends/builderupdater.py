@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from ..build import GroupBuilder, DatasetBuilder
+from ..build import GroupBuilder
 from ..utils import docval, getargs
 
 

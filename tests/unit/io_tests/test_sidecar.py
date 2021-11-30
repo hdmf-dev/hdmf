@@ -18,8 +18,8 @@ class TestBasic(TestCase):
         with HDF5IO(self.h5_path, manager=_get_manager(), mode='w') as io:
             io.write(foo1)
 
-        version2 = {
-            "label": "version 2",
+        version2_0_0 = {
+            "label": "2.0.0",
             "description": "change attr1 from 'old' to 'my experiment' and my_data from [1, 2, 3] to [4, 5]",
             "datetime": "2020-10-29T19:15:15.789Z",
             "agent": "John Doe",
@@ -38,10 +38,10 @@ class TestBasic(TestCase):
             ]
         }
 
-        version3 = {
-            "label": "version 3",
+        version3_0_0 = {
+            "label": "3.0.0",
             "description": ("change sub_foo/my_data from [-1, -2, -3] to [[0]], delete my_data/attr2, and change "
-                            "my_data from [4, 5] to [6, 7]"),
+                            "dtype of my_data"),
             "datetime": "2021-11-30T20:16:16.790Z",
             "agent": "Jane Doe",
             "changes": [
@@ -64,8 +64,22 @@ class TestBasic(TestCase):
             ]
         }
 
+        version3_0_1 = {
+            "label": "3.0.1",
+            "description": "change my_data from [4, 5] to [6, 7]",
+            "datetime": "2021-11-30T20:17:16.790Z",
+            "agent": "Jane Doe",
+            "changes": [
+                {
+                    "object_id": foo1.object_id,
+                    "relative_path": "my_data",
+                    "value": [6, 7],
+                },
+            ]
+        }
+
         sidecar = dict()
-        sidecar["versions"] = [version2, version3]
+        sidecar["versions"] = [version2_0_0, version3_0_0, version3_0_1]
         sidecar["schema_version"] = "0.1.0"
 
         self.json_path = "./tests/unit/io_tests/test_sidecar.json"
