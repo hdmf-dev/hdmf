@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sidecar.schema.json",
+  "title": "Schema for the sidecar JSON file",
+  "description": "A schema for validating HDMF sidecar JSON files",
+  "version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "description",
+          "datetime",
+          "agent",
+          "changes"
+        ],
+        "properties": {
+          "label": {
+            "description": "Version label. Must conform to Semantic Versioning v2.0",
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+          },
+          "description": {"type": "string"},
+          "datetime": {"type": "string", "format": "date"},
+          "agent": {"type": "string"},
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "object_id",
+                "relative_path",
+                "value"
+              ],
+              "properties": {
+                "object_id": {
+                  "description": "Object ID. Must conform to UUID-4 with dashes",
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}\\-[0-9a-f]{4}\\-4[0-9a-f]{3}\\-[89ab][0-9a-f]{3}\\-[0-9a-f]{12}$"
+                },
+                "relative_path": {"type": "string"},
+                "value": {
+                  "description": "New value. If null, then the value is removed.",
+                  "member_region": { "type": ["array", "string", "number", "boolean", "null"] }
+                },
+                "dtype": {"$ref": "#/definitions/dtype"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "schema_version": {
+      "description": "The version of the sidecar JSON schema that the file conforms to. Must confirm to Semantic Versioning v2.0",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    }
+  },
+  "definitions": {
+    "protectedString": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "dtype": {
+      "anyOf": [
+        {"$ref": "#/definitions/flat_dtype"},
+        {"$ref": "#/definitions/compound_dtype"}
+      ]
+    },
+    "flat_dtype": {
+      "description": "Required string describing the data type of the attribute",
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "float",
+            "float32",
+            "double",
+            "float64",
+            "long",
+            "int64",
+            "int",
+            "int32",
+            "int16",
+            "int8",
+            "uint",
+            "uint32",
+            "uint16",
+            "uint8",
+            "uint64",
+            "numeric",
+            "text",
+            "utf",
+            "utf8",
+            "utf-8",
+            "ascii",
+            "bool",
+            "isodatetime"
+          ]
+        },
+        {"$ref": "#/definitions/ref_dtype"}
+      ]
+    },
+    "ref_dtype": {
+      "type": "object",
+      "required": ["target_type", "reftype"],
+      "properties": {
+        "target_type": {
+          "description": "Describes the neurodata_type of the target that the reference points to",
+          "type": "string"
+        },
+        "reftype": {
+          "description": "describes the kind of reference",
+          "type": "string",
+          "enum": ["ref", "reference", "object", "region"]
+        }
+      }
+    },
+    "compound_dtype": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "doc", "dtype"],
+        "properties": {
+          "name": {"$ref": "#/definitions/protectedString"},
+          "doc": {"type": "string"},
+          "dtype": {"$ref": "#/definitions/flat_dtype"}
+        }
+      }
+    }
+  }
+}
