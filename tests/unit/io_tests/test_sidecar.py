@@ -3,6 +3,7 @@ import os
 
 from hdmf import Container
 from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.backends import SidecarValidationError
 from hdmf.build import BuildManager, TypeMap, ObjectMapper
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
@@ -93,12 +94,40 @@ class TestBasic(TestCase):
             os.remove(self.json_path)
 
     def test_update_builder(self):
-        io = HDF5IO(self.h5_path, 'r', manager=_get_manager())
-        foo1 = io.read()
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            foo1 = io.read()
         assert foo1.attr1 == "my experiment"
         assert foo1.my_data == [6, 7]  # TODO test dtype
         assert foo1.sub_foo.my_data == [[0]]
         assert foo1.attr2 is None
+
+
+class TestFailValidation(TestCase):
+
+    def setUp(self):
+        self.h5_path = "./tests/unit/io_tests/test_sidecar_fail.h5"
+        foo2 = Foo('sub_foo', [-1, -2, -3], 'OLD', [-17])
+        foo1 = Foo('foo1', [1, 2, 3], 'old', [17], foo2)
+        with HDF5IO(self.h5_path, manager=_get_manager(), mode='w') as io:
+            io.write(foo1)
+
+        sidecar = dict()
+        sidecar["versions"] = []
+
+        self.json_path = "./tests/unit/io_tests/test_sidecar_fail.json"
+        with open(self.json_path, 'w') as outfile:
+            json.dump(sidecar, outfile, indent=4)
+
+    def tearDown(self):
+        if os.path.exists(self.h5_path):
+            os.remove(self.h5_path)
+        if os.path.exists(self.json_path):
+            os.remove(self.json_path)
+
+    def test_simple(self):
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            with self.assertRaises(SidecarValidationError):
+                io.read()
 
 
 class Foo(Container):

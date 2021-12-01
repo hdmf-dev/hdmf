@@ -6,6 +6,10 @@
   "version": "0.1.0",
   "type": "object",
   "additionalProperties": false,
+  "required": [
+    "versions",
+    "schema_version"
+  ],
   "properties": {
     "versions": {
       "type": "array",
