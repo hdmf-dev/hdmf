@@ -505,13 +505,13 @@ class Container(AbstractContainer):
     def add_ontology(self, **kwargs):
         attribute =  kwargs['attribute']
         field = kwargs['field']
-        key = kwargs['key']
+        key = np.unique(kwargs['key']) 
         ontology = kwargs['ontology']
 
         ontology_name = ontology.ontology_name
         ontology_uri = ontology.ontology_uri
 
-        container = self.get_ancestor_child(data_type='ExternalResources')# check container for external_resources.
+        container = self.get_ancestor_child(data_type='ExternalResources') # check container for external_resources.
         if container is None:
             msg = "Cannot find Container with ExternalResources"
             raise ValueError(msg)

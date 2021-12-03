@@ -2,6 +2,9 @@ import requests
 from .utils import docval, popargs, call_docval_func, get_docval
 from abc import abstractmethod
 from .errors import WebAPIOntologyException, LocalOntologyException
+import ruamel.yaml as yaml
+import os
+
 
 class Ontology():
     """
@@ -19,28 +22,6 @@ class Ontology():
     def get_ontology_entity(self, **kwargs):
         pass
 
-class WebAPIOntology(Ontology):
-    """
-
-    """
-    @docval(*get_docval(Ontology.__init__, 'version', 'ontology_name', 'ontology_uri'),
-            {'name': 'extension', 'type': str, 'doc': 'URI extension to the ontology URI'})
-    def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-        self.extension = kwargs['extension']
-
-    @docval(*get_docval(Ontology.get_ontology_entity, 'key'))
-    def get_ontology_entity(self, **kwargs): #make abstract in base ontology class
-        key = kwargs['key']
-        entity_uri = self.ontology_uri+self.extension+key
-
-        request = requests.get(entity_uri, headers={ "Content-Type" : "application/json"})
-        if not request.ok:
-            raise WebAPIOntologyException()
-        else:
-            request_json = request.json()
-            entity_id = request_json['id']
-            return entity_id, entity_uri
 
 class LocalOntology(Ontology):
     """
@@ -51,6 +32,33 @@ class LocalOntology(Ontology):
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self._ontology_entities = kwargs['_ontology_entities']
+        # self.write_ontology_yaml()
+
+    # have a function to save and pull up dict as yaml
+    @docval({'name': 'path', 'type': str, 'doc': 'A path of the local ontology', 'default': None},
+            {'name': 'ontology_dict', 'type': dict, 'doc': 'A dict of the local ontology', 'default': None})
+    def write_ontology_yaml(self, **kwargs):
+        path = kwargs['path']
+        ontology_dict = kwargs['ontology_dict']
+
+        if path is None:
+            path = os.path.dirname(os.path.abspath(__file__)) + "/local_" + self.ontology_name + ".yaml"
+        if ontology_dict is None:
+            ontology_dict=self._ontology_entities
+
+        with open(path, 'w+') as file:
+            yaml_obj=yaml.YAML(typ='safe', pure=True)
+            documents = yaml_obj.dump(ontology_dict, file)
+            return documents
+
+    @docval({'name': 'path', 'type': str, 'doc': 'A path of the local ontology'})
+    def read_ontology_yaml(self, **kwargs):
+        path = kwargs['path']
+
+        with open(path) as file:
+            yaml_obj=yaml.YAML(typ='safe', pure=True)
+            documents = yaml_obj.load(file)
+            return documents
 
     @docval({'name': 'key', 'type': str, 'doc': 'The new ontology term to be added'},
             {'name': 'entity_value', 'type': (list, tuple), 'doc': 'A list or tuple of the new entity ID and URO'})
@@ -58,8 +66,12 @@ class LocalOntology(Ontology):
         key = kwargs['key']
         entity_value = kwargs['entity_value']
 
-        self._ontology_entities[key] = entity_value
-        return self._ontology_entities
+        if len(entity_value)==2 and entity_value[1][:4]=='http':
+            self._ontology_entities[key] = entity_value
+            return self._ontology_entities
+        else:
+            msg = 'New entity does not match format requirements'
+            raise ValueError(msg)
 
     @docval({'name': 'key', 'type': str, 'doc': 'The ontology term to be removed'})
     def remove_ontology_entity(self, **kwargs):
@@ -78,6 +90,36 @@ class LocalOntology(Ontology):
         else:
             return entity_id, entity_uri
 
+
+class WebAPIOntology(LocalOntology):
+    """
+
+    """
+    @docval(*get_docval(LocalOntology.__init__, 'version', 'ontology_name', 'ontology_uri', '_ontology_entities'),
+            {'name': 'extension', 'type': str, 'doc': 'URI extension to the ontology URI'})
+    def __init__(self, **kwargs):
+        call_docval_func(super().__init__, kwargs)
+        self.extension = kwargs['extension']
+
+    @docval(*get_docval(Ontology.get_ontology_entity, 'key'))
+    def get_ontology_entity(self, **kwargs):
+        key = kwargs['key']
+        entity_uri = self.ontology_uri+self.extension+key
+
+        try:
+            entity_id, entity_uri = self._ontology_entities[key]
+        except KeyError:
+            request = requests.get(entity_uri, headers={ "Content-Type" : "application/json"})
+            if not request.ok:
+                raise WebAPIOntologyException()
+            else:
+                request_json = request.json()
+                entity_id = request_json['id']
+                return entity_id, entity_uri
+        else:
+            return entity_id, entity_uri
+
+
 class EnsemblOntology(WebAPIOntology):
     """
 
@@ -85,11 +127,11 @@ class EnsemblOntology(WebAPIOntology):
 
     ontology_name = 'Ensembl'
 
-    @docval(*get_docval(WebAPIOntology.__init__, 'version'),
+    @docval(*get_docval(WebAPIOntology.__init__, 'version', '_ontology_entities'),
             {'name': 'ontology_uri', 'type': str, 'doc': 'The uri of the ontology/the resource from ExternalResources.', 'default': 'https://rest.ensembl.org'},
             {'name': 'extension', 'type': str, 'doc': 'URI extension to the ontology URI', 'default': '/taxonomy/id/'})
     def __init__(self, **kwargs):
-        self.version, self.ontology_uri, self.extension = popargs('version', 'ontology_uri', 'extension', kwargs)
+        self.version, self.ontology_uri, self.extension, self._ontology_entities = popargs('version', 'ontology_uri', 'extension', '_ontology_entities', kwargs)
 
 class NCBI_Taxonomy(LocalOntology):
     """
