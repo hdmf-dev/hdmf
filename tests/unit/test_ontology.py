@@ -1,5 +1,8 @@
 from hdmf import Ontology, EnsemblOntology, WebAPIOntology, LocalOntology, NCBI_Taxonomy, WebAPIOntologyException, LocalOntologyException
 from hdmf.testing import TestCase
+from copy import copy
+from tests.unit.utils import get_temp_filepath
+import os
 
 class TestOntology(TestCase):
 
@@ -33,6 +36,13 @@ class TestWebAPIOntology(TestCase):
 class TestLocalOntology(TestCase):
     _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
 
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
     def test_constructor(self):
         ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
 
@@ -48,20 +58,16 @@ class TestLocalOntology(TestCase):
         self.assertEqual(ontology._ontology_entities, TestLocalOntology._ontology_entities)
 
     def test_write_ontology_yaml(self):
-        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
-        # self.assertEqual(ontology._ontology_entities, {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
+        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
+        self.assertEqual(ontology._ontology_entities, {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
 
-        ontology.write_ontology_yaml(path='/Users/mavaylon/ontology.yaml')
-        contents = open('/Users/mavaylon/ontology.yaml').read()
-
-        self.assertEqual(contents, "Homo sapiens: ['9606', https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606]\n")
-
-    def test_read_ontology_yaml(self):
-        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
-        ontology_dict = ontology.read_ontology_yaml(path='/Users/mavaylon/ontology.yaml')
+        ontology.write_ontology_yaml(path=self.path)
+        contents = open(self.path).read()
+        ontology_dict = ontology.read_ontology_yaml(self.path)
 
         self.assertEqual(ontology_dict, {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
-        
+        self.assertEqual(contents, "Homo sapiens: ['9606', https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606]\n")
+
     def test_add_bad_arg_ontology_entity(self):
         ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri')
         with self.assertRaises(ValueError):
@@ -71,7 +77,8 @@ class TestLocalOntology(TestCase):
             ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
 
     def test_remove_ontology_entity(self):
-        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=TestLocalOntology._ontology_entities)
+        ontology_dict = copy(TestLocalOntology._ontology_entities)
+        ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=ontology_dict)
         ontology.remove_ontology_entity('Homo sapiens')
 
         self.assertEqual(ontology._ontology_entities, {})

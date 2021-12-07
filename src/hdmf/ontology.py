@@ -28,11 +28,13 @@ class LocalOntology(Ontology):
 
     """
     @docval(*get_docval(Ontology.__init__, 'version', 'ontology_name', 'ontology_uri'),
-            {'name': '_ontology_entities', 'type': dict, 'doc': 'Dictionary of ontology terms with corresponding ID and uri as a tuple/list', 'default': {}})
+            {'name': '_ontology_entities', 'type': dict, 'doc': 'Dictionary of ontology terms with corresponding ID and uri as a tuple/list', 'default': None})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        self._ontology_entities = kwargs['_ontology_entities']
-        # self.write_ontology_yaml()
+        if kwargs['_ontology_entities'] is None:
+            self._ontology_entities = {}
+        else:
+            self._ontology_entities = kwargs['_ontology_entities']
 
     # have a function to save and pull up dict as yaml
     @docval({'name': 'path', 'type': str, 'doc': 'A path of the local ontology', 'default': None},
@@ -131,7 +133,9 @@ class EnsemblOntology(WebAPIOntology):
             {'name': 'ontology_uri', 'type': str, 'doc': 'The uri of the ontology/the resource from ExternalResources.', 'default': 'https://rest.ensembl.org'},
             {'name': 'extension', 'type': str, 'doc': 'URI extension to the ontology URI', 'default': '/taxonomy/id/'})
     def __init__(self, **kwargs):
-        self.version, self.ontology_uri, self.extension, self._ontology_entities = popargs('version', 'ontology_uri', 'extension', '_ontology_entities', kwargs)
+        kwargs['ontology_name'] = self.ontology_name
+        call_docval_func(super().__init__, kwargs)
+
 
 class NCBI_Taxonomy(LocalOntology):
     """
