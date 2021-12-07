@@ -21,7 +21,7 @@ FLAGS = {
 class DtypeHelper:
     # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
     # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
-    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
+    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.classgenerator.CustomClassGenerator._spec_dtype_map,
     # hdmf.validate.validator.__allowable, and backend dtype maps
     # see https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype
     primary_dtype_synonyms = {

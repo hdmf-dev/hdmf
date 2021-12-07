@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import os
 
 from hdmf import Container
@@ -14,73 +15,59 @@ class TestBasic(TestCase):
 
     def setUp(self):
         self.h5_path = "./tests/unit/io_tests/test_sidecar.h5"
-        foo2 = Foo('sub_foo', [-1, -2, -3], 'OLD', [-17])
-        foo1 = Foo('foo1', [1, 2, 3], 'old', [17], foo2)
+        sub_foo = Foo(name='sub_foo', my_data=[-1, -2, -3], attr1='OLD')
+        foo1 = Foo(name='foo1', my_data=[1, 2, 3], attr1='old', attr2=[17], sub_foo=sub_foo)
         with HDF5IO(self.h5_path, manager=_get_manager(), mode='w') as io:
             io.write(foo1)
 
-        version2_0_0 = {
-            "label": "2.0.0",
-            "description": "change attr1 from 'old' to 'my experiment' and my_data from [1, 2, 3] to [4, 5]",
-            "datetime": "2020-10-29T19:15:15.789Z",
-            "agent": "John Doe",
-            "changes": [
-                {
-                    "object_id": foo1.object_id,
-                    "relative_path": "attr1",
-                    "value": "my experiment"
-                },
-                {
-                    "object_id": foo1.object_id,
-                    "relative_path": "my_data",
-                    "value": [4, 5],
-                    "dtype": "int32"
-                }
-            ]
-        }
-
-        version3_0_0 = {
-            "label": "3.0.0",
-            "description": ("change sub_foo/my_data from [-1, -2, -3] to [[0]], delete my_data/attr2, and change "
-                            "dtype of my_data"),
-            "datetime": "2021-11-30T20:16:16.790Z",
-            "agent": "Jane Doe",
-            "changes": [
-                {
-                    "object_id": foo2.object_id,
-                    "relative_path": "my_data",
-                    "value": [[0]]
-                },
-                {
-                    "object_id": foo1.object_id,
-                    "relative_path": "my_data/attr2",
-                    "value": None  # will be encoded on disk as null
-                },
-                {
-                    "object_id": foo1.object_id,
-                    "relative_path": "my_data",
-                    "value": [6, 7],
-                    "dtype": "int8"
-                },
-            ]
-        }
-
-        version3_0_1 = {
-            "label": "3.0.1",
-            "description": "change my_data from [4, 5] to [6, 7]",
-            "datetime": "2021-11-30T20:17:16.790Z",
-            "agent": "Jane Doe",
-            "changes": [
-                {
-                    "object_id": foo1.object_id,
-                    "relative_path": "my_data",
-                    "value": [6, 7],
-                },
-            ]
-        }
+        operations = [
+            {
+                "type": "replace",
+                "description": "change foo1/attr1 from 'old' to 'my experiment' (same dtype)",
+                "object_id": foo1.object_id,
+                "relative_path": "attr1",
+                "value": "my experiment"
+            },
+            {
+                "type": "replace",
+                "description": "change foo1/my_data from [1, 2, 3] to [4, 5] (int16)",
+                "object_id": foo1.object_id,
+                "relative_path": "my_data",
+                "value": [4, 5],
+                "dtype": "int16"
+            },
+            {
+                "type": "replace",
+                "description": "change sub_foo/my_data from [-1, -2, -3] to [[0]] (same dtype)",
+                "object_id": sub_foo.object_id,
+                "relative_path": "my_data",
+                "value": [[0]]
+            },
+            {
+                "type": "create_attribute",
+                "description": "create sub_foo/my_data/attr2 and set it to [1] (int16)",
+                "object_id": sub_foo.object_id,
+                "relative_path": "my_data/attr2",
+                "value": [1],
+                "dtype": "int16"
+            },
+            {
+                "type": "delete",
+                "description": "delete foo1/my_data/attr2",
+                "object_id": foo1.object_id,
+                "relative_path": "my_data/attr2",
+            },
+            {
+                "type": "change_dtype",
+                "description": "change dtype of foo1/my_data from int16 to int8",
+                "object_id": foo1.object_id,
+                "relative_path": "my_data",
+                "dtype": "int8"
+            }
+        ]
 
         sidecar = dict()
-        sidecar["versions"] = [version2_0_0, version3_0_0, version3_0_1]
+        sidecar["operations"] = operations
         sidecar["schema_version"] = "0.1.0"
 
         self.json_path = "./tests/unit/io_tests/test_sidecar.json"
@@ -97,8 +84,10 @@ class TestBasic(TestCase):
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             foo1 = io.read()
         assert foo1.attr1 == "my experiment"
-        assert foo1.my_data == [6, 7]  # TODO test dtype
-        assert foo1.sub_foo.my_data == [[0]]
+        assert isinstance(foo1.my_data, np.ndarray)
+        np.testing.assert_array_equal(foo1.my_data, np.array([4, 5], dtype=np.dtype('int8')))  # TODO make sure this checks dtype
+        np.testing.assert_array_equal(foo1.sub_foo.my_data, np.array([[0]]))
+        np.testing.assert_array_equal(foo1.sub_foo.attr2, np.array([1], dtype=np.dtype('int16')))
         assert foo1.attr2 is None
 
 
@@ -106,13 +95,12 @@ class TestFailValidation(TestCase):
 
     def setUp(self):
         self.h5_path = "./tests/unit/io_tests/test_sidecar_fail.h5"
-        foo2 = Foo('sub_foo', [-1, -2, -3], 'OLD', [-17])
-        foo1 = Foo('foo1', [1, 2, 3], 'old', [17], foo2)
+        foo2 = Foo(name='sub_foo', my_data=[-1, -2, -3], attr1='OLD')
+        foo1 = Foo(name='foo1', my_data=[1, 2, 3], attr1='old', attr2=[17], sub_foo=foo2)
         with HDF5IO(self.h5_path, manager=_get_manager(), mode='w') as io:
             io.write(foo1)
 
         sidecar = dict()
-        sidecar["versions"] = []
 
         self.json_path = "./tests/unit/io_tests/test_sidecar_fail.json"
         with open(self.json_path, 'w') as outfile:
@@ -133,16 +121,23 @@ class TestFailValidation(TestCase):
 class Foo(Container):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this Foo'},
-            {'name': 'my_data', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer dataset'},
+            {'name': 'my_data', 'type': ('array_data', 'data'), 'doc': 'a 1-D or 2-D integer dataset',
+             'shape': ((None, ), (None, None))},
             {'name': 'attr1', 'type': str, 'doc': 'a string attribute'},
-            {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
+            {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'shape': (None, ),
+             'default': None},
+            {'name': 'opt_data', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer dataset', 'default': None},
+            {'name': 'attr3', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
             {'name': 'sub_foo', 'type': 'Foo', 'doc': 'a child Foo', 'default': None})
     def __init__(self, **kwargs):
-        name, my_data, attr1, attr2, sub_foo = getargs('name', 'my_data', 'attr1', 'attr2', 'sub_foo', kwargs)
+        name, my_data, attr1, attr2, opt_data, attr3, sub_foo = getargs('name', 'my_data', 'attr1', 'attr2', 'opt_data',
+                                                                        'attr3', 'sub_foo', kwargs)
         super().__init__(name=name)
         self.__data = my_data
         self.__attr1 = attr1
         self.__attr2 = attr2
+        self.__opt_data = opt_data
+        self.__attr3 = attr3
         self.__sub_foo = sub_foo
         if sub_foo is not None:
             assert sub_foo.name == 'sub_foo'  # on read mapping will not work otherwise
@@ -159,6 +154,14 @@ class Foo(Container):
     @property
     def attr2(self):
         return self.__attr2
+
+    @property
+    def opt_data(self):
+        return self.__opt_data
+
+    @property
+    def attr3(self):
+        return self.__attr3
 
     @property
     def sub_foo(self):
@@ -179,13 +182,29 @@ def _get_manager():
         ],
         datasets=[
             DatasetSpec(
-                doc='a 1-D integer dataset',
+                doc='a 1-D or 2-D integer dataset',
                 dtype='int',
                 name='my_data',
-                shape=[None, ],
+                shape=[[None, ], [None, None]],
                 attributes=[
                     AttributeSpec(
                         name='attr2',
+                        doc='a 1-D integer attribute',
+                        dtype='int',
+                        shape=[None, ],
+                        required=False
+                    )
+                ]
+            ),
+            DatasetSpec(
+                doc='an optional 1-D integer dataset',
+                dtype='int',
+                name='opt_data',
+                shape=[None, ],
+                quantity='?',
+                attributes=[
+                    AttributeSpec(
+                        name='attr3',
                         doc='a 1-D integer attribute',
                         dtype='int',
                         shape=[None, ],
@@ -200,11 +219,15 @@ def _get_manager():
     )
 
     class FooMapper(ObjectMapper):
-        """Remap 'attr2' attribute on Foo container to 'my_data' dataset spec > 'attr2' attribute spec."""
+        """Remap 'attr2' attribute on Foo container to 'my_data' dataset spec > 'attr2' attribute spec and
+        remap 'attr3' attribute on Foo container to 'opt_data' dataset spec > 'attr3' attribute spec.
+        """
         def __init__(self, spec):
             super().__init__(spec)
             my_data_spec = spec.get_dataset('my_data')
             self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
+            opt_data_spec = spec.get_dataset('opt_data')
+            self.map_spec('attr3', opt_data_spec.get_attribute('attr3'))
 
     spec_catalog = SpecCatalog()
     spec_catalog.register_spec(foo_spec, 'test.yaml')

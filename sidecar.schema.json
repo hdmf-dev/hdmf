@@ -7,57 +7,83 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "versions",
+    "operations",
     "schema_version"
   ],
   "properties": {
-    "versions": {
+    "operations": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "label",
+          "type",
           "description",
-          "datetime",
-          "agent",
-          "changes"
+          "object_id",
+          "relative_path"
         ],
         "properties": {
-          "label": {
-            "description": "Version label. Must conform to Semantic Versioning v2.0",
-            "type": "string",
-            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+          "type": {
+            "description": "The type of modification to perform on the field of a neurodata type.",
+            "member_region": { "type": ["replace", "delete", "create_attribute", "change_dtype"] }
           },
           "description": {"type": "string"},
-          "datetime": {"type": "string", "format": "date"},
-          "agent": {"type": "string"},
-          "changes": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "object_id",
-                "relative_path",
-                "value"
-              ],
+          "object_id": {
+            "description": "Object ID. Must conform to UUID-4 with dashes",
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}\\-[0-9a-f]{4}\\-4[0-9a-f]{3}\\-[89ab][0-9a-f]{3}\\-[0-9a-f]{12}$"
+          },
+          "relative_path": {"type": "string"},
+          "element_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "group",
+                  "dataset",
+                  "attribute"
+                ]
+              }
+            ]
+          },
+          "value": {
+            "description": "New value.",
+            "member_region": { "type": ["array", "string", "number", "boolean", "null"] }
+          },
+          "dtype": {"$ref": "#/definitions/dtype"}
+        },
+        "allOf": [
+          {
+            "description": "if type==replace, then value is required",
+            "if": {
+              "properties": { "type": { "const": "replace" } }
+            },
+            "then": {
+              "required": [ "value" ]
+            }
+          },
+          {
+            "description": "if type==delete, then value and dtype are not allowed",
+            "if": {
+              "properties": { "type": { "const": "delete" } }
+            },
+            "then": {
               "properties": {
-                "object_id": {
-                  "description": "Object ID. Must conform to UUID-4 with dashes",
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{8}\\-[0-9a-f]{4}\\-4[0-9a-f]{3}\\-[89ab][0-9a-f]{3}\\-[0-9a-f]{12}$"
-                },
-                "relative_path": {"type": "string"},
-                "value": {
-                  "description": "New value. If null, then the value is removed.",
-                  "member_region": { "type": ["array", "string", "number", "boolean", "null"] }
-                },
-                "dtype": {"$ref": "#/definitions/dtype"}
+                "value": false,
+                "dtype": false
               }
             }
+          },
+          {
+            "description": "if type==create, then element_type is required",
+            "if": {
+              "properties": { "type": { "const": "create" } }
+            },
+            "then": {
+              "required": [ "element_type" ]
+            }
           }
-        }
+        ]
       }
     },
     "schema_version": {
@@ -98,7 +124,6 @@
             "uint16",
             "uint8",
             "uint64",
-            "numeric",
             "text",
             "utf",
             "utf8",

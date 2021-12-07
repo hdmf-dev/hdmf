@@ -284,6 +284,7 @@ class GroupBuilder(BaseBuilder):
 
     def get_subbuilder(self, key, default=None):
         """Like dict.get, but looks in groups and datasets sub-dictionaries and ignores trailing attributes and links.
+        Returns two values -- the sub-group or sub-dataset and the name of the attribute if present
         """
         try:
             key_ar = _posixpath.normpath(key).split('/')
