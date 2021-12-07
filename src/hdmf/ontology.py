@@ -68,7 +68,7 @@ class LocalOntology(Ontology):
         key = kwargs['key']
         entity_value = kwargs['entity_value']
 
-        if len(entity_value)==2 and entity_value[1][:4]=='http':
+        if len(entity_value)==2 and entity_value[1][:4]=='http' and entity_value[0]!='':
             self._ontology_entities[key] = entity_value
             return self._ontology_entities
         else:

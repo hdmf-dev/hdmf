@@ -76,6 +76,9 @@ class TestLocalOntology(TestCase):
         with self.assertRaises(ValueError):
             ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
 
+        with self.assertRaises(ValueError):
+            ontology.add_ontology_entity(key='Homo sapiens', entity_value=['', 'ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
+
     def test_remove_ontology_entity(self):
         ontology_dict = copy(TestLocalOntology._ontology_entities)
         ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', _ontology_entities=ontology_dict)
