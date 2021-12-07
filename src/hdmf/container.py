@@ -394,8 +394,10 @@ class Container(AbstractContainer):
                     for v in val:
                         if not isinstance(v.parent, Container):
                             v.parent = self
-                        # else, the ObjectMapper will create a link from self (parent) to v (child with existing
-                        # parent)
+                        else:
+                            # the ObjectMapper will create a link from self (parent) to v (child with existing parent)
+                            # still need to mark self as modified
+                            self.set_modified()
 
             ret.append(container_setter)
         return ret[-1]
@@ -786,7 +788,10 @@ class MultiContainerInterface(Container):
             for tmp in containers:
                 if not isinstance(tmp.parent, Container):
                     tmp.parent = self
-                # else, the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                else:
+                    # the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                    # still need to mark self as modified
+                    self.set_modified()
                 if tmp.name in d:
                     msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
                     raise ValueError(msg)
