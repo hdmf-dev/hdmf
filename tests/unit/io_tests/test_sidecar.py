@@ -14,6 +14,7 @@ from hdmf.utils import getargs, docval
 class TestBasic(TestCase):
 
     def setUp(self):
+        self.json_path = "./tests/unit/io_tests/test_sidecar.json"
         self.h5_path = "./tests/unit/io_tests/test_sidecar.h5"
         self.foo_data1 = FooData(name='foodata1', data=[1], data_attr1=2, data_attr2=['a'])
         self.foo2 = Foo(name='foo2', my_data=[1, 2, 3], my_sub_data=[1, 2, 3], attr1='old')
@@ -65,10 +66,12 @@ class TestBasic(TestCase):
 
     def _write_test_sidecar(self, operations):
         sidecar = dict()
+        sidecar["description"] = "Summary of changes"
+        sidecar["author"] = ["The NWB Team"]
+        sidecar["contact"] = ["contact@nwb.org"]
         sidecar["operations"] = operations
         sidecar["schema_version"] = "0.1.0"
 
-        self.json_path = "./tests/unit/io_tests/test_sidecar.json"
         with open(self.json_path, 'w') as outfile:
             json.dump(sidecar, outfile, indent=4)
 

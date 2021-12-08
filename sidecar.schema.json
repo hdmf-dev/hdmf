@@ -7,10 +7,25 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "description",
+    "author",
+    "contact",
     "operations",
     "schema_version"
   ],
   "properties": {
+    "description": {"type": "string"},
+    "author": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "contact": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^.*@.*$"
+      }
+    },
     "operations": {
       "type": "array",
       "items": {
