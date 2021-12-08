@@ -282,7 +282,7 @@ class GroupBuilder(BaseBuilder):
                 return self.datasets[key_ar[0]].attributes[key_ar[1]]
         raise KeyError(key_ar[0])
 
-    def get_subbuilder(self, key, default=None):
+    def get_subbuilder(self, key, default=(None, None)):
         """Like dict.get, but looks in groups and datasets sub-dictionaries and ignores trailing attributes and links.
         Returns two values -- the sub-group or sub-dataset and the name of the attribute if present
         """
@@ -295,16 +295,29 @@ class GroupBuilder(BaseBuilder):
     def __get_subbuilder_rec(self, key_ar):
         # recursive helper for get_subbuilder
         # returns sub-builder and attribute name if present
-        if key_ar[0] in self.groups:
-            if len(key_ar) == 1:
+        # possibilities are:
+        # group
+        # group/subgroup or group/subgroup/...
+        # group/dataset or group/dataset/...
+        # group/attribute
+        # dataset
+        # dataset/attribute
+        if len(key_ar) == 1:
+            if key_ar[0] in self.groups:  # group
                 return self.groups[key_ar[0]], None
-            elif key_ar[1] in (self.groups + self.datasets):
-                return self.groups[key_ar[0]].__get_subbuilder_rec(key_ar[1:])
-        elif key_ar[0] in self.datasets:  # "dset/x" must be an attribute on dset
-            if len(key_ar) == 1:
+            elif key_ar[0] in self.datasets:  # dataset
                 return self.datasets[key_ar[0]], None
-            assert len(key_ar) == 2
-            return self.datasets[key_ar[0]], key_ar[1]
+        elif len(key_ar) == 2:
+            if key_ar[0] in self.groups:
+                if key_ar[1] in self.groups[key_ar[0]].attributes:  # group/attribute
+                    return self.groups[key_ar[0]], key_ar[1]
+                else:  # group/subgroup or group/dataset
+                    return self.groups[key_ar[0]].__get_subbuilder_rec(key_ar[1:])
+            elif key_ar[0] in self.datasets:
+                if key_ar[1] in self.datasets[key_ar[0]].attributes:  # dataset/attribute
+                    return self.datasets[key_ar[0]], key_ar[1]
+        elif len(key_ar) > 2 and key_ar[0] in self.groups:
+            return self.groups[key_ar[0]].__get_subbuilder_rec(key_ar[1:])
         raise KeyError(key_ar[0])
 
     def __setitem__(self, args, val):

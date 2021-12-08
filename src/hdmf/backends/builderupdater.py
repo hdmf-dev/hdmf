@@ -34,17 +34,12 @@ class BuilderUpdater:
                 dtype = 'U'
             elif dtype is ascii:
                 dtype = 'S'
-            else:
-                dtype = np.dtype(dtype)
             if isinstance(value, list):
                 ret = np.array(value, dtype=dtype)
             else:
                 ret = value.astype(dtype)
         else:  # scalar
-            if dtype in (unicode, ascii):
-                ret = dtype(value)
-            else:
-                ret = np.dtype(dtype)(value)
+            ret = dtype(value)
         return ret
 
     @classmethod
@@ -135,7 +130,7 @@ class BuilderUpdater:
         elif isinstance(builder, GroupBuilder):  # GroupBuilder has object_id
             sub_dset_builder, attr_name = builder.get_subbuilder(relative_path)
             if sub_dset_builder is None:
-                raise ValueError("Relative path '%s' not recognized as a group or dataset."
+                raise ValueError("Relative path '%s' not recognized as a group, dataset, or attribute."
                                  % relative_path)
             if attr_name is None:
                 cls.__replace_dataset_data(sub_dset_builder, new_value, new_dtype)
@@ -154,7 +149,7 @@ class BuilderUpdater:
         elif isinstance(builder, GroupBuilder):  # GroupBuilder has object_id
             sub_dset_builder, attr_name = builder.get_subbuilder(relative_path)
             if sub_dset_builder is None:
-                raise ValueError("Relative path '%s' not recognized as a group or dataset."
+                raise ValueError("Relative path '%s' not recognized as a group, dataset, or attribute."
                                  % relative_path)
             if attr_name is None:  # update data in sub-DatasetBuilder
                 cls.__change_dtype_dataset_data(sub_dset_builder, new_dtype)
