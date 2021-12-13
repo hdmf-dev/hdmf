@@ -34,7 +34,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def tearDown(self):
         rmtree(self.test_dir)
 
-    def check_first_chunk_call(self, expected_selection, iterator_options):
+    def check_first_data_chunk_call(self, expected_selection, iterator_options):
         test = self.TestNumpyArrayDataChunkIterator(
             array=self.test_array, **iterator_options
         )
@@ -172,9 +172,17 @@ class GenericDataChunkIteratorTests(TestCase):
                 array=self.test_array, chunk_shape=chunk_shape
             )
 
+    def test_num_buffers(self):
+        buffer_shape = (950, 190)
+        chunk_shape = (50, 38)
+        test = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
+        )
+        self.assertEqual(first=test.num_buffers, second=9)
+
     def test_numpy_array_chunk_iterator(self):
         iterator_options = dict()
-        self.check_first_chunk_call(
+        self.check_first_data_chunk_call(
             expected_selection=(slice(0, 2000), slice(0, 384)),
             iterator_options=iterator_options,
         )
@@ -183,7 +191,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_buffer_shape_option(self):
         test_buffer_shape = (1580, 316)
         iterator_options = dict(buffer_shape=test_buffer_shape)
-        self.check_first_chunk_call(
+        self.check_first_data_chunk_call(
             expected_selection=tuple(
                 [slice(0, buffer_shape_axis) for buffer_shape_axis in test_buffer_shape]
             ),
@@ -195,7 +203,7 @@ class GenericDataChunkIteratorTests(TestCase):
         # buffer is smaller than default chunk; should collapse to chunk shape
         resulting_buffer_shape = (1580, 316)
         iterator_options = dict(buffer_gb=0.0005)
-        self.check_first_chunk_call(
+        self.check_first_data_chunk_call(
             expected_selection=tuple(
                 [
                     slice(0, buffer_shape_axis)
@@ -210,7 +218,7 @@ class GenericDataChunkIteratorTests(TestCase):
         resulting_buffer_shape = (2000, 384)
         for buffer_gb_input_dtype_pass in [2, 2.0]:
             iterator_options = dict(buffer_gb=2)
-            self.check_first_chunk_call(
+            self.check_first_data_chunk_call(
                 expected_selection=tuple(
                     [
                         slice(0, buffer_shape_axis)
