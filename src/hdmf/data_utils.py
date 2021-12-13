@@ -4,7 +4,6 @@ from collections.abc import Iterable
 from warnings import warn
 from typing import Tuple
 from itertools import product, chain
-from tqdm import tqdm
 
 import h5py
 import numpy as np
@@ -164,12 +163,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc="Manually defined shape of the chunks.",
             default=None,
         ),
-        dict(
-            name="display_progress",
-            type=bool,
-            doc="Display a progress bar during iteration.",
-            default=True,
-        ),
     )
 
     @docval(*__docval_init)
@@ -228,8 +221,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
         self.num_buffers = np.prod(np.ceil(array_maxshape / array_buffer_shape))
-        if self.display_progress:
-            self.progress_bar = tqdm(total=self.num_buffers, position=0, leave=False)
         self.buffer_selection_generator = (
             tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
             for lower_bounds, upper_bounds in zip(
@@ -323,15 +314,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """
-        if self.display_progress:
-            self.progress_bar.update(n=1)
-        try:
-            buffer_selection = next(self.buffer_selection_generator)
-            return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
-        except StopIteration:
-            if self.display_progress:
-                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
-            raise StopIteration
+        buffer_selection = next(self.buffer_selection_generator)
+        return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
 
     @abstractmethod
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
