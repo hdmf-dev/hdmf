@@ -178,8 +178,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress = getargs(
-            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", kwargs
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs(
+            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", kwargs
         )
 
         if buffer_gb is None and buffer_shape is None:
