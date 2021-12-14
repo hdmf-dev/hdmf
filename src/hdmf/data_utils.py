@@ -163,6 +163,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc="Manually defined shape of the chunks.",
             default=None,
         ),
+        dict(
+            name="display_progress",
+            type=bool,
+            doc="Display a progress bar with iteration rate and estimated completion time.",
+            default=False,
+        ),
+        dict(
+            name="progress_bar_options",
+            type=dict,
+            doc="Dictionary of keyword arguments to be passed directly to tqdm.",
+            default=dict(),
+        ),
     )
 
     @docval(*__docval_init)
@@ -178,8 +190,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs(
-            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", kwargs
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, self.progress_bar_options = getargs(
+            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
         )
 
         if buffer_gb is None and buffer_shape is None:
@@ -238,6 +250,21 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 ),
             )
         )
+
+        if self.display_progress:
+            try:
+                from tqdm import tqdm
+
+                if "total" in self.progress_bar_options:
+                    warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
+                    self.progress_bar_options.pop("total")
+                self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
+            except ImportError:
+                warn(
+                    "You must install tqdm to use the progress bar feature (pip install tqdm)! "
+                    "Progress bar is disabled."
+                )
+                self.progress_bar_options.update(disable=True)
 
     @docval(
         dict(
@@ -314,8 +341,15 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """
-        buffer_selection = next(self.buffer_selection_generator)
-        return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
+        if self.display_progress:
+            self.progress_bar.update(n=1)
+        try:
+            buffer_selection = next(self.buffer_selection_generator)
+            return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
+        except StopIteration:
+            if self.display_progress:
+                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
+            raise StopIteration
 
     @abstractmethod
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
