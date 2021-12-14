@@ -171,9 +171,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ),
         dict(
             name="progress_bar_options",
-            type=dict,
+            type=(dict, None),
             doc="Dictionary of keyword arguments to be passed directly to tqdm.",
-            default=dict(),
+            default=None,
         ),
     )
 
@@ -252,6 +252,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
         if self.display_progress:
+            if self.progress_bar_options is None:
+                self.progress_bar_options = dict()
+
             try:
                 from tqdm import tqdm
 
