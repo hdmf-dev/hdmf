@@ -2,7 +2,7 @@ import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
-from typing import Tuple
+from typing import Tuple, Optional
 from itertools import product, chain
 
 import h5py
@@ -171,7 +171,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ),
         dict(
             name="progress_bar_options",
-            type=(dict, None),
+            type=None,
             doc="Dictionary of keyword arguments to be passed directly to tqdm.",
             default=None,
         ),
