@@ -264,7 +264,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                     "You must install tqdm to use the progress bar feature (pip install tqdm)! "
                     "Progress bar is disabled."
                 )
-                self.progress_bar_options.update(disable=True)
+                self.display_progress = False
 
     @docval(
         dict(
