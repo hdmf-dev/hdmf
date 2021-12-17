@@ -172,6 +172,17 @@ class GenericDataChunkIteratorTests(TestCase):
                 array=self.test_array, chunk_shape=chunk_shape
             )
 
+    def test_progress_bar_assertion(self):
+        with self.assertWarnsWith(
+            warn_type=UserWarning,
+            exc_msg="Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring."
+        ):
+            _ = self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                display_progress=True,
+                progress_bar_options=dict(total=5),
+            )
+
     def test_num_buffers(self):
         buffer_shape = (950, 190)
         chunk_shape = (50, 38)
