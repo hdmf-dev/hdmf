@@ -113,15 +113,15 @@ with h5py.File(name="my_temporary_test_file.hdf5", mode="w") as f:
 # .. note::
 #   There is some overlap here in nomenclature between HDMF and HDF5. The term *chunk* in both
 #   HDMF and HDF5 refer to a subset of dataset, however, in HDF5 a chunk is a piece of dataset on disk,
-#   whereas in the context of the data chunk iteration a chunk is a block data in memory. As such, the 
-#   requirements on the shape and size of chunks are different. In HDF5  chunks are typically small pieces
+#   whereas in the context of the  :py:class:`~hdmf.data_utils.DataChunk` iteration is a block of data in memory. As such, the 
+#   requirements on the shape and size of chunks are different. In HDF5 these chunks are pieces
 #   of a dataset that get compressed and cached together, and they should usually be small in size for 
 #   optimal performance  (typically 1 MB or less). In contrast, a :py:class:`~hdmf.data_utils.DataChunk` in 
-#   HDMF acts as a block of data for writing data to dataset. To improve performance and  avoid repeat 
+#   HDMF acts as a block of data for writing data to dataset, and spans multiple HDF5 chunks to improve performance. This is achieved by avoiding repeat 
 #   updates to the same `Chunk` in the HDF5 file, :py:class:`~hdmf.data_utils.DataChunk` objects for write 
 #   should align with `Chunks` in the HDF5 file, i.e., the :py:class:`~hdmf.data_utils.DataChunk.selection`   
 #   should fully cover one or more `Chunks`  in the HDF5 file to avoid repeat updates to the same
-#   `Chunks` in the HDF5 file. The `buffer` of the iterator then collects multiple 
-#   :py:class:`~hdmf.data_utils.DataChunk` objects to help reduce the number of small I/O operations 
-#   and help improve performance. The `buffer` should usually be large, i.e, be able to use
+#   `Chunks` in the HDF5 file. This is what the `buffer` of the :py:class`~hdmf.data_utils.GenericDataChunkIterator` does, which upon each iteration returns a single
+#   :py:class:`~hdmf.data_utils.DataChunk` object (by default > 1 GB) that perfectly spans many HDF5 chunks (by default < 1 MB) to help reduce the number of small I/O operations 
+#   and help improve performance. In practice, the `buffer` should usually be even larger than the default, i.e, 
 #   as much free RAM as can be safely used. 
