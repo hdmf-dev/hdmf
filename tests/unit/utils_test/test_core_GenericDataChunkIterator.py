@@ -249,3 +249,19 @@ class GenericDataChunkIteratorTests(TestCase):
             array=self.test_array, chunk_mb=2
         )
         self.assertEqual(iterator.chunk_shape, test_chunk_shape)
+
+    def test_progress_bar(self):
+        out_text_file = self.test_dir / "test_progress_bar.txt"
+        desc = "Testing progress bar..."
+        with open(file=out_text_file, mode="w") as file:
+            iterator = self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                display_progress=True,
+                progress_bar_options=dict(file=file, desc=desc),
+            )
+            j = 0
+            for buffer in iterator:
+                j += 1  # dummy operation; must be silent for proper updating of bar
+        with open(file=out_text_file, mode="r") as file:
+            first_line = file.read()
+            self.assertIn(member=desc, container=first_line)
