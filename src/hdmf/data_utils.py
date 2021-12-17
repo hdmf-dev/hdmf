@@ -262,7 +262,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                     warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
                     self.progress_bar_options.pop("total")
                 self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 warn(
                     "You must install tqdm to use the progress bar feature (pip install tqdm)! "
                     "Progress bar is disabled."
