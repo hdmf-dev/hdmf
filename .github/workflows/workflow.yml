@@ -14,15 +14,16 @@ jobs:
   run:
     runs-on: ${{ matrix.os }}
     # run pipeline on either a push event or a PR event on a fork
-    # and run if os is ubuntu, regardless of opt_req, or if opt_req is True
-    if: |
-      (github.event_name != 'pull_request' || 
-      github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name) &&
-      (${{ matrix.os }} == 'ubuntu-latest' || ${{ matrix.opt_req }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         opt_req: [true, false]
+        exclude:
+        - os: macos-latest
+          opt_req: false
+        - os: windows-latest
+          opt_req: false
     env:
       OS: ${{ matrix.os }}
       PYTHON: '3.10'
