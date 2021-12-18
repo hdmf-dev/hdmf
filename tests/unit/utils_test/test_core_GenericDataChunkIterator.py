@@ -10,6 +10,12 @@ import h5py
 from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.testing import TestCase
 
+try:
+    import tqdm  # noqa: F401
+    TQDM_INSTALLED = True
+except ImportError:
+    TQDM_INSTALLED = False
+
 
 class GenericDataChunkIteratorTests(TestCase):
     class TestNumpyArrayDataChunkIterator(GenericDataChunkIterator):
@@ -145,7 +151,7 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
 
-    @unittest.skipIf("tqdm" not in sys.modules, "optional tqdm module is not installed")
+    @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar_assertion(self):
         with self.assertWarnsWith(
             warn_type=UserWarning,
@@ -232,7 +238,7 @@ class GenericDataChunkIteratorTests(TestCase):
         iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
         self.assertEqual(iterator.chunk_shape, test_chunk_shape)
 
-    @unittest.skipIf("tqdm" not in sys.modules, "optional tqdm module is not installed")
+    @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar(self):
         out_text_file = self.test_dir / "test_progress_bar.txt"
         desc = "Testing progress bar..."
@@ -247,12 +253,13 @@ class GenericDataChunkIteratorTests(TestCase):
             first_line = file.read()
             self.assertIn(member=desc, container=first_line)
 
-    @unittest.skipIf("tqdm" not in sys.modules, "optional tqdm module is not installed")
+    @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is installed")
     def test_progress_bar_no_options(self):
         dci = self.TestNumpyArrayDataChunkIterator(array=self.test_array, display_progress=True)
+        self.assertIsNotNone(dci.progress_bar)
         self.assertTrue(dci.display_progress)
 
-    @unittest.skipIf("tqdm" in sys.modules, "optional tqdm module is installed")
+    @unittest.skipIf(TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_tqdm_not_installed(self):
         with self.assertWarnsWith(
             warn_type=UserWarning,
