@@ -102,7 +102,7 @@ class FooFile(Container):
             raise ValueError("can't reset foo_ref_attr attribute")
 
 
-class TestNumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
+class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
     def __init__(self, array: np.ndarray, **kwargs):
         self.array = array
         super().__init__(**kwargs)
@@ -565,7 +565,7 @@ class H5IOTest(TestCase):
     #############################################
     def test_write_dataset_generic_data_chunk_iterator(self):
         array = np.arange(10)
-        dci = TestNumpyArrayGenericDataChunkIterator(array=array)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
         self.io.write_dataset(self.f, DatasetBuilder("test_dataset", dci, attributes={}, dtype=dci.dtype))
         dset = self.f["test_dataset"]
         self.assertListEqual(dset[:].tolist(), list(array))
@@ -573,7 +573,7 @@ class H5IOTest(TestCase):
 
     def test_write_dataset_generic_data_chunk_iterator_with_compression(self):
         array = np.arange(10)
-        dci = TestNumpyArrayGenericDataChunkIterator(array=array)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
         wrapped_dci = H5DataIO(
             data=dci,
             compression="gzip",
@@ -592,7 +592,7 @@ class H5IOTest(TestCase):
     def test_chunk_shape_override_through_wrapper(self):
         array = np.arange(10)
         chunk_shape = (2,)
-        dci = TestNumpyArrayGenericDataChunkIterator(array=array)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
         wrapped_dci = H5DataIO(data=dci, chunks=chunk_shape)
         self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
         dset = self.f["test_dataset"]
@@ -603,7 +603,7 @@ class H5IOTest(TestCase):
         maxshape = (5, 2, 3)
         chunk_shape = (5, 1, 1)
         array = np.arange(np.prod(maxshape)).reshape(maxshape)
-        dci = TestNumpyArrayGenericDataChunkIterator(array=array, chunk_shape=chunk_shape)
+        dci = NumpyArrayGenericDataChunkIterator(array=array, chunk_shape=chunk_shape)
         wrapped_dci = H5DataIO(data=dci)
         self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
         dset = self.f["test_dataset"]
