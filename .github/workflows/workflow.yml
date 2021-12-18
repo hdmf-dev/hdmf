@@ -43,7 +43,7 @@ jobs:
     - name: Install dependencies
       run: pip install -U -r requirements-dev.txt -r requirements.txt
     - name: Install optional dependencies
-    - if: ${{ matrix.opt_req }}
+      if: ${{ matrix.opt_req }}
       run: pip install -U -r requirements-opt.txt
     - name: Install package
       run: python setup.py develop
