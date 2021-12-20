@@ -2,7 +2,6 @@ import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-import sys
 import unittest
 
 import h5py
