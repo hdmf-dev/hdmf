@@ -1,6 +1,6 @@
 """
 
-.. _dynamictable-tutorial:
+.. _genericdci-tutorial:
 
 GenericDataChunkIterator Tutorial
 ==================================
@@ -107,8 +107,8 @@ with h5py.File(name="my_temporary_test_file.hdf5", mode="w") as f:
 # .. note::
 #   Here we explicitly set the `chunks` value in the HDF5 dataset object; however, a nice part of the design of this
 #   iterator is that when wrapped in a ``hdmf.backends.hdf5.h5_utils.H5DataIO`` that is called within a
-#  ``hdmf.backends.hdf5.h5tools.HDF5IO`` context with a corresponding ``hdmf.container.Container``, these details
-#  will be automatically parsed.
+#   ``hdmf.backends.hdf5.h5tools.HDF5IO`` context with a corresponding ``hdmf.container.Container``, these details
+#   will be automatically parsed.
 
 ###############################################################################
 # .. note::
