@@ -394,7 +394,7 @@ workflows:
           <<: *no_filters
       - python37-min-req:
           <<: *no_filters
-      - python310-opt:
+      - python310-upgrade-dev:
           <<: *no_filters
       - miniconda37:
           <<: *no_filters
