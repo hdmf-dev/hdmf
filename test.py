@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+# NOTE this script is currently used in CI *only* to test the sphinx gallery examples using python test.py -e
 
 import warnings
 import re
@@ -117,12 +117,6 @@ def main():
     root.addHandler(ch)
 
     warnings.simplefilter('always')
-
-    # many tests use NamespaceCatalog.add_namespace, which is deprecated, to set up tests.
-    # ignore these warnings for now.
-    warnings.filterwarnings("ignore", category=DeprecationWarning, module="hdmf.spec.namespace",
-                            message=("NamespaceCatalog.add_namespace has been deprecated. "
-                                     "SpecNamespaces should be added with load_namespaces."))
 
     # Run unit tests for hdmf package
     if flags['hdmf'] in args.suites:
