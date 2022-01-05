@@ -408,7 +408,7 @@ workflows:
           requires:
             - flake8
             - python37-min-req
-            - python310-opt
+            - python310-upgrade-dev
             - miniconda37
             - miniconda310
             - gallery37-min-req
@@ -427,7 +427,7 @@ workflows:
           requires:
             - flake8
             - python37-min-req
-            - python310-opt
+            - python310-upgrade-dev
             - miniconda37
             - miniconda310
             - gallery37-min-req
