@@ -5,7 +5,7 @@ coverage==6.2
 flake8==4.0.1
 flake8-debugger==4.0.0
 flake8-print==4.0.0
-importlib-metadata==4.10.0
+importlib-metadata==4.2.0
 pytest==6.2.5
 pytest-cov==3.0.0
 python-dateutil==2.8.2
