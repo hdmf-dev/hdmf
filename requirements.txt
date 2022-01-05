@@ -1,8 +1,8 @@
 # pinned dependencies to reproduce an entire development environment to use HDMF
 h5py==3.6.0
-numpy==1.21.4
-scipy==1.7.2
-pandas==1.3.4
-ruamel.yaml==0.17.17
-jsonschema==4.2.1
-setuptools==59.2.0
+jsonschema==4.3.3
+numpy==1.22.0
+pandas==1.3.5
+ruamel.yaml==0.17.20
+scipy==1.7.3
+setuptools==60.2.0
