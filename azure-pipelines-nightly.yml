@@ -36,6 +36,13 @@ jobs:
         buildToxEnv: 'build-py310-upgrade-dev'
         testWheelInstallEnv: 'wheelinstall'
 
+      macOS-py3.10-opt:
+        imageName: 'macos-10.15'
+        pythonVersion: '3.10'
+        testToxEnv: 'py310-opt'
+        buildToxEnv: 'build-py310-opt'
+        testWheelInstallEnv: 'wheelinstall'
+
       macOS-py3.9:
         imageName: 'macos-10.15'
         pythonVersion: '3.9'
@@ -83,6 +90,13 @@ jobs:
         pythonVersion: '3.10'
         testToxEnv: 'py310-upgrade-dev'
         buildToxEnv: 'build-py310-upgrade-dev'
+        testWheelInstallEnv: 'wheelinstall'
+
+      Windows-py3.10-upgrade-dev:
+        imageName: 'vs2017-win2016'
+        pythonVersion: '3.10'
+        testToxEnv: 'py310-opt'
+        buildToxEnv: 'build-py310-opt'
         testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.9:
