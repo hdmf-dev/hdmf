@@ -23,6 +23,7 @@
   (#683)
 - Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
   @oruebel (#666)
+- Stop testing against base Python error messages because they may change in the future. @rly (#689)
 
 ## HDMF 3.1.1 (July 29, 2021)
 
