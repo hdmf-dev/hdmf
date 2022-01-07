@@ -39,7 +39,7 @@ class TestLabelledDict(TestCase):
     def test_getitem_unknown_val(self):
         """Test that dict[unknown_key] where the key unknown_key is not in the dict raises an error."""
         ld = LabelledDict(label='all_objects', key_attr='prop1')
-        with self.assertRaisesWith(KeyError, "'unknown_key'"):
+        with self.assertRaises(KeyError):
             ld['unknown_key']
 
     def test_getitem_eqeq_unknown_val(self):
@@ -161,7 +161,7 @@ class TestLabelledDict(TestCase):
         ld = LabelledDict(label='all_objects', key_attr='prop1')
         obj1 = MyTestClass('a', 'b')
         ld.add(obj1)
-        with self.assertRaisesWith(KeyError, "'unknown_val'"):
+        with self.assertRaises(KeyError):
             ld['prop1 == unknown_val']  # same as ld['unknown_val']
 
     def test_getitem_eqeq_nonempty_unknown_attr(self):
