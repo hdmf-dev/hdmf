@@ -1,19 +1,214 @@
 # HDMF Changelog
 
-## HDMF 2.5.0 (Upcoming)
+## HDMF 3.2 (Upcoming)
 
 ### New features
+- Added ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
+- Added ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization. @oruebel (#667)
+- Added ``export_to_sqlite`` method for ``hdmf.common.resources.ExternalResource``. @oruebel (#667)
+
+### Minor improvements
+- Plotted results in external resources tutorial. @oruebel (#667)
+- Added support for Python 3.10. @rly (#679)
+- Updated requirements. @rly @TheChymera (#681)
+- Improved testing for `ExternalResources`. @mavaylon (#673)
+- Improved docs for export. @rly (#674)
+- Enhanced data chunk iteration speeds through new ``GenericDataChunkIterator`` class.  @CodyCBakerPhD (#672)
+
+### Bug fixes
+- Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
+- Fixed broken tests in Python 3.10. @rly (#664)
+- Fixed broken LaTeX PDF build of the docs. @oruebel (#669)
+- Fixed adding containers as a child to a parent container sometimes not marking the parent container as modified. @rly
+  (#683)
+- Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
+  @oruebel (#666)
+
+## HDMF 3.1.1 (July 29, 2021)
+
+### Bug fixes
+- Updated the new ``DynamicTableRegion.get_linked_tables`` function (added in 3.1.0) to return lists of ``typing.NamedTuple``
+  objects rather than lists of dicts. @oruebel (#660)
+
+## HDMF 3.1.0 (July 29, 2021)
+
+### New features
+- Added several features to simplify interaction with ``DynamicTable`` objects that link to other tables via
+  ``DynamicTableRegion`` columns. @oruebel (#645)
+    - Added ``DynamicTable.get_foreign_columns`` to find all columns in a table that are a ``DynamicTableRegion``
+    - Added ``DynamicTable.has_foreign_columns`` to identify if a ``DynamicTable`` contains ``DynamicTableRegion`` columns
+    - Added ``DynamicTable.get_linked_tables`` to retrieve all tables linked to either directly or indirectly from
+      the current table via ``DynamicTableRegion``
+    - Implemented the new ``get_foreign_columns``, ``has_foreign_columns``, and ``get_linked_tables`` also for
+      ``AlignedDynamicTable``
+    - Added new module ``hdmf.common.hierarchicaltable`` with helper functions to facilitate conversion of
+      hierarchically nested ``DynamicTable`` objects via the following new functions:
+      - ``to_hierarchical_dataframe`` to merge linked tables into a single consolidated pandas DataFrame.
+      - ``drop_id_columns`` to remove "id" columns from a DataFrame.
+      - ``flatten_column_index`` to replace a ``pandas.MultiIndex`` with a regular ``pandas.Index``
+
+### Bug fixes
+- Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
+- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to referenece ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
+- Fixed #651 to support selection of cells in an ``AlignedDynamicTable`` via slicing with  ``[int, (str, str)]``(and ``[int, str, str]``) to select a single cell, and ``[int, str]`` to select a single row of a category table. @oruebel (#645)
+
+### Minor improvements
+- Updated ``DynamicTable.to_dataframe()`` and ``DynamicTable.get`` functions to set the ``.name`` attribute
+  on generated pandas DataFrame objects. @oruebel (#645)
+- Added ``AlignedDynamicTable.get_colnames(...)`` to support look-up of the full list of columns as the
+  ``AlignedDynamicTable.colnames`` property only includes the columns of the main table for compliance with
+  ``DynamicTable`` @oruebel (#645)
+- Fix documentation for `DynamicTable.get` and `DynamicTableRegion.get`. @rly (#650)
+- Allow passing string column name to `DynamicTableRegion`, i.e., `dtr['col_name']` is a shortcut to
+  `dtr.table['col_name']`. @rly (#657)
+
+## HDMF 3.0.1 (July 7, 2021)
+
+### Bug fixes
+- Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#641)
+
+## HDMF 3.0.0 (July 6, 2021)
+
+### New features
+- Add support for Python 3.9, drop support for Python 3.6. @rly (#620)
+- Add support for h5py 3. @ajtritt (#480)
+  - h5py 3 introduced [breaking changes regarding how strings are handled]
+  (https://docs.h5py.org/en/latest/whatsnew/3.0.html#breaking-changes-deprecations), specifically that
+  variable-length UTF-8 strings in datasets are now read as `bytes` objects instead of `str` by default.
+  To reduce the impact of this change on HDMF users, when HDMF reads a variable-length UTF-8 string
+  dataset, instead of returning an `h5py.Dataset` that is read as `bytes` objects, HDMF will return a
+  `hdmf.utils.StrDataset` object that extends `h5py.Dataset` and is read as `str` objects, which preserves
+  previous behavior. For example, under HDMF 2.x, an HDF5 dataset `d` with data ['a', 'b'] is read as a
+  `h5py.Dataset` object, and `d[:]` returns `str` objects. Under HDMF 3.x, the same dataset `d` is read
+  as a `hdmf.utils.StrDataset` object and `d[:]` still returns `str` objects.
+- Add RRID to docs. @oruebel (#633)
+- Allow passing ``index=True`` to ``DynamicTable.to_dataframe()`` to support returning `DynamicTableRegion` columns
+  as indices or Pandas DataFrame. @rly (#579)
+- Improve ``DynamicTable`` documentation. @rly (#639)
+- Updated external resources tutorial. @mavaylon (#611)
+
+### Breaking changes and deprecations
+- Previously, when using ``DynamicTable.__getitem__`` or ``DynamicTable.get`` to access a selection of a
+  ``DynamicTable`` containing a ``DynamicTableRegion``, new columns with mangled names for the table data referred to
+  by the ``DynamicTableRegion`` were added to the returned DataFrame. This did not work properly for ragged
+  ``DynamicTableRegion``, multiple levels of nesting, or multiple rows returned.
+  Now, these methods will by default return columns of indices of the ``DynamicTableRegion``. If ``index=False`` is
+  passed to ``DynamicTable.get``, then nested DataFrames will be returned, one DataFrame per row of the original
+  resulting DataFrame. @rly (#579)
+
+### Minor improvements
+- Updated requirements and tests. @rly (#640)
+
+### Bug fixes
+- Update the validator to allow extensions to data types which only define data_type_inc. @dsleiter (#609)
+- Fix error when validating lazy-loaded datasets containing references. @dsleiter (#609)
+- Fix error when using ``DynamicTable.__getitem__`` or ``DynamicTable.get`` when table has a ragged
+  ``DynamicTableRegion``. @rly (#579)
+
+## HDMF 2.5.8 (June 16, 2021)
+- Fix incorrect dtype precision upgrade for VectorIndex (#631)
+
+### Minor improvements
+- Improve Sphinx documentation. @rly (#627)
+
+### Bug fix
+- Fix error with representing an indexed table column when the `VectorIndex` dtype precision is upgraded more
+  than one step, e.g., uint8 to uint32. This can happen when, for example, a single `add_row` call is used to
+  add more than 65535 elements to an empty indexed column. @rly (#631)
+
+## HDMF 2.5.7 (June 4, 2021)
+
+### Bug fix
+- Fix generation of extension classes that extend `MultiContainerInterface` and use a custom _fieldsname. @rly (#626)
+
+## HDMF 2.5.6 (May 19, 2021)
+
+### Bug fix
+- Raise minimum version of pandas from 0.23 to 1.0.5 to be compatible with numpy 1.20. @rly (#618)
+- Update documentation and update structure of requirements files. @rly (#619)
+
+## HDMF 2.5.5 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#614)
+
+## HDMF 2.5.4 (May 17, 2021)
+
+### Bug fix
+- Fix incompatibility issue with downstream github-release tool used to deploy releases to GitHub. @rly (#607)
+- Fix issue where dependencies of included types were not being loaded in namespaces / extensions. @rly (#613)
+
+## HDMF 2.5.3 (May 12, 2021)
+
+### Bug fix
+- Fix issue where tables with multi-indexed columns defined using `__columns__` did not have attributes properly set.
+  @rly (#605)
+
+## HDMF 2.5.2 (May 11, 2021)
+
+### Bug fix
+- Add explicit `setuptools` requirement. @hrnciar (#596)
+- Fix issue with generated custom classes that use a custom fields name (e.g., PyNWB uses `__nwbfields__` instead
+  of `__fields__`). @rly (#598)
+- Fix issue with Sphinx Gallery. @rly (#601)
+
+## HDMF 2.5.1 (April 23, 2021)
+
+### Bug fix
+- Revert breaking change in `TypeMap.get_container_cls`. While this function is returned to its original behavior,
+  it will be modified at the next major release. Please use the new `TypeMap.get_dt_container_cls` instead. @rly (#590)
+
+## HDMF 2.5.0 (April 22, 2021)
+
+### New features
+- `DynamicTable` can be automatically generated using `get_class`. Now the HDMF API can read files with extensions
+  that contain a `DynamicTable` without needing to import the extension first. @rly and @bendichter (#536)
 - Add `HDF5IO.get_namespaces(path=path, file=file)` method which returns a dict of namespace name mapped to the
   namespace version (the largest one if there are multiple) for each namespace cached in the given HDF5 file.
   @rly (#527)
+- Use HDMF common schema 1.5.0.
+  - Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
+    (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
+    a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
+  - `ExternalResources` was changed to support storing both names and URIs for resources. @mavaylon (#517, #548)
+  - The `VocabData` data type was replaced by `EnumData` to provide more flexible support for data from a set of
+    fixed values.
+  - Added `AlignedDynamicTable`, which defines a `DynamicTable` that supports storing a collection of sub-tables.
+    Each sub-table is itself a `DynamicTable` that is aligned with the main table by row index. Each sub-table
+    defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
+  - See https://hdmf-common-schema.readthedocs.io/en/latest/format_release_notes.html#april-19-2021 for more
+    details.
+- Add `EnumData` type for storing data that comes from a fixed set of values. This replaces `VocabData` i.e.
+  `VocabData` has been removed. `VocabData` stored vocabulary elements in an attribute, which has a size limit.
+  `EnumData` now stores elements in a separate dataset, referenced by an attribute stored on the `EnumData` dataset.
+  @ajtritt (#537)
+- Add `AlignedDynamicTable` type which defines a DynamicTable that supports storing a collection of subtables.
+  Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
+  defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
+  @oruebel (#551)
+- Add tutoral for new `AlignedDynamicTable` type. @oruebel (#571)
+- Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements
 - Update CI and copyright year. @rly (#523, #524)
+- Refactor class generation code. @rly (#533, #535)
+- Equality check for `DynamicTable` returns False if the other object is a `DynamicTable` instead of raising an error.
+  @rly (#566)
+- Update ruamel.yaml usage to new API. @rly (#587)
+- Remove use of ColoredTestRunner for more readable verbose test output. @rly (#588)
 
 ### Bug fixes
 - Fix CI testing on Python 3.9. @rly (#523)
 - Fix certain edge cases where `GroupValidator` would not validate all of the child groups or datasets
   attached to a `GroupBuilder`. @dsleiter (#526)
+- Fix bug for generating classes from link specs and ignored 'help' fields. @rly (#535)
+- Various fixes for dynamic class generation. @rly (#561)
+- Fix generation of classes that extends both `MultiContainerInterface` and another class that extends
+  `MultiContainerInterface`. @rly (#567)
+- Fix `make clean` command for docs to clean up sphinx-gallery tutorial files. @oruebel (#571)
+- Make sure we cannot set ``AlignedDynamicTable`` as a category on an ``AlignedDynamicTable``. @oruebel (#571)
+- Fix included data type resolution between HDMF and custom classes that customize the data_type_inc key. @rly (#503)
+- Fix classification of attributes as new/overridden. @rly (#503)
 
 ## HDMF 2.4.0 (February 23, 2021)
 
@@ -40,13 +235,13 @@
 ### New features
 - Add methods for automatic creation of `MultiContainerInterface` classes. @bendichter (#420, #425)
 - Add ability to specify a custom class for new columns to a `DynamicTable` that are not `VectorData`,
-  `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)  
+  `DynamicTableRegion`, or `VocabData` using `DynamicTable.__columns__` or `DynamicTable.add_column(...)`. @rly (#436)
 - Add support for creating and specifying multi-index columns in a `DynamicTable` using `add_column(...)`.
   @bendichter, @rly (#430)
 - Add capability to add a row to a column after IO. @bendichter (#426)
 - Add method `AbstractContainer.get_fields_conf`. @rly (#441)
 - Add functionality for storing external resource references. @ajtritt (#442)
-- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'  
+- Add method `hdmf.utils.get_docval_macro` to get a tuple of the current values for a docval_macro, e.g., 'array_data'
   and 'scalar_data'. @rly (#446)
 - Add `SimpleMultiContainer`, a data_type for storing a `Container` and `Data` objects together. @ajtritt (#449)
 - Support `pathlib.Path` paths in `HDMFIO.__init__`, `HDF5IO.__init__`, and `HDF5IO.load_namespaces`. @dsleiter (#450)
@@ -134,7 +329,7 @@
 - Allow passing None for docval enum arguments with default value None. @rly (#409)
 - If a file is written with an orphan container, e.g., a link to a container that is not written, then an
   `OrphanContainerBuildError` will be raised. This replaces the `OrphanContainerWarning` that was previously raised.
-  @rly (#407)  
+  @rly (#407)
 
 ## HDMF 2.0.0 (July 17, 2020)
 

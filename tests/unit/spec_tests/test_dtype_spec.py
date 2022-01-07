@@ -22,6 +22,13 @@ class DtypeSpecHelper(TestCase):
         result = DtypeHelper.simplify_cpd_type(compound_type)
         self.assertListEqual(result, expected_result)
 
+    def test_simplify_cpd_type_ref(self):
+        compound_type = [DtypeSpec('test', 'test field', 'float'),
+                         DtypeSpec('test2', 'test field2', RefSpec(target_type='MyType', reftype='object'))]
+        expected_result = ['float', 'object']
+        result = DtypeHelper.simplify_cpd_type(compound_type)
+        self.assertListEqual(result, expected_result)
+
     def test_check_dtype_ok(self):
         self.assertEqual('int', DtypeHelper.check_dtype('int'))
 

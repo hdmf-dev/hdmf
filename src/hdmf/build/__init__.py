@@ -1,5 +1,5 @@
 from .builders import Builder, DatasetBuilder, GroupBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
-from .classgenerator import CustomClassGenerator
+from .classgenerator import CustomClassGenerator, MCIClassGenerator
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import BuildManager, TypeMap

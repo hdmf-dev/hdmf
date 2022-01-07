@@ -6,7 +6,7 @@ Dependencies
 
 HDMF has the following minimum requirements, which must be installed before you can get started using HDMF.
 
-#. Python 3.6, 3.7, or 3.8
+#. Python 3.7, 3.8, 3.9, or 3.10
 #. pip
 
 ------------
@@ -82,7 +82,7 @@ work better on Windows.
 
 .. code::
 
-    $ conda create --name hdmf-dev python=3.8
+    $ conda create --name hdmf-dev python=3.10
     $ conda activate hdmf-dev
 
 Then clone the git repository for HDMF, install the HDMF package requirements using the pip_ Python package manager, and
@@ -97,19 +97,30 @@ install HDMF.
    $ pip install -r requirements.txt
    $ pip install -e .
 
+Install optional dependencies
+-----------------------------
+
+HDMF has additional functionality, such as progress bars for certain data chunk iterators, when optional
+dependencies are installed. Run the following to install these:
+
+.. code::
+
+   $ pip install -r requirements-opt.txt
+
 Run tests
 ---------
 
 For running the tests, it is required to install the development requirements. Within a virtual environment, run the
 following code, which will clone the git repository for HDMF, install the HDMF package requirements using pip,
-install HDMF, and run tests using the tox_ automated testing tool.
+install HDMF, and run tests using the tox_ automated testing tool. Tests can be run with or without the optional
+# dependencies specified in ``requirements-opt.txt``.
 
 .. _tox: https://tox.readthedocs.io/en/latest/
 
 .. code::
 
    $ cd hdmf
-   $ pip install -r requirements.txt -r requirements-dev.txt
+   $ pip install -r requirements.txt -r requirements-dev.txt -r requirements-opt.txt
    $ pip install -e .
    $ tox
 

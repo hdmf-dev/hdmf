@@ -101,6 +101,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr1, (float, np.floating)):
                 np.testing.assert_allclose(arr1, arr2)
             else:
+                if isinstance(arr1, bytes):
+                    arr1 = arr1.decode('utf-8')
+                if isinstance(arr2, bytes):
+                    arr2 = arr2.decode('utf-8')
                 self.assertEqual(arr1, arr2)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2))
@@ -109,7 +113,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
-                np.testing.assert_allclose(arr1, arr2)
+                if np.issubdtype(arr1.dtype, np.number):
+                    np.testing.assert_allclose(arr1, arr2)
+                else:
+                    np.testing.assert_array_equal(arr1, arr2)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
@@ -198,7 +205,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         else:
             self.assertContainerEqual(read_container, self.container, ignore_name=True, ignore_hdmf_attrs=True)
 
-        self.validate()
+        self.validate(read_container._experimental)
 
     def roundtripContainer(self, cache_spec=False):
         """Write the container to an HDF5 file, read the container from the file, and return it."""
@@ -221,18 +228,18 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         self.export_reader = HDF5IO(self.export_filename, manager=get_manager(), mode='r')
         return self.export_reader.read()
 
-    def validate(self):
+    def validate(self, experimental=False):
         """Validate the written and exported files, if they exist."""
         if os.path.exists(self.filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io)
+                errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)
 
         if os.path.exists(self.export_filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io)
+                errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)

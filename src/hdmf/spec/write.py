@@ -5,7 +5,6 @@ import warnings
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from datetime import datetime
-
 import ruamel.yaml as yaml
 
 from .catalog import SpecCatalog
@@ -35,14 +34,17 @@ class YAMLSpecWriter(SpecWriter):
 
     def __dump_spec(self, specs, stream):
         specs_plain_dict = json.loads(json.dumps(specs))
-        yaml.main.safe_dump(specs_plain_dict, stream, default_flow_style=False)
+        yaml_obj = yaml.YAML(typ='safe', pure=True)
+        yaml_obj.default_flow_style = False
+        yaml_obj.dump(specs_plain_dict, stream)
 
     def write_spec(self, spec_file_dict, path):
         out_fullpath = os.path.join(self.__outdir, path)
         spec_plain_dict = json.loads(json.dumps(spec_file_dict))
         sorted_data = self.sort_keys(spec_plain_dict)
         with open(out_fullpath, 'w') as fd_write:
-            yaml.dump(sorted_data, fd_write, Dumper=yaml.dumper.RoundTripDumper)
+            yaml_obj = yaml.YAML(pure=True)
+            yaml_obj.dump(sorted_data, fd_write)
 
     def write_namespace(self, namespace, path):
         """Write the given namespace key-value pairs as YAML to the given path.
@@ -64,11 +66,11 @@ class YAMLSpecWriter(SpecWriter):
         same path.
         """
         with open(path, 'rb') as fd_read:
-            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader, preserve_quotes=True)
+            yaml_obj = yaml.YAML(pure=True)
+            data = yaml_obj.load(fd_read)
         self.write_spec(data, path)
 
     def sort_keys(self, obj):
-
         # Represent None as null
         def my_represent_none(self, data):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')

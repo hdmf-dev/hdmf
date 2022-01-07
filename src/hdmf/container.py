@@ -14,10 +14,28 @@ from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta,
                     popargs, LabelledDict)
 
 
+def _set_exp(cls):
+    """Set a class as being experimental"""
+    cls._experimental = True
+
+
+def _exp_warn_msg(cls):
+    """Generate a warning message experimental features"""
+    pfx = cls
+    if isinstance(cls, type):
+        pfx = cls.__name__
+    msg = ('%s is experimental -- it may be removed in the future and '
+           'is not guaranteed to maintain backward compatibility') % pfx
+    return msg
+
+
 class AbstractContainer(metaclass=ExtenderMeta):
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
     # the class attribute name to something domain-specific
+
+    _experimental = False
+
     _fieldsname = '__fields__'
 
     _data_type_attr = 'data_type'
@@ -159,6 +177,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
     def __new__(cls, *args, **kwargs):
         inst = super().__new__(cls)
+        if cls._experimental:
+            warn(_exp_warn_msg(cls))
         inst.__container_source = kwargs.pop('container_source', None)
         inst.__parent = None
         inst.__children = list()
@@ -358,8 +378,10 @@ class Container(AbstractContainer):
                     for v in val:
                         if not isinstance(v.parent, Container):
                             v.parent = self
-                        # else, the ObjectMapper will create a link from self (parent) to v (child with existing
-                        # parent)
+                        else:
+                            # the ObjectMapper will create a link from self (parent) to v (child with existing parent)
+                            # still need to mark self as modified
+                            self.set_modified()
 
             ret.append(container_setter)
         return ret[-1]
@@ -530,6 +552,12 @@ class Data(AbstractContainer):
         self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
+        """
+        The extend_data method adds all the elements of the iterable arg to the
+        end of the data of this Data container.
+
+        :param arg: The iterable to add to the end of this VectorData
+        """
         self.__data = extend_data(self.__data, arg)
 
 
@@ -698,7 +726,10 @@ class MultiContainerInterface(Container):
             for tmp in containers:
                 if not isinstance(tmp.parent, Container):
                     tmp.parent = self
-                # else, the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                else:
+                    # the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                    # still need to mark self as modified
+                    self.set_modified()
                 if tmp.name in d:
                     msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
                     raise ValueError(msg)
@@ -943,6 +974,9 @@ class Row(object, metaclass=ExtenderMeta):
 
     def __eq__(self, other):
         return self.idx == other.idx and self.table is other.table
+
+    def __str__(self):
+        return "Row(%i, %s) = %s" % (self.idx, self.table.name, str(self.todict()))
 
 
 class RowGetter:

@@ -5,13 +5,13 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 
 import re
 from collections import OrderedDict
+from typing import NamedTuple, Union
 from warnings import warn
 
 import numpy as np
 import pandas as pd
-from h5py import Dataset
 
-from . import register_class
+from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
@@ -48,7 +48,32 @@ class VectorData(Data):
         self.append(val)
 
     def get(self, key, **kwargs):
+        """
+        Retrieve elements from this VectorData
+
+        :param key: Selection of the elements
+        :param kwargs: Ignored
+        """
         return super().get(key)
+
+    def extend(self, ar, **kwargs):
+        """Add all elements of the iterable arg to the end of this VectorData.
+
+        Each subclass of VectorData should have its own extend method to ensure functionality and efficiency.
+
+        :param arg: The iterable to add to the end of this VectorData
+        """
+        #################################################################################
+        # Each subclass of VectorData should have its own extend method to ensure
+        # functionality AND efficiency of the extend operation. However, because currently
+        # they do not all have one of these methods, the only way to ensure functionality
+        # is with calls to add_row. Because that is inefficient for basic VectorData,
+        # this check is added to ensure we always call extend on a basic VectorData.
+        if self.__class__.__mro__[0] == VectorData:
+            super().extend(ar)
+        else:
+            for i in ar:
+                self.add_row(i, **kwargs)
 
 
 @register_class('VectorIndex')
@@ -80,7 +105,7 @@ class VectorIndex(VectorData):
             # adjust precision for types that we can adjust precision for
             self.__adjust_precision(self.__uint)
 
-    def add_vector(self, arg):
+    def add_vector(self, arg, **kwargs):
         """
         Add the given data value to the target VectorData and append the corresponding index to this VectorIndex
         :param arg: The data value to be added to self.target
@@ -89,41 +114,46 @@ class VectorIndex(VectorData):
             for a in arg:
                 self.target.add_vector(a)
         else:
-            self.target.extend(arg)
+            self.target.extend(arg, **kwargs)
         self.append(self.__check_precision(len(self.target)))
 
     def __check_precision(self, idx):
         """
-        Check precision of current dataset and, if
-        necessary, adjust precision to accommodate new value.
+        Check precision of current dataset and, if necessary, adjust precision to accommodate new value.
 
         Returns:
             unsigned integer encoding of idx
         """
         if idx > self.__maxval:
-            nbits = (np.log2(self.__maxval + 1) * 2)
+            while idx > self.__maxval:
+                nbits = (np.log2(self.__maxval + 1) * 2)  # 8->16, 16->32, 32->64
+                if nbits == 128:  # pragma: no cover
+                    msg = ('Cannot store more than 18446744073709551615 elements in a VectorData. Largest dtype '
+                           'allowed for VectorIndex is uint64.')
+                    raise ValueError(msg)
+                self.__maxval = 2 ** nbits - 1
             self.__uint = np.dtype('uint%d' % nbits).type
-            self.__maxval = 2 ** nbits - 1
             self.__adjust_precision(self.__uint)
         return self.__uint(idx)
 
     def __adjust_precision(self, uint):
         """
-        Adjust precision of data to specificied unsigned integer precision
+        Adjust precision of data to specificied unsigned integer precision.
         """
         if isinstance(self.data, list):
             for i in range(len(self.data)):
                 self.data[i] = uint(self.data[i])
         elif isinstance(self.data, np.ndarray):
-            self._VectorIndex__data = self.data.astype(uint)
+            # use self._Data__data to work around restriction on resetting self.data
+            self._Data__data = self.data.astype(uint)
         else:
             raise ValueError("cannot adjust precision of type %s to %s", (type(self.data), uint))
 
-    def add_row(self, arg):
+    def add_row(self, arg, **kwargs):
         """
         Convenience function. Same as :py:func:`add_vector`
         """
-        self.add_vector(arg)
+        self.add_vector(arg, **kwargs)
 
     def __getitem_helper(self, arg, **kwargs):
         """
@@ -139,7 +169,7 @@ class VectorIndex(VectorData):
 
     def __getitem__(self, arg):
         """
-        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+        Select elements in this VectorIndex and retrieve the corresponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :return: Scalar or list of values retrieved
@@ -148,7 +178,7 @@ class VectorIndex(VectorData):
 
     def get(self, arg, **kwargs):
         """
-        Select elements in this VectorIndex and retrieve the corrsponding data from the self.target VectorData
+        Select elements in this VectorIndex and retrieve the corresponding data from the self.target VectorData
 
         :param arg: slice or integer index indicating the elements we want to select in this VectorIndex
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
@@ -208,12 +238,12 @@ class DynamicTable(Container):
     A column-based table. Columns are defined by the argument *columns*. This argument
     must be a list/tuple of :class:`~hdmf.common.table.VectorData` and :class:`~hdmf.common.table.VectorIndex` objects
     or a list/tuple of dicts containing the keys ``name`` and ``description`` that provide the name and description
-    of each column in the table. Additionally, the keys ``index``, ``table``, ``vocab`` can be used for specifying
+    of each column in the table. Additionally, the keys ``index``, ``table``, ``enum`` can be used for specifying
     additional structure to the table columns. Setting the key ``index`` to ``True`` can be used to indicate that the
     :class:`~hdmf.common.table.VectorData` column will store a ragged array (i.e. will be accompanied with a
     :class:`~hdmf.common.table.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the
-    column will store regions to another DynamicTable. Setting the key ``vocab`` to ``True`` can be used to indicate
-    that the column data will come from a controlled vocabulary.
+    column will store regions to another DynamicTable. Setting the key ``enum`` to ``True`` can be used to indicate
+    that the column data will come from a fixed set of values.
 
     Columns in DynamicTable subclasses can be statically defined by specifying the class attribute *\_\_columns\_\_*,
     rather than specifying them at runtime at the instance level. This is useful for defining a table structure
@@ -301,6 +331,9 @@ class DynamicTable(Container):
                         colset.pop(c.target.name)
                     else:
                         raise ValueError("Found VectorIndex '%s' but not its target '%s'" % (c.name, c.target.name))
+                elif isinstance(c, EnumData):
+                    if c.elements.name in colset:
+                        colset.pop(c.elements.name)
                 _data = c.data
                 if isinstance(_data, DataIO):
                     _data = _data.data
@@ -328,11 +361,17 @@ class DynamicTable(Container):
                 self.columns = tuple()
             else:
                 # Figure out column names if columns were given
-                tmp = list()
+                tmp = OrderedDict()
+                skip = set()
                 for col in columns:
+                    if col.name in skip:
+                        continue
                     if isinstance(col, VectorIndex):
                         continue
-                    tmp.append(col.name)
+                    if isinstance(col, EnumData):
+                        skip.add(col.elements.name)
+                        tmp.pop(col.elements.name, None)
+                    tmp[col.name] = None
                 self.colnames = tuple(tmp)
                 self.columns = tuple(columns)
         else:
@@ -358,6 +397,11 @@ class DynamicTable(Container):
                         # shorter
                         if len(tmp_indices) > len(indices.get(curr_col.target.name, [])):
                             indices[curr_col.target.name] = tmp_indices
+                    elif isinstance(col, EnumData):
+                        # EnumData is the indexing column, so it should go first
+                        if col.name not in indices:
+                            indices[col.name] = [col]            # EnumData is the indexing object
+                            col_dict[col.name] = col.elements    # EnumData.elements is the column with values
                     else:
                         if col.name in indices:
                             continue
@@ -373,14 +417,7 @@ class DynamicTable(Container):
         col_dict = dict()
         self.__indices = dict()
         for col in self.columns:
-            if isinstance(col, VectorData) and not isinstance(col, VectorIndex):
-                # if we added this column using its index, ignore this column
-                if col.name in col_dict:
-                    continue
-                else:
-                    col_dict[col.name] = col
-                    self.__set_table_attr(col)
-            else:  # col is a vectorindex
+            if isinstance(col, VectorIndex):
                 # if index has already been added because it is part of a nested index chain, ignore this column
                 if col.name in self.__indices:
                     continue
@@ -400,6 +437,13 @@ class DynamicTable(Container):
                 col_dict[curr_col.target.name] = col
                 if not hasattr(self, curr_col.target.name):
                     self.__set_table_attr(curr_col.target)
+            else:    # this is a regular VectorData or EnumData
+                # if we added this column using its index, ignore this column
+                if col.name in col_dict:
+                    continue
+                else:
+                    col_dict[col.name] = col
+                    self.__set_table_attr(col)
 
         self.__df_cols = [self.id] + [col_dict[name] for name in self.colnames]
 
@@ -440,9 +484,20 @@ class DynamicTable(Container):
 
                     # set the table attributes for not yet init optional predefined columns
                     setattr(self, col['name'], None)
-                    if col.get('index', False):
-                        self.__uninit_cols[col['name'] + '_index'] = col
-                        setattr(self, col['name'] + '_index', None)
+                    index = col.get('index', False)
+                    if index is not False:
+                        if index is True:
+                            index = 1
+                        if isinstance(index, int):
+                            assert index > 0, ValueError("integer index value must be greater than 0")
+                            index_name = col['name']
+                            for i in range(index):
+                                index_name = index_name + '_index'
+                                self.__uninit_cols[index_name] = col
+                                setattr(self, index_name, None)
+                    if col.get('enum', False):
+                        self.__uninit_cols[col['name'] + '_elements'] = col
+                        setattr(self, col['name'] + '_elements', None)
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -457,7 +512,11 @@ class DynamicTable(Container):
             data = None
             if df is not None:
                 data = list(df[name].values)
-            if d.get('index', False):
+            index = d.get('index', False)
+            if index is not False:
+                if isinstance(index, int) and index > 1:
+                    raise ValueError('Creating nested index columns using this method is not yet supported. Use '
+                                     'add_column or define the columns using __columns__ instead.')
                 index_data = None
                 if data is not None:
                     index_data = [len(data[0])]
@@ -473,6 +532,16 @@ class DynamicTable(Container):
                 vindex = VectorIndex("%s_index" % name, index_data, target=vdata)
                 tmp.append(vindex)
                 tmp.append(vdata)
+            elif d.get('enum', False):
+                # EnumData is the indexing column, so it should go first
+                if data is not None:
+                    elements, data = np.unique(data, return_inverse=True)
+                    tmp.append(EnumData(name, desc, data=data, elements=elements))
+                else:
+                    tmp.append(EnumData(name, desc, data=data))
+                # EnumData handles constructing the VectorData object that contains EnumData.elements
+                # --> use this functionality (rather than creating here) for consistency and less code/complexity
+                tmp.append(tmp[-1].elements)
             else:
                 if data is None:
                     data = list()
@@ -508,6 +577,7 @@ class DynamicTable(Container):
                         self.add_column(col['name'], col['description'],
                                         index=col.get('index', False),
                                         table=col.get('table', False),
+                                        enum=col.get('enum', False),
                                         col_cls=col.get('class', VectorData),
                                         # Pass through extra keyword arguments for add_column that
                                         # subclasses may have added
@@ -542,18 +612,22 @@ class DynamicTable(Container):
                 c.add_row(data[colname])
 
     def __eq__(self, other):
-        """
-        Compare if the two DynamicTables contain the same data
+        """Compare if the two DynamicTables contain the same data.
 
-        This implemented by converting the DynamicTables to a pandas dataframe and
-        comparing the equality of the two tables.
+        First this returns False if the other DynamicTable has a different name or
+        description. Then, this table and the other table are converted to pandas
+        dataframes and the equality of the two tables is returned.
 
         :param other: DynamicTable to compare to
 
-        :raises: An error will be raised with to_dataframe is not defined or other
-
         :return: Bool indicating whether the two DynamicTables contain the same data
         """
+        if other is self:
+            return True
+        if not isinstance(other, DynamicTable):
+            return False
+        if self.name != other.name or self.description != other.description:
+            return False
         return self.to_dataframe().equals(other.to_dataframe())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
@@ -569,12 +643,11 @@ class DynamicTable(Container):
                     'array-like of ints: Create a VectorIndex and use these values as the data \n'
                     'int: Recursively create `n` VectorIndex objects for a multi-ragged array \n',
              'default': False},
-            {'name': 'vocab', 'type': (bool, 'array_data'), 'default': False,
-             'doc': ('whether or not this column contains data from a '
-                     'controlled vocabulary or the controlled vocabulary')},
+            {'name': 'enum', 'type': (bool, 'array_data'), 'default': False,
+             'doc': ('whether or not this column contains data from a fixed set of elements')},
             {'name': 'col_cls', 'type': type, 'default': VectorData,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
-                     'DynamicTableRegion object is used. If vocab=True, this field is ignored and a VocabData '
+                     'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
                      'object is used.')}, )
     def add_column(self, **kwargs):  # noqa: C901
         """
@@ -585,7 +658,7 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, vocab, col_cls = popargs('index', 'table', 'vocab', 'col_cls', kwargs)
+        index, table, enum, col_cls = popargs('index', 'table', 'enum', 'col_cls', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
@@ -630,16 +703,17 @@ class DynamicTable(Container):
         ckwargs = dict(kwargs)
 
         # Add table if it's been specified
-        if table and vocab:
-            raise ValueError("column '%s' cannot be both a table region and come from a controlled vocabulary" % name)
+        if table and enum:
+            raise ValueError("column '%s' cannot be both a table region "
+                             "and come from an enumerable set of elements" % name)
         if table is not False:
             col_cls = DynamicTableRegion
             if isinstance(table, DynamicTable):
                 ckwargs['table'] = table
-        if vocab is not False:
-            col_cls = VocabData
-            if isinstance(vocab, (list, tuple, np.ndarray)):
-                ckwargs['vocabulary'] = vocab
+        if enum is not False:
+            col_cls = EnumData
+            if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
+                ckwargs['elements'] = enum
 
         col = col_cls(**ckwargs)
         col.parent = self
@@ -647,6 +721,10 @@ class DynamicTable(Container):
         self.__set_table_attr(col)
         if col in self.__uninit_cols:
             self.__uninit_cols.pop(col)
+
+        if col_cls is EnumData:
+            columns.append(col.elements)
+            col.elements.parent = self
 
         # Add index if it's been specified
         if index is not False:
@@ -725,25 +803,39 @@ class DynamicTable(Container):
             raise KeyError(key)
         return ret
 
-    def get(self, key, default=None, df=True, **kwargs):  # noqa: C901
-        """
-        Select a subset from the table
+    def get(self, key, default=None, df=True, index=True, **kwargs):
+        """Select a subset from the table.
+
+        If the table includes a DynamicTableRegion column, then by default,
+        the index/indices of the DynamicTableRegion will be returned. If ``df=True`` and ``index=False``,
+        then the returned pandas DataFrame will contain a nested DataFrame in each row of the
+        DynamicTableRegion column. If ``df=False`` and ``index=True``, then a list of lists will be returned
+        where the list containing the DynamicTableRegion column contains the indices of the DynamicTableRegion.
+        Note that in this case, the DynamicTable referenced by the DynamicTableRegion can be accessed through
+        the ``table`` attribute of the DynamicTableRegion object. ``df=False`` and ``index=False`` is
+        not yet supported.
 
         :param key: Key defining which elements of the table to select. This may be one of the following:
 
             1) string with the name of the column to select
-            2) a tuple consisting of (str, int) where the string identifies the column to select by name
-               and the int selects the row
-            3) int, list of ints, or slice selecting a set of full rows in the table
+            2) a tuple consisting of (int, str) where the int selects the row and the string identifies the
+               column to select by name
+            3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
+               scalars are returned for each column that has a single value. If a list, array, or slice is used and
+               df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
+               single row.
 
-        :return: 1) If key is a string, then return array with the data of the selected column
+        :return: 1) If key is a string, then return the VectorData object representing the column with the string name
                  2) If key is a tuple of (int, str), then return the scalar value of the selected cell
-                 3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame consisting of one or
-                    more rows
+                 3) If key is an int, list, np.ndarray, or slice, then return pandas.DataFrame or lists
+                    consisting of one or more rows
 
         :raises: KeyError
         """
         ret = None
+        if not df and not index:
+            # returning nested lists of lists for DTRs and ragged DTRs is complicated and not yet supported
+            raise ValueError('DynamicTable.get() with df=False and index=False is not yet supported.')
         if isinstance(key, tuple):
             # index by row and column --> return specific cell
             arg1 = key[0]
@@ -762,74 +854,118 @@ class DynamicTable(Container):
             else:
                 return default
         else:
-            # index by int, list, np.ndarray, or slice --> return pandas Dataframe consisting of one or more rows
-            arg = key
-            ret = OrderedDict()
-            try:
-                # index with a python slice or single int to select one or multiple rows
-                if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
-                    raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
-                if isinstance(arg, np.ndarray) and len(arg.shape) != 1:
-                    raise ValueError("cannot index DynamicTable with multiple dimensions")
-                ret['id'] = self.id[arg]
-                for name in self.colnames:
-                    col = self.__df_cols[self.__colids[name]]
-                    ret[name] = col.get(arg, df=df, **kwargs)
-            except ValueError as ve:
-                x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
-                if x:
-                    msg = ("Row index %s out of range for %s '%s' (length %d)."
-                           % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
-                else:  # pragma: no cover
-                    raise ve
-            except IndexError as ie:
-                if str(ie) == 'list index out of range':
-                    msg = ("Row index out of range for %s '%s' (length %d)."
-                           % (self.__class__.__name__, self.name, len(self)))
-                    raise IndexError(msg)
-                else:  # pragma: no cover
-                    raise ie
+            # index by int, list, np.ndarray, or slice -->
+            # return pandas Dataframe or lists consisting of one or more rows
+            sel = self.__get_selection_as_dict(key, df, index, **kwargs)
             if df:
                 # reformat objects to fit into a pandas DataFrame
-                id_index = ret.pop('id')
-                if np.isscalar(id_index):
-                    id_index = [id_index]
-                retdf = OrderedDict()
-                for k in ret:  # for each column
-                    if isinstance(ret[k], np.ndarray):
-                        if ret[k].ndim == 1:
-                            if len(id_index) == 1:
-                                # k is a multi-dimension column, and
-                                # only one element has been selected
-                                retdf[k] = [ret[k]]
-                            else:
-                                retdf[k] = ret[k]
-                        else:
-                            if len(id_index) == ret[k].shape[0]:
-                                # k is a multi-dimension column, and
-                                # more than one element has been selected
-                                retdf[k] = list(ret[k])
-                            else:
-                                raise ValueError('unable to convert selection to DataFrame')
-                    elif isinstance(ret[k], (list, tuple)):
-                        if len(id_index) == 1:
-                            # k is a multi-dimension column, and
-                            # only one element has been selected
-                            retdf[k] = [ret[k]]
-                        else:
-                            retdf[k] = ret[k]
-                    elif isinstance(ret[k], pd.DataFrame):
-                        retdf['%s_%s' % (k, ret[k].index.name)] = ret[k].index.values
-                        for col in ret[k].columns:
-                            newcolname = "%s_%s" % (k, col)
-                            retdf[newcolname] = ret[k][col].values
-                    else:
-                        retdf[k] = ret[k]
-                ret = pd.DataFrame(retdf, index=pd.Index(name=self.id.name, data=id_index))
+                if np.isscalar(key):
+                    ret = self.__get_selection_as_df_single_row(sel)
+                else:
+                    ret = self.__get_selection_as_df(sel)
             else:
-                ret = list(ret.values())
+                ret = list(sel.values())
 
+        return ret
+
+    def __get_selection_as_dict(self, arg, df, index, exclude=None, **kwargs):
+        """Return a dict mapping column names to values (lists/arrays or dataframes) for the given selection.
+        Uses each column's get() method, passing kwargs as necessary.
+
+        :param arg: key passed to get() to return one or more rows
+        :type arg: int, list, np.ndarray, or slice
+        """
+        if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
+            raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+        if isinstance(arg, np.ndarray) and arg.ndim != 1:
+            raise ValueError("Cannot index DynamicTable with multiple dimensions")
+        if exclude is None:
+            exclude = set([])
+        ret = OrderedDict()
+        try:
+            # index with a python slice or single int to select one or multiple rows
+            ret['id'] = self.id[arg]
+            for name in self.colnames:
+                if name in exclude:
+                    continue
+                col = self.__df_cols[self.__colids[name]]
+                if index and (isinstance(col, DynamicTableRegion) or
+                              (isinstance(col, VectorIndex) and isinstance(col.target, DynamicTableRegion))):
+                    # return indices (in list, array, etc.) for DTR and ragged DTR
+                    ret[name] = col.get(arg, df=False, index=True, **kwargs)
+                else:
+                    ret[name] = col.get(arg, df=df, index=index, **kwargs)
+            return ret
+        # if index is out of range, different errors can be generated depending on the dtype of the column
+        # but despite the differences, raise an IndexError from that error
+        except ValueError as ve:
+            # in h5py <2, if the column is an h5py.Dataset, a ValueError was raised
+            # in h5py 3+, this became an IndexError
+            x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
+            if x:
+                msg = ("Row index %s out of range for %s '%s' (length %d)."
+                       % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                raise IndexError(msg) from ve
+            else:  # pragma: no cover
+                raise ve
+        except IndexError as ie:
+            x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
+            if x:
+                msg = ("Row index %s out of range for %s '%s' (length %d)."
+                       % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
+                raise IndexError(msg)
+            elif str(ie) == 'list index out of range':
+                msg = ("Row index out of range for %s '%s' (length %d)."
+                       % (self.__class__.__name__, self.name, len(self)))
+                raise IndexError(msg) from ie
+            else:  # pragma: no cover
+                raise ie
+
+    def __get_selection_as_df_single_row(self, coldata):
+        """Return a pandas dataframe for the given row and columns with the id column as the index.
+
+        This is a special case of __get_selection_as_df where a single row was requested.
+
+        :param coldata: dict mapping column names to values (list/arrays or dataframes)
+        :type coldata: dict
+        """
+        id_index_orig = coldata.pop('id')
+        id_index = [id_index_orig]
+        df_input = OrderedDict()
+        for k in coldata:  # for each column
+            if isinstance(coldata[k], (np.ndarray, list, tuple, pd.DataFrame)):
+                # wrap in a list because coldata[k] may be an array/list/tuple with multiple elements (ragged or
+                # multi-dim column) and pandas needs to have one element per index row (=1 in this case)
+                df_input[k] = [coldata[k]]
+            else:  # scalar, don't wrap
+                df_input[k] = coldata[k]
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret.name = self.name
+        return ret
+
+    def __get_selection_as_df(self, coldata):
+        """Return a pandas dataframe for the given rows and columns with the id column as the index.
+
+        This is used when multiple row indices are selected (or a list/array/slice of a single index is passed to get).
+        __get_selection_as_df_single_row should be used if a single index is passed to get.
+
+        :param coldata: dict mapping column names to values (list/arrays or dataframes)
+        :type coldata: dict
+        """
+        id_index = coldata.pop('id')
+        df_input = OrderedDict()
+        for k in coldata:  # for each column
+            if isinstance(coldata[k], np.ndarray) and coldata[k].ndim > 1:
+                df_input[k] = list(coldata[k])  # convert multi-dim array to list of inner arrays
+            elif isinstance(coldata[k], pd.DataFrame):
+                # multiple rows were selected and collapsed into a dataframe
+                # split up the rows of the df into a list of dataframes, one per row
+                # TODO make this more efficient
+                df_input[k] = [coldata[k].iloc[[i]] for i in range(len(coldata[k]))]
+            else:
+                df_input[k] = coldata[k]
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret.name = self.name
         return ret
 
     def __contains__(self, val):
@@ -838,26 +974,91 @@ class DynamicTable(Container):
         """
         return val in self.__colids or val in self.__indices
 
-    @docval({'name': 'exclude', 'type': set, 'doc': ' Set of columns to exclude from the dataframe', 'default': None})
+    def get_foreign_columns(self):
+        """
+        Determine the names of all columns that link to another DynamicTable, i.e.,
+        find all DynamicTableRegion type columns. Similar to a foreign key in a
+        database, a DynamicTableRegion column references elements in another table.
+
+        :returns: List of strings with the column names
+        """
+        col_names = []
+        for col_index, col in enumerate(self.columns):
+            if isinstance(col, DynamicTableRegion):
+                col_names.append(col.name)
+        return col_names
+
+    def has_foreign_columns(self):
+        """
+        Does the table contain DynamicTableRegion columns
+
+        :returns: True if the table contains a DynamicTableRegion column, else False
+        """
+        for col_index, col in enumerate(self.columns):
+            if isinstance(col, DynamicTableRegion):
+                return True
+        return False
+
+    @docval({'name': 'other_tables', 'type': (list, tuple, set),
+             'doc': "List of additional tables to consider in the search. Usually this "
+                    "parameter is used for internal purposes, e.g., when we need to "
+                    "consider AlignedDynamicTable", 'default': None},
+            allow_extra=False)
+    def get_linked_tables(self, **kwargs):
+        """
+        Get a list of the full list of all tables that are being linked to directly or indirectly
+        from this table via foreign DynamicTableColumns included in this table or in any table that
+        can be reached through DynamicTableRegion columns
+
+        Returns: List of NamedTuple objects with:
+                * 'source_table' : The source table containing the DynamicTableRegion column
+                * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
+                * 'target_table' : The target DynamicTable; same as source_column.table.
+        """
+        link_type = NamedTuple('DynamicTableLink',
+                               [('source_table', DynamicTable),
+                                ('source_column', Union[DynamicTableRegion, VectorIndex]),
+                                ('target_table', DynamicTable)])
+        curr_tables = [self, ]  # Set of tables
+        other_tables = getargs('other_tables', kwargs)
+        if other_tables is not None:
+            curr_tables += other_tables
+        curr_index = 0
+        foreign_cols = []
+        while curr_index < len(curr_tables):
+            for col_index, col in enumerate(curr_tables[curr_index].columns):
+                if isinstance(col, DynamicTableRegion):
+                    foreign_cols.append(link_type(source_table=curr_tables[curr_index],
+                                                  source_column=col,
+                                                  target_table=col.table))
+                    curr_table_visited = False
+                    for t in curr_tables:
+                        if t is col.table:
+                            curr_table_visited = True
+                    if not curr_table_visited:
+                        curr_tables.append(col.table)
+            curr_index += 1
+        return foreign_cols
+
+    @docval({'name': 'exclude', 'type': set, 'doc': 'Set of column names to exclude from the dataframe',
+             'default': None},
+            {'name': 'index', 'type': bool,
+             'doc': ('Whether to return indices for a DynamicTableRegion column. If False, nested dataframes will be '
+                     'returned.'),
+             'default': False}
+            )
     def to_dataframe(self, **kwargs):
         """
         Produce a pandas DataFrame containing this table's data.
+
+        If this table contains a DynamicTableRegion, by default,
+
+        If exclude is None, this is equivalent to table.get(slice(None, None, None), index=False).
         """
-        exclude = popargs('exclude', kwargs)
-        if exclude is None:
-            exclude = set([])
-        data = OrderedDict()
-        for name in self.colnames:
-            if name in exclude:
-                continue
-            col = self.__df_cols[self.__colids[name]]
-
-            if isinstance(col.data, (Dataset, np.ndarray)) and col.data.ndim > 1:
-                data[name] = [x for x in col[:]]
-            else:
-                data[name] = col[:]
-
-        return pd.DataFrame(data, index=pd.Index(name=self.id.name, data=self.id.data))
+        arg = slice(None, None, None)  # select all rows
+        sel = self.__get_selection_as_dict(arg, df=True, **kwargs)
+        ret = self.__get_selection_as_df(sel)
+        return ret
 
     @classmethod
     @docval(
@@ -1007,30 +1208,45 @@ class DynamicTableRegion(VectorData):
         """
         Subset the DynamicTableRegion
 
-        :param arg: 1) tuple consisting of (str, int) where the string defines the column to select
-                       and the int selects the row, 2) int or slice to select a subset of rows
+        :param arg: Key defining which elements of the table to select. This may be one of the following:
 
-        :return: Result from self.table[....] with the appropritate selection based on the
+            1) string with the name of the column to select
+            2) a tuple consisting of (int, str) where the int selects the row and the string identifies the
+               column to select by name
+            3) int, list of ints, array, or slice selecting a set of full rows in the table. If an int is used, then
+               scalars are returned for each column that has a single value. If a list, array, or slice is used and
+               df=False, then lists are returned for each column, even if the list, array, or slice resolves to a
+               single row.
+
+        :param index: Boolean indicating whether to return indices of the DTR (default False)
+        :param df: Boolean indicating whether to return the result as a pandas DataFrame (default True)
+
+        :return: Result from self.table[...] with the appropriate selection based on the
                  rows selected by this DynamicTableRegion
         """
+        if not df and not index:
+            # returning nested lists of lists for DTRs and ragged DTRs is complicated and not yet supported
+            raise ValueError('DynamicTableRegion.get() with df=False and index=False is not yet supported.')
         # treat the list of indices as data that can be indexed. then pass the
         # result to the table to get the data
         if isinstance(arg, tuple):
             arg1 = arg[0]
             arg2 = arg[1]
             return self.table[self.data[arg1], arg2]
+        elif isinstance(arg, str):
+            return self.table[arg]
         elif np.issubdtype(type(arg), np.integer):
             if arg >= len(self.data):
                 raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
             ret = self.data[arg]
             if not index:
-                ret = self.table.get(ret, df=df, **kwargs)
+                ret = self.table.get(ret, df=df, index=index, **kwargs)
             return ret
         elif isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
 
             # get the data at the specified indices
-            if isinstance(self.data, (tuple, list)) and isinstance(idx, list):
+            if isinstance(self.data, (tuple, list)) and isinstance(idx, (list, np.ndarray)):
                 ret = [self.data[i] for i in idx]
             else:
                 ret = self.data[idx]
@@ -1047,12 +1263,11 @@ class DynamicTableRegion(VectorData):
                 # of the list we are returning. This is carried out by the recursive method _index_lol
                 uniq = np.unique(ret)
                 lut = {val: i for i, val in enumerate(uniq)}
-                values = self.table.get(uniq, df=df, **kwargs)
+                values = self.table.get(uniq, df=df, index=index, **kwargs)
                 if df:
                     ret = values.iloc[[lut[i] for i in ret]]
                 else:
                     ret = self._index_lol(values, ret, lut)
-
             return ret
         else:
             raise ValueError("unrecognized argument: '%s'" % arg)
@@ -1068,8 +1283,10 @@ class DynamicTableRegion(VectorData):
         for col in result:
             if isinstance(col, list):
                 if isinstance(col[0], list):
+                    # list of columns that need to be sorted
                     ret.append(self._index_lol(col, index, lut))
                 else:
+                    # list of elements, one for each row to return
                     ret.append([col[lut[i]] for i in index])
             elif isinstance(col, np.ndarray):
                 ret.append(np.array([col[lut[i]] for i in index], dtype=col.dtype))
@@ -1108,42 +1325,46 @@ class DynamicTableRegion(VectorData):
         return template
 
 
-@register_class('VocabData')
-class VocabData(VectorData):
+def _uint_precision(elements):
+    """ Calculate the uint precision needed to encode a set of elements """
+    n_elements = elements
+    if hasattr(elements, '__len__'):
+        n_elements = len(elements)
+    return np.dtype('uint%d' % (8 * max(1, int((2 ** np.ceil((np.ceil(np.log2(n_elements)) - 8) / 8)))))).type
+
+
+def _map_elements(uint, elements):
+    """ Map CV terms to their uint index """
+    return {t[1]: uint(t[0]) for t in enumerate(elements)}
+
+
+@register_class('EnumData', EXP_NAMESPACE)
+class EnumData(VectorData):
     """
-    A n-dimensional dataset that can contain elements from a controlled
-    vocabulary.
+    A n-dimensional dataset that can contain elements from fixed set of elements.
     """
 
-    __fields__ = ('vocabulary',)
+    __fields__ = ('elements', )
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this column'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
-            {'name': 'vocabulary', 'type': ('array_data', 'data'), 'default': list(),
-             'doc': 'the items in this vocabulary'})
+             'doc': 'integers that index into elements for the value of each row', 'default': list()},
+            {'name': 'elements', 'type': ('array_data', 'data', VectorData), 'default': list(),
+             'doc': 'lookup values for each integer in ``data``'})
     def __init__(self, **kwargs):
-        vocab = popargs('vocabulary', kwargs)
+        elements = popargs('elements', kwargs)
         super().__init__(**kwargs)
-        if len(vocab) > 0:
-            self.vocabulary = np.asarray(vocab)
-            self.__uint = self.__uint_precision(vocab)
-            self.__revidx = self.__map_vocab(self.__uint, self.vocabulary)
+        if not isinstance(elements, VectorData):
+            elements = VectorData('%s_elements' % self.name, data=elements,
+                                  description='fixed set of elements referenced by %s' % self.name)
+        self.elements = elements
+        if len(self.elements) > 0:
+            self.__uint = _uint_precision(self.elements.data)
+            self.__revidx = _map_elements(self.__uint, self.elements.data)
         else:
-            self.vocabulary = vocab
             self.__revidx = dict()  # a map from term to index
             self.__uint = None  # the precision needed to encode all terms
-
-    @staticmethod
-    def __uint_precision(vocab):
-        """ Calculate the uint precision needed to encode the given vocabulary """
-        return np.dtype('uint%d' % 8 * max(1, int((2 ** np.ceil((np.ceil(np.log2(len(vocab))) - 8) / 8))))).type
-
-    @staticmethod
-    def __map_vocab(uint, vocab):
-        """ Map CV terms to their uint index """
-        return {t[1]: uint(t[0]) for t in enumerate(vocab)}
 
     def __add_term(self, term):
         """
@@ -1153,16 +1374,16 @@ class VocabData(VectorData):
             The index of the term
         """
         if term not in self.__revidx:
-            # get minimum uint precision needed for vocabulary
-            self.vocabulary.append(term)
-            uint = self.__uint_precision(self.vocabulary)
+            # get minimum uint precision needed for elements
+            self.elements.append(term)
+            uint = _uint_precision(self.elements)
             if self.__uint is uint:
                 # add the new term to the index-term map
-                self.__revidx[term] = self.__uint(len(self.vocabulary) - 1)
+                self.__revidx[term] = self.__uint(len(self.elements) - 1)
             else:
                 # remap terms to their uint and bump the precision of existing data
                 self.__uint = uint
-                self.__revidx = self.__map_vocab(self.__uint, self.vocabulary)
+                self.__revidx = _map_elements(self.__uint, self.elements)
                 for i in range(len(self.data)):
                     self.data[i] = self.__uint(self.data[i])
         return self.__revidx[term]
@@ -1172,26 +1393,25 @@ class VocabData(VectorData):
 
     def _get_helper(self, idx, index=False, join=False, **kwargs):
         """
-        A helper function for getting vocabulary elements
+        A helper function for getting elements elements
 
         This helper function contains the post-processing of retrieve indices. By separating this,
-        it allows customizing processing of indices before resolving the vocabulary elements
+        it allows customizing processing of indices before resolving the elements elements
         """
         if index:
             return idx
         if not np.isscalar(idx):
-            orig_shape = idx.shape
-            ret = self.vocabulary[idx.ravel()]
-            ret = ret.reshape(orig_shape)
+            idx = np.asarray(idx)
+            ret = np.asarray(self.elements.get(idx.ravel(), **kwargs)).reshape(idx.shape)
             if join:
                 ret = ''.join(ret.ravel())
         else:
-            ret = self.vocabulary[idx]
+            ret = self.elements.get(idx, **kwargs)
         return ret
 
     def get(self, arg, index=False, join=False, **kwargs):
         """
-        Return vocabulary elements for the given argument.
+        Return elements elements for the given argument.
 
         Args:
             index (bool):      Return indices, do not return CV elements
@@ -1208,9 +1428,9 @@ class VocabData(VectorData):
             {'name': 'index', 'type': bool, 'doc': 'whether or not the value being added is an index',
              'default': False})
     def add_row(self, **kwargs):
-        """Append a data value to this VocabData column
+        """Append a data value to this EnumData column
 
-        If a controlled-vocabulary is provided for *val* (i.e. *index* is False), the correct
+        If an element is provided for *val* (i.e. *index* is False), the correct
         index value will be determined. Otherwise, *val* will be added as provided.
         """
         val, index = getargs('val', 'index', kwargs)

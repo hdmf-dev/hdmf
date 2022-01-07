@@ -9,13 +9,13 @@ import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, SPEC_LOC_ATTR
+from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
                         LinkBuilder)
 from hdmf.container import Container, Data
-from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.namespace import SpecNamespace
@@ -24,7 +24,8 @@ from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZER
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath
+from tests.unit.utils import (Foo, FooBucket, CORE_NAMESPACE, get_temp_filepath, CustomGroupSpec, CustomDatasetSpec,
+                              CustomSpecNamespace)
 
 
 class FooFile(Container):
@@ -99,6 +100,21 @@ class FooFile(Container):
             self.__foo_ref_attr = value
         else:
             raise ValueError("can't reset foo_ref_attr attribute")
+
+
+class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
+    def __init__(self, array: np.ndarray, **kwargs):
+        self.array = array
+        super().__init__(**kwargs)
+
+    def _get_data(self, selection):
+        return self.array[selection]
+
+    def _get_maxshape(self):
+        return self.array.shape
+
+    def _get_dtype(self):
+        return self.array.dtype
 
 
 class H5IOTest(TestCase):
@@ -545,6 +561,55 @@ class H5IOTest(TestCase):
         self.assertIsNone(dci2.recommended_chunk_shape())
 
     #############################################
+    #  write_dataset tests: generic data chunk iterator
+    #############################################
+    def test_write_dataset_generic_data_chunk_iterator(self):
+        array = np.arange(10)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", dci, attributes={}, dtype=dci.dtype))
+        dset = self.f["test_dataset"]
+        self.assertListEqual(dset[:].tolist(), list(array))
+        self.assertEqual(dset[:].dtype, dci.dtype)
+
+    def test_write_dataset_generic_data_chunk_iterator_with_compression(self):
+        array = np.arange(10)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
+        wrapped_dci = H5DataIO(
+            data=dci,
+            compression="gzip",
+            compression_opts=5,
+            shuffle=True,
+            fletcher32=True,
+        )
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
+        dset = self.f["test_dataset"]
+        self.assertListEqual(dset[:].tolist(), list(array))
+        self.assertEqual(dset.compression, "gzip")
+        self.assertEqual(dset.compression_opts, 5)
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
+    def test_chunk_shape_override_through_wrapper(self):
+        array = np.arange(10)
+        chunk_shape = (2,)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
+        wrapped_dci = H5DataIO(data=dci, chunks=chunk_shape)
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
+        dset = self.f["test_dataset"]
+        self.assertListEqual(dset[:].tolist(), list(array))
+        self.assertEqual(dset.chunks, chunk_shape)
+
+    def test_pass_through_of_chunk_shape_generic_data_chunk_iterator(self):
+        maxshape = (5, 2, 3)
+        chunk_shape = (5, 1, 1)
+        array = np.arange(np.prod(maxshape)).reshape(maxshape)
+        dci = NumpyArrayGenericDataChunkIterator(array=array, chunk_shape=chunk_shape)
+        wrapped_dci = H5DataIO(data=dci)
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
+        dset = self.f["test_dataset"]
+        self.assertEqual(dset.chunks, chunk_shape)
+
+    #############################################
     #  H5DataIO general
     #############################################
     def test_warning_on_non_gzip_compression(self):
@@ -555,22 +620,28 @@ class H5IOTest(TestCase):
             self.assertEqual(len(w), 0)
             self.assertEqual(dset.io_settings['compression'], 'gzip')
         # Make sure a warning is issued when using szip (even if installed)
+        warn_msg = ("szip compression may not be available on all installations of HDF5. Use of gzip is "
+                    "recommended to ensure portability of the generated HDF5 files.")
         if "szip" in h5py_filters.encode:
-            with warnings.catch_warnings(record=True) as w:
+            with self.assertWarnsWith(UserWarning, warn_msg):
                 dset = H5DataIO(np.arange(30),
                                 compression='szip',
                                 compression_opts=('ec', 16))
-                self.assertEqual(len(w), 1)
-                self.assertEqual(dset.io_settings['compression'], 'szip')
+            self.assertEqual(dset.io_settings['compression'], 'szip')
         else:
             with self.assertRaises(ValueError):
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with self.assertWarnsWith(UserWarning, warn_msg):
+                    dset = H5DataIO(np.arange(30),
+                                    compression='szip',
+                                    compression_opts=('ec', 16))
+                self.assertEqual(dset.io_settings['compression'], 'szip')
         # Make sure a warning is issued when using lzf compression
-        with warnings.catch_warnings(record=True) as w:
+        warn_msg = ("lzf compression may not be available on all installations of HDF5. Use of gzip is "
+                    "recommended to ensure portability of the generated HDF5 files.")
+        with self.assertWarnsWith(UserWarning, warn_msg):
             dset = H5DataIO(np.arange(30),
                             compression='lzf')
-            self.assertEqual(len(w), 1)
-            self.assertEqual(dset.io_settings['compression'], 'lzf')
+        self.assertEqual(dset.io_settings['compression'], 'lzf')
 
     def test_error_on_unsupported_compression_filter(self):
         # Make sure gzip does not raise an error
@@ -583,7 +654,8 @@ class H5IOTest(TestCase):
                     "recommended to ensure portability of the generated HDF5 files.")
         if "szip" not in h5py_filters.encode:
             with self.assertRaises(ValueError):
-                H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
+                with self.assertWarnsWith(UserWarning, warn_msg):
+                    H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 16))
         else:
             try:
                 with self.assertWarnsWith(UserWarning, warn_msg):
@@ -713,6 +785,22 @@ class H5IOTest(TestCase):
     def test_list_fill_empty_no_dtype(self):
         with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
             self.io.__list_fill__(self.f, 'empty_dataset', [])
+
+    def test_read_str(self):
+        a = ['a', 'bb', 'ccc', 'dddd', 'e']
+        attr = 'foobar'
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={'test_attr': attr}, dtype='text'))
+        self.io.close()
+        with HDF5IO(self.path, 'r') as io:
+            bldr = io.read_builder()
+            np.array_equal(bldr['test_dataset'].data[:], ['a', 'bb', 'ccc', 'dddd', 'e'])
+            np.array_equal(bldr['test_dataset'].attributes['test_attr'], attr)
+            if H5PY_3:
+                self.assertEqual(str(bldr['test_dataset'].data),
+                                 '<StrDataset for HDF5 dataset "test_dataset": shape (5,), type "|O">')
+            else:
+                self.assertEqual(str(bldr['test_dataset'].data),
+                                 '<HDF5 dataset "test_dataset": shape (5,), type "|O">')
 
 
 def _get_manager():
@@ -1979,23 +2067,27 @@ class TestLoadNamespaces(TestCase):
 
     def test_load_namespaces_with_dependencies(self):
         """Test loading namespaces where one includes another."""
-        file_spec = GroupSpec(doc="A FooFile", data_type_def='FooFile')
+        class MyFoo(Container):
+            pass
+
+        myfoo_spec = GroupSpec(doc="A MyFoo", data_type_def='MyFoo', data_type_inc='Foo')
         spec_catalog = SpecCatalog()
         name = 'test_core2'
         namespace = SpecNamespace(
             doc='a test namespace',
             name=name,
-            schema=[{'source': 'test.yaml', 'namespace': 'test_core'}],  # depends on test_core
+            schema=[{'source': 'test2.yaml', 'namespace': 'test_core'}],  # depends on test_core
             version='0.1.0',
             catalog=spec_catalog
         )
-        spec_catalog.register_spec(file_spec, 'test.yaml')
+        spec_catalog.register_spec(myfoo_spec, 'test2.yaml')
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(name, namespace)
         type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(name, 'FooFile', FooFile)
+        type_map.register_container_type(name, 'MyFoo', MyFoo)
+        type_map.merge(self.manager.type_map, ns_catalog=True)
         manager = BuildManager(type_map)
-        container = FooFile()
+        container = MyFoo(name='myfoo')
         with HDF5IO(self.path, manager=manager, mode='a') as io:  # append to file
             io.write(container)
 
@@ -2015,6 +2107,63 @@ class TestLoadNamespaces(TestCase):
         with self.assertWarnsWith(UserWarning, msg):
             ret = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertDictEqual(ret, {})
+
+    def test_load_namespaces_resolve_custom_deps(self):
+        """Test that reading a file with a cached namespace and different def/inc keys works."""
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with h5py.File(self.path, mode='r+') as f:
+            # add two types where one extends the other and overrides an attribute
+            # check that the inherited attribute resolves correctly despite having a different def/inc key than those
+            # used in the namespace catalog
+            added_types = (',{"data_type_def":"BigFoo","data_type_inc":"Foo","doc":"doc","attributes":['
+                           '{"name":"my_attr","dtype":"text","doc":"an attr"}]},'
+                           '{"data_type_def":"BiggerFoo","data_type_inc":"BigFoo","doc":"doc"}]}')
+            old_test_source = f['/specifications/test_core/0.1.0/test']
+            # strip the ]} from end, then add to groups
+            if H5PY_3:  # string datasets are returned as bytes
+                old_test_source[()] = old_test_source[()][0:-2].decode('utf-8') + added_types
+            else:
+                old_test_source[()] = old_test_source[()][0:-2] + added_types
+            new_ns = ('{"namespaces":[{"doc":"a test namespace","schema":['
+                      '{"namespace":"test_core","my_data_types":["Foo"]},'
+                      '{"source":"test-ext.extensions"}'
+                      '],"name":"test-ext","version":"0.1.0"}]}')
+            f.create_dataset('/specifications/test-ext/0.1.0/namespace', data=new_ns)
+            new_ext = '{"groups":[{"my_data_type_def":"FooExt","my_data_type_inc":"Foo","doc":"doc"}]}'
+            f.create_dataset('/specifications/test-ext/0.1.0/test-ext.extensions', data=new_ext)
+
+        # load the namespace from file
+        ns_catalog = NamespaceCatalog(CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+        namespace_deps = HDF5IO.load_namespaces(ns_catalog, self.path)
+
+        # test that the dependencies are correct
+        expected = ('Foo',)
+        self.assertTupleEqual((namespace_deps['test-ext']['test_core']), expected)
+
+        # test that the types are loaded
+        types = ns_catalog.get_types('test-ext.extensions')
+        expected = ('FooExt',)
+        self.assertTupleEqual(types, expected)
+
+        # test that the def_key is updated for test-ext ns
+        foo_ext_spec = ns_catalog.get_spec('test-ext', 'FooExt')
+        self.assertTrue('my_data_type_def' in foo_ext_spec)
+        self.assertTrue('my_data_type_inc' in foo_ext_spec)
+
+        # test that the data_type_def is replaced with my_data_type_def for test_core ns
+        bigger_foo_spec = ns_catalog.get_spec('test_core', 'BiggerFoo')
+        self.assertTrue('my_data_type_def' in bigger_foo_spec)
+        self.assertTrue('my_data_type_inc' in bigger_foo_spec)
+
+        # test that my_attr is properly inherited in BiggerFoo from BigFoo and attr1, attr3 are inherited from Foo
+        self.assertTrue(len(bigger_foo_spec.attributes) == 3)
 
 
 class TestGetNamespaces(TestCase):
@@ -2839,6 +2988,26 @@ class TestExport(TestCase):
                 msg = "Cannot export to file %s in mode 'a'. Please use mode 'w'." % self.paths[1]
                 with self.assertRaisesWith(UnsupportedOperation, msg):
                     export_io.export(src_io=read_io)
+
+    def test_with_new_id(self):
+        """Test that exporting with a src_io without a manager raises an error."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=_get_manager(), mode='r') as read_io:
+            data = read_io.read()
+            original_id = data.object_id
+            data.generate_new_id()
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=data)
+
+        with HDF5IO(self.paths[1], manager=_get_manager(), mode='r') as read_io:
+            data = read_io.read()
+            self.assertTrue(original_id != data.object_id)
 
 
 class TestDatasetRefs(TestCase):
