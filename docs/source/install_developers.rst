@@ -77,7 +77,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
     git clone --recurse-submodules https://github.com/hdmf-dev/hdmf.git
     cd hdmf
-    pip install -r requirements.txt -r requirements-dev.txt -r requirements-doc.txt
+    pip install -r requirements.txt -r requirements-dev.txt -r requirements-doc.txt -r requirements-opt.txt
     pip install -e .
 
 .. note::
@@ -87,7 +87,8 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
    .. code:: bash
 
-      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt
+      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt \
+      --file=requirements-opt.txt
 
 Run tests
 ---------
