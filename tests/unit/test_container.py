@@ -345,7 +345,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         obj = NamedFieldsNotSettable('test name')
 
         obj.field1 = 'field1 value'
-        with self.assertRaisesWith(AttributeError, "can't set attribute"):
+        with self.assertRaises(AttributeError):
             obj.field2 = 'field2 value'
 
     def test_inheritance(self):
@@ -379,7 +379,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertEqual(ret[0], {'name': 'field1', 'doc': 'overridden field', 'settable': False})
 
         # obj = NamedFieldsChild('test name')
-        # with self.assertRaisesWith(AttributeError, "can't set attribute"):
+        # with self.assertRaises(AttributeError):
         #     obj.field1 = 'field1 value'
 
     def test_mult_inheritance_base_mixin(self):

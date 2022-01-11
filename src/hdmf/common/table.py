@@ -52,7 +52,7 @@ class VectorData(Data):
         Retrieve elements from this VectorData
 
         :param key: Selection of the elements
-        :param **kwargs: Ignored
+        :param kwargs: Ignored
         """
         return super().get(key)
 

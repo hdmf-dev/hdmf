@@ -15,7 +15,7 @@ from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
                         LinkBuilder)
 from hdmf.container import Container, Data
-from hdmf.data_utils import DataChunkIterator, InvalidDataIOError
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog
 from hdmf.spec.namespace import SpecNamespace
@@ -100,6 +100,21 @@ class FooFile(Container):
             self.__foo_ref_attr = value
         else:
             raise ValueError("can't reset foo_ref_attr attribute")
+
+
+class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
+    def __init__(self, array: np.ndarray, **kwargs):
+        self.array = array
+        super().__init__(**kwargs)
+
+    def _get_data(self, selection):
+        return self.array[selection]
+
+    def _get_maxshape(self):
+        return self.array.shape
+
+    def _get_dtype(self):
+        return self.array.dtype
 
 
 class H5IOTest(TestCase):
@@ -544,6 +559,55 @@ class H5IOTest(TestCase):
         self.assertEqual(count, 1)
         self.assertTupleEqual(dci2.recommended_data_shape(), (1,))
         self.assertIsNone(dci2.recommended_chunk_shape())
+
+    #############################################
+    #  write_dataset tests: generic data chunk iterator
+    #############################################
+    def test_write_dataset_generic_data_chunk_iterator(self):
+        array = np.arange(10)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", dci, attributes={}, dtype=dci.dtype))
+        dset = self.f["test_dataset"]
+        self.assertListEqual(dset[:].tolist(), list(array))
+        self.assertEqual(dset[:].dtype, dci.dtype)
+
+    def test_write_dataset_generic_data_chunk_iterator_with_compression(self):
+        array = np.arange(10)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
+        wrapped_dci = H5DataIO(
+            data=dci,
+            compression="gzip",
+            compression_opts=5,
+            shuffle=True,
+            fletcher32=True,
+        )
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
+        dset = self.f["test_dataset"]
+        self.assertListEqual(dset[:].tolist(), list(array))
+        self.assertEqual(dset.compression, "gzip")
+        self.assertEqual(dset.compression_opts, 5)
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
+    def test_chunk_shape_override_through_wrapper(self):
+        array = np.arange(10)
+        chunk_shape = (2,)
+        dci = NumpyArrayGenericDataChunkIterator(array=array)
+        wrapped_dci = H5DataIO(data=dci, chunks=chunk_shape)
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
+        dset = self.f["test_dataset"]
+        self.assertListEqual(dset[:].tolist(), list(array))
+        self.assertEqual(dset.chunks, chunk_shape)
+
+    def test_pass_through_of_chunk_shape_generic_data_chunk_iterator(self):
+        maxshape = (5, 2, 3)
+        chunk_shape = (5, 1, 1)
+        array = np.arange(np.prod(maxshape)).reshape(maxshape)
+        dci = NumpyArrayGenericDataChunkIterator(array=array, chunk_shape=chunk_shape)
+        wrapped_dci = H5DataIO(data=dci)
+        self.io.write_dataset(self.f, DatasetBuilder("test_dataset", wrapped_dci, attributes={}))
+        dset = self.f["test_dataset"]
+        self.assertEqual(dset.chunks, chunk_shape)
 
     #############################################
     #  H5DataIO general
