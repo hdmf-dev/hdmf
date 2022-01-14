@@ -201,7 +201,7 @@ er.add_ref(
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
 ###############################################################################
-# Using the add_ref method with a field
+# Using the add_ref method with a attribute
 # ------------------------------------------------------
 # It is important to keep in mind that when adding and :py:class:~hdmf.common.resources.Object`` to
 # the :py:class:~hdmf.common.resources.ObjectTable, the parent object identified by

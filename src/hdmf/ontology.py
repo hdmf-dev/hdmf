@@ -63,7 +63,7 @@ class LocalOntology(Ontology):
             return documents
 
     @docval({'name': 'key', 'type': str, 'doc': 'The new ontology term to be added'},
-            {'name': 'entity_value', 'type': (list, tuple), 'doc': 'A list or tuple of the new entity ID and URO'})
+            {'name': 'entity_value', 'type': (list, tuple), 'doc': 'A list or tuple of the new entity ID and URI'})
     def add_ontology_entity(self, **kwargs):
         key = kwargs['key']
         entity_value = kwargs['entity_value']
