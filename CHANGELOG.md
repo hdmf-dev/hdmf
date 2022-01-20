@@ -6,6 +6,7 @@
 - Added ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
 - Added ``to_dataframe`` method for ``hdmf.common.resources.ExternalResource`` to improve visualization. @oruebel (#667)
 - Added ``export_to_sqlite`` method for ``hdmf.common.resources.ExternalResource``. @oruebel (#667)
+- Added ``reset_parent`` method for ``hdmf.container.Container``. @rly (#692)
 
 ### Minor improvements
 - Plotted results in external resources tutorial. @oruebel (#667)
