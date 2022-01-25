@@ -2,6 +2,8 @@ import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
+from typing import Tuple
+from itertools import product, chain
 
 import h5py
 import numpy as np
@@ -123,6 +125,272 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
                  resized. Axes with None are unlimited.
         """
         raise NotImplementedError("maxshape not implemented for derived class")
+
+
+class GenericDataChunkIterator(AbstractDataChunkIterator):
+    """DataChunkIterator that lets the user specify chunk and buffer shapes."""
+
+    __docval_init = (
+        dict(
+            name="buffer_gb",
+            type=(float, int),
+            doc=(
+                "If buffer_shape is not specified, it will be inferred as the smallest chunk "
+                "below the buffer_gb threshold."
+                "Defaults to 1GB."
+            ),
+            default=None,
+        ),
+        dict(
+            name="buffer_shape",
+            type=tuple,
+            doc="Manually defined shape of the buffer.",
+            default=None,
+        ),
+        dict(
+            name="chunk_mb",
+            type=(float, int),
+            doc=(
+                "If chunk_shape is not specified, it will be inferred as the smallest chunk "
+                "below the chunk_mb threshold.",
+                "Defaults to 1MB."
+            ),
+            default=None,
+        ),
+        dict(
+            name="chunk_shape",
+            type=tuple,
+            doc="Manually defined shape of the chunks.",
+            default=None,
+        ),
+        dict(
+            name="display_progress",
+            type=bool,
+            doc="Display a progress bar with iteration rate and estimated completion time.",
+            default=False,
+        ),
+        dict(
+            name="progress_bar_options",
+            type=None,
+            doc="Dictionary of keyword arguments to be passed directly to tqdm.",
+            default=None,
+        ),
+    )
+
+    @docval(*__docval_init)
+    def __init__(self, **kwargs):
+        """
+        Break a dataset into buffers containing multiple chunks to be written into an HDF5 dataset.
+
+        Basic users should set the buffer_gb argument to as much free RAM space as can be safely allocated.
+        Advanced users are offered full control over the shape paramters for the buffer and the chunks; however,
+        the chunk shape must perfectly divide the buffer shape along each axis.
+
+        HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
+        See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
+        for more details.
+        """
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, self.progress_bar_options = getargs(
+            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
+        )
+
+        if buffer_gb is None and buffer_shape is None:
+            buffer_gb = 1.0
+        if chunk_mb is None and chunk_shape is None:
+            chunk_mb = 1.0
+        assert (buffer_gb is not None) != (
+            buffer_shape is not None
+        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        assert (chunk_mb is not None) != (
+            chunk_shape is not None
+        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
+
+        self._maxshape = self._get_maxshape()
+        self._dtype = self._get_dtype()
+        if chunk_shape is None:
+            self.chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
+        else:
+            self.chunk_shape = chunk_shape
+        if buffer_shape is None:
+            self.buffer_shape = self._get_default_buffer_shape(buffer_gb=buffer_gb)
+        else:
+            self.buffer_shape = buffer_shape
+            buffer_gb = np.prod(self.buffer_shape) * np.dtype(self._dtype).itemsize / 1e9
+
+        array_chunk_shape = np.array(self.chunk_shape)
+        array_buffer_shape = np.array(self.buffer_shape)
+        array_maxshape = np.array(self.maxshape)
+        assert all(array_buffer_shape > 0), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
+        assert all(
+            array_buffer_shape <= array_maxshape
+        ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+        assert all(
+            array_chunk_shape <= array_buffer_shape
+        ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the manual buffer shape ({self.buffer_shape})!"
+        assert all((array_buffer_shape % array_chunk_shape == 0)[array_buffer_shape != array_maxshape]), (
+            f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
+            f"evenly divide the buffer shape ({self.buffer_shape})!"
+        )
+
+        self.num_buffers = np.prod(np.ceil(array_maxshape / array_buffer_shape))
+        self.buffer_selection_generator = (
+            tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
+            for lower_bounds, upper_bounds in zip(
+                product(
+                    *[
+                        range(0, max_shape_axis, buffer_shape_axis)
+                        for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
+                    ]
+                ),
+                product(
+                    *[
+                        chain(range(buffer_shape_axis, max_shape_axis, buffer_shape_axis), [max_shape_axis])
+                        for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
+                    ]
+                ),
+            )
+        )
+
+        if self.display_progress:
+            if self.progress_bar_options is None:
+                self.progress_bar_options = dict()
+
+            try:
+                from tqdm import tqdm
+
+                if "total" in self.progress_bar_options:
+                    warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
+                    self.progress_bar_options.pop("total")
+                self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
+            except ImportError:
+                warn(
+                    "You must install tqdm to use the progress bar feature (pip install tqdm)! "
+                    "Progress bar is disabled."
+                )
+                self.display_progress = False
+
+    @docval(
+        dict(
+            name="chunk_mb",
+            type=(float, int),
+            doc="Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.",
+            default=None,
+        )
+    )
+    def _get_default_chunk_shape(self, **kwargs):
+        """
+        Select chunk shape with size in MB less than the threshold of chunk_mb.
+
+        Keeps the dimensional ratios of the original data.
+        """
+        chunk_mb = getargs('chunk_mb', kwargs)
+        assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
+
+        n_dims = len(self.maxshape)
+        itemsize = self.dtype.itemsize
+        chunk_bytes = chunk_mb * 1e6
+        v = np.floor(np.array(self.maxshape) / np.min(self.maxshape))
+        prod_v = np.prod(v)
+        while prod_v * itemsize > chunk_bytes and prod_v != 1:
+            v_ind = v != 1
+            next_v = v[v_ind]
+            v[v_ind] = np.floor(next_v / np.min(next_v))
+            prod_v = np.prod(v)
+        k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
+        return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
+
+    @docval(
+        dict(
+           name="buffer_gb",
+           type=(float, int),
+           doc="Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.",
+           default=None,
+        )
+    )
+    def _get_default_buffer_shape(self, **kwargs):
+        """
+        Select buffer shape with size in GB less than the threshold of buffer_gb.
+
+        Keeps the dimensional ratios of the original data.
+        Assumes the chunk_shape has already been set.
+        """
+        buffer_gb = getargs('buffer_gb', kwargs)
+        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert all(np.array(self.chunk_shape) > 0), (
+            f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
+        )
+
+        k = np.floor(
+            (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
+        )
+        return tuple([
+            min(max(int(x), self.chunk_shape[j]), self.maxshape[j])
+            for j, x in enumerate(k * np.array(self.chunk_shape))
+        ])
+
+    def recommended_chunk_shape(self) -> tuple:
+        return self.chunk_shape
+
+    def recommended_data_shape(self) -> tuple:
+        return self.maxshape
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        """
+        Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary.
+
+        :returns: DataChunk object with the data and selection of the current buffer.
+        :rtype: DataChunk
+        """
+        if self.display_progress:
+            self.progress_bar.update(n=1)
+        try:
+            buffer_selection = next(self.buffer_selection_generator)
+            return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
+        except StopIteration:
+            if self.display_progress:
+                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
+            raise StopIteration
+
+    @abstractmethod
+    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+        """
+        Retrieve the data specified by the selection using minimal I/O.
+
+        The developer of a new implementation of the GenericDataChunkIterator must ensure the data is actually
+        loaded into memory, and not simply mapped.
+
+        :param selection: Tuple of slices, each indicating the selection indexed with respect to maxshape for that axis
+        :type selection: tuple of slices
+
+        :returns: Array of data specified by selection
+        :rtype: np.ndarray
+        Parameters
+        ----------
+        selection : tuple of slices
+            Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
+        """
+        raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
+
+    @property
+    def maxshape(self):
+        return self._maxshape
+
+    @abstractmethod
+    def _get_maxshape(self) -> tuple:
+        """Retrieve the maximum bounds of the data shape using minimal I/O."""
+        raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @abstractmethod
+    def _get_dtype(self) -> np.dtype:
+        """Retrieve the dtype of the data using minimal I/O."""
+        raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
 
 
 class DataChunkIterator(AbstractDataChunkIterator):

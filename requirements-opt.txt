@@ -1,0 +1,2 @@
+# pinned dependencies that are optional. used to reproduce an entire development environment to use HDMFi
+tqdm==4.62.3

@@ -20,8 +20,8 @@ Prerequisites
 
 * You have a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
 
-* Dependency versions in requirements.txt, requirements-dev.txt, requirements-doc.txt, requirements-min.txt are
-  up-to-date.
+* Dependency versions in requirements.txt, requirements-dev.txt, requirements-opt.txt, requirements-doc.txt,
+  requirements-min.txt are up-to-date.
 
 * Legal information and copyright dates are up-to-date in Legal.txt, license.txt, README.rst, docs/source/conf.py, and
   any other files.

@@ -197,6 +197,15 @@ jobs:
       - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
     <<: *ci-steps
 
+  python310-opt:
+    <<: *py310
+    environment:
+      - TEST_TOX_ENV: "py310-opt"
+      - BUILD_TOX_ENV: "build-py310-opt"
+      - TEST_WHEELINSTALL_ENV: "wheelinstall"
+      - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
+    <<: *ci-steps
+
   python310-upgrade-dev:
     <<: *py310
     environment:
@@ -385,7 +394,7 @@ workflows:
           <<: *no_filters
       - python37-min-req:
           <<: *no_filters
-      - python310:
+      - python310-opt:
           <<: *no_filters
       - miniconda37:
           <<: *no_filters
@@ -399,7 +408,7 @@ workflows:
           requires:
             - flake8
             - python37-min-req
-            - python310
+            - python310-opt
             - miniconda37
             - miniconda310
             - gallery37-min-req
@@ -418,7 +427,7 @@ workflows:
           requires:
             - flake8
             - python37-min-req
-            - python310
+            - python310-opt
             - miniconda37
             - miniconda310
             - gallery37-min-req
@@ -456,6 +465,8 @@ workflows:
       - python39:
           <<: *no_filters
       - python310:
+          <<: *no_filters
+      - python310-opt:
           <<: *no_filters
       - python310-upgrade-dev:
           <<: *no_filters

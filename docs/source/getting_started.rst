@@ -97,19 +97,30 @@ install HDMF.
    $ pip install -r requirements.txt
    $ pip install -e .
 
+Install optional dependencies
+-----------------------------
+
+HDMF has additional functionality, such as progress bars for certain data chunk iterators, when optional
+dependencies are installed. Run the following to install these:
+
+.. code::
+
+   $ pip install -r requirements-opt.txt
+
 Run tests
 ---------
 
 For running the tests, it is required to install the development requirements. Within a virtual environment, run the
 following code, which will clone the git repository for HDMF, install the HDMF package requirements using pip,
-install HDMF, and run tests using the tox_ automated testing tool.
+install HDMF, and run tests using the tox_ automated testing tool. Tests can be run with or without the optional
+# dependencies specified in ``requirements-opt.txt``.
 
 .. _tox: https://tox.readthedocs.io/en/latest/
 
 .. code::
 
    $ cd hdmf
-   $ pip install -r requirements.txt -r requirements-dev.txt
+   $ pip install -r requirements.txt -r requirements-dev.txt -r requirements-opt.txt
    $ pip install -e .
    $ tox
 

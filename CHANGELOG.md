@@ -13,6 +13,7 @@
 - Updated requirements. @rly @TheChymera (#681)
 - Improved testing for `ExternalResources`. @mavaylon (#673)
 - Improved docs for export. @rly (#674)
+- Enhanced data chunk iteration speeds through new ``GenericDataChunkIterator`` class.  @CodyCBakerPhD (#672)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
@@ -22,7 +23,7 @@
   (#683)
 - Fixed `to_hierarchcial_dataframe` failing when a table contains a `VectorIndex` column as a regular data column.
   @oruebel (#666)
-
+- Stop testing against base Python error messages because they may change in the future. @rly (#689)
 
 ## HDMF 3.1.1 (July 29, 2021)
 
