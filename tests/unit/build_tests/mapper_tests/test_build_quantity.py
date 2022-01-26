@@ -165,7 +165,7 @@ class TypeIncUntypedGroupMixin:
         )
         foo_link_spec = LinkSpec(
             doc='the links in this bucket',
-            target_type='SimpleFoo',
+            target_type='SimpleFoo',  # TODO the links should point to NotSimpleFoo to avoid group/link confusion?
             quantity=quantity
         )
         link_holder_spec = GroupSpec(

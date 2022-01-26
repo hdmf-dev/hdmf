@@ -1010,9 +1010,9 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
             name = spec.name
-            if name is None:
+            if name is None and hasattr(spec, 'data_type_def'):  # NOTE: LinkSpecs do not have a data_type_def
                 name = spec.data_type_def
-            if name is None:
+            if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
             if name is None:
                 raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
@@ -1040,16 +1040,18 @@ class GroupSpec(BaseStorageSpec):
         return False
 
     @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
-    def is_overridden_spec(self, **kwargs):
-        ''' Returns 'True' if specification was inherited from a parent type '''
+    def is_overridden_spec(self, **kwargs):  # noqa: C901
+        ''' Returns 'True' if specification overrides a specification from the parent type '''
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
             name = spec.name
             if name is None:
+                if isinstance(spec, LinkSpec):  # unnamed LinkSpec cannot be overridden
+                    return False
                 if spec.is_many():  # this is a wildcard spec, so it cannot be overridden
                     return False
                 name = spec.data_type_def
-            if name is None:
+            if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
             if name is None:
                 raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
@@ -1098,6 +1100,7 @@ class GroupSpec(BaseStorageSpec):
         return spec not in self.__new_data_types
 
     def __add_data_type_inc(self, spec):
+        # NOTE: this is also used to add unnamed links, using their target_type
         dt = None
         if hasattr(spec, 'data_type_def') and spec.data_type_def is not None:
             dt = spec.data_type_def
@@ -1234,6 +1237,8 @@ class GroupSpec(BaseStorageSpec):
             spec = self.link_spec_cls().build_spec(spec)
         if spec.name != NAME_WILDCARD:
             self.__links[spec.name] = spec
+        else:
+            self.__add_data_type_inc(spec)
         self.setdefault('links', list()).append(spec)
         spec.parent = self
 
