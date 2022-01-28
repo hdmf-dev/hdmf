@@ -349,6 +349,7 @@ class BaseStorageSpec(Spec):
         # self.__new_attributes: set of attribute names that do not exist in the parent type
         # self.__overridden_attributes: set of attribute names that exist in this spec and the parent type
         # self.__new_attributes and self.__overridden_attributes are only set properly if resolve = True
+        # add all attributes described in this spec
         for attribute in attributes:
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
@@ -729,7 +730,7 @@ class DatasetSpec(BaseStorageSpec):
             for dt in self.dtype:
                 name = dt['name']
                 if name in order:
-                    # verify that the exension has supplied
+                    # verify that the extension has supplied
                     # a valid subtyping of existing type
                     orig = order[name].dtype
                     new = dt.dtype
@@ -873,7 +874,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_group_args)
     def __init__(self, **kwargs):
         doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
-        self.__data_types = dict()
+        self.__data_types = dict()  # for GroupSpec/DatasetSpec data_type_def/inc
         self.__groups = dict()
         for group in groups:
             self.set_group(group)
@@ -903,6 +904,9 @@ class GroupSpec(BaseStorageSpec):
                 continue
             self.__new_datasets.discard(dataset.name)
             if dataset.name in self.__datasets:
+                # if the included dataset spec was added earlier during resolution, don't add it again
+                # but resolve the spec using the included dataset spec - the included spec may contain
+                # properties not specified in the version of this spec added earlier during resolution
                 self.__datasets[dataset.name].resolve_spec(dataset)
                 self.__overridden_datasets.add(dataset.name)
             else:
@@ -1008,7 +1012,7 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
             name = spec.name
-            if name is None and hasattr(spec, 'data_type_def'):  # NOTE: LinkSpecs do not have a data_type_def
+            if name is None and hasattr(spec, 'data_type_def'):
                 name = spec.data_type_def
             if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
@@ -1080,10 +1084,10 @@ class GroupSpec(BaseStorageSpec):
 
     @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'})
     def is_inherited_type(self, **kwargs):
-        ''' Returns True if `spec` represents a spec that was inherited from an included data_type '''
+        ''' Returns True if `spec` represents a data type that was inherited '''
         spec = getargs('spec', kwargs)
         if isinstance(spec, BaseStorageSpec):
-            if spec.data_type_def is None:
+            if spec.data_type_def is None:  # why not also check data_type_inc?
                 raise ValueError('cannot check if something was inherited if it does not have a %s' % self.def_key())
             spec = spec.data_type_def
         return spec not in self.__new_data_types
@@ -1100,13 +1104,21 @@ class GroupSpec(BaseStorageSpec):
         return spec not in self.__new_data_types
 
     def __add_data_type_inc(self, spec):
-        # NOTE: this is also used to add unnamed links, using their target_type
+        # update the __data_types dict with the given groupspec/datasetspec so that:
+        # - if there is only one spec for a given data type, then it is stored in __data_types regardless of
+        #   whether it is named
+        # - if there are multiple specs for a given data type and they are all named, then they are all stored in
+        #   __data_types
+        # - if there are multiple specs for a given data type and only one is unnamed, then the unnamed spec is
+        #   stored in __data_types
+        # it is not allowed to have multiple specs for a given data type and multiple are unnamed
         dt = None
         if hasattr(spec, 'data_type_def') and spec.data_type_def is not None:
             dt = spec.data_type_def
         elif hasattr(spec, 'data_type_inc') and spec.data_type_inc is not None:
             dt = spec.data_type_inc
-        if not dt:
+        if not dt:  # pragma: no cover
+            # this should not be possible
             raise TypeError("spec does not have '%s' or '%s' defined" % (self.def_key(), self.inc_key()))
         if dt in self.__data_types:
             curr = self.__data_types[dt]
@@ -1114,21 +1126,28 @@ class GroupSpec(BaseStorageSpec):
                 return
             if spec.name is None:
                 if isinstance(curr, list):
+                    # replace the list of named specs associated with the data_type with this unnamed spec
+                    # the named specs can be retrieved by name
                     self.__data_types[dt] = spec
                 else:
                     if curr.name is None:
+                        # neither the spec already associated with the data_type nor the given spec have a name
                         raise TypeError('Cannot have multiple data types of the same type without specifying name')
                     else:
-                        # unnamed data types will be stored as data_types
+                        # replace the named spec associated with the data_type with this unnamed spec
+                        # the named spec can be retrieved by name
                         self.__data_types[dt] = spec
             else:
                 if isinstance(curr, list):
+                    # add this named spec to the list of named current specs associated with the data_type
                     self.__data_types[dt].append(spec)
                 else:
                     if curr.name is None:
+                        # the spec associated with the data_type has no name and the given spec has a name
                         # leave the existing data type as is, since the new one can be retrieved by name
                         return
                     else:
+                        # both the spec associated with the data_type and the given spec have a name
                         # store both specific instances of a data type
                         self.__data_types[dt] = [curr, spec]
         else:
@@ -1136,9 +1155,7 @@ class GroupSpec(BaseStorageSpec):
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to retrieve'})
     def get_data_type(self, **kwargs):
-        '''
-        Get a specification by "data_type"
-        '''
+        ''' Get a specification by "data_type" '''
         ndt = getargs('data_type', kwargs)
         return self.__data_types.get(ndt, None)
 
@@ -1178,8 +1195,7 @@ class GroupSpec(BaseStorageSpec):
                 # this should not be possible
                 raise TypeError("must specify 'name' or 'data_type_inc' in Group spec")
         else:
-            # note that if a name is given and a data_type_inc/def is given, then the spec is added to both
-            # __groups and __data_types
+            # NOTE named specs can be present in both __datasets and __data_types
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
             self.__groups[spec.name] = spec
@@ -1213,8 +1229,7 @@ class GroupSpec(BaseStorageSpec):
                 # this should not be possible
                 raise TypeError("must specify 'name' or 'data_type_inc' in Dataset spec")
         else:
-            # note that if a name is given and a data_type_inc/def is given, then the spec is added to both
-            # __datasets and __data_types
+            # NOTE named specs can be present in both __datasets and __data_types
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
             self.__datasets[spec.name] = spec
