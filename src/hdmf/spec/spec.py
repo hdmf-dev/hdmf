@@ -1155,7 +1155,8 @@ class GroupSpec(BaseStorageSpec):
                 else:
                     if curr.name is None:
                         # neither the spec already associated with the data_type nor the given spec have a name
-                        raise TypeError('Cannot have multiple data types of the same type without specifying name')
+                        msg = "Cannot have multiple groups/datasets with the same data type without specifying name"
+                        raise ValueError(msg)
                     else:
                         # replace the named spec associated with the data_type with this unnamed spec
                         # the named spec can be retrieved by name
@@ -1198,7 +1199,8 @@ class GroupSpec(BaseStorageSpec):
                 else:
                     if curr.name is None:
                         # neither the spec already associated with the target_type nor the given spec have a name
-                        raise TypeError('Cannot have multiple target types of the same type without specifying name')
+                        msg = "Cannot have multiple links with the same target type without specifying name"
+                        raise ValueError(msg)
                     else:
                         # replace the named spec associated with the target_type with this unnamed spec
                         # the named spec can be retrieved by name
