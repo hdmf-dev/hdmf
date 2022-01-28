@@ -663,6 +663,9 @@ class TypeMap:
                     subspec = spec.get_data_type(t)
                     if subspec is not None:
                         break
+                    subspec = spec.get_target_type(t)
+                    if subspec is not None:
+                        break
         return subspec
 
     def get_container_ns_dt(self, obj):
