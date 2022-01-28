@@ -1221,13 +1221,29 @@ class GroupSpec(BaseStorageSpec):
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to retrieve'})
     def get_data_type(self, **kwargs):
-        ''' Get a specification by "data_type" '''
+        ''' Get a specification by "data_type"
+
+        NOTE: If there is only one spec for a given data type, then it is returned.
+        If there are multiple specs for a given data type and they are all named, then they are returned in a list.
+        If there are multiple specs for a given data type and only one is unnamed, then the unnamed spec is returned.
+        The other named specs can be returned using get_group or get_dataset.
+
+        NOTE: this method looks for an exact match of the data type and does not consider the type hierarchy.
+        '''
         ndt = getargs('data_type', kwargs)
         return self.__data_types.get(ndt, None)
 
     @docval({'name': 'target_type', 'type': str, 'doc': 'the target_type to retrieve'})
     def get_target_type(self, **kwargs):
-        ''' Get a specification by "target_type" '''
+        ''' Get a specification by "target_type"
+
+        NOTE: If there is only one spec for a given target type, then it is returned.
+        If there are multiple specs for a given target type and they are all named, then they are returned in a list.
+        If there are multiple specs for a given target type and only one is unnamed, then the unnamed spec is returned.
+        The other named specs can be returned using get_link.
+
+        NOTE: this method looks for an exact match of the target type and does not consider the type hierarchy.
+        '''
         ndt = getargs('target_type', kwargs)
         return self.__target_types.get(ndt, None)
 
