@@ -6,7 +6,7 @@ from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
 
-NAME_WILDCARD = None
+NAME_WILDCARD = None  # this is no longer used, but kept for backward compatibility
 ZERO_OR_ONE = '?'
 ZERO_OR_MANY = '*'
 ONE_OR_MANY = '+'
@@ -311,7 +311,7 @@ class BaseStorageSpec(Spec):
     def __init__(self, **kwargs):
         name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
-        if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
+        if name is None and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with no name "
                              "without specifying '%s' and/or '%s'." % (self.def_key(), self.inc_key()))
         super().__init__(doc, name=name)
@@ -323,7 +323,7 @@ class BaseStorageSpec(Spec):
                 self['default_name'] = default_name
         self.__attributes = dict()
         if quantity in (ONE_OR_MANY, ZERO_OR_MANY):
-            if name != NAME_WILDCARD:
+            if name is not None:
                 raise ValueError("Cannot give specific name to something that can "
                                  "exist multiple times: name='%s', quantity='%s'" % (name, quantity))
         if quantity != DEF_QUANTITY:
@@ -898,7 +898,6 @@ class GroupSpec(BaseStorageSpec):
         data_types = list()
         # resolve inherited datasets
         for dataset in inc_spec.datasets:
-            # if not (dataset.data_type_def is None and dataset.data_type_inc is None):
             if dataset.name is None:
                 data_types.append(dataset)
                 continue
@@ -910,7 +909,6 @@ class GroupSpec(BaseStorageSpec):
                 self.set_dataset(dataset)
         # resolve inherited groups
         for group in inc_spec.groups:
-            # if not (group.data_type_def is None and group.data_type_inc is None):
             if group.name is None:
                 data_types.append(group)
                 continue
@@ -1014,7 +1012,8 @@ class GroupSpec(BaseStorageSpec):
                 name = spec.data_type_def
             if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
-            if name is None:
+            if name is None:  # pragma: no cover
+                # this should not be possible
                 raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
             spec = name
         if spec in self.__links:
@@ -1053,7 +1052,8 @@ class GroupSpec(BaseStorageSpec):
                 name = spec.data_type_def
             if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
-            if name is None:
+            if name is None:  # pragma: no cover
+                # this should not happen
                 raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
             spec = name
         if spec in self.__links:
@@ -1171,12 +1171,15 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.build_spec(spec)
-        if spec.name == NAME_WILDCARD:
+        if spec.name is None:
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
-            else:
+            else:  # pragma: no cover
+                # this should not be possible
                 raise TypeError("must specify 'name' or 'data_type_inc' in Group spec")
         else:
+            # note that if a name is given and a data_type_inc/def is given, then the spec is added to both
+            # __groups and __data_types
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
             self.__groups[spec.name] = spec
@@ -1203,12 +1206,15 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.dataset_spec_cls().build_spec(spec)
-        if spec.name == NAME_WILDCARD:
+        if spec.name is None:
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
-            else:
+            else:  # pragma: no cover
+                # this should not be possible
                 raise TypeError("must specify 'name' or 'data_type_inc' in Dataset spec")
         else:
+            # note that if a name is given and a data_type_inc/def is given, then the spec is added to both
+            # __datasets and __data_types
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
             self.__datasets[spec.name] = spec
@@ -1235,10 +1241,10 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.link_spec_cls().build_spec(spec)
-        if spec.name != NAME_WILDCARD:
-            self.__links[spec.name] = spec
+        if spec.name is not None:
+            self.__add_target_type(spec)
         else:
-            self.__add_data_type_inc(spec)
+            self.__links[spec.name] = spec
         self.setdefault('links', list()).append(spec)
         spec.parent = self
 
