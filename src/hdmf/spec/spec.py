@@ -762,10 +762,6 @@ class DatasetSpec(BaseStorageSpec):
         return self.get('default_value', None)
 
     @classmethod
-    def __check_dim(cls, dim, data):
-        return True
-
-    @classmethod
     def dtype_spec_cls(cls):
         ''' The class to use when constructing DtypeSpec objects
 
