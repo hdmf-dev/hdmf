@@ -558,6 +558,7 @@ class Data(AbstractContainer):
         call_docval_func(super().__init__, kwargs)
         if self.ontology is None:
             self.__data = getargs('data', kwargs)
+            self.invalid_data = []
         else:
             raw_data = getargs('data', kwargs)
             valid_data = []
@@ -667,7 +668,7 @@ class Data(AbstractContainer):
             try:
                 entity_id, entity_uri = self.ontology.get_ontology_entity(key=data)
             except (WebAPIOntologyException, LocalOntologyException):
-                if item not in self.invalid_data:
+                if data not in self.invalid_data:
                     self.invalid_data.append(data)
             else:
                 valid_data.append(data)

@@ -328,7 +328,8 @@ class TestData(TestCase):
 
     def test_validate(self):
         ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['invalid_data', 'Homo sapiens'], ontology=ontology_obj)
+        data_obj = Data(name='name', data =['invalid_data', 'Homo sapiens'])
+        data_obj.ontology = ontology_obj
 
         data_obj.validate()
 
