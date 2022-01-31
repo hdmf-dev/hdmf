@@ -326,6 +326,16 @@ class TestData(TestCase):
         self.assertEqual(data_obj.data, ['Homo sapiens'])
         self.assertEqual(data_obj.invalid_data, ['invalid_data', 'invalid_data_2'])
 
+    def test_validate(self):
+        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data =['invalid_data', 'Homo sapiens'], ontology=ontology_obj)
+
+        data_obj.validate()
+
+        self.assertEqual(data_obj.data, ['Homo sapiens'])
+        self.assertEqual(data_obj.invalid_data, ['invalid_data'])
+
+
 
 class TestAbstractContainerFieldsConf(TestCase):
 
