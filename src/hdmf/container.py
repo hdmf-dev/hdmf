@@ -8,7 +8,7 @@ from .ontology import Ontology
 import h5py
 import numpy as np
 import pandas as pd
-from .errors import WebAPIOntologyException, LocalOntologyException
+from .errors import WebAPIOntologyException, LocalOntologyException, AbstractContainerMissingOntology
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
@@ -188,13 +188,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.parent = kwargs.pop('parent', None)
         return inst
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
+            {'name': 'ontology', 'type': Ontology,
+             'doc': 'Optional ontology solely for thr purpose of controlling data values',
+             'default': None})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if '/' in name:
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
+        self.ontology = kwargs['ontology']
 
     @property
     def name(self):
@@ -348,6 +352,52 @@ class AbstractContainer(metaclass=ExtenderMeta):
         child.set_modified()
         self.set_modified()
 
+    @docval({'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str,
+             'doc': ('The field of the compound data type using an external resource.'), 'default': ''},
+            {'name': 'key', 'type': list,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'ontology', 'type': Ontology,
+             'doc': 'The ontology to be used as the external resource'})
+    def add_ontology_resource(self, **kwargs):
+        attribute =  kwargs['attribute']
+        field = kwargs['field']
+        key = np.unique(kwargs['key'])
+        ontology = kwargs['ontology']
+
+        ontology_name = ontology.ontology_name
+        ontology_uri = ontology.ontology_uri
+
+        container = self.get_ancestor_child(data_type='ExternalResources') # check container for external_resources.
+        if container is None:
+            msg = "Cannot find Container with ExternalResources"
+            raise ValueError(msg)
+
+        valid_ref=[]
+        invalid_keys=[]
+        for key_value in key:
+            try:
+                entity_id, entity_uri = ontology.get_ontology_entity(key=key_value)
+            except (WebAPIOntologyException, LocalOntologyException):
+                invalid_keys.append(key_value)
+                # continue
+            else:
+                er = container.external_resources.add_ref(
+                    container=self,
+                    attribute=attribute,
+                    field=field,
+                    key=key_value,
+                    resource_name=ontology_name,
+                    resource_uri=ontology_uri,
+                    entity_id=entity_id,
+                    entity_uri=entity_uri
+                )
+                valid_ref.append(er)
+        if len(invalid_keys)>0:
+            warn("There exists some Invalid Keys")
+        return valid_ref, invalid_keys
+
 
 class Container(AbstractContainer):
     """A container that can contain other containers and has special functionality for printing."""
@@ -496,63 +546,31 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    @docval({'name': 'attribute', 'type': str,
-             'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'field', 'type': str,
-             'doc': ('The field of the compound data type using an external resource.'), 'default': ''},
-            {'name': 'key', 'type': list,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'ontology', 'type': Ontology,
-             'doc': 'The ontology to be used as the external resource'})
-    def add_ontology(self, **kwargs):
-        attribute =  kwargs['attribute']
-        field = kwargs['field']
-        key = np.unique(kwargs['key']) 
-        ontology = kwargs['ontology']
-
-        ontology_name = ontology.ontology_name
-        ontology_uri = ontology.ontology_uri
-
-        container = self.get_ancestor_child(data_type='ExternalResources') # check container for external_resources.
-        if container is None:
-            msg = "Cannot find Container with ExternalResources"
-            raise ValueError(msg)
-
-        valid_ref=[]
-        invalid_keys=[]
-        for key_value in key:
-            try:
-                entity_id, entity_uri = ontology.get_ontology_entity(key=key_value)
-            except (WebAPIOntologyException, LocalOntologyException):
-                invalid_keys.append(key_value)
-                continue
-            else:
-                er = container.external_resources.add_ref(
-                    container=self,
-                    attribute=attribute,
-                    field=field,
-                    key=key_value,
-                    resource_name=ontology_name,
-                    resource_uri=ontology_uri,
-                    entity_id=entity_id,
-                    entity_uri=entity_uri
-                )
-                valid_ref.append(er)
-        if len(invalid_keys)>0:
-            warn("There exists some Invalid Keys")
-        return valid_ref, invalid_keys
-
 
 class Data(AbstractContainer):
     """
     A class for representing dataset containers
     """
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
+    @docval(*get_docval(AbstractContainer.__init__, 'name', 'ontology'),
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        self.__data = getargs('data', kwargs)
+        if self.ontology is None:
+            self.__data = getargs('data', kwargs)
+        else:
+            raw_data = getargs('data', kwargs)
+            valid_data = []
+            invalid_data = []
+            for data in raw_data:
+                try:
+                    entity_id, entity_uri = self.ontology.get_ontology_entity(key=data)
+                except (WebAPIOntologyException, LocalOntologyException):
+                    invalid_data.append(data)
+                else:
+                    valid_data.append(data)
+            self.__data = valid_data
+            self.invalid_data = invalid_data
 
     @property
     def data(self):
@@ -611,7 +629,16 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
-        self.__data = append_data(self.__data, arg)
+        if self.ontology is None:
+            self.__data = append_data(self.__data, arg)
+        else:
+            try:
+                entity_id, entity_uri = self.ontology.get_ontology_entity(key=arg)
+            except (WebAPIOntologyException, LocalOntologyException):
+                if arg not in self.invalid_data:
+                    self.invalid_data.append(arg)
+            else:
+                self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
         """
@@ -620,7 +647,17 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
-        self.__data = extend_data(self.__data, arg)
+        if self.ontology is None:
+            self.__data = extend_data(self.__data, arg)
+        else:
+            for item in arg:
+                try:
+                    entity_id, entity_uri = self.ontology.get_ontology_entity(key=item)
+                except (WebAPIOntologyException, LocalOntologyException):
+                    if item not in self.invalid_data:
+                        self.invalid_data.append(item)
+                else:
+                    self.__data = extend_data(self.__data, [item])
 
 
 class DataRegion(Data):

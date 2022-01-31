@@ -24,3 +24,11 @@ class LocalOntologyException(OntologyEntityException):
     def __init__(self, **kwargs):
         self.__message = "Invalid local ontology key"
         super().__init__(self.__message)
+
+class AbstractContainerMissingOntology(OntologyEntityException):
+    """
+
+    """
+    def __init__(self, **kwargs):
+        self.__message = "Missing Ontology"
+        super().__init__(self.__message)

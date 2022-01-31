@@ -45,6 +45,7 @@ ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_
 
 # Populating the ontology
 ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
+# named tuple/dict to provide context of the list values
 
 # Removing an entry from the ontology
 ontology.remove_ontology_entity('Homo sapiens')
@@ -124,7 +125,7 @@ ontology = NCBI_Taxonomy(version='1.0')
 
 container = Container(name='example')
 
-ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri')
+ontology = LocalOntology(version='1.0', ontology_name='NCBI_Taxonomy', ontology_uri='ontology_uri')
 ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
 
 container.add_ontology(key=['Homo sapiens'], ontology=ontology)
