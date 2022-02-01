@@ -98,6 +98,32 @@ class GroupSpecTests(TestCase):
         spec.set_dataset(self.datasets[0])
         self.assertIs(spec, self.datasets[0].parent)
 
+    def test_set_link(self):
+        group = GroupSpec(
+            doc='A test group',
+            name='root'
+        )
+        link = LinkSpec(
+            doc='A test link',
+            target_type='LinkTarget',
+            name='link_name'
+        )
+        group.set_link(link)
+        self.assertIs(group, link.parent)
+        self.assertIs(group.get_link('link_name'), link)
+
+    def test_add_link(self):
+        group = GroupSpec(
+            doc='A test group',
+            name='root'
+        )
+        group.add_link(
+            'A test link',
+            'LinkTarget',
+            name='link_name'
+        )
+        self.assertIsInstance(group.get_link('link_name'), LinkSpec)
+
     def test_set_group(self):
         spec = GroupSpec('A test group',
                          name='root_test_set_group',
@@ -109,6 +135,17 @@ class GroupSpecTests(TestCase):
         self.assertIs(spec, self.subgroups[0].parent)
         self.assertIs(spec, self.subgroups[1].parent)
         json.dumps(spec)
+
+    def test_add_group(self):
+        group = GroupSpec(
+            doc='A test group',
+            name='root'
+        )
+        group.add_group(
+            'A test group',
+            name='subgroup'
+        )
+        self.assertIsInstance(group.get_group('subgroup'), GroupSpec)
 
     def test_type_extension(self):
         spec = GroupSpec('A test group',
