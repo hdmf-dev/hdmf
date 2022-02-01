@@ -1263,8 +1263,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_group_args)
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
-        doc = kwargs.pop('doc')
-        spec = self.__class__(doc, **kwargs)
+        spec = self.__class__(**kwargs)
         self.set_group(spec)
         return spec
 
@@ -1297,8 +1296,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_dataset_args)
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
-        doc = kwargs.pop('doc')
-        spec = self.dataset_spec_cls()(doc, **kwargs)
+        spec = self.dataset_spec_cls()(**kwargs)
         self.set_dataset(spec)
         return spec
 
@@ -1331,8 +1329,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_link_args)
     def add_link(self, **kwargs):
         ''' Add a new specification for a link to this group specification '''
-        doc, target_type = popargs('doc', _target_type_key, kwargs)
-        spec = self.link_spec_cls()(doc, target_type, **kwargs)
+        spec = self.link_spec_cls()(**kwargs)
         self.set_link(spec)
         return spec
 
