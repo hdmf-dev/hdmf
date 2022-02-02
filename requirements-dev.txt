@@ -11,4 +11,4 @@ pytest-cov==3.0.0
 python-dateutil==2.8.2
 tox==3.24.5
 virtualenv<=20.11.0; python_version == '3.7'
-virtualenv==20.13.0
+virtualenv==20.13.0; python_version > '3.7'
