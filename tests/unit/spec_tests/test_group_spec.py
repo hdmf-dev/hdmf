@@ -613,16 +613,16 @@ class SpecWithDupsTest(TestCase):
 
     def test_three_named_datasets_same_type(self):
         """Test get_target_type when a group contains three named links with type X."""
-        child0 = DatasetSpec(doc='Group 0', target_type='Type0', name='group0')
-        child1 = DatasetSpec(doc='Group 1', target_type='Type0', name='group1')
-        child2 = DatasetSpec(doc='Group 2', target_type='Type0', name='group2')
+        child0 = DatasetSpec(doc='Group 0', data_type_inc='Type0', name='group0')
+        child1 = DatasetSpec(doc='Group 1', data_type_inc='Type0', name='group1')
+        child2 = DatasetSpec(doc='Group 2', data_type_inc='Type0', name='group2')
         parent_spec = GroupSpec(
             doc='A test group',
             name='parent',
-            links=[child0, child1, child2],
+            datasets=[child0, child1, child2],
             data_type_def='ParentType'
         )
-        self.assertEqual(parent_spec.get_target_type('Type0'), [child0, child1, child2])
+        self.assertEqual(parent_spec.get_data_type('Type0'), [child0, child1, child2])
 
     def test_two_unnamed_links_same_type(self):
         """Test creating a group contains multiple unnamed links with type X."""
