@@ -1,7 +1,7 @@
 import unittest
 from abc import ABCMeta, abstractmethod
 
-from hdmf import Container
+from hdmf import Container, Data
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
                         ReferenceBuilder, MissingRequiredBuildWarning, OrphanContainerBuildError,
@@ -70,6 +70,10 @@ class Bar(Container):
             self._remove_child(self.__foo)
 
 
+class SubBar(Bar):
+    pass
+
+
 class Foo(Container):
 
     @property
@@ -77,11 +81,46 @@ class Foo(Container):
         return 'Foo'
 
 
+class FooData(Data):
+
+    @property
+    def data_type(self):
+        return 'FooData'
+
+
 class TestGetSubSpec(TestCase):
 
     def setUp(self):
-        self.bar_spec = GroupSpec('A test group specification with a data type', data_type_def='Bar')
-        self.type_map = create_test_type_map([self.bar_spec], {'Bar': Bar})
+        self.bar_spec = GroupSpec(doc='A test group specification with a data type', data_type_def='Bar')
+        self.sub_bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='SubBar',
+            data_type_inc='Bar'
+        )
+        self.type_map = create_test_type_map([self.bar_spec, self.sub_bar_spec], {'Bar': Bar, 'SubBar': SubBar})
+
+    def test_bad_name(self):
+        """Test get_subspec on a builder that doesn't map to the spec."""
+        parent_spec = GroupSpec(doc='Empty group', name='bar_bucket')
+        sub_builder = GroupBuilder(
+            name='my_bar',
+            attributes={
+                'data_type': 'Bar',
+                'namespace': CORE_NAMESPACE,
+                'object_id': -1
+            }
+        )
+        GroupBuilder(name='bar_bucket', groups={'my_bar': sub_builder})  # add sub_builder as a child to bar_bucket
+        result = self.type_map.get_subspec(parent_spec, sub_builder)
+        self.assertIsNone(result)
+
+    def test_bad_name_no_data_type(self):
+        """Test get_subspec on a builder without a data type that doesn't map to the spec."""
+        parent_spec = GroupSpec(doc='Empty group', name='bar_bucket')
+        sub_builder = GroupBuilder(name='my_bar')
+        GroupBuilder(name='bar_bucket', groups={'my_bar': sub_builder})  # add sub_builder as a child to bar_bucket
+        result = self.type_map.get_subspec(parent_spec, sub_builder)
+        self.assertIsNone(result)
 
     def test_unnamed_group_data_type_def(self):
         """Test get_subspec on a builder that maps to an unnamed subgroup of the given spec using data_type_def."""
@@ -143,6 +182,25 @@ class TestGetSubSpec(TestCase):
         result = self.type_map.get_subspec(parent_spec, sub_builder)
         self.assertIs(result, child_spec)
 
+    def test_named_dataset(self):
+        """Test get_subspec on a builder that maps to a named dataset of the given spec."""
+        # NOTE this works despite the fact that child_spec has no data type but the builder has a data type because
+        # get_subspec acts on the name and not necessarily the data type
+        child_spec = DatasetSpec(doc='A test dataset specification', name='my_dataset')
+        parent_spec = GroupSpec(doc='Something to hold a Bar', name='my_group', datasets=[child_spec])
+        sub_builder = DatasetBuilder(
+            name='my_dataset',
+            data=[],
+            attributes={
+                'data_type': 'FooData',
+                'namespace': CORE_NAMESPACE,
+                'object_id': -1
+            }
+        )
+        GroupBuilder(name='my_group', datasets={'my_dataset': sub_builder})  # add sub_builder as a child to my_group
+        result = self.type_map.get_subspec(parent_spec, sub_builder)
+        self.assertIs(result, child_spec)
+
     def test_unnamed_link_data_type_inc(self):
         """Test get_subspec on a builder that maps to an unnamed link."""
         link_spec = LinkSpec(doc='This Bar', target_type='Bar')
@@ -176,6 +234,27 @@ class TestGetSubSpec(TestCase):
             name='my_bar',
             attributes={
                 'data_type': 'Bar',
+                'namespace': CORE_NAMESPACE,
+                'object_id': -1
+            }
+        )
+        sub_builder = LinkBuilder(builder=bar_builder, name='bar_link')
+        GroupBuilder(name='bar_bucket', links={'my_bar': sub_builder})
+        result = self.type_map.get_subspec(parent_spec, sub_builder)
+        self.assertIs(result, link_spec)
+
+    def test_named_link_hierarchy_data_type_inc(self):
+        """Test get_subspec on a builder that maps to an named link."""
+        link_spec = LinkSpec(doc='This Bar', target_type='Bar', name='bar_link')
+        parent_spec = GroupSpec(
+            doc='Something to hold a Bar',
+            name='bar_bucket',
+            links=[link_spec]
+        )
+        bar_builder = GroupBuilder(
+            name='my_bar',
+            attributes={
+                'data_type': 'SubBar',
                 'namespace': CORE_NAMESPACE,
                 'object_id': -1
             }

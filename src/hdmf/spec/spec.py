@@ -941,7 +941,6 @@ class GroupSpec(BaseStorageSpec):
             if (existing_dt_spec is None or
                     ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None) and
                      dt_spec.name is None)):
-                # if
                 if isinstance(dt_spec, DatasetSpec):
                     self.set_dataset(dt_spec)
                 else:
@@ -1141,7 +1140,7 @@ class GroupSpec(BaseStorageSpec):
             raise TypeError("spec does not have '%s' or '%s' defined" % (self.def_key(), self.inc_key()))
         if dt in self.__data_types:
             curr = self.__data_types[dt]
-            if curr is spec:
+            if curr is spec:  # happens only if the same spec is added twice
                 return
             if spec.name is None:
                 if isinstance(curr, list):
@@ -1185,7 +1184,7 @@ class GroupSpec(BaseStorageSpec):
         dt = spec.target_type
         if dt in self.__target_types:
             curr = self.__target_types[dt]
-            if curr is spec:
+            if curr is spec:  # happens only if the same spec is added twice
                 return
             if spec.name is None:
                 if isinstance(curr, list):

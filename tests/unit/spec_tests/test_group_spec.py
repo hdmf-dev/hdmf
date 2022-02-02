@@ -699,6 +699,7 @@ class SpecWithDupsTest(TestCase):
         )
         self.assertEqual(parent_spec.get_target_type('Type0'), [child0, child1, child2])
 
+
 class SpecWithGroupsLinksTest(TestCase):
 
     def test_unnamed_group_link_same_type(self):
