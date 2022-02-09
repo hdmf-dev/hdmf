@@ -8,7 +8,7 @@ import unittest
 from hdmf import Container
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
-from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
+from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData, MeasurementData,
                          DynamicTableRegion, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
@@ -1419,6 +1419,25 @@ class TestEnumData(TestCase):
         ed.add_row(0, index=True)
         ed.add_row(2, index=True)
         np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
+
+
+class TestMeasurementData(TestCase):
+
+    def test_init(self):
+        unit = "MyUnit"
+        conversion = 123e-6
+        offset = 5.2
+        ed = MeasurementData(
+            name="test_measurement_data",
+            description="Testing MeasurementData.",
+            data=np.array([0, 0, 1, 1, 2, 2], dtype="int8"),
+            unit=unit,
+            conversion=conversion,
+            offset=offset,
+        )
+        self.assertEqual(ed.unit, unit)
+        self.assertEqual(ed.conversion, conversion)
+        self.assertEqual(ed.offset, offset)
 
 
 class TestIndexedEnumData(TestCase):

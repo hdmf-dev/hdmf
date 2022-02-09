@@ -1437,3 +1437,46 @@ class EnumData(VectorData):
         if not index:
             val = self.__add_term(val)
         super().append(val)
+
+
+@register_class("MeasurementData", EXP_NAMESPACE)
+class MeasurementData(VectorData):
+    """A n-dimensional dataset that stores data with a factor and offset attribute for converting to a formal unit."""
+
+    __fields__ = ("unit", "conversion", "offset", )
+
+    @docval(
+        {"name": "name", "type": str, "doc": "the name of this column"},
+        {"name": "description", "type": str, "doc": "a description for this column"},
+        {
+            "name": "data",
+            "type": ("array_data", "data"),
+            "doc": "integers that index into elements for the value of each row",
+            "default": list()
+        },
+        {
+            "name": "unit",
+            "type": str,
+            "doc": ("""
+                Base unit of measurement for working with the data. Actual stored values are not necessarily
+                stored in these units. To access the data in these units, multiply the 'data' by the 'conversion' factor
+                and add the 'offset'.
+            """)
+        },
+        {
+            "name": "conversion",
+            "type": float,
+            "doc": "Scalar multiple applied to data prior to offset."
+        },
+        {
+            "name": "offset",
+            "type": float,
+            "doc": "Value that is added to the data scaled by the conversion factor."
+        },
+    )
+    def __init__(self, **kwargs):
+        unit, conversion, offset = popargs("unit", "conversion", "offset", kwargs)
+        super().__init__(**kwargs)
+        self.unit = unit
+        self.conversion = conversion
+        self.offset = offset
