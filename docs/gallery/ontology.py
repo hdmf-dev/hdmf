@@ -29,6 +29,13 @@ and usability for your use cases.
 # within data. The user is able to add this "linked" ontology to
 # :py:class:`~hdmf.common.resources.ExternalResources` via (TBD on function).
 
+from hdmf import Ontology, EnsemblOntology, NCBI_Taxonomy, WebAPIOntology, LocalOntology, Container
+from ndx_external_resources import ERNWBFile
+from ndx_genotype import GenotypeSubject, GenotypesTable, AllelesTable
+import datetime
+from dateutil.tz import tzlocal
+
+
 ###############################################################################
 # Creating a LocalOntology
 # ------------------------------------------------------
@@ -108,10 +115,10 @@ ontology = EnsemblOntology(version='1.0')
 ontology = NCBI_Taxonomy(version='1.0')
 
 ###############################################################################
-# Using :py:func:`~hdmf.container.Container.add_ontology` method within the
+# Using :py:func:`~hdmf.container.Container.add_ontology_resource` method within the
 # :py:class:`~hdmf.container.Container` class
 # ------------------------------------------------------
-# The :py:func:`~hdmf.container.Container.add_ontology` method within the
+# The :py:func:`~hdmf.container.Container.add_ontology_resource` method within the
 # :py:class:`~hdmf.container.Container` class will add an ontology to the
 # :py:class:`~hdmf.common.resources.ExternalResources` within the NWBFILE. The method
 # follows the same input parameters as :py:func:`~hdmf.common.resources.ExternalResources.add_ref`.
@@ -123,9 +130,33 @@ ontology = NCBI_Taxonomy(version='1.0')
 # keys to be added via a list. The method will only add valid keys. It will return
 # both the valid keys added and the invalid keys to be reviewed as lists.
 
-container = Container(name='example')
+nwbfile = ERNWBFile(
+            session_description='session_description',
+            identifier='identifier',
+            session_start_time=datetime.datetime.now(datetime.timezone.utc)
+        )
+nwbfile.subject = GenotypeSubject(
+            subject_id='3',
+            genotype='Vip-IRES-Cre/wt',
+            species='Homo sapiens'
+        )
 
-ontology = LocalOntology(version='1.0', ontology_name='NCBI_Taxonomy', ontology_uri='ontology_uri')
-ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
+ontology = EnsemblOntology(version='1.0')
+nwbfile.subject.add_ontology_resource(key=['Homo sapiens'], attribute='species', ontology=ontology)
 
-container.add_ontology(key=['Homo sapiens'], ontology=ontology)
+###############################################################################
+# Using Ontologies to control vocavulary in :py:class:`~hdmf.container.Data`
+# ------------------------------------------------------
+# Users have the ability to use ontologies to control the dataset values within
+# :py:class:`~hdmf.container.Data`. Users can pass in an ontology as an optional
+# parameter. Passing in an ontology must be done on the creation of a new instance
+# :py:class:`~hdmf.container.Data`, in which the the new :py:class:`~hdmf.container.Data`
+# object is created only if the data values pass validation with current entries
+# within the ontology. Users cannot add an ontology to an existing instance of
+# :py:class:`~hdmf.container.Data` to retoactively control data values. If a user
+# wants to add to :py:class:`~hdmf.common.resources.ExternalResources` using their data
+# and ontology, then use the :py:func:`~hdmf.container.Container.add_ontology_resource` method
+# in the following example.
+
+ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
+data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
