@@ -3,8 +3,8 @@ from hdmf.container import AbstractContainer, Container, Data
 from hdmf import Ontology, EnsemblOntology, NCBI_Taxonomy
 from hdmf.common import ExternalResources
 from hdmf.testing import TestCase
-from hdmf.utils import docval, call_docval_func
-from hdmf.errors import WebAPIOntologyException, LocalOntologyException
+from hdmf.utils import docval, call_docval_func, get_docval
+from hdmf.errors import WebAPIOntologyException, LocalOntologyException, OntologyEntityException
 from hdmf import Ontology, EnsemblOntology, WebAPIOntology
 
 
@@ -225,7 +225,7 @@ class TestContainerExternalResources(TestCase):
     def test_add_ontology_resource_single_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
         ontology = EnsemblOntology(version='1.0')
-        valid_ref, invalid_ref = er_container.add_ontology_resource(key=['Homo sapiens'], ontology=ontology)
+        valid_ref, invalid_ref = er_container.add_ontology_resource(key='Homo sapiens', ontology=ontology)
 
         self.assertEqual(invalid_ref, [])
         self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
@@ -265,7 +265,9 @@ class TestContainerExternalResources(TestCase):
 
 
 class TestData(TestCase):
-    _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
+    _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'],
+                        "Mus musculus": ['10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'],
+                        "valid_data": ['1234', 'uri']}
 
     def test_constructor_scalar(self):
         """Test that constructor works correctly on scalar data
@@ -300,42 +302,42 @@ class TestData(TestCase):
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
 
-    def test_ontology_init_data_validation(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['invalid_data', 'Homo sapiens'], ontology=ontology_obj)
+    def test_ontology_init_clean_data_validation(self):
+        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj, add_external_resources=False)
 
         self.assertEqual(data_obj.data, ['Homo sapiens'])
-        self.assertEqual(data_obj.invalid_data, ['invalid_data'])
+
+    def test_ontology_add_external_resource(self):
+        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
+        er = ExternalResources('terms')
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example', external_resources=er)
+        er_container.child_container = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
+
+    def test_ontology_init_invalid_data_validation(self):
+        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
+        with self.assertRaises(OntologyEntityException):
+            data_obj = Data(name='name', data =['invalid_data'], ontology=ontology_obj, add_external_resources=False)
 
     def test_append_data_with_ontology(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['invalid_data'], ontology=ontology_obj)
+        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj, add_external_resources=False)
 
-        data_obj.append('Homo sapiens')
-        data_obj.append('invalid_data_2')
+        with self.assertRaises(OntologyEntityException):
+            data_obj.append('invalid_data')
 
-        self.assertEqual(data_obj.data, ['Homo sapiens'])
-        self.assertEqual(data_obj.invalid_data, ['invalid_data', 'invalid_data_2'])
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
 
     def test_extend_data_with_ontology(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['invalid_data'], ontology=ontology_obj)
+        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj, add_external_resources=False)
 
-        data_obj.extend(['Homo sapiens', 'invalid_data', 'invalid_data_2'])
+        with self.assertRaises(OntologyEntityException):
+            data_obj.extend(['invalid_data', 'invalid_data_2'])
 
-        self.assertEqual(data_obj.data, ['Homo sapiens'])
-        self.assertEqual(data_obj.invalid_data, ['invalid_data', 'invalid_data_2'])
-
-    def test_validate(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['invalid_data', 'Homo sapiens'])
-        data_obj.ontology = ontology_obj
-
-        data_obj.validate()
-
-        self.assertEqual(data_obj.data, ['Homo sapiens'])
-        self.assertEqual(data_obj.invalid_data, ['invalid_data'])
-
+        data_obj.extend(['Mus musculus', 'valid_data'])
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'valid_data'])
 
 
 class TestAbstractContainerFieldsConf(TestCase):

@@ -142,7 +142,7 @@ nwbfile.subject = GenotypeSubject(
         )
 
 ontology = EnsemblOntology(version='1.0')
-nwbfile.subject.add_ontology_resource(key=['Homo sapiens'], attribute='species', ontology=ontology)
+nwbfile.subject.add_ontology_resource(key='Homo sapiens', attribute='species', ontology=ontology)
 
 ###############################################################################
 # Using Ontologies to control vocavulary in :py:class:`~hdmf.container.Data`
@@ -150,7 +150,7 @@ nwbfile.subject.add_ontology_resource(key=['Homo sapiens'], attribute='species',
 # Users have the ability to use ontologies to control the dataset values within
 # :py:class:`~hdmf.container.Data`. Users can pass in an ontology as an optional
 # parameter. Passing in an ontology must be done on the creation of a new instance
-# :py:class:`~hdmf.container.Data`, in which the the new :py:class:`~hdmf.container.Data`
+# :py:class:`~hdmf.container.Data`, in which the new :py:class:`~hdmf.container.Data`
 # object is created only if the data values pass validation with current entries
 # within the ontology. Users cannot add an ontology to an existing instance of
 # :py:class:`~hdmf.container.Data` to retoactively control data values. If a user
@@ -158,5 +158,5 @@ nwbfile.subject.add_ontology_resource(key=['Homo sapiens'], attribute='species',
 # and ontology, then use the :py:func:`~hdmf.container.Container.add_ontology_resource` method
 # in the following example.
 
-ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', _ontology_entities=TestData._ontology_entities)
-data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
+ontology_obj = EnsemblOntology(version='1.0')
+data_obj = Data(name='name', data =['Homo sapiens', 'invalid_data'], ontology=ontology_obj)

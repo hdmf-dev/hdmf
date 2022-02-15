@@ -8,7 +8,7 @@ from .ontology import Ontology
 import h5py
 import numpy as np
 import pandas as pd
-from .errors import WebAPIOntologyException, LocalOntologyException, AbstractContainerMissingOntology
+from .errors import WebAPIOntologyException, LocalOntologyException, AbstractContainerMissingOntology, OntologyEntityException
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
@@ -356,14 +356,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str,
              'doc': ('The field of the compound data type using an external resource.'), 'default': ''},
-            {'name': 'key', 'type': list,
+            {'name': 'key', 'type': (list, str),
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'ontology', 'type': Ontology,
              'doc': 'The ontology to be used as the external resource'})
     def add_ontology_resource(self, **kwargs):
         attribute =  kwargs['attribute']
         field = kwargs['field']
-        key = np.unique(kwargs['key'])
+        if isinstance(kwargs['key'], str):
+            key = [kwargs['key']]
+        else:
+            key = np.unique(kwargs['key'])
         ontology = kwargs['ontology']
 
         ontology_name = ontology.ontology_name
@@ -381,7 +384,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 entity_id, entity_uri = ontology.get_ontology_entity(key=key_value)
             except (WebAPIOntologyException, LocalOntologyException):
                 invalid_keys.append(key_value)
-                # continue
             else:
                 er = container.external_resources.add_ref(
                     container=self,
@@ -553,25 +555,20 @@ class Data(AbstractContainer):
     """
 
     @docval(*get_docval(AbstractContainer.__init__, 'name', 'ontology'),
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
+            {'name': 'add_external_resources', 'type': 'bool', 'doc': 'Add to external_resources', 'default': True})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
+        self.add_external_resources = kwargs['add_external_resources']
         if self.ontology is None:
             self.__data = getargs('data', kwargs)
-            self.invalid_data = []
         else:
             raw_data = getargs('data', kwargs)
-            valid_data = []
-            invalid_data = []
             for data in raw_data:
-                try:
-                    entity_id, entity_uri = self.ontology.get_ontology_entity(key=data)
-                except (WebAPIOntologyException, LocalOntologyException):
-                    invalid_data.append(data)
-                else:
-                    valid_data.append(data)
-            self.__data = valid_data
-            self.invalid_data = invalid_data
+                self.validate(data)
+            self.__data = raw_data
+            if self.add_external_resources:
+                self.add_ontology_resource(self.__data, ontology=self.ontology)
 
     @property
     def data(self):
@@ -633,13 +630,10 @@ class Data(AbstractContainer):
         if self.ontology is None:
             self.__data = append_data(self.__data, arg)
         else:
-            try:
-                entity_id, entity_uri = self.ontology.get_ontology_entity(key=arg)
-            except (WebAPIOntologyException, LocalOntologyException):
-                if arg not in self.invalid_data:
-                    self.invalid_data.append(arg)
-            else:
+            if self.validate(arg):
                 self.__data = append_data(self.__data, arg)
+            if self.add_external_resources:
+                self.add_ontology_resource([arg])
 
     def extend(self, arg):
         """
@@ -652,27 +646,16 @@ class Data(AbstractContainer):
             self.__data = extend_data(self.__data, arg)
         else:
             for item in arg:
-                try:
-                    entity_id, entity_uri = self.ontology.get_ontology_entity(key=item)
-                except (WebAPIOntologyException, LocalOntologyException):
-                    if item not in self.invalid_data:
-                        self.invalid_data.append(item)
-                else:
-                    self.__data = extend_data(self.__data, [item])
+                self.append(item)
 
-    def validate(self):
+    def validate(self, arg):
         """
         """
-        valid_data = []
-        for data in self.__data:
-            try:
-                entity_id, entity_uri = self.ontology.get_ontology_entity(key=data)
-            except (WebAPIOntologyException, LocalOntologyException):
-                if data not in self.invalid_data:
-                    self.invalid_data.append(data)
-            else:
-                valid_data.append(data)
-        self.__data = valid_data
+        try:
+            entity_id, entity_uri = self.ontology.get_ontology_entity(key=arg)
+            return True
+        except (OntologyEntityException):
+            raise OntologyEntityException(message='Data not found in attached Ontology')
 
 
 class DataRegion(Data):
