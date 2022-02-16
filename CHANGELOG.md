@@ -3,31 +3,28 @@
 ## HDMF 4.0.0 (Future)
 
 ### New Features
-- Added new, optional `hdmf.backends.zarr` I/O backend for writing files using Zarr's `zarr.store.DirectoryStore` backend, including support for iterative write, chunking, compression, simple and compound data types, links, object references, namespace and spec I/O. @oruebel, @donghekang  (#98)
-
 - Added new `hdmf/io/utils.py` module for utility functions and classes useful for implementation of I/O backend. This eases reuse of functionality across I/O backends. @oruebel (#98)
 
     - Added `WriteStatusTracker` class as simple data structure for tracking the write status of `Builders`
     - Added `NamespaceToBuilderHelper` class to help with converting a namespace to a `Builder` for I/O
 
-- Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#98)
+- Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#697)
 
-- Updated `hmdf.testing.testcase.TestCase` to use the `hdmf.utils.__get_docval_macros` function to determine array types to remove dependency on h5py and allow support for Zarr arrays in testing. Added the `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently. @oruebel (#98)
+- Updated `hmdf.testing.testcase.TestCase` to use the `hdmf.utils.__get_docval_macros` function to determine array types to remove dependency on h5py and allow support for other arrays (e.g., Zarr arrays) in testing. Added the `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently. @oruebel (#697)
 
 ### Bug fixes
-- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#98)
-- Updated `HDF5IO.__get_path` to use `Builder.location` if available.  @oruebel (#98)
-- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#98)
+- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#697)
+- Updated `HDF5IO.__get_path` to use `Builder.location` if available.  @oruebel (#697)
+- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#697)
 
 ### Breaking changes
-- Add optional dependencies for `Zarr` and `numcodecs` to support ZarrIO. These dependencies are optional, i.e., all of HDMF (except the new `hdmf/backends/zarr` I/O backend) will function without these dependencies.  @oruebel (#98)
-- Moved `UnsupportedOperation` error class from `hdmf.backends.io` to the new `hdmf.backends.errors` module.  @oruebel (#98)
-- Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and to consolidate the `Foo` test data classes in one module.  @oruebel (#98)
+- Moved `UnsupportedOperation` error class from `hdmf.backends.io` to the new `hdmf.backends.errors` module.  @oruebel (#697)
+- Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and to consolidate the `Foo` test data classes in one module.  @oruebel (#697)
 
 #### Breaking changes in tests
 
-- Moved `tests.unit.test_io_hdf5_h5tools._get_manager` to `tests.unit.utils.get_foo_buildmanager` to ease reuse.  @oruebel (#98)
-- Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#98)
+- Moved `tests.unit.test_io_hdf5_h5tools._get_manager` to `tests.unit.utils.get_foo_buildmanager` to ease reuse.  @oruebel (#697)
+- Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#697)
 
 ## HDMF 3.2 (Upcoming)
 

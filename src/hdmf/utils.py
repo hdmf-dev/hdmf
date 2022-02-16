@@ -15,13 +15,6 @@ __macros = {
     'data': []
 }
 
-# Import Zarr if available
-try:
-    import zarr
-    __macros['array_data'].append(zarr.Array)
-except ImportError:  # pragma: no cover
-    warnings.warn("Could not import Zarr.")  # pragma: no cover
-
 
 def __get_docval_macros(key=None):
     """
