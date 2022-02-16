@@ -3,18 +3,13 @@
 ## HDMF 4.0.0 (Future)
 
 ### New Features
-- Added utility functions and classes useful for implementation of I/O backend to eases maintainability and reuse of functionality across I/O backends. @oruebel (#98)
+- Added utility functions and classes useful for implementation of I/O backend to eases maintainability and reuse of functionality across I/O backends. @oruebel (#697)
 
-    - Added new `hdmf/io/utils.py` module with I/O utility classes
-
-      - Added `WriteStatusTracker` class as a simple data structure for tracking the write status of `Builders`
-      - Added `NamespaceToBuilderHelper` class to help with converting a namespace to a `Builder` for I/O
+  - Added `HDF5IODataChunkIteratorQueue` class in `hdmf.backends.hdf5.h5_utils` as a new helper class for managing the write of `DataChunkIterators` to HDF5 @oruebel (#697)
+  - Added new `hdmf/io/utils.py` module with new I/O utility classes: 1) `WriteStatusTracker` as a simple data structure for tracking the write status of `Builders`, and 2) `NamespaceToBuilderHelper` to help with converting of a namespace to a `Builder` for I/O. @oruebel (#697)
   
-    -  Added `HDF5IODataChunkIteratorQueue` class in `hdmf.backends.hdf5.h5_utils` as a new helper class for managing the write of `DataChunkIterators` to HDF5 @oruebel (#697)
-
 - Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#697)
 - Added `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently. @oruebel (#697)
-
 
 ### Enhancements
 - Updated `HDF5IO` to use the new `WriteStatusTracker`,`NamespaceToBuilderHelper`, and `HDF5IODataChunkIteratorQueue` helper classes. @oruebel (#697)
