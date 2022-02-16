@@ -31,6 +31,7 @@ from hdmf.testing import TestCase
 from hdmf.common import DynamicTable
 from hdmf.common import CSRMatrix
 from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager)
+from hdmf.backends.zarr.zarr_tools import ROOT_NAME
 
 # Try to import Zarr and disable tests if Zarr is not available
 try:
@@ -172,8 +173,9 @@ class TestDynamicTableContainerMixin():
     TABLE_TYPE = 0
 
     def setUpContainer(self):
+        # TODO: The tables are names "root" because otherwise the Zarr backend does not determine the path correctly
         if self.TABLE_TYPE == 0:
-            table = DynamicTable('root', 'an example table')
+            table = DynamicTable(ROOT_NAME, 'an example table')
             table.add_column('foo', 'an int column')
             table.add_column('bar', 'a float column')
             table.add_column('qux', 'a boolean column')
@@ -182,7 +184,7 @@ class TestDynamicTableContainerMixin():
             table.add_row(foo=37, bar=38.0, qux=False, quux='b')
             return table
         elif self.TABLE_TYPE == 1:
-            table = DynamicTable('root', 'an example table')
+            table = DynamicTable(ROOT_NAME, 'an example table')
             table.add_column('foo', 'an int column')
             table.add_column('bar', 'a float column')
             table.add_column('baz', 'a string column')

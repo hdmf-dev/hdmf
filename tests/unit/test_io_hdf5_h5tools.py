@@ -10,25 +10,23 @@ import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.hdf5.h5tools import HDF5IO, ROOT_NAME, SPEC_LOC_ATTR, H5PY_3
-from hdmf.backends.io import HDMFIO, UnsupportedOperation
+from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
+from hdmf.backends.io import HDMFIO
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
-from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper, OrphanContainerBuildError,
-                        LinkBuilder)
-from hdmf.container import Container, Data
+from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
+from hdmf.container import Container
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
-from hdmf.spec.spec import (AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE,
-                            RefSpec, DtypeSpec)
+from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase
-from hdmf.utils import docval, getargs
 
 from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
     def __init__(self, array: np.ndarray, **kwargs):

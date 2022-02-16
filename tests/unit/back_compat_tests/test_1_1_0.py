@@ -3,7 +3,6 @@ from shutil import copyfile
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from tests.unit.utils import Foo, FooBucket, get_foo_buildmanager
-from tests.unit.utils import Foo, FooBucket
 from hdmf.testing import TestCase
 
 

@@ -418,6 +418,7 @@ def get_baz_buildmanager():
     manager = BuildManager(type_map)
     return manager
 
+
 def create_test_type_map(specs, container_classes, mappers=None):
     """
     Create a TypeMap with the specs registered under a test namespace, and classes and mappers registered to type names.
@@ -582,4 +583,3 @@ class CustomSpecNamespace(SpecNamespace):
     @classmethod
     def types_key(cls):
         return cls.__types_key
-

@@ -1,6 +1,4 @@
-
-from hdmf.container import MultiContainerInterface
-from hdmf.utils import docval, getargs, get_docval, __get_docval_macros as get_docval_macros
+from hdmf.utils import docval, getargs
 from hdmf import Container, Data
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
@@ -10,9 +8,7 @@ from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecN
                        LinkSpec)
 from hdmf.testing import TestCase
 from abc import ABCMeta, abstractmethod
-import numpy as np
 import unittest
-from hdmf.utils import docval, getargs
 
 from tests.unit.utils import CORE_NAMESPACE, create_test_type_map
 
