@@ -8,7 +8,6 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from copy import copy
 
-import numpy as np
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
