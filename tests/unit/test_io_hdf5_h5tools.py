@@ -1567,12 +1567,12 @@ class TestReadLink(TestCase):
         root2.set_link(link_dataset)
 
         with HDF5IO(self.target_path, manager=get_foo_buildmanager(), mode='w') as io:
-            io.write_builder(self.root1)
-        self.root1.source = self.target_path
+            io.write_builder(root1)
+        root1.source = self.target_path
 
         with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='w') as io:
-            io.write_builder(self.root2)
-        self.root2.source = self.link_path
+            io.write_builder(root2)
+        root2.source = self.link_path
         self.ios = []
 
     def tearDown(self):
@@ -1606,7 +1606,7 @@ class TestReadLink(TestCase):
 
         link = LinkBuilder(bldr1['link_to_test_group'].builder, 'link_to_link')
         root3.set_link(link)
-        root3.add_link(bldr1['link_to_test_group'].builder, 'link_to_link')
+        root3.set_link(LinkBuilder(bldr1['link_to_test_group'].builder, 'link_to_link'))
         with HDF5IO(link_to_link_path, manager=get_foo_buildmanager(), mode='w') as io:
             io.write_builder(root3)
         read_io1.close()

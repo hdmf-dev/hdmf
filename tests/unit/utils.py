@@ -6,8 +6,8 @@ from hdmf.build import (ObjectMapper, TypeMap, BuildManager)
 from hdmf.container import (Container, Data)
 from hdmf.spec import (GroupSpec, DatasetSpec, AttributeSpec, LinkSpec,
                        RefSpec, DtypeSpec, NamespaceCatalog, SpecCatalog,
-                       SpecNamespace, NamespaceBuilder,
-                       ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE)
+                       SpecNamespace, NamespaceBuilder)
+from hdmf.spec.spec import (ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE)
 from hdmf.utils import (docval, getargs, get_docval)
 
 CORE_NAMESPACE = 'test_core'

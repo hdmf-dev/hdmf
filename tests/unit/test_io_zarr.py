@@ -20,7 +20,7 @@ except ImportError:
     DISABLE_ZARR_COMPRESSION_TESTS = True
 
 from hdmf.spec.namespace import NamespaceCatalog
-from hdmf.build import GroupBuilder, DatasetBuilder, ReferenceBuilder, OrphanContainerBuildError
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, OrphanContainerBuildError
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from hdmf.backends.io import HDMFIO, UnsupportedOperation
@@ -193,8 +193,8 @@ class TestZarrWriter(TestCase):
         self.__dataset_builder = DatasetBuilder('my_data', data, attributes={'attr2': 17})
         self.createGroupBuilder()
         link_parent = self.builder['test_bucket']
-        link_parent.add_link(self.foo_builder, 'my_link')
-        link_parent.add_link(self.__dataset_builder, 'my_dataset')
+        link_parent.set_link(LinkBuilder(self.foo_builder, 'my_link'))
+        link_parent.set_link(LinkBuilder(self.__dataset_builder, 'my_dataset'))
         writer = ZarrIO(self.path, manager=self.manager, mode='a')
         writer.write_builder(self.builder)
         writer.close()
@@ -275,8 +275,8 @@ class TestZarrWriter(TestCase):
         self.createGroupBuilder()
         link_parent_1 = self.builder['test_bucket']
         link_parent_2 = self.builder['test_bucket/foo_holder']
-        link_parent_1.add_link(self.__dataset_builder, 'my_dataset_1')
-        link_parent_2.add_link(self.__dataset_builder, 'my_dataset_2')
+        link_parent_1.set_link(LinkBuilder(self.__dataset_builder, 'my_dataset_1'))
+        link_parent_2.set_link(LinkBuilder(self.__dataset_builder, 'my_dataset_2'))
         writer = ZarrIO(self.path, manager=self.manager, mode='a')
         writer.write_builder(self.builder)
         writer.close()
@@ -433,11 +433,11 @@ class TestZarrWriteUnit(TestCase):
         return read_val
 
     def test_write_attributes_write_scalar_int(self):
-        self.__write_attribute_test_helper('intattr', np.int(5))
+        self.__write_attribute_test_helper('intattr', np.int32(5))
         self.__write_attribute_test_helper('intattr', 10)
 
     def test_write_attributes_write_scalar_float(self):
-        self.__write_attribute_test_helper('floatattr', np.float(50.))
+        self.__write_attribute_test_helper('floatattr', np.float64(50.))
         self.__write_attribute_test_helper('floatattr', 50.2)
 
     def test_write_attributes_write_scalar_str(self):
@@ -446,7 +446,7 @@ class TestZarrWriteUnit(TestCase):
 
     def test_write_attributes_write_unsupported_scalar_type(self):
         with self.assertRaises(TypeError):
-            self.__write_attribute_test_helper('strattr', np.int)
+            self.__write_attribute_test_helper('strattr', np.int32)
 
     def test_write_attributes_write_list_of_ints(self):
         self.__write_attribute_test_helper('attr', list(range(10)))
@@ -467,7 +467,7 @@ class TestZarrWriteUnit(TestCase):
     def test_write_attribute_write_unsupported_list_of_types(self):
         """Test that writing a list of types fails"""
         with self.assertRaises(TypeError):
-            self.__write_attribute_test_helper('attr', [np.int, np.float])
+            self.__write_attribute_test_helper('attr', [np.int32, np.float64])
 
     def test_write_attributes_write_list_of_bytes(self):
         """

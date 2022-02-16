@@ -53,7 +53,6 @@ class TestCSRMatrix(TestCase):
         expected = np.asarray([[1, 0, 2], [0, 0, 3], [4, 5, 6]])
         np.testing.assert_array_equal(spmat_array, expected)
 
-<<<<<<< HEAD
     def test_from_dense_2D_array(self):
         data = np.array([[1, 0, 2], [0, 0, 3], [4, 5, 6]])
         csr_mat = CSRMatrix(data=data)
@@ -61,14 +60,14 @@ class TestCSRMatrix(TestCase):
         np.testing.assert_array_equal(spmat_array, data)
 
     def test_valueerror_from_ndarray(self):
-        msg = "cannot use ndarray of dimensionality > 2"
+        msg = "'data' argument cannot be ndarray of dimensionality > 2."
         with self.assertRaisesWith(ValueError, msg):
             data = np.arange(27).reshape((3, 3, 3))
             _ = CSRMatrix(data=data)
 
     def test_valueerror_missing_indptr_indices_or_shape(self):
         data = np.arange(10)
-        msg = "must specify indptr, indices, and shape when passing data array"
+        msg = "Must specify 'indptr', 'indices', and 'shape' arguments when passing data array."
         with self.assertRaisesWith(ValueError, msg):
             _ = CSRMatrix(data=data)  # indptr, indices, and shape are missing
         with self.assertRaisesWith(ValueError, msg):
@@ -82,18 +81,18 @@ class TestCSRMatrix(TestCase):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
-        with self.assertRaisesWith(ValueError, 'shape must specify two and only two dimensions'):
+        with self.assertRaisesWith(ValueError, "'shape' argument must specify two and only two dimensions."):
             _ = CSRMatrix(data, indices, indptr, (3, 3, 1))
-        with self.assertRaisesWith(ValueError, 'shape must specify two and only two dimensions'):
+        with self.assertRaisesWith(ValueError, "'shape' argument must specify two and only two dimensions."):
             _ = CSRMatrix(data, indices, indptr, (9, ))
 
     def test_valueerror_non_1d_indptr_or_indicies(self):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
-        with self.assertRaisesWith(ValueError, 'indices must be a 1D array of integers. Found 2D array'):
+        with self.assertRaisesWith(ValueError,  "'indices' must be a 1D array of unsigned integers."):
             _ = CSRMatrix(data, indices.reshape((3, 2)), indptr, (3, 3))
-        with self.assertRaisesWith(ValueError, 'indptr must be a 1D array of integers. Found 2D array'):
+        with self.assertRaisesWith(ValueError,  "'indptr' must be a 1D array of unsigned integers."):
             _ = CSRMatrix(data, indices, indptr.reshape((2, 2)), (3, 3))
 
     def test_valueerror_non_int_indptr_or_indicies(self):
@@ -101,16 +100,16 @@ class TestCSRMatrix(TestCase):
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
         # test indices numpy array of floats
-        with self.assertRaisesWith(ValueError, 'indices must be a 1D array of integers. Found 1D array of float64'):
+        with self.assertRaisesWith(ValueError, "Cannot convert 'indices' to an array of unsigned integers."):
             _ = CSRMatrix(data, indices.astype(float), indptr, (3, 3))
         # test indptr numpy array of floats
-        with self.assertRaisesWith(ValueError, 'indptr must be a 1D array of integers. Found 1D array of float64'):
+        with self.assertRaisesWith(ValueError, "Cannot convert 'indptr' to an array of unsigned integers."):
             _ = CSRMatrix(data, indices, indptr.astype(float), (3, 3))
         # test indices list of floats
-        with self.assertRaisesWith(ValueError, 'indices must be a 1D array of integers. Found 1D array of float64'):
+        with self.assertRaisesWith(ValueError, "Cannot convert 'indices' to an array of unsigned integers."):
             _ = CSRMatrix(data, indices.astype(float).tolist(), indptr, (3, 3))
         # test indptr list of floats
-        with self.assertRaisesWith(ValueError, 'indptr must be a 1D array of integers. Found 1D array of float64'):
+        with self.assertRaisesWith(ValueError, "Cannot convert 'indptr' to an array of unsigned integers."):
             _ = CSRMatrix(data, indices, indptr.astype(float).tolist(), (3, 3))
 
     def test_constructor_indices_missing(self):

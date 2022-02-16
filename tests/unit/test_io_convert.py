@@ -166,28 +166,28 @@ class TestDynamicTableContainerMixin():
     This mixin adds the class variable, TABLE_TYPE  which is an int to select between different
     container types for testing:
 
-    TABLE_TYPE=0 : Table of int, float, bool, vocabulary
-    TABLE_TYPE=1 : Table of int, float, str, bool, vocabulary
+    TABLE_TYPE=0 : Table of int, float, bool, Enum
+    TABLE_TYPE=1 : Table of int, float, str, bool, Enum
     """
     TABLE_TYPE = 0
 
     def setUpContainer(self):
         if self.TABLE_TYPE == 0:
-            table = DynamicTable('table0', 'an example table')
+            table = DynamicTable('root', 'an example table')
             table.add_column('foo', 'an int column')
             table.add_column('bar', 'a float column')
             table.add_column('qux', 'a boolean column')
-            table.add_column('quux', 'a vocab column', vocab=True)
+            table.add_column('quux', 'a enum column', enum=True, index=False)
             table.add_row(foo=27, bar=28.0, qux=True, quux='a')
             table.add_row(foo=37, bar=38.0, qux=False, quux='b')
             return table
         elif self.TABLE_TYPE == 1:
-            table = DynamicTable('table0', 'an example table')
+            table = DynamicTable('root', 'an example table')
             table.add_column('foo', 'an int column')
             table.add_column('bar', 'a float column')
             table.add_column('baz', 'a string column')
             table.add_column('qux', 'a boolean column')
-            table.add_column('quux', 'a vocab column', vocab=True)
+            table.add_column('quux', 'a enum column', enum=True, index=False)
             table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
             table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
             return table

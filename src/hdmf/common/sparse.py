@@ -36,6 +36,7 @@ class CSRMatrix(Container):
                 raise ValueError("'data' argument cannot be ndarray of dimensionality > 2.")
         self.__data = data
 
+    @staticmethod
     def __check_arr(ar, arg):
         try:
             ar = to_uint_array(ar)
