@@ -28,7 +28,7 @@
 - Moved `UnsupportedOperation` error class from `hdmf.backends.io` to the new `hdmf.backends.errors` module.  @oruebel (#697)
 - Moved `tests.unit.test_io_hdf5_h5tools.FooFile` to `tests.unit.utils.FooFile` to ease reuse and to consolidate the `Foo` test data classes in one module.  @oruebel (#697)
 
-#### Enhancements of tests
+### Enhancements of tests
 
 - Moved `tests.unit.test_io_hdf5_h5tools._get_manager` to `tests.unit.utils.get_foo_buildmanager` to ease reuse and updated tests accordingly.  @oruebel (#697)
 - Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse and updated tests accordingly. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#697)
