@@ -1,0 +1,14 @@
+namespaces:
+- name: test-ext
+  doc: Test extension namespace
+  author:
+  - Test test
+  contact:
+  - test@test.com
+  full_name: Test extension
+  schema:
+  - namespace: test
+  - doc: This source module contains base data types.
+    source: test-ext.base.yaml
+    title: Base data types
+  version: 0.1.0

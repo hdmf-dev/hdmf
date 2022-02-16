@@ -5,6 +5,8 @@ import os.path
 from copy import deepcopy
 
 CORE_NAMESPACE = 'hdmf-common'
+EXP_NAMESPACE = 'hdmf-experimental'
+
 
 from ..spec import NamespaceCatalog  # noqa: E402
 from ..utils import docval, getargs, call_docval_func, get_docval, fmt_docval_args  # noqa: E402
@@ -12,6 +14,7 @@ from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
+from ..container import _set_exp  # noqa: E402
 
 
 # a global type map
@@ -30,10 +33,16 @@ def register_class(**kwargs):
     as the class for data_type in namespace.
     """
     data_type, namespace, container_cls = getargs('data_type', 'namespace', 'container_cls', kwargs)
+    if namespace == EXP_NAMESPACE:
+        def _dec(cls):
+            _set_exp(cls)
+            __TYPE_MAP.register_container_type(namespace, data_type, cls)
+            return cls
+    else:
+        def _dec(cls):
+            __TYPE_MAP.register_container_type(namespace, data_type, cls)
+            return cls
 
-    def _dec(cls):
-        __TYPE_MAP.register_container_type(namespace, data_type, cls)
-        return cls
     if container_cls is None:
         return _dec
     else:
@@ -92,34 +101,16 @@ def available_namespaces():
     return __TYPE_MAP.namespace_catalog.namespaces
 
 
-# load the hdmf-common namespace
-__resources = __get_resources()
-if os.path.exists(__resources['namespace_path']):
-    __TYPE_MAP = TypeMap(NamespaceCatalog())
-
-    load_namespaces(__resources['namespace_path'])
-
-    # import these so the TypeMap gets populated
-    from . import io as __io  # noqa: F401,E402
-
-    from . import table  # noqa: F401,E402
-    from . import sparse  # noqa: F401,E402
-
-    from .. import Data, Container
-    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
-    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
-
-else:
-    raise RuntimeError("Unable to load a TypeMap - no namespace file found")
-
-
-DynamicTable = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTable')
-VectorData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorData')
-VectorIndex = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VectorIndex')
-ElementIdentifiers = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'ElementIdentifiers')
-DynamicTableRegion = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'DynamicTableRegion')
-VocabData = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'VocabData')
-CSRMatrix = __TYPE_MAP.get_container_cls(CORE_NAMESPACE, 'CSRMatrix')
+# a function to get the container class for a give type
+@docval({'name': 'data_type', 'type': str,
+         'doc': 'the data_type to get the Container class for'},
+        {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
+        is_method=False)
+def get_class(**kwargs):
+    """Get the class object of the Container subclass corresponding to a given neurdata_type.
+    """
+    data_type, namespace = getargs('data_type', 'namespace', kwargs)
+    return __TYPE_MAP.get_dt_container_cls(data_type, namespace)
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
@@ -171,27 +162,19 @@ def get_manager(**kwargs):
     return BuildManager(type_map)
 
 
-# a function to get the container class for a give type
-@docval({'name': 'data_type', 'type': str,
-         'doc': 'the data_type to get the Container class for'},
-        {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
-        is_method=False)
-def get_class(**kwargs):
-    """Get the class object of the Container subclass corresponding to a given neurdata_type.
-    """
-    data_type, namespace = getargs('data_type', 'namespace', kwargs)
-    return __TYPE_MAP.get_container_cls(namespace, data_type)
-
-
 @docval({'name': 'io', 'type': HDMFIO,
          'doc': 'the HDMFIO object to read from'},
         {'name': 'namespace', 'type': str,
          'doc': 'the namespace to validate against', 'default': CORE_NAMESPACE},
+        {'name': 'experimental', 'type': bool,
+         'doc': 'data type is an experimental data type', 'default': False},
         returns="errors in the file", rtype=list,
         is_method=False)
 def validate(**kwargs):
     """Validate an file against a namespace"""
-    io, namespace = getargs('io', 'namespace', kwargs)
+    io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
+    if experimental:
+        namespace = EXP_NAMESPACE
     builder = io.read_builder()
     validator = ValidatorMap(io.manager.namespace_catalog.get_namespace(name=namespace))
     return validator.validate(builder)
@@ -207,3 +190,43 @@ def get_hdf5io(**kwargs):
         kwargs['manager'] = get_manager()
     cargs, ckwargs = fmt_docval_args(HDF5IO.__init__, kwargs)
     return HDF5IO(*cargs, **ckwargs)
+
+
+# load the hdmf-common namespace
+__resources = __get_resources()
+if os.path.exists(__resources['namespace_path']):
+    __TYPE_MAP = TypeMap(NamespaceCatalog())
+
+    load_namespaces(__resources['namespace_path'])
+
+    # import these so the TypeMap gets populated
+    from . import io as __io  # noqa: F401,E402
+
+    from . import table  # noqa: F401,E402
+    from . import alignedtable  # noqa: F401,E402
+    from . import sparse  # noqa: F401,E402
+    from . import resources  # noqa: F401,E402
+    from . import multi  # noqa: F401,E402
+
+    # register custom class generators
+    from .io.table import DynamicTableGenerator
+    __TYPE_MAP.register_generator(DynamicTableGenerator)
+
+    from .. import Data, Container
+    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
+    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
+
+else:
+    raise RuntimeError("Unable to load a TypeMap - no namespace file found")
+
+
+DynamicTable = get_class('DynamicTable', CORE_NAMESPACE)
+VectorData = get_class('VectorData', CORE_NAMESPACE)
+VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
+ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
+DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
+EnumData = get_class('EnumData', EXP_NAMESPACE)
+CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
+ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
+SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
+AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)

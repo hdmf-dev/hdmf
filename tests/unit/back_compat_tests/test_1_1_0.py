@@ -1,9 +1,9 @@
-from shutil import copyfile
 import os
+from shutil import copyfile
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from tests.unit.utils import Foo, FooBucket, get_foo_buildmanager
-from hdmf.testing import TestCase
+from tests.unit.utils import Foo, FooBucket
 
 
 class Test1_1_0(TestCase):

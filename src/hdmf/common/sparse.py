@@ -1,10 +1,7 @@
 import scipy.sparse as sps
-import numpy as np
-
-from ..container import Container
-from ..utils import docval, getargs, call_docval_func, get_data_shape
-
 from . import register_class
+from ..container import Container
+from ..utils import docval, getargs, call_docval_func, to_uint_array,  get_data_shape
 
 
 @register_class('CSRMatrix')
@@ -28,34 +25,32 @@ class CSRMatrix(Container):
             elif temp_ndim == 1:
                 indptr, indices, shape = getargs('indptr', 'indices', 'shape', kwargs)
                 if any(_ is None for _ in (indptr, indices, shape)):
-                    raise ValueError("must specify indptr, indices, and shape when passing data array")
-                self.__check_ind(indptr, 'indptr')
-                self.__check_ind(indices, 'indices')
+                    raise ValueError("Must specify 'indptr', 'indices', and 'shape' arguments when passing data array.")
+                indptr = self.__check_arr(indptr, 'indptr')
+                indices = self.__check_arr(indices, 'indices')
+                shape = self.__check_arr(shape, 'shape')
                 if len(shape) != 2:
-                    raise ValueError('shape must specify two and only two dimensions')
+                    raise ValueError("'shape' argument must specify two and only two dimensions.")
                 data = sps.csr_matrix((data, indices, indptr), shape=shape)
             else:
-                raise ValueError("cannot use ndarray of dimensionality > 2")
+                raise ValueError("'data' argument cannot be ndarray of dimensionality > 2.")
         self.__data = data
-        self.__shape = data.shape
 
-    @staticmethod
-    def __check_ind(ar, arg):
-        temp_shape = get_data_shape(ar)
-        temp_ndim = len(temp_shape)
-        if not temp_ndim == 1:
-            raise ValueError('%s must be a 1D array of integers. Found %iD array' % (arg, temp_ndim))
-        elif temp_shape[0] > 1:
-            temp_dtype = ar.dtype if hasattr(ar, 'dtype') else np.asarray(ar[0]).dtype
-            if not (np.issubdtype(temp_dtype, np.signedinteger) or np.issubdtype(temp_dtype, np.unsignedinteger)):
-                raise ValueError('%s must be a 1D array of integers. Found 1D array of %s' % (arg, str(temp_dtype)))
+    def __check_arr(ar, arg):
+        try:
+            ar = to_uint_array(ar)
+        except ValueError as ve:
+            raise ValueError("Cannot convert '%s' to an array of unsigned integers." % arg) from ve
+        if ar.ndim != 1:
+            raise ValueError("'%s' must be a 1D array of unsigned integers." % arg)
+        return ar
 
     def __getattr__(self, val):
-        return getattr(self.__data, val)
-
-    @property
-    def shape(self):
-        return self.__shape
+        # NOTE: this provides access to self.data, self.indices, self.indptr, self.shape
+        attr = getattr(self.__data, val)
+        if val in ('indices', 'indptr', 'shape'):  # needed because sps.csr_matrix may contain int arrays for these
+            attr = to_uint_array(attr)
+        return attr
 
     def to_spmat(self):
         return self.__data

@@ -1,13 +1,15 @@
-import re
-import unittest
 import numpy as np
 import os
+import re
+import unittest
 from abc import ABCMeta, abstractmethod
 
-from ..container import Container, Data
-
-from ..common import validate as common_validate, get_manager
+from .utils import remove_test_file
 from ..backends.hdf5 import HDF5IO
+from ..build import Builder
+from ..common import validate as common_validate, get_manager
+from ..container import AbstractContainer, Container, Data
+from ..query import HDMFDataset
 from ..utils import __get_docval_macros as get_docval_macros
 from ..data_utils import AbstractDataChunkIterator
 
@@ -36,14 +38,15 @@ class TestCase(unittest.TestCase):
     def assertContainerEqual(self, container1, container2,
                              ignore_name=False, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
         """
-        Asserts that the two containers have equal contents.
+        Asserts that the two AbstractContainers have equal contents. This applies to both Container and Data types.
 
-        :param ignore_name: - whether to ignore testing equality of name
+        :param ignore_name: whether to ignore testing equality of name of the top-level container
         :param ignore_hdmf_attrs: whether to ignore testing equality of HDMF container attributes, such as
                                   container_source and object_id
         :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
-
         """
+        self.assertTrue(isinstance(container1, AbstractContainer))
+        self.assertTrue(isinstance(container2, AbstractContainer))
         type1 = type(container1)
         type2 = type(container2)
         self.assertEqual(type1, type2)
@@ -53,7 +56,8 @@ class TestCase(unittest.TestCase):
             self.assertEqual(container1.container_source, container2.container_source)
             self.assertEqual(container1.object_id, container2.object_id)
         # NOTE: parent is not tested because it can lead to infinite loops
-        self.assertEqual(len(container1.children), len(container2.children))
+        if isinstance(container1, Container):
+            self.assertEqual(len(container1.children), len(container2.children))
         # do not actually check the children values here. all children *should* also be fields, which is checked below.
         # this is in case non-field children are added to one and not the other
 
@@ -90,16 +94,18 @@ class TestCase(unittest.TestCase):
                                     ignore_hdmf_attrs=ignore_hdmf_attrs,
                                     ignore_string_to_byte=ignore_string_to_byte)
         elif isinstance(f1, (float, np.floating)):
-            np.testing.assert_equal(f1, f2)
+            np.testing.assert_allclose(f1, f2)
         else:
             self.assertEqual(f1, f2)
 
     def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
-        self.assertEqual(type(data1), type(data2))
+        self.assertTrue(isinstance(data1, Data))
+        self.assertTrue(isinstance(data2, Data))
         self.assertEqual(len(data1), len(data2))
         self._assert_array_equal(data1.data, data2.data,
                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
                                  ignore_string_to_byte=ignore_string_to_byte)
+        self.assertContainerEqual(data1, data2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
         array_data_types = tuple([i for i in get_docval_macros('array_data')
@@ -114,13 +120,13 @@ class TestCase(unittest.TestCase):
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
             if isinstance(arr1, (float, np.floating)):
-                np.testing.assert_equal(arr1, arr2)
+                np.testing.assert_allclose(arr1, arr2)
             else:
                 if ignore_string_to_byte:
                     if isinstance(arr1, bytes):
-                        arr1 = arr1.decode()
+                        arr1 = arr1.decode('utf-8')
                     if isinstance(arr2, bytes):
-                        arr2 = arr2.decode()
+                        arr2 = arr2.decode('utf-8')
                 self.assertEqual(arr1, arr2)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2))
@@ -129,7 +135,10 @@ class TestCase(unittest.TestCase):
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
-                np.testing.assert_array_equal(arr1, arr2)
+                if np.issubdtype(arr1.dtype, np.number):
+                    np.testing.assert_allclose(arr1, arr2)
+                else:
+                    np.testing.assert_array_equal(arr1, arr2)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
@@ -144,6 +153,19 @@ class TestCase(unittest.TestCase):
                         self._assert_array_equal(sub1, sub2,
                                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
                                                  ignore_string_to_byte=ignore_string_to_byte)
+
+    def assertBuilderEqual(self, builder1, builder2, check_path=True, check_source=True):
+        """Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
+        """
+        self.assertTrue(isinstance(builder1, Builder))
+        self.assertTrue(isinstance(builder2, Builder))
+        self.assertEqual(type(builder1), type(builder2))
+        self.assertEqual(builder1.name, builder2.name)
+        if check_path:
+            self.assertEqual(builder1.path, builder2.path)
+        if check_source:
+            self.assertEqual(builder1.source, builder2.source)
+        self.assertDictEqual(builder1, builder2)
 
 
 class H5RoundTripMixin(metaclass=ABCMeta):
@@ -181,11 +203,8 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         if self.export_reader is not None:
             self.export_reader.close()
 
-        if os.getenv("CLEAN_HDMF", '1') not in ('0', 'false', 'FALSE', 'False'):
-            if os.path.exists(self.filename):
-                os.remove(self.filename)
-            if os.path.exists(self.export_filename):
-                os.remove(self.export_filename)
+        remove_test_file(self.filename)
+        remove_test_file(self.export_filename)
 
     @abstractmethod
     def setUpContainer(self):
@@ -214,7 +233,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         else:
             self.assertContainerEqual(read_container, self.container, ignore_name=True, ignore_hdmf_attrs=True)
 
-        self.validate()
+        self.validate(read_container._experimental)
 
     def roundtripContainer(self, cache_spec=False):
         """Write the container to an HDF5 file, read the container from the file, and return it."""
@@ -237,18 +256,18 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         self.export_reader = HDF5IO(self.export_filename, manager=get_manager(), mode='r')
         return self.export_reader.read()
 
-    def validate(self):
+    def validate(self, experimental=False):
         """Validate the written and exported files, if they exist."""
         if os.path.exists(self.filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io)
+                errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)
 
         if os.path.exists(self.export_filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
-                errors = common_validate(io)
+                errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)

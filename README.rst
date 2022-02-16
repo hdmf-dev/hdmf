@@ -40,6 +40,9 @@ Build Status
 Overall Health
 ==============
 
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20coverage/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3A%22Run+coverage%22
+
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
 
@@ -66,10 +69,31 @@ Contributing
 
 For details on how to contribute to HDMF see our `contribution guidelines <docs/CONTRIBUTING.rst>`_.
 
+Citing HDMF
+===========
+
+* **Manuscript:**
+
+.. code-block:: bibtex
+
+  @INPROCEEDINGS{9005648,
+    author={A. J. {Tritt} and O. {Rübel} and B. {Dichter} and R. {Ly} and D. {Kang} and E. F. {Chang} and L. M. {Frank} and K. {Bouchard}},
+    booktitle={2019 IEEE International Conference on Big Data (Big Data)},
+    title={HDMF: Hierarchical Data Modeling Framework for Modern Science Data Standards},
+    year={2019},
+    volume={},
+    number={},
+    pages={165-179},
+    doi={10.1109/BigData47090.2019.9005648},
+    note={}}
+
+* **RRID:**  (Hierarchical Data Modeling Framework, RRID:SCR_021303)
+
+
 LICENSE
 =======
 
-"hdmf" Copyright (c) 2017-2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2021, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 (1) Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -85,7 +109,7 @@ You are under no obligation whatsoever to provide any bug fixes, patches, or upg
 COPYRIGHT
 =========
 
-"hdmf" Copyright (c) 2017-2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2021, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
 
 NOTICE.  This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so.

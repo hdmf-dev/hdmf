@@ -11,23 +11,42 @@ import os
 import sys
 import traceback
 import unittest
-from tests.coloredtestrunner import ColoredTestRunner, ColoredTestResult
 
-flags = {'hdmf': 1, 'integration': 3, 'example': 4}
+flags = {'hdmf': 1, 'example': 4}
 
 TOTAL = 0
 FAILURES = 0
 ERRORS = 0
 
 
+class SuccessRecordingResult(unittest.TextTestResult):
+    '''A unittest test result class that stores successful test cases as well
+    as failures and skips.
+    '''
+
+    def addSuccess(self, test):
+        if not hasattr(self, 'successes'):
+            self.successes = [test]
+        else:
+            self.successes.append(test)
+
+    def get_all_cases_run(self):
+        '''Return a list of each test case which failed or succeeded
+        '''
+        cases = []
+
+        if hasattr(self, 'successes'):
+            cases.extend(self.successes)
+        cases.extend([failure[0] for failure in self.failures])
+
+        return cases
+
+
 def run_test_suite(directory, description="", verbose=True):
     global TOTAL, FAILURES, ERRORS
     logging.info("running %s" % description)
     directory = os.path.join(os.path.dirname(__file__), directory)
-    if verbose > 1:
-        runner = ColoredTestRunner(verbosity=verbose)
-    else:
-        runner = unittest.TextTestRunner(verbosity=verbose, resultclass=ColoredTestResult)
+    runner = unittest.TextTestRunner(verbosity=verbose, resultclass=SuccessRecordingResult)
     test_result = runner.run(unittest.TestLoader().discover(directory))
 
     TOTAL += test_result.testsRun

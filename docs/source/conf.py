@@ -62,18 +62,18 @@ sphinx_gallery_conf = {
     'examples_dirs': ['../gallery'],
     # path where to save gallery generated examples
     'gallery_dirs': ['tutorials'],
-    'subsection_order': ExplicitOrder(['../gallery/general', '../gallery/domain']),
+    # 'subsection_order': ExplicitOrder(['../gallery/section1', '../gallery/section2']),
     'backreferences_dir': 'gen_modules/backreferences',
-    'download_section_examples': False,
-    'min_reported_time': 5
+    'min_reported_time': 5,
+    'remove_config_comments': True
 }
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.8', None),
+    'python': ('https://docs.python.org/3.10', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     'matplotlib': ('https://matplotlib.org', None),
-    'h5py': ('http://docs.h5py.org/en/latest/', None),
+    'h5py': ('https://docs.h5py.org/en/latest/', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
 }
 
@@ -92,7 +92,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'HDMF'
-copyright = u'2017-2020, Hierarchical Data Modeling Framework'
+copyright = u'2017-2021, Hierarchical Data Modeling Framework'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -175,7 +175,7 @@ html_favicon = 'hdmf_logo-180x180.png'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -313,7 +313,7 @@ def run_apidoc(_):
     apidoc_main(['-f', '-e', '--no-toc', '-o', out_dir, src_dir])
 
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractproperty
 
 def skip(app, what, name, obj, skip, options):
     if isinstance(obj, abstractproperty) or getattr(obj, '__isabstractmethod__', False):
@@ -325,5 +325,5 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
-    app.add_css_file("theme_overrides.css")  # overrides for wide tables in RTD theme
+    app.add_css_file("theme_overrides.css")
     app.connect("autodoc-skip-member", skip)

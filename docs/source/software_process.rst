@@ -11,8 +11,8 @@ Continuous Integration
 HDMF is tested against Ubuntu, macOS, and Windows operating systems.
 The project has both unit and integration tests.
 
-* CircleCI_ runs all HDMF tests on Ubuntu
 * `Azure Pipelines`_ runs all HDMF tests on Windows and macOS
+* CircleCI_ runs all HDMF tests on Ubuntu
 
 Each time a PR is published or updated, the project is built, packaged, and tested on all supported operating systems
 and python distributions. That way, as a contributor, you know if you introduced regressions or coding style
@@ -29,11 +29,13 @@ There are badges in the README_ file which shows the current condition of the de
 Coverage
 --------
 
-Coverage is computed and reported using the coverage_ tool. There is a badge in the README_ file which
-shows percentage coverage. A detailed report can be found on codecov_ which shows line by line which
-lines are covered by the tests.
+Code coverage is computed and reported using the coverage_ tool. There are two coverage-related badges in the README_
+file. One shows the status of the `GitHub Action workflow`_ which runs the coverage_ tool and uploads the report to
+codecov_, and the other badge shows the percentage coverage reported from codecov_. A detailed report can be found on
+codecov_, which shows line by line which lines are covered by the tests.
 
 .. _coverage: https://coverage.readthedocs.io
+.. _GitHub Action workflow: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3A%22Run+coverage%22
 .. _codecov: https://codecov.io/gh/hdmf-dev/hdmf/tree/dev/src/hdmf
 
 ..  _software_process_requirement_specifications:
@@ -43,21 +45,26 @@ lines are covered by the tests.
 Requirement Specifications
 --------------------------
 
-There are 4 kinds of requirements specification in HDMF.
+There are 6 kinds of requirements specification in HDMF.
 
-The first one is the requirements-min.txt_ file, which lists the package dependencies and their minimum versions for
-installing HDMF. These dependencies are read by setup.py_ into the `install_requires` key, with the adjustment that
-the `'=='` listed in `requirements-min.txt` are replaced with `'>='` to reflect that they are minimum versions.
+The first one is requirements-min.txt_, which lists the package dependencies and their minimum versions for
+installing HDMF.
 
-The second one is requirements.txt_ which contain a list of pinned (concrete) dependencies to reproduce
+The second one is requirements.txt_, which lists the pinned (concrete) dependencies to reproduce
 an entire development environment to use HDMF.
 
-The third one is requirements-dev.txt_ which contain a list of pinned (concrete) dependencies to reproduce
+The third one is requirements-dev.txt_, which list the pinned (concrete) dependencies to reproduce
 an entire development environment to use HDMF, run HDMF tests, check code style, compute coverage, and create test
 environments.
 
-The final one is requirements-doc.txt_ which contain a list of dependencies to generate the documentation for HDMF.
+The fourth one is requirements-opt.txt_, which lists the pinned (concrete) optional dependencies to use all
+available features in HDMF.
+
+The fifth one is requirements-doc.txt_, which lists the dependencies to generate the documentation for HDMF.
 Both this file and `requirements.txt` are used by ReadTheDocs_ to initialize the local environment for Sphinx to run.
+
+The final one is within setup.py_, which contains a list of package dependencies and their version ranges allowed for
+running HDMF.
 
 In order to check the status of the required packages, requires.io_ is used to create a badge on the project
 README_. If all the required packages are up to date, a green badge appears.
@@ -68,6 +75,7 @@ If some of the packages are outdated, see :ref:`update_requirements_files`.
 .. _setup.py: https://github.com/hdmf-dev/hdmf/blob/dev/setup.py
 .. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
 .. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
+.. _requirements-opt.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-opt.txt
 .. _requirements-doc.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-doc.txt
 .. _ReadTheDocs: https://readthedocs.org/projects/hdmf/
 .. _requires.io: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev

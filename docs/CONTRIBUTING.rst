@@ -1,5 +1,5 @@
-How to contribute to HDMF software and documents
-=================================================
+Contributing Guide
+==================
 
 .. _sec-code-of-conduct:
 
@@ -26,7 +26,7 @@ Did you find a bug? or Do you intend to add a new feature or change an existing 
     * **clear description of the problem you are trying to solve**. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team community a better understanding for the reasons of changes and enables others to suggest solutions.
     * **context** providing as much relevant information as possible and if available a **code sample** or an **executable test case** demonstrating the expected behavior and/or problem.
 
-* Be sure to select the appropriate labels (see :ref:`sec-issue-labels`) for your tickets so that they can be processed accordingly.
+* Be sure to select the appropriate label (bug report or feature request) for your tickets so that they can be processed accordingly.
 
 * HDMF is currently being developed primarily by staff at scientific research institutions and industry, most of which work on many different research projects. Please be patient, if our development team is not able to respond immediately to your issues. In particular issues that belong to later project milestones may not be reviewed or processed until work on that milestone begins.
 
@@ -77,38 +77,29 @@ From your local copy directory, use the following commands.
 
     * Ensure the PR description clearly describes the problem and solution.
     * Include the relevant issue number if applicable.
-    * Before submitting, please ensure that the code follows the standard coding style of the respective repository.
+    * Before submitting, please ensure that:
+      * The proposed changes include an addition to ``CHANGELOG.md`` describing your changes. To label the change with the PR number, you will have to first create the PR, then edit the ``CHANGELOG.md`` with the PR number, and push that change.
+      * The code follows our coding style. This can be checked running ``flake8`` from the source directory.
     * **NOTE:** Contributed branches will be removed by the development team after the merge is complete and should, hence, not be used after the pull request is complete.
-
-
-.. _sec-issue-labels:
-
-Issue Labels, Projects, and Milestones
---------------------------------------
-
-Labels
-^^^^^^
-
-Labels are used to describe the general scope of an issue, e.g., whether it describes a bug or feature request etc. Please review and select the appropriate labels for the respective Git repository:
-
-    * `HDMF issue labels  <https://github.com/hdmf-dev/hdmf/labels>`_
-
-Milestones
-^^^^^^^^^^
-
-Milestones are used to define the scope and general timeline for issues. Please review and select the appropriate milestones for the respective Git repository:
-
-    * `HDMF milestones <https://github.com/hdmf-dev/hdmf/milestones>`_
-
-Projects
-^^^^^^^^
-
-Projects are currently used mainly on the HDMF organization level and are only accessible to members of the organization. Projects are used to plan and organize developments across repositories. We currently do not use projects on the individual repository level, although that might change in the future.
 
 .. _sec-styleguides:
 
 Styleguides
 -----------
+
+Python Code Styleguide
+^^^^^^^^^^^^^^^^^^^^^^
+
+Before you create a Pull Request, make sure you are following the HDMF style guide (PEP8_).
+To check whether your code conforms to the HDMF style guide, simply run the flake8_ tool in the project's root
+directory.
+
+.. _flake8: http://flake8.pycqa.org/en/latest/
+.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+
+.. code::
+
+   $ flake8
 
 Git Commit Message Styleguide
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -116,7 +107,7 @@ Git Commit Message Styleguide
 * Use the present tense ("Add feature" not "Added feature")
 * The first should be short and descriptive.
 * Additional details may be included in further paragraphs.
-* If a commit fixes an issues, then include "Fix #X" where X is the number of the issue.
+* If a commit fixes an issue, then include "Fix #X" where X is the number of the issue.
 * Reference relevant issues and pull requests liberally after the first line.
 
 Documentation Styleguide
@@ -124,18 +115,13 @@ Documentation Styleguide
 
 All documentations is written in reStructuredText (RST) using Sphinx.
 
-Python Code Styleguide
-^^^^^^^^^^^^^^^^^^^^^^
-
-Python coding style is checked via ``flake8`` for automatic checking of PEP8 style during pull requests.
-
 Endorsement
 -----------
 
-Please don’t take the fact that working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It’s okay to say e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
+Please do not take working with an organization (e.g., during a hackathon or via GitHub) as an endorsement of your work or your organization. It's okay to say e.g., “We worked with XXXXX to advance science” but not e.g., “XXXXX supports our work on HDMF”.”
 
 License and Copyright
-=======================
+---------------------
 
 See the `license <https://raw.githubusercontent.com/hdmf-dev/hdmf/dev/license.txt>`_ files for details about the copyright and license.
 
@@ -143,4 +129,4 @@ As indicated in the HDMF license: *“You are under no obligation whatsoever to 
 
 Contributors to the HDMF code base are expected to use a permissive, non-copyleft open source license. Typically 3-clause BSD is used, but any compatible license is allowed, the MIT and Apache 2.0 licenses being good alternative choices. The GPL and other copyleft licenses are not allowed due to the consternation it generates across many organizations.
 
-Also, make sure that you are permitted to contribute code. Some organizations, even academic organizations, have agreements in place that discuss IP ownership in detail (i.e., address IP rights and ownership that you create while under the employ of the organization). These are typically signed documents that you looked at on your first day of work and then promptly forgot. We don’t want contributed code to be yanked later due to IP issues.
+Also, make sure that you are permitted to contribute code. Some organizations, even academic organizations, have agreements in place that discuss IP ownership in detail (i.e., address IP rights and ownership that you create while under the employ of the organization). These are typically signed documents that you looked at on your first day of work and then promptly forgot. We don't want contributed code to be yanked later due to IP issues.

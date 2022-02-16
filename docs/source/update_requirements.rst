@@ -11,11 +11,13 @@ The different requirements files introduced in :ref:`software_process` section a
 * requirements-dev.txt_
 * requirements-doc.txt_
 * requirements-min.txt_
+* requirements-opt.txt_
 
 .. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
 .. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
 .. _requirements-doc.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-doc.txt
 .. _requirements-min.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-min.txt
+.. _requirements-opt.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-opt.txt
 
 requirements.txt
 ================
@@ -36,8 +38,8 @@ the following script:
    rmvirtualenv hdmf-requirements
 
 
-requirements-(dev|doc).txt
-==========================
+requirements-(dev|doc|opt).txt
+==============================
 
 Any of these requirements files can be updated using
 the following scripts:

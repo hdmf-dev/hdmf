@@ -9,6 +9,7 @@
 
 # Auto-generated apidocs RST files
 /docs/source/gen_modules/
+/docs/source/hdmf*.rst
 
 # Auto-generated files after running tutorials
 mylab.*.yaml
@@ -50,6 +51,9 @@ __pycache__/
 /tests/coverage/htmlcov
 .coverage
 
+# duecredit output
+.duecredit.p
+
 # tox
 .tox
 
@@ -58,3 +62,9 @@ __pycache__/
 
 #mypy
 .mypy_cache/
+
+#DS_Store
+.DS_Store
+
+#sqlite
+.sqlite

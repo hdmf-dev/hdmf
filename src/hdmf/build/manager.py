@@ -1,14 +1,13 @@
-import numpy as np
-from collections import OrderedDict
-from copy import copy, deepcopy
-from datetime import datetime
 import logging
+from collections import OrderedDict, deque
+from copy import copy
 
-from ..utils import docval, getargs, ExtenderMeta, get_docval, call_docval_func, fmt_docval_args
-from ..container import AbstractContainer, Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NamespaceCatalog, RefSpec, SpecReader
-from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
+from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
+from ..container import AbstractContainer, Container, Data
+from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
+from ..spec.spec import BaseStorageSpec
+from ..utils import docval, getargs, call_docval_func, ExtenderMeta
 
 
 class Proxy:
@@ -89,7 +88,9 @@ class BuildManager:
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         self.__builders = dict()
         self.__containers = dict()
+        self.__active_builders = set()
         self.__type_map = type_map
+        self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
 
     @property
     def namespace_catalog(self):
@@ -106,11 +107,11 @@ class BuildManager:
     def get_proxy(self, **kwargs):
         obj = getargs('object', kwargs)
         if isinstance(obj, BaseBuilder):
-            return self.__get_proxy_builder(obj)
+            return self._get_proxy_builder(obj)
         elif isinstance(obj, AbstractContainer):
-            return self.__get_proxy_container(obj)
+            return self._get_proxy_container(obj)
 
-    def __get_proxy_builder(self, builder):
+    def _get_proxy_builder(self, builder):
         dt = self.__type_map.get_builder_dt(builder)
         ns = self.__type_map.get_builder_ns(builder)
         stack = list()
@@ -121,7 +122,7 @@ class BuildManager:
         loc = "/".join(reversed(stack))
         return Proxy(self, builder.source, loc, ns, dt)
 
-    def __get_proxy_container(self, container):
+    def _get_proxy_container(self, container):
         ns, dt = self.__type_map.get_container_ns_dt(container)
         stack = list()
         tmp = container
@@ -141,12 +142,16 @@ class BuildManager:
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec that further refines the base specification",
              'default': None},
             {"name": "export", "type": bool, "doc": "whether this build is for exporting",
+             'default': False},
+            {"name": "root", "type": bool, "doc": "whether the container is the root of the build process",
              'default': False})
     def build(self, **kwargs):
         """ Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container, export = getargs('container', 'export', kwargs)
+        source, spec_ext, root = getargs('source', 'spec_ext', 'root', kwargs)
         result = self.get_builder(container)
-        source, spec_ext = getargs('source', 'spec_ext', kwargs)
+        if root:
+            self.__active_builders.clear()  # reset active builders at start of build process
         if result is None:
             self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s, export: %s)"
                               % (container.__class__.__name__, container.name, repr(container.container_source),
@@ -165,19 +170,23 @@ class BuildManager:
             # NOTE: if exporting, then existing cached builder will be ignored and overridden with new build result
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext, export=export)
             self.prebuilt(container, result)
+            self.__active_prebuilt(result)
             self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
-        elif container.modified or spec_ext is not None:
-            if isinstance(result, BaseBuilder):
-                self.logger.debug("Rebuilding modified / extended %s '%s' (modified: %s, source: %s, extended spec: %s)"
-                                  % (container.__class__.__name__, container.name, container.modified,
-                                     repr(source), spec_ext is not None))
-                result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext,
-                                               export=export)
-                self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
+        elif not self.__is_active_builder(result) and container.modified:
+            # if builder was built on file read and is then modified (append mode), it needs to be rebuilt
+            self.logger.debug("Rebuilding modified %s '%s' (source: %s, extended spec: %s)"
+                              % (container.__class__.__name__, container.name,
+                                 repr(source), spec_ext is not None))
+            result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext,
+                                           export=export)
+            self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
         else:
             self.logger.debug("Using prebuilt %s '%s' for %s '%s'"
                               % (result.__class__.__name__, result.name,
                                  container.__class__.__name__, container.name))
+        if root:  # create reference builders only after building all other builders
+            self.__add_refs()
+            self.__active_builders.clear()  # reset active builders now that build process has completed
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
@@ -191,11 +200,44 @@ class BuildManager:
         builder_id = self.__bldrhash__(builder)
         self.__containers[builder_id] = container
 
+    def __active_prebuilt(self, builder):
+        """Save the Builder for future use during the active/current build process."""
+        builder_id = self.__bldrhash__(builder)
+        self.__active_builders.add(builder_id)
+
+    def __is_active_builder(self, builder):
+        """Return True if the Builder was created during the active/current build process."""
+        builder_id = self.__bldrhash__(builder)
+        return builder_id in self.__active_builders
+
     def __conthash__(self, obj):
         return id(obj)
 
     def __bldrhash__(self, obj):
         return id(obj)
+
+    def __add_refs(self):
+        '''
+        Add ReferenceBuilders.
+
+        References get queued to be added after all other objects are built. This is because
+        the current traversal algorithm (i.e. iterating over specs)
+        does not happen in a guaranteed order. We need to build the targets
+        of the reference builders so that the targets have the proper parent,
+        and then write the reference builders after we write everything else.
+        '''
+        while len(self.__ref_queue) > 0:
+            call = self.__ref_queue.popleft()
+            self.logger.debug("Adding ReferenceBuilder with call id %d from queue (length %d)"
+                              % (id(call), len(self.__ref_queue)))
+            call()
+
+    def queue_ref(self, func):
+        '''Set aside creating ReferenceBuilders'''
+        # TODO: come up with more intelligent way of
+        # queueing reference resolution, based on reference
+        # dependency
+        self.__ref_queue.append(func)
 
     def purge_outdated(self):
         containers_copy = self.__containers.copy()
@@ -230,7 +272,7 @@ class BuildManager:
         if result is None:
             parent_builder = self.__get_parent_dt_builder(builder)
             if parent_builder is not None:
-                parent = self.__get_proxy_builder(parent_builder)
+                parent = self._get_proxy_builder(parent_builder)
                 result = self.__type_map.construct(builder, self, parent)
             else:
                 # we are at the top of the hierarchy,
@@ -304,6 +346,24 @@ class BuildManager:
         builder = getargs('builder', kwargs)
         return self.__type_map.get_builder_dt(builder)
 
+    @docval({'name': 'builder', 'type': (GroupBuilder, DatasetBuilder, AbstractContainer),
+             'doc': 'the builder or container to check'},
+            {'name': 'parent_data_type', 'type': str,
+             'doc': 'the potential parent data_type that refers to a data_type'},
+            returns="True if data_type of *builder* is a sub-data_type of *parent_data_type*, False otherwise",
+            rtype=bool)
+    def is_sub_data_type(self, **kwargs):
+        '''
+        Return whether or not data_type of *builder* is a sub-data_type of *parent_data_type*
+        '''
+        builder, parent_dt = getargs('builder', 'parent_data_type', kwargs)
+        if isinstance(builder, (GroupBuilder, DatasetBuilder)):
+            ns = self.get_builder_ns(builder)
+            dt = self.get_builder_dt(builder)
+        else:  # builder is an AbstractContainer
+            ns, dt = self.type_map.get_container_ns_dt(builder)
+        return self.namespace_catalog.is_sub_data_type(ns, dt, parent_dt)
+
 
 class TypeSource:
     '''A class to indicate the source of a data_type in a namespace.
@@ -340,15 +400,22 @@ class TypeMap:
             from .objectmapper import ObjectMapper  # avoid circular import
             mapper_cls = ObjectMapper
         self.__ns_catalog = namespaces
-        self.__mappers = dict()     # already constructed ObjectMapper classes
+        self.__mappers = dict()  # already constructed ObjectMapper classes
         self.__mapper_cls = dict()  # the ObjectMapper class to use for each container type
         self.__container_types = OrderedDict()
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
+        self.__class_generator = ClassGenerator()
+        self.register_generator(CustomClassGenerator)
+        self.register_generator(MCIClassGenerator)
 
     @property
     def namespace_catalog(self):
         return self.__ns_catalog
+
+    @property
+    def container_types(self):
+        return self.__container_types
 
     def __copy__(self):
         ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls)
@@ -381,6 +448,15 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, container_cls)
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
+        for custom_generators in reversed(type_map.__class_generator.custom_generators):
+            # iterate in reverse order because generators are stored internally as a stack
+            self.register_generator(custom_generators)
+
+    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
+    def register_generator(self, **kwargs):
+        """Add a custom class generator."""
+        generator = getargs('generator', kwargs)
+        self.__class_generator.register_generator(generator)
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve', 'type': bool,
@@ -399,298 +475,113 @@ class TypeMap:
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
-                    container_cls = self.get_container_cls(src_ns, dt)
+                    container_cls = self.get_dt_container_cls(dt, src_ns, autogen=False)
                     if container_cls is None:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    # mapping from spec types to allowable python types for docval for fields during dynamic class generation
-    # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
-    # __init__ method that allows the types (int, np.int32, np.int64) for the corresponding field.
-    # passing an np.int16 would raise a docval error.
-    # passing an int64 to __init__ would result in the field storing the value as an int64 (and subsequently written
-    # as an int64). no upconversion or downconversion happens as a result of this map
-    # see https://schema-language.readthedocs.io/en/latest/specification_language_description.html#dtype
-    _spec_dtype_map = {
-        'float32': (float, np.float32, np.float64),
-        'float': (float, np.float32, np.float64),
-        'float64': (float, np.float64),
-        'double': (float, np.float64),
-        'int8': (np.int8, np.int16, np.int32, np.int64, int),
-        'int16': (np.int16, np.int32, np.int64, int),
-        'short': (np.int16, np.int32, np.int64, int),
-        'int32': (int, np.int32, np.int64),
-        'int': (int, np.int32, np.int64),
-        'int64': np.int64,
-        'long': np.int64,
-        'uint8': (np.uint8, np.uint16, np.uint32, np.uint64),
-        'uint16': (np.uint16, np.uint32, np.uint64),
-        'uint32': (np.uint32, np.uint64),
-        'uint64': np.uint64,
-        'numeric': (float, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64, int, np.uint8, np.uint16,
-                    np.uint32, np.uint64),
-        'text': str,
-        'utf': str,
-        'utf8': str,
-        'utf-8': str,
-        'ascii': bytes,
-        'bytes': bytes,
-        'bool': bool,
-        'isodatetime': datetime,
-        'datetime': datetime
-    }
-
-    def __get_container_type(self, container_name):
-        container_type = None
-        for val in self.__container_types.values():
-            container_type = val.get(container_name)
-            if container_type is not None:
-                return container_type
-        if container_type is None:  # pragma: no cover
-            # this code should never happen after hdmf#322
-            raise TypeDoesNotExistError("Type '%s' does not exist." % container_name)
-
-    def __get_scalar_type_map(self, spec_dtype):
-        dtype = self._spec_dtype_map.get(spec_dtype)
-        if dtype is None:  # pragma: no cover
-            # this should not happen as long as _spec_dtype_map is kept up to date with
-            # hdmf.spec.spec.DtypeHelper.valid_primary_dtypes
-            raise ValueError("Spec dtype '%s' cannot be mapped to a Python type." % spec_dtype)
-        return dtype
-
-    def __get_type(self, spec):
-        if isinstance(spec, AttributeSpec):
-            if isinstance(spec.dtype, RefSpec):
-                tgttype = spec.dtype.target_type
-                for val in self.__container_types.values():
-                    container_type = val.get(tgttype)
-                    if container_type is not None:
-                        return container_type
-                return Data, Container
-            elif spec.shape is None and spec.dims is None:
-                return self.__get_scalar_type_map(spec.dtype)
-            else:
-                return 'array_data', 'data'
-        if isinstance(spec, LinkSpec):
-            return AbstractContainer
-        if spec.data_type_def is not None:
-            return self.__get_container_type(spec.data_type_def)
-        if spec.data_type_inc is not None:
-            return self.__get_container_type(spec.data_type_inc)
-        if spec.shape is None and spec.dims is None:
-            return self.__get_scalar_type_map(spec.dtype)
-        return 'array_data', 'data'
-
-    def __ischild(self, dtype):
-        """
-        Check if dtype represents a type that is a child
-        """
-        ret = False
-        if isinstance(dtype, tuple):
-            for sub in dtype:
-                ret = ret or self.__ischild(sub)
-        else:
-            if isinstance(dtype, type) and issubclass(dtype, (Container, Data, DataRegion)):
-                ret = True
-        return ret
-
-    @staticmethod
-    def __set_default_name(docval_args, default_name):
-        if default_name is not None:
-            for x in docval_args:
-                if x['name'] == 'name':
-                    x['default'] = default_name
-
-    def _build_docval(self, base, addl_fields, name=None, default_name=None):
-        """Build docval for auto-generated class
-
-        :param base: The base class of the new class
-        :param addl_fields: Dict of additional fields that are not in the base class
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
-        :return:
-        """
-        docval_args = list(deepcopy(get_docval(base.__init__)))
-        for f, field_spec in addl_fields.items():
-            docval_arg = dict(name=f, doc=field_spec.doc)
-            if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
-                docval_arg.update(type=(list, tuple, dict, self.__get_type(field_spec)))
-            else:
-                dtype = self.__get_type(field_spec)
-                docval_arg.update(type=dtype)
-                if getattr(field_spec, 'shape', None) is not None:
-                    docval_arg.update(shape=field_spec.shape)
-            if not field_spec.required:
-                docval_arg['default'] = getattr(field_spec, 'default_value', None)
-
-            # if argument already exists, overwrite it. If not, append it to list.
-            inserted = False
-            for i, x in enumerate(docval_args):
-                if x['name'] == f:
-                    docval_args[i] = docval_arg
-                    inserted = True
-            if not inserted:
-                docval_args.append(docval_arg)
-
-        # if spec provides a fixed name for this type, remove the 'name' arg from docval_args so that values cannot
-        # be passed for a name positional or keyword arg
-        if name is not None:  # fixed name is specified in spec, remove it from docval args
-            docval_args = filter(lambda x: x['name'] != 'name', docval_args)
-
-        # set default name if provided
-        self.__set_default_name(docval_args, default_name)
-
-        return docval_args
-
-    def __get_cls_dict(self, base, addl_fields, name=None, default_name=None):
-        """
-        Get __init__ and fields of new class.
-        :param base: The base class of the new class
-        :param addl_fields: Dict of additional fields that are not in the base class
-        :param name: Fixed name of instances of this class, or None if name is not fixed to a particular value
-        :param default_name: Default name of instances of this class, or None if not specified
-        """
-        # TODO: fix this to be more maintainable and smarter
-        if base is None:
-            raise ValueError('cannot generate class without base class')
-        new_args = list()
-        fields = list()
-
-        # copy docval args from superclass
-        existing_args = set(arg['name'] for arg in get_docval(base.__init__))
-
-        clsconf = list()
-        # add new fields to docval and class fields
-        for f, field_spec in addl_fields.items():
-            if f == 'help':  # pragma: no cover
-                # (legacy) do not add field named 'help' to any part of class object
-                continue
-
-            if getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY):
-                # if its a MultiContainerInterface, also build clsconf
-                clsconf.append(dict(
-                    attr=f,
-                    type=self.__get_type(field_spec),
-                    add='add_{}'.format(f),
-                    get='get_{}'.format(f),
-                    create='create_{}'.format(f)
-                ))
-            else:
-                # if not, add arguments to fields for getter/setter generation
-                dtype = self.__get_type(field_spec)
-                if self.__ischild(dtype):
-                    fields.append({'name': f, 'child': True})
-                else:
-                    fields.append(f)
-
-            # auto-initialize arguments not found in superclass
-            if f not in existing_args:
-                new_args.append(f)
-
-        classdict = dict()
-
-        if len(fields):
-            classdict.update({base._fieldsname: tuple(fields)})
-        if len(clsconf):
-            classdict.update(__clsconf__=clsconf)
-
-        docval_args = self._build_docval(base, addl_fields, name, default_name)
-
-        if len(fields) or name is not None:
-            @docval(*docval_args)
-            def __init__(self, **kwargs):
-                if name is not None:
-                    kwargs.update(name=name)
-                pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-                base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-                if len(clsconf):
-                    MultiContainerInterface.__init__(self, *pargs, **pkwargs)
-
-                for f in new_args:
-                    arg_val = kwargs.get(f, None)
-                    setattr(self, f, arg_val)
-
-            classdict.update(__init__=__init__)
-
-        return classdict
-
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+            {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_container_cls(self, **kwargs):
-        '''Get the container class from data type specification
-        If no class has been associated with the ``data_type`` from ``namespace``,
-        a class will be dynamically created and returned.
-        '''
-        namespace, data_type = getargs('namespace', 'data_type', kwargs)
-        cls = self.__get_container_cls(namespace, data_type)
-        if cls is None:
-            spec = self.__ns_catalog.get_spec(namespace, data_type)
-            if isinstance(spec, GroupSpec):
-                self.__resolve_child_container_classes(spec, namespace)
+        """Get the container class from data type specification.
+        If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
+        created and returned.
+        """
+        # NOTE: this internally used function get_container_cls will be removed in favor of get_dt_container_cls
+        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+        return self.get_dt_container_cls(data_type, namespace, autogen)
 
-            dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
-            parent_cls = None
-            for t in dt_hier:
-                parent_cls = self.__get_container_cls(namespace, t)
-                if parent_cls is not None:
+    @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
+            {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+            {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
+            returns='the class for the given namespace and data_type', rtype=type)
+    def get_dt_container_cls(self, **kwargs):
+        """Get the container class from data type specification.
+        If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
+        created and returned.
+
+        Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
+        all namespaces.
+        """
+        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+
+        # namespace is unknown, so look it up
+        if namespace is None:
+            for ns_key, ns_data_types in self.__container_types.items():
+                # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
+                # but the same type_name should point to the same class
+                if data_type in ns_data_types:
+                    namespace = ns_key
                     break
-            if parent_cls is not None:
-                bases = (parent_cls,)
-            else:
-                if isinstance(spec, GroupSpec):
-                    bases = (Container,)
-                elif isinstance(spec, DatasetSpec):
-                    bases = (Data,)
-                else:
-                    raise ValueError("Cannot generate class from %s" % type(spec))
-                parent_cls = bases[0]
-            if type(parent_cls) is not ExtenderMeta:
-                raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
 
+        cls = self.__get_container_cls(namespace, data_type)
+        if cls is None and autogen:  # dynamically generate a class
+            spec = self.__ns_catalog.get_spec(namespace, data_type)
+            self.__check_dependent_types(spec, namespace)
+            parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
-            fields = dict()
-            for k, field_spec in attr_names.items():
-                if not spec.is_inherited_spec(field_spec):
-                    fields[k] = field_spec
-            try:
-                d = self.__get_cls_dict(parent_cls, fields, spec.name, spec.default_name)
-                if '__clsconf__' in d and not isinstance(parent_cls, MultiContainerInterface):
-                    bases = tuple([MultiContainerInterface] + list(bases))
-            except TypeDoesNotExistError as e:  # pragma: no cover
-                # this error should never happen after hdmf#322
-                name = spec.data_type_def
-                if name is None:
-                    name = 'Unknown'
-                raise ValueError("Cannot dynamically generate class for type '%s'. " % name
-                                 + str(e)
-                                 + " Please define that type before defining '%s'." % name)
-            cls = ExtenderMeta(str(data_type), bases, d)
+            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 
-    def __resolve_child_container_classes(self, spec, namespace):
-        for child_spec in (spec.groups + spec.datasets):
-            if child_spec.data_type_inc is not None:
-                self.get_container_cls(namespace, child_spec.data_type_inc)
-            elif child_spec.data_type_def is not None:
-                self.get_container_cls(namespace, child_spec.data_type_def)
+    def __check_dependent_types(self, spec, namespace):
+        """Ensure that classes for all types used by this type exist in this namespace and generate them if not.
+        """
+        def __check_dependent_types_helper(spec, namespace):
+            if isinstance(spec, (GroupSpec, DatasetSpec)):
+                if spec.data_type_inc is not None:
+                    self.get_dt_container_cls(spec.data_type_inc, namespace)  # TODO handle recursive definitions
+                if spec.data_type_def is not None:  # nested type definition
+                    self.get_dt_container_cls(spec.data_type_def, namespace)
+            else:  # spec is a LinkSpec
+                self.get_dt_container_cls(spec.target_type, namespace)
+            if isinstance(spec, GroupSpec):
+                for child_spec in (spec.groups + spec.datasets + spec.links):
+                    __check_dependent_types_helper(child_spec, namespace)
+
+        if spec.data_type_inc is not None:
+            self.get_dt_container_cls(spec.data_type_inc, namespace)
+        if isinstance(spec, GroupSpec):
+            for child_spec in (spec.groups + spec.datasets + spec.links):
+                __check_dependent_types_helper(child_spec, namespace)
+
+    def __get_parent_cls(self, namespace, data_type, spec):
+        dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
+        dt_hier = dt_hier[1:]  # remove the current data_type
+        parent_cls = None
+        for t in dt_hier:
+            parent_cls = self.__get_container_cls(namespace, t)
+            if parent_cls is not None:
+                break
+        if parent_cls is None:
+            if isinstance(spec, GroupSpec):
+                parent_cls = Container
+            elif isinstance(spec, DatasetSpec):
+                parent_cls = Data
+            else:
+                raise ValueError("Cannot generate class from %s" % type(spec))
+        if type(parent_cls) is not ExtenderMeta:
+            raise ValueError("parent class %s is not of type ExtenderMeta - %s" % (parent_cls, type(parent_cls)))
+        return parent_cls
 
     def __get_container_cls(self, namespace, data_type):
+        """Get the container class for the namespace, data_type. If the class doesn't exist yet, generate it."""
         if namespace not in self.__container_types:
             return None
         if data_type not in self.__container_types[namespace]:
             return None
         ret = self.__container_types[namespace][data_type]
-        if isinstance(ret, TypeSource):
-            ret = self.__get_container_cls(ret.namespace, ret.data_type)
-            if ret is not None:
-                self.register_container_type(namespace, data_type, ret)
+        if isinstance(ret, TypeSource):  # data_type is a dependency from ret.namespace
+            cls = self.get_dt_container_cls(ret.data_type, ret.namespace)  # get class / generate class
+            # register the same class into this namespace (replaces TypeSource)
+            self.register_container_type(namespace, data_type, cls)
+            ret = cls
         return ret
 
-    @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder,
-                                     GroupSpec, DatasetSpec),
+    @docval({'name': 'obj', 'type': (GroupBuilder, DatasetBuilder, LinkBuilder, GroupSpec, DatasetSpec),
              'doc': 'the object to get the type key for'})
     def __type_key(self, obj):
         """
@@ -743,7 +634,7 @@ class TypeMap:
         namespace = self.get_builder_ns(builder)
         if namespace is None:
             raise ValueError("No namespace found for builder %s" % builder.path)
-        return self.get_container_cls(namespace, data_type)
+        return self.get_dt_container_cls(data_type, namespace)
 
     @docval({'name': 'spec', 'type': (DatasetSpec, GroupSpec), 'doc': 'the parent spec to search'},
             {'name': 'builder', 'type': (DatasetBuilder, GroupBuilder, LinkBuilder),
@@ -753,6 +644,7 @@ class TypeMap:
         spec, builder = getargs('spec', 'builder', kwargs)
         if isinstance(builder, LinkBuilder):
             builder_type = type(builder.builder)
+            # TODO consider checking against spec.get_link
         else:
             builder_type = type(builder)
         if issubclass(builder_type, DatasetBuilder):
@@ -772,6 +664,9 @@ class TypeMap:
                     subspec = spec.get_data_type(t)
                     if subspec is not None:
                         break
+                    subspec = spec.get_target_type(t)
+                    if subspec is not None:
+                        break
         return subspec
 
     def get_container_ns_dt(self, obj):
@@ -781,7 +676,7 @@ class TypeMap:
 
     def get_container_cls_dt(self, cls):
         def_ret = (None, None)
-        for _cls in cls.__mro__:
+        for _cls in cls.__mro__:  # pragma: no branch
             ret = self.__data_types.get(_cls, def_ret)
             if ret is not def_ret:
                 return ret
@@ -831,12 +726,13 @@ class TypeMap:
     def register_container_type(self, **kwargs):
         ''' Map a container class to a data_type '''
         namespace, data_type, container_cls = getargs('namespace', 'data_type', 'container_cls', kwargs)
-        spec = self.__ns_catalog.get_spec(namespace, data_type)    # make sure the spec exists
+        spec = self.__ns_catalog.get_spec(namespace, data_type)  # make sure the spec exists
         self.__container_types.setdefault(namespace, dict())
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))
-        setattr(container_cls, spec.type_key(), data_type)
-        setattr(container_cls, 'namespace', namespace)
+        if not isinstance(container_cls, TypeSource):
+            setattr(container_cls, spec.type_key(), data_type)
+            setattr(container_cls, 'namespace', namespace)
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
@@ -907,7 +803,3 @@ class TypeMap:
             raise ValueError('No ObjectMapper found for container of type %s' % str(container.__class__.__name__))
         else:
             return obj_mapper.get_builder_name(container)
-
-
-class TypeDoesNotExistError(Exception):  # pragma: no cover
-    pass

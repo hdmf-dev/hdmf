@@ -1,7 +1,7 @@
 from numpy import dtype
 
-from ..utils import docval, getargs
 from ..spec.spec import DtypeHelper
+from ..utils import docval, getargs
 
 __all__ = [
     "Error",
@@ -11,7 +11,8 @@ __all__ = [
     "ShapeError",
     "MissingDataType",
     "IllegalLinkError",
-    "IncorrectDataType"
+    "IncorrectDataType",
+    "IncorrectQuantityError"
 ]
 
 
@@ -24,10 +25,6 @@ class Error:
         self.__name = getargs('name', kwargs)
         self.__reason = getargs('reason', kwargs)
         self.__location = getargs('location', kwargs)
-        if self.__location is not None:
-            self.__str = "%s (%s): %s" % (self.__name, self.__location, self.__reason)
-        else:
-            self.__str = "%s: %s" % (self.name, self.reason)
 
     @property
     def name(self):
@@ -44,13 +41,48 @@ class Error:
     @location.setter
     def location(self, loc):
         self.__location = loc
-        self.__str = "%s (%s): %s" % (self.__name, self.__location, self.__reason)
 
     def __str__(self):
-        return self.__str
+        return self.__format_str(self.name, self.location, self.reason)
+
+    @staticmethod
+    def __format_str(name, location, reason):
+        if location is not None:
+            return "%s (%s): %s" % (name, location, reason)
+        else:
+            return "%s: %s" % (name, reason)
 
     def __repr__(self):
         return self.__str__()
+
+    def __hash__(self):
+        """Returns the hash value of this Error
+
+        Note: if the location property is set after creation, the hash value will
+        change. Therefore, it is important to finalize the value of location
+        before getting the hash value.
+        """
+        return hash(self.__equatable_str())
+
+    def __equatable_str(self):
+        """A string representation of the error which can be used to check for equality
+
+        For a single error, name can end up being different depending on whether it is
+        generated from a base data type spec or from an inner type definition. These errors
+        should still be considered equal because they are caused by the same problem.
+
+        When a location is provided, we only consider the name of the field and drop the
+        rest of the spec name. However, when a location is not available, then we need to
+        use the fully-provided name.
+        """
+        if self.location is not None:
+            equatable_name = self.name.split('/')[-1]
+        else:
+            equatable_name = self.name
+        return self.__format_str(equatable_name, self.location, self.reason)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
 
 class DtypeError(Error):
@@ -83,17 +115,35 @@ class MissingError(Error):
 class MissingDataType(Error):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'data_type', 'type': str, 'doc': 'the missing data type'},
-            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None},
+            {'name': 'missing_dt_name', 'type': str, 'doc': 'the name of the missing data type', 'default': None})
     def __init__(self, **kwargs):
-        name, data_type = getargs('name', 'data_type', kwargs)
+        name, data_type, missing_dt_name = getargs('name', 'data_type', 'missing_dt_name', kwargs)
         self.__data_type = data_type
-        reason = "missing data type %s" % self.__data_type
+        if missing_dt_name is not None:
+            reason = "missing data type %s (%s)" % (self.__data_type, missing_dt_name)
+        else:
+            reason = "missing data type %s" % self.__data_type
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
 
     @property
     def data_type(self):
         return self.__data_type
+
+
+class IncorrectQuantityError(Error):
+    """A validation error indicating that a child group/dataset/link has the incorrect quantity of matching elements"""
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
+            {'name': 'data_type', 'type': str, 'doc': 'the data type which has the incorrect quantity'},
+            {'name': 'expected', 'type': (str, int), 'doc': 'the expected quantity'},
+            {'name': 'received', 'type': (str, int), 'doc': 'the received quantity'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    def __init__(self, **kwargs):
+        name, data_type, expected, received = getargs('name', 'data_type', 'expected', 'received', kwargs)
+        reason = "expected a quantity of %s for data type %s, received %s" % (str(expected), data_type, str(received))
+        loc = getargs('location', kwargs)
+        super().__init__(name, reason, location=loc)
 
 
 class ExpectedArrayError(Error):
@@ -136,7 +186,7 @@ class IllegalLinkError(Error):
             {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
-        reason = "illegal use of link"
+        reason = "illegal use of link (linked object will not be validated)"
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
 

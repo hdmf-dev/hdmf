@@ -1,7 +1,14 @@
-from copy import copy
-from collections.abc import Iterable
+"""
+Utilities for the HDF5 I/O backend,
+e.g., for wrapping HDF5 datasets on read, wrapping arrays for configuring write, or
+writing the spec among others"""
+
 from collections import deque
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
+from copy import copy
+
+import numpy as np
 from h5py import Group, Dataset, RegionReference, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
@@ -10,12 +17,12 @@ import warnings
 import os
 import logging
 
-from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...array import Array
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
+from ...utils import docval, getargs, popargs, call_docval_func, get_docval
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -181,6 +188,11 @@ class AbstractH5TableDataset(DatasetOfReferences):
                 self.__refgetters[i] = self.__get_regref
             elif t is Reference:
                 self.__refgetters[i] = self._get_ref
+            elif t is str:
+                # we need this for when we read compound data types
+                # that have unicode sub-dtypes since h5py does not
+                # store UTF-8 in compound dtypes
+                self.__refgetters[i] = self._get_utf
         self.__types = types
         tmp = list()
         for i in range(len(self.dataset.dtype)):
@@ -223,6 +235,12 @@ class AbstractH5TableDataset(DatasetOfReferences):
         for i in self.__refgetters:
             getref = self.__refgetters[i]
             row[i] = getref(row[i])
+
+    def _get_utf(self, string):
+        """
+        Decode a dataset element to unicode
+        """
+        return string.decode('utf-8') if isinstance(string, bytes) else string
 
     def __get_regref(self, ref):
         obj = self._get_ref(ref)
@@ -357,8 +375,9 @@ class H5SpecWriter(SpecWriter):
 
 
 class H5SpecReader(SpecReader):
+    """Class that reads cached JSON-formatted namespace and spec data from an HDF5 group."""
 
-    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to read specs from'})
+    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 group to read specs from'})
     def __init__(self, **kwargs):
         self.__group = getargs('group', kwargs)
         super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
@@ -367,13 +386,12 @@ class H5SpecReader(SpecReader):
 
     def __read(self, path):
         s = self.__group[path][()]
-
-        if isinstance(s, np.ndarray) \
-           and s.shape == (1,):
+        if isinstance(s, np.ndarray) and s.shape == (1,):  # unpack scalar spec dataset
             s = s[0]
 
         if isinstance(s, bytes):
             s = s.decode('UTF-8')
+
         d = json.loads(s)
         return d
 
@@ -502,7 +520,7 @@ class H5DataIO(DataIO):
                                      self.__allow_plugin_filters):
             msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
             if not self.__allow_plugin_filters:
-                msg += "Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
+                msg += " Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
             raise ValueError(msg)
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):

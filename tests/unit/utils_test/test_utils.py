@@ -1,10 +1,10 @@
-import h5py
-import numpy as np
 import os
 
+import h5py
+import numpy as np
 from hdmf.data_utils import DataChunkIterator, DataIO
-from hdmf.utils import get_data_shape
 from hdmf.testing import TestCase
+from hdmf.utils import get_data_shape, to_uint_array
 
 
 class TestGetDataShape(TestCase):
@@ -165,3 +165,42 @@ class TestGetDataShape(TestCase):
 
         res = get_data_shape(((1, 2), (3, 4), (5, 6)), strict_no_data_load=True)
         self.assertTupleEqual(res, (3, 2))
+
+
+class TestToUintArray(TestCase):
+
+    def test_ndarray_uint(self):
+        arr = np.array([0, 1, 2], dtype=np.uint32)
+        res = to_uint_array(arr)
+        np.testing.assert_array_equal(res, arr)
+
+    def test_ndarray_int(self):
+        arr = np.array([0, 1, 2], dtype=np.int32)
+        res = to_uint_array(arr)
+        np.testing.assert_array_equal(res, arr)
+
+    def test_ndarray_int_neg(self):
+        arr = np.array([0, -1, 2], dtype=np.int32)
+        with self.assertRaisesWith(ValueError, 'Cannot convert negative integer values to uint.'):
+            to_uint_array(arr)
+
+    def test_ndarray_float(self):
+        arr = np.array([0, 1, 2], dtype=np.float64)
+        with self.assertRaisesWith(ValueError, 'Cannot convert array of dtype float64 to uint.'):
+            to_uint_array(arr)
+
+    def test_list_int(self):
+        arr = [0, 1, 2]
+        res = to_uint_array(arr)
+        expected = np.array([0, 1, 2], dtype=np.uint32)
+        np.testing.assert_array_equal(res, expected)
+
+    def test_list_int_neg(self):
+        arr = [0, -1, 2]
+        with self.assertRaisesWith(ValueError, 'Cannot convert negative integer values to uint.'):
+            to_uint_array(arr)
+
+    def test_list_float(self):
+        arr = [0., 1., 2.]
+        with self.assertRaisesWith(ValueError, 'Cannot convert array of dtype float64 to uint.'):
+            to_uint_array(arr)

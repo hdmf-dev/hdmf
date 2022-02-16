@@ -1,12 +1,19 @@
-import unittest
-from hdmf.common import DynamicTable, VectorData, VectorIndex, ElementIdentifiers, DynamicTableRegion, VocabData
-from hdmf.testing import TestCase, H5RoundTripMixin
-from hdmf.backends.hdf5 import H5DataIO
-
 from collections import OrderedDict
 import h5py
 import numpy as np
+import os
 import pandas as pd
+import unittest
+
+from hdmf import Container
+from hdmf.backends.hdf5 import H5DataIO, HDF5IO
+from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
+from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
+                         DynamicTableRegion, get_manager, SimpleMultiContainer)
+from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
+from hdmf.utils import StrDataset
+
+from tests.unit.utils import get_temp_filepath
 
 
 class TestDynamicTable(TestCase):
@@ -204,6 +211,104 @@ class TestDynamicTable(TestCase):
                "deprecated in a future version of HDMF.")
         with self.assertWarnsWith(FutureWarning, msg):
             table.add_column(name='bad', description='bad column', index=ind)
+
+    def test_add_column_multi_index(self):
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column', index=2)
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2, 3],
+                            [1, 2, 3, 4]
+                      ])
+        table.add_row(foo=5, bar=50.0, baz='lizard',
+                      qux=[
+                            [1, 2]
+                      ]
+                      )
+
+    def test_auto_multi_index_required(self):
+
+        class TestTable(DynamicTable):
+            __columns__ = (dict(name='qux', description='qux column', index=3, required=True),)
+
+        table = TestTable('table_name', 'table_description')
+        self.assertIsInstance(table.qux, VectorData)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index, VectorIndex)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index_index, VectorIndex)  # check that the attribute is set
+        self.assertIsInstance(table.qux_index_index_index, VectorIndex)  # check that the attribute is set
+        table.add_row(
+            qux=[
+                    [
+                        [1, 2, 3],
+                        [1, 2, 3, 4]
+                    ]
+                ]
+        )
+        table.add_row(
+            qux=[
+                    [
+                        [1, 2]
+                    ]
+                ]
+        )
+
+        expected = [
+            [
+                [
+                    [1, 2, 3],
+                    [1, 2, 3, 4]
+                ]
+            ],
+            [
+                [
+                    [1, 2]
+                ]
+            ]
+        ]
+        self.assertListEqual(table['qux'][:], expected)
+        self.assertEqual(table.qux_index_index_index.data, [1, 2])
+
+    def test_auto_multi_index(self):
+
+        class TestTable(DynamicTable):
+            __columns__ = (dict(name='qux', description='qux column', index=3),)  # this is optional
+
+        table = TestTable('table_name', 'table_description')
+        self.assertIsNone(table.qux)  # these are reserved as attributes but not yet initialized
+        self.assertIsNone(table.qux_index)
+        self.assertIsNone(table.qux_index_index)
+        self.assertIsNone(table.qux_index_index_index)
+        table.add_row(
+            qux=[
+                    [
+                        [1, 2, 3],
+                        [1, 2, 3, 4]
+                    ]
+                ]
+        )
+        table.add_row(
+            qux=[
+                    [
+                        [1, 2]
+                    ]
+                ]
+        )
+
+        expected = [
+            [
+                [
+                    [1, 2, 3],
+                    [1, 2, 3, 4]
+                ]
+            ],
+            [
+                [
+                    [1, 2]
+                ]
+            ]
+        ]
+        self.assertListEqual(table['qux'][:], expected)
+        self.assertEqual(table.qux_index_index_index.data, [1, 2])
 
     def test_getitem_row_num(self):
         table = self.with_spec()
@@ -464,6 +569,113 @@ Fields:
         with self.assertRaisesWith(IndexError, msg):
             table[5]
 
+    def test_no_df_nested(self):
+        table = self.with_columns_and_data()
+        msg = 'DynamicTable.get() with df=False and index=False is not yet supported.'
+        with self.assertRaisesWith(ValueError, msg):
+            table.get(0, df=False, index=False)
+
+    def test_multidim_col(self):
+        multidim_data = [
+            [[1, 2], [3, 4], [5, 6]],
+            ((1, 2), (3, 4), (5, 6)),
+            [(1, 'a', True), (2, 'b', False), (3, 'c', True)],
+        ]
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, multidim_data)
+        ]
+        table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'foo': multidim_data[0],
+                            'bar': multidim_data[1],
+                            'baz': multidim_data[2]},
+                           index=pd.Index(name='id', data=[0, 1, 2]))
+        pd.testing.assert_frame_equal(df, df2)
+
+        df3 = pd.DataFrame({'foo': [multidim_data[0][0]],
+                            'bar': [multidim_data[1][0]],
+                            'baz': [multidim_data[2][0]]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(table.get(0), df3)
+
+    def test_multidim_col_one_elt_list(self):
+        data = [[1, 2]]
+        col = VectorData(name='data', description='desc', data=data)
+        table = DynamicTable('test', 'desc', columns=(col, ))
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'data': [x for x in data]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(table.get(0), df2)
+
+    def test_multidim_col_one_elt_tuple(self):
+        data = [(1, 2)]
+        col = VectorData(name='data', description='desc', data=data)
+        table = DynamicTable('test', 'desc', columns=(col, ))
+        df = table.to_dataframe()
+        df2 = pd.DataFrame({'data': [x for x in data]},
+                           index=pd.Index(name='id', data=[0]))
+        pd.testing.assert_frame_equal(df, df2)
+        pd.testing.assert_frame_equal(table.get(0), df2)
+
+    def test_eq(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertTrue(table == test_table)
+
+    def test_eq_from_df(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard']
+        }).loc[:, ('foo', 'bar', 'baz')]
+
+        test_table = DynamicTable.from_dataframe(df, 'with_columns_and_data', table_description='a test table')
+        table = self.with_columns_and_data()
+        self.assertTrue(table == test_table)
+
+    def test_eq_diff_missing_col(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        del columns[-1]
+        test_table = DynamicTable("with_columns_and_data", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_diff_name(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("wrong name", 'a test table', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_diff_desc(self):
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec, self.data)
+        ]
+        test_table = DynamicTable("with_columns_and_data", 'wrong description', columns=columns)
+
+        table = self.with_columns_and_data()
+        self.assertFalse(table == test_table)
+
+    def test_eq_bad_type(self):
+        container = Container('test_container')
+        table = self.with_columns_and_data()
+        self.assertFalse(table == container)
+
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -473,9 +685,10 @@ class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
         table.add_column('bar', 'a float column')
         table.add_column('baz', 'a string column')
         table.add_column('qux', 'a boolean column')
-        table.add_column('quux', 'a vocab column', vocab=True)
-        table.add_row(foo=27, bar=28.0, baz="cat", qux=True, quux='a')
-        table.add_row(foo=37, bar=38.0, baz="dog", qux=False, quux='b')
+        table.add_column('corge', 'a doubly indexed int column', index=2)
+        table.add_column('quux', 'an enum column', enum=True)
+        table.add_row(foo=27, bar=28.0, baz="cat", corge=[[1, 2, 3], [4, 5, 6]], qux=True, quux='a')
+        table.add_row(foo=37, bar=38.0, baz="dog", corge=[[11, 12, 13], [14, 15, 16]], qux=False, quux='b')
         return table
 
     def test_index_out_of_bounds(self):
@@ -543,7 +756,7 @@ class TestDynamicTableRegion(TestCase):
     def test_dynamic_table_region_to_dataframe_exclude_cols(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
-        res = dynamic_table_region.to_dataframe(exclude=set(['baz', 'foo']))
+        res = dynamic_table_region.to_dataframe(exclude={'baz', 'foo'})
         self.assertListEqual(res.index.tolist(), [0, 1, 2, 2])
         self.assertEqual(len(res.columns), 1)
         self.assertListEqual(res['bar'].tolist(), [10.0, 20.0, 30.0, 30.0])
@@ -586,7 +799,7 @@ class TestDynamicTableRegion(TestCase):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
         with self.assertRaises(ValueError):
-            _ = dynamic_table_region['bad index']
+            _ = dynamic_table_region[True]
 
     def test_dynamic_table_region_table_prop(self):
         table = self.with_columns_and_data()
@@ -623,6 +836,234 @@ class TestDynamicTableRegion(TestCase):
 """
         expected = expected % (id(dynamic_table_region), id(table))
         self.assertEqual(str(dynamic_table_region), expected)
+
+    def test_no_df_nested(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion('dtr', [0, 1, 2, 2], 'desc', table=table)
+        msg = 'DynamicTableRegion.get() with df=False and index=False is not yet supported.'
+        with self.assertRaisesWith(ValueError, msg):
+            dynamic_table_region.get(0, df=False, index=False)
+
+
+class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
+
+    def make_tables(self):
+        self.spec2 = [
+            {'name': 'qux', 'description': 'qux column'},
+            {'name': 'quz', 'description': 'quz column'},
+        ]
+        self.data2 = [
+            ['qux_1', 'qux_2'],
+            ['quz_1', 'quz_2'],
+        ]
+
+        target_columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec2, self.data2)
+        ]
+        target_table = DynamicTable("target_table", 'example table to target with a DynamicTableRegion',
+                                    columns=target_columns)
+
+        self.spec1 = [
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
+            {'name': 'dtr', 'description': 'DTR'},
+        ]
+        self.data1 = [
+            [1, 2, 3, 4, 5],
+            [10.0, 20.0, 30.0, 40.0, 50.0],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
+        ]
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(self.spec1, self.data1)
+        ]
+        columns.append(DynamicTableRegion(name='dtr', description='example DynamicTableRegion',
+                                          data=[0, 1, 1, 0, 1], table=target_table))
+        table = DynamicTable("table_with_dtr", 'a test table that has a DynamicTableRegion', columns=columns)
+        return table, target_table
+
+    def setUp(self):
+        self.table, self.target_table = self.make_tables()
+        super().setUp()
+
+    def setUpContainer(self):
+        multi_container = SimpleMultiContainer('multi', [self.table, self.target_table])
+        return multi_container
+
+    def _get(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg)
+
+    def _get_nested(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg, index=False)
+
+    def _get_nodf(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table.get(arg, df=False)
+
+    def _getitem(self, arg):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        return table[arg]
+
+    def test_getitem_oor(self):
+        msg = 'Row index 12 out of range for DynamicTable \'table_with_dtr\' (length 5).'
+        with self.assertRaisesWith(IndexError, msg):
+            self._getitem(12)
+
+    def test_getitem_badcol(self):
+        with self.assertRaises(KeyError):
+            self._getitem('boo')
+
+    def _assert_two_elem_df(self, rec):
+        columns = ['foo', 'bar', 'baz', 'dtr']
+        data = [[1, 10.0, 'cat', 0],
+                [2, 20.0, 'dog', 1]]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0, 1]))
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
+
+    def _assert_one_elem_df(self, rec):
+        columns = ['foo', 'bar', 'baz', 'dtr']
+        data = [[1, 10.0, 'cat', 0]]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0]))
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
+
+    def _assert_two_elem_df_nested(self, rec):
+        nested_columns = ['qux', 'quz']
+        nested_data = [['qux_1', 'quz_1'], ['qux_2', 'quz_2']]
+        nested_df = pd.DataFrame(data=nested_data, columns=nested_columns, index=pd.Series(name='id', data=[0, 1]))
+
+        columns = ['foo', 'bar', 'baz']
+        data = [[1, 10.0, 'cat'],
+                [2, 20.0, 'dog']]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0, 1]))
+
+        # remove nested dataframe and test each df separately
+        pd.testing.assert_frame_equal(rec['dtr'][0], nested_df.iloc[[0]])
+        pd.testing.assert_frame_equal(rec['dtr'][1], nested_df.iloc[[1]])
+        del rec['dtr']
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
+
+    def _assert_one_elem_df_nested(self, rec):
+        nested_columns = ['qux', 'quz']
+        nested_data = [['qux_1', 'quz_1'], ['qux_2', 'quz_2']]
+        nested_df = pd.DataFrame(data=nested_data, columns=nested_columns, index=pd.Series(name='id', data=[0, 1]))
+
+        columns = ['foo', 'bar', 'baz']
+        data = [[1, 10.0, 'cat']]
+        exp = pd.DataFrame(data=data, columns=columns, index=pd.Series(name='id', data=[0]))
+
+        # remove nested dataframe and test each df separately
+        pd.testing.assert_frame_equal(rec['dtr'][0], nested_df.iloc[[0]])
+        del rec['dtr']
+        pd.testing.assert_frame_equal(rec, exp, check_dtype=False)
+
+    #####################
+    # tests DynamicTableRegion.__getitem__
+    def test_getitem_int(self):
+        rec = self._getitem(0)
+        self._assert_one_elem_df(rec)
+
+    def test_getitem_list_single(self):
+        rec = self._getitem([0])
+        self._assert_one_elem_df(rec)
+
+    def test_getitem_list(self):
+        rec = self._getitem([0, 1])
+        self._assert_two_elem_df(rec)
+
+    def test_getitem_slice(self):
+        rec = self._getitem(slice(0, 2, None))
+        self._assert_two_elem_df(rec)
+
+    #####################
+    # tests DynamicTableRegion.get, return a DataFrame
+    def test_get_int(self):
+        rec = self._get(0)
+        self._assert_one_elem_df(rec)
+
+    def test_get_list_single(self):
+        rec = self._get([0])
+        self._assert_one_elem_df(rec)
+
+    def test_get_list(self):
+        rec = self._get([0, 1])
+        self._assert_two_elem_df(rec)
+
+    def test_get_slice(self):
+        rec = self._get(slice(0, 2, None))
+        self._assert_two_elem_df(rec)
+
+    #####################
+    # tests DynamicTableRegion.get, return a DataFrame with nested DataFrame
+    def test_get_nested_int(self):
+        rec = self._get_nested(0)
+        self._assert_one_elem_df_nested(rec)
+
+    def test_get_nested_list_single(self):
+        rec = self._get_nested([0])
+        self._assert_one_elem_df_nested(rec)
+
+    def test_get_nested_list(self):
+        rec = self._get_nested([0, 1])
+        self._assert_two_elem_df_nested(rec)
+
+    def test_get_nested_slice(self):
+        rec = self._get_nested(slice(0, 2, None))
+        self._assert_two_elem_df_nested(rec)
+
+    #####################
+    # tests DynamicTableRegion.get, DO NOT return a DataFrame
+    def test_get_nodf_int(self):
+        rec = self._get_nodf(0)
+        exp = [0, 1, 10.0, 'cat', 0]
+        self.assertListEqual(rec, exp)
+
+    def _assert_list_of_ndarray_equal(self, l1, l2):
+        """
+        This is a helper function for test_get_nodf_list and test_get_nodf_slice.
+        It compares ndarrays from a list of ndarrays
+        """
+        for a1, a2 in zip(l1, l2):
+            if isinstance(a1, list):
+                self._assert_list_of_ndarray_equal(a1, a2)
+            else:
+                np.testing.assert_array_equal(a1, a2)
+
+    def test_get_nodf_list_single(self):
+        rec = self._get_nodf([0])
+        exp = [np.array([0]), np.array([1]), np.array([10.0]), np.array(['cat']), np.array([0])]
+        self._assert_list_of_ndarray_equal(exp, rec)
+
+    def test_get_nodf_list(self):
+        rec = self._get_nodf([0, 1])
+        exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']), np.array([0, 1])]
+        self._assert_list_of_ndarray_equal(exp, rec)
+
+    def test_get_nodf_slice(self):
+        rec = self._get_nodf(slice(0, 2, None))
+        exp = [np.array([0, 1]), np.array([1, 2]), np.array([10.0, 20.0]), np.array(['cat', 'dog']), np.array([0, 1])]
+        self._assert_list_of_ndarray_equal(exp, rec)
+
+    def test_getitem_int_str(self):
+        """Test DynamicTableRegion.__getitem__ with (int, str)."""
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        rec = table['dtr'][0, 'qux']
+        self.assertEqual(rec, 'qux_1')
+
+    def test_getitem_str(self):
+        """Test DynamicTableRegion.__getitem__ with str."""
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        rec = table['dtr']['qux']
+        self.assertIs(rec, mc.containers['target_table']['qux'])
 
 
 class TestElementIdentifiers(TestCase):
@@ -683,6 +1124,8 @@ class SubTable(DynamicTable):
         {'name': 'col6', 'description': 'optional region', 'table': True},
         {'name': 'col7', 'description': 'required, indexed region', 'required': True, 'index': True, 'table': True},
         {'name': 'col8', 'description': 'optional, indexed region', 'index': True, 'table': True},
+        {'name': 'col10', 'description': 'optional, indexed enum column', 'index': True, 'class': EnumData},
+        {'name': 'col11', 'description': 'optional, enumerable column', 'enum': True, 'index': True},
     )
 
 
@@ -716,9 +1159,11 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertIsNone(table.col6)
         self.assertIsNone(table.col8)
         self.assertIsNone(table.col8_index)
+        self.assertIsNone(table.col11)
+        self.assertIsNone(table.col11_index)
 
         # uninitialized optional predefined columns cannot be accessed in this manner
-        with self.assertRaisesWith(KeyError, "'col2'"):
+        with self.assertRaises(KeyError):
             table['col2']
 
     def test_gather_columns_inheritance(self):
@@ -763,6 +1208,12 @@ class TestDynamicTableClassColumns(TestCase):
 
         table.add_column(name='col8', description='column #8', index=True, table=True)
         self.assertEqual(table.col8.description, 'column #8')
+
+        table.add_column(name='col10', description='column #10', index=True, col_cls=EnumData)
+        self.assertIsInstance(table.col10, EnumData)
+
+        table.add_column(name='col11', description='column #11', enum=True, index=True)
+        self.assertIsInstance(table.col11, EnumData)
 
     def test_add_opt_column_mismatched_table_true(self):
         """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
@@ -813,6 +1264,20 @@ class TestDynamicTableClassColumns(TestCase):
             table.add_column(name='col2', description='column #2', data=[1, 2, 3], index=[1, 2])
         self.assertEqual(table.col2.description, 'column #2')
         self.assertEqual(type(table.get('col2')), VectorIndex)  # not VectorData
+
+    def test_add_opt_column_mismatched_col_cls(self):
+        """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
+        table = SubTable(name='subtable', description='subtable description')
+        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.EnumData'> "
+               "which does not match the entered col_cls "
+               "argument. The predefined class spec will be ignored. "
+               "Please ensure the new column complies with the spec. "
+               "This will raise an error in a future version of HDMF.")
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col10', description='column #10', index=True)
+        self.assertEqual(table.col10.description, 'column #10')
+        self.assertEqual(type(table.col10), VectorData)
+        self.assertEqual(type(table.get('col10')), VectorIndex)
 
     def test_add_opt_column_twice(self):
         """Test that adding an optional column from __columns__ twice fails the second time."""
@@ -897,133 +1362,519 @@ class TestDynamicTableClassColumns(TestCase):
             SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
 
 
-class TestVocabData(TestCase):
+class TestEnumData(TestCase):
 
     def test_init(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        self.assertIsInstance(vd.vocabulary, np.ndarray)
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        self.assertIsInstance(ed.elements, VectorData)
 
     def test_get(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd[2]
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed[2]
         self.assertEqual(dat, 'b')
-        dat = vd[-1]
+        dat = ed[-1]
         self.assertEqual(dat, 'c')
-        dat = vd[0]
+        dat = ed[0]
         self.assertEqual(dat, 'a')
 
     def test_get_list(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd[[0, 1, 2]]
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed[[0, 1, 2]]
         np.testing.assert_array_equal(dat, ['a', 'a', 'b'])
 
     def test_get_list_join(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], join=True)
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed.get([0, 1, 2], join=True)
         self.assertEqual(dat, 'aab')
 
     def test_get_list_indices(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
-        dat = vd.get([0, 1, 2], index=True)
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        dat = ed.get([0, 1, 2], index=True)
         np.testing.assert_array_equal(dat, [0, 0, 1])
 
     def test_get_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData',
-                       vocabulary=['a', 'b', 'c'],
-                       data=np.array([[0, 0], [1, 1], [2, 2]]))
-        dat = vd[0]
+        ed = EnumData('cv_data', 'a test EnumData',
+                      elements=['a', 'b', 'c'],
+                      data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = ed[0]
         np.testing.assert_array_equal(dat, ['a', 'a'])
 
     def test_get_2d_w_2d(self):
-        vd = VocabData('cv_data', 'a test VocabData',
-                       vocabulary=['a', 'b', 'c'],
-                       data=np.array([[0, 0], [1, 1], [2, 2]]))
-        dat = vd[[0, 1]]
+        ed = EnumData('cv_data', 'a test EnumData',
+                      elements=['a', 'b', 'c'],
+                      data=np.array([[0, 0], [1, 1], [2, 2]]))
+        dat = ed[[0, 1]]
         np.testing.assert_array_equal(dat, [['a', 'a'], ['b', 'b']])
 
     def test_add_row(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
-        vd.add_row('b')
-        vd.add_row('a')
-        vd.add_row('c')
-        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        ed.add_row('b')
+        ed.add_row('a')
+        ed.add_row('c')
+        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
 
     def test_add_row_index(self):
-        vd = VocabData('cv_data', 'a test VocabData', vocabulary=['a', 'b', 'c'])
-        vd.add_row(1, index=True)
-        vd.add_row(0, index=True)
-        vd.add_row(2, index=True)
-        np.testing.assert_array_equal(vd.data, np.array([1, 0, 2], dtype=np.uint8))
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        ed.add_row(1, index=True)
+        ed.add_row(0, index=True)
+        ed.add_row(2, index=True)
+        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
 
 
-class TestIndexing(TestCase):
+class TestIndexedEnumData(TestCase):
+
+    def test_init(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'], data=np.array([0, 0, 1, 1, 2, 2]))
+        idx = VectorIndex('enum_index', [2, 4, 6], target=ed)
+        self.assertIsInstance(ed.elements, VectorData)
+        self.assertIsInstance(idx.target, EnumData)
+
+    def test_add_row(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row(['a', 'a', 'a'])
+        idx.add_row(['b', 'b'])
+        idx.add_row(['c', 'c', 'c', 'c'])
+        np.testing.assert_array_equal(idx[0], ['a', 'a', 'a'])
+        np.testing.assert_array_equal(idx[1], ['b', 'b'])
+        np.testing.assert_array_equal(idx[2], ['c', 'c', 'c', 'c'])
+
+    def test_add_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row([0, 0, 0], index=True)
+        idx.add_row([1, 1], index=True)
+        idx.add_row([2, 2, 2, 2], index=True)
+        np.testing.assert_array_equal(idx[0], ['a', 'a', 'a'])
+        np.testing.assert_array_equal(idx[1], ['b', 'b'])
+        np.testing.assert_array_equal(idx[2], ['c', 'c', 'c', 'c'])
+
+    @unittest.skip("feature is not yet supported")
+    def test_add_2d_row_index(self):
+        ed = EnumData('cv_data', 'a test EnumData', elements=['a', 'b', 'c'])
+        idx = VectorIndex('enum_index', list(), target=ed)
+        idx.add_row([['a', 'a'], ['a', 'a'], ['a', 'a']])
+        idx.add_row([['b', 'b'], ['b', 'b']])
+        idx.add_row([['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
+        np.testing.assert_array_equal(idx[0], [['a', 'a'], ['a', 'a'], ['a', 'a']])
+        np.testing.assert_array_equal(idx[1], [['b', 'b'], ['b', 'b']])
+        np.testing.assert_array_equal(idx[2], [['c', 'c'], ['c', 'c'], ['c', 'c'], ['c', 'c']])
+
+
+class SelectionTestMixin:
 
     def setUp(self):
-        dt = DynamicTable(name='slice_test_table', description='a table to test slicing',
-                          id=[0, 1, 2])
-        dt.add_column('foo', 'scalar column', data=np.array([0.0, 1.0, 2.0]))
-        dt.add_column('bar', 'ragged column', index=np.array([2, 3, 6]),
-                      data=np.array(['r11', 'r12', 'r21', 'r31', 'r32', 'r33']))
-        dt.add_column('baz', 'multi-dimension column',
-                      data=np.array([[10.0, 11.0, 12.0],
-                                     [20.0, 21.0, 22.0],
-                                     [30.0, 31.0, 32.0]]))
-        self.table = dt
-
-    def test_single_item(self):
-        elem = self.table[0]
+        # table1 contains a non-ragged DTR and a ragged DTR, both of which point to table2
+        # table2 contains a non-ragged DTR and a ragged DTR, both of which point to table3
+        self.table3 = DynamicTable(
+            name='table3',
+            description='a test table',
+            id=[20, 21, 22]
+        )
+        self.table3.add_column('foo', 'scalar column', data=self._wrap([20.0, 21.0, 22.0]))
+        self.table3.add_column('bar', 'ragged column', index=self._wrap([2, 3, 6]),
+                               data=self._wrap(['t11', 't12', 't21', 't31', 't32', 't33']))
+        self.table3.add_column('baz', 'multi-dimension column',
+                               data=self._wrap([[210.0, 211.0, 212.0],
+                                                [220.0, 221.0, 222.0],
+                                                [230.0, 231.0, 232.0]]))
+        # generate expected dataframe for table3
         data = OrderedDict()
-        data['foo'] = 0.0
-        data['bar'] = [np.array(['r11', 'r12'])]
-        data['baz'] = [np.array([10.0, 11.0, 12.0])]
+        data['foo'] = [20.0, 21.0, 22.0]
+        data['bar'] = [['t11', 't12'], ['t21'], ['t31', 't32', 't33']]
+        data['baz'] = [[210.0, 211.0, 212.0], [220.0, 221.0, 222.0], [230.0, 231.0, 232.0]]
+        idx = [20, 21, 22]
+        self.table3_df = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+
+        self.table2 = DynamicTable(
+            name='table2',
+            description='a test table',
+            id=[10, 11, 12]
+        )
+        self.table2.add_column('foo', 'scalar column', data=self._wrap([10.0, 11.0, 12.0]))
+        self.table2.add_column('bar', 'ragged column', index=self._wrap([2, 3, 6]),
+                               data=self._wrap(['s11', 's12', 's21', 's31', 's32', 's33']))
+        self.table2.add_column('baz', 'multi-dimension column',
+                               data=self._wrap([[110.0, 111.0, 112.0],
+                                                [120.0, 121.0, 122.0],
+                                                [130.0, 131.0, 132.0]]))
+        self.table2.add_column('qux', 'DTR column', table=self.table3, data=self._wrap([0, 1, 0]))
+        self.table2.add_column('corge', 'ragged DTR column', index=self._wrap([2, 3, 6]), table=self.table3,
+                               data=self._wrap([0, 1, 2, 0, 1, 2]))
+        # TODO test when ragged DTR indices are not in ascending order
+
+        # generate expected dataframe for table2 *without DTR*
+        data = OrderedDict()
+        data['foo'] = [10.0, 11.0, 12.0]
+        data['bar'] = [['s11', 's12'], ['s21'], ['s31', 's32', 's33']]
+        data['baz'] = [[110.0, 111.0, 112.0], [120.0, 121.0, 122.0], [130.0, 131.0, 132.0]]
+        idx = [10, 11, 12]
+        self.table2_df = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+
+        self.table1 = DynamicTable(
+            name='table1',
+            description='a table to test slicing',
+            id=[0, 1]
+        )
+        self.table1.add_column('foo', 'scalar column', data=self._wrap([0.0, 1.0]))
+        self.table1.add_column('bar', 'ragged column', index=self._wrap([2, 3]),
+                               data=self._wrap(['r11', 'r12', 'r21']))
+        self.table1.add_column('baz', 'multi-dimension column',
+                               data=self._wrap([[10.0, 11.0, 12.0],
+                                                [20.0, 21.0, 22.0]]))
+        self.table1.add_column('qux', 'DTR column', table=self.table2, data=self._wrap([0, 1]))
+        self.table1.add_column('corge', 'ragged DTR column', index=self._wrap([2, 3]), table=self.table2,
+                               data=self._wrap([0, 1, 2]))
+        self.table1.add_column('barz', 'ragged column of tuples (cpd type)', index=self._wrap([2, 3]),
+                               data=self._wrap([(1.0, 11), (2.0, 12), (3.0, 21)]))
+
+        # generate expected dataframe for table1 *without DTR*
+        data = OrderedDict()
+        data['foo'] = self._wrap_check([0.0, 1.0])
+        data['bar'] = [self._wrap_check(['r11', 'r12']), self._wrap_check(['r21'])]
+        data['baz'] = [self._wrap_check([10.0, 11.0, 12.0]),
+                       self._wrap_check([20.0, 21.0, 22.0])]
+        data['barz'] = [self._wrap_check([(1.0, 11), (2.0, 12)]), self._wrap_check([(3.0, 21)])]
+        idx = [0, 1]
+        self.table1_df = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+
+    def _check_two_rows_df(self, rec):
+        data = OrderedDict()
+        data['foo'] = self._wrap_check([0.0, 1.0])
+        data['bar'] = [self._wrap_check(['r11', 'r12']), self._wrap_check(['r21'])]
+        data['baz'] = [self._wrap_check([10.0, 11.0, 12.0]),
+                       self._wrap_check([20.0, 21.0, 22.0])]
+        data['qux'] = self._wrap_check([0, 1])
+        data['corge'] = [self._wrap_check([0, 1]), self._wrap_check([2])]
+        data['barz'] = [self._wrap_check([(1.0, 11), (2.0, 12)]), self._wrap_check([(3.0, 21)])]
+        idx = [0, 1]
+        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def _check_two_rows_df_nested(self, rec):
+        # first level: cache nested df cols and remove them before calling pd.testing.assert_frame_equal
+        qux_series = rec['qux']
+        corge_series = rec['corge']
+        del rec['qux']
+        del rec['corge']
+
+        idx = [0, 1]
+        pd.testing.assert_frame_equal(rec, self.table1_df.loc[idx])
+
+        # second level: compare the nested columns separately
+        self.assertEqual(len(qux_series), 2)
+        rec_qux1 = qux_series[0]
+        rec_qux2 = qux_series[1]
+        self._check_table2_first_row_qux(rec_qux1)
+        self._check_table2_second_row_qux(rec_qux2)
+
+        self.assertEqual(len(corge_series), 2)
+        rec_corge1 = corge_series[0]
+        rec_corge2 = corge_series[1]
+        self._check_table2_first_row_corge(rec_corge1)
+        self._check_table2_second_row_corge(rec_corge2)
+
+    def _check_one_row_df(self, rec):
+        data = OrderedDict()
+        data['foo'] = self._wrap_check([0.0])
+        data['bar'] = [self._wrap_check(['r11', 'r12'])]
+        data['baz'] = [self._wrap_check([10.0, 11.0, 12.0])]
+        data['qux'] = self._wrap_check([0])
+        data['corge'] = [self._wrap_check([0, 1])]
+        data['barz'] = [self._wrap_check([(1.0, 11), (2.0, 12)])]
         idx = [0]
         exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
-        pd.testing.assert_frame_equal(elem, exp)
+        pd.testing.assert_frame_equal(rec, exp)
+
+    def _check_one_row_df_nested(self, rec):
+        # first level: cache nested df cols and remove them before calling pd.testing.assert_frame_equal
+        qux_series = rec['qux']
+        corge_series = rec['corge']
+        del rec['qux']
+        del rec['corge']
+
+        idx = [0]
+        pd.testing.assert_frame_equal(rec, self.table1_df.loc[idx])
+
+        # second level: compare the nested columns separately
+        self.assertEqual(len(qux_series), 1)
+        rec_qux = qux_series[0]
+        self._check_table2_first_row_qux(rec_qux)
+
+        self.assertEqual(len(corge_series), 1)
+        rec_corge = corge_series[0]
+        self._check_table2_first_row_corge(rec_corge)
+
+    def _check_table2_first_row_qux(self, rec_qux):
+        # second level: cache nested df cols and remove them before calling pd.testing.assert_frame_equal
+        qux_qux_series = rec_qux['qux']
+        qux_corge_series = rec_qux['corge']
+        del rec_qux['qux']
+        del rec_qux['corge']
+
+        qux_idx = [10]
+        pd.testing.assert_frame_equal(rec_qux, self.table2_df.loc[qux_idx])
+
+        # third level: compare the nested columns separately
+        self.assertEqual(len(qux_qux_series), 1)
+        pd.testing.assert_frame_equal(qux_qux_series[qux_idx[0]], self.table3_df.iloc[[0]])
+        self.assertEqual(len(qux_corge_series), 1)
+        pd.testing.assert_frame_equal(qux_corge_series[qux_idx[0]], self.table3_df.iloc[[0, 1]])
+
+    def _check_table2_second_row_qux(self, rec_qux):
+        # second level: cache nested df cols and remove them before calling pd.testing.assert_frame_equal
+        qux_qux_series = rec_qux['qux']
+        qux_corge_series = rec_qux['corge']
+        del rec_qux['qux']
+        del rec_qux['corge']
+
+        qux_idx = [11]
+        pd.testing.assert_frame_equal(rec_qux, self.table2_df.loc[qux_idx])
+
+        # third level: compare the nested columns separately
+        self.assertEqual(len(qux_qux_series), 1)
+        pd.testing.assert_frame_equal(qux_qux_series[qux_idx[0]], self.table3_df.iloc[[1]])
+        self.assertEqual(len(qux_corge_series), 1)
+        pd.testing.assert_frame_equal(qux_corge_series[qux_idx[0]], self.table3_df.iloc[[2]])
+
+    def _check_table2_first_row_corge(self, rec_corge):
+        # second level: cache nested df cols and remove them before calling pd.testing.assert_frame_equal
+        corge_qux_series = rec_corge['qux']
+        corge_corge_series = rec_corge['corge']
+        del rec_corge['qux']
+        del rec_corge['corge']
+
+        corge_idx = [10, 11]
+        pd.testing.assert_frame_equal(rec_corge, self.table2_df.loc[corge_idx])
+
+        # third level: compare the nested columns separately
+        self.assertEqual(len(corge_qux_series), 2)
+        pd.testing.assert_frame_equal(corge_qux_series[corge_idx[0]], self.table3_df.iloc[[0]])
+        pd.testing.assert_frame_equal(corge_qux_series[corge_idx[1]], self.table3_df.iloc[[1]])
+        self.assertEqual(len(corge_corge_series), 2)
+        pd.testing.assert_frame_equal(corge_corge_series[corge_idx[0]], self.table3_df.iloc[[0, 1]])
+        pd.testing.assert_frame_equal(corge_corge_series[corge_idx[1]], self.table3_df.iloc[[2]])
+
+    def _check_table2_second_row_corge(self, rec_corge):
+        # second level: cache nested df cols and remove them before calling pd.testing.assert_frame_equal
+        corge_qux_series = rec_corge['qux']
+        corge_corge_series = rec_corge['corge']
+        del rec_corge['qux']
+        del rec_corge['corge']
+
+        corge_idx = [12]
+        pd.testing.assert_frame_equal(rec_corge, self.table2_df.loc[corge_idx])
+
+        # third level: compare the nested columns separately
+        self.assertEqual(len(corge_qux_series), 1)
+        pd.testing.assert_frame_equal(corge_qux_series[corge_idx[0]], self.table3_df.iloc[[0]])
+        self.assertEqual(len(corge_corge_series), 1)
+        pd.testing.assert_frame_equal(corge_corge_series[corge_idx[0]], self.table3_df.iloc[[0, 1, 2]])
+
+    def _check_two_rows_no_df(self, rec):
+        self.assertEqual(rec[0], [0, 1])
+        np.testing.assert_array_equal(rec[1], self._wrap_check([0.0, 1.0]))
+        expected = [self._wrap_check(['r11', 'r12']), self._wrap_check(['r21'])]
+        self._assertNestedRaggedArrayEqual(rec[2], expected)
+        np.testing.assert_array_equal(rec[3], self._wrap_check([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+        np.testing.assert_array_equal(rec[4], self._wrap_check([0, 1]))
+        expected = [self._wrap_check([0, 1]), self._wrap_check([2])]
+        for i, j in zip(rec[5], expected):
+            np.testing.assert_array_equal(i, j)
+
+    def _check_one_row_no_df(self, rec):
+        self.assertEqual(rec[0], 0)
+        self.assertEqual(rec[1], 0.0)
+        np.testing.assert_array_equal(rec[2], self._wrap_check(['r11', 'r12']))
+        np.testing.assert_array_equal(rec[3], self._wrap_check([10.0, 11.0, 12.0]))
+        self.assertEqual(rec[4], 0)
+        np.testing.assert_array_equal(rec[5], self._wrap_check([0, 1]))
+        np.testing.assert_array_equal(rec[6], self._wrap_check([(1.0, 11), (2.0, 12)]))
+
+    def _check_one_row_multiselect_no_df(self, rec):
+        # difference from _check_one_row_no_df is that everything is wrapped in a list
+        self.assertEqual(rec[0], [0])
+        self.assertEqual(rec[1], [0.0])
+        np.testing.assert_array_equal(rec[2], [self._wrap_check(['r11', 'r12'])])
+        np.testing.assert_array_equal(rec[3], [self._wrap_check([10.0, 11.0, 12.0])])
+        self.assertEqual(rec[4], [0])
+        np.testing.assert_array_equal(rec[5], [self._wrap_check([0, 1])])
+        np.testing.assert_array_equal(rec[6], [self._wrap_check([(1.0, 11), (2.0, 12)])])
+
+    def _assertNestedRaggedArrayEqual(self, arr1, arr2):
+        """
+        This is a helper function for _check_two_rows_no_df.
+        It compares arrays or lists containing numpy arrays that may be ragged
+        """
+        self.assertEqual(type(arr1), type(arr2))
+        self.assertEqual(len(arr1), len(arr2))
+        if isinstance(arr1, np.ndarray):
+            if arr1.dtype == object:  # both are arrays containing arrays, lists, or h5py.Dataset strings
+                for i, j in zip(arr1, arr2):
+                    self._assertNestedRaggedArrayEqual(i, j)
+            elif np.issubdtype(arr1.dtype, np.number):
+                np.testing.assert_allclose(arr1, arr2)
+            else:
+                np.testing.assert_array_equal(arr1, arr2)
+        elif isinstance(arr1, list):
+            for i, j in zip(arr1, arr2):
+                self._assertNestedRaggedArrayEqual(i, j)
+        else:  # scalar
+            self.assertEqual(arr1, arr2)
+
+    def test_single_item(self):
+        rec = self.table1[0]
+        self._check_one_row_df(rec)
+
+    def test_single_item_nested(self):
+        rec = self.table1.get(0, index=False)
+        self._check_one_row_df_nested(rec)
 
     def test_single_item_no_df(self):
-        elem = self.table.get(0, df=False)
-        self.assertEqual(elem[0], 0)
-        self.assertEqual(elem[1], 0.0)
-        np.testing.assert_array_equal(elem[2], np.array(['r11', 'r12']))
-        np.testing.assert_array_equal(elem[3], np.array([10.0, 11.0, 12.0]))
+        rec = self.table1.get(0, df=False)
+        self._check_one_row_no_df(rec)
 
     def test_slice(self):
-        elem = self.table[0:2]
-        data = OrderedDict()
-        data['foo'] = [0.0, 1.0]
-        data['bar'] = [np.array(['r11', 'r12']), np.array(['r21'])]
-        data['baz'] = [np.array([10.0, 11.0, 12.0]),
-                       np.array([20.0, 21.0, 22.0])]
-        idx = [0, 1]
-        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
-        pd.testing.assert_frame_equal(elem, exp)
+        rec = self.table1[0:2]
+        self._check_two_rows_df(rec)
+
+    def test_slice_nested(self):
+        rec = self.table1.get(slice(0, 2), index=False)
+        self._check_two_rows_df_nested(rec)
 
     def test_slice_no_df(self):
-        elem = self.table.get(slice(0, 2), df=False)
-        self.assertEqual(elem[0], [0, 1])
-        np.testing.assert_array_equal(elem[1], np.array([0.0, 1.0]))
-        np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))
-        np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
-        np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+        rec = self.table1.get(slice(0, 2), df=False)
+        self._check_two_rows_no_df(rec)
+
+    def test_slice_single(self):
+        rec = self.table1[0:1]
+        self._check_one_row_df(rec)
+
+    def test_slice_single_nested(self):
+        rec = self.table1.get(slice(0, 1), index=False)
+        self._check_one_row_df_nested(rec)
+
+    def test_slice_single_no_df(self):
+        rec = self.table1.get(slice(0, 1), df=False)
+        self._check_one_row_multiselect_no_df(rec)
 
     def test_list(self):
-        elem = self.table[[0, 1]]
-        data = OrderedDict()
-        data['foo'] = [0.0, 1.0]
-        data['bar'] = [np.array(['r11', 'r12']), np.array(['r21'])]
-        data['baz'] = [np.array([10.0, 11.0, 12.0]),
-                       np.array([20.0, 21.0, 22.0])]
-        idx = [0, 1]
-        exp = pd.DataFrame(data=data, index=pd.Index(name='id', data=idx))
-        pd.testing.assert_frame_equal(elem, exp)
+        rec = self.table1[[0, 1]]
+        self._check_two_rows_df(rec)
+
+    def test_list_nested(self):
+        rec = self.table1.get([0, 1], index=False)
+        self._check_two_rows_df_nested(rec)
 
     def test_list_no_df(self):
-        elem = self.table.get([0, 1], df=False)
-        self.assertEqual(elem[0], [0, 1])
-        np.testing.assert_array_equal(elem[1], np.array([0.0, 1.0]))
-        np.testing.assert_array_equal(elem[2][0], np.array(['r11', 'r12']))
-        np.testing.assert_array_equal(elem[2][1], np.array(['r21']))
-        np.testing.assert_array_equal(elem[3], np.array([[10.0, 11.0, 12.0], [20.0, 21.0, 22.0]]))
+        rec = self.table1.get([0, 1], df=False)
+        self._check_two_rows_no_df(rec)
+
+    def test_list_single(self):
+        rec = self.table1[[0]]
+        self._check_one_row_df(rec)
+
+    def test_list_single_nested(self):
+        rec = self.table1.get([0], index=False)
+        self._check_one_row_df_nested(rec)
+
+    def test_list_single_no_df(self):
+        rec = self.table1.get([0], df=False)
+        self._check_one_row_multiselect_no_df(rec)
+
+    def test_array(self):
+        rec = self.table1[np.array([0, 1])]
+        self._check_two_rows_df(rec)
+
+    def test_array_nested(self):
+        rec = self.table1.get(np.array([0, 1]), index=False)
+        self._check_two_rows_df_nested(rec)
+
+    def test_array_no_df(self):
+        rec = self.table1.get(np.array([0, 1]), df=False)
+        self._check_two_rows_no_df(rec)
+
+    def test_array_single(self):
+        rec = self.table1[np.array([0])]
+        self._check_one_row_df(rec)
+
+    def test_array_single_nested(self):
+        rec = self.table1.get(np.array([0]), index=False)
+        self._check_one_row_df_nested(rec)
+
+    def test_array_single_no_df(self):
+        rec = self.table1.get(np.array([0]), df=False)
+        self._check_one_row_multiselect_no_df(rec)
+
+    def test_to_dataframe_nested(self):
+        rec = self.table1.to_dataframe()
+        self._check_two_rows_df_nested(rec)
+
+    def test_to_dataframe(self):
+        rec = self.table1.to_dataframe(index=True)
+        self._check_two_rows_df(rec)
+
+
+class TestSelectionArray(SelectionTestMixin, TestCase):
+
+    def _wrap(self, my_list):
+        return np.array(my_list)
+
+    def _wrap_check(self, my_list):
+        return self._wrap(my_list)
+
+
+class TestSelectionList(SelectionTestMixin, TestCase):
+
+    def _wrap(self, my_list):
+        return my_list
+
+    def _wrap_check(self, my_list):
+        return self._wrap(my_list)
+
+
+class TestSelectionH5Dataset(SelectionTestMixin, TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.file = h5py.File(self.path, 'w')
+        self.dset_counter = 0
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        self.file.close()
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def _wrap(self, my_list):
+        self.dset_counter = self.dset_counter + 1
+        kwargs = dict()
+        if isinstance(my_list[0], str):
+            kwargs['dtype'] = H5_TEXT
+        elif isinstance(my_list[0], tuple):  # compound dtype
+            # normally for cpd dtype, __resolve_dtype__ takes a list of DtypeSpec objects
+            cpd_type = [dict(name='cpd_float', dtype=np.dtype('float64')),
+                        dict(name='cpd_int', dtype=np.dtype('int32'))]
+            kwargs['dtype'] = HDF5IO.__resolve_dtype__(cpd_type, my_list[0])
+        dset = self.file.create_dataset('dset%d' % self.dset_counter, data=np.array(my_list, **kwargs))
+        if H5PY_3 and isinstance(my_list[0], str):
+            return StrDataset(dset, None)  # return a wrapper to read data as str instead of bytes
+        else:
+            # NOTE: h5py.Dataset with compound dtype are read as numpy arrays with compound dtype, not tuples
+            return dset
+
+    def _wrap_check(self, my_list):
+        # getitem on h5dataset backed data will return np.array
+        kwargs = dict()
+        if isinstance(my_list[0], str):
+            kwargs['dtype'] = H5_TEXT
+        elif isinstance(my_list[0], tuple):
+            cpd_type = [dict(name='cpd_float', dtype=np.dtype('float64')),
+                        dict(name='cpd_int', dtype=np.dtype('int32'))]
+            kwargs['dtype'] = np.dtype([(x['name'], x['dtype']) for x in cpd_type])
+            # compound dtypes with str are read as bytes, see https://github.com/h5py/h5py/issues/1751
+        return np.array(my_list, **kwargs)
 
 
 class TestVectorIndex(TestCase):
@@ -1060,6 +1911,24 @@ class TestDoubleIndex(TestCase):
         self.assertListEqual(foo_ind[2], ['b11'])
         self.assertListEqual(foo_ind_ind[0], [['a11', 'a12'], ['a21']])
         self.assertListEqual(foo_ind_ind[1], [['b11']])
+
+    def test_add_vector(self):
+        # row 1 has three entries
+        # the first entry has two sub-entries
+        # the first sub-entry has two values, the second sub-entry has one value
+        # the second entry has one sub-entry, which has one value
+        foo = VectorData(name='foo', description='foo column', data=['a11', 'a12', 'a21', 'b11'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+
+        foo_ind_ind.add_vector([['c11', 'c12', 'c13'], ['c21', 'c22']])
+
+        self.assertListEqual(foo.data, ['a11', 'a12', 'a21', 'b11', 'c11', 'c12', 'c13', 'c21', 'c22'])
+        self.assertListEqual(foo_ind.data, [2, 3, 4, 7, 9])
+        self.assertListEqual(foo_ind[3], ['c11', 'c12', 'c13'])
+        self.assertListEqual(foo_ind[4], ['c21', 'c22'])
+        self.assertListEqual(foo_ind_ind.data, [2, 3, 5])
+        self.assertListEqual(foo_ind_ind[2], [['c11', 'c12', 'c13'], ['c21', 'c22']])
 
 
 class TestDTDoubleIndex(TestCase):
@@ -1134,6 +2003,45 @@ class TestDynamicTableAddIndexRoundTrip(H5RoundTripMixin, TestCase):
         return table
 
 
+class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an enumerable column', enum=True)
+        table.add_row(bar='a')
+        table.add_row(bar='b')
+        table.add_row(bar='a')
+        table.add_row(bar='c')
+        return table
+
+
+class TestDynamicTableAddEnum(TestCase):
+
+    def test_enum(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an enumerable column', enum=True)
+        table.add_row(bar='a')
+        table.add_row(bar='b')
+        table.add_row(bar='a')
+        table.add_row(bar='c')
+        rec = table.to_dataframe()
+        exp = pd.DataFrame(data={'bar': ['a', 'b', 'a', 'c']}, index=pd.Series(name='id', data=[0, 1, 2, 3]))
+        pd.testing.assert_frame_equal(exp, rec)
+
+    def test_enum_index(self):
+        table = DynamicTable('table0', 'an example table')
+        table.add_column('bar', 'an indexed enumerable column', enum=True, index=True)
+        table.add_row(bar=['a', 'a', 'a'])
+        table.add_row(bar=['b', 'b', 'b', 'b'])
+        table.add_row(bar=['c', 'c'])
+        rec = table.to_dataframe()
+        exp = pd.DataFrame(data={'bar': [['a', 'a', 'a'],
+                                         ['b', 'b', 'b', 'b'],
+                                         ['c', 'c']]},
+                           index=pd.Series(name='id', data=[0, 1, 2]))
+        pd.testing.assert_frame_equal(exp, rec)
+
+
 class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
@@ -1160,6 +2068,45 @@ class TestDoubleIndexRoundtrip(H5RoundTripMixin, TestCase):
 
 
 class TestDataIOColumns(H5RoundTripMixin, TestCase):
+    def setUpContainer(self):
+        self.chunked_data = H5DataIO(
+            data=[i for i in range(10)],
+            chunks=(3,),
+            fillvalue=-1,
+        )
+        self.compressed_data = H5DataIO(
+            data=np.arange(10),
+            compression=1,
+            shuffle=True,
+            fletcher32=True,
+            allow_plugin_filters=True,
+        )
+        foo = VectorData(name='foo', description='chunked column', data=self.chunked_data)
+        bar = VectorData(name='bar', description='chunked column', data=self.compressed_data)
+
+        # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
+        # for proper comparison of the columns list
+        table = DynamicTable('table0', 'an example table', columns=[foo, bar])
+        table.add_row(foo=1, bar=1)
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            chunked_dset = f['foo']
+            self.assertTrue(np.all(chunked_dset[:] == self.chunked_data.data))
+            self.assertEqual(chunked_dset.chunks, (3,))
+            self.assertEqual(chunked_dset.fillvalue, -1)
+
+            compressed_dset = f['bar']
+            self.assertTrue(np.all(compressed_dset[:] == self.compressed_data.data))
+            self.assertEqual(compressed_dset.compression, 'gzip')
+            self.assertEqual(compressed_dset.shuffle, True)
+            self.assertEqual(compressed_dset.fletcher32, True)
+
+
+class TestDataIOIndexedColumns(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         self.chunked_data = H5DataIO(
@@ -1182,6 +2129,10 @@ class TestDataIOColumns(H5RoundTripMixin, TestCase):
         # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
         # for proper comparison of the columns list
         table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar])
+
+        # check for add_row
+        table.add_row(foo=np.arange(30).reshape(5, 2, 3), bar=np.arange(30).reshape(5, 2, 3))
+
         return table
 
     def test_roundtrip(self):
@@ -1207,11 +2158,13 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
             data=np.arange(30).reshape(5, 2, 3),
             chunks=(1, 1, 3),
             fillvalue=-1,
+            maxshape=(None, 2, 3)
         )
         self.chunked_index_data = H5DataIO(
             data=np.array([2, 3, 5], dtype=np.uint),
             chunks=(2, ),
             fillvalue=np.uint(10),
+            maxshape=(None,)
         )
         self.compressed_data = H5DataIO(
             data=np.arange(30).reshape(5, 2, 3),
@@ -1219,13 +2172,15 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
             shuffle=True,
             fletcher32=True,
             allow_plugin_filters=True,
+            maxshape=(None, 2, 3)
         )
         self.compressed_index_data = H5DataIO(
-            data=np.array([2, 3, 5], dtype=np.uint),
+            data=np.array([2, 4, 5], dtype=np.uint),
             compression=1,
             shuffle=True,
             fletcher32=False,
             allow_plugin_filters=True,
+            maxshape=(None,)
         )
         foo = VectorData(name='foo', description='chunked column', data=self.chunked_data)
         foo_ind = VectorIndex(name='foo_index', target=foo, data=self.chunked_index_data)
@@ -1234,20 +2189,156 @@ class TestDataIOIndex(H5RoundTripMixin, TestCase):
 
         # NOTE: on construct, columns are ordered such that indices go before data, so create the table that way
         # for proper comparison of the columns list
-        table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar])
+        table = DynamicTable('table0', 'an example table', columns=[foo_ind, foo, bar_ind, bar],
+                             id=H5DataIO(data=[0, 1, 2], chunks=True, maxshape=(None,)))
+
+        # check for add_row
+        table.add_row(foo=np.arange(30).reshape(5, 2, 3),
+                      bar=np.arange(30).reshape(5, 2, 3))
+
         return table
 
-    def test_roundtrip(self):
-        super().test_roundtrip()
+    def test_append(self, cache_spec=False):
+        """Write the container to an HDF5 file, read the container from the file, and append to it."""
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
+            write_io.write(self.container, cache_spec=cache_spec)
 
-        with h5py.File(self.filename, 'r') as f:
-            chunked_dset = f['foo_index']
-            self.assertTrue(np.all(chunked_dset[:] == self.chunked_index_data.data))
-            self.assertEqual(chunked_dset.chunks, (2, ))
-            self.assertEqual(chunked_dset.fillvalue, 10)
+        self.reader = HDF5IO(self.filename, manager=get_manager(), mode='a')
+        read_table = self.reader.read()
 
-            compressed_dset = f['bar_index']
-            self.assertTrue(np.all(compressed_dset[:] == self.compressed_index_data.data))
-            self.assertEqual(compressed_dset.compression, 'gzip')
-            self.assertEqual(compressed_dset.shuffle, True)
-            self.assertEqual(compressed_dset.fletcher32, False)
+        data = np.arange(30, 60).reshape(5, 2, 3)
+        read_table.add_row(foo=data, bar=data)
+
+        np.testing.assert_array_equal(read_table['foo'][-1], data)
+
+
+class TestDTRReferences(TestCase):
+
+    def setUp(self):
+        self.filename = 'test_dtr_references.h5'
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+
+    def test_dtr_references(self):
+        """Test roundtrip of a table with a ragged DTR to another table containing a column of references."""
+        group1 = Container('group1')
+        group2 = Container('group2')
+
+        table1 = DynamicTable(
+            name='table1',
+            description='test table 1'
+        )
+        table1.add_column(
+            name='x',
+            description='test column of ints'
+        )
+        table1.add_column(
+            name='y',
+            description='test column of reference'
+        )
+        table1.add_row(id=101, x=1, y=group1)
+        table1.add_row(id=102, x=2, y=group1)
+        table1.add_row(id=103, x=3, y=group2)
+
+        table2 = DynamicTable(
+            name='table2',
+            description='test table 2'
+        )
+
+        # create a ragged column that references table1
+        # each row of table2 corresponds to one or more rows of table 1
+        table2.add_column(
+            name='electrodes',
+            description='column description',
+            index=True,
+            table=table1
+        )
+
+        table2.add_row(id=10, electrodes=[1, 2])
+
+        multi_container = SimpleMultiContainer('multi')
+        multi_container.add_container(group1)
+        multi_container.add_container(group2)
+        multi_container.add_container(table1)
+        multi_container.add_container(table2)
+
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            io.write(multi_container)
+
+        with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
+            read_multi_container = io.read()
+            self.assertContainerEqual(read_multi_container, multi_container, ignore_name=True)
+
+            # test DTR access
+            read_group1 = read_multi_container['group1']
+            read_group2 = read_multi_container['group2']
+            read_table = read_multi_container['table2']
+            ret = read_table[0, 'electrodes']
+            expected = pd.DataFrame({'x': np.array([2, 3]),
+                                     'y': [read_group1, read_group2]},
+                                    index=pd.Index(data=[102, 103], name='id'))
+            pd.testing.assert_frame_equal(ret, expected)
+
+
+class TestVectorIndexDtype(TestCase):
+
+    def set_up_array_index(self):
+        data = VectorData(name='data', description='desc')
+        index = VectorIndex(name='index', data=np.array([]), target=data)
+        return index
+
+    def set_up_list_index(self):
+        data = VectorData(name='data', description='desc')
+        index = VectorIndex(name='index', data=[], target=data)
+        return index
+
+    def test_array_inc_precision(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((255, )))
+        self.assertEqual(index.data[0], 255)
+        self.assertEqual(index.data.dtype, np.uint8)
+
+    def test_array_inc_precision_1step(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((65535, )))
+        self.assertEqual(index.data[0], 65535)
+        self.assertEqual(index.data.dtype, np.uint16)
+
+    def test_array_inc_precision_2steps(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((65536, )))
+        self.assertEqual(index.data[0], 65536)
+        self.assertEqual(index.data.dtype, np.uint32)
+
+    def test_array_prev_data_inc_precision_2steps(self):
+        index = self.set_up_array_index()
+        index.add_vector(np.empty((255, )))  # dtype is still uint8
+        index.add_vector(np.empty((65536, )))
+        self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
+        self.assertEqual(index.data.dtype, np.uint32)
+
+    def test_list_inc_precision(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(255)))
+        self.assertEqual(index.data[0], 255)
+        self.assertEqual(type(index.data[0]), np.uint8)
+
+    def test_list_inc_precision_1step(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(65535)))
+        self.assertEqual(index.data[0], 65535)
+        self.assertEqual(type(index.data[0]), np.uint16)
+
+    def test_list_inc_precision_2steps(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(65536)))
+        self.assertEqual(index.data[0], 65536)
+        self.assertEqual(type(index.data[0]), np.uint32)
+
+    def test_list_prev_data_inc_precision_2steps(self):
+        index = self.set_up_list_index()
+        index.add_vector(list(range(255)))
+        index.add_vector(list(range(65536 - 255)))
+        self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
+        self.assertEqual(type(index.data[0]), np.uint32)

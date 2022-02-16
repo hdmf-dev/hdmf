@@ -20,13 +20,13 @@ assignees: ''
 <!--Please describe your environment according to the following bullet points.-->
 
     Python Executable: Conda or Python
-    Python Version: Python 3.5, 3.6, 3.7, or 3.8
+    Python Version: Python 3.7, 3.8, 3.9, or 3.10
     Operating System: Windows, macOS or Linux
-    HDMF Version: Version of HDMF used
+    HDMF Version:
 
 ## Checklist
 
-- [ ] Have you ensured the feature or change was not already [reported](https://github.com/hdmf-dev/hdmf/issues) ?
+- [ ] Have you ensured the bug was not already [reported](https://github.com/hdmf-dev/hdmf/issues) ?
 - [ ] Have you included a brief and descriptive title?
 - [ ] Have you included a clear description of the problem you are trying to solve?
 - [ ] Have you included a minimal code snippet that reproduces the issue you are encountering?

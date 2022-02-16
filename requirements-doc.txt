@@ -1,3 +1,5 @@
+# dependencies to generate the documentation for HDMF
 sphinx
 sphinx_rtd_theme
 sphinx-gallery
+matplotlib

@@ -1,4 +1,5 @@
 import inspect
+
 from hdmf.container import Container, Data, MultiContainerInterface
 from hdmf.testing import TestCase
 from hdmf.utils import LabelledDict, get_docval
@@ -163,6 +164,14 @@ class TestBasic(TestCase):
         self.assertDictEqual(foo.containers, {'obj1': obj1})
         self.assertIs(obj1.parent, foo)
 
+    def test_add_single_modified(self):
+        """Test that adding a container to the attribute dict correctly makes the MCI as modified."""
+        obj1 = Container('obj1')
+        foo = Foo()
+        foo.set_modified(False)  # set to False so that we can test whether add_container makes it True
+        foo.add_container(obj1)
+        self.assertTrue(foo.modified)
+
     def test_add_single_not_parent(self):
         """Test that adding a container with a parent to the attribute dict correctly adds the container."""
         obj1 = Container('obj1')
@@ -172,6 +181,16 @@ class TestBasic(TestCase):
         foo.add_container(obj1)
         self.assertDictEqual(foo.containers, {'obj1': obj1})
         self.assertIs(obj1.parent, obj2)
+
+    def test_add_single_not_parent_modified(self):
+        """Test that adding a container with a parent to the attribute dict correctly marks the MCI as modified."""
+        obj1 = Container('obj1')
+        obj2 = Container('obj2')
+        obj1.parent = obj2
+        foo = Foo()
+        foo.set_modified(False)  # set to False so that we can test whether add_container makes it True
+        foo.add_container(obj1)
+        self.assertTrue(foo.modified)
 
     def test_add_single_dup(self):
         """Test that adding a container to the attribute dict correctly adds the container."""
@@ -328,14 +347,20 @@ class TestOverrideInit(TestCase):
 
 class TestNoClsConf(TestCase):
 
+    def test_mci_init(self):
+        """Test that MultiContainerInterface cannot be instantiated."""
+        msg = "Can't instantiate class MultiContainerInterface."
+        with self.assertRaisesWith(TypeError, msg):
+            MultiContainerInterface(name='a')
+
     def test_init_no_cls_conf(self):
-        """Test that an MCI class without a __clsconf__ can be declared but __init__ raises an error."""
+        """Test that defining an MCI subclass without __clsconf__ raises an error."""
 
         class Bar(MultiContainerInterface):
-
             pass
 
-        msg = "Cannot initialize an instance of MultiContainerInterface subclass Bar."
+        msg = ("MultiContainerInterface subclass Bar is missing __clsconf__ attribute. Please check that "
+               "the class is properly defined.")
         with self.assertRaisesWith(TypeError, msg):
             Bar(name='a')
 
@@ -343,7 +368,6 @@ class TestNoClsConf(TestCase):
         """Test that a subclass of an MCI class without a __clsconf__ can be initialized."""
 
         class Bar(MultiContainerInterface):
-
             pass
 
         class Qux(Bar):

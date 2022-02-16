@@ -1,15 +1,18 @@
-import copy as _copy
-from abc import ABCMeta
 import collections
+import copy as _copy
+import types
+import warnings
+from abc import ABCMeta
+from enum import Enum
+
 import h5py
 import numpy as np
-import warnings
-import types
-from enum import Enum
+
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, bytes],
+    'scalar_data': [str, int, float, bytes, bool],
+    'data': []
 }
 
 # Import Zarr if available
@@ -45,18 +48,33 @@ if hasattr(np, "longdouble"):  # pragma: no cover
     __supported_float_types.append(np.longdouble)
 __supported_float_types = tuple(__supported_float_types)
 __allowed_enum_types = (__supported_bool_types + __supported_uint_types + __supported_int_types
-                        + __supported_float_types + (str, ))
+                        + __supported_float_types + (str,))
 
 
 def docval_macro(macro):
     """Class decorator to add the class to a list of types associated with the key macro in the __macros dict
     """
+
     def _dec(cls):
         if macro not in __macros:
             __macros[macro] = list()
         __macros[macro].append(cls)
         return cls
+
     return _dec
+
+
+def get_docval_macro(key=None):
+    """
+    Return a deepcopy of the docval macros, i.e., strings that represent a customizable list of types for use in docval.
+
+    :param key: Name of the macro. If key=None, then a dictionary of all macros is returned. Otherwise, a tuple of
+                the types associated with the key is returned.
+    """
+    if key is None:
+        return _copy.deepcopy(__macros)
+    else:
+        return tuple(__macros[key])
 
 
 def __type_okay(value, argtype, allow_none=False):
@@ -99,7 +117,7 @@ def __type_okay(value, argtype, allow_none=False):
         return isinstance(value, argtype)
     elif isinstance(argtype, tuple) or isinstance(argtype, list):
         return any(__type_okay(value, i) for i in argtype)
-    else:    # argtype is None
+    else:  # argtype is None
         return True
 
 
@@ -380,6 +398,7 @@ def get_docval(func, *args):
             raise ValueError('Function %s has no docval arguments' % func.__name__)
         return tuple()
 
+
 # def docval_wrap(func, is_method=True):
 #    if is_method:
 #        @docval(*get_docval(func))
@@ -491,6 +510,8 @@ def docval(*validator, **options):  # noqa: C901
     :param is_method: True if this is decorating an instance or class method, False otherwise (Default=True)
     :param enforce_shape: Enforce the dimensions of input arrays (Default=True)
     :param validator: :py:func:`dict` objects specifying the method parameters
+    :param allow_extra: Allow extra arguments (Default=False)
+    :param allow_positional: Allow positional arguments (Default=True)
     :param options: additional options for documenting and validating method parameters
     '''
     enforce_type = options.pop('enforce_type', True)
@@ -541,7 +562,7 @@ def docval(*validator, **options):  # noqa: C901
                 kw.append(a)
             else:
                 pos.append(a)
-        loc_val = pos+kw
+        loc_val = pos + kw
         _docval[__docval_args_loc] = loc_val
 
         def _check_args(args, kwargs):
@@ -549,13 +570,14 @@ def docval(*validator, **options):  # noqa: C901
             # this function was separated from func_call() in order to make stepping through lines of code using pdb
             # easier
             parsed = __parse_args(
-                        loc_val,
-                        args[1:] if is_method else args,
-                        kwargs,
-                        enforce_type=enforce_type,
-                        enforce_shape=enforce_shape,
-                        allow_extra=allow_extra,
-                        allow_positional=allow_positional)
+                loc_val,
+                args[1:] if is_method else args,
+                kwargs,
+                enforce_type=enforce_type,
+                enforce_shape=enforce_shape,
+                allow_extra=allow_extra,
+                allow_positional=allow_positional
+            )
 
             parse_warnings = parsed.get('future_warnings')
             if parse_warnings:
@@ -593,6 +615,7 @@ def docval(*validator, **options):  # noqa: C901
         setattr(func_call, docval_idx_name, docval_idx)
         setattr(func_call, '__module__', func.__module__)
         return func_call
+
     return dec
 
 
@@ -610,6 +633,7 @@ def __sig_arg(argval):
 
 def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=None, rtype=None):
     '''Generate a Spinxy docstring'''
+
     def to_str(argtype):
         if isinstance(argtype, type):
             module = argtype.__module__
@@ -775,6 +799,7 @@ def get_data_shape(data, strict_no_data_load=False):
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """
+
     def __get_shape_helper(local_data):
         shape = list()
         if hasattr(local_data, '__len__'):
@@ -806,6 +831,25 @@ def pystr(s):
         return s.decode('utf-8')
     else:
         return s
+
+
+def to_uint_array(arr):
+    """
+    Convert a numpy array or array-like object to a numpy array of unsigned integers with the same dtype itemsize.
+
+    For example, a list of int32 values is converted to a numpy array with dtype uint32.
+    :raises ValueError: if input array contains values that are not unsigned integers or non-negative integers.
+    """
+    if not isinstance(arr, np.ndarray):
+        arr = np.array(arr)
+    if np.issubdtype(arr.dtype, np.unsignedinteger):
+        return arr
+    if np.issubdtype(arr.dtype, np.integer):
+        if (arr < 0).any():
+            raise ValueError('Cannot convert negative integer values to uint.')
+        dt = np.dtype('uint' + str(int(arr.dtype.itemsize*8)))  # keep precision
+        return arr.astype(dt)
+    raise ValueError('Cannot convert array of dtype %s to uint.' % arr.dtype)
 
 
 class LabelledDict(dict):
@@ -976,3 +1020,38 @@ class LabelledDict(dict):
     def update(self, other):
         """update is not supported. A TypeError will be raised."""
         raise TypeError('update is not supported for %s' % self.__class__.__name__)
+
+
+@docval_macro('array_data')
+class StrDataset(h5py.Dataset):
+    """Wrapper to decode strings on reading the dataset"""
+    def __init__(self, dset, encoding, errors='strict'):
+        self.dset = dset
+        if encoding is None:
+            encoding = h5py.h5t.check_string_dtype(dset.dtype).encoding
+        self.encoding = encoding
+        self.errors = errors
+
+    def __getattr__(self, name):
+        return getattr(self.dset, name)
+
+    def __repr__(self):
+        return '<StrDataset for %s>' % repr(self.dset)[1:-1]
+
+    def __len__(self):
+        return len(self.dset)
+
+    def __getitem__(self, args):
+        bytes_arr = self.dset[args]
+        # numpy.char.decode() seems like the obvious thing to use. But it only
+        # accepts numpy string arrays, not object arrays of bytes (which we
+        # return from HDF5 variable-length strings). And the numpy
+        # implementation is not faster than doing it with a loop; in fact, by
+        # not converting the result to a numpy unicode array, the
+        # naive way can be faster! (Comparing with numpy 1.18.4, June 2020)
+        if np.isscalar(bytes_arr):
+            return bytes_arr.decode(self.encoding, self.errors)
+
+        return np.array([
+            b.decode(self.encoding, self.errors) for b in bytes_arr.flat
+        ], dtype=object).reshape(bytes_arr.shape)
