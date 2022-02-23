@@ -14,7 +14,7 @@
 - Improved testing for `ExternalResources`. @mavaylon (#673)
 - Improved docs for export. @rly (#674)
 - Enhanced data chunk iteration speeds through new ``GenericDataChunkIterator`` class.  @CodyCBakerPhD (#672)
-- Enhanced issue template forms on GitHub. @CodyCBakerPHD (#672)
+- Enhanced issue template forms on GitHub. @CodyCBakerPHD (#700)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)
