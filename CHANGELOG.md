@@ -3,7 +3,7 @@
 ## HDMF 3.2.1 (February 22, 2022)
 
 ### Bug fixes
-- Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#693)
+- Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#699)
 
 ## HDMF 3.2.0 (February 22, 2022)
 
