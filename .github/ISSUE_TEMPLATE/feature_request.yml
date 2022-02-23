@@ -18,7 +18,7 @@ body:
       description: |
         What are you trying to achieve with **HDMF**?
 
-        Is this a more convenient way to do something that is already possible, or is a workaround (via `ignore` and `select`) currently unfeasible?
+        Is this a more convenient way to do something that is already possible, or is a workaround currently unfeasible?
     validations:
       required: true
   - type: textarea
