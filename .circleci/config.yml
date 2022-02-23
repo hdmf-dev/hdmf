@@ -193,7 +193,6 @@ jobs:
       - TEST_TOX_ENV: "py39"
       - BUILD_TOX_ENV: "build-py39"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
-      - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
     <<: *ci-steps
 
   python310:
@@ -202,7 +201,6 @@ jobs:
       - TEST_TOX_ENV: "py310"
       - BUILD_TOX_ENV: "build-py310"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
-      - UPLOAD_WHEELS: "true"  # upload distributions from only this job to pypi
     <<: *ci-steps
 
   python310-opt:
@@ -219,6 +217,7 @@ jobs:
       - TEST_TOX_ENV: "py310-upgrade-dev"
       - BUILD_TOX_ENV: "build-py310-upgrade-dev"
       - TEST_WHEELINSTALL_ENV: "wheelinstall"
+      - UPLOAD_WHEELS: "true"  # keep distributions from this job for upload to PyPI
     <<: *ci-steps
 
   python310-upgrade-dev-pre:
@@ -415,7 +414,7 @@ workflows:
           requires:
             - flake8
             - python37-min-req
-            - python310-upgrade-dev
+            - python310-upgrade-dev  # distributions from this job uploaded to PyPI
             - miniconda37
             - miniconda310
             - gallery37-min-req
@@ -434,14 +433,15 @@ workflows:
           requires:
             - flake8
             - python37-min-req
-            - python310-upgrade-dev
+            - python310-upgrade-dev  # distributions from this job uploaded to PyPI
             - miniconda37
             - miniconda310
             - gallery37-min-req
             - gallery310
           filters:
+            # run only on new tags that follow semver
             tags:
-              only: /^[0-9]+(\.[0-9]+)*(\.post[0-9]+)?$/
+              only: /^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/
             branches:
               ignore: /.*/
           context:

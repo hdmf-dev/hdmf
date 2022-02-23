@@ -1,6 +1,11 @@
 # HDMF Changelog
 
-## HDMF 3.2 (February 22, 2022)
+## HDMF 3.2.1 (February 22, 2022)
+
+### Bug fixes
+- Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#693)
+
+## HDMF 3.2.0 (February 22, 2022)
 
 ### New features
 - Added ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
