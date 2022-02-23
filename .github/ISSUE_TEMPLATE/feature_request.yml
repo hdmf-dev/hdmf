@@ -16,7 +16,7 @@ body:
     attributes:
       label: What would you like to see added to HDMF?
       description: |
-        What are you trying to achieve with the **HDMF**?
+        What are you trying to achieve with **HDMF**?
 
         Is this a more convenient way to do something that is already possible, or is a workaround (via `ignore` and `select`) currently unfeasible?
     validations:
