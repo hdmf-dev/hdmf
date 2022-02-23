@@ -21,9 +21,9 @@ body:
     attributes:
       label: Steps to Reproduce
       description: |
-        Please copy and paste the code you were trying to run that caused the error. Feel free to include as little or as much as you think is relevant.
+        Please copy and paste the code you were trying to run that caused the error.
 
-        This section will be automatically formatted into code, so no need for backticks.
+        Feel free to include as little or as much as you think is relevant. This section will be automatically formatted into code, so no need for backticks.
       render: shell
     validations:
       required: true
