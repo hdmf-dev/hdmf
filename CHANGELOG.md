@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.2 (Upcoming)
+## HDMF 3.2 (February 22, 2022)
 
 ### New features
 - Added ``hdmf.container.Row.__str__`` to improve print of rows. @oruebel (#667)
