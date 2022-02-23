@@ -42,5 +42,5 @@ body:
           required: true
         - label: Have you checked the [Contributing](https://github.com/hdmf-dev/hdmf/blob/dev/docs/CONTRIBUTING.rst) document?
           required: true
-        - label: Have you ensured this bug was not already [reported](https://github.com/hdmf-dev/hdmf/issues)?
+        - label: Have you ensured this change was not already [requested](https://github.com/hdmf-dev/hdmf/issues)?
           required: true
