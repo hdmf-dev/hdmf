@@ -1121,6 +1121,8 @@ class HDF5IO(HDMFIO):
                     elif parent.name != data.parent.name:  # dataset is in export source and has different path
                         # so create a soft link to the dataset in this file
                         # possible if user adds a link to a dataset in export source after reading to memory
+                        # TODO check that there is/will be still a dataset at data.name -- if the dataset has
+                        # been removed, then this link will be broken
                         link = SoftLink(data.name)
                         self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                                           % (parent.name, name, link.path))
