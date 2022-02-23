@@ -332,6 +332,18 @@ class AbstractContainer(metaclass=ExtenderMeta):
         child.set_modified()
         self.set_modified()
 
+    def reset_parent(self):
+        """Reset the parent of this Container to None and remove the Container from the children of its parent.
+
+        Use with caution. This can result in orphaned containers and broken links.
+        """
+        if self.parent is None:
+            return
+        elif isinstance(self.parent, AbstractContainer):
+            self.parent._remove_child(self)
+        else:
+            raise ValueError("Cannot reset parent when parent is not an AbstractContainer: %s" % repr(self.parent))
+
 
 class Container(AbstractContainer):
     """A container that can contain other containers and has special functionality for printing."""
