@@ -1,4 +1,4 @@
-"""Simple module use to define class stubs to allow us to make pynerd an optional dependency"""
+"""Simple module used to define class stubs to allow us to make pynerd an optional dependency"""
 try:
     from pynert.ontology import Ontology
     from pynert.errors import OntologyEntityException, WebAPIOntologyException, LocalOntologyException
