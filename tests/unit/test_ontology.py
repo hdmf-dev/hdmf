@@ -68,7 +68,8 @@ class TestLocalOntology(TestCase):
         self.assertEqual(ontology.ontology_entities, {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
 
         ontology.write_ontology_yaml(path=self.path)
-        contents = open(self.path).read()
+        with open(self.path) as ontofile:
+            contents = ontofile.read()
         ontology_dict = ontology.read_ontology_yaml(self.path)
 
         self.assertEqual(ontology_dict, {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']})
