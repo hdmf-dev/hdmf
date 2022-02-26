@@ -34,6 +34,7 @@ except ImportError:
         def __init__(self, version,  ontology_name, ontology_uri, extension, ontology_entities=None):
             super().__init__(version, ontology_name, ontology_uri, ontology_entities)
             self.extension = extension
+
         def get_ontology_entity(self, key):
             try:
                 return self.ontology_entities[key]
