@@ -19,9 +19,8 @@ except ImportError:
             """
             raise KeyError("Key not in ontology. PyNERD not installed.")
 
-
     class OntologyEntityException(Exception):
-       pass
+        pass
 
     class WebAPIOntologyException(OntologyEntityException):
         pass
