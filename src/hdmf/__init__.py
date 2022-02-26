@@ -2,8 +2,6 @@ from . import query  # noqa: F401
 from .container import Container, Data, DataRegion
 from .utils import docval, getargs
 from .region import ListSlicer
-from .ontology import *
-from .errors import *
 from .backends.hdf5.h5_utils import H5RegionSlicer, H5Dataset
 
 

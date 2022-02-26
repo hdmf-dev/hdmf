@@ -1,11 +1,9 @@
 import numpy as np
 from hdmf.container import AbstractContainer, Container, Data
-from hdmf import Ontology, EnsemblOntology, NCBI_Taxonomy
 from hdmf.common import ExternalResources
 from hdmf.testing import TestCase
-from hdmf.utils import docval, call_docval_func, get_docval
-from hdmf.errors import WebAPIOntologyException, LocalOntologyException, OntologyEntityException
-from hdmf import Ontology, EnsemblOntology, WebAPIOntology
+from hdmf.utils import docval, call_docval_func
+from .ontology_utils import  WebAPIOntology, EnsemblOntology, NCBI_Taxonomy
 
 
 class Subcontainer(Container):
@@ -316,14 +314,14 @@ class TestData(TestCase):
 
     def test_ontology_init_invalid_data_validation(self):
         ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
-        with self.assertRaises(OntologyEntityException):
+        with self.assertRaises(Exception):
             data_obj = Data(name='name', data =['invalid_data'], ontology=ontology_obj, add_external_resources=False)
 
     def test_append_data_with_ontology(self):
         ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
         data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj, add_external_resources=False)
 
-        with self.assertRaises(OntologyEntityException):
+        with self.assertRaises(Exception):
             data_obj.append('invalid_data')
 
         data_obj.append('Mus musculus')
@@ -333,7 +331,7 @@ class TestData(TestCase):
         ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
         data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj, add_external_resources=False)
 
-        with self.assertRaises(OntologyEntityException):
+        with self.assertRaises(Exception):
             data_obj.extend(['invalid_data', 'invalid_data_2'])
 
         data_obj.extend(['Mus musculus', 'valid_data'])
