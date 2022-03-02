@@ -145,8 +145,8 @@ ontology = EnsemblOntology(version='1.0')
 nwbfile.subject.add_ontology_resource(key='Homo sapiens', attribute='species', ontology=ontology)
 
 ###############################################################################
-# Using Ontologies to control vocavulary in :py:class:`~hdmf.container.Data`
-# ------------------------------------------------------
+# Using Ontologies to control vocabulary in :py:class:`~hdmf.container.Data`
+# --------------------------------------------------------------------------
 # Users have the ability to use ontologies to control the dataset values within
 # :py:class:`~hdmf.container.Data`. Users can pass in an ontology as an optional
 # parameter. Passing in an ontology must be done on the creation of a new instance
