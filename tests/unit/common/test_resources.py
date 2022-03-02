@@ -47,6 +47,18 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                          [(0, 0, '10090', 'uri')])
         self.assertEqual(er.objects.data, [('object', 'species')])
 
+    def test_to_hdf5_and_from_hdf5(self):
+        # write er to file
+        self.container.to_hdf5(path=self.export_filename)
+        # read er back from file and compare
+        er_io, er_obj = ExternalResources.from_hdf5(path=self.export_filename)
+        # Check that the data is correct
+        pd.testing.assert_frame_equal(er_obj.to_dataframe(),
+                                      self.container.to_dataframe(),
+                                      check_dtype=False)
+        # Close the io!
+        er_io.close()
+
     def test_to_dataframe(self):
         # Setup complex external resources with keys reused across objects and
         # multiple resources per key
