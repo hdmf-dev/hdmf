@@ -1,5 +1,9 @@
 # HDMF Changelog
 
+## HDMF 3.3 (Upcoming)
+- Renamed to ``export_to_sqlite`` to ``to_sqlite`` in `hdmf.common.resources.ExternalResource`. @oruebel (#701)
+- Added ``to_hdf5`` and ``from_hdf5`` methods for ``hdmf.common.resources.ExternalResource``. @oruebel (#701)
+
 ## HDMF 3.2 (Upcoming)
 
 ### New features

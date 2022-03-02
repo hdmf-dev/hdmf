@@ -561,9 +561,32 @@ class ExternalResources(Container):
         # return the result
         return result_df
 
-    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'},
-            rtype=pd.DataFrame, returns='A DataFrame with all data merged into a flat, denormalized table.')
-    def export_to_sqlite(self, db_file):
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'})
+    def to_hdf5(self, path):
+        from hdmf.backends.hdf5.h5tools import HDF5IO
+        from hdmf.common import get_manager
+        with HDF5IO(path=path, manager=get_manager(), mode='w') as io:
+            io.write(self)
+
+    @classmethod
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'},
+            rtype=tuple, returns="Tuple with HDF5IO object and ExternalResources object")
+    def from_hdf5(cls, path):
+        """
+        Load ExternalResources from HDF5
+
+        .. note:: To allow modification and use, the HDF5 file must remain open. As such
+                  the function returns both the io and er object. It is up to the user
+                  to close the io when done!
+        """
+        from hdmf.backends.hdf5.h5tools import HDF5IO
+        from hdmf.common import get_manager
+        io = HDF5IO(path=path, manager=get_manager(), mode='r')
+        er = io.read()
+        return io, er
+
+    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
+    def to_sqlite(self, db_file):
         """
         Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
 
