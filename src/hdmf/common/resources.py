@@ -563,6 +563,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'})
     def to_hdf5(self, path):
+        """Write ExternalResources to HDF5"""
         from hdmf.backends.hdf5.h5tools import HDF5IO
         from hdmf.common import get_manager
         with HDF5IO(path=path, manager=get_manager(), mode='w') as io:
