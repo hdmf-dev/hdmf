@@ -19,6 +19,12 @@ manifest.json
 # Auto-generated tutorials
 /docs/source/tutorials/
 
+# Data files written by galleries
+/docs/gallery/*.h5
+/docs/gallery/*.hdf
+/docs/gallery/*.sqlite
+
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -480,7 +480,7 @@ er.to_dataframe(use_categories=True)
 # --------------------------------
 
 # Set the HDF5 file to use and clean up the file if it exists
-hdf_filename = "test_externalresources.hdf"
+hdf_filename = "test_externalresources.h5"
 if os.path.exists((hdf_filename)):
     os.remove(hdf_filename)
 

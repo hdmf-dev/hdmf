@@ -47,7 +47,7 @@ help:
 
 clean:
 	-rm -rf $(BUILDDIR)/* $(RSTDIR)/$(PKGNAME)*.rst $(RSTDIR)/tutorials
-	-rm ${GALLERYDIR}/*.hdf ${GALLERYDIR}/*.sqlite
+	-rm -f ${GALLERYDIR}/*.h5 ${GALLERYDIR}/*.sqlite
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
