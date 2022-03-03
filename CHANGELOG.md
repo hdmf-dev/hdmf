@@ -1,8 +1,14 @@
 # HDMF Changelog
 
 ## HDMF 3.3 (Upcoming)
+### New features
 - Renamed to ``export_to_sqlite`` to ``to_sqlite`` in `hdmf.common.resources.ExternalResource`. @oruebel (#701)
 - Added ``to_hdf5`` and ``from_hdf5`` methods for ``hdmf.common.resources.ExternalResource``. @oruebel (#701)
+- Added ``to_csv`` and ``from_csv`` methods for ``hdmf.common.resources.ExternalResource``. @oruebel (#701)
+- Added ``assert_external_resources_equal`` method for ``hdmf.common.resources.ExternalResource`` to compare the contents of two ``ExternalResources`` objects @oruebel (#701)
+
+### Bug fixes
+- Fixed missing ``('objects', 'relative_path')`` column when using ``ExternalResources.to_dataframe`` @oruebel (#701)
 
 ## HDMF 3.2 (Upcoming)
 
