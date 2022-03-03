@@ -498,10 +498,36 @@ er.to_hdf5(path=hdf_filename)
 #           and the :py:class:`~hdmf.common.resources.ExternalResources` object. It is
 #           up to the user to close the io object when done!
 er_io, er_obj = ExternalResources.from_hdf5(path=hdf_filename)
-# Check that the data is correct
-pd.testing.assert_frame_equal(er_obj.to_dataframe(), er.to_dataframe(), check_dtype=False)
+# Check that the data is correct. We ignore dtypes because idx may be saved as int32 vs int64
+ExternalResources.assert_external_resources_equal(er, er_obj, check_dtype=False)
+
+###############################################################################
+#
+
 # Close the io!
 er_io.close()
+
+###############################################################################
+# Export ExternalResources to CSV
+# -------------------------------
+
+# Set the CSV file to use and clean up the file if it exists
+csv_filename = "test_externalresources.csv"
+if os.path.exists((hdf_filename)):
+    os.remove(hdf_filename)
+
+###############################################################################
+# Since we can convert to Pandas, we can easily also export our ExternalResources
+# as a flat CSV file. As a shorthand we can use :py:class:`~hdmf.common.resources.ExternalResources.to_csv`
+er.to_csv(path=csv_filename)
+
+###############################################################################
+# Load the :py:class:`~hdmf.common.resources.ExternalResources` from the CSV file.
+er_obj = er.from_csv(path=csv_filename)
+
+###############################################################################
+# Check that the data in the individual tables is correct
+ExternalResources.assert_external_resources_equal(er, er_obj, check_dtype=True)
 
 ###############################################################################
 # Export ExternalResources to SQLite
