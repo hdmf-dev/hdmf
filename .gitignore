@@ -23,6 +23,7 @@ manifest.json
 /docs/gallery/*.h5
 /docs/gallery/*.hdf
 /docs/gallery/*.sqlite
+/docs/gallery/*.csv
 
 
 ### Python ###
