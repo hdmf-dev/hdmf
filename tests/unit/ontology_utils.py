@@ -42,7 +42,7 @@ except ImportError:
                 raise WebAPIOntologyException
 
     class NCBI_Taxonomy(LocalOntology):
-        def __init__(self, version):
+        def __init__(self,):
             entities = {
                 "Homo sapiens":
                     OntologyEntity(
@@ -55,7 +55,7 @@ except ImportError:
                              ontology_entities=entities)
 
     class EnsemblOntology(WebAPIOntology):
-        def __init__(self, version):
+        def __init__(self,):
             entities = {
                 "Homo sapiens":
                     OntologyEntity(
