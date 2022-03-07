@@ -197,7 +197,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
-        self.ontology = kwargs['ontology']
 
     @property
     def name(self):
@@ -553,12 +552,13 @@ class Data(AbstractContainer):
     A class for representing dataset containers
     """
 
-    @docval(*get_docval(AbstractContainer.__init__, 'name', 'ontology'),
+    @docval(*get_docval(AbstractContainer.__init__, 'name'),
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
-            {'name': 'add_external_resources', 'type': 'bool', 'doc': 'Add to external_resources', 'default': True})
+            {'name': 'ontology', 'type': Ontology, 'doc': 'ontology to be used for external_resources or validation',
+             'default': None})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
-        self.add_external_resources = kwargs['add_external_resources']
+        self.ontology = kwargs['ontology']
         if self.ontology is None:
             self.__data = getargs('data', kwargs)
         else:
@@ -566,8 +566,6 @@ class Data(AbstractContainer):
             for data in raw_data:
                 self.validate(data)
             self.__data = raw_data
-            if self.add_external_resources:
-                self.add_ontology_resource(self.__data, ontology=self.ontology)
 
     @property
     def data(self):
@@ -631,8 +629,6 @@ class Data(AbstractContainer):
         else:
             if self.validate(arg):
                 self.__data = append_data(self.__data, arg)
-            if self.add_external_resources:
-                self.add_ontology_resource([arg])
 
     def extend(self, arg):
         """
