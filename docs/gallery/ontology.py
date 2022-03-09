@@ -29,9 +29,9 @@ and usability for your use cases.
 # within data. The user is able to add this "linked" ontology to
 # :py:class:`~hdmf.common.resources.ExternalResources` via (TBD on function).
 
-from pynert.ontology import WebAPIOntology, LocalOntology
-from pynert.resources.ensembl import EnsemblOntology
-from pynert.resources.ncbi import NCBI_Taxonomy
+# from pynert.ontology import WebAPIOntology, LocalOntology
+# from pynert.resources.ensembl import EnsemblOntology
+# from pynert.resources.ncbi import NCBI_Taxonomy
 from hdmf.container import Data
 from ndx_external_resources import ERNWBFile
 from ndx_genotype import GenotypeSubject
