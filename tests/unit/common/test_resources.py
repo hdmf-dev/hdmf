@@ -47,6 +47,12 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                          [(0, 0, '10090', 'uri')])
         self.assertEqual(er.objects.data, [('object', 'species')])
 
+    def test_assert_external_resources_equal(self):
+        pass
+
+    def test_invalid_assert_external_resources_equal(self):
+        pass
+
     def test_to_hdf5_and_from_hdf5(self):
         # write er to file
         self.container.to_hdf5(path=self.export_filename)

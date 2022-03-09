@@ -42,27 +42,27 @@ except ImportError:
                 raise WebAPIOntologyException
 
     class NCBI_Taxonomy(LocalOntology):
-        def __init__(self, version):
+        def __init__(self):
             entities = {
                 "Homo sapiens":
                     OntologyEntity(
                         entity_id='9606',
                         entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')
             }
-            super().__init__(version=version,
+            super().__init__(version=None,
                              ontology_name='NCBI_Taxonomy',
                              ontology_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi",
                              ontology_entities=entities)
 
     class EnsemblOntology(WebAPIOntology):
-        def __init__(self, version):
+        def __init__(self):
             entities = {
                 "Homo sapiens":
                     OntologyEntity(
                         entity_id='9606',
                         entity_uri='https://rest.ensembl.org/taxonomy/id/Homo sapiens')
             }
-            super().__init__(version=version,
+            super().__init__(version=None,
                              ontology_name="Ensembl",
                              ontology_uri="https://rest.ensembl.org",
                              extension="/taxonomy/id/",
