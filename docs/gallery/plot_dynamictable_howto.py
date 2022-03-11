@@ -257,6 +257,21 @@ table2 = DynamicTable(
 )
 
 ###############################################################################
+# Constructing table hierarchies from Linked Tables
+# --------------------------------
+# After creating a collection of linked :py:class:`~hdmf.common.table.DynamicTable` objects
+# users have access to various convenience functions,
+# such as :py:func:`~hdmf.common.hierarichaltable.to_hierarchical_dataframe`. This method
+# transforms a :py:class:`~hdmf.common.table.DynamicTable` with a single
+# :py:class:`~hdmf.common.table.DynamicTableRegion` to a single pandas DataFrame, rather
+# than a nested DataFrame. This is currently limited to tables with only one
+# :py:class:`~hdmf.common.table.DynamicTableRegion`. Let's use the tables from the previous example. 
+
+from hdmf.common.hierarchicaltable import to_hierarchical_dataframe
+
+table2_df = to_hierarchical_dataframe(table2)
+
+###############################################################################
 # Here, the ``data`` of ``dtr_col`` maps to rows of ``table`` (0-indexed).
 #
 # .. note::
