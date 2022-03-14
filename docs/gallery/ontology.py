@@ -28,14 +28,14 @@ and usability for your use cases.
 # A typical use case of the latter would be to create a controlled set of values
 # within data. The user is able to add this "linked" ontology to
 # :py:class:`~hdmf.common.resources.ExternalResources` via (TBD on function).
-
-# from pynert.ontology import WebAPIOntology, LocalOntology
-# from pynert.resources.ensembl import EnsemblOntology
-# from pynert.resources.ncbi import NCBI_Taxonomy
-from hdmf.container import Data
-from ndx_external_resources import ERNWBFile
-from ndx_genotype import GenotypeSubject
-import datetime
+.. code-block:: python
+    from pynert.ontology import WebAPIOntology, LocalOntology
+    from pynert.resources.ensembl import EnsemblOntology
+    from pynert.resources.ncbi import NCBI_Taxonomy
+    from hdmf.container import Data
+    from ndx_external_resources import ERNWBFile
+    from ndx_genotype import GenotypeSubject
+    import datetime
 
 
 ###############################################################################
