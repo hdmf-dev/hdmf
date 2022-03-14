@@ -48,33 +48,33 @@ and usability for your use cases.
 # Once added, users can add or remove entries with built-in methods.
 # :py:class:`~hdmf.ontology.LocalOntology` also supports the ability to write
 # and read the ontology to and from a YAML file.
-#
-# # Let's create an instance of :py:class:`~hdmf.ontology.LocalOntology`.
-# ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri')
-#
-# # Populating the ontology
-# ontology.add_ontology_entity(key='Homo sapiens',
-#                              entity=['id', 'uri'])
-# # named tuple/dict to provide context of the list values
-#
-# # Removing an entry from the ontology
-# ontology.remove_ontology_entity('Homo sapiens')
-#
-# # Note: You can set the ontology entities when creating a new instance of :py:class:`~hdmf.ontology.LocalOntology`.
-# entities = {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
-# ontology = LocalOntology(version='1.0',
-#                          ontology_name='ontology_name',
-#                          ontology_uri='ontology_uri',
-#                          ontology_entities=entities)
-#
-# # Writing the ontology as an YAML file
-# ontology.write_ontology_yaml(path="path_to_target_directory")
-#
-# # Reading a YAML file to python dictionary
-# ontology_dict = ontology.read_ontology_yaml(path="path_to_target_directory")
-#
-# # Retrieving specfic entries from the ontology with the entity key
-# ontology.get_ontology_entity('Homo sapiens')
+.. code-block:: python
+  # # Let's create an instance of :py:class:`~hdmf.ontology.LocalOntology`.
+  # ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri')
+  #
+  # # Populating the ontology
+  # ontology.add_ontology_entity(key='Homo sapiens',
+  #                              entity=['id', 'uri'])
+  # # named tuple/dict to provide context of the list values
+  #
+  # # Removing an entry from the ontology
+  # ontology.remove_ontology_entity('Homo sapiens')
+  #
+  # # Note: You can set the ontology entities when creating a new instance of :py:class:`~hdmf.ontology.LocalOntology`.
+  # entities = {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
+  # ontology = LocalOntology(version='1.0',
+  #                          ontology_name='ontology_name',
+  #                          ontology_uri='ontology_uri',
+  #                          ontology_entities=entities)
+  #
+  # # Writing the ontology as an YAML file
+  # ontology.write_ontology_yaml(path="path_to_target_directory")
+  #
+  # # Reading a YAML file to python dictionary
+  # ontology_dict = ontology.read_ontology_yaml(path="path_to_target_directory")
+  #
+  # # Retrieving specfic entries from the ontology with the entity key
+  # ontology.get_ontology_entity('Homo sapiens')
 #
 #
 # ###############################################################################
@@ -88,17 +88,17 @@ and usability for your use cases.
 # # to their ontology. :py:func:`~hdmf.ontology.WebAPIOntology.get_ontology_entity`
 # # also supports retrieving ontology entities within the instance exactly the same
 # # as in :py:class:`~hdmf.ontology.LocalOntology`.
-#
-# # Let's create an instance of :py:class:`~hdmf.ontology.LocalOntology`.
-# ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl',
-#                           ontology_uri='https://rest.ensembl.org',
-#                           extension='/taxonomy/id/')
-#
-# # Using :py:func:`~hdmf.ontology.WebAPIOntology.get_ontology_entity` to request Web API
-# entity_id, entity_uri = ontology.get_ontology_entity(key='Homo sapiens')
-#
-# # Populating the ontology
-# ontology.add_ontology_entity(key='Homo sapiens', entity_value=[entity_id, entity_uri])
+.. code-block:: python
+  # # Let's create an instance of :py:class:`~hdmf.ontology.LocalOntology`.
+  # ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl',
+  #                           ontology_uri='https://rest.ensembl.org',
+  #                           extension='/taxonomy/id/')
+  #
+  # # Using :py:func:`~hdmf.ontology.WebAPIOntology.get_ontology_entity` to request Web API
+  # entity_id, entity_uri = ontology.get_ontology_entity(key='Homo sapiens')
+  #
+  # # Populating the ontology
+  # ontology.add_ontology_entity(key='Homo sapiens', entity_value=[entity_id, entity_uri])
 #
 # ###############################################################################
 # # The :py:class:`~hdmf.ontology.EnsemblOntology` class
@@ -107,10 +107,9 @@ and usability for your use cases.
 # # The :py:class:`~hdmf.ontology.EnsemblOntology` inherits from
 # # :py:class:`~hdmf.ontology.WebAPIOntology`; the difference being preset ontology
 # # name and uri for Ensembl.
-#
-# # Let's create an instance of :py:class:`~hdmf.ontology.Ensembl`.
-# ontology = EnsemblOntology(version='1.0')
-#
+.. code-block:: python
+  # # Let's create an instance of :py:class:`~hdmf.ontology.Ensembl`.
+  # ontology = EnsemblOntology(version='1.0')
 #
 # ###############################################################################
 # # The :py:class:`~hdmf.ontology.NCBI_Taxonomy` class
@@ -118,9 +117,9 @@ and usability for your use cases.
 # # The NCBI Taxonomy is a popular species ontology. Due to its common use, the
 # # :py:class:`~hdmf.ontology.NCBI_Taxonomy` class offers preset ontology
 # # name and uri for the NCBI Taxonomy.
-#
-# # Let's create an instance of :py:class:`~hdmf.ontology.NCBI_Taxonomy`.
-# ontology = NCBI_Taxonomy(version='1.0')
+.. code-block:: python
+  # # Let's create an instance of :py:class:`~hdmf.ontology.NCBI_Taxonomy`.
+  # ontology = NCBI_Taxonomy(version='1.0')
 #
 # ###############################################################################
 # # Using :py:func:`~hdmf.container.Container.add_ontology_resource` method within the
@@ -137,20 +136,20 @@ and usability for your use cases.
 # # supports adding the ontology entries in bulk by providing the desired ontology
 # # keys to be added via a list. The method will only add valid keys. It will return
 # # both the valid keys added and the invalid keys to be reviewed as lists.
-#
-# nwbfile = ERNWBFile(
-#             session_description='session_description',
-#             identifier='identifier',
-#             session_start_time=datetime.datetime.now(datetime.timezone.utc)
-#         )
-# nwbfile.subject = GenotypeSubject(
-#             subject_id='3',
-#             genotype='Vip-IRES-Cre/wt',
-#             species='Homo sapiens'
-#         )
-#
-# ontology = EnsemblOntology(version='1.0')
-# nwbfile.subject.add_ontology_resource(key='Homo sapiens', attribute='species', ontology=ontology)
+.. code-block:: python
+  # nwbfile = ERNWBFile(
+  #             session_description='session_description',
+  #             identifier='identifier',
+  #             session_start_time=datetime.datetime.now(datetime.timezone.utc)
+  #         )
+  # nwbfile.subject = GenotypeSubject(
+  #             subject_id='3',
+  #             genotype='Vip-IRES-Cre/wt',
+  #             species='Homo sapiens'
+  #         )
+  #
+  # ontology = EnsemblOntology(version='1.0')
+  # nwbfile.subject.add_ontology_resource(key='Homo sapiens', attribute='species', ontology=ontology)
 #
 # ###############################################################################
 # # Using Ontologies to control vocabulary in :py:class:`~hdmf.container.Data`
@@ -165,6 +164,6 @@ and usability for your use cases.
 # # wants to add to :py:class:`~hdmf.common.resources.ExternalResources` using their data
 # # and ontology, then use the :py:func:`~hdmf.container.Container.add_ontology_resource` method
 # # in the following example.
-#
-# ontology_obj = EnsemblOntology(version='1.0')
-# data_obj = Data(name='name', data=['Homo sapiens', 'invalid_data'], ontology=ontology_obj)
+.. code-block:: python
+  # ontology_obj = EnsemblOntology(version='1.0')
+  # data_obj = Data(name='name', data=['Homo sapiens', 'invalid_data'], ontology=ontology_obj)
