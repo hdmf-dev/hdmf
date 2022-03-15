@@ -48,7 +48,23 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [('object', 'species')])
 
     def test_assert_external_resources_equal(self):
-        pass
+        er_left = ExternalResources('terms')
+        er_left.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
+
+        er_right = ExternalResources('terms')
+        er_right.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
+
+        with self.assertRaises(AssertionError):
+            ExternalResources.assert_external_resources_equal(er_left,
+                                                              er_right)
+
+
 
     def test_invalid_assert_external_resources_equal(self):
         pass
