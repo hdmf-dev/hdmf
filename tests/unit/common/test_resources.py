@@ -60,14 +60,25 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="id11", entity_uri='url11')
 
+        self.assertTrue(ExternalResources.assert_external_resources_equal(er_left,
+                                                                          er_right))
+
+    def test_invalid_assert_external_resources_equal(self):
+        er_left = ExternalResources('terms')
+        er_left.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="invalid", entity_uri='url11')
+
+        er_right = ExternalResources('terms')
+        er_right.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
+
         with self.assertRaises(AssertionError):
             ExternalResources.assert_external_resources_equal(er_left,
                                                               er_right)
-
-
-
-    def test_invalid_assert_external_resources_equal(self):
-        pass
 
     def test_to_hdf5_and_from_hdf5(self):
         # write er to file
