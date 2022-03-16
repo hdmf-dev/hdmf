@@ -187,10 +187,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.parent = kwargs.pop('parent', None)
         return inst
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'ontology', 'type': Ontology,
-             'doc': 'Optional ontology solely for thr purpose of controlling data values',
-             'default': None})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if '/' in name:
