@@ -23,12 +23,10 @@
 - Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse and updated tests accordingly. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#697)
 - Added numerous tests to `tests/unit/common/test_sparse.py` to enhance testing of the `CSRMatrix` type. @oruebel (#697)
 
-
 ## HDMF 3.2.1 (February 22, 2022)
 
 ### Bug fixes
 - Fixed release CI that prevented distribution from being uploaded to PyPI. @rly (#699)
-
 
 ## HDMF 3.2.0 (February 22, 2022)
 
