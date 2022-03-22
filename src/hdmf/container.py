@@ -356,8 +356,9 @@ class Container(AbstractContainer):
         super_setter = AbstractContainer._setter(field)
         ret = [super_setter]
         # create setter with check for required name
+        # the AbstractContainer that is passed to the setter must have name = required_name
         if field.get('required_name', None) is not None:
-            name = field['required_name']
+            required_name = field['required_name']
             idx1 = len(ret) - 1
 
             def container_setter(self, val):
@@ -366,11 +367,11 @@ class Container(AbstractContainer):
                         msg = ("Field '%s' on %s has a required name and must be a subclass of AbstractContainer."
                                % (field['name'], self.__class__.__name__))
                         raise ValueError(msg)
-                    if val.name != name:
+                    if val.name != required_name:
                         msg = ("Field '%s' on %s must be named '%s'."
-                               % (field['name'], self.__class__.__name__, name))
+                               % (field['name'], self.__class__.__name__, required_name))
                         raise ValueError(msg)
-                ret[idx1](self, val)
+                ret[idx1](self, val)  # call the previous setter
 
             ret.append(container_setter)
 
@@ -379,7 +380,7 @@ class Container(AbstractContainer):
             idx2 = len(ret) - 1
 
             def container_setter(self, val):
-                ret[idx2](self, val)
+                ret[idx2](self, val)  # call the previous setter
                 if val is not None:
                     if isinstance(val, (tuple, list)):
                         pass
@@ -396,7 +397,7 @@ class Container(AbstractContainer):
                             self.set_modified()
 
             ret.append(container_setter)
-        return ret[-1]
+        return ret[-1]  # return the last setter (which should call the previous setters, if applicable)
 
     def __repr__(self):
         cls = self.__class__
@@ -1052,7 +1053,7 @@ class Table(Data):
                 name = {'name': 'name', 'type': str, 'doc': 'the name of this table'}
                 defname = getattr(cls, '__defaultname__', None)
                 if defname is not None:
-                    name['default'] = defname
+                    name['default'] = defname  # override the name with the default name if present
 
                 @docval(name,
                         {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the data in this table',
