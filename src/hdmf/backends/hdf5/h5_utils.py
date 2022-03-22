@@ -28,7 +28,7 @@ class HDF5IODataChunkIteratorQueue(deque):
     """
     Helper class used by HDF5IO to manage the write for DataChunkIterators
 
-    Each queue element must be a tupple of two elements:
+    Each queue element must be a tuple of two elements:
     1) the dataset to write to and 2) the AbstractDataChunkIterator with the data
     """
     def __init__(self):
