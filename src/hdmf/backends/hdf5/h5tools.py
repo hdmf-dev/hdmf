@@ -455,7 +455,7 @@ class HDF5IO(HDMFIO):
 
         NOTE: On read the Builder.source may will usually not be set of the Builders.
         NOTE: The Builder.location is used internally to ensure correct handling of links (in particular on export)
-              and shoudl be set on read for all GroupBuilder, DatasetBuilder, and LinkBuilder
+              and should be set on read for all GroupBuilder, DatasetBuilder, and LinkBuilder
         """
         if not self.__file:
             raise UnsupportedOperation("Cannot read data from closed HDF5 file '%s'" % self.source)
