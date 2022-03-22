@@ -77,7 +77,7 @@ class HDF5IODataChunkIteratorQueue(deque):
         Append a value to the queue
 
         :param dataset: The dataset where the DataChunkIterator is written to
-        :type dataset: Zarr array
+        :type dataset: Dataset
         :param data: DataChunkIterator with the data to be written
         :type data: AbstractDataChunkIterator
         """
