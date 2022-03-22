@@ -9,6 +9,7 @@ PAPER          =
 BUILDDIR       = _build
 SRCDIR         = ../src
 RSTDIR         = source
+GALLERYDIR     = gallery
 PKGNAME        = hdmf
 
 # Internal variables.
@@ -45,7 +46,7 @@ help:
 	@echo "  apidoc     to build RST from source code"
 
 clean:
-	-rm -rf $(BUILDDIR)/* $(RSTDIR)/$(PKGNAME)*.rst $(RSTDIR)/tutorials
+	-rm -rf $(BUILDDIR)/* $(RSTDIR)/$(PKGNAME)*.rst $(GALLERYDIR)/*.hdf5 $(GALLERYDIR)/*.sqlite $(RSTDIR)/tutorials
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

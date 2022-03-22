@@ -10,6 +10,8 @@
 # Auto-generated apidocs RST files
 /docs/source/gen_modules/
 /docs/source/hdmf*.rst
+/docs/gallery/*.hdf5
+/docs/gallery/*.sqlite
 
 # Auto-generated files after running tutorials
 mylab.*.yaml
