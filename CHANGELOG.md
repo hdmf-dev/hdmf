@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.2.2 (Upcoming)
+
+### Minor improvements
+- Improved readability of ``Container`` code. @rly (#707)
+
 ## HDMF 3.2.1 (February 22, 2022)
 
 ### Bug fixes
