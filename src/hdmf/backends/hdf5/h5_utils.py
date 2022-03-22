@@ -44,7 +44,7 @@ class HDF5IODataChunkIteratorQueue(deque):
         :type dset: Dataset
         :param data: The DataChunkIterator to read from
         :type data: AbstractDataChunkIterator
-        :return: True of a chunk was written, False otherwise
+        :return: True if a chunk was written, False otherwise
         :rtype: bool
 
         """
