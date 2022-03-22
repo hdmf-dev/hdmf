@@ -11,7 +11,6 @@
 
 ### Enhancements
 - Updated `HDF5IO` to use the new `WriteStatusTracker`, `NamespaceToBuilderHelper`, and `HDF5IODataChunkIteratorQueue` helper classes. @oruebel (#697)
-  - Removed the `HDFIO.__write_chunk__` internal helper functions from `HDF5IO` as the functionality is now implemented by the helper classes. 
 - Updated `hdmf.common.sparse.CSRMatrix` to avoid direct dependency on h5py as a particular storage backend. @oruebel (#697)
 
 ### Bug fixes
