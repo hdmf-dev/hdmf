@@ -109,10 +109,10 @@ class TestCase(unittest.TestCase):
     def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
         array_data_types = tuple([i for i in get_docval_macros('array_data')
                                   if (i != list and i != tuple and i != AbstractDataChunkIterator)])
-        # We construct array_data_types this way to avoid explicit depencendy on h5py, Zarr and other
+        # We construct array_data_types this way to avoid explicit dependency on h5py, Zarr and other
         # I/O backends. Only list and tuple do not support [()] slicing, and AbstractDataChunkIterator
         # should never occur here. The effective value of array_data_types is then:
-        # array_data_types = (np.ndarry, h5py.Dataset, zarr.core.Array, HDMFDataset)
+        # array_data_types = (np.ndarray, h5py.Dataset, zarr.core.Array, hdmf.query.HDMFDataset)
         if isinstance(arr1, array_data_types):
             arr1 = arr1[()]
         if isinstance(arr2, array_data_types):
