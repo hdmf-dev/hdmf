@@ -9,7 +9,7 @@ from ..backends.hdf5 import HDF5IO
 from ..build import Builder
 from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
-from ..utils import __get_docval_macros as get_docval_macros
+from ..utils import  get_docval_macro
 from ..data_utils import AbstractDataChunkIterator
 
 
@@ -69,7 +69,7 @@ class TestCase(unittest.TestCase):
                                          ignore_string_to_byte=ignore_string_to_byte)
 
     def _assert_field_equal(self, f1, f2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
-        array_data_types = tuple(get_docval_macros('array_data'))
+        array_data_types = get_docval_macro('array_data')
         if (isinstance(f1, array_data_types) or isinstance(f2, array_data_types)):
             self._assert_array_equal(f1, f2,
                                      ignore_hdmf_attrs=ignore_hdmf_attrs,
@@ -107,7 +107,7 @@ class TestCase(unittest.TestCase):
         self.assertContainerEqual(data1, data2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
     def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
-        array_data_types = tuple([i for i in get_docval_macros('array_data')
+        array_data_types = tuple([i for i in get_docval_macro('array_data')
                                   if (i != list and i != tuple and i != AbstractDataChunkIterator)])
         # We construct array_data_types this way to avoid explicit dependency on h5py, Zarr and other
         # I/O backends. Only list and tuple do not support [()] slicing, and AbstractDataChunkIterator
