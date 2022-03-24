@@ -10,15 +10,17 @@ import h5py
 from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
-                       H5SpecReader, H5SpecWriter)
-from ..io import HDMFIO, UnsupportedOperation
+                       H5SpecReader, H5SpecWriter, HDF5IODataChunkIteratorQueue)
+from ..io import HDMFIO
+from ..errors import UnsupportedOperation
 from ..warnings import BrokenLinkWarning
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
-from ...spec import RefSpec, DtypeSpec, NamespaceCatalog, GroupSpec, NamespaceBuilder
+from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval, StrDataset
+from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -80,9 +82,9 @@ class HDF5IO(HDMFIO):
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
         self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
-        self.__dci_queue = deque()  # a queue of DataChunkIterators that need to be exhausted
+        self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
-        self._written_builders = dict()  # keep track of which builders were written (or read) by this IO object
+        self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
         self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
@@ -279,61 +281,6 @@ class HDF5IO(HDMFIO):
         order.append(key)
 
     @classmethod
-    def __convert_namespace(cls, ns_catalog, namespace):
-        ns = ns_catalog.get_namespace(namespace)
-        builder = NamespaceBuilder(ns.doc, ns.name,
-                                   full_name=ns.full_name,
-                                   version=ns.version,
-                                   author=ns.author,
-                                   contact=ns.contact)
-        for elem in ns.schema:
-            if 'namespace' in elem:
-                inc_ns = elem['namespace']
-                builder.include_namespace(inc_ns)
-            else:
-                source = elem['source']
-                for dt in ns_catalog.get_types(source):
-                    spec = ns_catalog.get_spec(namespace, dt)
-                    if spec.parent is not None:
-                        continue
-                    h5_source = cls.__get_name(source)
-                    spec = cls.__copy_spec(spec)
-                    builder.add_spec(h5_source, spec)
-        return builder
-
-    @classmethod
-    def __get_name(cls, path):
-        return os.path.splitext(path)[0]
-
-    @classmethod
-    def __copy_spec(cls, spec):
-        kwargs = dict()
-        kwargs['attributes'] = cls.__get_new_specs(spec.attributes, spec)
-        to_copy = ['doc', 'name', 'default_name', 'linkable', 'quantity', spec.inc_key(), spec.def_key()]
-        if isinstance(spec, GroupSpec):
-            kwargs['datasets'] = cls.__get_new_specs(spec.datasets, spec)
-            kwargs['groups'] = cls.__get_new_specs(spec.groups, spec)
-            kwargs['links'] = cls.__get_new_specs(spec.links, spec)
-        else:
-            to_copy.append('dtype')
-            to_copy.append('shape')
-            to_copy.append('dims')
-        for key in to_copy:
-            val = getattr(spec, key)
-            if val is not None:
-                kwargs[key] = val
-        ret = spec.build_spec(kwargs)
-        return ret
-
-    @classmethod
-    def __get_new_specs(cls, subspecs, spec):
-        ret = list()
-        for subspec in subspecs:
-            if not spec.is_inherited_spec(subspec) or spec.is_overridden_spec(subspec):
-                ret.append(subspec)
-        return ret
-
-    @classmethod
     @docval({'name': 'source_filename', 'type': str, 'doc': 'the path to the HDF5 file to copy'},
             {'name': 'dest_filename', 'type': str, 'doc': 'the name of the destination file'},
             {'name': 'expand_external', 'type': bool, 'doc': 'expand external links into new objects', 'default': True},
@@ -419,7 +366,7 @@ class HDF5IO(HDMFIO):
             self.__file.attrs[SPEC_LOC_ATTR] = spec_group.ref
         ns_catalog = self.manager.namespace_catalog
         for ns_name in ns_catalog.namespaces:
-            ns_builder = self.__convert_namespace(ns_catalog, ns_name)
+            ns_builder = NamespaceToBuilderHelper.convert_namespace(ns_catalog, ns_name)
             namespace = ns_catalog.get_namespace(ns_name)
             group_name = '%s/%s' % (ns_name, namespace.version)
             if group_name in spec_group:
@@ -503,6 +450,13 @@ class HDF5IO(HDMFIO):
 
     @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
     def read_builder(self):
+        """
+        Read data and return the GroupBuilder representing it.
+
+        NOTE: On read the Builder.source may will usually not be set of the Builders.
+        NOTE: The Builder.location is used internally to ensure correct handling of links (in particular on export)
+              and should be set on read for all GroupBuilder, DatasetBuilder, and LinkBuilder
+        """
         if not self.__file:
             raise UnsupportedOperation("Cannot read data from closed HDF5 file '%s'" % self.source)
         f_builder = self.__read.get(self.__file)
@@ -518,13 +472,12 @@ class HDF5IO(HDMFIO):
 
     def __set_written(self, builder):
         """
-        Mark this builder as written.
+        Helper function used to set the written status for builders
 
         :param builder: Builder object to be marked as written
         :type builder: Builder
         """
-        builder_id = self.__builderhash(builder)
-        self._written_builders[builder_id] = builder
+        self._written_builders.set_written(builder)
 
     def get_written(self, builder):
         """Return True if this builder has been written to (or read from) disk by this IO object, False otherwise.
@@ -534,12 +487,7 @@ class HDF5IO(HDMFIO):
 
         :return: True if the builder is found in self._written_builders using the builder ID, False otherwise
         """
-        builder_id = self.__builderhash(builder)
-        return builder_id in self._written_builders
-
-    def __builderhash(self, obj):
-        """Return the ID of a builder for use as a unique hash."""
-        return id(obj)
+        return self._written_builders.get_written(builder)
 
     def __set_built(self, fpath, id, builder):
         """
@@ -626,7 +574,6 @@ class HDF5IO(HDMFIO):
                     target_path = link_type.path
                     target_obj = sub_h5obj.file[target_path]
                     builder_name = os.path.basename(target_path)
-                    parent_loc = os.path.dirname(target_path)
                     # get builder if already read, else build it
                     builder = self.__get_built(sub_h5obj.file.filename, target_obj.id)
                     if builder is None:
@@ -636,8 +583,8 @@ class HDF5IO(HDMFIO):
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
                         self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
-                    builder.location = parent_loc
-                    link_builder = LinkBuilder(builder, k, source=h5obj.file.filename)
+                    link_builder = LinkBuilder(builder=builder, name=k, source=h5obj.file.filename)
+                    link_builder.location = h5obj.name
                     self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
                     if isinstance(link_type, ExternalLink):
@@ -662,6 +609,7 @@ class HDF5IO(HDMFIO):
                 continue
         kwargs['source'] = h5obj.file.filename
         ret = GroupBuilder(name, **kwargs)
+        ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
         return ret
 
@@ -718,6 +666,7 @@ class HDF5IO(HDMFIO):
                 d = h5obj
             kwargs["data"] = d
         ret = DatasetBuilder(name, **kwargs)
+        ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
         return ret
 
@@ -817,9 +766,10 @@ class HDF5IO(HDMFIO):
             self.write_link(self.__file, lbldr)
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
-        self.__exhaust_dcis()
+        self.__dci_queue.exhaust_queue()
         self.__set_written(f_builder)
-        self.logger.debug("Done writing GroupBuilder '%s' to path '%s'" % (f_builder.name, self.source))
+        self.logger.debug("Done writing %s '%s' to path '%s'" %
+                          (f_builder.__class__.__qualname__, f_builder.name, self.source))
 
     def __add_refs(self):
         '''
@@ -844,20 +794,12 @@ class HDF5IO(HDMFIO):
                 failed.add(id(call))
                 self.__ref_queue.append(call)
 
-    def __exhaust_dcis(self):
-        """
-        Read and write from any queued DataChunkIterators in a round-robin fashion
-        """
-        while len(self.__dci_queue) > 0:
-            self.logger.debug("Exhausting DataChunkIterator from queue (length %d)" % len(self.__dci_queue))
-            dset, data = self.__dci_queue.popleft()
-            if self.__write_chunk__(dset, data):
-                self.__dci_queue.append((dset, data))
-
     @classmethod
     def get_type(cls, data):
         if isinstance(data, str):
             return H5_TEXT
+        elif isinstance(data, bytes):
+            return H5_BINARY
         elif isinstance(data, Container):
             return H5_REF
         elif not hasattr(data, '__len__'):
@@ -1019,14 +961,20 @@ class HDF5IO(HDMFIO):
         """Get the path to the builder.
 
         Note that the root of the file has no name - it is just "/". Thus, the name of the root container is ignored.
+        If builder.location is set then it is used as the path, otherwise the function
+        determines the path by constructing it iteratively from the parents of the
+        builder.
         """
-        curr = builder
-        names = list()
-        while curr.parent is not None:
-            names.append(curr.name)
-            curr = curr.parent
-        delim = "/"
-        path = "%s%s" % (delim, delim.join(reversed(names)))
+        if builder.location is not None:
+            path = os.path.normpath(os.path.join(builder.location, builder.name)).replace("\\", "/")
+        else:
+            curr = builder
+            names = list()
+            while curr.parent is not None:
+                names.append(curr.name)
+                curr = curr.parent
+            delim = "/"
+            path = "%s%s" % (delim, delim.join(reversed(names)))
         return path
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
@@ -1285,7 +1233,7 @@ class HDF5IO(HDMFIO):
             # Iterative write of a data chunk iterator
             elif isinstance(data, AbstractDataChunkIterator):
                 dset = self.__setup_chunked_dset__(parent, name, data, options)
-                self.__dci_queue.append((dset, data))
+                self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
             elif hasattr(data, '__len__'):
                 dset = self.__list_fill__(parent, name, data, options)
@@ -1300,7 +1248,7 @@ class HDF5IO(HDMFIO):
             pass
         self.__set_written(builder)
         if exhaust_dci:
-            self.__exhaust_dcis()
+            self.__dci_queue.exhaust_queue()
 
     @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):
@@ -1366,42 +1314,6 @@ class HDF5IO(HDMFIO):
         return dset
 
     @classmethod
-    def __write_chunk__(cls, dset, data):
-        """
-        Read a chunk from the given DataChunkIterator and write it to the given Dataset
-
-        :param dset: The Dataset to write to
-        :type dset: Dataset
-        :param data: The DataChunkIterator to read from
-        :type data: DataChunkIterator
-        :return: True of a chunk was written, False otherwise
-        :rtype: bool
-
-        """
-        try:
-            chunk_i = next(data)
-        except StopIteration:
-            return False
-        if isinstance(chunk_i.selection, tuple):
-            # Determine the minimum array dimensions to fit the chunk selection
-            max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x+1 for x in chunk_i.selection])
-        elif isinstance(chunk_i.selection, int):
-            max_bounds = (chunk_i.selection+1, )
-        elif isinstance(chunk_i.selection, slice):
-            max_bounds = (chunk_i.selection.stop or 0, )
-        else:
-            msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
-                   "and/or integers") % str(chunk_i.selection)
-            raise TypeError(msg)
-
-        # Expand the dataset if needed
-        dset.id.extend(max_bounds)
-        # Write the data
-        dset[chunk_i.selection] = chunk_i.data
-
-        return True
-
-    @classmethod
     def __chunked_iter_fill__(cls, parent, name, data, options=None):
         """
         Write data to a dataset one-chunk-at-a-time based on the given DataChunkIterator
@@ -1419,7 +1331,7 @@ class HDF5IO(HDMFIO):
         dset = cls.__setup_chunked_dset__(parent, name, data, options=options)
         read = True
         while read:
-            read = cls.__write_chunk__(dset, data)
+            read = HDF5IODataChunkIteratorQueue._write_chunk(dset, data)
         return dset
 
     @classmethod
@@ -1445,6 +1357,7 @@ class HDF5IO(HDMFIO):
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
+
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)

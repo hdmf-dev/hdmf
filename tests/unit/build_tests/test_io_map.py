@@ -1,6 +1,4 @@
-import unittest
-from abc import ABCMeta, abstractmethod
-
+from hdmf.utils import docval, getargs
 from hdmf import Container, Data
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
@@ -9,7 +7,8 @@ from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager
 from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
                        LinkSpec)
 from hdmf.testing import TestCase
-from hdmf.utils import docval, getargs
+from abc import ABCMeta, abstractmethod
+import unittest
 
 from tests.unit.utils import CORE_NAMESPACE, create_test_type_map
 
