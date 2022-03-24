@@ -9,7 +9,7 @@ from ..backends.hdf5 import HDF5IO
 from ..build import Builder
 from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
-from ..utils import  get_docval_macro
+from ..utils import get_docval_macro
 from ..data_utils import AbstractDataChunkIterator
 
 
