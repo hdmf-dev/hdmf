@@ -706,7 +706,7 @@ class DataChunk:
 
     def get_min_bounds(self):
         """
-        Helper function to compute the minimum datset size required to fit the selection of this chunk
+        Helper function to compute the minimum dataset size required to fit the selection of this chunk.
 
         :raises TypeError: If the the selection is not a single int, slice, or tuple of slices.
 
