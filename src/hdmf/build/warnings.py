@@ -1,3 +1,6 @@
+"""Module for build warnings"""
+
+
 class BuildWarning(UserWarning):
     """
     Base class for warnings that are raised during the building of a container.

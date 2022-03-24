@@ -704,6 +704,30 @@ class DataChunk:
         """
         return self.data.dtype
 
+    def get_min_bounds(self):
+        """
+        Helper function to compute the minimum dataset size required to fit the selection of this chunk.
+
+        :raises TypeError: If the the selection is not a single int, slice, or tuple of slices.
+
+        :return: Tuple with the minimum shape required to store the selection
+        """
+        if isinstance(self.selection, tuple):
+            # Determine the minimum array dimensions to fit the chunk selection
+            max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x+1 for x in self.selection])
+        elif isinstance(self.selection, int):
+            max_bounds = (self.selection+1, )
+        elif isinstance(self.selection, slice):
+            max_bounds = (self.selection.stop or 0, )
+        else:
+            # Note: Technically any numpy index tuple would be allowed, but h5py is not as general and this case
+            #       only implements the selections supported by h5py. We could add more cases to support a
+            #       broader range of valid numpy selection types
+            msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
+                   "and/or integers") % str(self.selection)
+            raise TypeError(msg)
+        return max_bounds
+
 
 def assertEqualShape(data1,
                      data2,

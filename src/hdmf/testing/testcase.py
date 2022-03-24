@@ -1,4 +1,3 @@
-import h5py
 import numpy as np
 import os
 import re
@@ -10,7 +9,8 @@ from ..backends.hdf5 import HDF5IO
 from ..build import Builder
 from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
-from ..query import HDMFDataset
+from ..utils import get_docval_macro
+from ..data_utils import AbstractDataChunkIterator
 
 
 class TestCase(unittest.TestCase):
@@ -34,13 +34,15 @@ class TestCase(unittest.TestCase):
 
         return self.assertWarnsRegex(warn_type, '^%s$' % re.escape(exc_msg), *args, **kwargs)
 
-    def assertContainerEqual(self, container1, container2, ignore_name=False, ignore_hdmf_attrs=False):
+    def assertContainerEqual(self, container1, container2,
+                             ignore_name=False, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
         """
         Asserts that the two AbstractContainers have equal contents. This applies to both Container and Data types.
 
-        ignore_name - whether to ignore testing equality of name of the top-level container
-        ignore_hdmf_attrs - whether to ignore testing equality of HDMF container attributes, such as
-        container_source and object_id
+        :param ignore_name: whether to ignore testing equality of name of the top-level container
+        :param ignore_hdmf_attrs: whether to ignore testing equality of HDMF container attributes, such as
+                                  container_source and object_id
+        :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
         """
         self.assertTrue(isinstance(container1, AbstractContainer))
         self.assertTrue(isinstance(container2, AbstractContainer))
@@ -62,12 +64,16 @@ class TestCase(unittest.TestCase):
             with self.subTest(field=field, container_type=type1.__name__):
                 f1 = getattr(container1, field)
                 f2 = getattr(container2, field)
-                self._assert_field_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+                self._assert_field_equal(f1, f2,
+                                         ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                         ignore_string_to_byte=ignore_string_to_byte)
 
-    def _assert_field_equal(self, f1, f2, ignore_hdmf_attrs=False):
-        if (isinstance(f1, (tuple, list, np.ndarray, h5py.Dataset))
-                or isinstance(f2, (tuple, list, np.ndarray, h5py.Dataset))):
-            self._assert_array_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+    def _assert_field_equal(self, f1, f2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
+        array_data_types = get_docval_macro('array_data')
+        if (isinstance(f1, array_data_types) or isinstance(f2, array_data_types)):
+            self._assert_array_equal(f1, f2,
+                                     ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                     ignore_string_to_byte=ignore_string_to_byte)
         elif isinstance(f1, dict) and len(f1) and isinstance(f1.values()[0], Container):
             self.assertIsInstance(f2, dict)
             f1_keys = set(f1.keys())
@@ -75,36 +81,51 @@ class TestCase(unittest.TestCase):
             self.assertSetEqual(f1_keys, f2_keys)
             for k in f1_keys:
                 with self.subTest(module_name=k):
-                    self.assertContainerEqual(f1[k], f2[k], ignore_hdmf_attrs=ignore_hdmf_attrs)
+                    self.assertContainerEqual(f1[k], f2[k],
+                                              ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                              ignore_string_to_byte=ignore_string_to_byte)
         elif isinstance(f1, Container):
-            self.assertContainerEqual(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+            self.assertContainerEqual(f1, f2,
+                                      ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                      ignore_string_to_byte=ignore_string_to_byte)
         elif isinstance(f1, Data):
-            self._assert_data_equal(f1, f2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+            self._assert_data_equal(f1, f2,
+                                    ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                    ignore_string_to_byte=ignore_string_to_byte)
         elif isinstance(f1, (float, np.floating)):
             np.testing.assert_allclose(f1, f2)
         else:
             self.assertEqual(f1, f2)
 
-    def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False):
+    def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
         self.assertTrue(isinstance(data1, Data))
         self.assertTrue(isinstance(data2, Data))
         self.assertEqual(len(data1), len(data2))
-        self._assert_array_equal(data1.data, data2.data, ignore_hdmf_attrs=ignore_hdmf_attrs)
+        self._assert_array_equal(data1.data, data2.data,
+                                 ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                 ignore_string_to_byte=ignore_string_to_byte)
         self.assertContainerEqual(data1, data2, ignore_hdmf_attrs=ignore_hdmf_attrs)
 
-    def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False):
-        if isinstance(arr1, (h5py.Dataset, HDMFDataset)):
+    def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
+        array_data_types = tuple([i for i in get_docval_macro('array_data')
+                                  if (i != list and i != tuple and i != AbstractDataChunkIterator)])
+        # We construct array_data_types this way to avoid explicit dependency on h5py, Zarr and other
+        # I/O backends. Only list and tuple do not support [()] slicing, and AbstractDataChunkIterator
+        # should never occur here. The effective value of array_data_types is then:
+        # array_data_types = (np.ndarray, h5py.Dataset, zarr.core.Array, hdmf.query.HDMFDataset)
+        if isinstance(arr1, array_data_types):
             arr1 = arr1[()]
-        if isinstance(arr2, (h5py.Dataset, HDMFDataset)):
+        if isinstance(arr2, array_data_types):
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
             if isinstance(arr1, (float, np.floating)):
                 np.testing.assert_allclose(arr1, arr2)
             else:
-                if isinstance(arr1, bytes):
-                    arr1 = arr1.decode('utf-8')
-                if isinstance(arr2, bytes):
-                    arr2 = arr2.decode('utf-8')
+                if ignore_string_to_byte:
+                    if isinstance(arr1, bytes):
+                        arr1 = arr1.decode('utf-8')
+                    if isinstance(arr2, bytes):
+                        arr2 = arr2.decode('utf-8')
                 self.assertEqual(arr1, arr2)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2))
@@ -120,11 +141,17 @@ class TestCase(unittest.TestCase):
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
-                        self.assertContainerEqual(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+                        self.assertContainerEqual(sub1, sub2,
+                                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                                  ignore_string_to_byte=ignore_string_to_byte)
                     elif isinstance(sub1, Data):
-                        self._assert_data_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+                        self._assert_data_equal(sub1, sub2,
+                                                ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                                ignore_string_to_byte=ignore_string_to_byte)
                     else:
-                        self._assert_array_equal(sub1, sub2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+                        self._assert_array_equal(sub1, sub2,
+                                                 ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                                 ignore_string_to_byte=ignore_string_to_byte)
 
     def assertBuilderEqual(self, builder1, builder2, check_path=True, check_source=True):
         """Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
