@@ -1282,7 +1282,9 @@ class TestCloseLinks(TestCase):
         if self.path2 is not None:
             os.remove(self.path2)
 
-    def test_close_file_with_links(self):
+    def test_close_linked_files_auto(self):
+        """Test closing a file with close_links=True (default).
+        """
         # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('bucket1', [foo1])
@@ -1304,6 +1306,38 @@ class TestCloseLinks(TestCase):
 
         with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
             read_foofile2 = new_io1.read()  # keep reference to container in memory
+
+        self.assertFalse(read_foofile2.foo_link.my_data)
+
+        # should be able to reopen both files
+        with HDF5IO(self.path1, mode='a', manager=_get_manager()) as new_io3:
+            new_io3.read()
+
+    def test_close_linked_files_explicit(self):
+        """Test closing a file with close_links=False and calling close_linked_files().
+        """
+        # Create the first file
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('bucket1', [foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+
+        # Write the first file
+        with HDF5IO(self.path1, mode='w', manager=_get_manager()) as io:
+            io.write(foofile1)
+
+        # Create the second file
+        manager = _get_manager()  # use the same manager for read and write so that links work
+        with HDF5IO(self.path1, mode='r', manager=manager) as read_io:
+            read_foofile1 = read_io.read()
+            foofile2 = FooFile(foo_link=read_foofile1.buckets['bucket1'].foos['foo1'])  # cross-file link
+
+            # Write the second file
+            with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
+                write_io.write(foofile2)
+
+        new_io1 = HDF5IO(self.path2, mode='a', manager=_get_manager())
+        read_foofile2 = new_io1.read()  # keep reference to container in memory
+        new_io1.close(close_links=False)  # do not close the links
 
         self.assertTrue(read_foofile2.foo_link.my_data)
         new_io1.close_linked_files()
@@ -1313,7 +1347,9 @@ class TestCloseLinks(TestCase):
         with HDF5IO(self.path1, mode='a', manager=_get_manager()) as new_io3:
             new_io3.read()
 
-    def test_double_close_file_with_links(self):
+    def test_close_links_manually_and_close(self):
+        """Test closing a file with close_links=False, manually closing open links, and calling close_linked_files().
+        """
         # Create the first file
         foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
         bucket1 = FooBucket('bucket1', [foo1])
@@ -1333,12 +1369,45 @@ class TestCloseLinks(TestCase):
             with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
                 write_io.write(foofile2)
 
-        with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
-            read_foofile2 = new_io1.read()  # keep reference to container in memory
+        new_io1 = HDF5IO(self.path2, mode='a', manager=_get_manager())
+        read_foofile2 = new_io1.read()  # keep reference to container in memory
+        new_io1.close(close_links=False)  # do not close the links
 
+        self.assertTrue(read_foofile2.foo_link.my_data)
         read_foofile2.foo_link.my_data.file.close()  # explicitly close the file from the h5dataset
         self.assertFalse(read_foofile2.foo_link.my_data)
         new_io1.close_linked_files()  # make sure this does not fail because the linked-to file is already closed
+
+    def test_close_linked_files_not_disruptive(self):
+        """Test closing a file with close_links=True (default) does not interfere with other open file handles.
+        """
+        # Create the first file
+        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
+        bucket1 = FooBucket('bucket1', [foo1])
+        foofile1 = FooFile(buckets=[bucket1])
+
+        # Write the first file
+        with HDF5IO(self.path1, mode='w', manager=_get_manager()) as io:
+            io.write(foofile1)
+
+        # Create the second file
+        manager = _get_manager()  # use the same manager for read and write so that links work
+        with HDF5IO(self.path1, mode='r', manager=manager) as read_io:
+            read_foofile1 = read_io.read()
+            foofile2 = FooFile(foo_link=read_foofile1.buckets['bucket1'].foos['foo1'])  # cross-file link
+
+            # Write the second file
+            with HDF5IO(self.path2, mode='w', manager=manager) as write_io:
+                write_io.write(foofile2)
+
+        read_io = HDF5IO(self.path1, mode='r', manager=manager)
+        read_foofile1 = read_io.read()
+
+        with HDF5IO(self.path2, mode='a', manager=_get_manager()) as new_io1:
+            new_io1.read()  # keep reference to container in memory
+
+        self.assertTrue(read_io)  # make sure read_io is not closed
+        read_io.close()
 
 
 class HDF5IOInitNoFileTest(TestCase):
@@ -1753,8 +1822,6 @@ class TestReadLink(TestCase):
         self.ios = []
 
     def tearDown(self):
-        for io in self.ios:
-            io.close_linked_files()
         if os.path.exists(self.target_path):
             os.remove(self.target_path)
         if os.path.exists(self.link_path):
@@ -1833,8 +1900,6 @@ class TestBuildWriteLinkToLink(TestCase):
         self.ios = []
 
     def tearDown(self):
-        for io in self.ios:
-            io.close_linked_files()
         for p in self.paths:
             if os.path.exists(p):
                 os.remove(p)
@@ -2338,8 +2403,6 @@ class TestExport(TestCase):
         self.ios = []
 
     def tearDown(self):
-        for io in self.ios:
-            io.close_linked_files()
         for p in self.paths:
             if os.path.exists(p):
                 os.remove(p)
