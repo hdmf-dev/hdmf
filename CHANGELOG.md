@@ -2,6 +2,9 @@
 
 ## HDMF 3.2.2 (Upcoming)
 
+### Bug fixes
+- Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)
+
 ### Minor improvements
 - Improved readability of ``Container`` code. @rly (#707)
 
