@@ -3,7 +3,8 @@
 ## HDMF 3.2.2 (Upcoming)
 
 ### Bug fixes
-- Fixed opening of files in append mode on Windows when the files contain links to other open files. @rly ()
+- Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)
+- Fixed opening of files in append mode on Windows when the files contain links to other open files. @rly (#710)
 
 ### Minor improvements
 - Improved readability of ``Container`` code. @rly (#707)
