@@ -333,6 +333,18 @@ class AbstractContainer(metaclass=ExtenderMeta):
         child.set_modified()
         self.set_modified()
 
+    def reset_parent(self):
+        """Reset the parent of this Container to None and remove the Container from the children of its parent.
+
+        Use with caution. This can result in orphaned containers and broken links.
+        """
+        if self.parent is None:
+            return
+        elif isinstance(self.parent, AbstractContainer):
+            self.parent._remove_child(self)
+        else:
+            raise ValueError("Cannot reset parent when parent is not an AbstractContainer: %s" % repr(self.parent))
+
 
 class Container(AbstractContainer):
     """A container that can contain other containers and has special functionality for printing."""
@@ -345,8 +357,9 @@ class Container(AbstractContainer):
         super_setter = AbstractContainer._setter(field)
         ret = [super_setter]
         # create setter with check for required name
+        # the AbstractContainer that is passed to the setter must have name = required_name
         if field.get('required_name', None) is not None:
-            name = field['required_name']
+            required_name = field['required_name']
             idx1 = len(ret) - 1
 
             def container_setter(self, val):
@@ -355,11 +368,11 @@ class Container(AbstractContainer):
                         msg = ("Field '%s' on %s has a required name and must be a subclass of AbstractContainer."
                                % (field['name'], self.__class__.__name__))
                         raise ValueError(msg)
-                    if val.name != name:
+                    if val.name != required_name:
                         msg = ("Field '%s' on %s must be named '%s'."
-                               % (field['name'], self.__class__.__name__, name))
+                               % (field['name'], self.__class__.__name__, required_name))
                         raise ValueError(msg)
-                ret[idx1](self, val)
+                ret[idx1](self, val)  # call the previous setter
 
             ret.append(container_setter)
 
@@ -368,7 +381,7 @@ class Container(AbstractContainer):
             idx2 = len(ret) - 1
 
             def container_setter(self, val):
-                ret[idx2](self, val)
+                ret[idx2](self, val)  # call the previous setter
                 if val is not None:
                     if isinstance(val, (tuple, list)):
                         pass
@@ -379,11 +392,13 @@ class Container(AbstractContainer):
                     for v in val:
                         if not isinstance(v.parent, Container):
                             v.parent = self
-                        # else, the ObjectMapper will create a link from self (parent) to v (child with existing
-                        # parent)
+                        else:
+                            # the ObjectMapper will create a link from self (parent) to v (child with existing parent)
+                            # still need to mark self as modified
+                            self.set_modified()
 
             ret.append(container_setter)
-        return ret[-1]
+        return ret[-1]  # return the last setter (which should call the previous setters, if applicable)
 
     def __repr__(self):
         cls = self.__class__
@@ -725,7 +740,10 @@ class MultiContainerInterface(Container):
             for tmp in containers:
                 if not isinstance(tmp.parent, Container):
                     tmp.parent = self
-                # else, the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                else:
+                    # the ObjectMapper will create a link from self (parent) to tmp (child with existing parent)
+                    # still need to mark self as modified
+                    self.set_modified()
                 if tmp.name in d:
                     msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
                     raise ValueError(msg)
@@ -971,6 +989,9 @@ class Row(object, metaclass=ExtenderMeta):
     def __eq__(self, other):
         return self.idx == other.idx and self.table is other.table
 
+    def __str__(self):
+        return "Row(%i, %s) = %s" % (self.idx, self.table.name, str(self.todict()))
+
 
 class RowGetter:
     """
@@ -1033,7 +1054,7 @@ class Table(Data):
                 name = {'name': 'name', 'type': str, 'doc': 'the name of this table'}
                 defname = getattr(cls, '__defaultname__', None)
                 if defname is not None:
-                    name['default'] = defname
+                    name['default'] = defname  # override the name with the default name if present
 
                 @docval(name,
                         {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the data in this table',

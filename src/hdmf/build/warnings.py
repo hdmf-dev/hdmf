@@ -1,6 +1,4 @@
-"""
-Collection of warnings used during the data translation process to construct builders from containers and vice versa.
-"""
+"""Module for build warnings"""
 
 
 class BuildWarning(UserWarning):

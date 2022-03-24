@@ -20,7 +20,7 @@ assignees: ''
 <!--Please describe your environment according to the following bullet points.-->
 
     Python Executable: Conda or Python
-    Python Version: Python 3.7, 3.8, or 3.9
+    Python Version: Python 3.7, 3.8, 3.9, or 3.10
     Operating System: Windows, macOS or Linux
     HDMF Version:
 

@@ -918,7 +918,7 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
             self._getitem(12)
 
     def test_getitem_badcol(self):
-        with self.assertRaisesWith(KeyError, '\'boo\''):
+        with self.assertRaises(KeyError):
             self._getitem('boo')
 
     def _assert_two_elem_df(self, rec):
@@ -1163,7 +1163,7 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertIsNone(table.col11_index)
 
         # uninitialized optional predefined columns cannot be accessed in this manner
-        with self.assertRaisesWith(KeyError, "'col2'"):
+        with self.assertRaises(KeyError):
             table['col2']
 
     def test_gather_columns_inheritance(self):

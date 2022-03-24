@@ -45,7 +45,7 @@ codecov_, which shows line by line which lines are covered by the tests.
 Requirement Specifications
 --------------------------
 
-There are 5 kinds of requirements specification in HDMF.
+There are 6 kinds of requirements specification in HDMF.
 
 The first one is requirements-min.txt_, which lists the package dependencies and their minimum versions for
 installing HDMF.
@@ -57,7 +57,10 @@ The third one is requirements-dev.txt_, which list the pinned (concrete) depende
 an entire development environment to use HDMF, run HDMF tests, check code style, compute coverage, and create test
 environments.
 
-The fourth one is requirements-doc.txt_, which lists the dependencies to generate the documentation for HDMF.
+The fourth one is requirements-opt.txt_, which lists the pinned (concrete) optional dependencies to use all
+available features in HDMF.
+
+The fifth one is requirements-doc.txt_, which lists the dependencies to generate the documentation for HDMF.
 Both this file and `requirements.txt` are used by ReadTheDocs_ to initialize the local environment for Sphinx to run.
 
 The final one is within setup.py_, which contains a list of package dependencies and their version ranges allowed for
@@ -72,6 +75,7 @@ If some of the packages are outdated, see :ref:`update_requirements_files`.
 .. _setup.py: https://github.com/hdmf-dev/hdmf/blob/dev/setup.py
 .. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
 .. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
+.. _requirements-opt.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-opt.txt
 .. _requirements-doc.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-doc.txt
 .. _ReadTheDocs: https://readthedocs.org/projects/hdmf/
 .. _requires.io: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev

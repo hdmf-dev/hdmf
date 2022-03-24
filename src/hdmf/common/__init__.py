@@ -123,46 +123,6 @@ def get_class(**kwargs):
     return __TYPE_MAP.get_dt_container_cls(data_type, namespace)
 
 
-# load the hdmf-common namespace
-__resources = __get_resources()
-if os.path.exists(__resources['namespace_path']):
-    __TYPE_MAP = TypeMap(NamespaceCatalog())
-
-    load_namespaces(__resources['namespace_path'])
-
-    # import these so the TypeMap gets populated
-    from . import io as __io  # noqa: F401,E402
-
-    from . import table  # noqa: F401,E402
-    from . import alignedtable  # noqa: F401,E402
-    from . import sparse  # noqa: F401,E402
-    from . import resources  # noqa: F401,E402
-    from . import multi  # noqa: F401,E402
-
-    # register custom class generators
-    from .io.table import DynamicTableGenerator
-    __TYPE_MAP.register_generator(DynamicTableGenerator)
-
-    from .. import Data, Container
-    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
-    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
-
-else:
-    raise RuntimeError("Unable to load a TypeMap - no namespace file found")
-
-
-DynamicTable = get_class('DynamicTable', CORE_NAMESPACE)
-VectorData = get_class('VectorData', CORE_NAMESPACE)
-VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
-ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
-DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
-EnumData = get_class('EnumData', EXP_NAMESPACE)
-CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
-ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
-SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
-AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)
-
-
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
          'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
          'default': None},
@@ -240,3 +200,43 @@ def get_hdf5io(**kwargs):
         kwargs['manager'] = get_manager()
     cargs, ckwargs = fmt_docval_args(HDF5IO.__init__, kwargs)
     return HDF5IO(*cargs, **ckwargs)
+
+
+# load the hdmf-common namespace
+__resources = __get_resources()
+if os.path.exists(__resources['namespace_path']):
+    __TYPE_MAP = TypeMap(NamespaceCatalog())
+
+    load_namespaces(__resources['namespace_path'])
+
+    # import these so the TypeMap gets populated
+    from . import io as __io  # noqa: F401,E402
+
+    from . import table  # noqa: F401,E402
+    from . import alignedtable  # noqa: F401,E402
+    from . import sparse  # noqa: F401,E402
+    from . import resources  # noqa: F401,E402
+    from . import multi  # noqa: F401,E402
+
+    # register custom class generators
+    from .io.table import DynamicTableGenerator
+    __TYPE_MAP.register_generator(DynamicTableGenerator)
+
+    from .. import Data, Container
+    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Container', Container)
+    __TYPE_MAP.register_container_type(CORE_NAMESPACE, 'Data', Data)
+
+else:
+    raise RuntimeError("Unable to load a TypeMap - no namespace file found")
+
+
+DynamicTable = get_class('DynamicTable', CORE_NAMESPACE)
+VectorData = get_class('VectorData', CORE_NAMESPACE)
+VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
+ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
+DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
+EnumData = get_class('EnumData', EXP_NAMESPACE)
+CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
+ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
+SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
+AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)

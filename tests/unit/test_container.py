@@ -175,6 +175,7 @@ class TestContainer(TestCase):
         child_obj.parent = parent_obj
         child_obj3.parent = parent_obj
         parent_obj._remove_child(child_obj)
+        self.assertIsNone(child_obj.parent)
         self.assertTupleEqual(parent_obj.children, (child_obj3, ))
         self.assertTrue(parent_obj.modified)
         self.assertTrue(child_obj.modified)
@@ -192,6 +193,36 @@ class TestContainer(TestCase):
         msg = "Container 'dummy' is not a child of Container 'obj1'."
         with self.assertRaisesWith(ValueError, msg):
             Container('obj1')._remove_child(Container('dummy'))
+
+    def test_reset_parent(self):
+        """Test that removing a child removes only the child.
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj3 = Container('obj3')
+        child_obj.parent = parent_obj
+        child_obj3.parent = parent_obj
+        child_obj.reset_parent()
+        self.assertIsNone(child_obj.parent)
+        self.assertTupleEqual(parent_obj.children, (child_obj3, ))
+        self.assertTrue(parent_obj.modified)
+        self.assertTrue(child_obj.modified)
+
+    def test_reset_parent_parent_noncontainer(self):
+        """Test that resetting a parent that is not a container raises an error.
+        """
+        obj = Container('obj1')
+        obj.parent = object()
+        msg = "Cannot reset parent when parent is not an AbstractContainer: %s" % repr(obj.parent)
+        with self.assertRaisesWith(ValueError, msg):
+            obj.reset_parent()
+
+    def test_reset_parent_no_parent(self):
+        """Test that resetting a non-existent parent has no effect.
+        """
+        obj = Container('obj1')
+        obj.reset_parent()
+        self.assertIsNone(obj.parent)
 
 
 class TestData(TestCase):
@@ -345,7 +376,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         obj = NamedFieldsNotSettable('test name')
 
         obj.field1 = 'field1 value'
-        with self.assertRaisesWith(AttributeError, "can't set attribute"):
+        with self.assertRaises(AttributeError):
             obj.field2 = 'field2 value'
 
     def test_inheritance(self):
@@ -379,7 +410,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertEqual(ret[0], {'name': 'field1', 'doc': 'overridden field', 'settable': False})
 
         # obj = NamedFieldsChild('test name')
-        # with self.assertRaisesWith(AttributeError, "can't set attribute"):
+        # with self.assertRaises(AttributeError):
         #     obj.field1 = 'field1 value'
 
     def test_mult_inheritance_base_mixin(self):
@@ -461,6 +492,28 @@ class TestContainerFieldsConf(TestCase):
 
         obj2 = ContainerWithChild()
         self.assertIsNone(obj2.field1)
+
+    def test_setter_set_modified(self):
+        class ContainerWithChild(Container):
+            __fields__ = ({'name': 'field1', 'child': True}, )
+
+            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+            def __init__(self, **kwargs):
+                super().__init__('test name')
+                self.field1 = kwargs['field1']
+
+        child_obj1 = Container('test child 1')
+        obj1 = ContainerWithChild()
+        obj1.set_modified(False)  # set to False so that we can test that it is set to True next
+        obj1.field1 = child_obj1
+        self.assertTrue(obj1.modified)
+        self.assertIs(obj1.field1, child_obj1)
+
+        obj3 = ContainerWithChild()
+        obj3.set_modified(False)  # set to False so that we can test that it is set to True next
+        obj3.field1 = child_obj1  # child_obj1 already has a parent
+        self.assertTrue(obj3.modified)
+        self.assertIs(obj3.field1, child_obj1)
 
 
 class TestChangeFieldsName(TestCase):

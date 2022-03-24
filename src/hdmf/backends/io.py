@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
 from ..container import Container
+from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
 
 
@@ -88,6 +89,11 @@ class HDMFIO(metaclass=ABCMeta):
             old_io = HDF5IO('old.nwb', 'r')
             with HDF5IO('new_copy.nwb', 'w') as new_io:
                 new_io.export(old_io)
+
+        NOTE: When implementing export support on custom backends. Export does not update the Builder.source
+              on the Builders. As such, when writing LinkBuilders we need to determine if LinkBuilder.source
+              and LinkBuilder.builder.source are the same, and if so the link should be internal to the
+              current file (even if the Builder.source points to a different location).
         """
         src_io, container, write_args = getargs('src_io', 'container', 'write_args', kwargs)
         if container is not None:
@@ -137,7 +143,3 @@ class HDMFIO(metaclass=ABCMeta):
 
     def __exit__(self, type, value, traceback):
         self.close()
-
-
-class UnsupportedOperation(ValueError):
-    pass

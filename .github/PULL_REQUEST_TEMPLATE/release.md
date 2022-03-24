@@ -11,10 +11,10 @@ Prepare for release of HDMF [version]
 - [ ] Update `src/hdmf/common/hdmf-common-schema` submodule as needed. Check the version number and commit SHA manually
 - [ ] Update changelog (set release date) in `CHANGELOG.md` and any other docs as needed
 - [ ] Run tests locally including gallery tests, and inspect all warnings and outputs
-  (`python test.py -v > out.txt`)
+  (`python test.py -v -u -e > out.txt 2>&1`)
 - [ ] Run PyNWB tests locally including gallery and validation tests, and inspect all warnings and outputs
-  (`python test.py -v > out.txt`)
-- [ ] Test docs locally (`make apidoc`, `make html`)
+  (`python test.py -v > out.txt 2>&1`)
+- [ ] Test docs locally (`make clean`, `make html`)
 - [ ] Push changes to this PR and make sure all PRs to be included in this release have been merged
 - [ ] Check that the readthedocs build for this PR succeeds (build latest to pull the new branch, then activate and
   build docs for new branch): https://readthedocs.org/projects/hdmf/builds/

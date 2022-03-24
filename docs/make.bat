@@ -11,6 +11,7 @@ if "%SPHINXAPIDOC%" == "" (
 set BUILDDIR=_build
 set RSTDIR=source
 set SRCDIR=../src
+set GALLERYDIR=gallery
 set PKGNAME=hdmf
 set ALLSPHINXOPTS=-d %BUILDDIR%/doctrees %SPHINXOPTS% %RSTDIR%
 set I18NSPHINXOPTS=%SPHINXOPTS% .
@@ -50,6 +51,8 @@ if "%1" == "clean" (
 	for /d %%i in (%BUILDDIR%\*) do rmdir /q /s %%i
 	del /q /s %BUILDDIR%\*
 	del /q %RSTDIR%\%PKGNAME%*.rst
+	del /q %GALLERYDIR%\*.hdf5
+	del /q %GALLERYDIR%\*.sqlite
 	rmdir /q /s %RSTDIR%\tutorials
 	rmdir /q /s %RSTDIR%\_autosummary
 	goto end

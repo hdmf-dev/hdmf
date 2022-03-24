@@ -2,10 +2,8 @@ import os
 from shutil import copyfile
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
+from tests.unit.utils import Foo, FooBucket, get_foo_buildmanager
 from hdmf.testing import TestCase
-
-from tests.unit.test_io_hdf5_h5tools import _get_manager
-from tests.unit.utils import Foo, FooBucket
 
 
 class Test1_1_0(TestCase):
@@ -18,7 +16,7 @@ class Test1_1_0(TestCase):
 
         # note: this may break if the current manager is different from the old manager
         # better to save a spec file
-        self.manager = _get_manager()
+        self.manager = get_foo_buildmanager()
 
     def tearDown(self):
         if os.path.exists(self.path_1_0_5):

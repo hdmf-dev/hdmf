@@ -8,9 +8,7 @@ from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape
-
-from tests.unit.test_io_hdf5_h5tools import _get_manager
-from tests.unit.utils import Foo
+from tests.unit.utils import Foo, get_foo_buildmanager
 
 
 class HDF5Encoder(json.JSONEncoder):
@@ -149,7 +147,7 @@ class GroupBuilderTestCase(TestCase):
 class TestHDF5Writer(GroupBuilderTestCase):
 
     def setUp(self):
-        self.manager = _get_manager()
+        self.manager = get_foo_buildmanager()
         self.path = "test_io_hdf5.h5"
 
         self.foo_builder = GroupBuilder('foo1',

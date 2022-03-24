@@ -164,6 +164,14 @@ class TestBasic(TestCase):
         self.assertDictEqual(foo.containers, {'obj1': obj1})
         self.assertIs(obj1.parent, foo)
 
+    def test_add_single_modified(self):
+        """Test that adding a container to the attribute dict correctly makes the MCI as modified."""
+        obj1 = Container('obj1')
+        foo = Foo()
+        foo.set_modified(False)  # set to False so that we can test whether add_container makes it True
+        foo.add_container(obj1)
+        self.assertTrue(foo.modified)
+
     def test_add_single_not_parent(self):
         """Test that adding a container with a parent to the attribute dict correctly adds the container."""
         obj1 = Container('obj1')
@@ -173,6 +181,16 @@ class TestBasic(TestCase):
         foo.add_container(obj1)
         self.assertDictEqual(foo.containers, {'obj1': obj1})
         self.assertIs(obj1.parent, obj2)
+
+    def test_add_single_not_parent_modified(self):
+        """Test that adding a container with a parent to the attribute dict correctly marks the MCI as modified."""
+        obj1 = Container('obj1')
+        obj2 = Container('obj2')
+        obj1.parent = obj2
+        foo = Foo()
+        foo.set_modified(False)  # set to False so that we can test whether add_container makes it True
+        foo.add_container(obj1)
+        self.assertTrue(foo.modified)
 
     def test_add_single_dup(self):
         """Test that adding a container to the attribute dict correctly adds the container."""

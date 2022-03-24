@@ -1,6 +1,4 @@
-"""
-Collection of errors used during the data translation process to construct builders from containers and vice versa.
-"""
+"""Module for build error definitions"""
 from .builders import Builder
 from ..container import AbstractContainer
 from ..utils import docval, getargs

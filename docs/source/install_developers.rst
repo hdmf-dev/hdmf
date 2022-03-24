@@ -77,7 +77,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
     git clone --recurse-submodules https://github.com/hdmf-dev/hdmf.git
     cd hdmf
-    pip install -r requirements.txt -r requirements-dev.txt -r requirements-doc.txt
+    pip install -r requirements.txt -r requirements-dev.txt -r requirements-doc.txt -r requirements-opt.txt
     pip install -e .
 
 .. note::
@@ -87,7 +87,8 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
    .. code:: bash
 
-      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt
+      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt \
+      --file=requirements-opt.txt
 
 Run tests
 ---------
@@ -125,7 +126,7 @@ Python debugger (PDB) prompt on an error, e.g.,
 
 
 Finally, you can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
-create a virtual environment, install dependencies, and run the test suite for Python 3.6, 3.7, 3.8, and 3.9.
+create a virtual environment, install dependencies, and run the test suite for Python 3.7, 3.8, 3.9, and 3.10.
 This can take some time to run.
 
 .. _pytest: https://docs.pytest.org/
