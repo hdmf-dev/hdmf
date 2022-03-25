@@ -11,6 +11,7 @@
 
 ### Bug fixes
 - Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)
+- Fixed opening of files in append mode on Windows when the files contain links to other open files. @rly (#710)
 
 ### Minor improvements
 - Updated `HDF5IO` to use the new `WriteStatusTracker`, `NamespaceToBuilderHelper`, and `HDF5IODataChunkIteratorQueue` helper classes. @oruebel (#697)
@@ -46,6 +47,7 @@
 - Improved testing for `ExternalResources`. @mavaylon (#673)
 - Improved docs for export. @rly (#674)
 - Enhanced data chunk iteration speeds through new ``GenericDataChunkIterator`` class.  @CodyCBakerPhD (#672)
+- Enhanced issue template forms on GitHub. @CodyCBakerPHD (#700)
 
 ### Bug fixes
 - Fixed `setup.py` not being able to import `versioneer` when installing in an embedded Python environment. @rly (#662)

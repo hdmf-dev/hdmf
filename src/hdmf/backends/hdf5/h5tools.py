@@ -724,7 +724,14 @@ class HDF5IO(HDMFIO):
 
             self.__file = File(self.source, open_flag, **kwargs)
 
-    def close(self):
+    def close(self, close_links=True):
+        """Close this file and any files linked to from this file.
+
+        :param close_links: Whether to close all files linked to from this file. (default: True)
+        :type close_links: bool
+        """
+        if close_links:
+            self.close_linked_files()
         if self.__file is not None:
             self.__file.close()
 
