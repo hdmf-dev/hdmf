@@ -765,6 +765,8 @@ class ExternalResources(Container):
         """
         Write ExternalResources to HDF5
 
+        TODO: name dropped when written
+
         In the HDF5 file the individual tables are stored according to the ExternalResources
         schema in separate compound datasets. In addition the file will also cache the
         schema as part of the `/specifications` group.
