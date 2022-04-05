@@ -310,11 +310,12 @@ class TestContainerExternalResources(TestCase):
 
 
 class TestData(TestCase):
-    _ontology_entities = {
-        "Homo sapiens": OntologyEntity('9606',
-                                       'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
-        "Mus musculus": OntologyEntity('10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'),
-        "valid_data": OntologyEntity('1234', 'https://uri')}
+    if pynert == True:
+        _ontology_entities = {
+            "Homo sapiens": OntologyEntity('9606',
+                                           'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
+            "Mus musculus": OntologyEntity('10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'),
+            "valid_data": OntologyEntity('1234', 'https://uri')}
 
     def test_constructor_scalar(self):
         """Test that constructor works correctly on scalar data
