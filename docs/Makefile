@@ -7,6 +7,7 @@ SPHINXBUILD    = sphinx-build
 SPHINXAPIDOC   = sphinx-apidoc
 PAPER          =
 BUILDDIR       = _build
+GALLERYDIR     = gallery
 SRCDIR         = ../src
 RSTDIR         = source
 PKGNAME        = hdmf
@@ -46,6 +47,7 @@ help:
 
 clean:
 	-rm -rf $(BUILDDIR)/* $(RSTDIR)/$(PKGNAME)*.rst $(RSTDIR)/tutorials
+	-rm -f ${GALLERYDIR}/*.h5 ${GALLERYDIR}/*.sqlite ${GALLERYDIR}/*.csv
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

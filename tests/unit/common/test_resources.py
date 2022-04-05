@@ -47,6 +47,97 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                          [(0, 0, '10090', 'uri')])
         self.assertEqual(er.objects.data, [('object', 'species')])
 
+    def test_assert_external_resources_equal(self):
+        er_left = ExternalResources('terms')
+        er_left.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
+
+        er_right = ExternalResources('terms')
+        er_right.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
+
+        self.assertTrue(ExternalResources.assert_external_resources_equal(er_left,
+                                                                          er_right))
+
+    def test_invalid_assert_external_resources_equal(self):
+        er_left = ExternalResources('terms')
+        er_left.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="invalid", entity_uri='url11')
+
+        er_right = ExternalResources('terms')
+        er_right.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
+
+        with self.assertRaises(AssertionError):
+            ExternalResources.assert_external_resources_equal(er_left,
+                                                              er_right)
+
+    def test_to_hdf5_and_from_hdf5(self):
+        # write er to file
+        self.container.to_hdf5(path=self.export_filename)
+        # read er back from file and compare
+        er_io, er_obj = ExternalResources.from_hdf5(path=self.export_filename)
+        # Check that the data is correct
+        ExternalResources.assert_external_resources_equal(er_obj, self.container, check_dtype=False)
+        # Close the io!
+        er_io.close()
+
+    def test_to_csv_and_from_csv(self):
+        # write er to file
+        self.container.to_csv(path=self.export_filename)
+        # read er back from file and compare
+        er_obj = ExternalResources.from_csv(path=self.export_filename)
+        # Check that the data is correct
+        ExternalResources.assert_external_resources_equal(er_obj, self.container, check_dtype=False)
+
+    def test_to_csv_and_from_csv_missing_keyidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('keys', 'keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv(self.export_filename)
+        # read er back from file and compare
+        msg = "Missing keys_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_csv(path=self.export_filename)
+
+    def test_to_csv_and_from_csv_missing_objectidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('objects', 'objects_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv(self.export_filename)
+        # read er back from file and compare
+        msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_csv(path=self.export_filename)
+
+    def test_to_csv_and_from_csv_missing_resourcesidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('resources', 'resources_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv(self.export_filename)
+        # read er back from file and compare
+        msg = "Missing resources_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_csv(path=self.export_filename)
+
+    def test_to_csv_and_from_csv_missing_entitiesidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('entities', 'entities_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv(self.export_filename)
+        # read er back from file and compare
+        msg = "Missing entities_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_csv(path=self.export_filename)
+
     def test_to_dataframe(self):
         # Setup complex external resources with keys reused across objects and
         # multiple resources per key
@@ -118,6 +209,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
              'object_id': {0: data1.object_id, 1: data1.object_id,
                            2: data2.object_id, 3: data2.object_id, 4: data2.object_id,
                            5: data3.object_id, 6: data3.object_id},
+             'relative_path': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '', 6: ''},
              'field': {0: 'species', 1: 'species', 2: '', 3: '', 4: '', 5: '', 6: ''},
              'keys_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 3},
              'key': {0: 'Mus musculus', 1: 'Homo sapiens', 2: 'Mus musculus', 3: 'Homo sapiens',
@@ -145,7 +237,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # Convert to dataframe with categories and compare against the expected result
         result_df = er.to_dataframe(use_categories=True)
         cols_with_categories = [
-            ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+            ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'relative_path'), ('objects', 'field'),
             ('keys', 'keys_idx'), ('keys', 'key'),
             ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
             ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]

@@ -28,14 +28,15 @@ and usability for your use cases.
 # A typical use case of the latter would be to create a controlled set of values
 # within data. The user is able to add this "linked" ontology to
 # :py:class:`~hdmf.common.resources.ExternalResources` via (TBD on function).
+
 .. code-block:: python
-    from hdmf import Ontology, EnsemblOntology, NCBI_Taxonomy, WebAPIOntology, LocalOntology, Container
+    from pynert.ontology import WebAPIOntology, LocalOntology
+    from pynert.resources.ensembl import EnsemblOntology
+    from pynert.resources.ncbi import NCBI_Taxonomy
+    from hdmf.container import Data
     from ndx_external_resources import ERNWBFile
-    from ndx_genotype import GenotypeSubject, GenotypesTable, AllelesTable
+    from ndx_genotype import GenotypeSubject
     import datetime
-    from dateutil.tz import tzlocal
-
-
 ###############################################################################
 # Creating a LocalOntology
 # ------------------------------------------------------
@@ -51,15 +52,19 @@ and usability for your use cases.
     ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri')
 
     # Populating the ontology
-    ontology.add_ontology_entity(key='Homo sapiens', entity_value=['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'])
+    ontology.add_ontology_entity(key='Homo sapiens',
+                                 entity=['id', 'uri'])
     # named tuple/dict to provide context of the list values
 
     # Removing an entry from the ontology
     ontology.remove_ontology_entity('Homo sapiens')
 
     # Note: You can set the ontology entities when creating a new instance of :py:class:`~hdmf.ontology.LocalOntology`.
-    ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
-    ontology = LocalOntology(version='1.0', ontology_name='ontology_name', ontology_uri='ontology_uri', ontology_entities=ontology_entities)
+    entities = {"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606']}
+    ontology = LocalOntology(version='1.0',
+                             ontology_name='ontology_name',
+                             ontology_uri='ontology_uri',
+                             ontology_entities=entities)
 
     # Writing the ontology as an YAML file
     ontology.write_ontology_yaml(path="path_to_target_directory")
@@ -69,7 +74,6 @@ and usability for your use cases.
 
     # Retrieving specfic entries from the ontology with the entity key
     ontology.get_ontology_entity('Homo sapiens')
-
 
 ###############################################################################
 # Creating a WebAPIOntology
@@ -84,7 +88,8 @@ and usability for your use cases.
 # as in :py:class:`~hdmf.ontology.LocalOntology`.
 .. code-block:: python
     # Let's create an instance of :py:class:`~hdmf.ontology.LocalOntology`.
-    ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
+    ontology = WebAPIOntology(version='1.0', ontology_name='Ensembl',
+                              ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/')
 
     # Using :py:func:`~hdmf.ontology.WebAPIOntology.get_ontology_entity` to request Web API
     entity_id, entity_uri = ontology.get_ontology_entity(key='Homo sapiens')
@@ -159,4 +164,4 @@ and usability for your use cases.
 # in the following example.
 .. code-block:: python
     ontology_obj = EnsemblOntology(version='1.0')
-    data_obj = Data(name='name', data =['Homo sapiens', 'invalid_data'], ontology=ontology_obj)
+    data_obj = Data(name='name', data=['Homo sapiens', 'invalid_data'], ontology=ontology_obj)

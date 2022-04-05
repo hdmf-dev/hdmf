@@ -94,6 +94,9 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
 from hdmf import Data
 import numpy as np
+import os
+import sqlite3
+import pandas as pd
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
@@ -473,11 +476,64 @@ er.to_dataframe()
 er.to_dataframe(use_categories=True)
 
 ###############################################################################
+# Export ExternalResources to HDF5
+# --------------------------------
+
+# Set the HDF5 file to use and clean up the file if it exists
+hdf_filename = "test_externalresources.h5"
+if os.path.exists((hdf_filename)):
+    os.remove(hdf_filename)
+
+###############################################################################
+# Export the data stored in the :py:class:`~hdmf.common.resources.ExternalResources`
+# object to HDF5 .
+er.to_hdf5(path=hdf_filename)
+
+###############################################################################
+# Load the :py:class:`~hdmf.common.resources.ExternalResources` from the HDF5 file.
+#
+# .. note:: To allow modification and use, the HDF5 file must remain open. As such
+#           :py:meth:`~hdmf.common.resources.ExternalResources.from_hdf5`
+#           returns both the :py:class:`~hdmf.backend.hdf5.h5tools.HDF5IO` io object
+#           and the :py:class:`~hdmf.common.resources.ExternalResources` object. It is
+#           up to the user to close the io object when done!
+er_io, er_obj = ExternalResources.from_hdf5(path=hdf_filename)
+# Check that the data is correct. We ignore dtypes because idx may be saved as int32 vs int64
+ExternalResources.assert_external_resources_equal(er, er_obj, check_dtype=False)
+
+###############################################################################
+#
+
+# Close the io!
+er_io.close()
+
+###############################################################################
+# Export ExternalResources to CSV
+# -------------------------------
+
+# Set the CSV file to use and clean up the file if it exists
+csv_filename = "test_externalresources.csv"
+if os.path.exists((hdf_filename)):
+    os.remove(hdf_filename)
+
+###############################################################################
+# Since we can convert to Pandas, we can easily also export our ExternalResources
+# as a flat CSV file. As a shorthand we can use :py:class:`~hdmf.common.resources.ExternalResources.to_csv`
+er.to_csv(path=csv_filename)
+
+###############################################################################
+# Load the :py:class:`~hdmf.common.resources.ExternalResources` from the CSV file.
+er_obj = er.from_csv(path=csv_filename)
+
+###############################################################################
+# Check that the data in the individual tables is correct
+ExternalResources.assert_external_resources_equal(er, er_obj, check_dtype=True)
+
+###############################################################################
 # Export ExternalResources to SQLite
 # ----------------------------------
 
 # Set the database file to use and clean up the file if it exists
-import os
 db_file = "test_externalresources.sqlite"
 if os.path.exists((db_file)):
     os.remove(db_file)
@@ -485,13 +541,10 @@ if os.path.exists((db_file)):
 ###############################################################################
 # Export the data stored in the :py:class:`~hdmf.common.resources.ExternalResources`
 # object to a SQLite database.
-er.export_to_sqlite(db_file)
+er.to_sqlite(db_file)
 
 ###############################################################################
 # Test that the generated SQLite database is correct
-
-import sqlite3
-import pandas as pd
 with sqlite3.connect(db_file) as db:
     cursor = db.cursor()
     # read all tables

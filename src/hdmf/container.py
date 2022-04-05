@@ -4,11 +4,10 @@ from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
 from warnings import warn
-from .ontology import Ontology
 import h5py
 import numpy as np
 import pandas as pd
-from .errors import WebAPIOntologyException, LocalOntologyException, AbstractContainerMissingOntology, OntologyEntityException
+from .ontology import Ontology, WebAPIOntologyException, LocalOntologyException, OntologyEntityException
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
@@ -188,10 +187,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.parent = kwargs.pop('parent', None)
         return inst
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'ontology', 'type': Ontology,
-             'doc': 'Optional ontology solely for thr purpose of controlling data values',
-             'default': None})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if '/' in name:
@@ -360,7 +356,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
             {'name': 'ontology', 'type': Ontology,
              'doc': 'The ontology to be used as the external resource'})
     def add_ontology_resource(self, **kwargs):
-        attribute =  kwargs['attribute']
+        attribute = kwargs['attribute']
         field = kwargs['field']
         if isinstance(kwargs['key'], str):
             key = [kwargs['key']]
@@ -371,13 +367,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
         ontology_name = ontology.ontology_name
         ontology_uri = ontology.ontology_uri
 
-        container = self.get_ancestor_child(data_type='ExternalResources') # check container for external_resources.
+        container = self.get_ancestor_child(data_type='ExternalResources')  # check container for external_resources.
         if container is None:
             msg = "Cannot find Container with ExternalResources"
             raise ValueError(msg)
 
-        valid_ref=[]
-        invalid_keys=[]
+        valid_ref = []
+        invalid_keys = []
         for key_value in key:
             try:
                 entity_id, entity_uri = ontology.get_ontology_entity(key=key_value)
@@ -395,7 +391,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                     entity_uri=entity_uri
                 )
                 valid_ref.append(er)
-        if len(invalid_keys)>0:
+        if len(invalid_keys) > 0:
             warn("There exists some Invalid Keys")
         return valid_ref, invalid_keys
 
@@ -555,7 +551,8 @@ class Data(AbstractContainer):
 
     @docval(*get_docval(AbstractContainer.__init__, 'name'),
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
-            {'name': 'ontology', 'type': Ontology, 'doc': 'the ontology to be used for external_resources or validation', 'default': None})
+            {'name': 'ontology', 'type': Ontology, 'doc': 'ontology to be used for external_resources or validation',
+             'default': None})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         self.ontology = kwargs['ontology']

@@ -1,12 +1,16 @@
 import numpy as np
+import unittest
 from hdmf.container import AbstractContainer, Container, Data
-from hdmf import Ontology, EnsemblOntology, NCBI_Taxonomy
 from hdmf.common import ExternalResources
 from hdmf.testing import TestCase
-from hdmf.utils import docval, call_docval_func, get_docval
-from hdmf.errors import WebAPIOntologyException, LocalOntologyException, OntologyEntityException
-from hdmf import Ontology, EnsemblOntology, WebAPIOntology
-
+from hdmf.utils import docval, call_docval_func
+from hdmf.ontology import Ontology
+try:
+    from pynert.ontology import OntologyEntity, WebAPIOntology, LocalOntology
+    from pynert.resources import EnsemblOntology, NCBI_Taxonomy
+    pynert = True
+except ImportError:
+    pynert = False
 
 class Subcontainer(Container):
     pass
@@ -203,6 +207,7 @@ class TestContainerExternalResources(TestCase):
     class ContainerExternalResources(Container):
         __fields__ = ({'name': 'child_container', 'child': True},
                       {'name': 'external_resources', 'child': True},)
+
         @docval({'name': 'name', 'type': str, 'doc': 'The name of this container.'},
                 {'name': 'external_resources', 'type': ExternalResources,
                  'doc': 'TBD', 'default': ExternalResources('external_resources')},
@@ -215,71 +220,102 @@ class TestContainerExternalResources(TestCase):
 
     def test_get_ancestor_container(self):
         child_container = Container(name='example')
-        er_container = TestContainerExternalResources.ContainerExternalResources(name='example', child_container=child_container)
+        er_container = TestContainerExternalResources.ContainerExternalResources(
+            name='example',
+            child_container=child_container)
         self.assertEqual(child_container.get_ancestor_child(data_type='ExternalResources'), er_container)
 
     def test_none_get_ancestor_container(self):
         container = Container(name='example')
         self.assertEqual(container.get_ancestor_child(data_type='ExternalResources'), None)
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_add_ontology_child_container(self):
         child_container = Container(name='example')
-        er_container = TestContainerExternalResources.ContainerExternalResources(name='example', child_container=child_container)
-        ontology = EnsemblOntology(version='1.0')
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example',
+                                                                                 child_container=child_container)
+        ontology = EnsemblOntology()
         valid_ref, invalid_ref = child_container.add_ontology_resource(key='Homo sapiens', ontology=ontology)
 
         self.assertEqual(invalid_ref, [])
         self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
         self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
-        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
+        self.assertEqual(er_container.external_resources.entities.data,
+                         [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
         self.assertEqual(er_container.external_resources.objects.data, [(child_container.object_id, '', '')])
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_add_ontology_resource_single_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
-        ontology = EnsemblOntology(version='1.0')
+        ontology = EnsemblOntology()
         valid_ref, invalid_ref = er_container.add_ontology_resource(key='Homo sapiens', ontology=ontology)
 
         self.assertEqual(invalid_ref, [])
-        self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
-        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
-        self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
+        self.assertEqual(er_container.external_resources.keys.data,
+                         [('Homo sapiens',)])
+        self.assertEqual(er_container.external_resources.resources.data,
+                         [('Ensembl', 'https://rest.ensembl.org')])
+        self.assertEqual(er_container.external_resources.entities.data,
+                         [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
+        self.assertEqual(er_container.external_resources.objects.data,
+                         [(er_container.object_id, '', '')])
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_add_ontology_resource_multiple_key(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
-        ontology = EnsemblOntology(version='1.0')
+        ontology = EnsemblOntology()
         with self.assertWarns(Warning):
-            valid_ref, invalid_ref = er_container.add_ontology_resource(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
+            valid_ref, invalid_ref = er_container.add_ontology_resource(
+                key=['Homo sapiens', 'INVALID_KEY'],
+                ontology=ontology)
 
         self.assertEqual(invalid_ref, ['INVALID_KEY'])
-        self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
-        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
-        self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
+        self.assertEqual(er_container.external_resources.keys.data,
+                         [('Homo sapiens',)])
+        self.assertEqual(er_container.external_resources.resources.data,
+                         [('Ensembl', 'https://rest.ensembl.org')])
+        self.assertEqual(er_container.external_resources.entities.data,
+                         [(0, 0, '9606', 'https://rest.ensembl.org/taxonomy/id/Homo sapiens')])
+        self.assertEqual(er_container.external_resources.objects.data,
+                         [(er_container.object_id, '', '')])
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_add_ontology_resource_raise_value_error(self):
         container = Container(name='example')
-        ontology = EnsemblOntology(version='1.0')
+        ontology = EnsemblOntology()
         with self.assertRaises(ValueError):
             container.add_ontology_resource(key=['Homo sapiens'], ontology=ontology)
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_local_ontology_multiple_keys(self):
         er_container = TestContainerExternalResources.ContainerExternalResources(name='example')
-        ontology = NCBI_Taxonomy(version='1.0')
+        ontology = NCBI_Taxonomy()
+        ontology_entity = OntologyEntity(entity_id='9606',
+                                         entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')
+        ontology.add_ontology_entity(key='Homo sapiens', entity=ontology_entity)
         with self.assertWarns(Warning):
-            valid_ref, invalid_ref = er_container.add_ontology_resource(key=['Homo sapiens', 'INVALID_KEY'], ontology=ontology)
+            valid_ref, invalid_ref = er_container.add_ontology_resource(
+                key=['Homo sapiens', 'INVALID_KEY'],
+                ontology=ontology)
 
         self.assertEqual(invalid_ref, ['INVALID_KEY'])
-        self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er_container.external_resources.resources.data, [('NCBI_Taxonomy', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi')])
-        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
-        self.assertEqual(er_container.external_resources.objects.data, [(er_container.object_id, '', '')])
+        self.assertEqual(er_container.external_resources.keys.data,
+                         [('Homo sapiens',)])
+        self.assertEqual(er_container.external_resources.resources.data,
+                         [('NCBI_Taxonomy', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi')])
+        self.assertEqual(er_container.external_resources.entities.data,
+                         [(0, 0, '9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er_container.external_resources.objects.data,
+                         [(er_container.object_id, '', '')])
 
 
 class TestData(TestCase):
-    _ontology_entities={"Homo sapiens": ['9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'],
-                        "Mus musculus": ['10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'],
-                        "valid_data": ['1234', 'uri']}
+    if pynert == True:
+        _ontology_entities = {
+            "Homo sapiens": OntologyEntity('9606',
+                                           'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
+            "Mus musculus": OntologyEntity('10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'),
+            "valid_data": OntologyEntity('1234', 'https://uri')}
 
     def test_constructor_scalar(self):
         """Test that constructor works correctly on scalar data
@@ -313,46 +349,73 @@ class TestData(TestCase):
         """
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
-
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_ontology_init_clean_data_validation(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
+        ontology_obj = WebAPIOntology(version='1.0',
+                                      ontology_name='Ensembl',
+                                      ontology_uri='https://rest.ensembl.org',
+                                      extension='/taxonomy/id/',
+                                      ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data=['Homo sapiens'], ontology=ontology_obj)
 
         self.assertEqual(data_obj.data, ['Homo sapiens'])
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_ontology_add_external_resource(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
+        ontology_obj = WebAPIOntology(version='1.0',
+                                      ontology_name='Ensembl',
+                                      ontology_uri='https://rest.ensembl.org',
+                                      extension='/taxonomy/id/',
+                                      ontology_entities=TestData._ontology_entities)
         er = ExternalResources('terms')
-        data = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
-        er_container = TestContainerExternalResources.ContainerExternalResources(name='example', external_resources=er, child_container=data)
+        data = Data(name='name', data=['Homo sapiens'], ontology=ontology_obj)
+        er_container = TestContainerExternalResources.ContainerExternalResources(name='example',
+                                                                                 external_resources=er,
+                                                                                 child_container=data)
         valid_ref, invalid_ref = data.add_ontology_resource(key=data.data, ontology=ontology_obj)
 
         self.assertEqual(invalid_ref, [])
         self.assertEqual(er_container.external_resources.keys.data, [('Homo sapiens',)])
         self.assertEqual(er_container.external_resources.resources.data, [('Ensembl', 'https://rest.ensembl.org')])
-        self.assertEqual(er_container.external_resources.entities.data, [(0, 0, '9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er_container.external_resources.entities.data,
+                         [(0, 0, '9606', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er_container.external_resources.objects.data, [(data.object_id, '', '')])
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_ontology_init_invalid_data_validation(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
-        with self.assertRaises(OntologyEntityException):
-            data_obj = Data(name='name', data =['invalid_data'], ontology=ontology_obj)
+        ontology_obj = WebAPIOntology(version='1.0',
+                                      ontology_name='Ensembl',
+                                      ontology_uri='https://rest.ensembl.org',
+                                      extension='/taxonomy/id/',
+                                      ontology_entities=TestData._ontology_entities)
+        with self.assertRaises(Exception):
+            _ = Data(name='name', data=['invalid_data'], ontology=ontology_obj)
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_append_data_with_ontology(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
+        ontology_obj = WebAPIOntology(version='1.0',
+                                      ontology_name='Ensembl',
+                                      ontology_uri='https://rest.ensembl.org',
+                                      extension='/taxonomy/id/',
+                                      ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data=['Homo sapiens'], ontology=ontology_obj)
 
-        with self.assertRaises(OntologyEntityException):
+        with self.assertRaises(Exception):
             data_obj.append('invalid_data')
 
         data_obj.append('Mus musculus')
         self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
 
+    @unittest.skipIf(not pynert, "optional pynert module is not installed")
     def test_extend_data_with_ontology(self):
-        ontology_obj = WebAPIOntology(version='1.0', ontology_name='Ensembl', ontology_uri='https://rest.ensembl.org', extension='/taxonomy/id/', ontology_entities=TestData._ontology_entities)
-        data_obj = Data(name='name', data =['Homo sapiens'], ontology=ontology_obj)
+        ontology_obj = WebAPIOntology(version='1.0',
+                                      ontology_name='Ensembl',
+                                      ontology_uri='https://rest.ensembl.org',
+                                      extension='/taxonomy/id/',
+                                      ontology_entities=TestData._ontology_entities)
+        data_obj = Data(name='name', data=['Homo sapiens'], ontology=ontology_obj)
 
-        with self.assertRaises(OntologyEntityException):
+        with self.assertRaises(Exception):
             data_obj.extend(['invalid_data', 'invalid_data_2'])
 
         data_obj.extend(['Mus musculus', 'valid_data'])
