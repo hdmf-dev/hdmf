@@ -201,7 +201,7 @@ In order to release a new version on conda-forge, follow the steps below:
 2. Fork hdmf-feedstock
 
  First step is to fork `hdmf-feedstock <https://github.com/conda-forge/hdmf-feedstock>`_ repository.
- This is the recommended `best practice <https://conda-forge.org/docs/conda-forge_gotchas.html#using-a-fork-vs-a-branch-when-updating-a-recipe>`_  by conda.
+ This is the recommended `best practice <https://conda-forge.org/docs/maintainer/updating_pkgs.html#updating-recipes>`_  by conda.
 
 
 3. Clone forked feedstock
