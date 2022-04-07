@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.3.0 (Upcoming)
+## HDMF 3.3.0 (April 7, 2022)
 
 ### New features
 - Added utility functions and classes useful for implementation of I/O backend to ease maintainability and reuse of functionality across I/O backends. @oruebel (#697)
