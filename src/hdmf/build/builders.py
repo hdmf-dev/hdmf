@@ -234,6 +234,11 @@ class GroupBuilder(BaseBuilder):
     def __set_builder(self, builder, obj_type):
         name = builder.name
         self.__check_obj_type(name, obj_type)
+        # if child builder already exists (e.g., read from file), do not reset it.
+        # resetting the child builder will change the python object ID / hash of the child builder
+        # and make the IO backend think that the child builder has not yet been written.
+        if self.get(name) == builder:
+            return
         super().__getitem__(obj_type)[name] = builder
         self.obj_type[name] = obj_type
         if builder.parent is None:

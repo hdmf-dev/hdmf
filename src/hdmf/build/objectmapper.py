@@ -15,7 +15,7 @@ from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, Incor
 from ..container import AbstractContainer, Data, DataRegion
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
-from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, NAME_WILDCARD, RefSpec
+from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 
@@ -1263,7 +1263,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def get_builder_name(self, **kwargs):
         '''Get the name of a Builder that represents a AbstractContainer'''
         container = getargs('container', kwargs)
-        if self.__spec.name not in (NAME_WILDCARD, None):
+        if self.__spec.name is not None:
             ret = self.__spec.name
         else:
             ret = container.name
