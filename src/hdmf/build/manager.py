@@ -644,6 +644,7 @@ class TypeMap:
         spec, builder = getargs('spec', 'builder', kwargs)
         if isinstance(builder, LinkBuilder):
             builder_type = type(builder.builder)
+            # TODO consider checking against spec.get_link
         else:
             builder_type = type(builder)
         if issubclass(builder_type, DatasetBuilder):
@@ -663,6 +664,9 @@ class TypeMap:
                     subspec = spec.get_data_type(t)
                     if subspec is not None:
                         break
+                    subspec = spec.get_target_type(t)
+                    if subspec is not None:
+                        break
         return subspec
 
     def get_container_ns_dt(self, obj):
@@ -672,7 +676,7 @@ class TypeMap:
 
     def get_container_cls_dt(self, cls):
         def_ret = (None, None)
-        for _cls in cls.__mro__:
+        for _cls in cls.__mro__:  # pragma: no branch
             ret = self.__data_types.get(_cls, def_ret)
             if ret is not def_ret:
                 return ret

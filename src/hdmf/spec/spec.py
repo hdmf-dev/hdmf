@@ -6,7 +6,7 @@ from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
 
-NAME_WILDCARD = None
+NAME_WILDCARD = None  # this is no longer used, but kept for backward compatibility
 ZERO_OR_ONE = '?'
 ZERO_OR_MANY = '*'
 ONE_OR_MANY = '+'
@@ -311,7 +311,7 @@ class BaseStorageSpec(Spec):
     def __init__(self, **kwargs):
         name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
-        if name == NAME_WILDCARD and data_type_def is None and data_type_inc is None:
+        if name is None and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with no name "
                              "without specifying '%s' and/or '%s'." % (self.def_key(), self.inc_key()))
         super().__init__(doc, name=name)
@@ -323,7 +323,7 @@ class BaseStorageSpec(Spec):
                 self['default_name'] = default_name
         self.__attributes = dict()
         if quantity in (ONE_OR_MANY, ZERO_OR_MANY):
-            if name != NAME_WILDCARD:
+            if name is not None:
                 raise ValueError("Cannot give specific name to something that can "
                                  "exist multiple times: name='%s', quantity='%s'" % (name, quantity))
         if quantity != DEF_QUANTITY:
@@ -349,6 +349,7 @@ class BaseStorageSpec(Spec):
         # self.__new_attributes: set of attribute names that do not exist in the parent type
         # self.__overridden_attributes: set of attribute names that exist in this spec and the parent type
         # self.__new_attributes and self.__overridden_attributes are only set properly if resolve = True
+        # add all attributes described in this spec
         for attribute in attributes:
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
@@ -729,7 +730,7 @@ class DatasetSpec(BaseStorageSpec):
             for dt in self.dtype:
                 name = dt['name']
                 if name in order:
-                    # verify that the exension has supplied
+                    # verify that the extension has supplied
                     # a valid subtyping of existing type
                     orig = order[name].dtype
                     new = dt.dtype
@@ -759,10 +760,6 @@ class DatasetSpec(BaseStorageSpec):
     def default_value(self):
         '''The default value of the dataset or None if not specified'''
         return self.get('default_value', None)
-
-    @classmethod
-    def __check_dim(cls, dim, data):
-        return True
 
     @classmethod
     def dtype_spec_cls(cls):
@@ -873,7 +870,8 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_group_args)
     def __init__(self, **kwargs):
         doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
-        self.__data_types = dict()
+        self.__data_types = dict()  # for GroupSpec/DatasetSpec data_type_def/inc
+        self.__target_types = dict()  # for LinkSpec target_types
         self.__groups = dict()
         for group in groups:
             self.set_group(group)
@@ -884,6 +882,7 @@ class GroupSpec(BaseStorageSpec):
         for link in links:
             self.set_link(link)
         self.__new_data_types = set(self.__data_types.keys())
+        self.__new_target_types = set(self.__target_types.keys())
         self.__new_datasets = set(self.__datasets.keys())
         self.__overridden_datasets = set()
         self.__new_links = set(self.__links.keys())
@@ -896,21 +895,23 @@ class GroupSpec(BaseStorageSpec):
     def resolve_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
         data_types = list()
+        target_types = list()
         # resolve inherited datasets
         for dataset in inc_spec.datasets:
-            # if not (dataset.data_type_def is None and dataset.data_type_inc is None):
             if dataset.name is None:
                 data_types.append(dataset)
                 continue
             self.__new_datasets.discard(dataset.name)
             if dataset.name in self.__datasets:
+                # if the included dataset spec was added earlier during resolution, don't add it again
+                # but resolve the spec using the included dataset spec - the included spec may contain
+                # properties not specified in the version of this spec added earlier during resolution
                 self.__datasets[dataset.name].resolve_spec(dataset)
                 self.__overridden_datasets.add(dataset.name)
             else:
                 self.set_dataset(dataset)
         # resolve inherited groups
         for group in inc_spec.groups:
-            # if not (group.data_type_def is None and group.data_type_inc is None):
             if group.name is None:
                 data_types.append(group)
                 continue
@@ -923,7 +924,8 @@ class GroupSpec(BaseStorageSpec):
         # resolve inherited links
         for link in inc_spec.links:
             if link.name is None:
-                data_types.append(link)
+                target_types.append(link)
+                continue
             self.__new_links.discard(link.name)
             if link.name in self.__links:
                 self.__overridden_links.add(link.name)
@@ -931,23 +933,27 @@ class GroupSpec(BaseStorageSpec):
                 self.set_link(link)
         # resolve inherited data_types
         for dt_spec in data_types:
-            if isinstance(dt_spec, LinkSpec):
-                dt = dt_spec.target_type
-            else:
-                dt = dt_spec.data_type_def
-                if dt is None:
-                    dt = dt_spec.data_type_inc
+            dt = dt_spec.data_type_def
+            if dt is None:
+                dt = dt_spec.data_type_inc
             self.__new_data_types.discard(dt)
             existing_dt_spec = self.get_data_type(dt)
-            if existing_dt_spec is None or \
-                    ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None)) and \
-                    dt_spec.name is None:
+            if (existing_dt_spec is None or
+                    ((isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None) and
+                     dt_spec.name is None)):
                 if isinstance(dt_spec, DatasetSpec):
                     self.set_dataset(dt_spec)
-                elif isinstance(dt_spec, GroupSpec):
-                    self.set_group(dt_spec)
                 else:
-                    self.set_link(dt_spec)
+                    self.set_group(dt_spec)
+        # resolve inherited target_types
+        for link_spec in target_types:
+            dt = link_spec.target_type
+            self.__new_target_types.discard(dt)
+            existing_dt_spec = self.get_target_type(dt)
+            if (existing_dt_spec is None or
+                    (isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None) and
+                    link_spec.name is None):
+                self.set_link(link_spec)
         super().resolve_spec(inc_spec)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
@@ -1010,13 +1016,15 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
             name = spec.name
-            if name is None:
+            if name is None and hasattr(spec, 'data_type_def'):
                 name = spec.data_type_def
-            if name is None:
+            if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
-            if name is None:
+            if name is None:  # pragma: no cover
+                # this should not be possible
                 raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
             spec = name
+        # if the spec has a name, it will be found in __links/__groups/__datasets before __data_types/__target_types
         if spec in self.__links:
             return self.is_inherited_link(spec)
         elif spec in self.__groups:
@@ -1024,7 +1032,10 @@ class GroupSpec(BaseStorageSpec):
         elif spec in self.__datasets:
             return self.is_inherited_dataset(spec)
         elif spec in self.__data_types:
+            # NOTE: the same data type can be both an unnamed data type and an unnamed target type
             return self.is_inherited_type(spec)
+        elif spec in self.__target_types:
+            return self.is_inherited_target_type(spec)
         else:
             if super().is_inherited_spec(spec):
                 return True
@@ -1040,20 +1051,24 @@ class GroupSpec(BaseStorageSpec):
         return False
 
     @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
-    def is_overridden_spec(self, **kwargs):
-        ''' Returns 'True' if specification was inherited from a parent type '''
+    def is_overridden_spec(self, **kwargs):  # noqa: C901
+        ''' Returns 'True' if specification overrides a specification from the parent type '''
         spec = getargs('spec', kwargs)
         if isinstance(spec, Spec):
             name = spec.name
             if name is None:
+                if isinstance(spec, LinkSpec):  # unnamed LinkSpec cannot be overridden
+                    return False
                 if spec.is_many():  # this is a wildcard spec, so it cannot be overridden
                     return False
                 name = spec.data_type_def
-            if name is None:
+            if name is None:  # NOTE: this will return the target type for LinkSpecs
                 name = spec.data_type_inc
-            if name is None:
+            if name is None:  # pragma: no cover
+                # this should not happen
                 raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
             spec = name
+        # if the spec has a name, it will be found in __links/__groups/__datasets before __data_types/__target_types
         if spec in self.__links:
             return self.is_overridden_link(spec)
         elif spec in self.__groups:
@@ -1078,10 +1093,10 @@ class GroupSpec(BaseStorageSpec):
 
     @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'})
     def is_inherited_type(self, **kwargs):
-        ''' Returns True if `spec` represents a spec that was inherited from an included data_type '''
+        ''' Returns True if `spec` represents a data type that was inherited '''
         spec = getargs('spec', kwargs)
         if isinstance(spec, BaseStorageSpec):
-            if spec.data_type_def is None:
+            if spec.data_type_def is None:  # why not also check data_type_inc?
                 raise ValueError('cannot check if something was inherited if it does not have a %s' % self.def_key())
             spec = spec.data_type_def
         return spec not in self.__new_data_types
@@ -1089,55 +1104,145 @@ class GroupSpec(BaseStorageSpec):
     @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'},
             raises="ValueError, if 'name' is not part of this spec")
     def is_overridden_type(self, **kwargs):
-        ''' Returns True if `spec` represents a spec that was overriden by the subtype'''
+        ''' Returns True if `spec` represents a data type that overrides a specification from a parent type '''
+        return self.is_inherited_type(**kwargs)
+
+    @docval({'name': 'spec', 'type': (LinkSpec, str), 'doc': 'the specification to check'})
+    def is_inherited_target_type(self, **kwargs):
+        ''' Returns True if `spec` represents a target type that was inherited '''
         spec = getargs('spec', kwargs)
-        if isinstance(spec, BaseStorageSpec):
-            if spec.data_type_def is None:
-                raise ValueError('cannot check if something was inherited if it does not have a %s' % self.def_key())
-            spec = spec.data_type_def
-        return spec not in self.__new_data_types
+        if isinstance(spec, LinkSpec):
+            spec = spec.target_type
+        return spec not in self.__new_target_types
+
+    @docval({'name': 'spec', 'type': (LinkSpec, str), 'doc': 'the specification to check'},
+            raises="ValueError, if 'name' is not part of this spec")
+    def is_overridden_target_type(self, **kwargs):
+        ''' Returns True if `spec` represents a target type that overrides a specification from a parent type '''
+        return self.is_inherited_target_type(**kwargs)
 
     def __add_data_type_inc(self, spec):
+        # update the __data_types dict with the given groupspec/datasetspec so that:
+        # - if there is only one spec for a given data type, then it is stored in __data_types regardless of
+        #   whether it is named
+        # - if there are multiple specs for a given data type and they are all named, then they are all stored in
+        #   __data_types
+        # - if there are multiple specs for a given data type and only one is unnamed, then the unnamed spec is
+        #   stored in __data_types
+        # it is not allowed to have multiple specs for a given data type and multiple are unnamed
         dt = None
         if hasattr(spec, 'data_type_def') and spec.data_type_def is not None:
             dt = spec.data_type_def
         elif hasattr(spec, 'data_type_inc') and spec.data_type_inc is not None:
             dt = spec.data_type_inc
-        if not dt:
+        if not dt:  # pragma: no cover
+            # this should not be possible
             raise TypeError("spec does not have '%s' or '%s' defined" % (self.def_key(), self.inc_key()))
         if dt in self.__data_types:
             curr = self.__data_types[dt]
-            if curr is spec:
+            if curr is spec:  # happens only if the same spec is added twice
                 return
             if spec.name is None:
                 if isinstance(curr, list):
+                    # replace the list of named specs associated with the data_type with this unnamed spec
+                    # the named specs can be retrieved by name
                     self.__data_types[dt] = spec
                 else:
                     if curr.name is None:
-                        raise TypeError('Cannot have multiple data types of the same type without specifying name')
+                        # neither the spec already associated with the data_type nor the given spec have a name
+                        msg = "Cannot have multiple groups/datasets with the same data type without specifying name"
+                        raise ValueError(msg)
                     else:
-                        # unnamed data types will be stored as data_types
+                        # replace the named spec associated with the data_type with this unnamed spec
+                        # the named spec can be retrieved by name
                         self.__data_types[dt] = spec
             else:
                 if isinstance(curr, list):
+                    # add this named spec to the list of named current specs associated with the data_type
                     self.__data_types[dt].append(spec)
                 else:
                     if curr.name is None:
+                        # the spec associated with the data_type has no name and the given spec has a name
                         # leave the existing data type as is, since the new one can be retrieved by name
                         return
                     else:
+                        # both the spec associated with the data_type and the given spec have a name
                         # store both specific instances of a data type
                         self.__data_types[dt] = [curr, spec]
         else:
             self.__data_types[dt] = spec
 
+    def __add_target_type(self, spec):
+        # update the __target_types dict with the given linkspec so that:
+        # - if there is only one linkspec for a given target type, then it is stored in __target_types regardless of
+        #   whether it is named
+        # - if there are multiple linkspecs for a given target type and they are all named, then they are all stored in
+        #   __target_types
+        # - if there are multiple linkspecs for a given target type and only one is unnamed, then the unnamed spec is
+        #   stored in __target_types
+        # it is not allowed to have multiple linkspecs for a given target type and multiple are unnamed
+        dt = spec.target_type
+        if dt in self.__target_types:
+            curr = self.__target_types[dt]
+            if curr is spec:  # happens only if the same spec is added twice
+                return
+            if spec.name is None:
+                if isinstance(curr, list):
+                    # replace the list of named specs associated with the target_type with this unnamed spec
+                    # the named specs can be retrieved by name
+                    self.__target_types[dt] = spec
+                else:
+                    if curr.name is None:
+                        # neither the spec already associated with the target_type nor the given spec have a name
+                        msg = "Cannot have multiple links with the same target type without specifying name"
+                        raise ValueError(msg)
+                    else:
+                        # replace the named spec associated with the target_type with this unnamed spec
+                        # the named spec can be retrieved by name
+                        self.__target_types[dt] = spec
+            else:
+                if isinstance(curr, list):
+                    # add this named spec to the list of named current specs associated with the target_type
+                    self.__target_types[dt].append(spec)
+                else:
+                    if curr.name is None:
+                        # the spec associated with the target_type has no name and the given spec has a name
+                        # leave the existing data type as is, since the new one can be retrieved by name
+                        return
+                    else:
+                        # both the spec associated with the target_type and the given spec have a name
+                        # store both specific instances of a data type
+                        self.__target_types[dt] = [curr, spec]
+        else:
+            self.__target_types[dt] = spec
+
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to retrieve'})
     def get_data_type(self, **kwargs):
-        '''
-        Get a specification by "data_type"
+        ''' Get a specification by "data_type"
+
+        NOTE: If there is only one spec for a given data type, then it is returned.
+        If there are multiple specs for a given data type and they are all named, then they are returned in a list.
+        If there are multiple specs for a given data type and only one is unnamed, then the unnamed spec is returned.
+        The other named specs can be returned using get_group or get_dataset.
+
+        NOTE: this method looks for an exact match of the data type and does not consider the type hierarchy.
         '''
         ndt = getargs('data_type', kwargs)
         return self.__data_types.get(ndt, None)
+
+    @docval({'name': 'target_type', 'type': str, 'doc': 'the target_type to retrieve'})
+    def get_target_type(self, **kwargs):
+        ''' Get a specification by "target_type"
+
+        NOTE: If there is only one spec for a given target type, then it is returned.
+        If there are multiple specs for a given target type and they are all named, then they are returned in a list.
+        If there are multiple specs for a given target type and only one is unnamed, then the unnamed spec is returned.
+        The other named specs can be returned using get_link.
+
+        NOTE: this method looks for an exact match of the target type and does not consider the type hierarchy.
+        '''
+        ndt = getargs('target_type', kwargs)
+        return self.__target_types.get(ndt, None)
 
     @property
     def groups(self):
@@ -1157,8 +1262,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_group_args)
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
-        doc = kwargs.pop('doc')
-        spec = self.__class__(doc, **kwargs)
+        spec = self.__class__(**kwargs)
         self.set_group(spec)
         return spec
 
@@ -1168,12 +1272,14 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.build_spec(spec)
-        if spec.name == NAME_WILDCARD:
+        if spec.name is None:
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
-            else:
+            else:  # pragma: no cover
+                # this should not be possible
                 raise TypeError("must specify 'name' or 'data_type_inc' in Group spec")
         else:
+            # NOTE named specs can be present in both __datasets and __data_types
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
             self.__groups[spec.name] = spec
@@ -1189,8 +1295,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_dataset_args)
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
-        doc = kwargs.pop('doc')
-        spec = self.dataset_spec_cls()(doc, **kwargs)
+        spec = self.dataset_spec_cls()(**kwargs)
         self.set_dataset(spec)
         return spec
 
@@ -1200,12 +1305,14 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.dataset_spec_cls().build_spec(spec)
-        if spec.name == NAME_WILDCARD:
+        if spec.name is None:
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
-            else:
+            else:  # pragma: no cover
+                # this should not be possible
                 raise TypeError("must specify 'name' or 'data_type_inc' in Dataset spec")
         else:
+            # NOTE named specs can be present in both __datasets and __data_types
             if spec.data_type_inc is not None or spec.data_type_def is not None:
                 self.__add_data_type_inc(spec)
             self.__datasets[spec.name] = spec
@@ -1221,8 +1328,7 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_link_args)
     def add_link(self, **kwargs):
         ''' Add a new specification for a link to this group specification '''
-        doc, target_type = popargs('doc', _target_type_key, kwargs)
-        spec = self.link_spec_cls()(doc, target_type, **kwargs)
+        spec = self.link_spec_cls()(**kwargs)
         self.set_link(spec)
         return spec
 
@@ -1232,7 +1338,9 @@ class GroupSpec(BaseStorageSpec):
         spec = getargs('spec', kwargs)
         if spec.parent is not None:
             spec = self.link_spec_cls().build_spec(spec)
-        if spec.name != NAME_WILDCARD:
+        # NOTE named specs can be present in both __links and __target_types
+        self.__add_target_type(spec)
+        if spec.name is not None:
             self.__links[spec.name] = spec
         self.setdefault('links', list()).append(spec)
         spec.parent = self

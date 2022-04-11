@@ -1,29 +1,28 @@
-import h5py
-import numpy as np
 import scipy.sparse as sps
-
 from . import register_class
 from ..container import Container
-from ..utils import docval, getargs, call_docval_func, to_uint_array
+from ..utils import docval, getargs, call_docval_func, to_uint_array,  get_data_shape
 
 
 @register_class('CSRMatrix')
 class CSRMatrix(Container):
 
-    @docval({'name': 'data', 'type': (sps.csr_matrix, np.ndarray, h5py.Dataset),
+    @docval({'name': 'data', 'type': (sps.csr_matrix, 'array_data'),
              'doc': 'the data to use for this CSRMatrix or CSR data array.'
                     'If passing CSR data array, *indices*, *indptr*, and *shape* must also be provided'},
-            {'name': 'indices', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index array', 'default': None},
-            {'name': 'indptr', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index pointer array', 'default': None},
-            {'name': 'shape', 'type': (list, tuple, np.ndarray), 'doc': 'the shape of the matrix', 'default': None},
+            {'name': 'indices', 'type': 'array_data', 'doc': 'CSR index array', 'default': None},
+            {'name': 'indptr', 'type': 'array_data', 'doc': 'CSR index pointer array', 'default': None},
+            {'name': 'shape', 'type': 'array_data', 'doc': 'the shape of the matrix', 'default': None},
             {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'})
     def __init__(self, **kwargs):
         call_docval_func(super().__init__, kwargs)
         data = getargs('data', kwargs)
-        if isinstance(data, (np.ndarray, h5py.Dataset)):
-            if data.ndim == 2:
+        if not isinstance(data, sps.csr_matrix):
+            temp_shape = get_data_shape(data)
+            temp_ndim = len(temp_shape)
+            if temp_ndim == 2:
                 data = sps.csr_matrix(data)
-            elif data.ndim < 2:
+            elif temp_ndim == 1:
                 indptr, indices, shape = getargs('indptr', 'indices', 'shape', kwargs)
                 if any(_ is None for _ in (indptr, indices, shape)):
                     raise ValueError("Must specify 'indptr', 'indices', and 'shape' arguments when passing data array.")

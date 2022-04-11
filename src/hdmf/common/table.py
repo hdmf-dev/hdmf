@@ -52,7 +52,7 @@ class VectorData(Data):
         Retrieve elements from this VectorData
 
         :param key: Selection of the elements
-        :param **kwargs: Ignored
+        :param kwargs: Ignored
         """
         return super().get(key)
 
@@ -637,11 +637,11 @@ class DynamicTable(Container):
             {'name': 'table', 'type': (bool, 'DynamicTable'),
              'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data', int),
-             'doc': 'False (default): do not generate a VectorIndex \n'
-                    'True: generate one empty VectorIndex \n'
-                    'VectorIndex: Use the supplied VectorIndex \n'
-                    'array-like of ints: Create a VectorIndex and use these values as the data \n'
-                    'int: Recursively create `n` VectorIndex objects for a multi-ragged array \n',
+             'doc': '        * ``False`` (default): do not generate a VectorIndex\n\n'
+                    '        * ``True``: generate one empty VectorIndex \n\n'
+                    '        * ``VectorIndex``: Use the supplied VectorIndex \n\n'
+                    '        * array-like of ints: Create a VectorIndex and use these values as the data \n\n'
+                    '        * ``int``: Recursively create `n` VectorIndex objects for a multi-ragged array \n',
              'default': False},
             {'name': 'enum', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a fixed set of elements')},
