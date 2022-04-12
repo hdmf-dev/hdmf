@@ -46,6 +46,40 @@ The sidecar JSON file must contain the following top-level keys:
   View the current version of this file here:
   `sidecar.schema.json <https://github.com/hdmf-dev/hdmf/blob/dev/sidecar.schema.json>`_
 
+Here is an example sidecar JSON file:
+
+.. code:: javascript
+
+    {
+        "description": "Summary of changes",
+        "author": [
+            "The NWB Team"
+        ],
+        "contact": [
+            "contact@nwb.org"
+        ],
+        "operations": [
+            {
+                "type": "replace",
+                "description": "change foo1/my_data data from [1, 2, 3] to [4, 5] (int8)",
+                "object_id": "e0449bb5-2b53-48c1-b04e-85a9a4631655",
+                "relative_path": "my_data",
+                "value": [
+                    4,
+                    5
+                ],
+                "dtype": "int8"
+            },
+            {
+                "type": "delete",
+                "description": "delete foo1/foo_holder/my_sub_data/attr6",
+                "object_id": "993fef27-680c-457a-af4d-b1d2725fcca9",
+                "relative_path": "foo_holder/my_sub_data/attr6"
+            }
+        ],
+        "schema_version": "0.1.0"
+    }
+
 Specification for operations
 ----------------------------
 
@@ -78,6 +112,9 @@ The operation specification may also have the following keys:
   existing value for the dataset/attribute is used. Allowed dtypes are listed in the
   `HDMF schema language docs for dtype <https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype>`_.
 
+In the example sidecar JSON file above, the first operation specifies that the value of dataset "my_data" under
+group "foo1", which has the specified object ID, should be replaced with the 1-D array [4, 5] (dtype: int8).
+
 .. note::
 
   Replacing the values of datasets or attributes with object references or a compound data type is not yet supported.
@@ -89,6 +126,10 @@ Specify ``"type": "delete"`` to delete (ignore) a dataset/attribute from the ass
 as specified by the ``object_id`` and ``relative_path``.
 
 The operation specification does not use any additional keys.
+
+In the example sidecar JSON file above, the second operation specifies that attribute "attr6" under
+group "foo1", which has the specified object ID, at relative path "foo_holder/my_sub_data/attr6" should be deleted.
+If "attr6" is a required attribute, this is likely to result in an invalid file that cannot be read by HDMF.
 
 Future changes
 --------------
