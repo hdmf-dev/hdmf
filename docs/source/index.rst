@@ -45,6 +45,7 @@ If you use HDMF in your research, please use the following citation:
    building_api
    export
    validation
+   sidecar
 
 .. toctree::
    :hidden:

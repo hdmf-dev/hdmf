@@ -43,6 +43,23 @@ class TestBasic(TestCase):
         with open(self.json_path, 'w') as outfile:
             json.dump(sidecar, outfile, indent=4)
 
+    def test_load_sidecar_false(self):
+        """Test replacing the data of a dataset in a typed group."""
+        operations = [
+            {
+                "type": "replace",
+                "description": "change foo1/my_data data from [1, 2, 3] to [4, 5] (int8)",
+                "object_id": self.foo1.object_id,
+                "relative_path": "my_data",
+                "value": [4, 5],
+                "dtype": "int8"
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read(load_sidecar=False)
+            np.testing.assert_array_equal(read_foo1.my_data, np.array([1, 2, 3]))
+
     def test_replace_typed_group_dataset_data(self):
         """Test replacing the data of a dataset in a typed group."""
         operations = [

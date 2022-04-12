@@ -1,6 +1,6 @@
 .. _modifying_with_sidecar:
 
-Modifying an HDMF file with a sidecar JSON file
+Modifying an HDMF File with a Sidecar JSON File
 ===============================================
 
 Users may want to update part of an HDMF file without rewriting the entire file.
@@ -13,7 +13,7 @@ automatically read and the modifications that it specifies are automatically app
 .. note::
 
   This default behavior can be changed such that the corresponding sidecar JSON file is ignored when the HDMF file
-  is read by passing ``load_sidecar=False`` to the instance of `HDMFIO` used to read the HDMF file.
+  is read by passing ``load_sidecar=False`` to ``HDMFIO.read()`` on the ``HDMFIO`` object used to read the HDMF file.
 
 Allowed modifications
 ---------------------
@@ -37,23 +37,23 @@ located at the root of the HDMF repository.
 
 The sidecar JSON file must contain the following top-level keys:
 
-- "description": A free-form string describing the modifications specified in this file.
-- "author": A list of free-form strings containing the names of the people who created this file.
-- "contact": A list of email addresses for the people who created this file. Each author listed in the "author" key
+- ``"description"``: A free-form string describing the modifications specified in this file.
+- ``"author"``: A list of free-form strings containing the names of the people who created this file.
+- ``"contact"``: A list of email addresses for the people who created this file. Each author listed in the "author" key
   *should* have a corresponding email address.
-- "operations": A list of operations to perform on the data in the file, as specified below.
-- "schema_version": The version of the sidecar JSON schema that the file conforms to.
+- ``"operations"``: A list of operations to perform on the data in the file, as specified below.
+- ``"schema_version"``: The version of the sidecar JSON schema that the file conforms to.
 
 Specification for operations
 ----------------------------
 
 All operations are required to have the following keys:
 
-- "type": The type of modification to perform. Only "replace" and "delete" are supported currently.
-- "description": A description of the specified modification.
-- "object_id": The object ID (UUID) of the data type that is closest in the file hierarchy to the
+- ``"type"``: The type of modification to perform. Only "replace" and "delete" are supported currently.
+- ``"description"``: A description of the specified modification.
+- ``"object_id"``: The object ID (UUID) of the data type that is closest in the file hierarchy to the
   field being modified.
-- "relative_path": The relative path from the data type with the given object ID to the field being modified.
+- ``"relative_path"``: The relative path from the data type with the given object ID to the field being modified.
 
 Operations can result in invalid files, i.e., files that do not conform to the specification. It is strongly
 recommended that the file is validated against the schema after loading the sidecar JSON. In some cases, the
@@ -67,12 +67,12 @@ as specified by the ``object_id`` and ``relative_path``.
 
 The operation specification must have the following keys:
 
-- "value": The new value for the dataset/attribute. Only scalar and 1-dimensional arrays can be
+- ``"value"``: The new value for the dataset/attribute. Only scalar and 1-dimensional arrays can be
   specified as a replacement value.
 
 The operation specification may also have the following keys:
 
-- "dtype": String representing the dtype of the new value. If this key is not present, then the dtype of the
+- ``"dtype"``: String representing the dtype of the new value. If this key is not present, then the dtype of the
   existing value for the dataset/attribute is used. Allowed dtypes are listed in the
   `HDMF schema language docs for dtype <https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype>`_.
 
