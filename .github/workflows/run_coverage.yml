@@ -11,7 +11,8 @@ on:
     branches:
     - '**'
 jobs:
-  run:
+  run-coverage:
+    name: Run coverage
     runs-on: ${{ matrix.os }}
     # run pipeline on either a push event or a PR event on a fork
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
@@ -28,15 +29,15 @@ jobs:
       OS: ${{ matrix.os }}
       PYTHON: '3.10'
     steps:
-    - name: Cancel Workflow Action
-      uses: styfle/cancel-workflow-action@0.6.0
+    - name: Cancel any previous incomplete runs
+      uses: styfle/cancel-workflow-action@0.9.1
       with:
         access_token: ${{ github.token }}
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: '3.10'
     - name: Update pip
