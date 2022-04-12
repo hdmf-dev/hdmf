@@ -42,7 +42,9 @@ The sidecar JSON file must contain the following top-level keys:
 - ``"contact"``: A list of email addresses for the people who created this file. Each author listed in the "author" key
   *should* have a corresponding email address.
 - ``"operations"``: A list of operations to perform on the data in the file, as specified below.
-- ``"schema_version"``: The version of the sidecar JSON schema that the file conforms to.
+- ``"schema_version"``: The version of the sidecar JSON schema that the file conforms to, e.g., "0.1.0".
+  View the current version of this file here:
+  `sidecar.schema.json <https://github.com/hdmf-dev/hdmf/blob/dev/sidecar.schema.json>`_
 
 Specification for operations
 ----------------------------
