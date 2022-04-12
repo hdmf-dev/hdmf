@@ -1,7 +1,8 @@
-name: Testing External Links
+name: Run sphinx tests
 on: pull_request
 jobs:
-  build-and-test:
+  test-external-links:
+    name: External links
     runs-on: ubuntu-latest
     steps:
     - name: Cancel any previous incomplete runs
