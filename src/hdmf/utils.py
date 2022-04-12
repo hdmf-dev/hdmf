@@ -8,12 +8,68 @@ from enum import Enum
 import h5py
 import numpy as np
 
-
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
     'scalar_data': [str, int, float, bytes, bool],
     'data': []
 }
+
+
+def get_available_plugins():
+    """
+    Discover available plugin modules.
+
+    HDMF plugins must use the following naming convention. The package name must start with "hdmf_"
+    and end with "_plugin"
+
+    :returns: Dictionary where the key is the name of the discovered plugin module and the value is
+              the module itself
+
+    """
+    import importlib
+    import pkgutil
+    discovered_plugins = {
+        name: importlib.import_module(name)
+        for finder, name, ispkg
+        in pkgutil.iter_modules()
+        if name.startswith('hdmf_') and name.endswith('_plugin')
+    }
+    return discovered_plugins
+
+
+def configure_macro_plugins():
+    """
+    Configure the changes to the docval_macros defined by plugins
+
+    Depending on the plugin, we may need to update the default __macros, e.g.,
+    to add new array types when creating new I/O backends. These changes must
+    be processed before HDMF is fully initialized as the macros otherwise
+    don't propagate.
+
+    Each plugin may define the function 'configure_hdmf_docval_macros' at the
+    top level to customize __macros. The function is expected to return a list
+    of tuples where the first part is the name of the macro (e.g., the string 'array_data')
+    and the second part is the item to be added. If the macro name does not exist,
+    then a new macro entry will be created.
+    """
+    # Get the available plugins
+    discovered_plugins = get_available_plugins()
+    # for all plugins that have a 'configure_hdmf_docval_macros' functions load the
+    # macro configurations and update __macros accordingly
+    for name, plugin in discovered_plugins.items():
+        if hasattr(plugin, 'configure_hdmf_docval_macros'):
+            update_macros = getattr(plugin, 'configure_hdmf_docval_macros')()
+            if update_macros is not None:
+                for macro in update_macros:
+                    if macro[0] not in __macros:
+                        __macros[macro[0]] = list()
+                        __macros[macro[0]].append(macro[1])
+                    else:
+                        if macro[1] not in __macros[macro[0]]:
+                            __macros[macro[0]].append(macro[1])
+
+
+configure_macro_plugins()
 
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
