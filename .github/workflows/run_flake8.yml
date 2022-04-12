@@ -19,7 +19,7 @@ jobs:
     - name: Update pip
       run: python -m pip install --upgrade pip
     - name: Create virtual environment
-      run: python -m virtualenv ../venv
+      run: python -m venv ../venv
     - name: Run flake8
       run: |
         . ../venv/bin/activate
