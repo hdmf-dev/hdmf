@@ -60,10 +60,13 @@ def configure_macro_plugins():
         if hasattr(plugin, 'configure_hdmf_docval_macros'):
             update_macros = getattr(plugin, 'configure_hdmf_docval_macros')()
             if update_macros is not None:
+                # update_macros is a list of tuples with the changes
                 for macro in update_macros:
+                    # create a new macro
                     if macro[0] not in __macros:
                         __macros[macro[0]] = list()
                         __macros[macro[0]].append(macro[1])
+                    # update an existing macro by adding a new allowable type
                     else:
                         if macro[1] not in __macros[macro[0]]:
                             __macros[macro[0]].append(macro[1])
