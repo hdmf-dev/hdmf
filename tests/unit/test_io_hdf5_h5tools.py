@@ -1099,9 +1099,9 @@ class TestCloseLinks(TestCase):
         self.path2 = get_temp_filepath()
 
     def tearDown(self):
-        if self.path1 is not None:
+        if self.path1 is not None and os.path.exists(self.path1):
             os.remove(self.path1)  # linked file may not be closed
-        if self.path2 is not None:
+        if self.path2 is not None and os.path.exists(self.path2):
             os.remove(self.path2)
 
     def test_close_linked_files_auto(self):
