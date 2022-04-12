@@ -3,8 +3,8 @@ import numpy as np
 import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer
-from ..utils import docval, popargs
+from ..container import Table, Row, Container, AbstractContainer, MultiContainerInterface
+from ..utils import docval, popargs, call_docval_func
 from ..build import TypeMap
 
 
@@ -154,7 +154,9 @@ class ExternalResources(Container):
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
              'doc': 'The table storing object-resource relationships.'},
             {'name': 'type_map', 'type': TypeMap, 'default': None,
-             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'})
+             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'},
+            {'name': 'nwbfile_id', 'type': str, 'default': None,
+             'doc': 'The id for the nwbfile this ER will be attached to.'})
     def __init__(self, **kwargs):
         name = popargs('name', kwargs)
         super().__init__(name)
@@ -164,6 +166,7 @@ class ExternalResources(Container):
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
         self.type_map = kwargs['type_map'] or get_type_map()
+        self.nwbfile_id = kwargs['nwbfile_id']
 
     @staticmethod
     def assert_external_resources_equal(left, right, check_dtype=True):
@@ -884,3 +887,30 @@ class ExternalResources(Container):
             self.entities[:])
         connection.commit()
         connection.close()
+
+@register_class('ERFile', EXP_NAMESPACE)
+class ERFile(MultiContainerInterface):
+    """
+    A representation of an ERFile.
+    """
+
+    __clsconf__ = [
+        {
+            'attr': 'external_resources',
+            'add': '_add_external_resources',
+            'type': ExternalResources,
+            'get': 'get_external_resources'
+        }]
+
+    @docval({'name': 'external_resources', 'type': ExternalResources,
+             'doc': 'The ExternalResources to be added', 'default': None})
+    def __init__(self, **kwargs):
+        kwargs['name']='root'
+        call_docval_func(super().__init__, kwargs)
+        self.external_resources = kwargs['external_resources']
+
+    @docval({'name': 'external_resources', 'type': ExternalResources,
+             'doc': 'The ExternalResources to be added'})
+    def add_external_resources(self, **kwargs):
+        er = popargs('external_resources', kwargs)
+        self._add_external_resources(er)

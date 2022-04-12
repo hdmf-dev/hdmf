@@ -1,7 +1,8 @@
 import pandas as pd
 from hdmf.common import DynamicTable
-from hdmf.common.resources import ExternalResources, Key, Resource
+from hdmf.common.resources import ExternalResources, Key, Resource, ERFile
 from hdmf import Data
+from hdmf.container import Container
 from hdmf.testing import TestCase, H5RoundTripMixin
 import numpy as np
 import unittest
@@ -9,6 +10,16 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
+class TestERFile(TestCase):
+
+    def test_er_file(self):
+        nwbfile_sim = Container(name='name')
+        er = ExternalResources(name='name', nwbfile_id=nwbfile_sim.object_id)
+        er_file=ERFile()
+
+        er_file.add_external_resources(external_resources=er)
+
+        self.assertEqual(er_file.get_external_resources().object_id, er.object_id)
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
 

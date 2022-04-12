@@ -2,8 +2,9 @@ import os
 import tempfile
 from copy import copy, deepcopy
 
+from hdmf.common.resources import ExternalResources
 from hdmf.build import TypeMap
-from hdmf.container import Container
+from hdmf.container import Container, AbstractContainer
 from hdmf.spec import GroupSpec, DatasetSpec, NamespaceCatalog, SpecCatalog, SpecNamespace, NamespaceBuilder
 from hdmf.utils import docval, getargs, get_docval
 
@@ -253,3 +254,17 @@ class CustomSpecNamespace(SpecNamespace):
     @classmethod
     def types_key(cls):
         return cls.__types_key
+
+class ContainerExternalResources(Container):
+    __fields__ = ({'name': 'child_container', 'child': True},
+                  {'name': 'external_resources', 'child': True},)
+
+    @docval({'name': 'name', 'type': str, 'doc': 'The name of this container.'},
+            {'name': 'external_resources', 'type': ExternalResources,
+             'doc': 'TBD', 'default': ExternalResources('external_resources')},
+            {'name': 'child_container', 'type': AbstractContainer,
+             'doc': 'TBD', 'default': None})
+    def __init__(self, **kwargs):
+        call_docval_func(super().__init__, kwargs)
+        self.external_resources = kwargs['external_resources']
+        self.child_container = kwargs['child_container']
