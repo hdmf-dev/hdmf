@@ -1232,7 +1232,6 @@ class TestCloseLinks(TestCase):
         read_io.close()
 
 
-
 class HDF5IOInitNoFileTest(TestCase):
     """ Test if file does not exist, init with mode (r, r+) throws error, all others succeed """
 
