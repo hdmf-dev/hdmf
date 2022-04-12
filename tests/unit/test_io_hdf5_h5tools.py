@@ -1225,11 +1225,12 @@ class TestCloseLinks(TestCase):
         read_io = HDF5IO(self.path1, mode='r', manager=manager)
         read_foofile1 = read_io.read()
 
-        with HDF5IO(self.path2, mode='a', manager=get_foo_buildmanager()) as new_io1:
+        with HDF5IO(self.path2, mode='r', manager=get_foo_buildmanager()) as new_io1:
             new_io1.read()  # keep reference to container in memory
 
         self.assertTrue(read_io)  # make sure read_io is not closed
         read_io.close()
+
 
 
 class HDF5IOInitNoFileTest(TestCase):
