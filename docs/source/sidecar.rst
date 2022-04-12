@@ -112,7 +112,7 @@ The operation specification may also have the following keys:
   existing value for the dataset/attribute is used. Allowed dtypes are listed in the
   `HDMF schema language docs for dtype <https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype>`_.
 
-In the example sidecar JSON file above, the first operation specifies that the value of dataset "my_data" under
+In the example sidecar JSON file above, the first operation specifies that the value of dataset "my_data" in
 group "foo1", which has the specified object ID, should be replaced with the 1-D array [4, 5] (dtype: int8).
 
 .. note::
@@ -127,8 +127,9 @@ as specified by the ``object_id`` and ``relative_path``.
 
 The operation specification does not use any additional keys.
 
-In the example sidecar JSON file above, the second operation specifies that attribute "attr6" under
-group "foo1", which has the specified object ID, at relative path "foo_holder/my_sub_data/attr6" should be deleted.
+In the example sidecar JSON file above, the second operation specifies that attribute "attr6"
+at relative path "foo_holder/my_sub_data/attr6" from group "foo1", which has the specified object ID,
+should be deleted.
 If "attr6" is a required attribute, this is likely to result in an invalid file that cannot be read by HDMF.
 
 Future changes
