@@ -510,47 +510,59 @@ def docval(*validator, **options):  # noqa: C901
         _docval['allow_positional'] = allow_positional
         func.__name__ = _docval.get('func_name', func.__name__)
         func.__doc__ = _docval.get('doc', func.__doc__)
-        pos = list()
-        kw = list()
-        for a in validator:
-            # catch unsupported keys
-            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
-            unsupported_terms = set(a.keys()) - set(allowable_terms)
-            if unsupported_terms:
-                raise Exception('docval for {}: keys {} are not supported by docval'.format(a['name'],
-                                                                                            sorted(unsupported_terms)))
-            # check that arg type is valid
-            try:
-                a['type'] = __resolve_type(a['type'])
-            except Exception as e:
-                msg = "docval for %s: error parsing argument type: %s" % (a['name'], e.args[0])
-                raise Exception(msg)
-            if 'enum' in a:
-                # check that value for enum key is a list or tuple (cannot have only one allowed value)
-                if not isinstance(a['enum'], (list, tuple)):
-                    msg = ('docval for %s: enum value must be a list or tuple (received %s)'
-                           % (a['name'], type(a['enum'])))
+
+        def _normalize_validator(validator):
+            pos = list()
+            kw = list()
+            for a in validator:
+                b = _copy.copy(a)
+                # catch unsupported keys
+                allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
+                unsupported_terms = set(b.keys()) - set(allowable_terms)
+                if unsupported_terms:
+                    raise Exception('docval for {}: keys {} are not supported by docval'.format(b['name'],
+                                                                                                sorted(unsupported_terms)))
+                # check that arg type is valid
+                try:
+                    print(b)
+                    b['type'] = __resolve_type(b['type'])
+                except Exception as e:
+                    msg = "docval for %s: error parsing argument type: %s" % (b['name'], e.args[0])
                     raise Exception(msg)
-                # check that arg type is compatible with enum
-                if not __check_enum_argtype(a['type']):
-                    msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(a['name'], a['type'])
-                    raise Exception(msg)
-                # check that enum allowed values are allowed by arg type
-                if any([not __type_okay(x, a['type']) for x in a['enum']]):
-                    msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
-                           'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
-                    raise Exception(msg)
-            if 'default' in a:
-                kw.append(a)
-            else:
-                pos.append(a)
-        loc_val = pos + kw
+                if 'enum' in b:
+                    # check that value for enum key is a list or tuple (cannot have only one allowed value)
+                    if not isinstance(b['enum'], (list, tuple)):
+                        msg = ('docval for %s: enum value must be a list or tuple (received %s)'
+                               % (b['name'], type(b['enum'])))
+                        raise Exception(msg)
+                    # check that arg type is compatible with enum
+                    if not __check_enum_argtype(b['type']):
+                        msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(b['name'], b['type'])
+                        raise Exception(msg)
+                    # check that enum allowed values are allowed by arg type
+                    if any([not __type_okay(x, b['type']) for x in b['enum']]):
+                        msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
+                               'expected {})'.format(b['name'], [type(x) for x in b['enum']], b['type']))
+                        raise Exception(msg)
+                if 'default' in b:
+                    kw.append(b)
+                else:
+                    pos.append(b)
+            loc_val = pos + kw
+            return loc_val
+
+        loc_val = _normalize_validator(validator)
         _docval[__docval_args_loc] = loc_val
 
         def _check_args(args, kwargs):
             """Parse and check arguments to decorated function. Raise warnings and errors as appropriate."""
             # this function was separated from func_call() in order to make stepping through lines of code using pdb
             # easier
+
+            loc_val = _normalize_validator(validator)
+            _docval[__docval_args_loc] = loc_val
+            # TODO also need to update __doc__ and other vars below with new macro values?
+
             parsed = __parse_args(
                 loc_val,
                 args[1:] if is_method else args,
