@@ -47,3 +47,11 @@ class ContainerConfigurationError(Exception):
 
 class ConstructError(Exception):
     """Error raised when constructing a container from a builder."""
+
+    @docval({'name': 'builder', 'type': Builder, 'doc': 'the builder that cannot be constructed'},
+            {'name': 'reason', 'type': str, 'doc': 'the reason for the error'})
+    def __init__(self, **kwargs):
+        self.__builder = getargs('builder', kwargs)
+        self.__reason = getargs('reason', kwargs)
+        self.__message = "%s (%s): %s" % (self.__builder.name, self.__builder.path, self.__reason)
+        super().__init__(self.__message)

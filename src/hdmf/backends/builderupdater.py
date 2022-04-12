@@ -111,13 +111,15 @@ class BuilderUpdater:
                 builder = builder_map[object_id]
                 # TODO handle paths to links
                 # TODO handle object references
-                if operation_type == 'replace' or operation_type == 'delete':
+                if operation_type == 'replace':
                     cls.__replace(builder, relative_path, new_value, new_dtype)
-                elif operation_type == 'change_dtype':
-                    assert new_value is None
-                    cls.__change_dtype(builder, relative_path, new_dtype)
-                elif operation_type == 'create_attribute':
-                    cls.__create_attribute(builder, relative_path, new_value, new_dtype)
+                elif operation_type == 'delete':
+                    cls.__delete(builder, relative_path)
+                # elif operation_type == 'change_dtype':
+                #     assert new_value is None
+                #     cls.__change_dtype(builder, relative_path, new_dtype)
+                # elif operation_type == 'create_attribute':
+                #     cls.__create_attribute(builder, relative_path, new_value, new_dtype)
                 else:
                     raise ValueError("Operation type: '%s' not supported." % operation_type)
 
@@ -127,22 +129,43 @@ class BuilderUpdater:
     def __replace(cls, builder, relative_path, new_value, new_dtype):
         if relative_path in builder.attributes:
             cls.__replace_attribute(builder, relative_path, new_value, new_dtype)
-        elif isinstance(builder, GroupBuilder):  # GroupBuilder has object_id
-            sub_dset_builder, attr_name = builder.get_subbuilder(relative_path)
-            if sub_dset_builder is None:
+        elif isinstance(builder, GroupBuilder):  # object_id points to GroupBuilder
+            sub_builder, attr_name = builder.get_subbuilder(relative_path)
+            if sub_builder is None:
                 raise ValueError("Relative path '%s' not recognized as a group, dataset, or attribute."
                                  % relative_path)
             if attr_name is None:
-                cls.__replace_dataset_data(sub_dset_builder, new_value, new_dtype)
+                cls.__replace_dataset_data(sub_builder, new_value, new_dtype)
             else:
-                cls.__replace_attribute(sub_dset_builder, attr_name, new_value, new_dtype)
-        else:  # DatasetBuilder has object_id
+                cls.__replace_attribute(sub_builder, attr_name, new_value, new_dtype)
+        else:  # object_id points to DatasetBuilder
             if not relative_path:
                 cls.__replace_dataset_data(builder, new_value, new_dtype)
             else:
                 raise ValueError("Relative path '%s' not recognized as None or attribute." % relative_path)
 
     @classmethod
+    def __delete(cls, builder, relative_path):
+        if relative_path in builder.attributes:  # relative_path is name of attribute in GroupBuilder/DatasetBuilder
+            cls.__delete_attribute(builder, relative_path)
+        elif isinstance(builder, GroupBuilder):  # object_id points to GroupBuilder
+            sub_builder, attr_name = builder.get_subbuilder(relative_path)
+            if sub_builder is None:
+                raise ValueError("Relative path '%s' not recognized as a group, dataset, or attribute."
+                                 % relative_path)
+            if attr_name is None:
+                # delete the DatasetBuilder from its parent
+                cls.__delete_builder(sub_builder.parent, sub_builder)
+            else:
+                cls.__delete_attribute(sub_builder, attr_name)  # delete the attribute from the sub-Builder
+        else:  # object_id points to DatasetBuilder
+            if not relative_path:
+                cls.__delete_builder(builder.parent, builder)  # delete the DatasetBuilder from its parent
+            else:
+                raise ValueError("Relative path '%s' not recognized as None or attribute." % relative_path)
+
+    @classmethod
+    # NOTE this function is currently unused
     def __change_dtype(cls, builder, relative_path, new_dtype):
         if relative_path in builder.attributes:
             cls.__change_dtype_attribute(builder, relative_path, new_dtype)
@@ -190,6 +213,14 @@ class BuilderUpdater:
     def __replace_attribute(cls, builder, attr_name, value, dtype):
         new_value = cls.convert_dtype(value, dtype, builder.attributes[attr_name])
         builder.attributes[attr_name] = new_value
+
+    @classmethod
+    def __delete_attribute(cls, builder, attr_name):
+        builder.remove_attribute(attr_name)
+
+    @classmethod
+    def __delete_builder(cls, parent_builder, child_builder):
+        parent_builder.remove_child(child_builder)
 
     @classmethod
     def __change_dtype_dataset_data(cls, dset_builder, dtype):

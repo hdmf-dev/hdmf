@@ -5,7 +5,7 @@ import os
 from hdmf import Container, Data
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from hdmf.backends import SidecarValidationError
-from hdmf.build import BuildManager, TypeMap, ObjectMapper
+from hdmf.build import BuildManager, TypeMap, ObjectMapper, ConstructError
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
 from hdmf.utils import getargs, docval
@@ -20,43 +20,11 @@ class TestBasic(TestCase):
         self.foo2 = Foo(name='foo2', my_data=[1, 2, 3], my_sub_data=[1, 2, 3], attr1='old')
         self.sub_foo = Foo(name='sub_foo', my_data=[-1, -2, -3], my_sub_data=[-1, -2, -3], attr1='OLD')
         self.foo_data = FooData(name='my_foo_data', data=[0, 1], data_attr1=1, data_attr2=['a'])
-        self.foo1 = Foo(name='foo1', my_data=[1, 2, 3], my_sub_data=[1, 2, 3], attr1='old', attr2=[17],
+        self.foo1 = Foo(name='foo1', my_data=[1, 2, 3], my_sub_data=[1, 2, 3], attr1='old', attr2='old', attr3=[17],
                         sub_foo=self.sub_foo, foo_holder_foos=[self.foo2], my_foo_data=self.foo_data,
-                        attr3=[1], attr4=[1], attr5=[1])
+                        attr4=[1], attr5=[1], attr6=[1], optional_data=[1, 2, 3])
         with HDF5IO(self.h5_path, manager=_get_manager(), mode='w') as io:
             io.write(self.foo1)
-
-        # operations = [
-        #     {
-        #         "type": "create_attribute",
-        #         "description": "create sub_foo/my_data/attr2 and set it to [1] (int16)",
-        #         "object_id": sub_foo.object_id,
-        #         "relative_path": "my_data/attr2",
-        #         "value": [1],
-        #         "dtype": "int16"
-        #     },
-        #     {
-        #         "type": "delete",
-        #         "description": "delete foo1/my_data/attr2",
-        #         "object_id": foo1.object_id,
-        #         "relative_path": "my_data/attr2",
-        #     },
-        #     {
-        #         "type": "change_dtype",
-        #         "description": "change dtype of foo1/my_data from int16 to int8",
-        #         "object_id": foo1.object_id,
-        #         "relative_path": "my_data",
-        #         "dtype": "int8"
-        #     }
-        # ]
-        #
-        # sidecar = dict()
-        # sidecar["operations"] = operations
-        # sidecar["schema_version"] = "0.1.0"
-        #
-        # self.json_path = "./tests/unit/io_tests/test_sidecar.json"
-        # with open(self.json_path, 'w') as outfile:
-        #     json.dump(sidecar, outfile, indent=4)
 
     def tearDown(self):
         if os.path.exists(self.h5_path):
@@ -90,8 +58,8 @@ class TestBasic(TestCase):
         self._write_test_sidecar(operations)
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             read_foo1 = io.read()
-            # TODO make sure this checks dtype
-            np.testing.assert_array_equal(read_foo1.my_data, np.array([4, 5], dtype=np.dtype('int8')))
+            np.testing.assert_array_equal(read_foo1.my_data, np.array([4, 5]))
+            assert read_foo1.my_data.dtype is np.dtype('int8')
 
     def test_replace_subgroup_dataset_data(self):
         """Test replacing the data of a dataset in a subgroup of a typed group."""
@@ -108,8 +76,8 @@ class TestBasic(TestCase):
         self._write_test_sidecar(operations)
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             read_foo1 = io.read()
-            # TODO make sure this checks dtype
-            np.testing.assert_array_equal(read_foo1.my_sub_data, np.array([4, 5], dtype=np.dtype('int8')))
+            np.testing.assert_array_equal(read_foo1.my_sub_data, np.array([4, 5]))
+            assert read_foo1.my_sub_data.dtype is np.dtype('int8')
 
     def test_replace_typed_dataset_data(self):
         """Test replacing the data of a typed dataset."""
@@ -126,8 +94,8 @@ class TestBasic(TestCase):
         self._write_test_sidecar(operations)
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             read_foo1 = io.read()
-            # TODO make sure this checks dtype
-            np.testing.assert_array_equal(read_foo1.my_foo_data.data, np.array([2, 3], dtype=np.dtype('int8')))
+            np.testing.assert_array_equal(read_foo1.my_foo_data.data, np.array([2, 3]))
+            assert read_foo1.my_foo_data.data.dtype is np.dtype('int8')
 
     def test_replace_typed_group_attribute(self):
         """Test replacing the attribute of a typed group."""
@@ -150,9 +118,9 @@ class TestBasic(TestCase):
         operations = [
             {
                 "type": "replace",
-                "description": "change foo1/foo_holder/attr4 from [1] to [2] (int8)",
+                "description": "change foo1/foo_holder/attr5 from [1] to [2] (int8)",
                 "object_id": self.foo1.object_id,
-                "relative_path": "foo_holder/attr4",
+                "relative_path": "foo_holder/attr5",
                 "value": [2],
                 "dtype": "int8"
             },
@@ -160,17 +128,17 @@ class TestBasic(TestCase):
         self._write_test_sidecar(operations)
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             read_foo1 = io.read()
-            # TODO make sure this checks dtype
-            np.testing.assert_array_equal(read_foo1.attr4, np.array([2], dtype=np.dtype('int8')))
+            np.testing.assert_array_equal(read_foo1.attr5, np.array([2]))
+            assert read_foo1.attr5.dtype is np.dtype('int8')
 
     def test_replace_typed_group_dataset_attribute(self):
         """Test replacing the attribute of an untyped dataset in a typed group."""
         operations = [
             {
                 "type": "replace",
-                "description": "change foo1/my_data/attr2 from [1] to [2] (int8)",
+                "description": "change foo1/my_data/attr3 from [1] to [2] (int8)",
                 "object_id": self.foo1.object_id,
-                "relative_path": "my_data/attr2",
+                "relative_path": "my_data/attr3",
                 "value": [2],
                 "dtype": "int8"
             },
@@ -178,17 +146,17 @@ class TestBasic(TestCase):
         self._write_test_sidecar(operations)
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             read_foo1 = io.read()
-            # TODO make sure this checks dtype
-            np.testing.assert_array_equal(read_foo1.attr2, np.array([2], dtype=np.dtype('int8')))
+            np.testing.assert_array_equal(read_foo1.attr3, np.array([2]))
+            assert read_foo1.attr3.dtype is np.dtype('int8')
 
     def test_replace_subgroup_dataset_attribute(self):
         """Test replacing the attribute of an untyped dataset in an untyped group in a typed group."""
         operations = [
             {
                 "type": "replace",
-                "description": "change foo1/foo_holder/my_sub_data/attr5 from [1] to [2] (int8)",
+                "description": "change foo1/foo_holder/my_sub_data/attr6 from [1] to [2] (int8)",
                 "object_id": self.foo1.object_id,
-                "relative_path": "foo_holder/my_sub_data/attr5",
+                "relative_path": "foo_holder/my_sub_data/attr6",
                 "value": [2],
                 "dtype": "int8"
             },
@@ -196,8 +164,8 @@ class TestBasic(TestCase):
         self._write_test_sidecar(operations)
         with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
             read_foo1 = io.read()
-            # TODO make sure this checks dtype
-            np.testing.assert_array_equal(read_foo1.attr5, np.array([2], dtype=np.dtype('int8')))
+            np.testing.assert_array_equal(read_foo1.attr6, np.array([2]))
+            assert read_foo1.attr6.dtype is np.dtype('int8')
 
     def test_replace_typed_dataset_attribute(self):
         """Test replacing the attribute of a typed dataset."""
@@ -216,48 +184,200 @@ class TestBasic(TestCase):
             read_foo1 = io.read()
             assert read_foo1.my_foo_data.data_attr1 == 2
 
+    def test_delete_typed_group_required_dataset(self):
+        """Test deleting a required dataset in a typed group."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/my_data",
+                "object_id": self.foo1.object_id,
+                "relative_path": "my_data",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            msg = "root (root): Could not construct Foo object due to: Foo.__init__: missing argument 'my_data'"
+            with self.assertRaisesWith(ConstructError, msg):
+                io.read()
+
+    def test_delete_typed_group_optional_dataset(self):
+        """Test deleting an optional dataset in a typed group."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/opt_data",
+                "object_id": self.foo1.object_id,
+                "relative_path": "opt_data",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.optional_data is None
+
+    def test_delete_typed_group_optional_typed_dataset(self):
+        """Test deleting an optional typed dataset in a typed group by providing the group object ID.
+
+        Note that my_foo_data has an object ID which can be used instead of this method.
+        """
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/my_foo_data",
+                "object_id": self.foo1.object_id,
+                "relative_path": "my_foo_data",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.my_foo_data is None
+
+    def test_delete_typed_dataset(self):
+        """Test deleting an optional typed dataset by providing the dataset object ID."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete my_foo_data from its parent",
+                "object_id": self.foo_data.object_id,
+                "relative_path": "",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.my_foo_data is None
+
+    def test_delete_subgroup_required_dataset(self):
+        """Test deleting a required dataset in a subgroup of a typed group."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/foo_holder_foos/my_sub_data",
+                "object_id": self.foo1.object_id,
+                "relative_path": "foo_holder/my_sub_data"
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            msg = "root (root): Could not construct Foo object due to: Foo.__init__: missing argument 'my_sub_data'"
+            with self.assertRaisesWith(ConstructError, msg):
+                io.read()
+
     def test_delete_typed_group_req_attribute(self):
-        pass
+        """Test deleting a required attribute of a typed group."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/attr1",
+                "object_id": self.foo1.object_id,
+                "relative_path": "attr1",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            msg = "root (root): Could not construct Foo object due to: Foo.__init__: missing argument 'attr1'"
+            with self.assertRaisesWith(ConstructError, msg):
+                io.read()
 
     def test_delete_typed_group_opt_attribute(self):
-        pass
-
-    def test_delete_subgroup_req_attribute(self):
-        pass
+        """Test deleting an optional attribute of a typed group."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/attr2",
+                "object_id": self.foo1.object_id,
+                "relative_path": "attr2",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.attr2 is None  # the default value when attr2 is not provided
 
     def test_delete_subgroup_opt_attribute(self):
-        pass
-
-    def test_delete_typed_group_dataset_req_attribute(self):
-        pass
+        """Test deleting an optional attribute of a subgroup."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/foo_holder/attr5",
+                "object_id": self.foo1.object_id,
+                "relative_path": "foo_holder/attr5",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.attr5 is None
 
     def test_delete_typed_group_dataset_opt_attribute(self):
-        pass
-
-    def test_delete_subgroup_dataset_req_attribute(self):
-        pass
+        """Test deleting an optional attribute of a dataset in a typed group."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/my_data/attr3",
+                "object_id": self.foo1.object_id,
+                "relative_path": "my_data/attr3",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.attr3 is None
 
     def test_delete_subgroup_dataset_opt_attribute(self):
-        pass
+        """Test deleting an optional attribute of a dataset in a subgroup."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete foo1/foo_holder/my_sub_data/attr6",
+                "object_id": self.foo1.object_id,
+                "relative_path": "foo_holder/my_sub_data/attr6",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.attr6 is None
 
-    def test_delete_dataset_req_attribute(self):
-        pass
+    def test_delete_typed_dataset_req_attribute(self):
+        """Test deleting a required attribute or a typed dataset."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete my_foo_data/data_attr1",
+                "object_id": self.foo_data.object_id,
+                "relative_path": "data_attr1",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            msg = ("my_foo_data (root/my_foo_data): Could not construct FooData object due to: FooData.__init__: "
+                   "missing argument 'data_attr1'")
+            with self.assertRaisesWith(ConstructError, msg):
+                io.read()
 
-    def test_delete_dataset_opt_attribute(self):
-        pass
-
-    def test_cannot_delete_group(self):
-        pass
-
-    def test_cannot_delete_dataset(self):
-        pass
+    def test_delete_typed_dataset_opt_attribute(self):
+        """Test deleting a required attribute or a typed dataset."""
+        operations = [
+            {
+                "type": "delete",
+                "description": "delete my_foo_data/data_attr2",
+                "object_id": self.foo_data.object_id,
+                "relative_path": "data_attr2",
+            },
+        ]
+        self._write_test_sidecar(operations)
+        with HDF5IO(self.h5_path, 'r', manager=_get_manager()) as io:
+            read_foo1 = io.read()
+            assert read_foo1.my_foo_data.data_attr2 is None
 
 
 class TestFailValidation(TestCase):
 
     def setUp(self):
         self.h5_path = "./tests/unit/io_tests/test_sidecar_fail.h5"
-        foo1 = Foo(name='foo1', my_data=[1, 2, 3], my_sub_data=[1, 2, 3], attr1='old', attr2=[17])
+        foo1 = Foo(name='foo1', my_data=[1, 2, 3], my_sub_data=[1, 2, 3], attr1='old', attr3=[17])
         with HDF5IO(self.h5_path, manager=_get_manager(), mode='w') as io:
             io.write(foo1)
 
@@ -287,19 +407,20 @@ class Foo(Container):
             {'name': 'my_sub_data', 'type': ('array_data', 'data'), 'doc': 'a 1-D or 2-D integer dataset',
              'shape': ((None, ), (None, None))},
             {'name': 'attr1', 'type': str, 'doc': 'a string attribute'},
+            {'name': 'attr2', 'type': str, 'doc': 'a string attribute', 'default': None},
             {'name': 'optional_data', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer dataset', 'default': None},
-            {'name': 'attr2', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'shape': (None, ),
+            {'name': 'attr3', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'shape': (None, ),
              'default': None},
-            {'name': 'attr3', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
             {'name': 'attr4', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
             {'name': 'attr5', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
+            {'name': 'attr6', 'type': ('array_data', 'data'), 'doc': 'a 1-D integer attribute', 'default': None},
             {'name': 'sub_foo', 'type': 'Foo', 'doc': 'a child Foo', 'default': None},
             {'name': 'my_foo_data', 'type': 'FooData', 'doc': 'a child Foo', 'default': None},
             {'name': 'foo_holder_foos', 'type': ('array_data', 'data'), 'doc': 'child Foos', 'default': None},
             {'name': 'foo_holder_foo_data', 'type': ('array_data', 'data'), 'doc': 'child FooData', 'default': None})
     def __init__(self, **kwargs):
-        name, my_data, my_sub_data, attr1, = getargs('name', 'my_data', 'my_sub_data', 'attr1', kwargs)
-        optional_data, attr2, attr3, attr4, attr5 = getargs('optional_data', 'attr2', 'attr3', 'attr4', 'attr5', kwargs)
+        name, my_data, my_sub_data, attr1, attr2 = getargs('name', 'my_data', 'my_sub_data', 'attr1', 'attr2', kwargs)
+        optional_data, attr3, attr4, attr5, attr6 = getargs('optional_data', 'attr3', 'attr4', 'attr5', 'attr6', kwargs)
         sub_foo, my_foo_data = getargs('sub_foo', 'my_foo_data', kwargs)
         foo_holder_foos, foo_holder_foo_data = getargs('foo_holder_foos', 'foo_holder_foo_data', kwargs)
         super().__init__(name=name)
@@ -310,6 +431,7 @@ class Foo(Container):
         self.attr3 = attr3
         self.attr4 = attr4
         self.attr5 = attr5
+        self.attr6 = attr6
         self.optional_data = optional_data
         self.sub_foo = sub_foo
         if sub_foo is not None:
@@ -354,20 +476,21 @@ def _get_manager():
     #     - datasets:
     #       - my_sub_data (int, 1-D or 2-D), required
     #         - attributes:
-    #           - attr5 (int, 1-D), optional, remapped to attr5
+    #           - attr6 (int, 1-D), optional, remapped to attr6
     #       - (FooData), 0 to many, remapped to foo_holder_foo_data
     #     - attributes:
-    #       - attr4 (int, 1-D), optional, remapped to attr4
+    #       - attr5 (int, 1-D), optional, remapped to attr5
     # - datasets:
     #   - my_data (int, 1-D or 2-D), required
     #     - attributes:
-    #       - attr2 (int, 1-D), optional, remapped to attr2
+    #       - attr3 (int, 1-D), optional, remapped to attr3
     #   - opt_data (int, 1-D or 2-D), 0 or 1, remapped to optional_data
     #     - attributes:
-    #       - attr3 (int, 1-D), optional, remapped to attr3
+    #       - attr4 (int, 1-D), optional, remapped to attr4
     #   - my_foo_data (FooData), optional
     #  - attributes:
     #    - attr1 (string, scalar), required
+    #    - attr2 (string, scalar), optional
     #
     # FooData (dataset with data_type) has:
     # - int, 1D
@@ -425,7 +548,7 @@ def _get_manager():
                         shape=[[None, ], [None, None]],
                         attributes=[
                             AttributeSpec(
-                                name='attr5',
+                                name='attr6',
                                 doc='a 1-D integer attribute',
                                 dtype='int',
                                 shape=[None, ],
@@ -441,7 +564,7 @@ def _get_manager():
                 ],
                 attributes=[
                     AttributeSpec(
-                        name='attr4',
+                        name='attr5',
                         doc='a 1-D integer attribute',
                         dtype='int',
                         shape=[None, ],
@@ -458,7 +581,7 @@ def _get_manager():
                 shape=[[None, ], [None, None]],
                 attributes=[
                     AttributeSpec(
-                        name='attr2',
+                        name='attr3',
                         doc='a 1-D integer attribute',
                         dtype='int',
                         shape=[None, ],
@@ -474,7 +597,7 @@ def _get_manager():
                 quantity='?',
                 attributes=[
                     AttributeSpec(
-                        name='attr3',
+                        name='attr4',
                         doc='a 1-D integer attribute',
                         dtype='int',
                         shape=[None, ],
@@ -491,29 +614,30 @@ def _get_manager():
         ],
         attributes=[
             AttributeSpec(name='attr1', doc='a string attribute', dtype='text'),
+            AttributeSpec(name='attr2', doc='a string attribute', dtype='text', required=False),
         ]
     )
 
     class FooMapper(ObjectMapper):
         """Remap spec fields to Container attributes.
-        - 'attr2' attribute on Foo container to 'my_data' dataset spec > 'attr2' attribute spec
-        - 'attr3' attribute on Foo container to 'opt_data' dataset spec > 'attr3' attribute spec.
+        - 'attr3' attribute on Foo container to 'my_data' dataset spec > 'attr3' attribute spec
+        - 'attr4' attribute on Foo container to 'opt_data' dataset spec > 'attr4' attribute spec.
         - TODO fill me in
         """
         def __init__(self, spec):
             super().__init__(spec)
             my_data_spec = spec.get_dataset('my_data')
-            self.map_spec('attr2', my_data_spec.get_attribute('attr2'))
+            self.map_spec('attr3', my_data_spec.get_attribute('attr3'))
             opt_data_spec = spec.get_dataset('opt_data')
-            self.map_spec('attr3', opt_data_spec.get_attribute('attr3'))
+            self.map_spec('attr4', opt_data_spec.get_attribute('attr4'))
             self.map_spec('optional_data', opt_data_spec)
             foo_holder_spec = spec.get_group('foo_holder')
-            self.map_spec('attr4', foo_holder_spec.get_attribute('attr4'))
+            self.map_spec('attr5', foo_holder_spec.get_attribute('attr5'))
             self.map_spec('foo_holder_foos', foo_holder_spec.get_data_type('Foo'))
             self.map_spec('foo_holder_foo_data', foo_holder_spec.get_data_type('FooData'))
             my_sub_data_spec = foo_holder_spec.get_dataset('my_sub_data')
             self.map_spec('my_sub_data', my_sub_data_spec)
-            self.map_spec('attr5', my_sub_data_spec.get_attribute('attr5'))
+            self.map_spec('attr6', my_sub_data_spec.get_attribute('attr6'))
 
     spec_catalog = SpecCatalog()
     spec_catalog.register_spec(foo_spec, 'test.yaml')

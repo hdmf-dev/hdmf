@@ -1,0 +1,110 @@
+.. _modifying_with_sidecar:
+
+Modifying an HDMF file with a sidecar JSON file
+===============================================
+
+Users may want to update part of an HDMF file without rewriting the entire file.
+To do so, HDMF supports the use of a "sidecar" JSON file that lives adjacent to the HDMF file on disk and
+specifies modifications to the HDMF file. Only a limited set of modifications are supported; for example, users can
+delete a dataset or attribute but cannot create a new dataset or attribute.
+When HDMF reads an HDMF file, if the corresponding sidecar JSON file exists, it is
+automatically read and the modifications that it specifies are automatically applied.
+
+.. note::
+
+  This default behavior can be changed such that the corresponding sidecar JSON file is ignored when the HDMF file
+  is read by passing ``load_sidecar=False`` to the instance of `HDMFIO` used to read the HDMF file.
+
+Allowed modifications
+---------------------
+
+Only the following modifications to an HDMF file are supported in the sidecar JSON file:
+
+- Replace the values of a dataset or attribute with a scalar or 1-D array
+- Delete a dataset or attribute
+
+.. note::
+
+  Replacing the values of a dataset or attribute with a very large 1-D array using the sidecar JSON file may not
+  be efficient and is discouraged. Users should instead consider rewriting the HDMF file with the
+  updated values.
+
+Specification for the sidecar JSON file
+---------------------------------------
+
+The sidecar JSON file can be validated using the ``sidecar.schema.json`` JSON schema file
+located at the root of the HDMF repository.
+
+The sidecar JSON file must contain the following top-level keys:
+
+- "description": A free-form string describing the modifications specified in this file.
+- "author": A list of free-form strings containing the names of the people who created this file.
+- "contact": A list of email addresses for the people who created this file. Each author listed in the "author" key
+  *should* have a corresponding email address.
+- "operations": A list of operations to perform on the data in the file, as specified below.
+- "schema_version": The version of the sidecar JSON schema that the file conforms to.
+
+Specification for operations
+----------------------------
+
+All operations are required to have the following keys:
+
+- "type": The type of modification to perform. Only "replace" and "delete" are supported currently.
+- "description": A description of the specified modification.
+- "object_id": The object ID (UUID) of the data type that is closest in the file hierarchy to the
+  field being modified.
+- "relative_path": The relative path from the data type with the given object ID to the field being modified.
+
+Operations can result in invalid files, i.e., files that do not conform to the specification. It is strongly
+recommended that the file is validated against the schema after loading the sidecar JSON. In some cases, the
+file cannot be read because the file is invalid.
+
+Replacing values of a dataset/attribute with a scalar or 1-D array
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Specify ``"type": "replace"`` to replace the values of a dataset/attribute from the associated HDMF file
+as specified by the ``object_id`` and ``relative_path``.
+
+The operation specification must have the following keys:
+
+- "value": The new value for the dataset/attribute. Only scalar and 1-dimensional arrays can be
+  specified as a replacement value.
+
+The operation specification may also have the following keys:
+
+- "dtype": String representing the dtype of the new value. If this key is not present, then the dtype of the
+  existing value for the dataset/attribute is used. Allowed dtypes are listed in the
+  `HDMF schema language docs for dtype <https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype>`_.
+
+.. note::
+
+  Replacing the values of datasets or attributes with object references or a compound data type is not yet supported.
+
+Deleting a dataset/attribute
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Specify ``"type": "delete"`` to delete (ignore) a dataset/attribute from the associated HDMF file
+as specified by the ``object_id`` and ``relative_path``.
+
+The operation specification does not use any additional keys.
+
+Future changes
+--------------
+
+The HDMF team is considering supporting additional operations and expanding support for current operations
+specified in the sidecar JSON file, such as:
+
+- Add rows to a ``DynamicTable`` (column-based)
+- Add rows to a ``Table`` (row-based)
+- Add a new group
+- Add a new dataset
+- Add a new attribute
+- Add a new link
+- Replace a dataset or attribute with object references
+- Replace a dataset or attribute with a compound data type
+- Replace selected slices of a dataset or attribute
+- Delete a group
+- Delete a link
+
+Please provide feedback on which operations are useful to you for HDMF to support in this
+`issue ticket <https://github.com/hdmf-dev/hdmf/issues/676>`_.
