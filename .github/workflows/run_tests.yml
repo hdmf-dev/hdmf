@@ -12,59 +12,59 @@ on:
     - '**'
 jobs:
   run-tests:
-    name: ${{ name }}
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - name: "python3.7-min-req"
-            TEST_TOX_ENV: "py37-min-req"
-            BUILD_TOX_ENV: "build-py37-min-req"
-            PYTHON_VER: "3.7"
+            test-tox-env: "py37-min-req"
+            build-tox-env: "build-py37-min-req"
+            python-ver: "3.7"
           - name: "python3.7"
-            TEST_TOX_ENV: "py37"
-            BUILD_TOX_ENV: "build-py37"
-            PYTHON_VER: "3.7"
+            test-tox-env: "py37"
+            build-tox-env: "build-py37"
+            python-ver: "3.7"
           - name: "python3.8"
-            TEST_TOX_ENV: "py38"
-            BUILD_TOX_ENV: "build-py38"
-            PYTHON_VER: "3.8"
+            test-tox-env: "py38"
+            build-tox-env: "build-py38"
+            python-ver: "3.8"
           - name: "python3.9"
-            TEST_TOX_ENV: "py39"
-            BUILD_TOX_ENV: "build-py39"
-            PYTHON_VER: "3.9"
+            test-tox-env: "py39"
+            build-tox-env: "build-py39"
+            python-ver: "3.9"
           - name: "python3.10"
-            TEST_TOX_ENV: "py310"
-            BUILD_TOX_ENV: "build-py310"
-            PYTHON_VER: "3.10"
+            test-tox-env: "py310"
+            build-tox-env: "build-py310"
+            python-ver: "3.10"
           - name: "python3.10-opt"
-            TEST_TOX_ENV: "py310-opt"
-            BUILD_TOX_ENV: "build-py310-opt"
-            PYTHON_VER: "3.10"
+            test-tox-env: "py310-opt"
+            build-tox-env: "build-py310-opt"
+            python-ver: "3.10"
           - name: "python3.10-upgrade-dev"
-            TEST_TOX_ENV: "py310-upgrade-dev"
-            BUILD_TOX_ENV: "build-py310-upgrade-dev"
-            PYTHON_VER: "3.10"
+            test-tox-env: "py310-upgrade-dev"
+            build-tox-env: "build-py310-upgrade-dev"
+            python-ver: "3.10"
           - name: "python3.10-upgrade-dev-pre"
-            TEST_TOX_ENV: "py310-upgrade-dev-pre"
-            BUILD_TOX_ENV: "build-py310-upgrade-dev-pre"
-            PYTHON_VER: "3.10"
+            test-tox-env: "py310-upgrade-dev-pre"
+            build-tox-env: "build-py310-upgrade-dev-pre"
+            python-ver: "3.10"
           - name: "miniconda3.7"
-            TEST_TOX_ENV: "py37"
-            BUILD_TOX_ENV: "build-py37"
-            CONDA_PYTHON_VER: "3.7"
+            test-tox-env: "py37"
+            build-tox-env: "build-py37"
+            conda-python-ver: "3.7"
           - name: "miniconda3.8"
-            TEST_TOX_ENV: "py38"
-            BUILD_TOX_ENV: "build-py38"
-            CONDA_PYTHON_VER: "3.8"
+            test-tox-env: "py38"
+            build-tox-env: "build-py38"
+            conda-python-ver: "3.8"
           - name: "miniconda3.9"
-            TEST_TOX_ENV: "py39"
-            BUILD_TOX_ENV: "build-py39"
-            CONDA_PYTHON_VER: "3.9"
+            test-tox-env: "py39"
+            build-tox-env: "build-py39"
+            conda-python-ver: "3.9"
           - name: "miniconda3.10"
-            TEST_TOX_ENV: "py310"
-            BUILD_TOX_ENV: "build-py310"
-            CONDA_PYTHON_VER: "3.10"
+            test-tox-env: "py310"
+            build-tox-env: "build-py310"
+            conda-python-ver: "3.10"
     steps:
     - name: Cancel any previous incomplete runs
       uses: styfle/cancel-workflow-action@0.9.1
@@ -75,34 +75,34 @@ jobs:
         submodules: 'recursive'
     - name: Set up Python
       uses: actions/setup-python@v3
-      if: ${{ PYTHON_VER }}
+      if: ${{ matrix.python-ver }}
       with:
-        python-version: ${{ PYTHON_VER }}
+        python-version: ${{ matrix.python-ver }}
     - name: Set up Conda
       uses: conda-incubator/setup-miniconda@v2
-      if: ${{ CONDA_PYTHON_VER }}
+      if: ${{ matrix.conda-python-ver }}
       with:
         auto-activate-base: true
         activate-environment: ""
     - name: Install build dependencies
-      if: ${{ PYTHON_VER }}
+      if: ${{ matrix.python-ver }}
       run: |
         # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
-        if [[ "${{ TEST_TOX_ENV }}" == *"py39"* ]] || [[ "${{ TEST_TOX_ENV }}" == *"py310"* ]]; then
+        if [[ "${{ matrix.test-tox-env }}" == *"py39"* ]] || [[ "${{ matrix.test-tox-env }}" == *"py310"* ]]; then
           sudo apt-get install libhdf5-dev
         fi
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
         python -m pip install wheel tox
     - name: Install build dependencies (conda)
-      if: ${{ CONDA_PYTHON_VER }}
+      if: ${{ matrix.conda-python-ver }}
       run: |
         conda update -n base -c defaults conda
         conda config --set always_yes yes --set changeps1 no
         conda config --add channels conda-forge
-        conda install python=${{ CONDA_PYTHON_VER }}
+        conda install python=${{ matrix.conda-python-ver }}
         # work around incompatibilities between virtualenv & importlib-metadata
-        if [[ "${{ TEST_TOX_ENV }}" == *"py37"* ]]; then
+        if [[ "${{ matrix.test-tox-env }}" == *"py37"* ]]; then
           conda install "importlib-metadata=1.7"
         else
           conda install importlib-metadata
@@ -110,10 +110,10 @@ jobs:
         conda install tox
     - name: Run unit tests
       run: |
-        tox -e ${{ TEST_TOX_ENV }}
+        tox -e ${{ matrix.test-tox-env }}
     - name: Build wheel and source distribution
       run: |
-        tox -e ${{ BUILD_TOX_ENV }}
+        tox -e ${{ matrix.build-tox-env }}
     - name: Test installation from a wheel
       run: |
         tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
