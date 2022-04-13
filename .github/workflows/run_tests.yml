@@ -1,0 +1,107 @@
+name: Run tests
+on:
+  push:
+    branches:
+    - '**'
+    tags:
+    - '**'
+    - '!latest'
+    - '!latest-tmp'
+  pull_request:
+    branches:
+    - '**'
+jobs:
+  run-tests:
+    name: Coverage on ${{ matrix.os }} (Python ${{ python_ver }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - TEST_TOX_ENV: "py37-min-req"
+            BUILD_TOX_ENV: "build-py37-min-req"
+            PYTHON_VER: "3.7"
+          - TEST_TOX_ENV: "py37"
+            BUILD_TOX_ENV: "build-py37"
+            PYTHON_VER: "3.7"
+          - TEST_TOX_ENV: "py38"
+            BUILD_TOX_ENV: "build-py38"
+            PYTHON_VER: "3.8"
+          - TEST_TOX_ENV: "py39"
+            BUILD_TOX_ENV: "build-py39"
+            PYTHON_VER: "3.9"
+          - TEST_TOX_ENV: "py310"
+            BUILD_TOX_ENV: "build-py310"
+            PYTHON_VER: "3.10"
+          - TEST_TOX_ENV: "py310-opt"
+            BUILD_TOX_ENV: "build-py310-opt"
+            PYTHON_VER: "3.10"
+          - TEST_TOX_ENV: "py310-upgrade-dev"
+            BUILD_TOX_ENV: "build-py310-upgrade-dev"
+            PYTHON_VER: "3.10"
+          - TEST_TOX_ENV: "py310-upgrade-dev-pre"
+            BUILD_TOX_ENV: "build-py310-upgrade-dev-pre"
+            PYTHON_VER: "3.10"
+          - TEST_TOX_ENV: "py37"
+            BUILD_TOX_ENV: "build-py37"
+            CONDA_PYTHON_VER: "3.7"
+          - TEST_TOX_ENV: "py38"
+            BUILD_TOX_ENV: "build-py38"
+            CONDA_PYTHON_VER: "3.8"
+          - TEST_TOX_ENV: "py39"
+            BUILD_TOX_ENV: "build-py39"
+            CONDA_PYTHON_VER: "3.9"
+          - TEST_TOX_ENV: "py310"
+            BUILD_TOX_ENV: "build-py310"
+            CONDA_PYTHON_VER: "3.10"
+    steps:
+    - name: Cancel any previous incomplete runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      if: ${{ PYTHON_VER }}
+      with:
+        python-version: ${{ PYTHON_VER }}
+    - name: Set up Conda
+      uses: conda-incubator/setup-miniconda@v2
+      if: ${{ CONDA_PYTHON_VER }}
+      with:
+        auto-activate-base: true
+        activate-environment: ""
+    - name: Install build dependencies
+      if: ${{ PYTHON_VER }}
+      run: |
+        # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
+        if [[ "${{ TEST_TOX_ENV }}" == *"py39"* ]] || [[ "${{ TEST_TOX_ENV }}" == *"py310"* ]]; then
+          sudo apt-get install libhdf5-dev
+        fi
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools
+        python -m pip install wheel tox
+    - name: Install build dependencies (conda)
+      if: ${{ CONDA_PYTHON_VER }}
+      run: |
+        conda update -n base -c defaults conda
+        conda config --set always_yes yes --set changeps1 no
+        conda config --add channels conda-forge
+        conda install python=${{ CONDA_PYTHON_VER }}
+        # work around incompatibilities between virtualenv & importlib-metadata
+        if [[ "${{ TEST_TOX_ENV }}" == *"py37"* ]]; then
+          conda install "importlib-metadata=1.7"
+        else
+          conda install importlib-metadata
+        fi
+        conda install tox
+    - name: Run unit tests
+      run: |
+        tox -e ${{ TEST_TOX_ENV }}
+    - name: Build wheel and source distribution
+      run: |
+        tox -e ${{ BUILD_TOX_ENV }}
+    - name: Test installation from a wheel
+      run: |
+        tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl

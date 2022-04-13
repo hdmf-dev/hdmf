@@ -20,112 +20,96 @@ jobs:
         pythonVersion: '3.10'
         testToxEnv: 'py310'
         buildToxEnv: 'build-py310'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.10-upgrade-dev-pre:
         imageName: 'macos-10.15'
         pythonVersion: '3.10'
         testToxEnv: 'py310-upgrade-dev-pre'
         buildToxEnv: 'build-py310-upgrade-dev-pre'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.10-upgrade-dev:
         imageName: 'macos-10.15'
         pythonVersion: '3.10'
         testToxEnv: 'py310-upgrade-dev'
         buildToxEnv: 'build-py310-upgrade-dev'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.10-opt:
         imageName: 'macos-10.15'
         pythonVersion: '3.10'
         testToxEnv: 'py310-opt'
         buildToxEnv: 'build-py310-opt'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.9:
         imageName: 'macos-10.15'
         pythonVersion: '3.9'
         testToxEnv: 'py39'
         buildToxEnv: 'build-py39'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.8:
         imageName: 'macos-10.15'
         pythonVersion: '3.8'
         testToxEnv: 'py38'
         buildToxEnv: 'build-py38'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.7:
         imageName: 'macos-10.15'
         pythonVersion: '3.7'
         testToxEnv: 'py37'
         buildToxEnv: 'build-py37'
-        testWheelInstallEnv: 'wheelinstall'
 
       macOS-py3.7-min-req:
         imageName: 'macos-10.15'
         pythonVersion: '3.7'
         testToxEnv: 'py37-min-req'
         buildToxEnv: 'build-py37-min-req'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.10:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.10'
         testToxEnv: 'py310'
         buildToxEnv: 'build-py310'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.10-upgrade-dev-pre:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.10'
         testToxEnv: 'py310-upgrade-dev-pre'
         buildToxEnv: 'build-py310-upgrade-dev-pre'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.10-upgrade-dev:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.10'
         testToxEnv: 'py310-upgrade-dev'
         buildToxEnv: 'build-py310-upgrade-dev'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.10-upgrade-dev:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.10'
         testToxEnv: 'py310-opt'
         buildToxEnv: 'build-py310-opt'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.9:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.9'
         testToxEnv: 'py39'
         buildToxEnv: 'build-py39'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.8:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.8'
         testToxEnv: 'py38'
         buildToxEnv: 'build-py38'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.7:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.7'
         testToxEnv: 'py37'
         buildToxEnv: 'build-py37'
-        testWheelInstallEnv: 'wheelinstall'
 
       Windows-py3.7-min-req:
         imageName: 'vs2017-win2016'
         pythonVersion: '3.7'
         testToxEnv: 'py37-min-req'
         buildToxEnv: 'build-py37-min-req'
-        testWheelInstallEnv: 'wheelinstall'
 
   pool:
     vmImage: $(imageName)
@@ -143,17 +127,17 @@ jobs:
   - script: |
       python -m pip install --upgrade pip
       python -m pip install --upgrade setuptools
-      python -m pip install setuptools wheel virtualenv tox
+      python -m pip install wheel tox
     displayName: 'Install build dependencies'
 
   - bash: |
       tox -e $(testToxEnv)
-    displayName: 'Run tox tests'
+    displayName: 'Run unit tests'
 
   - bash: |
       tox -e $(buildToxEnv)
-    displayName: 'Run build tests'
+    displayName: 'Build wheel and source distribution'
 
   - bash: |
-      tox -e $(testWheelInstallEnv) --recreate --installpkg dist/*-none-any.whl
-    displayName: 'Run wheel install tests'
+      tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+    displayName: 'Test installation from a wheel'
