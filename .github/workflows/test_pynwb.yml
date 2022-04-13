@@ -30,5 +30,6 @@ jobs:
         pip list
         pip check
     - name: Run PyNWB tests
+      run: |
         cd pynwb
         python test.py -v
