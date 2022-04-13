@@ -150,5 +150,5 @@ jobs:
       if: ${{ matrix.upload-wheels }}
       uses: actions/upload-artifact@v3
       with:
-        name: workspace-artifact
+        name: distributions
         path: dist
