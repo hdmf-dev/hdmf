@@ -140,7 +140,6 @@ jobs:
     - name: Build wheel and source distribution
       if: ${{ matrix.build-tox-env }}
       run: |
-        ls -1 dist
         tox -e ${{ matrix.build-tox-env }}
         ls -1 dist
     - name: Test installation from a wheel
