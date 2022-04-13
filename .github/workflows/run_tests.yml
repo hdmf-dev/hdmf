@@ -2,7 +2,7 @@ name: Run tests
 on:
   push:
     branches:
-    - '**'
+    - dev
     tags:
     - '**'
     - '!latest'
@@ -40,6 +40,7 @@ jobs:
             test-tox-env: "py310"
             build-tox-env: "build-py310"
             python-ver: "3.10"
+            upload-wheels: true
           - name: "python3.10-opt"
             test-tox-env: "py310-opt"
             build-tox-env: "build-py310-opt"
@@ -121,3 +122,18 @@ jobs:
     - name: Test installation from a wheel
       run: |
         tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+    - name: Remove distributions if UPLOAD_WHEELS != true
+      run: |
+        if [[ "${{ matrix.upload-wheels }}" != "true" ]]; then
+          echo "Discarding distributions"
+          ls -1 dist
+          rm -rf dist/*
+        else
+          echo "Keeping distributions for upload"
+          ls -1 dist
+        fi
+    - name: Upload distribution as a workspace artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: workspace-artifact
+        path: dist
