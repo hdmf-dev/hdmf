@@ -28,8 +28,7 @@ jobs:
         pip uninstall -y hdmf
         pip install -e .  # reinstall current branch of hdmf
         pip list
-        pip check
-    - name: Run PyNWB tests
+    - name: Run PyNWB tests on PyNWB dev branch
       run: |
         cd pynwb
         python test.py -v
