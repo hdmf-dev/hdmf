@@ -126,7 +126,7 @@ PyPI: Step-by-step
 
   .. warning::
 
-      This step requires a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
+      This step requires a `GPG signing key <https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key>`_.
 
 
 6. Publish the release tag
