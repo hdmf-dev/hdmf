@@ -69,6 +69,27 @@ jobs:
             test-tox-env: "py310"
             build-tox-env: "build-py310"
             conda-python-ver: "3.10"
+          - name: "sphinx-gallery-python3.7-min-req"
+            test-tox-env: "gallery-py37-min-req"
+            python-ver: "3.7"
+          - name: "sphinx-gallery-python3.7"
+            test-tox-env: "gallery-py37"
+            python-ver: "3.7"
+          - name: "sphinx-gallery-python3.8"
+            test-tox-env: "gallery-py38"
+            python-ver: "3.8"
+          - name: "sphinx-gallery-python3.9"
+            test-tox-env: "gallery-py39"
+            python-ver: "3.9"
+          - name: "sphinx-gallery-python3.10"
+            test-tox-env: "gallery-py310"
+            python-ver: "3.10"
+          - name: "sphinx-gallery-python3.10-upgrade-dev"
+            test-tox-env: "gallery-py310-upgrade-dev"
+            python-ver: "3.10"
+          - name: "sphinx-gallery-python3.10-upgrade-dev-pre"
+            test-tox-env: "gallery-py310-upgrade-dev-pre"
+            python-ver: "3.10"
     steps:
     - name: Cancel any previous incomplete runs
       uses: styfle/cancel-workflow-action@0.9.1
@@ -117,22 +138,17 @@ jobs:
       run: |
         tox -e ${{ matrix.test-tox-env }}
     - name: Build wheel and source distribution
+      if: ${{ matrix.build-tox-env }}
       run: |
+        ls -1 dist
         tox -e ${{ matrix.build-tox-env }}
+        ls -1 dist
     - name: Test installation from a wheel
+      if: ${{ matrix.build-tox-env }}
       run: |
         tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
-    - name: Remove distributions if UPLOAD_WHEELS != true
-      run: |
-        if [[ "${{ matrix.upload-wheels }}" != "true" ]]; then
-          echo "Discarding distributions"
-          ls -1 dist
-          rm -rf dist/*
-        else
-          echo "Keeping distributions for upload"
-          ls -1 dist
-        fi
     - name: Upload distribution as a workspace artifact
+      if: ${{ matrix.upload-wheels }}
       uses: actions/upload-artifact@v3
       with:
         name: workspace-artifact
