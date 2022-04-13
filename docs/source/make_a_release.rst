@@ -18,7 +18,7 @@ Prerequisites
 
 * All CI tests are passing on `CircleCI`_ and `Azure Pipelines`_.
 
-* You have a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
+* You have a `GPG signing key <https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key>`_.
 
 * Dependency versions in requirements.txt, requirements-dev.txt, requirements-opt.txt, requirements-doc.txt,
   requirements-min.txt are up-to-date.
