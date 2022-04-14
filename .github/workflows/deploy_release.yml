@@ -1,0 +1,46 @@
+name: Deploy release
+on:
+  push:
+    tags:  # run only on new tags that follow semver
+    - '/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/'
+jobs:
+  deploy-release:
+    name: Deploy release from tag
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cancel any previous incomplete runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+
+    - name: Checkout repo with submodules
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+
+    - name: Download wheel and source distributions from artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: distributions
+        path: dist
+
+    - name: Upload wheel and source distributions to PyPI  # TODO remove the --repository flag after testing
+      run: |
+        pip install --upgrade pip
+        pip install twine
+        ls -1 dist
+        twine upload --repository testpypi -u ${{ secrets.PYPI_USER }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
+
+    - name: Publish wheel and source distributions as a GitHub release
+      run: |
+        # use click<8 until https://github.com/j0057/github-release/issues/62 is resolved
+        pip install "click<8" githubrelease
+        echo ${{ github.ref_name }}
+        # githubrelease release hdmf-dev/hdmf \
+        #   create ${{ github.ref_name }} --name ${{ github.ref_name }} \
+        #   --publish dist/*
