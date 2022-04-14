@@ -11,14 +11,11 @@ on:
     branches:
     - '**'
   schedule:
-    - cron: '0 5 * * *'  # Once per day at midnight ET
+    - cron: '0 5 * * *'  # once per day at midnight ET
 jobs:
   run-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    #defaults:
-    #  run:
-    #    shell: bash -l {0}
     strategy:
       matrix:
         include:
@@ -40,8 +37,6 @@ jobs:
           # - { name: macos/python3.10-opt                          , test-tox-env: py310-opt             , build-tox-env: build-py310-opt             , python-ver: "3.10"       , os: macos-latest }
           # - { name: macos/python3.10-upgrade-dev                  , test-tox-env: py310-upgrade-dev     , build-tox-env: build-py310-upgrade-dev     , python-ver: "3.10"       , os: macos-latest }
           # - { name: macos/python3.10-upgrade-dev-pre              , test-tox-env: py310-upgrade-dev-pre , build-tox-env: build-py310-upgrade-dev-pre , python-ver: "3.10"       , os: macos-latest }
-          # - { name: linux/miniconda3.7                            , test-tox-env: py37                  , build-tox-env: build-py37                  , conda-python-ver: "3.7"  , os: ubuntu-latest }
-          # - { name: linux/miniconda3.10                           , test-tox-env: py310                 , build-tox-env: build-py310                 , conda-python-ver: "3.10" , os: ubuntu-latest }
           # - { name: linux/sphinx-gallery-python3.7-min-req        , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: ubuntu-latest }
           # - { name: linux/sphinx-gallery-python3.10-upgrade-dev   , test-tox-env: py310-upgrade-dev     , build-tox-env: build-py310-upgrade-dev     , python-ver: "3.10"       , os: ubuntu-latest }
           # - { name: windows/sphinx-gallery-python3.7-min-req      , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: windows-latest }
@@ -61,13 +56,6 @@ jobs:
         if: ${{ matrix.python-ver }}
         with:
           python-version: ${{ matrix.python-ver }}
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
-        if: ${{ matrix.conda-python-ver }}
-        with:
-          auto-update-conda: true
-          auto-activate-base: true
-          activate-environment: ""
       - name: Install build dependencies
         if: ${{ matrix.python-ver }}
         run: |
@@ -79,20 +67,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools
           python -m pip install wheel tox
-      - name: Install build dependencies (conda)
-        if: ${{ matrix.conda-python-ver }}
-        run: |
-          conda update -n base -c defaults conda
-          conda config --set always_yes yes --set changeps1 no
-          conda config --add channels conda-forge
-          conda install python=${{ matrix.conda-python-ver }}
-          # work around incompatibilities between virtualenv & importlib-metadata
-          if [[ "${{ matrix.test-tox-env }}" == *"py37"* ]]; then
-            conda install "importlib-metadata=1.7"
-          else
-            conda install importlib-metadata
-          fi
-          conda install tox
       - name: Run unit tests
         run: |
           tox -e ${{ matrix.test-tox-env }}

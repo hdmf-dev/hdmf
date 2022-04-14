@@ -1,0 +1,68 @@
+name: Run tests on conda
+on:
+  push:
+    branches:
+      - dev
+    tags:
+      - '**'
+      - '!latest'
+      - '!latest-tmp'
+  pull_request:
+    branches:
+    - '**'
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
+jobs:
+  run-tests-on-conda:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    if: ${{ matrix.name }} == "linux-miniconda3.7" || ${{ matrix.name }} == "linux-miniconda3.10" || ${{ github.event_name }} == "schedule"
+    defaults:
+     run:
+       shell: bash -l {0}
+    strategy:
+      matrix:
+        include:
+          - { name: linux-python3.7 , test-tox-env: py37 , build-tox-env: build-py37 , python-ver: "3.7" }
+          - { name: linux-python3.8 , test-tox-env: py38 , build-tox-env: build-py38 , python-ver: "3.8" }
+          - { name: linux-python3.9 , test-tox-env: py39 , build-tox-env: build-py39 , python-ver: "3.9" }
+          - { name: linux-python3.10, test-tox-env: py310, build-tox-env: build-py310, python-ver: "3.10"}
+    steps:
+      - name: Cancel any previous incomplete runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+      - name: Install build dependencies
+        run: |
+          conda update -n base -c defaults conda
+          conda config --set always_yes yes --set changeps1 no
+          conda config --add channels conda-forge
+          conda install python=${{ matrix.python-ver }}
+          # work around incompatibilities between virtualenv & importlib-metadata
+          if [[ "${{ matrix.test-tox-env }}" == *"py37"* ]]; then
+            conda install "importlib-metadata=1.7"
+          else
+            conda install importlib-metadata
+          fi
+          conda install tox
+      - name: Run unit tests
+        run: |
+          tox -e ${{ matrix.test-tox-env }}
+      - name: Build wheel and source distribution
+        if: ${{ matrix.build-tox-env }}
+        run: |
+          tox -e ${{ matrix.build-tox-env }}
+          ls -1 dist
+      - name: Test installation from a wheel
+        if: ${{ matrix.build-tox-env }}
+        run: |
+          tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
