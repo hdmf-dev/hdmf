@@ -3,7 +3,6 @@ on: pull_request
 
 jobs:
   test-external-links:
-    name: External links
     runs-on: ubuntu-latest
     steps:
     - name: Cancel any previous incomplete runs
