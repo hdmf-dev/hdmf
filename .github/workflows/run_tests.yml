@@ -14,6 +14,9 @@ jobs:
   run-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -64,6 +67,7 @@ jobs:
         if: ${{ matrix.build-tox-env }}
         run: |
           tox -e ${{ matrix.build-tox-env }}
+          ls -1 dist
 
       - name: Test installation from a wheel
         if: ${{ matrix.build-tox-env }}
