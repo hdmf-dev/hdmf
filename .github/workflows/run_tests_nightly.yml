@@ -1,17 +1,13 @@
-name: Run tests
+name: Run tests nightly
 on:
-  push:
-    branches:
-      - dev
-    tags:
-      - '**'
-      - '!latest'
-      - '!latest-tmp'
-  pull_request:
-    branches:
-    - '**'
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
 jobs:
-  run-tests:
+  run-tests-nightly:
+    # the only differences between this job and "run_tests.yml" is the "strategy.matrix.include" and the upload
+    # distributions step.
+    # GitHub Actions does not yet support YAML anchors, easily reusable components, or easy dynamic matrix
+    # configurations based on the github event, so this job is duplicated for the most part
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -19,11 +15,23 @@ jobs:
       matrix:
         include:
           - { name: linux/python3.7-min-req                       , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: ubuntu-latest }
+          - { name: linux/python3.7                               , test-tox-env: py37                  , build-tox-env: build-py37                  , python-ver: "3.7"        , os: ubuntu-latest }
+          - { name: linux/python3.10                              , test-tox-env: py310                 , build-tox-env: build-py310                 , python-ver: "3.10"       , os: ubuntu-latest }
+          - { name: linux/python3.10-opt                          , test-tox-env: py310-opt             , build-tox-env: build-py310-opt             , python-ver: "3.10"       , os: ubuntu-latest }
           - { name: linux/python3.10-upgrade-dev                  , test-tox-env: py310-upgrade-dev     , build-tox-env: build-py310-upgrade-dev     , python-ver: "3.10"       , os: ubuntu-latest }
+          - { name: linux/python3.10-upgrade-dev-pre              , test-tox-env: py310-upgrade-dev-pre , build-tox-env: build-py310-upgrade-dev-pre , python-ver: "3.10"       , os: ubuntu-latest }
           - { name: windows/python3.7-min-req                     , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: windows-latest }
+          - { name: windows/python3.7                             , test-tox-env: py37                  , build-tox-env: build-py37                  , python-ver: "3.7"        , os: windows-latest }
+          - { name: windows/python3.10                            , test-tox-env: py310                 , build-tox-env: build-py310                 , python-ver: "3.10"       , os: windows-latest }
+          - { name: windows/python3.10-opt                        , test-tox-env: py310-opt             , build-tox-env: build-py310-opt             , python-ver: "3.10"       , os: windows-latest }
           - { name: windows/python3.10-upgrade-dev                , test-tox-env: py310-upgrade-dev     , build-tox-env: build-py310-upgrade-dev     , python-ver: "3.10"       , os: windows-latest }
+          - { name: windows/python3.10-upgrade-dev-pre            , test-tox-env: py310-upgrade-dev-pre , build-tox-env: build-py310-upgrade-dev-pre , python-ver: "3.10"       , os: windows-latest }
           - { name: macos/python3.7-min-req                       , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: macos-latest }
+          - { name: macos/python3.7                               , test-tox-env: py37                  , build-tox-env: build-py37                  , python-ver: "3.7"        , os: macos-latest }
+          - { name: macos/python3.10                              , test-tox-env: py310                 , build-tox-env: build-py310                 , python-ver: "3.10"       , os: macos-latest }
+          - { name: macos/python3.10-opt                          , test-tox-env: py310-opt             , build-tox-env: build-py310-opt             , python-ver: "3.10"       , os: macos-latest }
           - { name: macos/python3.10-upgrade-dev                  , test-tox-env: py310-upgrade-dev     , build-tox-env: build-py310-upgrade-dev     , python-ver: "3.10"       , os: macos-latest }
+          - { name: macos/python3.10-upgrade-dev-pre              , test-tox-env: py310-upgrade-dev-pre , build-tox-env: build-py310-upgrade-dev-pre , python-ver: "3.10"       , os: macos-latest }
           - { name: linux/sphinx-gallery-python3.7-min-req        , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: ubuntu-latest }
           - { name: linux/sphinx-gallery-python3.10-upgrade-dev   , test-tox-env: py310-upgrade-dev     , build-tox-env: build-py310-upgrade-dev     , python-ver: "3.10"       , os: ubuntu-latest }
           - { name: windows/sphinx-gallery-python3.7-min-req      , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: windows-latest }
@@ -62,9 +70,3 @@ jobs:
       - name: Test installation from a wheel
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
-      - name: Upload distribution as a workspace artifact
-        if: ${{ matrix.upload-wheels }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: distributions
-          path: dist
