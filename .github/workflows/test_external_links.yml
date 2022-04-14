@@ -1,5 +1,6 @@
 name: Run sphinx tests
 on: pull_request
+
 jobs:
   test-external-links:
     name: External links
@@ -9,16 +10,20 @@ jobs:
       uses: styfle/cancel-workflow-action@0.9.1
       with:
         access_token: ${{ github.token }}
+
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
+
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
         python-version: '3.10'
+
     - name: Install Sphinx dependencies and package
       run: |
         pip install -r requirements-doc.txt -r requirements.txt
         pip install -e .
+
     - name: Test external links
       run: sphinx-build -b linkcheck ./docs/source ./test_build
