@@ -16,9 +16,9 @@ jobs:
   run-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
+    #defaults:
+    #  run:
+    #    shell: bash -l {0}
     strategy:
       matrix:
         include:
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-python@v3
         if: ${{ matrix.python-ver }}
         with:
-          python-version: "${{ matrix.python-ver }}"
+          python-version: ${{ matrix.python-ver }}
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         if: ${{ matrix.conda-python-ver }}
