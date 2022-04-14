@@ -17,6 +17,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           # - { name: linux/python3.7-min-req                       , test-tox-env: py37-min-req          , build-tox-env: build-py37-min-req          , python-ver: "3.7"        , os: ubuntu-latest }

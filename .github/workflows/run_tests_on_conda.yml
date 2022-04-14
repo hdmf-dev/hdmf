@@ -12,15 +12,42 @@ on:
     - '**'
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
+
+references:
+
+  ci-steps: &ci-steps
+    - name: Cancel any previous incomplete runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
 jobs:
+  # prep-matrix:
+  #   name: Prepare matrix configuration
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     matrix: ${{ steps.set-matrix.outputs.matrix }}
+  #   steps:
+  #   - id: set-matrix-pr
+  #     run: |
+  #       matrix=[{ name: linux-python3.7 , test-tox-env: py37 , build-tox-env: build-py37 , python-ver: "3.7" },\
+  #               { name: linux-python3.8 , test-tox-env: py38 , build-tox-env: build-py38 , python-ver: "3.8" },\
+  #               { name: linux-python3.9 , test-tox-env: py39 , build-tox-env: build-py39 , python-ver: "3.9" },\
+  #               { name: linux-python3.10, test-tox-env: py310, build-tox-env: build-py310, python-ver: "3.10"}]
+  #       echo ::set-output name=matrix::{\"include\":$(echo $matrix)}\"
   run-tests-on-conda:
     name: ${{ matrix.name }}
+    # needs: prep-matrix
     runs-on: ubuntu-latest
     if: ${{ matrix.name }} == "linux-miniconda3.7" || ${{ matrix.name }} == "linux-miniconda3.10" || ${{ github.event_name }} == "schedule"
     defaults:
      run:
        shell: bash -l {0}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - { name: linux-python3.7 , test-tox-env: py37 , build-tox-env: build-py37 , python-ver: "3.7" }
@@ -28,13 +55,7 @@ jobs:
           - { name: linux-python3.9 , test-tox-env: py39 , build-tox-env: build-py39 , python-ver: "3.9" }
           - { name: linux-python3.10, test-tox-env: py310, build-tox-env: build-py310, python-ver: "3.10"}
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'recursive'
+      <<: *ci-steps
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
