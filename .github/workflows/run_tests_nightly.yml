@@ -11,6 +11,9 @@ jobs:
     # configurations based on the github event, so this job is duplicated for the most part
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +42,7 @@ jobs:
           - { name: windows-sphinx-gallery-python3.10-upgrade-dev , test-tox-env: gallery-py310-upgrade-dev     , python-ver: "3.10"       , os: windows-latest }
           - { name: macos-sphinx-gallery-python3.7-min-req        , test-tox-env: gallery-py37-min-req          , python-ver: "3.7"        , os: macos-latest }
           - { name: macos-sphinx-gallery-python3.10-upgrade-dev   , test-tox-env: gallery-py310-upgrade-dev     , python-ver: "3.10"       , os: macos-latest }
-      steps:
+    steps:
       - name: Cancel any previous incomplete runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
@@ -73,6 +76,7 @@ jobs:
         if: ${{ matrix.build-tox-env }}
         run: |
           tox -e ${{ matrix.build-tox-env }}
+          ls -1 dist
 
       - name: Test installation from a wheel
         if: ${{ matrix.build-tox-env }}
