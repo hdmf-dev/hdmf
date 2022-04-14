@@ -3,13 +3,12 @@ on:
   push:
     branches:
       - dev  # NOTE: this workflow will run on each PR event and also when the PR is merged to dev
-    tags:
-      - '**'
-      - '!latest'
-      - '!latest-tmp'
+    tags-ignore:  # exclude tags created by "ci_addons publish_github_release"
+      - 'latest'
+      - 'latest-tmp'
   pull_request:
     branches:
-      - '**'
+      - '*'
 
 jobs:
   run-pr-tests-on-conda:

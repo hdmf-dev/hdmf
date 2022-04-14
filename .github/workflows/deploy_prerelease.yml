@@ -3,10 +3,11 @@ on:
   push:
     branches:
       - dev
-    tags:  # exclude tags created by "ci_addons publish_github_release"
-      - '**'
-      - '!latest'
-      - '!latest-tmp'
+    tags-ignore:  # exclude tags created by "ci_addons publish_github_release"
+      - 'latest'
+      - 'latest-tmp'
+
+# TODO only run after run_tests.yml runs on dev
 
 jobs:
   deploy-dev:
