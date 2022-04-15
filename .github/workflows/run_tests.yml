@@ -44,10 +44,6 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
-          # if [[ "${{ matrix.test-tox-env }}" == *"py39"* ]] || [[ "${{ matrix.test-tox-env }}" == *"py310"* ]]; then
-          #   sudo apt-get install libhdf5-dev
-          # fi
           python -m pip install --upgrade pip
           python -m pip install tox
           python -m pip list
@@ -103,10 +99,6 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
-          # if [[ "${{ matrix.test-tox-env }}" == *"py39"* ]] || [[ "${{ matrix.test-tox-env }}" == *"py310"* ]]; then
-          #   sudo apt-get install libhdf5-dev
-          # fi
           python -m pip install --upgrade pip
           python -m pip install tox
           python -m pip list
@@ -151,11 +143,11 @@ jobs:
           conda config --add channels conda-forge
           conda install python=${{ matrix.python-ver }}
           # work around incompatibilities between virtualenv & importlib-metadata
-          if [[ "${{ matrix.test-tox-env }}" == *"py37"* ]]; then
-            conda install "importlib-metadata=1.7"
-          else
-            conda install importlib-metadata
-          fi
+          # if [[ "${{ matrix.python-ver }}" == "3.7" ]]; then
+          #   conda install "importlib-metadata=1.7"
+          # else
+          #   conda install importlib-metadata
+          # fi
           conda install tox
           conda list
 
