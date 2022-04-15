@@ -1,5 +1,8 @@
 name: Run PyNWB tests
-on: pull_request
+on:
+  pull_request:
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
 
 jobs:
   run-tests:
@@ -26,11 +29,11 @@ jobs:
           pip list
           git clone https://github.com/NeurodataWithoutBorders/pynwb.git --recurse-submodules
           cd pynwb
-          pip install -U -rrequirements-dev.txt -rrequirements.txt
-          pip install -e .  # this will install a particular version of hdmf instead of the current one
+          pip install -r requirements-dev.txt -r requirements.txt
+          pip install .  # this will install a particular version of hdmf instead of the current one
           cd ..
           pip uninstall -y hdmf
-          pip install -e .  # reinstall current branch of hdmf
+          pip install .  # reinstall current branch of hdmf
           pip list
 
       - name: Run PyNWB tests on PyNWB dev branch

@@ -24,6 +24,6 @@ jobs:
 
     - name: Run flake8
       run: |
-        pip list
         pip install flake8
+        pip list
         flake8

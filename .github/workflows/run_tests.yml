@@ -45,12 +45,12 @@ jobs:
       - name: Install build dependencies
         run: |
           # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
-          python --version
           # if [[ "${{ matrix.test-tox-env }}" == *"py39"* ]] || [[ "${{ matrix.test-tox-env }}" == *"py310"* ]]; then
           #   sudo apt-get install libhdf5-dev
           # fi
           python -m pip install --upgrade pip
           python -m pip install tox
+          pip list
 
       - name: Run tox tests
         run: |
@@ -74,6 +74,7 @@ jobs:
 
   run-gallery-tests:
     name: ${{ matrix.name }}
+    needs: run-tests
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -106,12 +107,12 @@ jobs:
       - name: Install build dependencies
         run: |
           # Installing HDF5 is required for building h5py 2.10 wheels for Python 3.9+
-          python --version
           # if [[ "${{ matrix.test-tox-env }}" == *"py39"* ]] || [[ "${{ matrix.test-tox-env }}" == *"py310"* ]]; then
           #   sudo apt-get install libhdf5-dev
           # fi
           python -m pip install --upgrade pip
           python -m pip install tox
+          pip list
 
       - name: Run tox tests
         run: |
@@ -160,6 +161,7 @@ jobs:
             conda install importlib-metadata
           fi
           conda install tox
+          conda list
 
       - name: Run tox tests
         run: |
