@@ -159,12 +159,6 @@ jobs:
           conda config --set always_yes yes --set changeps1 no
           conda config --add channels conda-forge
           conda install python=${{ matrix.python-ver }}
-          # work around incompatibilities between virtualenv & importlib-metadata
-          # if [[ "${{ matrix.python-ver }}" == "3.7" ]]; then
-          #   conda install "importlib-metadata=1.7"
-          # else
-          #   conda install importlib-metadata
-          # fi
           conda install tox
           conda list
 

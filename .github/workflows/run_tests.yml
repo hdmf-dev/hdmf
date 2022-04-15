@@ -77,10 +77,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.7-minimum      , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.10-prerelease  , test-tox-env: gallery-py310-prerelease, python-ver: "3.10", os: ubuntu-latest }
-          - { name: windows-gallery-python3.7-minimum    , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: windows-latest }
-          - { name: windows-gallery-python3.10-upgraded  , test-tox-env: gallery-py310-upgraded  , python-ver: "3.10", os: windows-latest }
+          - { name: linux-gallery-python3.7-minimum    , test-tox-env: gallery-py37-minimum  , python-ver: "3.7" , os: ubuntu-latest }
+          - { name: linux-gallery-python3.10-upgraded  , test-tox-env: gallery-py310-upgraded, python-ver: "3.10", os: ubuntu-latest }
+          - { name: windows-gallery-python3.7-minimum  , test-tox-env: gallery-py37-minimum  , python-ver: "3.7" , os: windows-latest }
+          - { name: windows-gallery-python3.10-upgraded, test-tox-env: gallery-py310-upgraded, python-ver: "3.10", os: windows-latest }
     steps:
       - name: Cancel any previous incomplete runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -141,12 +141,6 @@ jobs:
           conda config --set always_yes yes --set changeps1 no
           conda config --add channels conda-forge
           conda install python=${{ matrix.python-ver }}
-          # work around incompatibilities between virtualenv & importlib-metadata
-          # if [[ "${{ matrix.python-ver }}" == "3.7" ]]; then
-          #   conda install "importlib-metadata=1.7"
-          # else
-          #   conda install importlib-metadata
-          # fi
           conda install tox
           conda list
 
