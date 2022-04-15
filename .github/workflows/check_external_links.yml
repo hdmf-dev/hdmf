@@ -1,8 +1,8 @@
 name: Check Sphinx external links
-on:
-  pull_request:
-  schedule:
-    - cron: '0 5 * * *'  # once per day at midnight ET
+# on:
+#   pull_request:
+#   schedule:
+#     - cron: '0 5 * * *'  # once per day at midnight ET
 
 jobs:
   check-external-links:

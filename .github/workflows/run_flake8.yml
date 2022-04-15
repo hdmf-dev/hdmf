@@ -1,5 +1,5 @@
 name: Run style check
-on: pull_request
+# on: pull_request
 
 jobs:
   run-flake8:

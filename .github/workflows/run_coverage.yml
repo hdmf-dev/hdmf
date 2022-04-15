@@ -58,6 +58,7 @@ jobs:
       - name: Run tests and generate coverage report
         run: |
           python -m coverage run test.py -u
+          ls -alh1
           python -m coverage report -m
 
       - name: Upload coverage to Codecov

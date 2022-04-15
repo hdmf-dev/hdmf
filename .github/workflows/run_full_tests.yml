@@ -1,10 +1,11 @@
 name: Run all tests
-on:
-  schedule:
-    - cron: '0 5 * * *'  # once per day at midnight ET
-  push:
-    tags:  # run only on new tags that follow semver
-      - '/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/'
+# on:
+#   schedule:
+#     - cron: '0 5 * * *'  # once per day at midnight ET
+#   push:
+#     tags:  # run only on new tags that follow semver
+#       - '/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/'
+
 jobs:
   run-all-tests:
     # the only differences between this job and "run_tests.yml" is the "strategy.matrix.include" and the upload
