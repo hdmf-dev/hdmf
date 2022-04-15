@@ -50,7 +50,7 @@ jobs:
           # fi
           python -m pip install --upgrade pip
           python -m pip install tox
-          pip list
+          python -m pip list
 
       - name: Run tox tests
         run: |
@@ -74,7 +74,6 @@ jobs:
 
   run-gallery-tests:
     name: ${{ matrix.name }}
-    needs: run-tests
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -112,7 +111,7 @@ jobs:
           # fi
           python -m pip install --upgrade pip
           python -m pip install tox
-          pip list
+          python -m pip list
 
       - name: Run tox tests
         run: |
@@ -120,7 +119,6 @@ jobs:
 
   run-tests-on-conda:
     name: ${{ matrix.name }}
-    needs: run-gallery-tests
     runs-on: ubuntu-latest
     defaults:
      run:
@@ -178,7 +176,7 @@ jobs:
 
   deploy-dev:
     name: Deploy pre-release from dev
-    needs: run-tests-on-conda
+    needs: [run-tests, run-gallery-tests, run-tests-on-conda]
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
@@ -205,8 +203,8 @@ jobs:
 
       - name: Publish wheel and source distributions as a GitHub release
         run: |
-          pip install --upgrade pip
-          pip install scikit-ci-addons
+          python -m pip install --upgrade pip
+          python -m pip install scikit-ci-addons
           ci_addons publish_github_release hdmf-dev/hdmf  \
               --prerelease-packages "dist/*" \
               --prerelease-sha $GITHUB_SHA \

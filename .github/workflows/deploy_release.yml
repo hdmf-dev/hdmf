@@ -32,15 +32,15 @@ jobs:
 
       - name: Upload wheel and source distributions to PyPI  # TODO remove the --repository flag after testing
         run: |
-          pip install --upgrade pip
-          pip install twine
+          python -m pip install --upgrade pip
+          python -m pip install twine
           ls -1 dist
           twine upload --repository testpypi -u ${{ secrets.PYPI_USER }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
 
       - name: Publish wheel and source distributions as a GitHub release
         run: |
           # use click<8 until https://github.com/j0057/github-release/issues/62 is resolved
-          pip install "click<8" githubrelease
+          python -m pip install "click<8" githubrelease
           echo ${{ github.ref_name }}
           # githubrelease release hdmf-dev/hdmf \
           #   create ${{ github.ref_name }} --name ${{ github.ref_name }} \

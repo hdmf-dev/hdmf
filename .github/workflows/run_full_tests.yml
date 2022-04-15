@@ -67,7 +67,7 @@ jobs:
           # fi
           python -m pip install --upgrade pip
           python -m pip install tox
-          pip list
+          python -m pip list
 
       - name: Run tox tests
         run: |
@@ -84,7 +84,6 @@ jobs:
 
   run-all-gallery-tests:
     name: ${{ matrix.name }}
-    needs: run-all-tests
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -125,7 +124,7 @@ jobs:
           # fi
           python -m pip install --upgrade pip
           python -m pip install tox
-          pip list
+          python -m pip list
 
       - name: Run tox tests
         run: |
@@ -133,7 +132,6 @@ jobs:
 
   run-all-tests-on-conda:
     name: ${{ matrix.name }}
-    needs: run-all-gallery-tests
     runs-on: ubuntu-latest
     defaults:
      run:
