@@ -36,7 +36,7 @@ jobs:
           - { name: windows-python3.10-optional  , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.10-prerelease, test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: windows-latest }
-          - { name: macos-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-min-req    , python-ver: "3.7" , os: macos-latest }
+          - { name: macos-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: macos-latest }
           - { name: macos-python3.7              , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: macos-latest }
           - { name: macos-python3.8              , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: macos-latest }
           - { name: macos-python3.9              , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: macos-latest }
