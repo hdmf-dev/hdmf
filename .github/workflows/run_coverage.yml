@@ -55,14 +55,12 @@ jobs:
 
       - name: Install package
         run: |
-          python -m pip install .
+          python setup.py develop
           python -m pip list
 
       - name: Run tests and generate coverage report
         run: |
           python -m coverage run test.py -u
-          python -m coverage xml  # necessary for upload to codecov
-          ls -alh1
           python -m coverage report -m
 
       - name: Upload coverage to Codecov
