@@ -7,8 +7,6 @@ on:
       - 'latest'
       - 'latest-tmp'
   pull_request:
-    branches:
-      - '*'
 
 jobs:
   run-tests:
