@@ -1,11 +1,11 @@
-name: Test Sphinx external links
+name: Check Sphinx external links
 on:
   pull_request:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
 
 jobs:
-  test-external-links:
+  check-external-links:
     runs-on: ubuntu-latest
     steps:
       - name: Cancel any previous incomplete runs
@@ -28,5 +28,5 @@ jobs:
           python -m pip install -r requirements-doc.txt -r requirements.txt
           python -m pip install .
 
-      - name: Test Sphinx external links
+      - name: Check Sphinx external links
         run: sphinx-build -b linkcheck ./docs/source ./test_build
