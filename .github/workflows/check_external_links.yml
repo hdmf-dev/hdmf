@@ -11,6 +11,7 @@ jobs:
       - name: Cancel any previous incomplete runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
+          all_but_latest: true
           access_token: ${{ github.token }}
 
       - uses: actions/checkout@v3

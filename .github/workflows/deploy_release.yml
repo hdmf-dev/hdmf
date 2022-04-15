@@ -9,11 +9,6 @@ jobs:
     name: Deploy release from tag
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-
       - name: Checkout repo with submodules
         uses: actions/checkout@v3
         with:
