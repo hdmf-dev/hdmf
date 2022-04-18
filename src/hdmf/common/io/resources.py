@@ -8,9 +8,8 @@ class ERFileMap(ObjectMapper):
     def __init__(self, spec):
         super().__init__(spec)
 
-        er_spec = self.spec.get_group('external_resources')
-        self.unmap(er_spec)
-        self.map_spec('external_resources', er_spec.get_neurodata_type('ExternalResources'))
+        er_spec = spec.get_group('.external_resources')
+        self.map_spec('external_resources', er_spec)
 
 @register_map(ExternalResources)
 class ExternalResourcesMap(ObjectMapper):

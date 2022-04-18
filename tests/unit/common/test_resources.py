@@ -12,6 +12,13 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
 class TestERFile(TestCase):
 
+    def setUp(self):
+        self.nwbfile_sim = Container(name='name')
+        self.er = ExternalResources(name='name', nwbfile_id=self.nwbfile_sim.object_id)
+        self.path = 'er_file_test.h5'
+        self.er_file=ERFile()
+
+
     def test_er_file(self):
         nwbfile_sim = Container(name='name')
         er = ExternalResources(name='name', nwbfile_id=nwbfile_sim.object_id)
@@ -20,6 +27,15 @@ class TestERFile(TestCase):
         er_file.add_external_resources(external_resources=er)
 
         self.assertEqual(er_file.get_external_resources().object_id, er.object_id)
+
+    def test_to_hdf5_and_from_hdf5(self):
+        self.er_file.add_external_resources(external_resources=self.er)
+        # write er to file
+        self.er_file.to_hdf5(path=self.path)
+        # read er back from file and compare
+        er_io, er_obj = self.er_file.from_hdf5(path=self.path)
+        # Close the io!
+        er_io.close()
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
 
@@ -90,16 +106,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         with self.assertRaises(AssertionError):
             ExternalResources.assert_external_resources_equal(er_left,
                                                               er_right)
-
-    def test_to_hdf5_and_from_hdf5(self):
-        # write er to file
-        self.container.to_hdf5(path=self.export_filename)
-        # read er back from file and compare
-        er_io, er_obj = ExternalResources.from_hdf5(path=self.export_filename)
-        # Check that the data is correct
-        ExternalResources.assert_external_resources_equal(er_obj, self.container, check_dtype=False)
-        # Close the io!
-        er_io.close()
 
     def test_to_csv_and_from_csv(self):
         # write er to file

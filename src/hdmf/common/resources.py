@@ -763,43 +763,6 @@ class ExternalResources(Container):
         # Return the reconstructed ExternalResources
         return er
 
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'})
-    def to_hdf5(self, path):
-        """
-        Write ExternalResources to HDF5
-
-        TODO: name dropped when written
-
-        In the HDF5 file the individual tables are stored according to the ExternalResources
-        schema in separate compound datasets. In addition the file will also cache the
-        schema as part of the `/specifications` group.
-
-        See also :py:meth:`~hdmf.common.resources.ExternalResources.from_hdf5`
-        """
-        from hdmf.backends.hdf5.h5tools import HDF5IO
-        from hdmf.common import get_manager
-        with HDF5IO(path=path, manager=get_manager(), mode='w') as io:
-            io.write(self)
-
-    @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'},
-            rtype=tuple, returns="Tuple with HDF5IO object and ExternalResources object")
-    def from_hdf5(cls, path):
-        """
-        Load ExternalResources from HDF5
-
-        See also :py:meth:`~hdmf.common.resources.ExternalResources.to_hdf5`
-
-        .. note:: To allow modification and use, the HDF5 file must remain open. As such
-                  the function returns both the io and er object. It is up to the user
-                  to close the io when done!
-        """
-        from hdmf.backends.hdf5.h5tools import HDF5IO
-        from hdmf.common import get_manager
-        io = HDF5IO(path=path, manager=get_manager(), mode='r')
-        er = io.read()
-        return io, er
-
     @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
     def to_sqlite(self, db_file):
         """
@@ -914,3 +877,40 @@ class ERFile(MultiContainerInterface):
     def add_external_resources(self, **kwargs):
         er = popargs('external_resources', kwargs)
         self._add_external_resources(er)
+
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'})
+    def to_hdf5(self, path):
+        """
+        Write ExternalResources to HDF5
+
+        TODO: name dropped when written
+
+        In the HDF5 file the individual tables are stored according to the ExternalResources
+        schema in separate compound datasets. In addition the file will also cache the
+        schema as part of the `/specifications` group.
+
+        See also :py:meth:`~hdmf.common.resources.ExternalResources.from_hdf5`
+        """
+        from hdmf.backends.hdf5.h5tools import HDF5IO
+        from hdmf.common import get_manager
+        with HDF5IO(path=path, manager=get_manager(), mode='w') as io:
+            io.write(self)
+
+    @classmethod
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the file to write'},
+            rtype=tuple, returns="Tuple with HDF5IO object and ExternalResources object")
+    def from_hdf5(cls, path):
+        """
+        Load ExternalResources from HDF5
+
+        See also :py:meth:`~hdmf.common.resources.ExternalResources.to_hdf5`
+
+        .. note:: To allow modification and use, the HDF5 file must remain open. As such
+                  the function returns both the io and er object. It is up to the user
+                  to close the io when done!
+        """
+        from hdmf.backends.hdf5.h5tools import HDF5IO
+        from hdmf.common import get_manager
+        io = HDF5IO(path=path, manager=get_manager(), mode='r')
+        er = io.read()
+        return io, er
