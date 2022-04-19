@@ -55,7 +55,7 @@ The https://nwb-users.slack.com slack is currently used for informal discussions
 Contributing Patches and Changes
 --------------------------------
 
-To contribute to HDMF you must submit your changes to the ``dev`` branch via a `Pull Request <https://help.github.com/articles/creating-a-pull-request>`_.
+To contribute to HDMF you must submit your changes to the ``dev`` branch via a `Pull Request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_.
 
 From your local copy directory, use the following commands.
 
