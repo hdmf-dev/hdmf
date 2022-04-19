@@ -194,4 +194,5 @@ jobs:
               --prerelease-sha $GITHUB_SHA \
               --prerelease-packages-clear-pattern "*" \
               --prerelease-packages-keep-pattern "*dev<COMMIT_DISTANCE>*" \
+              --token ${{ secrets.BOT_GITHUB_TOKEN }} \
               --re-upload
