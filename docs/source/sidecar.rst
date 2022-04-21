@@ -93,9 +93,13 @@ All operations are required to have the following keys:
   field being modified.
 - ``"relative_path"``: The relative path from the data type with the given object ID to the field being modified.
 
-Operations can result in invalid files, i.e., files that do not conform to the specification. It is strongly
-recommended that the file is validated against the schema after loading the sidecar JSON. In some cases, the
-file cannot be read because the file is invalid.
+.. warning:
+
+    Modifying a file via a sidecar file can result in files that are no longer compliant with the format
+    specification of the file. E.g., we may ``delete`` a required dataset via a sidecar operation, resulting
+    in an invalid file that in the worst case, may longer be readable because required arguments are missing.  
+    It is strongly recommended that the file is validated against the schema after loading the sidecar JSON.
+
 
 Replacing values of a dataset/attribute with a scalar or 1-D array
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
