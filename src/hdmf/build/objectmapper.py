@@ -204,7 +204,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # spec_dtype is a string, spec_dtype_type is a type or the conversion helper functions _unicode or _ascii
         spec_dtype_type = cls.__dtypes[spec_dtype]
         warning_msg = None
-        if isinstance(value, np.ndarray):
+        # Numpy Array or Zarr array
+        if (isinstance(value, np.ndarray) or
+                (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
             if spec_dtype_type is _unicode:
                 ret = value.astype('U')
                 ret_dtype = "utf8"
@@ -218,6 +220,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype(dtype_func)
                 ret_dtype = ret.dtype.type
+        # Tuple or list
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
                 if spec_dtype_type is _unicode:
@@ -233,6 +236,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
+        # Any DataChunkIterator
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
             if spec_dtype_type is _unicode:
