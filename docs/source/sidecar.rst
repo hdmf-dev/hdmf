@@ -3,10 +3,11 @@
 Modifying an HDMF File with a Sidecar JSON File
 ===============================================
 
-Users may want to update part of an HDMF file without rewriting the entire file.
+Users may want to make small updates or corrections to an HDMF file without rewriting the entire file.
 To do so, HDMF supports the use of a "sidecar" JSON file that lives adjacent to the HDMF file on disk and
 specifies modifications to the HDMF file. Only a limited set of modifications are supported; for example, users can
-delete a dataset or attribute but cannot create a new dataset or attribute.
+hide a dataset or attribute so that it will not be read by HDMF, but cannot create a new dataset, attribute, group,
+or link.
 When HDMF reads an HDMF file, if the corresponding sidecar JSON file exists, it is
 automatically read and the modifications that it specifies are automatically applied.
 
@@ -33,7 +34,8 @@ Specification for the sidecar JSON file
 ---------------------------------------
 
 The sidecar JSON file can be validated using the ``sidecar.schema.json`` JSON schema file
-located at the root of the HDMF repository.
+located at the root of the HDMF repository. When an HDMF file is read, if a sidecar JSON file
+is present, it is automatically read and validated against this JSON schema file.
 
 The sidecar JSON file must contain the following top-level keys:
 
