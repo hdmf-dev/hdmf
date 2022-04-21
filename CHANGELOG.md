@@ -17,6 +17,7 @@
 - Updated `HDF5IO` to use the new `WriteStatusTracker`, `NamespaceToBuilderHelper`, and `HDF5IODataChunkIteratorQueue` helper classes. @oruebel (#697)
 - Updated `hdmf.common.sparse.CSRMatrix` to avoid direct dependency on h5py as a particular storage backend. @oruebel (#697)
 - Improved readability of ``Container`` code. @rly (#707)
+- Use GitHub Actions for all CI. @rly (#718)
 
 ### Bug fixes
 - Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#697)
