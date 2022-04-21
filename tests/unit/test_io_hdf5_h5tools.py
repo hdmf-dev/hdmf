@@ -1107,9 +1107,9 @@ class TestCloseLinks(TestCase):
         self.path2 = get_temp_filepath()
 
     def tearDown(self):
-        if self.path1 is not None:
+        if self.path1 is not None and os.path.exists(self.path1):
             os.remove(self.path1)  # linked file may not be closed
-        if self.path2 is not None:
+        if self.path2 is not None and os.path.exists(self.path2):
             os.remove(self.path2)
 
     def test_close_linked_files_auto(self):
@@ -1233,7 +1233,7 @@ class TestCloseLinks(TestCase):
         read_io = HDF5IO(self.path1, mode='r', manager=manager)
         read_foofile1 = read_io.read()
 
-        with HDF5IO(self.path2, mode='a', manager=get_foo_buildmanager()) as new_io1:
+        with HDF5IO(self.path2, mode='r', manager=get_foo_buildmanager()) as new_io1:
             new_io1.read()  # keep reference to container in memory
 
         self.assertTrue(read_io)  # make sure read_io is not closed
