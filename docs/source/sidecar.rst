@@ -22,7 +22,7 @@ Allowed modifications
 Only the following modifications to an HDMF file are supported in the sidecar JSON file:
 
 - Replace the values of a dataset or attribute with a scalar or 1-D array
-- Delete a dataset or attribute
+- Hide a dataset or attribute
 
 .. note::
 
@@ -95,10 +95,11 @@ All operations are required to have the following keys:
 
 .. warning:
 
-    Modifying a file via a sidecar file can result in files that are no longer compliant with the format
-    specification of the file. E.g., we may ``delete`` a required dataset via a sidecar operation, resulting
-    in an invalid file that in the worst case, may longer be readable because required arguments are missing.  
-    It is strongly recommended that the file is validated against the schema after loading the sidecar JSON.
+    Modifying a file via a sidecar file can result in a file that is no longer compliant with the format
+    specification of the file. For example, we may hide a required dataset via a sidecar operation, resulting
+    in an invalid file that, in the worst case, may longer be readable because required arguments are missing.
+    It is strongly recommended that the file is validated against the schema after creating, modifying,
+    and loading the sidecar JSON file.
 
 
 Replacing values of a dataset/attribute with a scalar or 1-D array
