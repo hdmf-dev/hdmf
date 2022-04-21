@@ -13,6 +13,8 @@
 ### Bug fixes
 - Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)
 - Fixed opening of files in append mode on Windows when the files contain links to other open files. @rly (#710)
+- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#697)
+- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#697)
 
 ### Minor improvements
 - Updated `HDF5IO` to use the new `WriteStatusTracker`, `NamespaceToBuilderHelper`, and `HDF5IODataChunkIteratorQueue` helper classes. @oruebel (#697)
@@ -20,14 +22,11 @@
 - Improved readability of ``Container`` code. @rly (#707)
 - Use GitHub Actions for all CI. @rly (#718)
 
-### Bug fixes
-- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#697)
-- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#697)
-
 ### Enhancements of tests
 - Moved test functions to ease reuse and updated tests accordingly.  @oruebel (#697)
 - Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse and updated tests accordingly. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#697)
 - Added numerous tests to `tests/unit/common/test_sparse.py` to enhance testing of the `CSRMatrix` type. @oruebel (#697)
+
 
 ## HDMF 3.2.1 (February 22, 2022)
 
