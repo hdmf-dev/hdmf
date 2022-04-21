@@ -8,6 +8,7 @@
   - Added new `hdmf/io/utils.py` module with new I/O utility classes: 1) `WriteStatusTracker` as a simple data structure for tracking the write status of `Builders`, and 2) `NamespaceToBuilderHelper` to help with converting of a namespace to a `Builder` for I/O. @oruebel (#697)
 - Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#697)
 - Added `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently. @oruebel (#697)
+- Allow `zarr.Array` as array datatype in docval to support conversion data stored in Zarr to HDMF HDF5 data. @oruebel (#721)
 
 ### Bug fixes
 - Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)

@@ -4,6 +4,8 @@ import unittest
 import warnings
 from io import BytesIO
 from pathlib import Path
+import shutil
+import tempfile
 
 import h5py
 import numpy as np
@@ -26,6 +28,12 @@ from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+
+try:
+    import zarr
+    SKIP_ZARR_TESTS = False
+except ImportError:
+    SKIP_ZARR_TESTS = True
 
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
@@ -2943,3 +2951,113 @@ class TestCpdDatasetRefs(TestCase):
                 baz_name = 'baz%d' % i
                 self.assertEqual(read_bucket.baz_cpd_data.data[i][0], i)
                 self.assertIs(read_bucket.baz_cpd_data.data[i][1], read_bucket.bazs[baz_name])
+
+
+@unittest.skipIf(SKIP_ZARR_TESTS, "Skipping TestRoundTripHDF5withZarrInput because Zarr is not installed")
+class TestWriteHDF5withZarrInput(TestCase):
+    """
+    Test saving data to HDF5 with a zarr.Array as the data
+    """
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+        self.path = get_temp_filepath()
+        self.zarr_path = tempfile.mkdtemp()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+        if os.path.exists(self.zarr_path):
+            shutil.rmtree(self.zarr_path)
+
+    def test_roundtrip_basic(self):
+        # Setup all the data we need
+        zarr.save(self.zarr_path, np.arange(50).reshape(5, 10))
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        foo1 = Foo(name='foo1',
+                   my_data=zarr_data,
+                   attr1="I am foo1",
+                   attr2=17,
+                   attr3=3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
+    def test_roundtrip_empty_dataset(self):
+        zarr.save(self.zarr_path, np.asarray([]).astype('int64'))
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        foo1 = Foo('foo1', zarr_data, "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual([], read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
+    def test_write_zarr_int32_dataset(self):
+        base_data = np.arange(50).reshape(5, 10).astype('int32')
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
+        dset = f['test_dataset']
+        self.assertTupleEqual(dset.shape, base_data.shape)
+        self.assertEqual(dset.dtype, base_data.dtype)
+        self.assertEqual(base_data.dtype, dset.dtype)
+        self.assertListEqual(dset[:].tolist(),
+                             base_data.tolist())
+
+    def test_write_zarr_float32_dataset(self):
+        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
+        dset = f['test_dataset']
+        self.assertTupleEqual(dset.shape, base_data.shape)
+        self.assertEqual(dset.dtype, base_data.dtype)
+        self.assertEqual(base_data.dtype, dset.dtype)
+        self.assertListEqual(dset[:].tolist(),
+                             base_data.tolist())
+
+    def test_write_zarr_string_dataset(self):
+        base_data = np.array(['string1', 'string2'], dtype=str)
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder('test_dataset', zarr_data, attributes={}))
+        dset = f['test_dataset']
+        self.assertTupleEqual(dset.shape, (2,))
+        self.assertListEqual(dset[:].astype(bytes).tolist(), base_data.astype(bytes).tolist())
+
+    def test_write_zarr_dataset_compress_gzip(self):
+        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        a = H5DataIO(zarr_data,
+                     compression='gzip',
+                     compression_opts=5,
+                     shuffle=True,
+                     fletcher32=True)
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertEqual(dset.compression, 'gzip')
+        self.assertEqual(dset.compression_opts, 5)
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
