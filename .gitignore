@@ -55,6 +55,7 @@ __pycache__/
 # coverage output
 /tests/coverage/htmlcov
 .coverage
+coverage.xml
 
 # duecredit output
 .duecredit.p

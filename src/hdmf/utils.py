@@ -18,6 +18,14 @@ __macros = {
     'data': []
 }
 
+try:
+    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
+    import zarr
+    __macros['array_data'].append(zarr.Array)
+except ImportError:
+    pass
+
+
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 

@@ -18,30 +18,29 @@ Latest Release
      :target: https://anaconda.org/conda-forge/hdmf
 
 
-Build Status
-============
-
-.. table::
-
-  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
-  | Linux                                                               | Windows and macOS                                                                                |
-  +=====================================================================+==================================================================================================+
-  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://dev.azure.com/hdmf-dev/hdmf/_apis/build/status/hdmf-dev.hdmf?branchName=dev   |
-  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://dev.azure.com/hdmf-dev/hdmf/_build/latest?definitionId=1&branchName=dev     |
-  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
-
-
-**Conda**
-
-.. image:: https://circleci.com/gh/conda-forge/hdmf-feedstock.svg?style=shield
-     :target: https://circleci.com/gh/conda-forge/hdmf-feedstock
-
-
 Overall Health
 ==============
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20coverage/badge.svg
-    :target: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3A%22Run+coverage%22
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20code%20coverage/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_coverage.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20tests/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20style%20check/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_flake8.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Check%20Sphinx%20external%20links/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/check_external_links.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20PyNWB%20tests/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20all%20tests/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Deploy%20release/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/deploy_release.yml
 
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
