@@ -5,3 +5,12 @@
 .wy-nav-content {
   max-width: 1000px !important;
 }
+
+button.copybtn {
+    height:25px;
+    width:25px;
+    opacity: 0.5;
+    padding: 0;
+    border: none;
+    background: none;
+}

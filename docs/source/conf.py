@@ -52,7 +52,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
-    'sphinx_gallery.gen_gallery'
+    'sphinx_gallery.gen_gallery',
+    'sphinx_copybutton'
 ]
 
 from sphinx_gallery.sorting import ExplicitOrder
