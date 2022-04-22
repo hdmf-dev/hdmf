@@ -31,7 +31,7 @@ with creating a specific instance for your data format or API access pattern.
 # To create a :py:class:`~hdmf.data_utils.GenericDataChunkIterator` that accomplishes this,
 # we begin by defining our child class.
 
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_numpy_array_iterator.png'
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_generic_data_chunk_tutorial.png'
 import numpy as np
 
 from hdmf.data_utils import GenericDataChunkIterator
