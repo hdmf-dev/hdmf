@@ -730,11 +730,17 @@ class DynamicTable(Container):
                 create_vector_index = []
                 for i in range(index):
                     try:
-                        create_vector_index.append(np.cumsum([len(c) for c in flatten_data]))
+                        create_vector_index.append(np.cumsum([len(c) for c in flatten_data]).tolist())
                     except TypeError as e:
                         raise ValueError("Cannot automatically construct VectorIndex for nested array. "
                                          "Invalid data array element found.") from e
                     flatten_data = list(itertools.chain.from_iterable(flatten_data))
+                # if our data still is an array (e.g., a list or numpy array) then warn that the index parameter
+                # may be incorrect.
+                if len(flatten_data) > 0 and isinstance(flatten_data[0], (np.ndarray, list, tuple)):
+                    raise ValueError("Cannot automatically construct VectorIndex for nested array. "
+                                     "Column data contains arrays as cell values. Please check the 'data' and 'index' "
+                                     "parameters. 'index=%s' may be too small for the given data." % str(index))
                 # overwrite the data to be used for the VectorData column with the flattened data
                 ckwargs['data'] = flatten_data
 
