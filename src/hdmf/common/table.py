@@ -10,6 +10,7 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
+import itertools
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
@@ -715,6 +716,29 @@ class DynamicTable(Container):
             if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
                 ckwargs['elements'] = enum
 
+        # If the user provided a list of lists that needs to be indexed, then we now need to flatten the data
+        # We can only create the index actual VectorIndex once we have the VectorData column so we compute
+        # the index and flatten the data here and then create the VectorIndex later from create_vector_index
+        # once we have created the column
+        create_vector_index = None
+        if ckwargs.get('data', None) is not None:
+            # Check that we are asked to create an index
+            if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
+                # Iteratively flatten the data we use for the column based on the depth of the index to generate.
+                # Also, for each level compute the data for the VectorIndex for that level
+                flatten_data = data
+                create_vector_index = []
+                for i in range(index):
+                    try:
+                        create_vector_index.append(np.cumsum([len(c) for c in flatten_data]))
+                    except TypeError as e:
+                        raise ValueError("Cannot automatically construct VectorIndex for nested array. "
+                                         "Invalid data array element found.") from e
+                    flatten_data = list(itertools.chain.from_iterable(flatten_data))
+                # overwrite the data to be used for the VectorData column with the flattened data
+                ckwargs['data'] = flatten_data
+
+        # Create the VectorData column
         col = col_cls(**ckwargs)
         col.parent = self
         columns = [col]
@@ -731,22 +755,39 @@ class DynamicTable(Container):
             if isinstance(index, VectorIndex):
                 col_index = index
                 self.__add_column_index_helper(col_index)
-            elif isinstance(index, bool):  # make empty VectorIndex
-                if len(col) > 0:
-                    raise ValueError("cannot pass empty index with non-empty data to index")
-                col_index = VectorIndex(name + "_index", list(), col)
+            elif isinstance(index, bool):
+                # create empty index for empty column
+                if create_vector_index is None:
+                    if len(col) > 0:
+                        raise ValueError("cannot pass empty index with non-empty data to index")
+                    col_index = VectorIndex(name=name + "_index", data=list(), target=col)
+                # create single-level VectorIndex from the data based on the create_vector_index we computed earlier
+                else:
+                    col_index = VectorIndex(name=name + "_index", data=create_vector_index[0], target=col)
+                # add the column with the index
                 self.__add_column_index_helper(col_index)
             elif isinstance(index, int):
-                assert index > 0, ValueError("integer index value must be greater than 0")
-                assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
-                index_name = name
-                for i in range(index):
-                    index_name = index_name + "_index"
-                    col_index = VectorIndex(index_name, list(), col)
-                    self.__add_column_index_helper(col_index)
-                    if i < index - 1:
-                        columns.insert(0, col_index)
-                        col = col_index
+                if create_vector_index is None:
+                    assert index > 0, ValueError("integer index value must be greater than 0")
+                    assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
+                    index_name = name
+                    for i in range(index):
+                        index_name = index_name + "_index"
+                        col_index = VectorIndex(index_name, list(), col)
+                        self.__add_column_index_helper(col_index)
+                        if i < index - 1:
+                            columns.insert(0, col_index)
+                            col = col_index
+                # Create the nested VectorIndex from the create_vector_index we computed above
+                else:
+                    index_name = name
+                    for i in range(index):
+                        index_name = index_name + "_index"
+                        col_index = VectorIndex(name=index_name, data=create_vector_index[-(i+1)], target=col)
+                        self.__add_column_index_helper(col_index)
+                        if i < index - 1:
+                            columns.insert(0, col_index)
+                            col = col_index
             else:  # make VectorIndex with supplied data
                 if len(col) == 0:
                     raise ValueError("cannot pass non-empty index with empty data to index")
