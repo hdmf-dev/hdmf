@@ -228,6 +228,27 @@ table.add_column(  # <-- this table already has 4 rows
 )
 
 ###############################################################################
+# Alternatively we may also define the ragged array data as a nested list
+# and use the ``index`` argument to indicate the number of levels. In this case,
+# the :py:class:`~hdmf.common.table.DynamicTable.add_column` function will
+# automatically flatten the data array and compute the corresponding index vectors.
+
+table.add_column(  # <-- this table already has 4 rows
+    name='col5',
+    description='column #5',
+    data=[[[1, ], [2, 2]],       # row 1
+          [[3, 3], ],            # row 2
+          [[4, ], [5, 5]],       # row 3
+          [[6, 6], [7, 7, 7]]],  # row 4
+    index=2   # number of levels in the ragged array.
+)
+# Show that the ragged array was converted to flat VectorData with a double VectorIndex
+print("Flattend data: %s" % str(table.col5.data))
+print("Level 1 index: %s" % str(table.col5_index.data))
+print("Level 2 index: %s" % str(table.col5_index_index.data))
+
+
+###############################################################################
 # Referencing rows of other tables
 # --------------------------------
 # You can create a column that references rows of another table by adding a
