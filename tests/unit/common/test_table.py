@@ -226,6 +226,125 @@ class TestDynamicTable(TestCase):
                       ]
                       )
 
+    def test_add_column_auto_index_int(self):
+        """
+        Add a column as a list of lists after we have already added data so that we need to create a single VectorIndex
+        with index=1 as parameter
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        expected = [[1, 2, 3],
+                    [1, 2, 3, 4]]
+        table.add_column(name='qux',
+                         description='qux column',
+                         data=expected,
+                         index=1)
+        self.assertListEqual(table['qux'][:], expected)
+        self.assertListEqual(table.qux_index.data, [3, 7])
+        # Add more rows after we created the column
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[10, 11, 12])
+        self.assertListEqual(table['qux'][:], expected + [[10, 11, 12], ])
+        self.assertListEqual(table.qux_index.data, [3, 7, 10])
+
+    def test_add_column_auto_index_bool(self):
+        """
+        Add a column as a list of lists after we have already added data so that we need to create a single VectorIndex
+        with index=True as parameter
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        expected = [[1, 2, 3],
+                    [1, 2, 3, 4]]
+        table.add_column(name='qux',
+                         description='qux column',
+                         data=expected,
+                         index=True)
+        self.assertListEqual(table['qux'][:], expected)
+        self.assertListEqual(table.qux_index.data, [3, 7])
+        # Add more rows after we created the column
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[10, 11, 12])
+        self.assertListEqual(table['qux'][:], expected + [[10, 11, 12], ])
+        self.assertListEqual(table.qux_index.data, [3, 7, 10])
+
+    def test_add_column_auto_multi_index_int(self):
+        """
+        Add a column as a list of lists of lists after we have already added data so that we need to create a
+        two VectorIndex for the column so we set index=2 as parameter
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        expected = [[[1, 2, 3], [1]],
+                    [[1, 2, 3, 4], [1, 2]]]
+        table.add_column(name='qux',
+                         description='qux column',
+                         data=expected,
+                         index=2)
+        self.assertListEqual(table['qux'][:], expected)
+        self.assertListEqual(table.qux_index_index.data, [2, 4])
+        self.assertListEqual(table.qux_index.data, [3, 4, 8, 10])
+        # Add more rows after we created the column
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[[10, 11, 12], ])
+        self.assertListEqual(table['qux'][:], expected + [[[10, 11, 12], ]])
+        self.assertListEqual(table.qux_index_index.data, [2, 4, 5])
+        self.assertListEqual(table.qux_index.data, [3, 4, 8, 10, 13])
+
+    def test_add_column_auto_multi_index_int_bad_index_levels(self):
+        """
+        Add a column as a list of lists if lists after we have already added data so that we need to create a
+        a two-level index, but we ask for either too many or too few index levels.
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        expected = [[[1, 2, 3], [1]],
+                    [[1, 2, 3, 4], [1, 2]]]
+        msg = "Cannot automatically construct VectorIndex for nested array. Invalid data array element found."
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux',
+                             description='qux column',
+                             data=expected,
+                             index=3)  # Too many index levels given
+        # Asking for too few indexes will work here but should then later fail on write
+        msg = ("Cannot automatically construct VectorIndex for nested array. "
+               "Column data contains arrays as cell values. Please check the 'data' and 'index' parameters.")
+        with self.assertRaisesWith(ValueError, msg + " 'index=1' may be too small for the given data."):
+            table.add_column(name='qux',
+                             description='qux column',
+                             data=expected,
+                             index=1)
+        with self.assertRaisesWith(ValueError, msg + " 'index=True' may be too small for the given data."):
+            table.add_column(name='qux',
+                             description='qux column',
+                             data=expected,
+                             index=True)
+
+    def test_add_column_auto_multi_index_int_with_empty_slots(self):
+        """
+        Add a column as a list of lists of lists after we have already added data so that we need to create 2
+        VectorIndex levels so we set index=2 as parameter. For the data the first two rows have no entries in the
+        multi-indexed column.
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        expected = [[[], []],
+                    [[], []]]
+        table.add_column(name='qux',
+                         description='qux column',
+                         data=expected,
+                         index=2)
+        self.assertListEqual(table['qux'][:], expected)
+        self.assertListEqual(table.qux_index_index.data, [2, 4])
+        self.assertListEqual(table.qux_index.data, [0, 0, 0, 0])
+        # Add more rows after we created the column
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[[10, 11, 12], ])
+        self.assertListEqual(table['qux'][:], expected + [[[10, 11, 12], ]])
+        self.assertListEqual(table.qux_index_index.data, [2, 4, 5])
+        self.assertListEqual(table.qux_index.data, [0, 0, 0, 0, 3])
+
     def test_auto_multi_index_required(self):
 
         class TestTable(DynamicTable):
