@@ -764,8 +764,7 @@ class DynamicTable(Container):
             elif isinstance(index, bool):
                 # create empty index for empty column
                 if create_vector_index is None:
-                    if len(col) > 0:
-                        raise ValueError("cannot pass empty index with non-empty data to index")
+                    assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
                     col_index = VectorIndex(name=name + "_index", data=list(), target=col)
                 # create single-level VectorIndex from the data based on the create_vector_index we computed earlier
                 else:
@@ -795,8 +794,7 @@ class DynamicTable(Container):
                             columns.insert(0, col_index)
                             col = col_index
             else:  # make VectorIndex with supplied data
-                if len(col) == 0:
-                    raise ValueError("cannot pass non-empty index with empty data to index")
+                assert len(col) > 0, ValueError("cannot pass non-empty index with empty data to index")
                 col_index = VectorIndex(name + "_index", index, col)
                 self.__add_column_index_helper(col_index)
             columns.insert(0, col_index)
