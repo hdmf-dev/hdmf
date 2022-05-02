@@ -9,6 +9,7 @@
 - Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#697)
 - Added `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently. @oruebel (#697)
 - Allow `zarr.Array` as array datatype in docval to support conversion data stored in Zarr to HDMF HDF5 data. @oruebel (#721)
+- Allow `hdmf.common.table.DynamicTable.add_column` to accept nested lists as column data and automatically create the `VectorIndex` and `VectorData` objects required to represent the ragged array. @oruebel (#728)
 
 ### Bug fixes
 - Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)
