@@ -240,10 +240,10 @@ table.add_column(  # <-- this table already has 4 rows
           [[3, 3], ],            # row 2
           [[4, ], [5, 5]],       # row 3
           [[6, 6], [7, 7, 7]]],  # row 4
-    index=2   # number of levels in the ragged array.
+    index=2   # number of levels in the ragged array
 )
 # Show that the ragged array was converted to flat VectorData with a double VectorIndex
-print("Flattend data: %s" % str(table.col5.data))
+print("Flattened data: %s" % str(table.col5.data))
 print("Level 1 index: %s" % str(table.col5_index.data))
 print("Level 2 index: %s" % str(table.col5_index_index.data))
 
