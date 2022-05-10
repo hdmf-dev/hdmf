@@ -52,7 +52,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
-    'sphinx_gallery.gen_gallery'
+    'sphinx_gallery.gen_gallery',
+    'sphinx_copybutton'
 ]
 
 from sphinx_gallery.sorting import ExplicitOrder
@@ -76,6 +77,12 @@ intersphinx_mapping = {
     'h5py': ('https://docs.h5py.org/en/latest/', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
 }
+
+# these links cannot be checked in github actions
+linkcheck_ignore = [
+    'https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key',
+    'https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

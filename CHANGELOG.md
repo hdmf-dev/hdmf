@@ -8,24 +8,28 @@
   - Added new `hdmf/io/utils.py` module with new I/O utility classes: 1) `WriteStatusTracker` as a simple data structure for tracking the write status of `Builders`, and 2) `NamespaceToBuilderHelper` to help with converting of a namespace to a `Builder` for I/O. @oruebel (#697)
 - Added `get_min_bounds` function to `hdmf.data_utils.DataChunk`. This functionality was originally part of `HDF5IO.__write_chunk__()` and has been moved here to enable reuse of the code across data backends. @oruebel (#697)
 - Added `ignore_string_to_byte` option for `TestCase.assertContainerEqual` to allow us to ignore conversion from string to bytes and just compare unicode values, as different backends may store strings differently. @oruebel (#697)
+- Allow `zarr.Array` as array datatype in docval to support conversion data stored in Zarr to HDMF HDF5 data. @oruebel (#721)
+- Allow `hdmf.common.table.DynamicTable.add_column` to accept nested lists as column data and automatically create the `VectorIndex` and `VectorData` objects required to represent the ragged array. @oruebel (#728)
 
 ### Bug fixes
 - Fixed error with modifying files that contain external links to other files (e.g., shallow copies). @rly (#709)
 - Fixed opening of files in append mode on Windows when the files contain links to other open files. @rly (#710)
+- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#697)
+- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#697)
 
 ### Minor improvements
 - Updated `HDF5IO` to use the new `WriteStatusTracker`, `NamespaceToBuilderHelper`, and `HDF5IODataChunkIteratorQueue` helper classes. @oruebel (#697)
 - Updated `hdmf.common.sparse.CSRMatrix` to avoid direct dependency on h5py as a particular storage backend. @oruebel (#697)
 - Improved readability of ``Container`` code. @rly (#707)
-
-### Bug fixes
-- Updated `HDF5IO` to always set the `location` attribute of `GroupBuilders`, `DatasetBuilders`, and `LinkBuilders` on read.   @oruebel (#697)
-- Updated `HDF5IO.get_types` to correctly determine the data type for `bytes` data. @oruebel (#697)
+- Use GitHub Actions for all CI. @rly (#718)
 
 ### Enhancements of tests
 - Moved test functions to ease reuse and updated tests accordingly.  @oruebel (#697)
 - Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse and updated tests accordingly. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#697)
 - Added numerous tests to `tests/unit/common/test_sparse.py` to enhance testing of the `CSRMatrix` type. @oruebel (#697)
+
+### Documentation and tutorial enhancements:
+- Add copy button to code blocks @weiglszonja @oruebel (#726)
 
 ## HDMF 3.2.1 (February 22, 2022)
 

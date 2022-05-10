@@ -16,9 +16,9 @@ A core developer should use the following steps to create a release `X.Y.Z` of *
 Prerequisites
 -------------
 
-* All CI tests are passing on `CircleCI`_ and `Azure Pipelines`_.
+* All CI tests are passing on `GitHub Actions`_.
 
-* You have a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
+* You have a `GPG signing key <https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key>`_.
 
 * Dependency versions in requirements.txt, requirements-dev.txt, requirements-opt.txt, requirements-doc.txt,
   requirements-min.txt are up-to-date.
@@ -89,7 +89,7 @@ Setting up environment
 PyPI: Step-by-step
 ------------------
 
-1. Make sure that all CI tests are passing on `CircleCI`_ and `Azure Pipelines`_.
+1. Make sure that all CI tests are passing on `GitHub Actions`_.
 
 
 2. List all tags sorted by version
@@ -126,7 +126,7 @@ PyPI: Step-by-step
 
   .. warning::
 
-      This step requires a `GPG signing key <https://help.github.com/articles/generating-a-new-gpg-key/>`_.
+      This step requires a `GPG signing key <https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key>`_.
 
 
 6. Publish the release tag
@@ -141,7 +141,7 @@ PyPI: Step-by-step
       and source distribution on `PyPI`_.
 
 
-7. Check the status of the builds on `CircleCI`_ and `Azure Pipelines`_.
+7. Check the status of the builds on `GitHub Actions`_.
 
 
 8. Once the builds are completed, check that the distributions are available on `PyPI`_ and that
@@ -175,8 +175,7 @@ PyPI: Step-by-step
 .. _virtualenv: http://virtualenv.readthedocs.io
 .. _venv: https://docs.python.org/3/library/venv.html
 
-.. _CircleCI: https://circleci.com/gh/hdmf-dev/hdmf
-.. _Azure Pipelines: https://dev.azure.com/hdmf-dev/hdmf/_build
+.. _GitHub Actions: https://github.com/hdmf-dev/hdmf/actions
 
 .. _PyPI: https://pypi.org/project/hdmf
 
