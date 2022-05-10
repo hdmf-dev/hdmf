@@ -8,7 +8,7 @@ import pandas as pd
 
 from . import register_class
 from .table import DynamicTable
-from ..utils import docval, getargs, call_docval_func, popargs, get_docval
+from ..utils import docval, getargs, call_docval_func, popargs, get_docval, AllowPositional
 
 
 @register_class('AlignedDynamicTable')
@@ -33,7 +33,8 @@ class AlignedDynamicTable(DynamicTable):
                     'DynamicTables are allowed. Using AlignedDynamicTable as a category for '
                     'AlignedDynamicTable is currently not supported.', 'default': None},
             {'name': 'categories', 'type': 'array_data',
-             'doc': 'List of names with the ordering of category tables', 'default': None})
+             'doc': 'List of names with the ordering of category tables', 'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         in_category_tables = popargs('category_tables', kwargs)
         in_categories = popargs('categories', kwargs)
@@ -57,7 +58,7 @@ class AlignedDynamicTable(DynamicTable):
                 raise ValueError("%s category_tables given but %s categories specified" %
                                  (len(in_category_tables), len(in_categories)))
         # Initialize the main dynamic table
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         # Create and set all sub-categories
         dts = OrderedDict()
         # Add the custom categories given as inputs

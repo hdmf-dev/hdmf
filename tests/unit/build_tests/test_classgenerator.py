@@ -149,7 +149,7 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         # TODO: test that constructor works!
-        inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        inst = cls(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'My Baz')
         self.assertEqual(inst.data, [1, 2, 3, 4])
         self.assertEqual(inst.attr1, 'string attribute')
@@ -168,9 +168,9 @@ class TestDynamicContainer(TestCase):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
         with self.assertRaises(TypeError):
-            inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            inst = cls(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
 
-        inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        inst = cls(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'A fixed name')
         self.assertEqual(inst.data, [1, 2, 3, 4])
         self.assertEqual(inst.attr1, 'string attribute')
@@ -190,7 +190,7 @@ class TestDynamicContainer(TestCase):
             self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
             cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
-            inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            inst = cls(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
             self.assertEqual(inst.name, 'A fixed name')
 
     def test_dynamic_container_composition(self):
@@ -208,14 +208,15 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
-        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
-             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+        Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0))
 
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
-        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+        bar = Bar(name='My Bar', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
 
         with self.assertRaises(TypeError):
-            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+            Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+                 baz2=bar)
 
     def test_dynamic_container_composition_reverse_order(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
@@ -232,14 +233,15 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
-        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
-             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+        Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0))
 
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
-        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+        bar = Bar(name='My Bar', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
 
         with self.assertRaises(TypeError):
-            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+            Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute',
+                 attr2=1000, attr3=98.6, attr4=1.0, baz2=bar)
 
     def test_dynamic_container_composition_missing_type(self):
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
@@ -258,7 +260,7 @@ class TestDynamicContainer(TestCase):
                              data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         Baz = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
+        obj = Baz(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
         self.assertEqual(obj.name, 'Baz')
 
     def test_multi_container_spec(self):
@@ -288,10 +290,10 @@ class TestDynamicContainer(TestCase):
 
         multi = Multi(
             name='my_multi',
-            bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
             attr3=5.
         )
-        assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
         assert multi.attr3 == 5.
 
 
