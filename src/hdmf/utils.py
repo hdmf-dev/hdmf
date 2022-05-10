@@ -306,6 +306,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             arg = next(it)
 
         # process arguments of the docval specification with a default value
+        # NOTE: the default value will be deepcopied, so 'default': list() is safe unlike in normal python
         while True:
             argname = arg['name']
             if argname in kwargs:

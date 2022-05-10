@@ -211,11 +211,9 @@ class ElementIdentifiers(Data):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
-             'default': None},
+             'default': list()},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        if kwargs['data'] is None:
-            kwargs['data'] = list()
         super().__init__(**kwargs)
 
     @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
