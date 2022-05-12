@@ -6,7 +6,7 @@ import numpy as np
 from ..container import Container, Data, DataRegion, MultiContainerInterface
 from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
-from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
+from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
 class ClassGenerator:
@@ -249,11 +249,13 @@ class CustomClassGenerator:
             return cls._check_spec_optional(field_spec.parent, spec)
 
     @classmethod
-    def _add_to_docval_args(cls, docval_args, arg):
-        """Add the docval arg to the list if not present. If present, overwrite it in place."""
+    def _add_to_docval_args(cls, docval_args, arg, err_if_present=False):
+        """Add the docval arg to the list if not present. If present, overwrite it in place or raise an error."""
         inserted = False
         for i, x in enumerate(docval_args):
             if x['name'] == arg['name']:
+                if err_if_present:
+                    raise ValueError("Argument %s already exists in docval args." % arg["name"])
                 docval_args[i] = arg
                 inserted = True
         if not inserted:
@@ -294,15 +296,15 @@ class CustomClassGenerator:
             if attr_name not in parent_docval_args:
                 new_args.append(attr_name)
 
-        @docval(*docval_args)
+        @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)
-            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
-
+            new_kwargs = dict()
             for f in new_args:
-                arg_val = kwargs.get(f, None)
+                new_kwargs[f] = popargs(f, kwargs) if f in kwargs else None
+            base.__init__(self, **kwargs)  # special case: need to pass self to __init__
+            for f, arg_val in new_kwargs.items():
                 setattr(self, f, arg_val)
         classdict['__init__'] = __init__
 
