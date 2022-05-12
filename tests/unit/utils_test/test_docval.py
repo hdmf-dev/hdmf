@@ -585,7 +585,8 @@ class TestDocValidator(TestCase):
 
         # check that supplying a positional arg raises a warning
         msg = ('TestDocValidator.test_allow_positional_warn.<locals>.method: '
-               'Positional arguments are discouraged and may be forbidden in a future release.')
+               'Using positional arguments for this method is discouraged and will be deprecated in a future major '
+               'release. Please use keyword arguments to ensure future compatibility.')
         with self.assertWarnsWith(FutureWarning, msg):
             method(self, True)
 
@@ -601,7 +602,7 @@ class TestDocValidator(TestCase):
 
         # check that supplying a positional arg raises an error
         msg = ('TestDocValidator.test_allow_positional_error.<locals>.method: '
-               'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.')
+               'Only keyword arguments (e.g., func(argname=value, ...)) are allowed for this method.')
         with self.assertRaisesWith(SyntaxError, msg):
             method(self, True)
 

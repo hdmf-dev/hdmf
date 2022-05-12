@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
-from .utils import (docval, get_docval, call_docval_func, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
+from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
                     popargs, LabelledDict)
 
 
@@ -502,8 +502,9 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-        self.__data = getargs('data', kwargs)
+        data = popargs('data', kwargs)
+        super().__init__(**kwargs)
+        self.__data = data
 
     @property
     def data(self):
@@ -778,7 +779,7 @@ class MultiContainerInterface(Container):
 
         @docval(*args, func_name='__init__')
         def _func(self, **kwargs):
-            call_docval_func(super(cls, self).__init__, kwargs)
+            super().__init__(name=kwargs['name'])
             for conf in clsconf:
                 attr_name = conf['attr']
                 add_name = conf['add']
@@ -1081,7 +1082,7 @@ class Table(Data):
         self.__col_index = {name: idx for idx, name in enumerate(self.__columns)}
         if getattr(self, '__rowclass__') is not None:
             self.row = RowGetter(self)
-        call_docval_func(super(Table, self).__init__, kwargs)
+        super().__init__(**kwargs)
 
     @property
     def columns(self):

@@ -5,7 +5,7 @@ Module for testing functions specific to tables containing DynamicTableRegion co
 import numpy as np
 from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion, VectorIndex
 from hdmf.testing import TestCase
-from hdmf.utils import docval, popargs, get_docval, call_docval_func
+from hdmf.utils import docval, popargs, get_docval
 from hdmf.common.hierarchicaltable import to_hierarchical_dataframe, drop_id_columns, flatten_column_index
 from pandas.testing import assert_frame_equal
 
@@ -28,10 +28,11 @@ class DynamicTableSingleDTR(DynamicTable):
     def __init__(self, **kwargs):
         # Define default name and description settings
         kwargs['description'] = (kwargs['name'] + " DynamicTableSingleDTR")
+        child_table1 = popargs('child_table1', kwargs)
         # Initialize the DynamicTable
-        call_docval_func(super(DynamicTableSingleDTR, self).__init__, kwargs)
+        super().__init__(**kwargs)
         if self['child_table_ref1'].target.table is None:
-            self['child_table_ref1'].target.table = popargs('child_table1', kwargs)
+            self['child_table_ref1'].target.table = child_table1
 
 
 class DynamicTableMultiDTR(DynamicTable):
@@ -60,12 +61,14 @@ class DynamicTableMultiDTR(DynamicTable):
     def __init__(self, **kwargs):
         # Define default name and description settings
         kwargs['description'] = (kwargs['name'] + " DynamicTableSingleDTR")
+        child_table1 = popargs('child_table1', kwargs)
+        child_table2 = popargs('child_table2', kwargs)
         # Initialize the DynamicTable
-        call_docval_func(super(DynamicTableMultiDTR, self).__init__, kwargs)
+        super().__init__(**kwargs)
         if self['child_table_ref1'].target.table is None:
-            self['child_table_ref1'].target.table = popargs('child_table1', kwargs)
+            self['child_table_ref1'].target.table = child_table1
         if self['child_table_ref2'].target.table is None:
-            self['child_table_ref2'].target.table = popargs('child_table2', kwargs)
+            self['child_table_ref2'].target.table = child_table2
 
 
 class TestLinkedAlignedDynamicTables(TestCase):

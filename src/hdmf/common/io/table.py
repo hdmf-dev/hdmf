@@ -2,7 +2,7 @@ from .. import register_map
 from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
 from ...build import ObjectMapper, BuildManager, CustomClassGenerator
 from ...spec import Spec
-from ...utils import docval, getargs
+from ...utils import docval, getargs, popargs, AllowPositional
 
 
 @register_map(DynamicTable)
@@ -97,16 +97,6 @@ class DynamicTableGenerator(CustomClassGenerator):
 
         # do not add DynamicTable columns to init docval
 
-        # add a specialized docval arg for __init__ for specifying targets for DTRs
-        target_tables_dvarg = dict(
-            name='target_tables',
-            doc=('dict mapping DynamicTableRegion column name to the table that the DTR points to. The column is '
-                 'added to the table if it is not already present (i.e., when it is optional).'),
-            type=dict,
-            default=None
-        )
-        cls._add_to_docval_args(docval_args, target_tables_dvarg)
-
     @classmethod
     def post_process(cls, classdict, bases, docval_args, spec):
         """Convert classdict['__columns__'] to tuple.
@@ -129,12 +119,23 @@ class DynamicTableGenerator(CustomClassGenerator):
         if base_init is None:  # pragma: no cover
             raise ValueError("Generated class dictionary is missing base __init__ method.")
 
-        @docval(*docval_args)
+        # add a specialized docval arg for __init__ for specifying targets for DTRs
+        docval_args_local = docval_args.copy()
+        target_tables_dvarg = dict(
+            name='target_tables',
+            doc=('dict mapping DynamicTableRegion column name to the table that the DTR points to. The column is '
+                 'added to the table if it is not already present (i.e., when it is optional).'),
+            type=dict,
+            default=None
+        )
+        cls._add_to_docval_args(docval_args_local, target_tables_dvarg, err_if_present=True)
+
+        @docval(*docval_args_local, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
+            target_tables = popargs('target_tables', kwargs)
             base_init(self, **kwargs)
 
             # set target attribute on DTR
-            target_tables = kwargs.get('target_tables')
             if target_tables:
                 for colname, table in target_tables.items():
                     if colname not in self:  # column has not yet been added (it is optional)
