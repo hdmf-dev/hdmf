@@ -1,7 +1,7 @@
 import numpy as np
 from hdmf.testing import TestCase
 from hdmf.utils import (docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
-                        docval_macro)
+                        docval_macro, popargs_to_dict)
 
 
 class MyTestClass(object):
@@ -969,6 +969,40 @@ class TestPopargs(TestCase):
         msg = "Argument not found in dict: 'c'"
         with self.assertRaisesWith(ValueError, msg):
             popargs('a', 'c', kwargs)
+
+
+class TestPopargsToDict(TestCase):
+    """Test the popargs_to_dict function and its error conditions."""
+
+    def test_one_arg_first(self):
+        kwargs = {'a': 1, 'b': None}
+        res = popargs_to_dict(['a'], kwargs)
+        self.assertDictEqual(res, {'a': 1})
+        self.assertDictEqual(kwargs, {'b': None})
+
+    def test_one_arg_second(self):
+        kwargs = {'a': 1, 'b': None}
+        res = popargs_to_dict(['b'], kwargs)
+        self.assertDictEqual(res, {'b': None})
+        self.assertDictEqual(kwargs, {'a': 1})
+
+    def test_many_args_pop_some(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs_to_dict(['a', 'c'], kwargs)
+        self.assertDictEqual(res, {'a': 1, 'c': 3})
+        self.assertDictEqual(kwargs, {'b': None})
+
+    def test_many_args_pop_all(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs_to_dict(['a', 'b', 'c'], kwargs)
+        self.assertDictEqual(res, {'a': 1, 'b': None, 'c': 3})
+        self.assertDictEqual(kwargs, {})
+
+    def test_arg_not_found_one_arg(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = "Argument not found in dict: 'c'"
+        with self.assertRaisesWith(ValueError, msg):
+            popargs_to_dict(['c'], kwargs)
 
 
 class TestMacro(TestCase):
