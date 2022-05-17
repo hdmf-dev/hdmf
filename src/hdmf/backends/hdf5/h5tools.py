@@ -382,7 +382,7 @@ class HDF5IO(HDMFIO):
                  'exported'),
          'default': None},
         {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
-         'default': dict()},
+         'default': None},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
     )
@@ -399,6 +399,8 @@ class HDF5IO(HDMFIO):
 
         src_io = getargs('src_io', kwargs)
         write_args, cache_spec = popargs('write_args', 'cache_spec', kwargs)
+        if write_args is None:
+            write_args = dict()
 
         if not isinstance(src_io, HDF5IO) and write_args.get('link_data', True):
             raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write argument "
