@@ -733,6 +733,27 @@ def popargs(*argnames):
     return ret
 
 
+def popargs_to_dict(keys, argdict):
+    """Convenience function to retrieve and remove arguments from a dictionary in batch into a dictionary.
+
+    Same as `{key: argdict.pop(key) for key in keys}` with a custom ValueError
+
+    :param keys: Iterable of keys to pull out of argdict
+    :type keys: Iterable
+    :param argdict: Dictionary to process
+    :type dict: dict
+    :raises ValueError: if an argument name is not found in the dictionary
+    :return: a dict of arguments removed
+    """
+    ret = dict()
+    for arg in keys:
+        try:
+            ret[arg] = argdict.pop(arg)
+        except KeyError as ke:
+            raise ValueError('Argument not found in dict: %s' % str(ke))
+    return ret
+
+
 class ExtenderMeta(ABCMeta):
     """A metaclass that will extend the base class initialization
        routine by executing additional functions defined in
