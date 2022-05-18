@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.3.0 (May 12, 2022)
+## HDMF 3.3.0 (May 18, 2022)
 
 ### New features
 - Added utility functions and classes useful for implementation of I/O backend to ease maintainability and reuse of functionality across I/O backends. @oruebel (#697)
@@ -26,8 +26,9 @@
 - Improved readability of ``Container`` code. @rly (#707)
 - Use GitHub Actions for all CI. @rly (#718)
 - Allow `write_args=None` to be passed to `HDF5IO.export`. @rly (#733)
+- Updated requirements and fixed minor documentation issues and warnings. @rly (#731)
 
-### Enhancements of tests
+### Test enhancements
 - Moved test functions to ease reuse and updated tests accordingly. @oruebel (#697)
 - Moved `Baz`, `BazData`, `BazCpdData`, `BazBucket`, `get_baz_buildmanager` test data classes from `tests.unit.test_io_hdf5_h5tools` to `tests.unit.utils` to ease reuse and updated tests accordingly. Also `_get_baz_manager` was renamed to `get_baz_buildmanager` as part of this move. @oruebel (#697)
 - Added numerous tests to `tests/unit/common/test_sparse.py` to enhance testing of the `CSRMatrix` type. @oruebel (#697)
