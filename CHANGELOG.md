@@ -25,6 +25,7 @@
 - Updated `hdmf.common.sparse.CSRMatrix` to avoid direct dependency on h5py as a particular storage backend. @oruebel (#697)
 - Improved readability of ``Container`` code. @rly (#707)
 - Use GitHub Actions for all CI. @rly (#718)
+- Allow `write_args=None` to be passed to `HDF5IO.export`. @rly (#733)
 
 ### Enhancements of tests
 - Moved test functions to ease reuse and updated tests accordingly. @oruebel (#697)
