@@ -201,7 +201,7 @@ class HDF5IO(HDMFIO):
     def get_namespaces(cls, **kwargs):
         """Get the names and versions of the cached namespaces from a file.
 
-        If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
+        If ``file`` is not supplied, then an :py:class:`h5py.File` object will be opened for the given ``path``, the
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
         the given File object will be read from and not closed.
 
@@ -223,7 +223,7 @@ class HDF5IO(HDMFIO):
         """Return a dict mapping namespace name to version string for the latest version of that namespace in the file.
 
         If there are multiple versions of a namespace cached in the file, then only the latest one (using alphanumeric
-        ordering) is returned. This is the version of the namespace that is loaded by HDF5IO.load_namespaces(...).
+        ordering) is returned. This is the version of the namespace that is loaded by ``HDF5IO.load_namespaces``.
         """
         used_version_names = dict()
         if not cls.__check_specloc(file_obj):
@@ -422,7 +422,7 @@ class HDF5IO(HDMFIO):
         """Export from one backend to HDF5 (class method).
 
         Convenience function for :py:meth:`export` where you do not need to
-        instantiate a new `HDF5IO` object for writing. An `HDF5IO` object is created with mode 'w' and the given
+        instantiate a new ``HDF5IO`` object for writing. An ``HDF5IO`` object is created with mode 'w' and the given
         arguments.
 
         Example usage:
@@ -455,9 +455,9 @@ class HDF5IO(HDMFIO):
         """
         Read data and return the GroupBuilder representing it.
 
-        NOTE: On read the Builder.source may will usually not be set of the Builders.
+        NOTE: On read, the Builder.source may will usually not be set of the Builders.
         NOTE: The Builder.location is used internally to ensure correct handling of links (in particular on export)
-              and should be set on read for all GroupBuilder, DatasetBuilder, and LinkBuilder
+        and should be set on read for all GroupBuilder, DatasetBuilder, and LinkBuilder objects.
         """
         if not self.__file:
             raise UnsupportedOperation("Cannot read data from closed HDF5 file '%s'" % self.source)
@@ -738,7 +738,7 @@ class HDF5IO(HDMFIO):
     def close_linked_files(self):
         """Close all opened, linked-to files.
 
-        MacOS and Linux automatically releases the linked-to file after the linking file is closed, but Windows does
+        MacOS and Linux automatically release the linked-to file after the linking file is closed, but Windows does
         not, which prevents the linked-to file from being deleted or truncated. Use this method to close all opened,
         linked-to files.
         """
@@ -1026,7 +1026,7 @@ class HDF5IO(HDMFIO):
         """ Write a dataset to HDF5
 
         The function uses other dataset-dependent write functions, e.g,
-        `__scalar_fill__`, `__list_fill__`, and `__setup_chunked_dset__` to write the data.
+        ``__scalar_fill__``, ``__list_fill__``, and ``__setup_chunked_dset__`` to write the data.
         """
         parent, builder = popargs('parent', 'builder', kwargs)
         link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
@@ -1465,11 +1465,11 @@ class HDF5IO(HDMFIO):
         This method is provided merely for convenience. It is the equivalent
         of the following:
 
-        ```
-        from hdmf.backends.hdf5 import H5DataIO
-        data = ...
-        data = H5DataIO(data)
-        ```
+        .. code-block:: python
+
+            from hdmf.backends.hdf5 import H5DataIO
+            data = ...
+            data = H5DataIO(data)
         """
         cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
         return H5DataIO(*cargs, **ckwargs)
