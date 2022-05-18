@@ -492,7 +492,9 @@ er.export_to_sqlite(db_file)
 
 import sqlite3
 import pandas as pd
-with sqlite3.connect(db_file) as db:
+from contextlib import closing
+
+with closing(sqlite3.connect(db_file)) as db:
     cursor = db.cursor()
     # read all tables
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
@@ -514,5 +516,4 @@ with sqlite3.connect(db_file) as db:
 
 ###############################################################################
 # Remove the test file
-if os.path.exists(db_file):
-    os.remove(db_file)
+os.remove(db_file)
