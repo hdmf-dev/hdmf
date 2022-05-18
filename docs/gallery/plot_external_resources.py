@@ -479,7 +479,7 @@ er.to_dataframe(use_categories=True)
 # Set the database file to use and clean up the file if it exists
 import os
 db_file = "test_externalresources.sqlite"
-if os.path.exists((db_file)):
+if os.path.exists(db_file):
     os.remove(db_file)
 
 ###############################################################################
@@ -511,3 +511,8 @@ with sqlite3.connect(db_file) as db:
             else:
                 assert(np.all(np.array(table[c]) == np.array(ref_table[c])))
     cursor.close()
+
+###############################################################################
+# Remove the test file
+if os.path.exists(db_file):
+    os.remove(db_file)
