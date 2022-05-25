@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.3.1 (May 20, 2022)
+
+### Bug fixes
+- Fixed release deployment CI. @rly (#734, #735, #736)
+
 ## HDMF 3.3.0 (May 18, 2022)
 
 ### New features
