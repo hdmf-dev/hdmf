@@ -304,6 +304,7 @@ class CustomClassGenerator:
             for f in new_args:
                 new_kwargs[f] = popargs(f, kwargs) if f in kwargs else None
             base.__init__(self, **kwargs)  # special case: need to pass self to __init__
+            # TODO should super() be used above instead of base?
             for f, arg_val in new_kwargs.items():
                 setattr(self, f, arg_val)
         classdict['__init__'] = __init__
@@ -361,4 +362,37 @@ class MCIClassGenerator(CustomClassGenerator):
                 if issubclass(b, MultiContainerInterface):
                     break
             else:
-                bases.insert(0, MultiContainerInterface)
+                bases.insert(1, MultiContainerInterface)
+
+    @classmethod
+    def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
+        if '__clsconf__' in classdict:
+            previous_init = classdict['__init__']
+
+            @docval(*docval_args, allow_positional=AllowPositional.WARNING)
+            def __init__(self, **kwargs):
+                # first call the next superclass init
+                # previous_init(**kwargs)
+
+                # store the values passed to init for each MCI attribute
+                new_kwargs = list()
+                for field_clsconf in classdict['__clsconf__']:
+                    attr_name = field_clsconf['attr']
+                    add_method_name = field_clsconf['add']
+                    new_kwarg = dict(
+                        attr_name=attr_name,
+                        value=popargs(attr_name, kwargs) if attr_name in kwargs else None,
+                        add_method_name=add_method_name
+                    )
+                    new_kwargs.append(new_kwarg)
+
+                # call the parent class init without the MCI attribute
+                previous_init(self, **kwargs)
+
+                # call the add method for each MCI attribute
+                for new_kwarg in new_kwargs:
+                    add_method = getattr(self, new_kwarg['add_method_name'])
+                    add_method(new_kwarg['value'])
+
+            # override __init__
+            classdict['__init__'] = __init__
