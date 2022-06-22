@@ -1,7 +1,7 @@
 # minimum versions of package dependencies for installing HDMF
 h5py==2.10  # support for selection of datasets with list of indices added in 2.10
 jsonschema==2.6.0
-numpy==1.16
+numpy==1.22.0
 pandas==1.0.5
 ruamel.yaml==0.16
 scipy==1.1
