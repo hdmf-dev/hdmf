@@ -84,12 +84,24 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=(1580, 316), chunk_mb=1)
 
+        chunk_shape = (2001, 384)
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                f"Some dimensions of chunk_shape ({chunk_shape}) exceed the "
+                f"data dimensions ((2000, 384))!"
+            ),
+        ):
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, chunk_shape=chunk_shape
+            )
+
         buffer_shape = (1000, 192)
         chunk_shape = (100, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=(
-                f"Some dimensions of chunk_shape ({chunk_shape}) exceed the manual "
+                f"Some dimensions of chunk_shape ({chunk_shape}) exceed the "
                 f"buffer shape ({buffer_shape})!"
             ),
         ):
