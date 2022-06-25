@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.3.2 (June 23, 2022)
+## HDMF 3.3.2 (June 27, 2022)
 
 ### Bug fixes
 - Fix error message when using ``GenericDataChunkIterator`` and chunk shape is larger than dataset size. @rly (#743)
