@@ -296,6 +296,48 @@ class TestDynamicContainer(TestCase):
         assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
         assert multi.attr3 == 5.
 
+    def test_multi_container_spec_with_inc(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            data_type_inc=self.bar_spec,
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='*')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+        assert issubclass(Multi, MultiContainerInterface)
+        assert issubclass(Multi, Bar)
+        assert Multi.__mro__ == (Multi, Bar, MultiContainerInterface, Container, AbstractContainer, object)
+        assert Multi.__clsconf__ == [
+            dict(
+                attr='bars',
+                type=Bar,
+                add='add_bars',
+                get='get_bars',
+                create='create_bars'
+            )
+        ]
+
+        multi = Multi(
+            name='my_multi',
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
+            data=list(range(10)),  # from data_type_inc: Bar
+            attr1='value1',  # from data_type_inc: Bar
+            attr2=10,  # from data_type_inc: Bar
+            attr3=5.
+        )
+        assert multi.data == list(range(10))
+        assert multi.attr1 == 'value1'
+        assert multi.attr2 == 10
+        assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
+        assert multi.attr3 == 5.
+
 
 class TestGetClassSeparateNamespace(TestCase):
 
@@ -887,7 +929,7 @@ class TestMCIProcessFieldSpec(TestCase):
         MCIClassGenerator.process_field_spec(
             classdict=classdict,
             docval_args=docval_args,
-            parent_cls=Container,
+            parent_cls=Bar,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
             type_map=self.type_map,
@@ -916,10 +958,10 @@ class TestMCIProcessFieldSpec(TestCase):
                 )
             ]
         )
-        bases = [Container]
+        bases = [Bar]
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
-        self.assertEqual(bases, [MultiContainerInterface, Container])
+        self.assertEqual(bases, [Bar, MultiContainerInterface])
 
     def test_post_process_already_multi(self):
         class Multi1(MultiContainerInterface):
@@ -948,3 +990,30 @@ class TestMCIProcessFieldSpec(TestCase):
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
         self.assertEqual(bases, [Multi1])
+
+    def test_post_process_container(self):
+        class Multi1(MultiContainerInterface):
+            pass
+
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi and extends a multi',
+            data_type_def='Multi1',
+            groups=[
+                GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
+            ],
+        )
+        classdict = dict(
+            __clsconf__=[
+                dict(
+                    attr='empty_bars',
+                    type=EmptyBar,
+                    add='add_empty_bars',
+                    get='get_empty_bars',
+                    create='create_empty_bars'
+                )
+            ]
+        )
+        bases = [Container]
+        docval_args = []
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        self.assertEqual(bases, [MultiContainerInterface, Container])

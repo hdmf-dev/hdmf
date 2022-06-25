@@ -362,7 +362,15 @@ class MCIClassGenerator(CustomClassGenerator):
                 if issubclass(b, MultiContainerInterface):
                     break
             else:
-                bases.insert(1, MultiContainerInterface)
+                if issubclass(MultiContainerInterface, bases[0]):
+                    # if bases[0] is Container or another superclass of MCI, then make sure MCI goes first
+                    # otherwise, MRO is ambiguous
+                    bases.insert(0, MultiContainerInterface)
+                else:
+                    # bases[0] is not a subclass of MCI and not a superclass of MCI. place that class first
+                    # before MCI. that class __init__ should call super().__init__ which will call the
+                    # MCI init
+                    bases.insert(1, MultiContainerInterface)
 
     @classmethod
     def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
