@@ -4,8 +4,8 @@
 
 ### Bug fixes
 - Fix error message when using ``GenericDataChunkIterator`` and chunk shape is larger than dataset size. @rly (#743)
-- Fix automatic class generation of data types that inherit from both another data type and ``MultiContainerInteface``.
-  @rly (#741)
+- Fix automatic class generation of extension data types that inherit from both another data type and
+  ``MultiContainerInteface``. @rly (#741)
 
 ## HDMF 3.3.1 (May 20, 2022)
 
