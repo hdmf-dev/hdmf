@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.4.0 (upcoming)
+
+### Minor improvements
+- Allow manual triggering of some GitHub Actions. @rly (#744)
+
 ## HDMF 3.3.2 (June 27, 2022)
 
 ### Bug fixes
