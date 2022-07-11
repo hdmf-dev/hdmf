@@ -45,7 +45,7 @@ class HDF5IO(HDMFIO):
                      'more details.')},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None})
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
@@ -57,10 +57,10 @@ class HDF5IO(HDMFIO):
         if isinstance(path, Path):
             path = str(path)
 
-        if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            msg = 'You argued %s as this object\'s path, ' % path
-            msg += 'but supplied a file with filename: %s' % file_obj.filename
-            raise ValueError(msg)
+        # if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
+        #     msg = 'You argued %s as this object\'s path, ' % path
+        #     msg += 'but supplied a file with filename: %s' % file_obj.filename
+        #     raise ValueError(msg)
 
         if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
