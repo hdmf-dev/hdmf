@@ -36,13 +36,14 @@ class HDF5IO(HDMFIO):
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
 
-    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'manager', 'type': (TypeMap, BuildManager),
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': ('the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). '
                      'See `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>`_ for '
-                     'more details.')},
+                     'more details.'),
+             'default': 'r'},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
@@ -56,11 +57,6 @@ class HDF5IO(HDMFIO):
 
         if isinstance(path, Path):
             path = str(path)
-
-        # if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-        #     msg = 'You argued %s as this object\'s path, ' % path
-        #     msg += 'but supplied a file with filename: %s' % file_obj.filename
-        #     raise ValueError(msg)
 
         if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
