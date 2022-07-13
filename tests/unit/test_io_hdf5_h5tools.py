@@ -838,6 +838,10 @@ class TestHDF5IO(TestCase):
         with HDF5IO(pathlib_path, mode='w') as io:
             self.assertEqual(io.source, self.path)
 
+    def test_path_or_file(self):
+        with self.assertRaisesWith(ValueError, "You must supply either a path or a file."):
+            HDF5IO()
+
 
 class TestCacheSpec(TestCase):
 
