@@ -1,7 +1,7 @@
 # HDMF Changelog
 
 ## HDMF 3.3.3 (Upcoming)
-- Relax input validation of `HDF5IO` to allow for s3fs support. The `mode` arg was given a default value of "r" and the `file` arg can now accept an `S3File` type argument. @bendichter ([#746](https://github.com/hdmf-dev/hdmf/pull/746))
+- Relax input validation of `HDF5IO` to allow for s3fs support. Existing arguments of `HDF5IO` are modified as follows: i) `mode` was given a default value of "r", ii) `path` was given a default value of `None`, and iii) `file` can now accept an `S3File` type argument. @bendichter ([#746](https://github.com/hdmf-dev/hdmf/pull/746))
 
 ## HDMF 3.3.2 (June 27, 2022)
 
