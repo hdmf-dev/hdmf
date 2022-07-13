@@ -55,6 +55,9 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
                                                               kwargs)
 
+        if path is None and file is None:
+            raise ValueError("You must supply either a path or a file.")
+
         if isinstance(path, Path):
             path = str(path)
 
