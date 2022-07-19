@@ -912,6 +912,11 @@ class DataIO:
             {'name': 'shape', 'type': tuple, 'doc': 'the shape of the dataset', 'default': None})
     def __init__(self, **kwargs):
         data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
+        if data is not None:
+            if dtype is not None:
+                raise ValueError("Setting the dtype when data is not None is not supported")
+            if shape is not None:
+                raise ValueError("Setting the shape when data is not None is not supported")
         self.__data = data
         self.__dtype = dtype
         self.__shape = shape
@@ -932,6 +937,8 @@ class DataIO:
         """Set the wrapped data object"""
         if self.__data is not None:
             raise ValueError("cannot overwrite 'data' on DataIO")
+        if not (self.__dtype is None and self.__shape is None):
+            raise ValueError("Setting data when dtype and shape are not None is not supported")
         self.__data = val
 
     @property
