@@ -937,12 +937,12 @@ class DataIO:
     @property
     def dtype(self):
         """Get the wrapped data object"""
-        return self.__dtype
+        return self.__dtype or self.__getattr__("dtype")
 
     @property
     def shape(self):
         """Get the wrapped data object"""
-        return self.__shape
+        return self.__shape or self.__getattr__("shape")
 
     def __copy__(self):
         """
