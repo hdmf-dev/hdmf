@@ -3073,10 +3073,13 @@ class HDF5IOEmptyDataset(TestCase):
     def setUp(self):
         self.manager = get_foo_buildmanager()
         self.path = get_temp_filepath()
+        self.path2 = get_temp_filepath()
 
     def tearDown(self):
         if os.path.exists(self.path):
             os.remove(self.path)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
 
     def test_write_empty_dataset(self):
         dataio = H5DataIO(shape=(5,), dtype=int)
@@ -3091,3 +3094,41 @@ class HDF5IOEmptyDataset(TestCase):
             self.assertIsNotNone(foo.my_data.dataset)
             self.assertIsInstance(foo.my_data.dataset, h5py.Dataset)
             np.testing.assert_array_equal(foo.my_data.dataset, np.zeros(5, dtype=int))
+
+    def test_overwrite_dataset(self):
+        dataio = H5DataIO(shape=(5,), dtype=int)
+        foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+        bucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[bucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with self.assertRaisesRegex(ValueError, 'Cannot overwrite H5DataIO.dataset'):
+            with HDF5IO(self.path2, manager=self.manager, mode='w') as io:
+                io.write(foofile)
+
+
+class HDF5IOClassmethodTests(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.f = h5py.File(self.path, 'w')
+
+    def tearDown(self):
+        self.f.close()
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_setup_empty_dset(self):
+        dset = HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+        self.assertEqual(dset.name, '/foo')
+        self.assertTupleEqual(dset.shape, (3, 3))
+        self.assertIs(dset.dtype.type, np.float32)
+
+    def test_setup_empty_dset_req_args(self):
+        with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without dtype'):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3)})
+
+        with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without shape'):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'dtype': np.float32})
