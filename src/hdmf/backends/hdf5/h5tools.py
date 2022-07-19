@@ -3,7 +3,7 @@ import os.path
 import warnings
 from collections import deque
 from functools import partial
-from pathlib import Path, PosixPath as pp
+from pathlib import Path, PurePosixPath as pp
 
 import numpy as np
 import h5py
