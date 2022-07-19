@@ -3066,6 +3066,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
 
+
 class HDF5IOEmptyDataset(TestCase):
     """ Test if file does not exist, write in mode (w, w-, x, a) is ok """
 
