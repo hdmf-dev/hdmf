@@ -3084,10 +3084,10 @@ class HDF5IOEmptyDataset(TestCase):
         bucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[bucket])
 
-        io = HDF5IO(self.path, manager=self.manager, mode='w')
-        io.write(foofile)
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
 
-        self.assertIs(foo.my_data, dataio)
-        self.assertIsNotNone(foo.my_data.dataset)
-        self.assertIsInstance(foo.my_data.dataset, h5py.Dataset)
-        np.testing.assert_array_equal(foo.my_data.dataset, np.zeros(5, dtype=int))
+            self.assertIs(foo.my_data, dataio)
+            self.assertIsNotNone(foo.my_data.dataset)
+            self.assertIsInstance(foo.my_data.dataset, h5py.Dataset)
+            np.testing.assert_array_equal(foo.my_data.dataset, np.zeros(5, dtype=int))
