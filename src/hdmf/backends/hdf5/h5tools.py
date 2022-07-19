@@ -1040,9 +1040,11 @@ class HDF5IO(HDMFIO):
             return None
         name = builder.name
         data = builder.data
+        dataio = None
         options = dict()   # dict with additional
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
+            dataio = data
             link_data = data.link_data
             data = data.data
         else:
@@ -1233,8 +1235,12 @@ class HDF5IO(HDMFIO):
             return
         # write a "regular" dataset
         else:
+            # Create an empty dataset
+            if data is None:
+                dset = self.__setup_empty_dset__(parent, name, options['io_settings'])
+                dataio.dataset = dset
             # Write a scalar dataset containing a single string
-            if isinstance(data, (str, bytes)):
+            elif isinstance(data, (str, bytes)):
                 dset = self.__scalar_fill__(parent, name, data, options)
             # Iterative write of a data chunk iterator
             elif isinstance(data, AbstractDataChunkIterator):
@@ -1313,6 +1319,35 @@ class HDF5IO(HDMFIO):
             if isinstance(io_settings['dtype'], str):
                 # map to real dtype if we were given a string
                 io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
+        try:
+            dset = parent.create_dataset(name, **io_settings)
+        except Exception as exc:
+            raise Exception("Could not create dataset %s in %s" % (name, parent.name)) from exc
+        return dset
+
+    @classmethod
+    def __setup_empty_dset__(cls, parent, name, io_settings):
+        """
+        Setup a dataset for writing to one-chunk-at-a-time based on the given DataChunkIterator
+
+        :param parent: The parent object to which the dataset should be added
+        :type parent: h5py.Group, h5py.File
+        :param name: The name of the dataset
+        :type name: str
+        :param data: The data to be written.
+        :type data: DataChunkIterator
+        :param options: Dict with options for creating a dataset. available options are 'dtype' and 'io_settings'
+        :type options: dict
+
+        """
+        # Define the shape of the data if not provided by the user
+        if 'shape' not in io_settings:
+            raise ValueError(f"Cannot setup empty dataset {parent.name}/{name} without shape")
+        if 'dtype' not in io_settings:
+            raise ValueError(f"Cannot setup empty dataset {parent.name}/{name} without dtype")
+        if isinstance(io_settings['dtype'], str):
+            # map to real dtype if we were given a string
+            io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
