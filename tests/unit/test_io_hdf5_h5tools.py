@@ -1577,7 +1577,7 @@ class H5DataIOValid(TestCase):
 
             self.assertTrue(self.foo2.my_data.valid)  # test valid
             self.assertEqual(len(self.foo2.my_data), 5)  # test len
-            self.assertEqual(self.foo2.my_data.shape, (5,))  # test getattr with shape
+            self.assertEqual(self.foo2.my_data.size, (5,))  # test getattr with size
             self.assertTrue(np.array_equal(np.array(self.foo2.my_data), [1, 2, 3, 4, 5]))  # test array conversion
 
             # test loop through iterable
@@ -1595,8 +1595,8 @@ class H5DataIOValid(TestCase):
         with self.assertRaisesWith(InvalidDataIOError, "Cannot get length of data. Data is not valid."):
             len(self.foo2.my_data)
 
-        with self.assertRaisesWith(InvalidDataIOError, "Cannot get attribute 'shape' of data. Data is not valid."):
-            self.foo2.my_data.shape
+        with self.assertRaisesWith(InvalidDataIOError, "Cannot get attribute 'size' of data. Data is not valid."):
+            self.foo2.my_data.size
 
         with self.assertRaisesWith(InvalidDataIOError, "Cannot convert data to array. Data is not valid."):
             np.array(self.foo2.my_data)
@@ -3065,3 +3065,28 @@ class TestWriteHDF5withZarrInput(TestCase):
         self.assertEqual(dset.compression_opts, 5)
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
+
+class HDF5IOEmptyDataset(TestCase):
+    """ Test if file does not exist, write in mode (w, w-, x, a) is ok """
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_write_empty_dataset(self):
+        dataio = H5DataIO(shape=(5,), dtype=int)
+        foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+        bucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[bucket])
+
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.write(foofile)
+
+        self.assertIs(foo.my_data, dataio)
+        self.assertIsNotNone(foo.my_data.dataset)
+        self.assertIsInstance(foo.my_data.dataset, h5py.Dataset)
+        np.testing.assert_array_equal(foo.my_data.dataset, np.zeros(5, dtype=int))
