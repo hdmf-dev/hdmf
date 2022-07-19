@@ -478,11 +478,11 @@ class H5DataIO(DataIO):
              'default': False},
             {'name': 'shape',
              'type': tuple,
-             'doc': 'the shape of the new dataset',
+             'doc': 'the shape of the new dataset, used only if data is None',
              'default': None},
             {'name': 'dtype',
              'type': (str, type, np.dtype),
-             'doc': 'the data type of the new dataset',
+             'doc': 'the data type of the new dataset, used only if data is None',
              'default': None}
             )
     def __init__(self, **kwargs):
