@@ -3,7 +3,7 @@ import os.path
 import warnings
 from collections import deque
 from functools import partial
-from pathlib import Path
+from pathlib import Path, PosixPath as pp
 
 import numpy as np
 import h5py
@@ -1342,9 +1342,9 @@ class HDF5IO(HDMFIO):
         """
         # Define the shape of the data if not provided by the user
         if 'shape' not in io_settings:
-            raise ValueError(f"Cannot setup empty dataset {parent.name}/{name} without shape")
+            raise ValueError(f"Cannot setup empty dataset {pp(parent.name, name)} without shape")
         if 'dtype' not in io_settings:
-            raise ValueError(f"Cannot setup empty dataset {parent.name}/{name} without dtype")
+            raise ValueError(f"Cannot setup empty dataset {pp(parent.name, name)} without dtype")
         if isinstance(io_settings['dtype'], str):
             # map to real dtype if we were given a string
             io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
