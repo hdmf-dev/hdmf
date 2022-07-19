@@ -1,3 +1,4 @@
+
 '''This package will contain functions, classes, and objects
 for reading and writing data in according to the HDMF-common specification
 '''
@@ -228,6 +229,6 @@ DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
 EnumData = get_class('EnumData', EXP_NAMESPACE)
 CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
 ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
-ERFile = get_class('ERFile', EXP_NAMESPACE)
+ExternalResoucesFile = get_class('ExternalResoucesFile', EXP_NAMESPACE)
 SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
 AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)

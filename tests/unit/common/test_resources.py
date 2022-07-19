@@ -1,6 +1,6 @@
 import pandas as pd
 from hdmf.common import DynamicTable
-from hdmf.common.resources import ExternalResources, Key, Resource, ERFile
+from hdmf.common.resources import ExternalResources, Key, Resource, ExternalResoucesFile
 from hdmf import Data
 from hdmf.container import Container
 from hdmf.testing import TestCase, H5RoundTripMixin
@@ -10,19 +10,23 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
-class TestERFile(TestCase):
+class TestExternalResoucesFile(TestCase):
 
     def setUp(self):
         self.nwbfile_sim = Container(name='name')
         self.er = ExternalResources(name='name', nwbfile_id=self.nwbfile_sim.object_id)
+        self.er.add_ref(
+            container='uuid1', key='key1',
+            resource_name='resource11', resource_uri='resource_uri11',
+            entity_id="id11", entity_uri='url11')
         self.path = 'er_file_test.h5'
-        self.er_file=ERFile()
+        self.er_file=ExternalResoucesFile()
 
 
     def test_er_file(self):
         nwbfile_sim = Container(name='name')
         er = ExternalResources(name='name', nwbfile_id=nwbfile_sim.object_id)
-        er_file=ERFile()
+        er_file=ExternalResoucesFile()
 
         er_file.add_external_resources(external_resources=er)
 
@@ -34,7 +38,9 @@ class TestERFile(TestCase):
         self.er_file.to_hdf5(path=self.path)
         # read er back from file and compare
         er_io, er_obj = self.er_file.from_hdf5(path=self.path)
-        # Close the io!
+        # check the ExternalResources
+        self.assertTrue(ExternalResources.assert_external_resources_equal(self.er, er_obj.external_resources['name'], check_dtype=False))
+        # self.assertEqual(er_obj.external_resources['name'], [('key1',)])        # Close the io!
         er_io.close()
 
 class TestExternalResources(H5RoundTripMixin, TestCase):

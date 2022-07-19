@@ -486,8 +486,13 @@ if os.path.exists((hdf_filename)):
 
 ###############################################################################
 # Export the data stored in the :py:class:`~hdmf.common.resources.ExternalResources`
-# object to HDF5 .
-er.to_hdf5(path=hdf_filename)
+# object to ERFile in hdf5.
+nwbfile_sim = Container(name='name')
+er = ExternalResources(name='name', nwbfile_id=nwbfile_sim.object_id)
+er_file=ERFile()
+
+er_file.add_external_resources(external_resources=er)
+er_file.to_hdf5(path=hdf_filename)
 
 ###############################################################################
 # Load the :py:class:`~hdmf.common.resources.ExternalResources` from the HDF5 file.
@@ -497,7 +502,7 @@ er.to_hdf5(path=hdf_filename)
 #           returns both the :py:class:`~hdmf.backend.hdf5.h5tools.HDF5IO` io object
 #           and the :py:class:`~hdmf.common.resources.ExternalResources` object. It is
 #           up to the user to close the io object when done!
-er_io, er_obj = ExternalResources.from_hdf5(path=hdf_filename)
+er_io, er_obj = er_file.from_hdf5(path=hdf_filename)
 # Check that the data is correct. We ignore dtypes because idx may be saved as int32 vs int64
 ExternalResources.assert_external_resources_equal(er, er_obj, check_dtype=False)
 

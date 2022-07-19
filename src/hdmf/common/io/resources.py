@@ -1,15 +1,15 @@
 from .. import register_map
-from ..resources import ExternalResources, KeyTable, ResourceTable, ObjectTable, ObjectKeyTable, EntityTable, ERFile
+from ..resources import ExternalResources, KeyTable, ResourceTable, ObjectTable, ObjectKeyTable, EntityTable, ExternalResoucesFile
 from ...build import ObjectMapper
 
-@register_map(ERFile)
-class ERFileMap(ObjectMapper):
-
-    def __init__(self, spec):
-        super().__init__(spec)
-
-        er_spec = spec.get_group('.external_resources')
-        self.map_spec('external_resources', er_spec)
+# @register_map(ExternalResoucesFile)
+# class ERFileMap(ObjectMapper):
+#
+#     def __init__(self, spec):
+#         super().__init__(spec)
+#
+#         er_spec = spec.get_group('.external_resources')
+#         self.map_spec('external_resources', er_spec)
 
 @register_map(ExternalResources)
 class ExternalResourcesMap(ObjectMapper):

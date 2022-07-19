@@ -851,10 +851,10 @@ class ExternalResources(Container):
         connection.commit()
         connection.close()
 
-@register_class('ERFile', EXP_NAMESPACE)
-class ERFile(MultiContainerInterface):
+@register_class('ExternalResoucesFile', EXP_NAMESPACE)
+class ExternalResoucesFile(MultiContainerInterface):
     """
-    A representation of an ERFile.
+    A representation of an ExternalResoucesFile.
     """
 
     __clsconf__ = [
@@ -865,7 +865,7 @@ class ERFile(MultiContainerInterface):
             'get': 'get_external_resources'
         }]
 
-    @docval({'name': 'external_resources', 'type': ExternalResources,
+    @docval({'name': 'external_resources', 'type': list,
              'doc': 'The ExternalResources to be added', 'default': None})
     def __init__(self, **kwargs):
         kwargs['name']='root'
