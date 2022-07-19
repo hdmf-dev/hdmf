@@ -245,6 +245,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
+        elif isinstance(value, DataIO) and value.data is None:
+            ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
             if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
@@ -284,7 +286,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # return the list of DtypeSpecs
             return value, spec_dtype
         if isinstance(value, DataIO):
-            return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
+            if value.data is None:
+                return value, value.dtype
+            else:
+                return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
@@ -973,9 +978,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.logger.debug("        Skipping dataset - no attribute value")
                 continue
             attr_value = self.__check_ref_resolver(attr_value)
-            if isinstance(attr_value, DataIO) and attr_value.data is None:
-                self.logger.debug("        Skipping dataset - attribute is dataio or has no data")
-                continue
             if isinstance(attr_value, LinkBuilder):
                 self.logger.debug("        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
                                   % (attr_value.name, attr_value.__class__.__name__,
