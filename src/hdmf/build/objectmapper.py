@@ -245,8 +245,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
-        elif isinstance(value, DataIO) and value.data is None:
-            ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
             if spec_dtype_type in (_unicode, _ascii):
                 ret_dtype = 'ascii'
