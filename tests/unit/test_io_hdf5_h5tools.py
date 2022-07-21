@@ -1577,7 +1577,7 @@ class H5DataIOValid(TestCase):
 
             self.assertTrue(self.foo2.my_data.valid)  # test valid
             self.assertEqual(len(self.foo2.my_data), 5)  # test len
-            self.assertEqual(self.foo2.my_data.size, (5,))  # test getattr with size
+            self.assertEqual(self.foo2.my_data.shape, (5,))  # test getattr with shape
             self.assertTrue(np.array_equal(np.array(self.foo2.my_data), [1, 2, 3, 4, 5]))  # test array conversion
 
             # test loop through iterable
@@ -1595,8 +1595,8 @@ class H5DataIOValid(TestCase):
         with self.assertRaisesWith(InvalidDataIOError, "Cannot get length of data. Data is not valid."):
             len(self.foo2.my_data)
 
-        with self.assertRaisesWith(InvalidDataIOError, "Cannot get attribute 'size' of data. Data is not valid."):
-            self.foo2.my_data.size
+        with self.assertRaisesWith(InvalidDataIOError, "Cannot get attribute 'shape' of data. Data is not valid."):
+            self.foo2.my_data.shape
 
         with self.assertRaisesWith(InvalidDataIOError, "Cannot convert data to array. Data is not valid."):
             np.array(self.foo2.my_data)
