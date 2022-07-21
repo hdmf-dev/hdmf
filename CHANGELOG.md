@@ -1,7 +1,12 @@
 # HDMF Changelog
 
 ## HDMF 3.3.3 (Upcoming)
+
+### Minor improvements
 - Relax input validation of `HDF5IO` to allow for s3fs support. Existing arguments of `HDF5IO` are modified as follows: i) `mode` was given a default value of "r", ii) `path` was given a default value of `None`, and iii) `file` can now accept an `S3File` type argument. @bendichter ([#746](https://github.com/hdmf-dev/hdmf/pull/746))
+
+### Bug fixes
+- Fixed PyNWB dev CI. @rly ([#749](https://github.com/hdmf-dev/hdmf/pull/749))
 
 ## HDMF 3.3.2 (June 27, 2022)
 

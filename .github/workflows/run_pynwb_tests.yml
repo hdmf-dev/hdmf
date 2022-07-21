@@ -32,9 +32,10 @@ jobs:
           git clone https://github.com/NeurodataWithoutBorders/pynwb.git --recurse-submodules
           cd pynwb
           python -m pip install -r requirements-dev.txt -r requirements.txt
-          python -m pip install .  # this will install a particular version of hdmf instead of the current one
+          # must install in editable mode for coverage to find sources
+          python -m pip install -e .  # this will install a pinned version of hdmf instead of the current one
           cd ..
-          python -m pip uninstall -y hdmf
+          python -m pip uninstall -y hdmf  # uninstall the pinned version of hdmf
           python -m pip install .  # reinstall current branch of hdmf
           python -m pip list
 
