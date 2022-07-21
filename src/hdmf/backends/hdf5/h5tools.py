@@ -36,16 +36,17 @@ class HDF5IO(HDMFIO):
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
 
-    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file'},
-            {'name': 'manager', 'type': (TypeMap, BuildManager),
-             'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
+    @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': ('the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). '
                      'See `h5py.File <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>`_ for '
-                     'more details.')},
+                     'more details.'),
+             'default': 'r'},
+            {'name': 'manager', 'type': (TypeMap, BuildManager),
+             'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None})
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
@@ -54,10 +55,13 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
                                                               kwargs)
 
+        if path is None and file_obj is None:
+            raise ValueError("You must supply either a path or a file.")
+
         if isinstance(path, Path):
             path = str(path)
 
-        if file_obj is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
+        if file_obj is not None and path is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
             msg = 'You argued %s as this object\'s path, ' % path
             msg += 'but supplied a file with filename: %s' % file_obj.filename
             raise ValueError(msg)
