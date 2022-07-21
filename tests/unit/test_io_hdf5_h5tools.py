@@ -3132,3 +3132,8 @@ class HDF5IOClassmethodTests(TestCase):
 
         with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without shape'):
             HDF5IO.__setup_empty_dset__(self.f, 'foo', {'dtype': np.float32})
+
+    def test_setup_empty_dset_create_exception(self):
+        HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+        with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})

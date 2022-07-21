@@ -907,17 +907,17 @@ class DataIO:
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
     """
 
-    @docval({'name': 'data', 
-             'type': 'array_data', 
-             'doc': 'the data to be written', 
+    @docval({'name': 'data',
+             'type': 'array_data',
+             'doc': 'the data to be written',
              'default': None},
-            {'name': 'dtype', 
-             'type': (type, np.dtype), 
-             'doc': 'the data type of the dataset. Not used if data is specified.', 
+            {'name': 'dtype',
+             'type': (type, np.dtype),
+             'doc': 'the data type of the dataset. Not used if data is specified.',
              'default': None},
-            {'name': 'shape', 
-             'type': tuple, 
-             'doc': 'the shape of the dataset. Not used if data is specified.', 
+            {'name': 'shape',
+             'type': tuple,
+             'doc': 'the shape of the dataset. Not used if data is specified.',
              'default': None})
     def __init__(self, **kwargs):
         data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
