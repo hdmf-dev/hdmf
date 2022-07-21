@@ -826,7 +826,7 @@ def get_data_shape(data, strict_no_data_load=False):
     # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    if hasattr(data, 'shape'):
+    if hasattr(data, 'shape') and data.shape is not None:
         return data.shape
     if isinstance(data, dict):
         return None
