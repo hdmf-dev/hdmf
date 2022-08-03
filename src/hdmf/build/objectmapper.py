@@ -1254,8 +1254,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __new_container__(self, cls, container_source, parent, object_id, **kwargs):
         """A wrapper function for ensuring a container gets everything set appropriately"""
-        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id)
+        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id,
+                          in_construct_mode=True)
         obj.__init__(**kwargs)
+        obj._in_construct_mode = False  # reset to False after object construction
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

@@ -176,6 +176,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls.__fieldsconf = tuple(all_fields_conf)
 
     def __new__(cls, *args, **kwargs):
+        # NOTE: this method is called directly from ObjectMapper.__new_container__ during the process of
+        # constructing the object from builders that are read from a file
         inst = super().__new__(cls)
         if cls._experimental:
             warn(_exp_warn_msg(cls))
@@ -184,6 +186,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.__children = list()
         inst.__modified = True
         inst.__object_id = kwargs.pop('object_id', str(uuid4()))
+        # this variable is being passed in from ObjectMapper.__new_container__ and is reset to False in that method
+        # after the object is initialized
+        inst._in_construct_mode = kwargs.pop('in_construct_mode', False)
         inst.parent = kwargs.pop('parent', None)
         return inst
 
