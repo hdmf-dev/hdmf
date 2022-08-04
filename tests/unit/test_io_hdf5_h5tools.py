@@ -1053,7 +1053,7 @@ class HDF5IOMultiFileTest(TestCase):
         # Close all the files
         for i in self.io:
             i.close()
-            del(i)
+            del i
         self.io = None
         self.f = None
         # Make sure the files have been deleted
@@ -1282,7 +1282,7 @@ class HDF5IOInitFileExistsTest(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1316,7 +1316,7 @@ class HDF5IOReadNoDataTest(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
 
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -1358,7 +1358,7 @@ class HDF5IOReadData(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1390,7 +1390,7 @@ class HDF5IOReadBuilderClosed(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
 
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -1459,7 +1459,7 @@ class HDF5IOWriteFileExists(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 

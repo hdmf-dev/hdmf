@@ -1,4 +1,6 @@
 import numpy as np
+from uuid import uuid4, UUID
+
 from hdmf.container import AbstractContainer, Container, Data
 from hdmf.testing import TestCase
 from hdmf.utils import docval
@@ -10,22 +12,47 @@ class Subcontainer(Container):
 
 class TestContainer(TestCase):
 
-    def test_constructor(self):
-        """Test that constructor properly sets parent and both child and parent have an object_id
+    def test_new(self):
+        """Test that __new__ properly sets parent and other fields.
         """
         parent_obj = Container('obj1')
-        child_obj = Container.__new__(Container, parent=parent_obj)
+        child_object_id = str(uuid4())
+        child_obj = Container.__new__(Container, parent=parent_obj, object_id=child_object_id,
+                                      container_source="test_source")
         self.assertIs(child_obj.parent, parent_obj)
         self.assertIs(parent_obj.children[0], child_obj)
-        self.assertIsNotNone(parent_obj.object_id)
-        self.assertIsNotNone(child_obj.object_id)
+        self.assertEqual(child_obj.object_id, child_object_id)
+        self.assertFalse(child_obj._in_construct_mode)
+        self.assertTrue(child_obj.modified)
 
-    def test_constructor_object_id_none(self):
-        """Test that setting object_id to None in __new__ is OK and the object ID is set on get
+    def test_new_object_id_none(self):
+        """Test that passing object_id=None to __new__ is OK and results in a non-None object ID being assigned.
         """
         parent_obj = Container('obj1')
         child_obj = Container.__new__(Container, parent=parent_obj, object_id=None)
         self.assertIsNotNone(child_obj.object_id)
+        UUID(child_obj.object_id, version=4)  # raises ValueError if invalid
+
+    def test_new_construct_mode(self):
+        """Test that passing in_construct_mode to __new__ sets _in_construct_mode and _in_construct_mode can be reset.
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container.__new__(Container, parent=parent_obj, object_id=None, in_construct_mode=True)
+        self.assertTrue(child_obj._in_construct_mode)
+        child_obj._in_construct_mode = False
+        self.assertFalse(child_obj._in_construct_mode)
+
+    def test_init(self):
+        """Test that __init__ properly sets object ID and other fields.
+        """
+        obj = Container('obj1')
+        self.assertIsNotNone(obj.object_id)
+        UUID(obj.object_id, version=4)  # raises ValueError if invalid
+        self.assertFalse(obj._in_construct_mode)
+        self.assertTrue(obj.modified)
+        self.assertEqual(obj.children, tuple())
+        self.assertIsNone(obj.parent)
+        self.assertEqual(obj.name, 'obj1')
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
