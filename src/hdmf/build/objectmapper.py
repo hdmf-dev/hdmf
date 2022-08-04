@@ -1256,6 +1256,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """A wrapper function for ensuring a container gets everything set appropriately"""
         obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id,
                           in_construct_mode=True)
+        # obj has been created and is in construction mode, indicating that the object is being constructed by
+        # the automatic construct process during read, rather than by the user
         obj.__init__(**kwargs)
         obj._in_construct_mode = False  # reset to False to indicate that the construction of the object is complete
         return obj
