@@ -764,7 +764,7 @@ class MultiContainerInterface(Container):
         @docval(*get_docval(container_type.__init__), func_name=func_name, doc=doc,
                 returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
         def _func(self, **kwargs):
-            ret = container_type.__init__(**kwargs)
+            ret = container_type(**kwargs)
             getattr(self, add_name)(ret)
             return ret
 
