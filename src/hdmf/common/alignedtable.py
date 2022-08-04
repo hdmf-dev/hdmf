@@ -8,7 +8,7 @@ import pandas as pd
 
 from . import register_class
 from .table import DynamicTable
-from ..utils import docval, getargs, call_docval_func, popargs, get_docval, AllowPositional
+from ..utils import docval, getargs, popargs, get_docval, AllowPositional
 
 
 @register_class('AlignedDynamicTable')
@@ -172,7 +172,7 @@ class AlignedDynamicTable(DynamicTable):
         category_name = popargs('category', kwargs)
         if category_name is None:
             # Add the column to our main table
-            call_docval_func(super().add_column, kwargs)
+            super().add_column(**kwargs)
         else:
             # Add the column to a sub-category table
             try:
@@ -208,7 +208,7 @@ class AlignedDynamicTable(DynamicTable):
         # Add the data to our main dynamic table
         data['id'] = row_id
         data['enforce_unique_id'] = enforce_unique_id
-        call_docval_func(super().add_row, data)
+        super().add_row(**data)
 
         # Add the data to all out dynamic table categories
         for category, values in category_data.items():

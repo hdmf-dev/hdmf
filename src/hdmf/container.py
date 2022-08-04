@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
-from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
-                    popargs, LabelledDict)
+from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
 
 def _set_exp(cls):
@@ -176,6 +175,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls.__fieldsconf = tuple(all_fields_conf)
 
     def __new__(cls, *args, **kwargs):
+        """
+        Static method of the object class called by Python to create the object first and then
+         __init__() is called to initialize the object's attributes.
+
+        NOTE: this method is called directly from ObjectMapper.__new_container__ during the process of
+        constructing the object from builders that are read from a file.
+        """
         inst = super().__new__(cls)
         if cls._experimental:
             warn(_exp_warn_msg(cls))
@@ -184,6 +190,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.__children = list()
         inst.__modified = True
         inst.__object_id = kwargs.pop('object_id', str(uuid4()))
+        # this variable is being passed in from ObjectMapper.__new_container__ and is
+        # reset to False in that method after the object has been initialized by __init__
+        inst._in_construct_mode = kwargs.pop('in_construct_mode', False)
         inst.parent = kwargs.pop('parent', None)
         return inst
 
@@ -594,10 +603,6 @@ class DataRegion(Data):
         pass
 
 
-def _not_parent(arg):
-    return arg['name'] != 'parent'
-
-
 class MultiContainerInterface(Container):
     """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
@@ -756,11 +761,10 @@ class MultiContainerInterface(Container):
     def __make_create(cls, func_name, add_name, container_type):
         doc = "Create %s and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        @docval(*filter(_not_parent, get_docval(container_type.__init__)), func_name=func_name, doc=doc,
+        @docval(*get_docval(container_type.__init__), func_name=func_name, doc=doc,
                 returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
         def _func(self, **kwargs):
-            cargs, ckwargs = fmt_docval_args(container_type.__init__, kwargs)
-            ret = container_type(*cargs, **ckwargs)
+            ret = container_type(**kwargs)
             getattr(self, add_name)(ret)
             return ret
 
