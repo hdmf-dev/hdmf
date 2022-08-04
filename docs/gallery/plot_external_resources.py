@@ -505,13 +505,13 @@ with closing(sqlite3.connect(db_file)) as db:
         table = pd.read_sql_query("SELECT * from %s" % table_name, db)
         table.set_index('id', inplace=True)
         ref_table = getattr(er, table_name).to_dataframe()
-        assert(np.all(np.array(table.index) == np.array(ref_table.index) + 1))
+        assert np.all(np.array(table.index) == np.array(ref_table.index) + 1)
         for c in table.columns:
             # NOTE: SQLite uses 1-based row-indices so we need adjust for that
             if np.issubdtype(table[c].dtype, np.integer):
-                assert(np.all(np.array(table[c]) == np.array(ref_table[c]) + 1))
+                assert np.all(np.array(table[c]) == np.array(ref_table[c]) + 1)
             else:
-                assert(np.all(np.array(table[c]) == np.array(ref_table[c])))
+                assert np.all(np.array(table[c]) == np.array(ref_table[c]))
     cursor.close()
 
 ###############################################################################
