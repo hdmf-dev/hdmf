@@ -176,8 +176,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls.__fieldsconf = tuple(all_fields_conf)
 
     def __new__(cls, *args, **kwargs):
-        # NOTE: this method is called directly from ObjectMapper.__new_container__ during the process of
-        # constructing the object from builders that are read from a file
+        """
+        Static method of the object class called by Python to create the object first and then
+         __init__() is called to initialize the object's attributes.
+        
+        NOTE: this method is called directly from ObjectMapper.__new_container__ during the process of
+        constructing the object from builders that are read from a file.
+        """
         inst = super().__new__(cls)
         if cls._experimental:
             warn(_exp_warn_msg(cls))
