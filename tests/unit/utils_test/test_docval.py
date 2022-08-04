@@ -138,8 +138,11 @@ class TestDocValidator(TestCase):
             method1(self, arg1=[[1, 1, 1]])
 
     fmt_docval_warning_msg = (
-        "fmt_docval_args will be deprecated in a future version of HDMF. Please note that fmt_docval_args "
-        "transparently removes all arguments not accepted by the function's docval."
+        "fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
+        "call the function directly with the kwargs. Please note that fmt_docval_args "
+        "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+        "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+        "is set), then you will need to pop the extra arguments out of kwargs before calling the function."
     )
 
     def test_fmt_docval_args(self):
@@ -193,8 +196,11 @@ class TestDocValidator(TestCase):
             'list': ['abc', 1, 2, 3]
         }
         msg = (
-            "call_docval_func will be deprecated in a future version of HDMF. Please note that call_docval_func "
-            "transparently removes all arguments not accepted by the function's docval."
+            "call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
+            "call the function directly with the kwargs. Please note that call_docval_func "
+            "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+            "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+            "is set), then you will need to pop the extra arguments out of kwargs before calling the function."
         )
         with self.assertWarnsWith(PendingDeprecationWarning, msg):
             ret_kwargs = call_docval_func(self.test_obj.basic_add2_kw, test_kwargs)

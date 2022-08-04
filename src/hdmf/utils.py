@@ -410,8 +410,11 @@ def fmt_docval_args(func, kwargs):
 
     Useful for methods that wrap other methods
     '''
-    warnings.warn("fmt_docval_args will be deprecated in a future version of HDMF. Please note that fmt_docval_args "
-                  "transparently removes all arguments not accepted by the function's docval.",
+    warnings.warn("fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
+                  "call the function directly with the kwargs. Please note that fmt_docval_args "
+                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
                   PendingDeprecationWarning)
     func_docval = getattr(func, docval_attr_name, None)
     ret_args = list()
@@ -462,8 +465,11 @@ def call_docval_func(func, kwargs):
 
     Extra keyword arguments are not passed to the function unless the function's docval has allow_extra=True.
     """
-    warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Please note that call_docval_func "
-                  "transparently removes all arguments not accepted by the function's docval.",
+    warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
+                  "call the function directly with the kwargs. Please note that call_docval_func "
+                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
                   PendingDeprecationWarning)
     with warnings.catch_warnings(record=True):
         # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
