@@ -21,7 +21,7 @@ from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval
+from ...utils import docval, getargs, popargs, get_docval
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -89,7 +89,7 @@ class H5Dataset(HDMFDataset):
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         self.__io = popargs('io', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @property
     def io(self):
@@ -180,7 +180,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         types = popargs('types', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is RegionReference:
@@ -378,9 +378,9 @@ class H5SpecReader(SpecReader):
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 group to read specs from'})
     def __init__(self, **kwargs):
-        self.__group = getargs('group', kwargs)
-        super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
-        call_docval_func(super().__init__, super_kwargs)
+        self.__group = popargs('group', kwargs)
+        source = "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)
+        super().__init__(source=source)
         self.__cache = None
 
     def __read(self, path):
@@ -500,7 +500,7 @@ class H5DataIO(DataIO):
             self.__link_data = False
             warnings.warn('link_data parameter in H5DataIO will be ignored')
         # Call the super constructor and consume the data parameter
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
         self.__iosettings = {k: v for k, v in zip(ioarg_names, ioarg_values) if v is not None}
         if self.data is None:

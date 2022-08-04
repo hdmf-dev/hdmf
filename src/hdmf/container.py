@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
-from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, fmt_docval_args,
-                    popargs, LabelledDict)
+from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
 
 def _set_exp(cls):
@@ -604,10 +603,6 @@ class DataRegion(Data):
         pass
 
 
-def _not_parent(arg):
-    return arg['name'] != 'parent'
-
-
 class MultiContainerInterface(Container):
     """Class that dynamically defines methods to support a Container holding multiple Containers of the same type.
 
@@ -766,11 +761,10 @@ class MultiContainerInterface(Container):
     def __make_create(cls, func_name, add_name, container_type):
         doc = "Create %s and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        @docval(*filter(_not_parent, get_docval(container_type.__init__)), func_name=func_name, doc=doc,
+        @docval(*get_docval(container_type.__init__), func_name=func_name, doc=doc,
                 returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
         def _func(self, **kwargs):
-            cargs, ckwargs = fmt_docval_args(container_type.__init__, kwargs)
-            ret = container_type(*cargs, **ckwargs)
+            ret = container_type(**kwargs)
             getattr(self, add_name)(ret)
             return ret
 

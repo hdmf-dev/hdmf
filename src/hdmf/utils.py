@@ -410,6 +410,12 @@ def fmt_docval_args(func, kwargs):
 
     Useful for methods that wrap other methods
     '''
+    warnings.warn("fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
+                  "call the function directly with the kwargs. Please note that fmt_docval_args "
+                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
+                  PendingDeprecationWarning)
     func_docval = getattr(func, docval_attr_name, None)
     ret_args = list()
     ret_kwargs = dict()
@@ -429,8 +435,48 @@ def fmt_docval_args(func, kwargs):
     return ret_args, ret_kwargs
 
 
+# def _remove_extra_args(func, kwargs):
+#     """Return a dict of only the keyword arguments that are accepted by the function's docval.
+#
+#     If the docval specifies allow_extra=True, then the original kwargs are returned.
+#     """
+#     # NOTE: this has the same functionality as the to-be-deprecated fmt_docval_args except that
+#     # kwargs are kept as kwargs instead of parsed into args and kwargs
+#     func_docval = getattr(func, docval_attr_name, None)
+#     if func_docval:
+#         if func_docval['allow_extra']:
+#             # if extra args are allowed, return all args
+#             return kwargs
+#         else:
+#             # save only the arguments listed in the function's docval (skip any others present in kwargs)
+#             ret_kwargs = dict()
+#             for arg in func_docval[__docval_args_loc]:
+#                 val = kwargs.get(arg['name'], None)
+#                 if val is not None:  # do not return arguments that are not present or have value None
+#                     ret_kwargs[arg['name']] = val
+#             return ret_kwargs
+#     else:
+#         raise ValueError('No docval found on %s' % str(func))
+
+
 def call_docval_func(func, kwargs):
-    fargs, fkwargs = fmt_docval_args(func, kwargs)
+    """Call the function with only the keyword arguments that are accepted by the function's docval.
+
+    Extra keyword arguments are not passed to the function unless the function's docval has allow_extra=True.
+    """
+    warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
+                  "call the function directly with the kwargs. Please note that call_docval_func "
+                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
+                  PendingDeprecationWarning)
+    with warnings.catch_warnings(record=True):
+        # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
+        # PendingDeprecationWarnings saying the same thing are not raised
+        warnings.simplefilter("ignore", UserWarning)
+        warnings.simplefilter("always", PendingDeprecationWarning)
+        fargs, fkwargs = fmt_docval_args(func, kwargs)
+
     return func(*fargs, **fkwargs)
 
 
