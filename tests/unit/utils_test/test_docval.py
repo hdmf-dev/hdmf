@@ -193,7 +193,7 @@ class TestDocValidator(TestCase):
             'list': ['abc', 1, 2, 3]
         }
         msg = (
-            "fmt_docval_args will be deprecated in a future version of HDMF. Please note that fmt_docval_args "
+            "call_docval_func will be deprecated in a future version of HDMF. Please note that call_docval_func "
             "transparently removes all arguments not accepted by the function's docval."
         )
         with self.assertWarnsWith(PendingDeprecationWarning, msg):

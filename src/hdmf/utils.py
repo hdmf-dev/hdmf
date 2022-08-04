@@ -429,6 +429,7 @@ def fmt_docval_args(func, kwargs):
             ret_kwargs.update(kwargs_copy)
     else:
         raise ValueError('no docval found on %s' % str(func))
+    warnings.warn("hello")
     return ret_args, ret_kwargs
 
 
@@ -464,7 +465,13 @@ def call_docval_func(func, kwargs):
     warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Please note that call_docval_func "
                   "transparently removes all arguments not accepted by the function's docval.",
                   PendingDeprecationWarning)
-    fargs, fkwargs = fmt_docval_args(func, kwargs)
+    with warnings.catch_warnings(record=True):
+        # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
+        # PendingDeprecationWarnings saying the same thing are not raised
+        warnings.simplefilter("ignore", UserWarning)
+        warnings.simplefilter("always", PendingDeprecationWarning)
+        fargs, fkwargs = fmt_docval_args(func, kwargs)
+
     return func(*fargs, **fkwargs)
 
 
