@@ -4,7 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from warnings import warn
 
-from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
+from ..utils import docval, getargs, popargs, get_docval
 
 NAME_WILDCARD = None  # this is no longer used, but kept for backward compatibility
 ZERO_OR_ONE = '?'
@@ -515,8 +515,7 @@ class BaseStorageSpec(Spec):
     @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
-        pargs, pkwargs = fmt_docval_args(AttributeSpec.__init__, kwargs)
-        spec = AttributeSpec(*pargs, **pkwargs)
+        spec = AttributeSpec(**kwargs)
         self.set_attribute(spec)
         return spec
 

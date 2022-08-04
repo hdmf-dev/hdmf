@@ -19,7 +19,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import docval, getargs, popargs, call_docval_func, get_data_shape, fmt_docval_args, get_docval, StrDataset
+from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -355,7 +355,7 @@ class HDF5IO(HDMFIO):
                                        % (self.source, self.__mode))
 
         cache_spec = popargs('cache_spec', kwargs)
-        call_docval_func(super().write, kwargs)
+        super().write(**kwargs)
         if cache_spec:
             self.__cache_spec()
 
@@ -413,7 +413,7 @@ class HDF5IO(HDMFIO):
         write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
         ckwargs = kwargs.copy()
         ckwargs['write_args'] = write_args
-        call_docval_func(super().export, ckwargs)
+        super().export(**ckwargs)
         if cache_spec:
             self.__cache_spec()
 
@@ -448,7 +448,7 @@ class HDF5IO(HDMFIO):
             raise UnsupportedOperation("Cannot read from file %s in mode '%s'. Please use mode 'r', 'r+', or 'a'."
                                        % (self.source, self.__mode))
         try:
-            return call_docval_func(super().read, kwargs)
+            return super().read(**kwargs)
         except UnsupportedOperation as e:
             if str(e) == 'Cannot build data. There are no values.':  # pragma: no cover
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
@@ -1510,5 +1510,4 @@ class HDF5IO(HDMFIO):
             data = ...
             data = H5DataIO(data)
         """
-        cargs, ckwargs = fmt_docval_args(H5DataIO.__init__, kwargs)
-        return H5DataIO(*cargs, **ckwargs)
+        return H5DataIO.__init__(**kwargs)
