@@ -432,7 +432,6 @@ def fmt_docval_args(func, kwargs):
             ret_kwargs.update(kwargs_copy)
     else:
         raise ValueError('no docval found on %s' % str(func))
-    warnings.warn("hello")
     return ret_args, ret_kwargs
 
 
