@@ -1,10 +1,15 @@
 # HDMF Changelog
 
+## HDMF 3.4.1 (August 8, 2022)
+
+### Bug fixes
+- Fixed deploy release CI. @rly ([#754](https://github.com/hdmf-dev/hdmf/pull/754))
+
 ## HDMF 3.4.0 (August 5, 2022)
 
 ### Minor improvements
 - Allow manual triggering of some GitHub Actions. @rly ([#744](https://github.com/hdmf-dev/hdmf/pull/744))
-- Relax input validation of `HDF5IO` to allow for s3fs support. Existing arguments of `HDF5IO` are modified as follows: i) `mode` was given a default value of "r", ii) `path` was given a default value of `None`, and iii) `file` can now accept an `S3File` type argument. @bendichter ([#746](https://github.com/hdmf-dev/hdmf/pull/746))
+- Relaxed input validation of `HDF5IO` to allow for s3fs support. Existing arguments of `HDF5IO` are modified as follows: i) `mode` was given a default value of "r", ii) `path` was given a default value of `None`, and iii) `file` can now accept an `S3File` type argument. @bendichter ([#746](https://github.com/hdmf-dev/hdmf/pull/746))
 - Added ability to create and get back handle to empty HDF5 dataset. @ajtritt (#747)
 - Added `AbstractContainer._in_construct_mode` that is set and modified only by the ObjectMapper when constructing an
   object from a builder read from a file. Subclasses of `AbstractContainer` can check `_in_construct_mode`
