@@ -644,6 +644,61 @@ class TestDocValidator(TestCase):
         with self.assertRaisesWith(SyntaxError, msg):
             method(self, True)
 
+    def test_allow_none_false(self):
+        """Test that docval with allow_none=True and non-None default value works"""
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'default': True,
+                 'allow_none': False})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # if provided, None is not allowed
+        msg = ("TestDocValidator.test_allow_none_false.<locals>.method: incorrect type for 'arg1' "
+               "(got 'NoneType', expected 'bool')")
+        with self.assertRaisesWith(TypeError, msg):
+            res = method(self, arg1=None)
+
+        # if not provided, the default value is used
+        res = method(self)
+        self.assertTrue(res)
+
+    def test_allow_none(self):
+        """Test that docval with allow_none=True and non-None default value works"""
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'default': True,
+                 'allow_none': True})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # if provided, None is allowed
+        res = method(self, arg1=None)
+        self.assertIsNone(res)
+
+        # if not provided, the default value is used
+        res = method(self)
+        self.assertTrue(res)
+
+    def test_allow_none_redundant(self):
+        """Test that docval with allow_none=True and default=None works"""
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'default': None,
+                 'allow_none': True})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # if provided, None is allowed
+        res = method(self, arg1=None)
+        self.assertIsNone(res)
+
+        # if not provided, the default value is used
+        res = method(self)
+        self.assertIsNone(res)
+
+    def test_allow_none_no_default(self):
+        """Test that docval with allow_none=True and no default raises an error"""
+        msg = ("docval for arg1: allow_none=True can only be set if a default value is provided.")
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'allow_none': True})
+            def method(self, **kwargs):
+                return popargs('arg1', kwargs)
+
     def test_enum_str(self):
         """Test that the basic usage of an enum check on strings works"""
         @docval({'name': 'arg1', 'type': str, 'doc': 'an arg', 'enum': ['a', 'b']})  # also use enum: list
