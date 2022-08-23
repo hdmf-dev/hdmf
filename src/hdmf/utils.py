@@ -319,7 +319,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 ret[argname] = _copy.deepcopy(arg['default'])
             argval = ret[argname]
             if enforce_type:
-                if not __type_okay(argval, arg['type'], arg['default'] is None):
+                if not __type_okay(argval, arg['type'], arg['default'] is None or arg.get('allow_none', False)):
                     if argval is None and arg['default'] is None:
                         fmt_val = (argname, __format_type(arg['type']))
                         type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
@@ -522,7 +522,9 @@ def docval(*validator, **options):  # noqa: C901
     must contain the following keys: ``'name'``, ``'type'``, and ``'doc'``. This will define a
     positional argument. To define a keyword argument, specify a default value
     using the key ``'default'``. To validate the dimensions of an input array
-    add the optional ``'shape'`` parameter.
+    add the optional ``'shape'`` parameter. To allow a None value for an argument,
+    either the default value must be None or a different default value must be provided
+    and ``'allow_none': True`` must be passed.
 
     The decorated method must take ``self`` and ``**kwargs`` as arguments.
 
@@ -570,7 +572,7 @@ def docval(*validator, **options):  # noqa: C901
         kw = list()
         for a in validator:
             # catch unsupported keys
-            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
+            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'allow_none', 'help')
             unsupported_terms = set(a.keys()) - set(allowable_terms)
             if unsupported_terms:
                 raise Exception('docval for {}: keys {} are not supported by docval'.format(a['name'],
@@ -596,6 +598,10 @@ def docval(*validator, **options):  # noqa: C901
                     msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
                            'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
                     raise Exception(msg)
+            if a.get('allow_none', False) and 'default' not in a:
+                msg = ('docval for {}: allow_none=True can only be set if a default value is provided.').format(
+                    a['name'])
+                raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:
