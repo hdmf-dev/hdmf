@@ -48,12 +48,7 @@ jobs:
 
       - name: Publish wheel and source distributions as a GitHub release
         run: |
-          # use click<8 until https://github.com/j0057/github-release/issues/62 is resolved
-          python -m pip install "click<8" githubrelease
+          python -m pip install "githubrelease>=1.5.9"
           githubrelease --github-token ${{ secrets.BOT_GITHUB_TOKEN }} release hdmf-dev/hdmf \
             create ${{ github.ref_name }} --name ${{ github.ref_name }} \
-            --publish
-          # upload assets in a separate command until https://github.com/j0057/github-release/issues/67 is resolved
-          githubrelease --github-token ${{ secrets.BOT_GITHUB_TOKEN }} asset hdmf-dev/hdmf \
-            upload ${{ github.ref_name }} \
             --publish dist/*
