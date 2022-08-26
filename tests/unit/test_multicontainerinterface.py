@@ -104,7 +104,7 @@ class TestBasic(TestCase):
         dv = get_docval(Foo.add_container)
         self.assertEqual(dv[0]['name'], 'containers')
         self.assertTupleEqual(dv[0]['type'], (list, tuple, dict, Container))
-        self.assertEqual(dv[0]['doc'], 'the Container to add')
+        self.assertEqual(dv[0]['doc'], 'one or multiple Container objects to add to this Foo')
         self.assertFalse('default' in dv[0])
 
     def test_create_docval(self):
