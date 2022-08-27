@@ -101,7 +101,8 @@ class TestBasic(TestCase):
 
     def test_add_docval(self):
         """Test that the docval for the add method is set correctly."""
-        self.assertEqual(Foo.add_container.__doc__, "Add one or multiple Container objects to this Foo")
+        expected_doc = "add_container(containers)\n\nAdd one or multiple Container objects to this Foo"
+        self.assertTrue(Foo.add_container.__doc__.startswith(expected_doc))
         dv = get_docval(Foo.add_container)
         self.assertEqual(dv[0]['name'], 'containers')
         self.assertTupleEqual(dv[0]['type'], (list, tuple, dict, Container))
