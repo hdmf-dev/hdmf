@@ -728,10 +728,10 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_add(cls, func_name, attr_name, container_type):
-        doc = "Add %s to this %s" % (cls.__add_article(container_type), cls.__name__)
+        doc = "Add one or multiple %s objects to this %s" % (cls.__join(container_type), cls.__name__)
 
         @docval({'name': attr_name, 'type': (list, tuple, dict, container_type),
-                 'doc': 'the %s to add' % cls.__join(container_type)},
+                 'doc': 'one or multiple %s objects to add to this %s' % (cls.__join(container_type),  cls.__name__)},
                 func_name=func_name, doc=doc)
         def _func(self, **kwargs):
             container = getargs(attr_name, kwargs)
@@ -759,7 +759,7 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_create(cls, func_name, add_name, container_type):
-        doc = "Create %s and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
+        doc = "Create %s object and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
 
         @docval(*get_docval(container_type.__init__), func_name=func_name, doc=doc,
                 returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
