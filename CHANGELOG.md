@@ -1,5 +1,9 @@
 # HDMF Changelog
 
+## HDMF 3.4.2 (August 26, 2022)
+- Support "allow_none=True" in docval for args with non-None default. @rly ([#757](https://github.com/hdmf-dev/hdmf/pull/757))
+- Fixed deploy release CI. @rly ([#759](https://github.com/hdmf-dev/hdmf/pull/759))
+
 ## HDMF 3.4.1 (August 8, 2022)
 
 ### Bug fixes
