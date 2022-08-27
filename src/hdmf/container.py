@@ -728,7 +728,7 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_add(cls, func_name, attr_name, container_type):
-        doc = "Add one or multiple %s objects to this %s" % (cls.__add_article(container_type), cls.__name__)
+        doc = "Add one or multiple %s objects to this %s" % (cls.__join(container_type), cls.__name__)
 
         @docval({'name': attr_name, 'type': (list, tuple, dict, container_type),
                  'doc': 'one or multiple %s objects to add to this %s' % (cls.__join(container_type),  cls.__name__)},
