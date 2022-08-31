@@ -3,6 +3,7 @@ on:
   pull_request:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
+  workflow_dispatch:
 
 jobs:
   check-external-links:

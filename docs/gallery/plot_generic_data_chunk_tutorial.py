@@ -31,7 +31,7 @@ with creating a specific instance for your data format or API access pattern.
 # To create a :py:class:`~hdmf.data_utils.GenericDataChunkIterator` that accomplishes this,
 # we begin by defining our child class.
 
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_numpy_array_iterator.png'
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_generic_data_chunk_tutorial.png'
 import numpy as np
 
 from hdmf.data_utils import GenericDataChunkIterator
@@ -97,7 +97,8 @@ chunk_shape = (1000, 250)
 
 my_array = np.random.randint(low=0, high=10, size=maxshape, dtype="int32")
 my_custom_iterator = NumpyArrayDataChunkIterator(array=my_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
-with h5py.File(name="my_temporary_test_file.hdf5", mode="w") as f:
+out_file = "my_temporary_test_file.hdf5"
+with h5py.File(name=out_file, mode="w") as f:
     dset = f.create_dataset(name="test", shape=maxshape, dtype="int16", chunks=my_custom_iterator.chunk_shape)
     for buffer in my_custom_iterator:
         dset[buffer.selection] = buffer.data
@@ -130,3 +131,9 @@ with h5py.File(name="my_temporary_test_file.hdf5", mode="w") as f:
 #   (by default < 1 MB) to help reduce the number of small I/O operations
 #   and help improve performance. In practice, the `buffer` should usually be even larger than the default, i.e,
 #   as much free RAM as can be safely used.
+
+###############################################################################
+# Remove the test file
+import os
+if os.path.exists(out_file):
+    os.remove(out_file)

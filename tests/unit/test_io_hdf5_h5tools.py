@@ -4,6 +4,8 @@ import unittest
 import warnings
 from io import BytesIO
 from pathlib import Path
+import shutil
+import tempfile
 
 import h5py
 import numpy as np
@@ -26,6 +28,12 @@ from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+
+try:
+    import zarr
+    SKIP_ZARR_TESTS = False
+except ImportError:
+    SKIP_ZARR_TESTS = True
 
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
@@ -830,6 +838,10 @@ class TestHDF5IO(TestCase):
         with HDF5IO(pathlib_path, mode='w') as io:
             self.assertEqual(io.source, self.path)
 
+    def test_path_or_file(self):
+        with self.assertRaisesWith(ValueError, "You must supply either a path or a file."):
+            HDF5IO()
+
 
 class TestCacheSpec(TestCase):
 
@@ -1041,7 +1053,7 @@ class HDF5IOMultiFileTest(TestCase):
         # Close all the files
         for i in self.io:
             i.close()
-            del(i)
+            del i
         self.io = None
         self.f = None
         # Make sure the files have been deleted
@@ -1099,9 +1111,9 @@ class TestCloseLinks(TestCase):
         self.path2 = get_temp_filepath()
 
     def tearDown(self):
-        if self.path1 is not None:
+        if self.path1 is not None and os.path.exists(self.path1):
             os.remove(self.path1)  # linked file may not be closed
-        if self.path2 is not None:
+        if self.path2 is not None and os.path.exists(self.path2):
             os.remove(self.path2)
 
     def test_close_linked_files_auto(self):
@@ -1225,7 +1237,7 @@ class TestCloseLinks(TestCase):
         read_io = HDF5IO(self.path1, mode='r', manager=manager)
         read_foofile1 = read_io.read()
 
-        with HDF5IO(self.path2, mode='a', manager=get_foo_buildmanager()) as new_io1:
+        with HDF5IO(self.path2, mode='r', manager=get_foo_buildmanager()) as new_io1:
             new_io1.read()  # keep reference to container in memory
 
         self.assertTrue(read_io)  # make sure read_io is not closed
@@ -1270,7 +1282,7 @@ class HDF5IOInitFileExistsTest(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1304,7 +1316,7 @@ class HDF5IOReadNoDataTest(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
 
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -1346,7 +1358,7 @@ class HDF5IOReadData(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1378,7 +1390,7 @@ class HDF5IOReadBuilderClosed(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
 
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -1447,7 +1459,7 @@ class HDF5IOWriteFileExists(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -2943,3 +2955,185 @@ class TestCpdDatasetRefs(TestCase):
                 baz_name = 'baz%d' % i
                 self.assertEqual(read_bucket.baz_cpd_data.data[i][0], i)
                 self.assertIs(read_bucket.baz_cpd_data.data[i][1], read_bucket.bazs[baz_name])
+
+
+@unittest.skipIf(SKIP_ZARR_TESTS, "Skipping TestRoundTripHDF5withZarrInput because Zarr is not installed")
+class TestWriteHDF5withZarrInput(TestCase):
+    """
+    Test saving data to HDF5 with a zarr.Array as the data
+    """
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+        self.path = get_temp_filepath()
+        self.zarr_path = tempfile.mkdtemp()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+        if os.path.exists(self.zarr_path):
+            shutil.rmtree(self.zarr_path)
+
+    def test_roundtrip_basic(self):
+        # Setup all the data we need
+        zarr.save(self.zarr_path, np.arange(50).reshape(5, 10))
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        foo1 = Foo(name='foo1',
+                   my_data=zarr_data,
+                   attr1="I am foo1",
+                   attr2=17,
+                   attr3=3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
+    def test_roundtrip_empty_dataset(self):
+        zarr.save(self.zarr_path, np.asarray([]).astype('int64'))
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        foo1 = Foo('foo1', zarr_data, "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual([], read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
+    def test_write_zarr_int32_dataset(self):
+        base_data = np.arange(50).reshape(5, 10).astype('int32')
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
+        dset = f['test_dataset']
+        self.assertTupleEqual(dset.shape, base_data.shape)
+        self.assertEqual(dset.dtype, base_data.dtype)
+        self.assertEqual(base_data.dtype, dset.dtype)
+        self.assertListEqual(dset[:].tolist(),
+                             base_data.tolist())
+
+    def test_write_zarr_float32_dataset(self):
+        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
+        dset = f['test_dataset']
+        self.assertTupleEqual(dset.shape, base_data.shape)
+        self.assertEqual(dset.dtype, base_data.dtype)
+        self.assertEqual(base_data.dtype, dset.dtype)
+        self.assertListEqual(dset[:].tolist(),
+                             base_data.tolist())
+
+    def test_write_zarr_string_dataset(self):
+        base_data = np.array(['string1', 'string2'], dtype=str)
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder('test_dataset', zarr_data, attributes={}))
+        dset = f['test_dataset']
+        self.assertTupleEqual(dset.shape, (2,))
+        self.assertListEqual(dset[:].astype(bytes).tolist(), base_data.astype(bytes).tolist())
+
+    def test_write_zarr_dataset_compress_gzip(self):
+        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        a = H5DataIO(zarr_data,
+                     compression='gzip',
+                     compression_opts=5,
+                     shuffle=True,
+                     fletcher32=True)
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+        io.write_dataset(f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a.data))
+        self.assertEqual(dset.compression, 'gzip')
+        self.assertEqual(dset.compression_opts, 5)
+        self.assertEqual(dset.shuffle, True)
+        self.assertEqual(dset.fletcher32, True)
+
+
+class HDF5IOEmptyDataset(TestCase):
+    """ Test if file does not exist, write in mode (w, w-, x, a) is ok """
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+        self.path2 = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
+
+    def test_write_empty_dataset(self):
+        dataio = H5DataIO(shape=(5,), dtype=int)
+        foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+        bucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[bucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+            self.assertIs(foo.my_data, dataio)
+            self.assertIsNotNone(foo.my_data.dataset)
+            self.assertIsInstance(foo.my_data.dataset, h5py.Dataset)
+            np.testing.assert_array_equal(foo.my_data.dataset, np.zeros(5, dtype=int))
+
+    def test_overwrite_dataset(self):
+        dataio = H5DataIO(shape=(5,), dtype=int)
+        foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+        bucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[bucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with self.assertRaisesRegex(ValueError, 'Cannot overwrite H5DataIO.dataset'):
+            with HDF5IO(self.path2, manager=self.manager, mode='w') as io:
+                io.write(foofile)
+
+
+class HDF5IOClassmethodTests(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.f = h5py.File(self.path, 'w')
+
+    def tearDown(self):
+        self.f.close()
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_setup_empty_dset(self):
+        dset = HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+        self.assertEqual(dset.name, '/foo')
+        self.assertTupleEqual(dset.shape, (3, 3))
+        self.assertIs(dset.dtype.type, np.float32)
+
+    def test_setup_empty_dset_req_args(self):
+        with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without dtype'):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3)})
+
+        with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without shape'):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'dtype': np.float32})
+
+    def test_setup_empty_dset_create_exception(self):
+        HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+        with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})

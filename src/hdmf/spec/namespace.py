@@ -9,7 +9,7 @@ from warnings import warn
 
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec
-from ..utils import docval, getargs, popargs, get_docval, call_docval_func
+from ..utils import docval, getargs, popargs, get_docval
 
 _namespace_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this namespace represents'},
@@ -195,8 +195,7 @@ class YAMLSpecReader(SpecReader):
 
     @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
     def __init__(self, **kwargs):
-        super_kwargs = {'source': kwargs['indir']}
-        call_docval_func(super().__init__, super_kwargs)
+        super().__init__(source=kwargs['indir'])
 
     def read_namespace(self, namespace_path):
         namespaces = None

@@ -13,7 +13,7 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
@@ -26,7 +26,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skip('Outdated do to privatization')
     def test_piecewise_add(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
 
         # this is the term the user wants to use. They will need to specify this
         key = er._add_key('mouse')
@@ -154,7 +154,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_add_ref(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(
             container=data, key='key1',
@@ -166,7 +166,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(data.object_id, '', '')])
 
     def test_add_ref_duplicate_resource(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1',
             resource_name='resource0', resource_uri='uri0',
@@ -179,7 +179,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(len(resource_list), 1)
 
     def test_add_ref_bad_arg(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         resource1 = er._add_resource(resource='resource0', uri='resource_uri0')
         # The contents of the message are not important. Just make sure an error is raised
         with self.assertRaises(ValueError):
@@ -200,7 +200,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                 resource_name='resource1', resource_uri='uri1')
 
     def test_add_ref_two_resources(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -215,7 +215,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 0, 'id11', 'url11'), (0, 1, 'id12', 'url21')])
 
     def test_get_resources(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -225,7 +225,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             er.get_resource('unknown_resource')
 
     def test_add_ref_two_keys(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -243,7 +243,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            ('uuid2', '', '')])
 
     def test_add_ref_same_key_diff_objfield(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -260,7 +260,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            ('uuid2', '', '')])
 
     def test_add_ref_same_keyname(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -286,7 +286,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            ('uuid3', '', '')])
 
     def test_get_keys(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
 
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
@@ -307,7 +307,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(received, expected)
 
     def test_get_keys_subset(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         er.add_ref(
             container='uuid1', key='key1', resource_name='resource1',
             resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
@@ -327,7 +327,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(received, expected)
 
     def test_get_object_resources(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
@@ -342,7 +342,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(received, expected)
 
     def test_object_key_unqiueness(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
@@ -359,7 +359,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.object_keys.data, [(0, 0)])
 
     def test_check_object_field_add(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er._check_object_field('uuid1', '')
         er._check_object_field(data, '')
@@ -367,7 +367,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [('uuid1', '', ''), (data.object_id, '', '')])
 
     def test_check_object_field_error(self):
-        er = ExternalResources('terms')
+        er = ExternalResources(name='terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er._check_object_field(data, '')
         er._add_object(data, '', '')
@@ -501,7 +501,7 @@ class TestExternalResourcesNestedAttributes(TestCase):
 class TestExternalResourcesGetKey(TestCase):
 
     def setUp(self):
-        self.er = ExternalResources('terms')
+        self.er = ExternalResources(name='terms')
 
     def test_get_key(self):
         self.er.add_ref(
@@ -525,7 +525,7 @@ class TestExternalResourcesGetKey(TestCase):
 
     @unittest.skip('Outdated do to privatization')
     def test_get_key_without_container(self):
-        self.er = ExternalResources('terms')
+        self.er = ExternalResources(name='terms')
         self.er._add_key('key1')
         keys = self.er.get_key('key1')
         self.assertIsInstance(keys, Key)
@@ -564,7 +564,7 @@ class TestExternalResourcesGetKey(TestCase):
 
     @unittest.skip('Outdated do to privatization')
     def test_get_key_same_keyname_all(self):
-        self.er = ExternalResources('terms')
+        self.er = ExternalResources(name='terms')
         key1 = self.er._add_key('key1')
         key2 = self.er._add_key('key1')
         self.er.add_ref(
@@ -584,7 +584,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(keys[1].key, 'key1')
 
     def test_get_key_same_keyname_specific(self):
-        self.er = ExternalResources('terms')
+        self.er = ExternalResources(name='terms')
 
         self.er.add_ref(
             'uuid1', key='key1', resource_name='resource1',

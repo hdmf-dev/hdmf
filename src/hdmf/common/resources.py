@@ -3,7 +3,7 @@ import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer
-from ..utils import docval, popargs
+from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 
 
@@ -153,7 +153,8 @@ class ExternalResources(Container):
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
              'doc': 'The table storing object-resource relationships.'},
             {'name': 'type_map', 'type': TypeMap, 'default': None,
-             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'})
+             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         name = popargs('name', kwargs)
         super().__init__(name)

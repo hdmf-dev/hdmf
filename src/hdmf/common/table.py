@@ -10,11 +10,12 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
+import itertools
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
+from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
 
 
 @register_class('VectorData')
@@ -36,10 +37,12 @@ class VectorData(Data):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()})
+             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-        self.description = getargs('description', kwargs)
+        description = popargs('description', kwargs)
+        super().__init__(**kwargs)
+        self.description = description
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
@@ -91,11 +94,12 @@ class VectorIndex(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a 1D dataset containing indexes that apply to VectorData object'},
             {'name': 'target', 'type': VectorData,
-             'doc': 'the target dataset that this index applies to'})
+             'doc': 'the target dataset that this index applies to'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        target = getargs('target', kwargs)
+        target = popargs('target', kwargs)
         kwargs['description'] = "Index for VectorData '%s'" % target.name
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.target = target
         self.__uint = np.uint8
         self.__maxval = 255
@@ -207,9 +211,10 @@ class ElementIdentifiers(Data):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
             {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
-             'default': list()})
+             'default': list()},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
              'doc': 'List of ids to search for in this ElementIdentifer object'},
@@ -285,10 +290,11 @@ class DynamicTable(Container):
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data',
              'doc': 'the ordered names of the columns in this table. columns must also be provided.',
-             'default': None})
+             'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.description = desc
 
         # hold names of optional columns that are defined in __columns__ that are not yet initialized
@@ -299,9 +305,9 @@ class DynamicTable(Container):
         # Here, we figure out what to do for that
         if id is not None:
             if not isinstance(id, ElementIdentifiers):
-                id = ElementIdentifiers('id', data=id)
+                id = ElementIdentifiers(name='id', data=id)
         else:
-            id = ElementIdentifiers('id')
+            id = ElementIdentifiers(name='id')
 
         if columns is not None and len(columns) > 0:
             # If columns have been passed in, check them over and process accordingly
@@ -528,8 +534,8 @@ class DynamicTable(Container):
                     for d in data:
                         tmp_data.extend(d)
                     data = tmp_data
-                vdata = col_cls(name, desc, data=data)
-                vindex = VectorIndex("%s_index" % name, index_data, target=vdata)
+                vdata = col_cls(name=name, description=desc, data=data)
+                vindex = VectorIndex(name="%s_index" % name, data=index_data, target=vdata)
                 tmp.append(vindex)
                 tmp.append(vdata)
             elif d.get('enum', False):
@@ -547,7 +553,7 @@ class DynamicTable(Container):
                     data = list()
                 if d.get('table', False):
                     col_cls = DynamicTableRegion
-                tmp.append(col_cls(name, desc, data=data))
+                tmp.append(col_cls(name=name, description=desc, data=data))
         return tmp
 
     def __len__(self):
@@ -715,6 +721,35 @@ class DynamicTable(Container):
             if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
                 ckwargs['elements'] = enum
 
+        # If the user provided a list of lists that needs to be indexed, then we now need to flatten the data
+        # We can only create the index actual VectorIndex once we have the VectorData column so we compute
+        # the index and flatten the data here and then create the VectorIndex later from create_vector_index
+        # once we have created the column
+        create_vector_index = None
+        if ckwargs.get('data', None) is not None:
+            # Check that we are asked to create an index
+            if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
+                # Iteratively flatten the data we use for the column based on the depth of the index to generate.
+                # Also, for each level compute the data for the VectorIndex for that level
+                flatten_data = data
+                create_vector_index = []
+                for i in range(index):
+                    try:
+                        create_vector_index.append(np.cumsum([len(c) for c in flatten_data]).tolist())
+                    except TypeError as e:
+                        raise ValueError("Cannot automatically construct VectorIndex for nested array. "
+                                         "Invalid data array element found.") from e
+                    flatten_data = list(itertools.chain.from_iterable(flatten_data))
+                # if our data still is an array (e.g., a list or numpy array) then warn that the index parameter
+                # may be incorrect.
+                if len(flatten_data) > 0 and isinstance(flatten_data[0], (np.ndarray, list, tuple)):
+                    raise ValueError("Cannot automatically construct VectorIndex for nested array. "
+                                     "Column data contains arrays as cell values. Please check the 'data' and 'index' "
+                                     "parameters. 'index=%s' may be too small for the given data." % str(index))
+                # overwrite the data to be used for the VectorData column with the flattened data
+                ckwargs['data'] = flatten_data
+
+        # Create the VectorData column
         col = col_cls(**ckwargs)
         col.parent = self
         columns = [col]
@@ -731,26 +766,41 @@ class DynamicTable(Container):
             if isinstance(index, VectorIndex):
                 col_index = index
                 self.__add_column_index_helper(col_index)
-            elif isinstance(index, bool):  # make empty VectorIndex
-                if len(col) > 0:
-                    raise ValueError("cannot pass empty index with non-empty data to index")
-                col_index = VectorIndex(name + "_index", list(), col)
+            elif isinstance(index, bool):
+                # create empty index for empty column
+                if create_vector_index is None:
+                    assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
+                    col_index = VectorIndex(name=name + "_index", data=list(), target=col)
+                # create single-level VectorIndex from the data based on the create_vector_index we computed earlier
+                else:
+                    col_index = VectorIndex(name=name + "_index", data=create_vector_index[0], target=col)
+                # add the column with the index
                 self.__add_column_index_helper(col_index)
             elif isinstance(index, int):
-                assert index > 0, ValueError("integer index value must be greater than 0")
-                assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
-                index_name = name
-                for i in range(index):
-                    index_name = index_name + "_index"
-                    col_index = VectorIndex(index_name, list(), col)
-                    self.__add_column_index_helper(col_index)
-                    if i < index - 1:
-                        columns.insert(0, col_index)
-                        col = col_index
+                if create_vector_index is None:
+                    assert index > 0, ValueError("integer index value must be greater than 0")
+                    assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
+                    index_name = name
+                    for i in range(index):
+                        index_name = index_name + "_index"
+                        col_index = VectorIndex(name=index_name, data=list(), target=col)
+                        self.__add_column_index_helper(col_index)
+                        if i < index - 1:
+                            columns.insert(0, col_index)
+                            col = col_index
+                # Create the nested VectorIndex from the create_vector_index we computed above
+                else:
+                    index_name = name
+                    for i in range(index):
+                        index_name = index_name + "_index"
+                        col_index = VectorIndex(name=index_name, data=create_vector_index[-(i+1)], target=col)
+                        self.__add_column_index_helper(col_index)
+                        if i < index - 1:
+                            columns.insert(0, col_index)
+                            col = col_index
             else:  # make VectorIndex with supplied data
-                if len(col) == 0:
-                    raise ValueError("cannot pass non-empty index with empty data to index")
-                col_index = VectorIndex(name + "_index", index, col)
+                assert len(col) > 0, ValueError("cannot pass non-empty index with empty data to index")
+                col_index = VectorIndex(name=name + "_index", data=index, target=col)
                 self.__add_column_index_helper(col_index)
             columns.insert(0, col_index)
             col = col_index
@@ -795,7 +845,7 @@ class DynamicTable(Container):
                                      + str(len(self)))
         desc = getargs('description', kwargs)
         name = getargs('name', kwargs)
-        return DynamicTableRegion(name, region, desc, self)
+        return DynamicTableRegion(name=name, data=region, description=desc, table=self)
 
     def __getitem__(self, key):
         ret = self.get(key)
@@ -1170,10 +1220,11 @@ class DynamicTableRegion(VectorData):
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors'},
             {'name': 'description', 'type': str, 'doc': 'a description of what this region represents'},
             {'name': 'table', 'type': DynamicTable,
-             'doc': 'the DynamicTable this region applies to', 'default': None})
+             'doc': 'the DynamicTable this region applies to', 'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         t = popargs('table', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.table = t
 
     @property
@@ -1351,12 +1402,13 @@ class EnumData(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'integers that index into elements for the value of each row', 'default': list()},
             {'name': 'elements', 'type': ('array_data', 'data', VectorData), 'default': list(),
-             'doc': 'lookup values for each integer in ``data``'})
+             'doc': 'lookup values for each integer in ``data``'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         elements = popargs('elements', kwargs)
         super().__init__(**kwargs)
         if not isinstance(elements, VectorData):
-            elements = VectorData('%s_elements' % self.name, data=elements,
+            elements = VectorData(name='%s_elements' % self.name, data=elements,
                                   description='fixed set of elements referenced by %s' % self.name)
         self.elements = elements
         if len(self.elements) > 0:

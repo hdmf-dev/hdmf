@@ -1,8 +1,8 @@
 name: Deploy release
 on:
   push:
-    tags:  # run only on new tags that follow semver
-      - '/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/'
+    tags:  # run only on new tags that follow semver MAJOR.MINOR.PATCH
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   deploy-release:
@@ -39,17 +39,16 @@ jobs:
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
 
-      - name: Upload wheel and source distributions to PyPI  # TODO remove the --repository flag after testing
+      - name: Upload wheel and source distributions to PyPI
         run: |
           python -m pip install twine
           ls -1 dist
-          twine upload --repository testpypi -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
+          # twine upload --repository testpypi -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
+          twine upload -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
 
       - name: Publish wheel and source distributions as a GitHub release
         run: |
-          # use click<8 until https://github.com/j0057/github-release/issues/62 is resolved
-          python -m pip install "click<8" githubrelease
-          githubrelease release hdmf-dev/hdmf \
+          python -m pip install "githubrelease>=1.5.9"
+          githubrelease --github-token ${{ secrets.BOT_GITHUB_TOKEN }} release hdmf-dev/hdmf \
             create ${{ github.ref_name }} --name ${{ github.ref_name }} \
-            --github-token ${{ secrets.BOT_GITHUB_TOKEN }} \
             --publish dist/*

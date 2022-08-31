@@ -149,7 +149,7 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         # TODO: test that constructor works!
-        inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        inst = cls(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'My Baz')
         self.assertEqual(inst.data, [1, 2, 3, 4])
         self.assertEqual(inst.attr1, 'string attribute')
@@ -168,9 +168,9 @@ class TestDynamicContainer(TestCase):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
         with self.assertRaises(TypeError):
-            inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            inst = cls(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
 
-        inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        inst = cls(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'A fixed name')
         self.assertEqual(inst.data, [1, 2, 3, 4])
         self.assertEqual(inst.attr1, 'string attribute')
@@ -190,7 +190,7 @@ class TestDynamicContainer(TestCase):
             self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
             cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
-            inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            inst = cls(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
             self.assertEqual(inst.name, 'A fixed name')
 
     def test_dynamic_container_composition(self):
@@ -208,14 +208,15 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
-        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
-             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+        Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0))
 
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
-        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+        bar = Bar(name='My Bar', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
 
         with self.assertRaises(TypeError):
-            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+            Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+                 baz2=bar)
 
     def test_dynamic_container_composition_reverse_order(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
@@ -232,14 +233,15 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
-        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
-             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+        Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0))
 
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
-        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+        bar = Bar(name='My Bar', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
 
         with self.assertRaises(TypeError):
-            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+            Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute',
+                 attr2=1000, attr3=98.6, attr4=1.0, baz2=bar)
 
     def test_dynamic_container_composition_missing_type(self):
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
@@ -258,7 +260,7 @@ class TestDynamicContainer(TestCase):
                              data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         Baz = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
+        obj = Baz(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
         self.assertEqual(obj.name, 'Baz')
 
     def test_multi_container_spec(self):
@@ -288,10 +290,52 @@ class TestDynamicContainer(TestCase):
 
         multi = Multi(
             name='my_multi',
-            bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
             attr3=5.
         )
-        assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
+        assert multi.attr3 == 5.
+
+    def test_multi_container_spec_with_inc(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            data_type_inc=self.bar_spec,
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='*')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+        assert issubclass(Multi, MultiContainerInterface)
+        assert issubclass(Multi, Bar)
+        assert Multi.__mro__ == (Multi, Bar, MultiContainerInterface, Container, AbstractContainer, object)
+        assert Multi.__clsconf__ == [
+            dict(
+                attr='bars',
+                type=Bar,
+                add='add_bars',
+                get='get_bars',
+                create='create_bars'
+            )
+        ]
+
+        multi = Multi(
+            name='my_multi',
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
+            data=list(range(10)),  # from data_type_inc: Bar
+            attr1='value1',  # from data_type_inc: Bar
+            attr2=10,  # from data_type_inc: Bar
+            attr3=5.
+        )
+        assert multi.data == list(range(10))
+        assert multi.attr1 == 'value1'
+        assert multi.attr2 == 10
+        assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
         assert multi.attr3 == 5.
 
 
@@ -885,7 +929,7 @@ class TestMCIProcessFieldSpec(TestCase):
         MCIClassGenerator.process_field_spec(
             classdict=classdict,
             docval_args=docval_args,
-            parent_cls=Container,
+            parent_cls=Bar,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
             type_map=self.type_map,
@@ -914,10 +958,10 @@ class TestMCIProcessFieldSpec(TestCase):
                 )
             ]
         )
-        bases = [Container]
+        bases = [Bar]
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
-        self.assertEqual(bases, [MultiContainerInterface, Container])
+        self.assertEqual(bases, [Bar, MultiContainerInterface])
 
     def test_post_process_already_multi(self):
         class Multi1(MultiContainerInterface):
@@ -946,3 +990,30 @@ class TestMCIProcessFieldSpec(TestCase):
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
         self.assertEqual(bases, [Multi1])
+
+    def test_post_process_container(self):
+        class Multi1(MultiContainerInterface):
+            pass
+
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi and extends a multi',
+            data_type_def='Multi1',
+            groups=[
+                GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
+            ],
+        )
+        classdict = dict(
+            __clsconf__=[
+                dict(
+                    attr='empty_bars',
+                    type=EmptyBar,
+                    add='add_empty_bars',
+                    get='get_empty_bars',
+                    create='create_empty_bars'
+                )
+            ]
+        )
+        bases = [Container]
+        docval_args = []
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        self.assertEqual(bases, [MultiContainerInterface, Container])

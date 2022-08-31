@@ -55,3 +55,16 @@ class DataIOTests(TestCase):
         container = Data('wrapped_data', data)
         with self.assertRaisesWith(ValueError, "cannot overwrite 'data' on DataIO"):
             container.set_dataio(dataio)
+
+    def test_dataio_options(self):
+        """
+        Test that either data or dtype+shape are specified exclusively
+        """
+        with self.assertRaisesRegex(ValueError, "Setting the dtype when data is not None is not supported"):
+            DataIO(data=np.arange(5), dtype=int)
+        with self.assertRaisesRegex(ValueError, "Setting the shape when data is not None is not supported"):
+            DataIO(data=np.arange(5), shape=(3,))
+
+        dataio = DataIO(shape=(3,), dtype=int)
+        with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
+            dataio.data = np.arange(5)

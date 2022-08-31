@@ -21,7 +21,7 @@ from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, call_docval_func, get_docval
+from ...utils import docval, getargs, popargs, get_docval
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -89,7 +89,7 @@ class H5Dataset(HDMFDataset):
             {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         self.__io = popargs('io', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @property
     def io(self):
@@ -180,7 +180,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         types = popargs('types', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is RegionReference:
@@ -378,9 +378,9 @@ class H5SpecReader(SpecReader):
 
     @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 group to read specs from'})
     def __init__(self, **kwargs):
-        self.__group = getargs('group', kwargs)
-        super_kwargs = {'source': "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)}
-        call_docval_func(super().__init__, super_kwargs)
+        self.__group = popargs('group', kwargs)
+        source = "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)
+        super().__init__(source=source)
         self.__cache = None
 
     def __read(self, path):
@@ -475,11 +475,20 @@ class H5DataIO(DataIO):
             {'name': 'allow_plugin_filters',
              'type': bool,
              'doc': 'Enable passing dynamically loaded filters as compression parameter',
-             'default': False}
+             'default': False},
+            {'name': 'shape',
+             'type': tuple,
+             'doc': 'the shape of the new dataset, used only if data is None',
+             'default': None},
+            {'name': 'dtype',
+             'type': (str, type, np.dtype),
+             'doc': 'the data type of the new dataset, used only if data is None',
+             'default': None}
             )
     def __init__(self, **kwargs):
         # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters']]
+        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters',
+                                                                      'dtype', 'shape']]
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
@@ -491,9 +500,12 @@ class H5DataIO(DataIO):
             self.__link_data = False
             warnings.warn('link_data parameter in H5DataIO will be ignored')
         # Call the super constructor and consume the data parameter
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
         self.__iosettings = {k: v for k, v in zip(ioarg_names, ioarg_values) if v is not None}
+        if self.data is None:
+            self.__iosettings['dtype'] = self.dtype
+            self.__iosettings['shape'] = self.shape
         # Set io_properties for DataChunkIterators
         if isinstance(self.data, AbstractDataChunkIterator):
             # Define the chunking options if the user has not set them explicitly.
@@ -525,6 +537,18 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k)
+
+        self.__dataset = None
+
+    @property
+    def dataset(self):
+        return self.__dataset
+
+    @dataset.setter
+    def dataset(self, val):
+        if self.__dataset is not None:
+            raise ValueError("Cannot overwrite H5DataIO.dataset")
+        self.__dataset = val
 
     def get_io_params(self):
         """

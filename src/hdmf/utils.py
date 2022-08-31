@@ -15,6 +15,14 @@ __macros = {
     'data': []
 }
 
+try:
+    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
+    import zarr
+    __macros['array_data'].append(zarr.Array)
+except ImportError:
+    pass
+
+
 # code to signify how to handle positional arguments in docval
 AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
 
@@ -230,10 +238,11 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
 
         if args:
             if allow_positional == AllowPositional.WARNING:
-                msg = 'Positional arguments are discouraged and may be forbidden in a future release.'
+                msg = ('Using positional arguments for this method is discouraged and will be deprecated '
+                       'in a future major release. Please use keyword arguments to ensure future compatibility.')
                 future_warnings.append(msg)
             elif allow_positional == AllowPositional.ERROR:
-                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.'
+                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed for this method.'
                 syntax_errors.append(msg)
 
         # iterate through the docval specification and find a matching value in args / kwargs
@@ -297,6 +306,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             arg = next(it)
 
         # process arguments of the docval specification with a default value
+        # NOTE: the default value will be deepcopied, so 'default': list() is safe unlike in normal python
         while True:
             argname = arg['name']
             if argname in kwargs:
@@ -309,7 +319,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 ret[argname] = _copy.deepcopy(arg['default'])
             argval = ret[argname]
             if enforce_type:
-                if not __type_okay(argval, arg['type'], arg['default'] is None):
+                if not __type_okay(argval, arg['type'], arg['default'] is None or arg.get('allow_none', False)):
                     if argval is None and arg['default'] is None:
                         fmt_val = (argname, __format_type(arg['type']))
                         type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
@@ -400,6 +410,12 @@ def fmt_docval_args(func, kwargs):
 
     Useful for methods that wrap other methods
     '''
+    warnings.warn("fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
+                  "call the function directly with the kwargs. Please note that fmt_docval_args "
+                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
+                  PendingDeprecationWarning)
     func_docval = getattr(func, docval_attr_name, None)
     ret_args = list()
     ret_kwargs = dict()
@@ -419,8 +435,48 @@ def fmt_docval_args(func, kwargs):
     return ret_args, ret_kwargs
 
 
+# def _remove_extra_args(func, kwargs):
+#     """Return a dict of only the keyword arguments that are accepted by the function's docval.
+#
+#     If the docval specifies allow_extra=True, then the original kwargs are returned.
+#     """
+#     # NOTE: this has the same functionality as the to-be-deprecated fmt_docval_args except that
+#     # kwargs are kept as kwargs instead of parsed into args and kwargs
+#     func_docval = getattr(func, docval_attr_name, None)
+#     if func_docval:
+#         if func_docval['allow_extra']:
+#             # if extra args are allowed, return all args
+#             return kwargs
+#         else:
+#             # save only the arguments listed in the function's docval (skip any others present in kwargs)
+#             ret_kwargs = dict()
+#             for arg in func_docval[__docval_args_loc]:
+#                 val = kwargs.get(arg['name'], None)
+#                 if val is not None:  # do not return arguments that are not present or have value None
+#                     ret_kwargs[arg['name']] = val
+#             return ret_kwargs
+#     else:
+#         raise ValueError('No docval found on %s' % str(func))
+
+
 def call_docval_func(func, kwargs):
-    fargs, fkwargs = fmt_docval_args(func, kwargs)
+    """Call the function with only the keyword arguments that are accepted by the function's docval.
+
+    Extra keyword arguments are not passed to the function unless the function's docval has allow_extra=True.
+    """
+    warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
+                  "call the function directly with the kwargs. Please note that call_docval_func "
+                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
+                  PendingDeprecationWarning)
+    with warnings.catch_warnings(record=True):
+        # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
+        # PendingDeprecationWarnings saying the same thing are not raised
+        warnings.simplefilter("ignore", UserWarning)
+        warnings.simplefilter("always", PendingDeprecationWarning)
+        fargs, fkwargs = fmt_docval_args(func, kwargs)
+
     return func(*fargs, **fkwargs)
 
 
@@ -466,7 +522,9 @@ def docval(*validator, **options):  # noqa: C901
     must contain the following keys: ``'name'``, ``'type'``, and ``'doc'``. This will define a
     positional argument. To define a keyword argument, specify a default value
     using the key ``'default'``. To validate the dimensions of an input array
-    add the optional ``'shape'`` parameter.
+    add the optional ``'shape'`` parameter. To allow a None value for an argument,
+    either the default value must be None or a different default value must be provided
+    and ``'allow_none': True`` must be passed.
 
     The decorated method must take ``self`` and ``**kwargs`` as arguments.
 
@@ -514,7 +572,7 @@ def docval(*validator, **options):  # noqa: C901
         kw = list()
         for a in validator:
             # catch unsupported keys
-            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'help')
+            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'allow_none', 'help')
             unsupported_terms = set(a.keys()) - set(allowable_terms)
             if unsupported_terms:
                 raise Exception('docval for {}: keys {} are not supported by docval'.format(a['name'],
@@ -540,6 +598,10 @@ def docval(*validator, **options):  # noqa: C901
                     msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
                            'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
                     raise Exception(msg)
+            if a.get('allow_none', False) and 'default' not in a:
+                msg = ('docval for {}: allow_none=True can only be set if a default value is provided.').format(
+                    a['name'])
+                raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
             else:
@@ -723,6 +785,27 @@ def popargs(*argnames):
     return ret
 
 
+def popargs_to_dict(keys, argdict):
+    """Convenience function to retrieve and remove arguments from a dictionary in batch into a dictionary.
+
+    Same as `{key: argdict.pop(key) for key in keys}` with a custom ValueError
+
+    :param keys: Iterable of keys to pull out of argdict
+    :type keys: Iterable
+    :param argdict: Dictionary to process
+    :type dict: dict
+    :raises ValueError: if an argument name is not found in the dictionary
+    :return: a dict of arguments removed
+    """
+    ret = dict()
+    for arg in keys:
+        try:
+            ret[arg] = argdict.pop(arg)
+        except KeyError as ke:
+            raise ValueError('Argument not found in dict: %s' % str(ke))
+    return ret
+
+
 class ExtenderMeta(ABCMeta):
     """A metaclass that will extend the base class initialization
        routine by executing additional functions defined in
@@ -795,7 +878,7 @@ def get_data_shape(data, strict_no_data_load=False):
     # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
     if hasattr(data, 'maxshape'):
         return data.maxshape
-    if hasattr(data, 'shape'):
+    if hasattr(data, 'shape') and data.shape is not None:
         return data.shape
     if isinstance(data, dict):
         return None

@@ -5,9 +5,9 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
+from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, call_docval_func, ExtenderMeta
+from ..utils import docval, getargs, ExtenderMeta, get_docval
 
 
 class Proxy:
@@ -458,12 +458,7 @@ class TypeMap:
         generator = getargs('generator', kwargs)
         self.__class_generator.register_generator(generator)
 
-    @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
-            {'name': 'resolve', 'type': bool,
-             'doc': 'whether or not to include objects from included/parent spec objects', 'default': True},
-            {'name': 'reader',
-             'type': SpecReader,
-             'doc': 'the class to user for reading specifications', 'default': None},
+    @docval(*get_docval(NamespaceCatalog.load_namespaces),
             returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
@@ -471,7 +466,7 @@ class TypeMap:
         it will process the return value to keep track of what types were included in the loaded namespaces. Calling
         load_namespaces here has the advantage of being able to keep track of type dependencies across namespaces.
         '''
-        deps = call_docval_func(self.__ns_catalog.load_namespaces, kwargs)
+        deps = self.__ns_catalog.load_namespaces(**kwargs)
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:

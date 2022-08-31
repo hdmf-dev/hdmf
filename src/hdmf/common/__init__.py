@@ -9,7 +9,7 @@ EXP_NAMESPACE = 'hdmf-experimental'
 
 
 from ..spec import NamespaceCatalog  # noqa: E402
-from ..utils import docval, getargs, call_docval_func, get_docval, fmt_docval_args  # noqa: E402
+from ..utils import docval, getargs, get_docval  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
@@ -148,17 +148,15 @@ def get_type_map(**kwargs):
     return type_map
 
 
-@docval({'name': 'extensions', 'type': (str, TypeMap, list),
-         'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
-         'default': None},
-        returns="the namespaces loaded from the given file", rtype=tuple,
+@docval(*get_docval(get_type_map),
+        returns="a build manager with namespaces loaded from the given file", rtype=BuildManager,
         is_method=False)
 def get_manager(**kwargs):
     '''
     Get a BuildManager to use for I/O using the given extensions. If no extensions are provided,
     return a BuildManager that uses the core namespace
     '''
-    type_map = call_docval_func(get_type_map, kwargs)
+    type_map = get_type_map(**kwargs)
     return BuildManager(type_map)
 
 
@@ -188,8 +186,7 @@ def get_hdf5io(**kwargs):
     manager = getargs('manager', kwargs)
     if manager is None:
         kwargs['manager'] = get_manager()
-    cargs, ckwargs = fmt_docval_args(HDF5IO.__init__, kwargs)
-    return HDF5IO(*cargs, **ckwargs)
+    return HDF5IO.__init__(**kwargs)
 
 
 # load the hdmf-common namespace

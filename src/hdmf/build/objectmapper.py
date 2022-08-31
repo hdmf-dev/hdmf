@@ -208,7 +208,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # spec_dtype is a string, spec_dtype_type is a type or the conversion helper functions unicode or ascii
         spec_dtype_type = cls.__dtypes[spec_dtype]
         warning_msg = None
-        if isinstance(value, np.ndarray):
+        # Numpy Array or Zarr array
+        if (isinstance(value, np.ndarray) or
+                (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
             if spec_dtype_type is unicode:
                 ret = value.astype('U')
                 ret_dtype = "utf8"
@@ -222,6 +224,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype(dtype_func)
                 ret_dtype = ret.dtype.type
+        # Tuple or list
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
                 if spec_dtype_type is unicode:
@@ -237,6 +240,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
+        # Any DataChunkIterator
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
             if spec_dtype_type is unicode:
@@ -284,7 +288,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # return the list of DtypeSpecs
             return value, spec_dtype
         if isinstance(value, DataIO):
-            return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
+            if value.data is None:
+                return value, value.dtype
+            else:
+                return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
@@ -973,9 +980,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.logger.debug("        Skipping dataset - no attribute value")
                 continue
             attr_value = self.__check_ref_resolver(attr_value)
-            if isinstance(attr_value, DataIO) and attr_value.data is None:
-                self.logger.debug("        Skipping dataset - attribute is dataio or has no data")
-                continue
             if isinstance(attr_value, LinkBuilder):
                 self.logger.debug("        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
                                   % (attr_value.name, attr_value.__class__.__name__,
@@ -1254,8 +1258,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __new_container__(self, cls, container_source, parent, object_id, **kwargs):
         """A wrapper function for ensuring a container gets everything set appropriately"""
-        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id)
+        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id,
+                          in_construct_mode=True)
+        # obj has been created and is in construction mode, indicating that the object is being constructed by
+        # the automatic construct process during read, rather than by the user
         obj.__init__(**kwargs)
+        obj._in_construct_mode = False  # reset to False to indicate that the construction of the object is complete
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

@@ -13,7 +13,7 @@ from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
-from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
+from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
 
@@ -291,7 +291,7 @@ class AttributeValidator(Validator):
     @docval({'name': 'spec', 'type': AttributeSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({'name': 'value', 'type': None, 'doc': 'the value to validate'},
             returns='a list of Errors', rtype=list)
@@ -342,7 +342,7 @@ class BaseStorageValidator(Validator):
     @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.__attribute_validators = dict()
         for attr in self.spec.attributes:
             self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
@@ -373,7 +373,7 @@ class DatasetValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': DatasetSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
@@ -413,7 +413,7 @@ class GroupValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': GroupSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
             returns='a list of Errors', rtype=list)
