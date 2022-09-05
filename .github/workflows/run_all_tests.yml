@@ -129,14 +129,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.7            , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.8            , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.9            , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-python3.10           , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-optional  , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-prerelease, test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
+          - { name: conda-linux-python3.7            , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: ubuntu-latest }
+          - { name: conda-linux-python3.8            , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: conda-linux-python3.9            , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: conda-linux-python3.10           , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.10-optional  , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.10-prerelease, test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: ubuntu-latest }
     steps:
       - name: Cancel any previous incomplete runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -152,15 +152,14 @@ jobs:
         with:
           auto-update-conda: true
           auto-activate-base: true
-          activate-environment: ""
+          activate-environment: true
+          python-version: ${{ matrix.python-ver }}
 
       - name: Install build dependencies
         run: |
-          conda update -n base -c defaults conda
           conda config --set always_yes yes --set changeps1 no
-          conda config --add channels conda-forge
-          conda install python=${{ matrix.python-ver }}
-          conda install tox
+          conda info
+          conda install -c conda-forge tox
           conda list
 
       - name: Run tox tests
