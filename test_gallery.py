@@ -48,7 +48,6 @@ def run_gallery_tests():
     TOTAL += len(gallery_file_names)
     for script in gallery_file_names:
         logging.info("Executing %s" % script)
-        ws = list()
         try:
             with warnings.catch_warnings(record=True):
                 warnings.filterwarnings(
