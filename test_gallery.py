@@ -24,6 +24,10 @@ def _import_from_file(script):
     spec.loader.exec_module(module)
 
 
+_distutils_warning_re = (
+    "distutils Version classes are deprecated. Use packaging.version instead."
+)
+
 _experimental_warning_re = (
     "[a-zA-Z0-9]+ is experimental -- it may be removed in the future "
     "and is not guaranteed to maintain backward compatibility"
@@ -52,6 +56,10 @@ def run_gallery_tests():
             with warnings.catch_warnings(record=True):
                 warnings.filterwarnings(
                     "ignore", message=_experimental_warning_re, category=UserWarning
+                )
+                warnings.filterwarnings(
+                    # this warning is triggered from pandas when HDMF is installed with the minimum requirements
+                    "ignore", message=_distutils_warning_re, category=DeprecationWarning
                 )
                 _import_from_file(script)
         except Exception:
