@@ -1,5 +1,15 @@
 # HDMF Changelog
 
+## HDMF 3.5.0 (Upcoming)
+
+### Minor improvements
+- Began to deprecate the use of the testing script `test.py` in favor of `pytest` and `test_gallery.py`.
+  @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+- Updated installation and maintainer documentation. @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+
+### Bug fixes
+- Fixed CI and flake8 issues. @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+
 ## HDMF 3.4.2 (August 26, 2022)
 
 ### Minor improvements
