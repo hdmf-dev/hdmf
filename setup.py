@@ -24,7 +24,7 @@ reqs = [
     'pandas>=1.0.5,<2',
     'ruamel.yaml>=0.16,<1',
     'scipy>=1.1,<2',
-    'setuptools',
+    'setuptools>=40.8',
 ]
 
 print(reqs)
