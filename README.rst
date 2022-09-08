@@ -49,14 +49,14 @@ Overall Health
      :target: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
      :alt: Requirements Status
 
-.. image:: https://readthedocs.org/projects/hdmf/badge/?version=latest
-     :target: https://hdmf.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/hdmf/badge/?version=stable
+     :target: https://hdmf.readthedocs.io/en/stable/?badge=stable
      :alt: Documentation Status
 
 Installation
 ============
 
-See the HDMF documentation for details http://hdmf.readthedocs.io/en/latest/getting_started.html#installation
+See the HDMF documentation for details http://hdmf.readthedocs.io/en/stable/getting_started.html#installation
 
 Code of Conduct
 ===============
