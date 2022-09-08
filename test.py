@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# NOTE this script is currently used in CI *only* to test the sphinx gallery examples using python test.py -e
+# NOTE This script is deprecated. Please use pytest to run unit tests and run python test_gallery.py to
+# test Sphinx Gallery files.
 
 import warnings
 import re
@@ -92,6 +93,12 @@ def run_example_tests():
 
 
 def main():
+    warnings.warn(
+        "python test.py is deprecated. Please use pytest to run unit tests and run python test_gallery.py to "
+        "test Sphinx Gallery files.",
+        DeprecationWarning
+    )
+
     # setup and parse arguments
     parser = argparse.ArgumentParser('python test.py [options]')
     parser.set_defaults(verbosity=1, suites=[])
