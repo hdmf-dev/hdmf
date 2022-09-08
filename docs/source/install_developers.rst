@@ -16,8 +16,8 @@ the venv_ tool that comes packaged with Python to create a new virtual environme
 .. _conda package and environment management system: https://conda.io/projects/conda/en/latest/index.html
 
 
-Option 1: Using virtualenv
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Option 1: Using venv
+^^^^^^^^^^^^^^^^^^^^
 
 First, create a new virtual environment using the ``venv`` tool. This
 virtual environment will be stored in a new directory called ``"hdmf-env"`` in the current directory.
