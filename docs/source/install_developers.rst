@@ -93,22 +93,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 Run tests
 ---------
 
-You can run the full test suite with the following command:
-
-.. code:: bash
-
-    python test.py
-
-You could also run the full test suite by installing and running the ``pytest`` tool,
-a popular testing tool that provides more options for configuring test runs.
-
-First, install ``pytest``:
-
-.. code:: bash
-
-    pip install pytest
-
-Then run the full test suite:
+You can run the full test suite by running:
 
 .. code:: bash
 
@@ -125,8 +110,8 @@ Python debugger (PDB) prompt on an error, e.g.,
     pytest --pdb tests/unit/test_container.py                             # start pdb on error
 
 
-Finally, you can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
-create a virtual environment, install dependencies, and run the test suite for Python 3.7, 3.8, 3.9, and 3.10.
+You can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
+create a virtual environment, install dependencies, and run the test suite for different versions of Python.
 This can take some time to run.
 
 .. _pytest: https://docs.pytest.org/
@@ -135,6 +120,12 @@ This can take some time to run.
 .. code:: bash
 
     tox
+
+You can also test the Sphinx Gallery files run without warnings or errors by running:
+
+.. code:: bash
+
+    python test_gallery.py
 
 Install latest pre-release
 --------------------------
