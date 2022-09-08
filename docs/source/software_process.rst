@@ -10,9 +10,9 @@ Continuous Integration
 
 HDMF is tested against Ubuntu, macOS, and Windows operating systems.
 The project has both unit and integration tests.
-Tests run on `GitHub Actions`_
+Tests run on `GitHub Actions`_.
 
-Each time a PR is published or updated, the project is built, packaged, and tested on all supported operating systems
+Each time a PR is created or updated, the project is built, packaged, and tested on all supported operating systems
 and python distributions. That way, as a contributor, you know if you introduced regressions or coding style
 inconsistencies.
 
@@ -85,15 +85,15 @@ Versioning and Releasing
 HDMF uses versioneer_ for versioning source and wheel distributions. Versioneer creates a semi-unique release
 name for the wheels that are created. It requires a version control system (git in HDMF's case) to generate a release
 name. After all the tests pass, the "Deploy release" GitHub Actions workflow
-creates both a wheel (\*.whl) and source distribution (\*.tar.gz) for Python 3
+creates both a wheel (``\*.whl``) and source distribution (``\*.tar.gz``) for Python 3
 and uploads them back to GitHub as a release_. Versioneer makes it possible to get the source distribution from GitHub
 and create wheels directly without having to use a version control system because it hardcodes versions in the source
 distribution.
 
-It is important to note that GitHub automatically generates source code archives in .zip and .tar.gz formats and
+It is important to note that GitHub automatically generates source code archives in ``.zip`` and ``.tar.gz`` formats and
 attaches those files to all releases as an asset. These files currently do not contain the submodules within HDMF and
 thus do not serve as a complete installation. For a complete source code archive, use the source distribution generated
-by GitHub Actions, typically named `hdmf-{version}.tar.gz`.
+by GitHub Actions, typically named ``hdmf-{version}.tar.gz``.
 
 .. _versioneer: https://github.com/warner/python-versioneer
 .. _release: https://github.com/hdmf-dev/hdmf/releases
