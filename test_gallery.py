@@ -24,6 +24,10 @@ def _import_from_file(script):
     spec.loader.exec_module(module)
 
 
+_numpy_warning_re = (
+    "numpy.ufunc size changed, may indicate binary incompatibility. Expected 216, got 192"
+)
+
 _distutils_warning_re = (
     "distutils Version classes are deprecated. Use packaging.version instead."
 )
@@ -60,6 +64,11 @@ def run_gallery_tests():
                 warnings.filterwarnings(
                     # this warning is triggered from pandas when HDMF is installed with the minimum requirements
                     "ignore", message=_distutils_warning_re, category=DeprecationWarning
+                )
+                warnings.filterwarnings(
+                    # this warning is triggered when some numpy extension code in an upstream package was compiled
+                    # against a different version of numpy than the one installed
+                    "ignore", message=_numpy_warning_re, category=RuntimeWarning
                 )
                 _import_from_file(script)
         except Exception:
