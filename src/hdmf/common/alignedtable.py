@@ -250,7 +250,7 @@ class AlignedDynamicTable(DynamicTable):
         res = pd.concat(dfs, axis=1, keys=names)
         # TODO: Once Pandas minimum version has increased to 1.5 drop the if/else and just use the 1.5 approach
         if version.parse(pd.__version__) >= version.parse("1.5.0"):
-            res = res.set_index((self.name, 'id'), drop=True, copy=False)
+            res = res.set_index((self.name, 'id'), drop=True, copy=False)   # pragma: no cover
         else:
             res.set_index((self.name, 'id'), drop=True, inplace=True)
         return res
@@ -318,7 +318,7 @@ class AlignedDynamicTable(DynamicTable):
             res = pd.concat(dfs, axis=1, keys=names)
             # TODO: Once Pandas minimum version has increased to 1.5 drop the if/else and just use the 1.5 approach
             if version.parse(pd.__version__) >= version.parse("1.5.0"):
-                res = res.set_index((self.name, 'id'), drop=True, copy=False)
+                res = res.set_index((self.name, 'id'), drop=True, copy=False)  # pragma: no cover
             else:
                 res.set_index((self.name, 'id'), drop=True, inplace=True)
             return res
