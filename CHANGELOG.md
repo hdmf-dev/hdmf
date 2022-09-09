@@ -9,6 +9,7 @@
 
 ### Bug fixes
 - Fixed CI and flake8 issues. @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+- Updated uses of pandas.DataFrame.set_index to avoid FutureWarnings for pandas >=1.5.x @oruebel ([#762](https://github.com/hdmf-dev/hdmf/pull/762))
 
 ## HDMF 3.4.2 (August 26, 2022)
 

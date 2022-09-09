@@ -503,7 +503,7 @@ with closing(sqlite3.connect(db_file)) as db:
     for table_name in tables:
         table_name = table_name[0]
         table = pd.read_sql_query("SELECT * from %s" % table_name, db)
-        table.set_index('id', inplace=True)
+        table = table.set_index('id')
         ref_table = getattr(er, table_name).to_dataframe()
         assert np.all(np.array(table.index) == np.array(ref_table.index) + 1)
         for c in table.columns:
