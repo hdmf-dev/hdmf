@@ -181,12 +181,12 @@ def validate(**kwargs):
 @docval(*get_docval(HDF5IO.__init__), is_method=False)
 def get_hdf5io(**kwargs):
     """
-    A convenience method for getting an HDF5IO object
+    A convenience method for getting an HDF5IO object using an HDMF-common build manager if none is provided.
     """
     manager = getargs('manager', kwargs)
     if manager is None:
         kwargs['manager'] = get_manager()
-    return HDF5IO.__init__(**kwargs)
+    return HDF5IO(**kwargs)
 
 
 # load the hdmf-common namespace
