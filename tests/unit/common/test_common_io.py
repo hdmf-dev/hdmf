@@ -87,4 +87,3 @@ class TestGetHdf5IO(TestCase):
         manager = get_manager()
         with get_hdf5io(self.path, "w", manager=manager) as io:
             self.assertIs(io.manager, manager)
-
