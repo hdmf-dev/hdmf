@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.5.0 (Upcoming)
+## HDMF 3.4.3 (September 14, 2022)
 
 ### Minor improvements
 - Began to deprecate the use of the testing script `test.py` in favor of `pytest` and `test_gallery.py`.
@@ -10,6 +10,7 @@
 ### Bug fixes
 - Fixed CI and flake8 issues. @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
 - Updated uses of pandas.DataFrame.set_index to avoid FutureWarnings for pandas >=1.5.x @oruebel ([#762](https://github.com/hdmf-dev/hdmf/pull/762))
+- Fixed broken `hdmf.common.get_hdf5io` function. @rly ([#765](https://github.com/hdmf-dev/hdmf/pull/765))
 
 ## HDMF 3.4.2 (August 26, 2022)
 
