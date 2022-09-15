@@ -21,6 +21,7 @@ reqs = [
     'h5py>=2.10,<4',
     'jsonschema>=2.6.0,<5',
     'numpy>=1.16,<1.24',
+    'packaging',
     'pandas>=1.0.5,<2',
     'ruamel.yaml>=0.16,<1',
     'scipy>=1.1,<2',
