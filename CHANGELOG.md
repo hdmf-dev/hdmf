@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.4.4 (September 15, 2022)
+
+### Bug fixes
+- Fixed missing dependency "packaging" introduced in 3.4.3. @rly ([#768](https://github.com/hdmf-dev/hdmf/pull/768))
+
 ## HDMF 3.4.3 (September 14, 2022)
 
 ### Minor improvements
