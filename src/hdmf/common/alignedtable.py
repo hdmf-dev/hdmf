@@ -247,11 +247,7 @@ class AlignedDynamicTable(DynamicTable):
             dfs += [category.to_dataframe().reset_index() for category in self.category_tables.values()]
         names = [self.name, ] + list(self.category_tables.keys())
         res = pd.concat(dfs, axis=1, keys=names)
-        # TODO: Once Pandas minimum version has increased to 1.5 drop the if/else and just use the 1.5 approach
-        if tuple([int(i) for i in pd.__version__.split(".") if i.isnumeric()]) >= (1, 5, 0):
-            res = res.set_index((self.name, 'id'), drop=True, copy=False)   # pragma: no cover
-        else:
-            res.set_index((self.name, 'id'), drop=True, inplace=True)
+        res.set_index((self.name, 'id'), drop=True, inplace=True)
         return res
 
     def __getitem__(self, item):
@@ -315,11 +311,7 @@ class AlignedDynamicTable(DynamicTable):
                    [category[item].reset_index() for category in self.category_tables.values()])
             names = [self.name, ] + list(self.category_tables.keys())
             res = pd.concat(dfs, axis=1, keys=names)
-            # TODO: Once Pandas minimum version has increased to 1.5 drop the if/else and just use the 1.5 approach
-            if tuple([int(i) for i in pd.__version__.split(".") if i.isnumeric()]) >= (1, 5, 0):
-                res = res.set_index((self.name, 'id'), drop=True, copy=False)  # pragma: no cover
-            else:
-                res.set_index((self.name, 'id'), drop=True, inplace=True)
+            res.set_index((self.name, 'id'), drop=True, inplace=True)
             return res
         elif isinstance(item, str) or item is None:
             if item in self.colnames:
