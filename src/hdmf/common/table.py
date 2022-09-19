@@ -655,7 +655,7 @@ class DynamicTable(Container):
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
                      'object is used.')},
-             allow_extra=True)
+            allow_extra=True)
     def add_column(self, **kwargs):  # noqa: C901
         """
         Add a column to this table.
