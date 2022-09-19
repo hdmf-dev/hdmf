@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
-from packaging import version
 
 from . import register_class
 from .table import DynamicTable
@@ -249,7 +248,7 @@ class AlignedDynamicTable(DynamicTable):
         names = [self.name, ] + list(self.category_tables.keys())
         res = pd.concat(dfs, axis=1, keys=names)
         # TODO: Once Pandas minimum version has increased to 1.5 drop the if/else and just use the 1.5 approach
-        if version.parse(pd.__version__) >= version.parse("1.5.0"):
+        if tuple([int(i) for i in pd.__version__.split(".") if i.isnumeric()]) >= (1, 5, 0):
             res = res.set_index((self.name, 'id'), drop=True, copy=False)   # pragma: no cover
         else:
             res.set_index((self.name, 'id'), drop=True, inplace=True)
@@ -317,7 +316,7 @@ class AlignedDynamicTable(DynamicTable):
             names = [self.name, ] + list(self.category_tables.keys())
             res = pd.concat(dfs, axis=1, keys=names)
             # TODO: Once Pandas minimum version has increased to 1.5 drop the if/else and just use the 1.5 approach
-            if version.parse(pd.__version__) >= version.parse("1.5.0"):
+            if tuple([int(i) for i in pd.__version__.split(".") if i.isnumeric()]) >= (1, 5, 0):
                 res = res.set_index((self.name, 'id'), drop=True, copy=False)  # pragma: no cover
             else:
                 res.set_index((self.name, 'id'), drop=True, inplace=True)
