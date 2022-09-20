@@ -662,7 +662,7 @@ class DynamicTable(Container):
 
         If data is provided, it must contain the same number of rows as the current state of the table.
         
-        Extra keyword arguments will be passed to the constructor of the column class ("col_cls"). 
+        Extra keyword arguments will be passed to the constructor of the column class ("col_cls").
 
         :raises ValueError: if the column has already been added to the table
         """
