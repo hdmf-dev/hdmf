@@ -654,12 +654,15 @@ class DynamicTable(Container):
             {'name': 'col_cls', 'type': type, 'default': VectorData,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
-                     'object is used.')}, )
+                     'object is used.')},
+            allow_extra=True)
     def add_column(self, **kwargs):  # noqa: C901
         """
         Add a column to this table.
 
         If data is provided, it must contain the same number of rows as the current state of the table.
+
+        Extra keyword arguments will be passed to the constructor of the column class ("col_cls").
 
         :raises ValueError: if the column has already been added to the table
         """

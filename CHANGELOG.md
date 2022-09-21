@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.4.5 (September 22, 2022)
+
+### Minor improvements
+- Allow passing arguments through to column class constructur (argument `col_cls`) when calling `DynamicTable.add_column`. @ajtritt ([#769](https://github.com/hdmf-dev/hdmf/pull/769))
+
 ## HDMF 3.4.4 (September 20, 2022)
 
 ### Bug fixes
