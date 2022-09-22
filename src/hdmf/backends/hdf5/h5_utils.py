@@ -637,3 +637,9 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset) and not self.data.id.valid:
             return False
         return super().valid
+
+    def __len__(self):
+        maxshape = self.__iosettings.get('maxshape', None)
+        if maxshape is not None and maxshape[0] is not None:
+            return maxshape[0]
+        return super().__len__()
