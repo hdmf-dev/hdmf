@@ -82,6 +82,8 @@ class DynamicTableGenerator(CustomClassGenerator):
             # the spec does not know which table this DTR points to
             # the user must specify the table attribute on the DTR after it is generated
             column_conf['table'] = True
+        else:
+            column_conf['class'] = dtype
 
         index_counter = 0
         index_name = attr_name
