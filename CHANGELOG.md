@@ -1,5 +1,9 @@
 # HDMF Changelog
 
+## HDMF 3.4.6 (September 22, 2022)
+
+- When data is not specified in DataIO, 1) require dtype and shape both be specified and 2) determine length from shape. @ajtritt ([#771](https://github.com/hdmf-dev/hdmf/pull/771))
+
 ## HDMF 3.4.5 (September 22, 2022)
 
 ### Minor improvements
