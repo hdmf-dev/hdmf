@@ -995,6 +995,8 @@ class DataIO:
 
     def __len__(self):
         """Number of values in self.data"""
+        if self.__shape is not None:
+            return self.__shape[0]
         if not self.valid:
             raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
         return len(self.data)

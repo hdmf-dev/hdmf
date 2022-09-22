@@ -489,6 +489,10 @@ class H5DataIO(DataIO):
         # Get the list of I/O options that user has passed in
         ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters',
                                                                       'dtype', 'shape']]
+
+        if kwargs['data'] is None:
+            if kwargs['shape'] is None or kwargs['dtype'] is None:
+                raise ValueError("Must specify 'dtype' and 'shape' if not specifying 'data'")
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
