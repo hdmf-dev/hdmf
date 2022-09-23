@@ -921,11 +921,16 @@ class DataIO:
              'default': None})
     def __init__(self, **kwargs):
         data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
-        if data is not None:
+        if data is None:
+            if dtype is None or shape is None:
+                raise ValueError("Must specify 'dtype' and 'shape' if not specifying 'data'")
+        else:
             if dtype is not None:
-                raise ValueError("Setting the dtype when data is not None is not supported")
+                warn("Argument 'dtype' is ignored when 'data' is specified")
+                dtype = None
             if shape is not None:
-                raise ValueError("Setting the shape when data is not None is not supported")
+                warn("Argument 'shape' is ignored when 'data' is specified")
+                shape = None
         self.__data = data
         self.__dtype = dtype
         self.__shape = shape

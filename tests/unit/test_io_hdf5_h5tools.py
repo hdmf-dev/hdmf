@@ -3150,6 +3150,10 @@ class H5DataIOTests(TestCase):
             H5DataIO(shape=(10, 10))
         with self._bad_arg_cm():
             H5DataIO(dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'dtype' is ignored when 'data' is specified"):
+            H5DataIO(data=np.zeros((10, 10)), dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'shape' is ignored when 'data' is specified"):
+            H5DataIO(data=np.zeros((10, 10)), shape=(10, 10))
 
     def test_dataio_len(self):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
