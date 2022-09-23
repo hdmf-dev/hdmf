@@ -3154,3 +3154,8 @@ class H5DataIOTests(TestCase):
     def test_dataio_len(self):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
         self.assertEqual(len(dataio), 10)
+
+    def test_dataio_shape_then_data(self):
+        dataio = H5DataIO(shape=(10, 10), dtype=int)
+        with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
+            dataio.data = list()
