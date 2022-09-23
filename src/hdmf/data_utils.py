@@ -922,7 +922,7 @@ class DataIO:
     def __init__(self, **kwargs):
         data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
         if data is None:
-            if dtype is None or shape is None:
+            if (dtype is None) ^ (shape is None):
                 raise ValueError("Must specify 'dtype' and 'shape' if not specifying 'data'")
         else:
             if dtype is not None:
