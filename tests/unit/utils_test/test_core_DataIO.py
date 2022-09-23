@@ -60,9 +60,9 @@ class DataIOTests(TestCase):
         """
         Test that either data or dtype+shape are specified exclusively
         """
-        with self.assertRaisesRegex(ValueError, "Setting the dtype when data is not None is not supported"):
+        with self.assertWarnsRegex(UserWarning, "Argument 'dtype' is ignored when 'data' is specified"):
             DataIO(data=np.arange(5), dtype=int)
-        with self.assertRaisesRegex(ValueError, "Setting the shape when data is not None is not supported"):
+        with self.assertWarnsRegex(UserWarning, "Argument 'shape' is ignored when 'data' is specified"):
             DataIO(data=np.arange(5), shape=(3,))
 
         dataio = DataIO(shape=(3,), dtype=int)

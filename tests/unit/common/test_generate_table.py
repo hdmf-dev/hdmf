@@ -5,7 +5,7 @@ import tempfile
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import BuildManager, TypeMap
-from hdmf.common import get_type_map, DynamicTable
+from hdmf.common import get_type_map, DynamicTable, VectorData
 from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
@@ -142,11 +142,12 @@ class TestDynamicDynamicTable(TestCase):
     def test_dynamic_table(self):
         assert issubclass(self.TestTable, DynamicTable)
 
-        assert self.TestTable.__columns__[0] == dict(
-            name='my_col',
-            description='a test column',
-            required=True
-        )
+        assert self.TestTable.__columns__[0] == {
+                'name': 'my_col',
+                'description': 'a test column',
+                'class': VectorData,
+                'required': True
+            }
 
     def test_forbids_incorrect_col(self):
         test_table = self.TestTable(name='test_table', description='my test table')
