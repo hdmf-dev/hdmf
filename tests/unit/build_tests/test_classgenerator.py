@@ -8,7 +8,7 @@ from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
 from hdmf.testing import TestCase
-from hdmf.utils import get_docval
+from hdmf.utils import get_docval, docval
 
 from .test_io_map import Bar
 from tests.unit.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
@@ -262,6 +262,40 @@ class TestDynamicContainer(TestCase):
         Baz = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         obj = Baz(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
         self.assertEqual(obj.name, 'Baz')
+
+    def test_dynamic_container_super_init_fixed_value(self):
+        """Test that dynamic class generation when the superclass init does not include all fields works"""
+
+        class FixedAttrBar(Bar):
+            @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
+                    {'name': 'data', 'type': ('data', 'array_data'), 'doc': 'some data'},
+                    {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
+                    {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
+                    {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
+            def __init__(self, **kwargs):
+                kwargs["attr1"] = "fixed_attr1"
+                super().__init__(**kwargs)
+
+        # overwrite the "Bar" to Bar class mapping from setUp()
+        self.type_map.register_container_type(CORE_NAMESPACE, "Bar", FixedAttrBar)
+
+        baz_spec = GroupSpec('A test extension with no Container class',
+                             data_type_def='Baz', data_type_inc=self.bar_spec,
+                             attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another float attribute', 'float')])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
+        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4'}
+        received_args = set()
+        for x in get_docval(cls.__init__):
+            if x['name'] != 'foo':
+                received_args.add(x['name'])
+                with self.subTest(name=x['name']):
+                    self.assertNotIn('default', x)
+        self.assertSetEqual(expected_args, received_args)
+        self.assertTrue(issubclass(cls, FixedAttrBar))
+        inst = cls(name="My Baz", data=[1, 2, 3, 4], attr2=1000, attr3=98.6, attr4=1.0)
+        self.assertEqual(inst.attr1, "fixed_attr1")
 
     def test_multi_container_spec(self):
         multi_spec = GroupSpec(
