@@ -310,7 +310,7 @@ class CustomClassGenerator:
 
             # NOTE: the docval of some constructors do not include all of the fields. the constructor may set
             # some fields to fixed values. so only keep the kwargs that are used in the constructor docval
-            kwargs_to_pass = {k:v for k, v in kwargs.items() if k in parent_docval_args}
+            kwargs_to_pass = {k: v for k, v in kwargs.items() if k in parent_docval_args}
 
             base.__init__(self, **kwargs_to_pass)  # special case: need to pass self to __init__
             # TODO should super() be used above instead of base?

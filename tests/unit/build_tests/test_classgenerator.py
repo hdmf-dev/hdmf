@@ -8,7 +8,7 @@ from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
 from hdmf.testing import TestCase
-from hdmf.utils import get_docval, docval, getargs
+from hdmf.utils import get_docval, docval
 
 from .test_io_map import Bar
 from tests.unit.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
@@ -296,7 +296,6 @@ class TestDynamicContainer(TestCase):
         self.assertTrue(issubclass(cls, FixedAttrBar))
         inst = cls(name="My Baz", data=[1, 2, 3, 4], attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.attr1, "fixed_attr1")
-
 
     def test_multi_container_spec(self):
         multi_spec = GroupSpec(
