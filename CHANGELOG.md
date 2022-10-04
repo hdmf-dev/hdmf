@@ -1,8 +1,14 @@
 # HDMF Changelog
 
-## HDMF 3.4.6 (September 22, 2022)
+## HDMF 3.4.6 (October 4, 2022)
 
+### Minor improvements
 - When data is not specified in DataIO, 1) require dtype and shape both be specified and 2) determine length from shape. @ajtritt ([#771](https://github.com/hdmf-dev/hdmf/pull/771))
+
+### Bug fixes
+- Fix an issue when autogenerating a class that extends a class where the constructor docval does not include all of
+the fields (i.e., when the constructor sets some fields to fixed values). @rly
+([#773](https://github.com/hdmf-dev/hdmf/pull/773))
 
 ## HDMF 3.4.5 (September 22, 2022)
 
