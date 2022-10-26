@@ -391,6 +391,7 @@ class TestDynamicContainer(TestCase):
         )
         assert len(multi.bars) == 0
 
+
 class TestGetClassSeparateNamespace(TestCase):
 
     def setUp(self):
