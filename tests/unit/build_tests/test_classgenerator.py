@@ -384,7 +384,6 @@ class TestDynamicContainer(TestCase):
             ]
         )
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
-        Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
         multi = Multi(
             name='my_multi',
