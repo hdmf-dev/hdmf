@@ -391,17 +391,18 @@ class MCIClassGenerator(CustomClassGenerator):
 
             @docval(*docval_args, allow_positional=AllowPositional.WARNING)
             def __init__(self, **kwargs):
-                # first call the next superclass init
-                # previous_init(**kwargs)
-
-                # store the values passed to init for each MCI attribute
+                # store the values passed to init for each MCI attribute so that they can be added
+                # after calling __init__
                 new_kwargs = list()
                 for field_clsconf in classdict['__clsconf__']:
                     attr_name = field_clsconf['attr']
+                    # do not store the value if it is None or not present
+                    if attr_name not in kwargs or kwargs[attr_name] is None:
+                        continue
                     add_method_name = field_clsconf['add']
                     new_kwarg = dict(
                         attr_name=attr_name,
-                        value=popargs(attr_name, kwargs) if attr_name in kwargs else None,
+                        value=popargs(attr_name, kwargs),
                         add_method_name=add_method_name
                     )
                     new_kwargs.append(new_kwarg)
