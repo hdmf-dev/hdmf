@@ -1,7 +1,7 @@
 import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-from warnings import warn
+from warnings import warn, filterwarnings
 from typing import Tuple
 from itertools import product, chain
 
@@ -215,7 +215,19 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             self.buffer_shape = self._get_default_buffer_shape(buffer_gb=buffer_gb)
         else:
             self.buffer_shape = buffer_shape
-            buffer_gb = np.prod(self.buffer_shape) * np.dtype(self._dtype).itemsize / 1e9
+            itemsize = np.dtype(self._dtype).itemsize
+
+            filterwarnings(action="error")
+            try:
+                buffer_gb = np.prod(self.buffer_shape, dtype=np.int64) * itemsize / 1e9
+            except RuntimeWarning:  # buffer overflow, which can lead to an unintended memory leak
+                raise RuntimeError(
+                    "The GenericDataChunkIterator encountered a buffer overflow with values...\n\n"
+                    f"buffer_shape={buffer_shape}\nitemsize={itemsize}\n\n"
+                    "Please report this issue to https://github.com/hdmf-dev/hdmf/issues/new/choose "
+                    "and include these values in the ticket."
+                )
+            filterwarnings(action="default")  # Return to normal behavior
 
         array_chunk_shape = np.array(self.chunk_shape)
         array_buffer_shape = np.array(self.buffer_shape)
