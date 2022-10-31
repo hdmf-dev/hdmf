@@ -174,6 +174,28 @@ class GenericDataChunkIteratorTests(TestCase):
                 progress_bar_options=dict(total=5),
             )
 
+    def test_maxshape_attribute_uint64_type(self):
+        assert self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape.dtype is np.dtype("uint64")
+
+    def test_chunk_shape_attribute_automated_uint64_type(self):
+        assert self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape.dtype is np.dtype("uint64")
+
+    def test_buffer_shape_attribute_automated_uint64_type(self):
+        assert self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape.dtype is np.dtype("uint64")
+
+    def test_chunk_shape_attribute_manual_uint64_type(self):
+        assert self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array,
+            chunk_shape=(100, 2)
+        ).chunk_shape.dtype is np.dtype("uint64")
+
+    def test_buffer_shape_attribute_manual_uint64_type(self):
+        assert self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array,
+            chunk_shape=(100, 2),
+            buffer_shape=(200, 4),
+        ).buffer_shape.dtype is np.dtype("uint64")
+
     def test_num_buffers(self):
         buffer_shape = (950, 190)
         chunk_shape = (50, 38)
