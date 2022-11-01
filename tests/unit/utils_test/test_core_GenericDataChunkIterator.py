@@ -34,7 +34,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def setUp(self):
         np.random.seed(seed=0)
         self.test_dir = Path(mkdtemp())
-        self.test_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(2000, 384), dtype="int16")
+        self.test_array = np.empty(shape=(2000, 384), dtype="int16")
 
     def tearDown(self):
         rmtree(self.test_dir)
@@ -130,13 +130,6 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
 
-        buffer_shape = (-1, 384)
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg=f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!"
-        ):
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
-
         buffer_shape = (2001, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
@@ -154,13 +147,6 @@ class GenericDataChunkIteratorTests(TestCase):
             exc_msg=f"chunk_mb ({chunk_mb}) must be greater than zero!"
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=chunk_mb)
-
-        chunk_shape = (-1, 384)
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
-        ):
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
 
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar_assertion(self):
