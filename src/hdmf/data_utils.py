@@ -1,7 +1,7 @@
 import copy
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-from warnings import warn, filterwarnings
+from warnings import warn
 from typing import Tuple
 from itertools import product, chain
 
