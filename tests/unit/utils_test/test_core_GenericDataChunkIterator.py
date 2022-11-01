@@ -34,7 +34,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def setUp(self):
         np.random.seed(seed=0)
         self.test_dir = Path(mkdtemp())
-        self.test_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(2000, 384), dtype="int16")
+        self.test_array = np.empty(shape=(2000, 384), dtype="int16")
 
     def tearDown(self):
         rmtree(self.test_dir)
@@ -130,13 +130,6 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
 
-        buffer_shape = (-1, 384)
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg=f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!"
-        ):
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
-
         buffer_shape = (2001, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
@@ -155,13 +148,6 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=chunk_mb)
 
-        chunk_shape = (-1, 384)
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
-        ):
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
-
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar_assertion(self):
         with self.assertWarnsWith(
@@ -173,6 +159,43 @@ class GenericDataChunkIteratorTests(TestCase):
                 display_progress=True,
                 progress_bar_options=dict(total=5),
             )
+
+    def test_maxshape_attribute_uint64_type(self):
+        assert all(
+            [
+                x.dtype is np.dtype("uint64")
+                for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape
+            ]
+        )
+
+    def test_chunk_shape_attribute_automated_uint64_type(self):
+        assert all(
+            [
+                x.dtype is np.dtype("uint64")
+                for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape
+            ]
+        )
+
+    def test_buffer_shape_attribute_automated_uint64_type(self):
+        assert all(
+            [
+                x.dtype is np.dtype("uint64")
+                for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape
+            ]
+        )
+
+    def test_chunk_shape_attribute_manual_uint64_type(self):
+        assert all([x.dtype is np.dtype("uint64") for x in self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array,
+            chunk_shape=(100, 2)
+        ).chunk_shape])
+
+    def test_buffer_shape_attribute_manual_uint64_type(self):
+        assert all([x.dtype is np.dtype("uint64") for x in self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array,
+            chunk_shape=(100, 2),
+            buffer_shape=(200, 4),
+        ).buffer_shape])
 
     def test_num_buffers(self):
         buffer_shape = (950, 190)

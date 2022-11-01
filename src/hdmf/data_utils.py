@@ -153,7 +153,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc=(
                 "If chunk_shape is not specified, it will be inferred as the smallest chunk "
                 "below the chunk_mb threshold.",
-                "Defaults to 1MB."
+                "Defaults to 1MB.",
             ),
             default=None,
         ),
@@ -205,22 +205,19 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             chunk_shape is not None
         ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
-        self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
-        if chunk_shape is None:
-            self.chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
-        else:
-            self.chunk_shape = chunk_shape
-        if buffer_shape is None:
-            self.buffer_shape = self._get_default_buffer_shape(buffer_gb=buffer_gb)
-        else:
-            self.buffer_shape = buffer_shape
-            buffer_gb = np.prod(self.buffer_shape) * np.dtype(self._dtype).itemsize / 1e9
+        self._maxshape = tuple(np.array(self._get_maxshape(), dtype="uint64"))  # Upcast for safer numpy operations
+        self.chunk_shape = tuple(
+            np.asarray(chunk_shape or self._get_default_chunk_shape(chunk_mb=chunk_mb), dtype="uint64")
+        )  # Upcast for safer numpy operations
+        self.buffer_shape = tuple(
+            np.asarray(buffer_shape or self._get_default_buffer_shape(buffer_gb=buffer_gb), dtype="uint64")
+        )  # Upcast for safer numpy operations
 
+        # Shape assertions
         array_chunk_shape = np.array(self.chunk_shape)
         array_buffer_shape = np.array(self.buffer_shape)
         array_maxshape = np.array(self.maxshape)
-        assert all(array_buffer_shape > 0), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
         assert all(
             array_chunk_shape <= array_maxshape
         ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
@@ -235,7 +232,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
 
-        self.num_buffers = np.prod(np.ceil(array_maxshape / array_buffer_shape))
+        self.num_buffers = np.prod(
+            np.ceil(array_maxshape / array_buffer_shape).astype("uint64")  # np.ceil casts as float
+        )
         self.buffer_selection_generator = (
             tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
             for lower_bounds, upper_bounds in zip(
@@ -286,28 +285,28 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         Keeps the dimensional ratios of the original data.
         """
-        chunk_mb = getargs('chunk_mb', kwargs)
+        chunk_mb = getargs("chunk_mb", kwargs)
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         n_dims = len(self.maxshape)
         itemsize = self.dtype.itemsize
         chunk_bytes = chunk_mb * 1e6
-        v = np.floor(np.array(self.maxshape) / np.min(self.maxshape))
+        v = np.floor(np.array(self.maxshape) / np.min(self.maxshape)).astype("uint64")  # np.floor casts to float
         prod_v = np.prod(v)
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
             v_ind = v != 1
             next_v = v[v_ind]
-            v[v_ind] = np.floor(next_v / np.min(next_v))
+            v[v_ind] = np.floor(next_v / np.min(next_v)).astype("uint64")  # np.floor casts to float
             prod_v = np.prod(v)
-        k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
-        return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
+        k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims)).astype("uint64")  # np.floor casts to float
+        return tuple([min(x, self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
     @docval(
         dict(
-           name="buffer_gb",
-           type=(float, int),
-           doc="Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.",
-           default=None,
+            name="buffer_gb",
+            type=(float, int),
+            doc="Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.",
+            default=None,
         )
     )
     def _get_default_buffer_shape(self, **kwargs):
@@ -317,19 +316,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Keeps the dimensional ratios of the original data.
         Assumes the chunk_shape has already been set.
         """
-        buffer_gb = getargs('buffer_gb', kwargs)
+        buffer_gb = getargs("buffer_gb", kwargs)
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
-        assert all(np.array(self.chunk_shape) > 0), (
-            f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
-        )
 
         k = np.floor(
             (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
+        ).astype("uint64")  # np.floor casts to float
+        return tuple(
+            [
+                min(max(x, self.chunk_shape[j]), self.maxshape[j])
+                for j, x in enumerate(k * np.array(self.chunk_shape))
+            ]
         )
-        return tuple([
-            min(max(int(x), self.chunk_shape[j]), self.maxshape[j])
-            for j, x in enumerate(k * np.array(self.chunk_shape))
-        ])
 
     def recommended_chunk_shape(self) -> tuple:
         return self.chunk_shape
