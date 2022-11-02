@@ -236,7 +236,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             np.ceil(array_maxshape / array_buffer_shape).astype("uint64")  # np.ceil casts as float
         )
         self.buffer_selection_generator = (
-            tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
+            tuple(
+                [
+                    slice(np.uint64(lower_bound), np.uint64(upper_bound))
+                    for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)
+                ]
+            )
             for lower_bounds, upper_bounds in zip(
                 product(
                     *[

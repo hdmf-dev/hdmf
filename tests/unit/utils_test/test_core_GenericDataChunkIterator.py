@@ -197,6 +197,19 @@ class GenericDataChunkIteratorTests(TestCase):
             buffer_shape=(200, 4),
         ).buffer_shape])
 
+    def test_selection_uint64_type(self):
+        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
+        first_chunk = next(iterator)
+        stop_0 = first_chunk.selection[0].stop
+        start_0 = first_chunk.selection[0].start
+        stop_1 = first_chunk.selection[1].stop
+        start_1 = first_chunk.selection[1].start
+
+        assert stop_0.dtype is np.dtype("uint64")
+        assert start_0.dtype is np.dtype("uint64")
+        assert stop_1.dtype is np.dtype("uint64")
+        assert start_1.dtype is np.dtype("uint64")
+
     def test_num_buffers(self):
         buffer_shape = (950, 190)
         chunk_shape = (50, 38)
