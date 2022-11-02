@@ -3,8 +3,7 @@
 ## Upcoming
 
 ### Bug fixes
-- Fixed an issue with the `data_utils.GenericDataChunkIterator` where if the underlying dataset was such that the `numpy.product` of the `maxshape` exceeded the range of the default `int32`, buffer overflow would occur and cause the true buffer shape to exceed available memory. This has been resolved by upcasting all shape attributes and operations to use the `uint64` data type. @codycbakerphd ([#780](https://github.com/hdmf-dev/hdmf/pull/780))
-- Fixed issue following #780 where not all of the data types of the `selection` ranges for each DataChunk were consistent, leading to unexpected casting issues when attempting operations between endpoints (such as `selection.stop - selection.start` returning `float64` because one was a `uint64` and the other was a `int32`). @codycbakerphd ([#781](https://github.com/hdmf-dev/hdmf/pull/781))
+- Fixed an issue with the `data_utils.GenericDataChunkIterator` where if the underlying dataset was such that the `numpy.product` of the `maxshape` exceeded the range of the default `int32`, buffer overflow would occur and cause the true buffer shape to exceed available memory. This has been resolved by upcasting all shape attributes and operations to use the `uint64` data type. The `selection` ranges are also cast as `int32` for downstream compatability @codycbakerphd ([#780](https://github.com/hdmf-dev/hdmf/pull/780)) ([#781](https://github.com/hdmf-dev/hdmf/pull/781))
 
 
 ## HDMF 3.4.7 (October 26, 2022)
