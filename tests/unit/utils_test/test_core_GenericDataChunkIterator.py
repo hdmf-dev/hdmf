@@ -205,10 +205,10 @@ class GenericDataChunkIteratorTests(TestCase):
         stop_1 = first_chunk.selection[1].stop
         start_1 = first_chunk.selection[1].start
 
-        assert stop_0.dtype is np.dtype("uint64")
-        assert start_0.dtype is np.dtype("uint64")
-        assert stop_1.dtype is np.dtype("uint64")
-        assert start_1.dtype is np.dtype("uint64")
+        assert isinstance(stop_0, int)
+        assert isinstance(start_0, int)
+        assert isinstance(stop_1, int)
+        assert isinstance(start_1, int)
 
     def test_num_buffers(self):
         buffer_shape = (950, 190)
