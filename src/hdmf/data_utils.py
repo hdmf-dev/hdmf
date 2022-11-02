@@ -238,7 +238,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         self.buffer_selection_generator = (
             tuple(
                 [
-                    slice(np.uint64(lower_bound), np.uint64(upper_bound))
+                    slice(int(lower_bound), int(upper_bound))
                     for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)
                 ]
             )
