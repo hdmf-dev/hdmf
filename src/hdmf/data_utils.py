@@ -207,9 +207,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
         self._dtype = self._get_dtype()
-        self._maxshape = self._get_maxshape()
-        self.chunk_shape = chunk_shape or self._get_default_chunk_shape(chunk_mb=chunk_mb)
-        self.buffer_shape = buffer_shape or self._get_default_buffer_shape(buffer_gb=buffer_gb)
+        self._maxshape = tuple(int(x) for x in self._get_maxshape())
+        self.chunk_shape = tuple(int(x) for x in chunk_shape) or self._get_default_chunk_shape(chunk_mb=chunk_mb)
+        self.buffer_shape = tuple(int(x) for x in buffer_shape) or self._get_default_buffer_shape(buffer_gb=buffer_gb)
 
         # Shape assertions
         assert all(

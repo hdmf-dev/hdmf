@@ -1,8 +1,9 @@
+import unittest
 import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-import unittest
+from typing import Tuple
 
 import h5py
 
@@ -22,22 +23,37 @@ class GenericDataChunkIteratorTests(TestCase):
             self.array = array
             super().__init__(**kwargs)
 
-        def _get_data(self, selection):
+        def _get_data(self, selection) -> np.ndarray:
             return self.array[selection]
 
-        def _get_maxshape(self):
+        def _get_maxshape(self) -> Tuple[int, ...]:
             return self.array.shape
 
-        def _get_dtype(self):
+        def _get_dtype(self) -> np.dtype:
             return self.array.dtype
 
-    def setUp(self):
-        np.random.seed(seed=0)
-        self.test_dir = Path(mkdtemp())
-        self.test_array = np.empty(shape=(2000, 384), dtype="int16")
+    class TestNumpyArrayDataChunkIteratorWithNumpyDtypeShape(GenericDataChunkIterator):
+        def __init__(self, array: np.ndarray, **kwargs):
+            self.array = array
+            super().__init__(**kwargs)
 
-    def tearDown(self):
-        rmtree(self.test_dir)
+        def _get_data(self, selection) -> np.ndarray:
+            return self.array[selection]
+
+        def _get_maxshape(self) -> Tuple[np.uint64, ...]:  # Undesirable return type, but can be handled
+            return (np.uint64(x) for x in self.array.shape)
+
+        def _get_dtype(self) -> np.dtype:
+            return self.array.dtype
+
+    @classmethod
+    def setUpClass(cls):
+        cls.test_dir = Path(mkdtemp())
+        cls.test_array = np.empty(shape=(2000, 384), dtype="int16")
+
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.test_dir)
 
     def check_first_data_chunk_call(self, expected_selection, iterator_options):
         test = self.TestNumpyArrayDataChunkIterator(array=self.test_array, **iterator_options)
@@ -177,44 +193,54 @@ class GenericDataChunkIteratorTests(TestCase):
                 progress_bar_options=dict(total=5),
             )
 
-    def test_maxshape_attribute_uint64_type(self):
+    def test_maxshape_attribute_contains_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         assert all(
-            [
-                x.dtype is np.dtype("uint64")
-                for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape
-            ]
+            isinstance(x, int) for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape
         )
 
-    def test_chunk_shape_attribute_automated_uint64_type(self):
+    def test_automated_buffer_shape_attribute_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         assert all(
-            [
-                x.dtype is np.dtype("uint64")
-                for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape
-            ]
+            isinstance(x, int) for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape
         )
 
-    def test_buffer_shape_attribute_automated_uint64_type(self):
+    def test_automated_chunk_shape_attribute_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         assert all(
-            [
-                x.dtype is np.dtype("uint64")
-                for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape
-            ]
+            isinstance(x, int) for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape
         )
 
-    def test_chunk_shape_attribute_manual_uint64_type(self):
-        assert all([x.dtype is np.dtype("uint64") for x in self.TestNumpyArrayDataChunkIterator(
-            array=self.test_array,
-            chunk_shape=(100, 2)
-        ).chunk_shape])
+    def test_np_dtype_maxshape_attribute_contains_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
+        assert all(
+            isinstance(x, int)
+            for x in self.TestNumpyArrayDataChunkIteratorWithNumpyDtypeShape(array=self.test_array).maxshape
+        )
 
-    def test_buffer_shape_attribute_manual_uint64_type(self):
-        assert all([x.dtype is np.dtype("uint64") for x in self.TestNumpyArrayDataChunkIterator(
-            array=self.test_array,
-            chunk_shape=(100, 2),
-            buffer_shape=(200, 4),
-        ).buffer_shape])
+    def test_manual_chunk_shape_attribute_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
+        assert all(
+            isinstance(x, int)
+            for x in self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                chunk_shape=(np.uint64(100), np.uint64(2))
+            ).chunk_shape
+        )
 
-    def test_selection_uint64_type(self):
+    def test_buffer_shape_attribute_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
+        assert all(
+            isinstance(x, int)
+            for x in self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                chunk_shape=(np.uint64(100), np.uint64(2)),
+                buffer_shape=(np.uint64(200), np.uint64(4)),
+            ).buffer_shape
+        )
+
+    def test_selection_slices_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
         first_chunk = next(iterator)
         stop_0 = first_chunk.selection[0].stop
