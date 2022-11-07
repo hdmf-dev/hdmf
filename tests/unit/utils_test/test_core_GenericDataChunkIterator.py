@@ -122,7 +122,7 @@ class GenericDataChunkIteratorTests(TestCase):
                 array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
             )
 
-    def test_buffer_option_assertions(self):
+    def test_buffer_option_assertion_negative_buffer_gb(self):
         buffer_gb = -1
         with self.assertRaisesWith(
             exc_type=AssertionError,
@@ -130,6 +130,7 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
 
+    def test_buffer_option_assertion_exceed_maxshape(self):
         buffer_shape = (2001, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
@@ -140,13 +141,29 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
 
-    def test_chunk_option_assertions(self):
+    def test_buffer_option_assertion_negative_shape(self):
+        buffer_shape = (-1, 384)
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
+
+    def test_chunk_option_assertion_negative_chunk_mb(self):
         chunk_mb = -1
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=f"chunk_mb ({chunk_mb}) must be greater than zero!"
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=chunk_mb)
+
+    def test_chunk_option_assertion_negative_shape(self):
+        chunk_shape = (-1, 384)
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
+        ):
+            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
 
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar_assertion(self):
