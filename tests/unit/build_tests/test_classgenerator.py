@@ -972,7 +972,7 @@ class TestMCIProcessFieldSpec(TestCase):
             spec=spec
         )
 
-        expected = [{'name': 'empty_bars', 'type': (list, tuple, dict, EmptyBar), 'doc': 'test multi', 'default': None}]
+        expected = [{'name': 'empty_bars', 'type': (list, tuple, dict, EmptyBar), 'doc': 'test multi', 'default': ()}]
         self.assertListEqual(docval_args, expected)
 
     def test_update_init_one_or_more(self):

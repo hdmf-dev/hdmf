@@ -357,7 +357,7 @@ class MCIClassGenerator(CustomClassGenerator):
             type=(list, tuple, dict, cls._get_type(field_spec, type_map))
         )
         if cls._check_spec_optional(field_spec, spec):
-            docval_arg['default'] = getattr(field_spec, 'default_value', None)
+            docval_arg['default'] = getattr(field_spec, 'default_value', ())
         cls._add_to_docval_args(docval_args, docval_arg)
 
     @classmethod
