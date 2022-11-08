@@ -372,6 +372,26 @@ class TestDynamicContainer(TestCase):
         assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
         assert multi.attr3 == 5.
 
+    def test_multi_no_input(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='*')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+
+        multi = Multi(
+            name='my_multi',
+            attr3=5.
+        )
+
 
 class TestGetClassSeparateNamespace(TestCase):
 
