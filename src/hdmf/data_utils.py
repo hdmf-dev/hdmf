@@ -345,8 +345,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
         )
 
+        # TODO: replace with math.prod when Python 3.7 is dropped
         k = math.floor(
-            (  # TODO: replace with math.prod when Python 3.7 is dropped
+            (
                 buffer_gb * 1e9 / ( _temporary_prod(self.chunk_shape) * self.dtype.itemsize)
             ) ** (1 / len(self.chunk_shape))
         )
