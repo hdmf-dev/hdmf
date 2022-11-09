@@ -1,4 +1,7 @@
 import copy
+import math
+import functools  # TODO: remove when Python 3.7 support is dropped
+import operator  # TODO: remove when Python 3.7 support is dropped
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
@@ -206,37 +209,49 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
         self._dtype = self._get_dtype()
-        self._maxshape = tuple(np.array(self._get_maxshape(), dtype="uint64"))  # Upcast for safer numpy operations
-        self.chunk_shape = tuple(
-            np.asarray(chunk_shape or self._get_default_chunk_shape(chunk_mb=chunk_mb), dtype="uint64")
-        )  # Upcast for safer numpy operations
-        self.buffer_shape = tuple(
-            np.asarray(buffer_shape or self._get_default_buffer_shape(buffer_gb=buffer_gb), dtype="uint64")
-        )  # Upcast for safer numpy operations
+        self._maxshape = tuple(int(x) for x in self._get_maxshape())
+        chunk_shape = tuple(int(x) for x in chunk_shape) if chunk_shape else chunk_shape
+        self.chunk_shape = chunk_shape or self._get_default_chunk_shape(chunk_mb=chunk_mb)
+        buffer_shape = tuple(int(x) for x in buffer_shape) if buffer_shape else buffer_shape
+        self.buffer_shape = buffer_shape or self._get_default_buffer_shape(buffer_gb=buffer_gb)
 
         # Shape assertions
-        array_chunk_shape = np.array(self.chunk_shape)
-        array_buffer_shape = np.array(self.buffer_shape)
-        array_maxshape = np.array(self.maxshape)
         assert all(
-            array_chunk_shape <= array_maxshape
+            buffer_axis > 0 for buffer_axis in self.buffer_shape
+        ), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
+        assert all(
+            chunk_axis <= maxshape_axis for chunk_axis, maxshape_axis in zip(self.chunk_shape, self.maxshape)
         ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
         assert all(
-            array_buffer_shape <= array_maxshape
+            buffer_axis <= maxshape_axis for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
         ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
         assert all(
-            array_chunk_shape <= array_buffer_shape
+            (chunk_axis <= buffer_axis for chunk_axis, buffer_axis in zip(self.chunk_shape, self.buffer_shape))
         ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the buffer shape ({self.buffer_shape})!"
-        assert all((array_buffer_shape % array_chunk_shape == 0)[array_buffer_shape != array_maxshape]), (
+        assert all(
+            buffer_axis % chunk_axis == 0
+            for chunk_axis, buffer_axis, maxshape_axis in zip(self.chunk_shape, self.buffer_shape, self.maxshape)
+            if buffer_axis != maxshape_axis
+        ), (
             f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
 
-        self.num_buffers = np.prod(
-            np.ceil(array_maxshape / array_buffer_shape).astype("uint64")  # np.ceil casts as float
+        self.num_buffers = functools.reduce(  # TODO: replace with math.prod when Python 3.7 support is dropped
+            operator.mul,
+            [
+                math.ceil(maxshape_axis / buffer_axis)
+                for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
+            ],
+            1,
         )
         self.buffer_selection_generator = (
-            tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
+            tuple(
+                [
+                    slice(lower_bound, upper_bound)
+                    for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)
+                ]
+            )
             for lower_bounds, upper_bounds in zip(
                 product(
                     *[
@@ -279,7 +294,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=None,
         )
     )
-    def _get_default_chunk_shape(self, **kwargs):
+    def _get_default_chunk_shape(self, **kwargs) -> Tuple[int, ...]:
         """
         Select chunk shape with size in MB less than the threshold of chunk_mb.
 
@@ -291,15 +306,17 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         n_dims = len(self.maxshape)
         itemsize = self.dtype.itemsize
         chunk_bytes = chunk_mb * 1e6
-        v = np.floor(np.array(self.maxshape) / np.min(self.maxshape)).astype("uint64")  # np.floor casts to float
-        prod_v = np.prod(v)
+
+        min_maxshape = min(self.maxshape)
+        v = tuple(math.floor(maxshape_axis / min_maxshape) for maxshape_axis in self.maxshape)
+        prod_v = functools.reduce(operator.mul, v, 1)  # TODO: replace with math.prod when Python 3.7 support is dropped
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
-            v_ind = v != 1
-            next_v = v[v_ind]
-            v[v_ind] = np.floor(next_v / np.min(next_v)).astype("uint64")  # np.floor casts to float
-            prod_v = np.prod(v)
-        k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims)).astype("uint64")  # np.floor casts to float
-        return tuple([min(x, self.maxshape[dim]) for dim, x in enumerate(k * v)])
+            non_unit_min_v = min(x for x in v if x != 1)
+            v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
+            # TODO: replace with math.prod when Python 3.7 support is dropped
+            prod_v = functools.reduce(operator.mul, v, 1)
+        k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
+        return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
 
     @docval(
         dict(
@@ -309,7 +326,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=None,
         )
     )
-    def _get_default_buffer_shape(self, **kwargs):
+    def _get_default_buffer_shape(self, **kwargs) -> Tuple[int, ...]:
         """
         Select buffer shape with size in GB less than the threshold of buffer_gb.
 
@@ -318,21 +335,27 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         """
         buffer_gb = getargs("buffer_gb", kwargs)
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert all(chunk_axis > 0 for chunk_axis in self.chunk_shape), (
+            f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
+        )
 
-        k = np.floor(
-            (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
-        ).astype("uint64")  # np.floor casts to float
+        # TODO: replace with math.prod when Python 3.7 support is dropped
+        k = math.floor(
+            (
+                buffer_gb * 1e9 / (functools.reduce(operator.mul, self.chunk_shape, 1) * self.dtype.itemsize)
+            ) ** (1 / len(self.chunk_shape))
+        )
         return tuple(
             [
-                min(max(x, self.chunk_shape[j]), self.maxshape[j])
-                for j, x in enumerate(k * np.array(self.chunk_shape))
+                min(max(k * x, self.chunk_shape[j]), self.maxshape[j])
+                for j, x in enumerate(self.chunk_shape)
             ]
         )
 
-    def recommended_chunk_shape(self) -> tuple:
+    def recommended_chunk_shape(self) -> Tuple[int, ...]:
         return self.chunk_shape
 
-    def recommended_data_shape(self) -> tuple:
+    def recommended_data_shape(self) -> Tuple[int, ...]:
         return self.maxshape
 
     def __iter__(self):
@@ -376,16 +399,16 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
     @property
-    def maxshape(self):
+    def maxshape(self) -> Tuple[int, ...]:
         return self._maxshape
 
     @abstractmethod
-    def _get_maxshape(self) -> tuple:
+    def _get_maxshape(self) -> Tuple[int, ...]:
         """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
 
     @property
-    def dtype(self):
+    def dtype(self) -> np.dtype:
         return self._dtype
 
     @abstractmethod
