@@ -313,7 +313,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
             non_unit_min_v = min(x for x in v if x != 1)
             v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
-            prod_v = functools.reduce(operator.mul, v, 1)  # TODO: replace with math.prod when Python 3.7 support is dropped
+            # TODO: replace with math.prod when Python 3.7 support is dropped
+            prod_v = functools.reduce(operator.mul, v, 1)
         k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
 
