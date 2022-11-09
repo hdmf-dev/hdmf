@@ -28,8 +28,8 @@ jobs:
           - { name: macos-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: macos-latest }
           - { name: macos-python3.10-upgraded    , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: macos-latest }
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - name: Cancel non-latest runs
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -85,9 +85,10 @@ jobs:
           - { name: windows-gallery-python3.7-minimum  , test-tox-env: gallery-py37-minimum  , python-ver: "3.7" , os: windows-latest }
           - { name: windows-gallery-python3.10-upgraded, test-tox-env: gallery-py310-upgraded, python-ver: "3.10", os: windows-latest }
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - name: Cancel non-latest runs
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
+          all_but_latest: true
           access_token: ${{ github.token }}
 
       - uses: actions/checkout@v3
@@ -122,9 +123,10 @@ jobs:
           - { name: conda-linux-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
           - { name: conda-linux-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - name: Cancel non-latest runs
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
+          all_but_latest: true
           access_token: ${{ github.token }}
 
       - uses: actions/checkout@v3
@@ -166,9 +168,10 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
+      - name: Cancel non-latest runs
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
+          all_but_latest: true
           access_token: ${{ github.token }}
 
       - name: Checkout repo with submodules
