@@ -80,7 +80,7 @@ class GenericDataChunkIteratorTests(TestCase):
                 isinstance(x, int) for x in iterable
             )
         )
-            
+
     def test_abstract_assertions(self):
         class TestGenericDataChunkIterator(GenericDataChunkIterator):
             pass
@@ -202,15 +202,21 @@ class GenericDataChunkIteratorTests(TestCase):
 
     def test_maxshape_attribute_contains_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        self.check_all_of_iterable_is_python_int(iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape)
+        self.check_all_of_iterable_is_python_int(
+            iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape
+        )
 
     def test_automated_buffer_shape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        self.check_all_of_iterable_is_python_int(iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape)
+        self.check_all_of_iterable_is_python_int(
+            iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape
+        )
 
     def test_automated_chunk_shape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        self.check_all_of_iterable_is_python_int(iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape)
+        self.check_all_of_iterable_is_python_int(
+            iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape
+        )
 
     def test_np_dtype_maxshape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
@@ -227,7 +233,7 @@ class GenericDataChunkIteratorTests(TestCase):
                 buffer_shape=(np.uint64(200), np.uint64(4)),
             ).buffer_shape
         )
-        
+
     def test_manual_chunk_shape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         self.check_all_of_iterable_is_python_int(
@@ -252,7 +258,7 @@ class GenericDataChunkIteratorTests(TestCase):
         buffer_shape = (950, 190)
         chunk_shape = (50, 38)
         expected_num_buffers = 9
-        
+
         test = self.TestNumpyArrayDataChunkIterator(
             array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
         )
@@ -333,7 +339,7 @@ class GenericDataChunkIteratorTests(TestCase):
         special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(1, 2000, 2000), dtype="int16")
         iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
-        
+
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar(self):
         out_text_file = self.test_dir / "test_progress_bar.txt"

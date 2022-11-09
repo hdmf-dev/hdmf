@@ -128,6 +128,19 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
         raise NotImplementedError("maxshape not implemented for derived class")
 
 
+# TODO: remove this function
+def _temporary_prod(iterable):
+    """
+    We want to use math.prod but it is only available in Python >= 3.8 versions.
+
+    Once 3.7 support is dropped, this function can be removed
+    """
+    result = 1
+    for x in iterable:
+        result *= x
+    return result
+
+
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
@@ -208,8 +221,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         self._dtype = self._get_dtype()
         self._maxshape = tuple(int(x) for x in self._get_maxshape())
-        self.chunk_shape = tuple(int(x) for x in chunk_shape) if chunk_shape else self._get_default_chunk_shape(chunk_mb=chunk_mb)
-        self.buffer_shape = tuple(int(x) for x in buffer_shape) if buffer_shape else self._get_default_buffer_shape(buffer_gb=buffer_gb)
+        chunk_shape = tuple(int(x) for x in chunk_shape) if chunk_shape else chunk_shape
+        self.chunk_shape = chunk_shape or self._get_default_chunk_shape(chunk_mb=chunk_mb)
+        buffer_shape = tuple(int(x) for x in buffer_shape) if buffer_shape else buffer_shape
+        self.buffer_shape = buffer_shape or self._get_default_buffer_shape(buffer_gb=buffer_gb)
 
         # Shape assertions
         assert all(
@@ -233,7 +248,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
 
-        self.num_buffers = math.prod(
+        self.num_buffers = _temporary_prod(  # TODO: replace with math.prod when Python 3.7 is dropped
             math.ceil(maxshape_axis / buffer_axis)
             for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
         )
@@ -301,11 +316,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         min_maxshape = min(self.maxshape)
         v = tuple(math.floor(maxshape_axis / min_maxshape) for maxshape_axis in self.maxshape)
-        prod_v = math.prod(v)
+        prod_v = _temporary_prod(v)  # TODO: replace with math.prod when Python 3.7 is dropped
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
             non_unit_min_v = min(x for x in v if x != 1)
             v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
-            prod_v = math.prod(v)
+            prod_v = _temporary_prod(v)  # TODO: replace with math.prod when Python 3.7 is dropped
         k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
 
@@ -331,7 +346,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
         k = math.floor(
-            (buffer_gb * 1e9 / (math.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
+            (  # TODO: replace with math.prod when Python 3.7 is dropped
+                buffer_gb * 1e9 / ( _temporary_prod(self.chunk_shape) * self.dtype.itemsize)
+            ) ** (1 / len(self.chunk_shape))
         )
         return tuple(
             [
