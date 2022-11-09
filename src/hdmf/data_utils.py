@@ -208,8 +208,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         self._dtype = self._get_dtype()
         self._maxshape = tuple(int(x) for x in self._get_maxshape())
-        self.chunk_shape = tuple(int(x) for x in chunk_shape) or self._get_default_chunk_shape(chunk_mb=chunk_mb)
-        self.buffer_shape = tuple(int(x) for x in buffer_shape) or self._get_default_buffer_shape(buffer_gb=buffer_gb)
+        self.chunk_shape = tuple(int(x) for x in chunk_shape) if chunk_shape else self._get_default_chunk_shape(chunk_mb=chunk_mb)
+        self.buffer_shape = tuple(int(x) for x in buffer_shape) if buffer_shape else self._get_default_buffer_shape(buffer_gb=buffer_gb)
 
         # Shape assertions
         assert all(
@@ -225,7 +225,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             (chunk_axis <= buffer_axis for chunk_axis, buffer_axis in zip(self.chunk_shape, self.buffer_shape))
         ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the buffer shape ({self.buffer_shape})!"
         assert all(
-            chunk_axis % buffer_axis
+            buffer_axis % chunk_axis == 0
             for chunk_axis, buffer_axis, maxshape_axis in zip(self.chunk_shape, self.buffer_shape, self.maxshape)
             if buffer_axis != maxshape_axis
         ), (
@@ -303,9 +303,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         v = tuple(math.floor(maxshape_axis / min_maxshape) for maxshape_axis in self.maxshape)
         prod_v = math.prod(v)
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
-            next_v = tuple(x for x in v if x != 1)
-            min_next_v = min(next_v)
-            v = tuple(math.floor(x / min_next_v) for x in next_v)
+            non_unit_min_v = min(x for x in v if x != 1)
+            v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
             prod_v = math.prod(v)
         k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])

@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-from typing import Tuple
+from typing import Tuple, Iterable
 
 import h5py
 
@@ -41,7 +41,7 @@ class GenericDataChunkIteratorTests(TestCase):
             return self.array[selection]
 
         def _get_maxshape(self) -> Tuple[np.uint64, ...]:  # Undesirable return type, but can be handled
-            return (np.uint64(x) for x in self.array.shape)
+            return tuple(np.uint64(x) for x in self.array.shape)
 
         def _get_dtype(self) -> np.dtype:
             return self.array.dtype
@@ -74,6 +74,13 @@ class GenericDataChunkIteratorTests(TestCase):
             np.testing.assert_array_equal(np.array(dset), self.test_array)
             self.assertEqual(dset.chunks, iterator.chunk_shape)
 
+    def check_all_of_iterable_is_python_int(self, iterable: Iterable):
+        assert all(
+            tuple(  # Easier to visualize failures in pytest with tuple vs. generator
+                isinstance(x, int) for x in iterable
+            )
+        )
+            
     def test_abstract_assertions(self):
         class TestGenericDataChunkIterator(GenericDataChunkIterator):
             pass
@@ -195,48 +202,39 @@ class GenericDataChunkIteratorTests(TestCase):
 
     def test_maxshape_attribute_contains_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        assert all(
-            isinstance(x, int) for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape
-        )
+        self.check_all_of_iterable_is_python_int(iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).maxshape)
 
     def test_automated_buffer_shape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        assert all(
-            isinstance(x, int) for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape
-        )
+        self.check_all_of_iterable_is_python_int(iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).buffer_shape)
 
     def test_automated_chunk_shape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        assert all(
-            isinstance(x, int) for x in self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape
+        self.check_all_of_iterable_is_python_int(iterable=self.TestNumpyArrayDataChunkIterator(array=self.test_array).chunk_shape)
+
+    def test_np_dtype_maxshape_attribute_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
+        self.check_all_of_iterable_is_python_int(
+            iterable=self.TestNumpyArrayDataChunkIteratorWithNumpyDtypeShape(array=self.test_array).maxshape
         )
 
-    def test_np_dtype_maxshape_attribute_contains_int_type(self):
+    def test_manual_buffer_shape_attribute_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        assert all(
-            isinstance(x, int)
-            for x in self.TestNumpyArrayDataChunkIteratorWithNumpyDtypeShape(array=self.test_array).maxshape
-        )
-
-    def test_manual_chunk_shape_attribute_int_type(self):
-        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        assert all(
-            isinstance(x, int)
-            for x in self.TestNumpyArrayDataChunkIterator(
-                array=self.test_array,
-                chunk_shape=(np.uint64(100), np.uint64(2))
-            ).chunk_shape
-        )
-
-    def test_buffer_shape_attribute_int_type(self):
-        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
-        assert all(
-            isinstance(x, int)
-            for x in self.TestNumpyArrayDataChunkIterator(
+        self.check_all_of_iterable_is_python_int(
+            iterable=self.TestNumpyArrayDataChunkIterator(
                 array=self.test_array,
                 chunk_shape=(np.uint64(100), np.uint64(2)),
                 buffer_shape=(np.uint64(200), np.uint64(4)),
             ).buffer_shape
+        )
+        
+    def test_manual_chunk_shape_attribute_int_type(self):
+        """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
+        self.check_all_of_iterable_is_python_int(
+            iterable=self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                chunk_shape=(np.uint64(100), np.uint64(2))
+            ).chunk_shape
         )
 
     def test_selection_slices_int_type(self):
@@ -248,18 +246,17 @@ class GenericDataChunkIteratorTests(TestCase):
         stop_1 = first_chunk.selection[1].stop
         start_1 = first_chunk.selection[1].start
 
-        assert isinstance(stop_0, int)
-        assert isinstance(start_0, int)
-        assert isinstance(stop_1, int)
-        assert isinstance(start_1, int)
+        self.check_all_of_iterable_is_python_int(iterable=(stop_0, start_0, stop_1, start_1))
 
     def test_num_buffers(self):
         buffer_shape = (950, 190)
         chunk_shape = (50, 38)
+        expected_num_buffers = 9
+        
         test = self.TestNumpyArrayDataChunkIterator(
             array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
         )
-        self.assertEqual(first=test.num_buffers, second=9)
+        self.assertEqual(first=test.num_buffers, second=expected_num_buffers)
 
     def test_numpy_array_chunk_iterator(self):
         iterator_options = dict()
@@ -269,10 +266,10 @@ class GenericDataChunkIteratorTests(TestCase):
         self.check_direct_hdf5_write(iterator_options=iterator_options)
 
     def test_buffer_shape_option(self):
-        test_buffer_shape = (1580, 316)
-        iterator_options = dict(buffer_shape=test_buffer_shape)
+        expected_buffer_shape = (1580, 316)
+        iterator_options = dict(buffer_shape=expected_buffer_shape)
         self.check_first_data_chunk_call(
-            expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in test_buffer_shape]),
+            expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in expected_buffer_shape]),
             iterator_options=iterator_options,
         )
         self.check_direct_hdf5_write(iterator_options=iterator_options)
@@ -313,21 +310,30 @@ class GenericDataChunkIteratorTests(TestCase):
         self.assertEqual(iterator.chunk_shape, test_chunk_shape)
 
     def test_chunk_mb_option(self):
-        test_chunk_shape = (1115, 223)
+        expected_chunk_shape = (1115, 223)
         iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=0.5)
-        self.assertEqual(iterator.chunk_shape, test_chunk_shape)
+        self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
-        # chunk is larger than total data size; should collapse to maxshape
-        test_chunk_shape = (2000, 384)
+    def test_chunk_mb_option_larger_than_total_size(self):
+        """Chunk is larger than total data size; should collapse to maxshape."""
+        expected_chunk_shape = (2000, 384)
         iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=2)
-        self.assertEqual(iterator.chunk_shape, test_chunk_shape)
+        self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
-        # test to evoke while condition of default shaping method
-        test_chunk_shape = (1, 79, 79)
+    def test_chunk_mb_option_while_condition(self):
+        """Test to evoke while condition of default shaping method."""
+        expected_chunk_shape = (2, 79, 79)
+        special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(2, 2000, 2000), dtype="int16")
+        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
+        self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
+
+    def test_chunk_mb_option_while_condition_unit_maxshape_axis(self):
+        """Test to evoke while condition of default shaping method."""
+        expected_chunk_shape = (1, 79, 79)
         special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(1, 2000, 2000), dtype="int16")
         iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
-        self.assertEqual(iterator.chunk_shape, test_chunk_shape)
-
+        self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
+        
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar(self):
         out_text_file = self.test_dir / "test_progress_bar.txt"
