@@ -1,5 +1,7 @@
 import copy
 import math
+import functools  # TODO: remove when Python 3.7 support is dropped
+import operator  # TODO: remove when Python 3.7 support is dropped
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
@@ -128,19 +130,6 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
         raise NotImplementedError("maxshape not implemented for derived class")
 
 
-# TODO: remove this function
-def _temporary_prod(iterable):
-    """
-    We want to use math.prod but it is only available in Python >= 3.8 versions.
-
-    Once 3.7 support is dropped, this function can be removed
-    """
-    result = 1
-    for x in iterable:
-        result *= x
-    return result
-
-
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
@@ -248,9 +237,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
 
-        self.num_buffers = _temporary_prod(  # TODO: replace with math.prod when Python 3.7 is dropped
-            math.ceil(maxshape_axis / buffer_axis)
-            for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
+        self.num_buffers = functools.reduce(  # TODO: replace with math.prod when Python 3.7 support is dropped
+            operator.mul,
+            [
+                math.ceil(maxshape_axis / buffer_axis)
+                for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
+            ],
+            1,
         )
         self.buffer_selection_generator = (
             tuple(
@@ -316,11 +309,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         min_maxshape = min(self.maxshape)
         v = tuple(math.floor(maxshape_axis / min_maxshape) for maxshape_axis in self.maxshape)
-        prod_v = _temporary_prod(v)  # TODO: replace with math.prod when Python 3.7 is dropped
+        prod_v = functools.reduce(operator.mul, v, 1)  # TODO: replace with math.prod when Python 3.7 support is dropped
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
             non_unit_min_v = min(x for x in v if x != 1)
             v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
-            prod_v = _temporary_prod(v)  # TODO: replace with math.prod when Python 3.7 is dropped
+            prod_v = functools.reduce(operator.mul, v, 1)  # TODO: replace with math.prod when Python 3.7 support is dropped
         k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
 
@@ -345,10 +338,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
         )
 
-        # TODO: replace with math.prod when Python 3.7 is dropped
+        # TODO: replace with math.prod when Python 3.7 support is dropped
         k = math.floor(
             (
-                buffer_gb * 1e9 / (_temporary_prod(self.chunk_shape) * self.dtype.itemsize)
+                buffer_gb * 1e9 / (functools.reduce(operator.mul, self.chunk_shape, 1) * self.dtype.itemsize)
             ) ** (1 / len(self.chunk_shape))
         )
         return tuple(
