@@ -127,7 +127,10 @@ def get_type(data):
                 # Empty array of strings
                 if len(data) == 0 and data.dtype.metadata["vlen"] == str:
                     return "utf"
-                return get_type(data[0])
+                if len(data) > 0:
+                    return get_type(data[0])
+                else:
+                    raise EmptyArrayError()
             return data.dtype
         if len(data) == 0:
             raise EmptyArrayError()
