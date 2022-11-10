@@ -2,6 +2,9 @@
 
 ## HDMF 3.4.7 (November 9, 2022)
 
+### Minor improvements
+- Update CI, versioneer, and some requirements. @rly ([#786](https://github.com/hdmf-dev/hdmf/pull/786))
+
 ### Bug fixes
 - Fix an issue where not providing an optional argument to `__init__` of an auto-generated `MultiContainerInterface`
   class raised an error. @rly ([#779](https://github.com/hdmf-dev/hdmf/pull/779))
