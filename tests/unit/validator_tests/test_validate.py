@@ -1011,7 +1011,7 @@ class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
         self.runBuilderRoundTrip(foo)
 
 
-class TestStringDataRoundTrip(ValidatorTestBase):
+class TestEmptyDataRoundTrip(ValidatorTestBase):
     """
     Test the special case of empty string datasets and attributes during validation
     """
@@ -1032,7 +1032,13 @@ class TestStringDataRoundTrip(ValidatorTestBase):
                                               attributes=[AttributeSpec(
                                                   name='attr2',
                                                   doc='an example integer attribute',
-                                                  dtype='int')])],
+                                                  dtype='int',
+                                                  shape=(None,))]),
+                                  DatasetSpec(name='dataInt',
+                                              doc='an example int dataset',
+                                              dtype='int',
+                                              attributes=[])
+                                  ],
                         attributes=[AttributeSpec(name='attr1',
                                                   doc='an example string attribute',
                                                   dtype='text',
@@ -1060,18 +1066,45 @@ class TestStringDataRoundTrip(ValidatorTestBase):
             self.assertEqual(len(errors), 0, errors)
 
     def test_empty_string_attribute(self):
-        """Verify that a dataset builder containing an array of references passes
-        validation after a round trip"""
+        """Verify that we can determine dtype for empty string attribute during validation"""
         builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': []},
+                               attributes={'data_type': 'Bar', 'attr1': []},  # <-- Empty string attribute
                                datasets=[DatasetBuilder(name='data', data=['text1', 'text2'],
-                                                        attributes={'attr2': 10})])
+                                                        attributes={'attr2': [10, ]}),
+                                         DatasetBuilder(name='dataInt', data=[5, ])
+                                         ])
         self.runBuilderRoundTrip(builder)
 
     def test_empty_string_dataset(self):
+        """Verify that we can determine dtype for empty string dataset during validation"""
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': ['text1', 'text2']},
+                               datasets=[DatasetBuilder(name='data',    # <-- Empty string dataset
+                                                        data=[],
+                                                        dtype='text',
+                                                        attributes={'attr2': [10, ]}),
+                                         DatasetBuilder(name='dataInt', data=[5, ])
+                                         ])
+        self.runBuilderRoundTrip(builder)
+
+    def test_empty_int_attribute(self):
+        """Verify that we can determine dtype for empty integer attribute  during validation"""
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': ['text1', 'text2']},
+                               datasets=[DatasetBuilder(name='data', data=['text1', 'text2'],
+                                                        attributes={'attr2': []}  # <-- Empty integer attribute
+                                                        ),
+                                         DatasetBuilder(name='dataInt', data=[5, ])
+                                         ])
+        self.runBuilderRoundTrip(builder)
+
+    def test_empty_int_dataset(self):
         """Verify that a dataset builder containing an array of references passes
         validation after a round trip"""
         builder = GroupBuilder('my_bar',
                                attributes={'data_type': 'Bar', 'attr1': ['text1', 'text2']},
-                               datasets=[DatasetBuilder(name='data', data=[], dtype='text', attributes={'attr2': 10})])
+                               datasets=[DatasetBuilder(name='data', data=['text1', 'text2'],
+                                                        attributes={'attr2': [10, ]}),
+                                         DatasetBuilder(name='dataInt', data=[], dtype='int')  # <-- Empty int dataset
+                                         ])
         self.runBuilderRoundTrip(builder)
