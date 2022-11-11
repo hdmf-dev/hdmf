@@ -101,40 +101,59 @@ class EmptyArrayError(Exception):
 
 
 def get_type(data):
+    # String data
     if isinstance(data, str):
         return _check_isodatetime(data, 'utf')
+    # Bytes data
     elif isinstance(data, bytes):
         return _check_isodatetime(data, 'ascii')
+    # RegionBuilder data
     elif isinstance(data, RegionBuilder):
         return 'region'
+    # ReferenceBuilder data
     elif isinstance(data, ReferenceBuilder):
         return 'object'
+    # ReferenceResolver data
     elif isinstance(data, ReferenceResolver):
         return data.dtype
+    # Numpy nd-array data
     elif isinstance(data, np.ndarray):
-        if data.size == 0:
+        if data.size > 0:
+            return get_type(data[0])
+        else:
             raise EmptyArrayError()
-        return get_type(data[0])
+    # Numpy bool data
     elif isinstance(data, np.bool_):
         return 'bool'
     if not hasattr(data, '__len__'):
         return type(data).__name__
+    # Case for h5py.Dataset and other I/O specific array types
     else:
+        # Object has 'dtype' attribute, e.g., an h5py.Dataset
         if hasattr(data, 'dtype'):
             if isinstance(data.dtype, list):
                 return [get_type(data[0][i]) for i in range(len(data.dtype))]
-            if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-                # Empty array of strings
-                if len(data) == 0 and data.dtype.metadata["vlen"] == str:
-                    return "utf"
+            # Variable length data type
+            elif data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
+                # Try to determine dtype from the first array element
                 if len(data) > 0:
                     return get_type(data[0])
+                # Empty array
                 else:
-                    raise EmptyArrayError()
-            return data.dtype
-        if len(data) == 0:
+                    # Empty string array
+                    if data.dtype.metadata["vlen"] == str:
+                        return "utf"
+                    # Undetermined variable length data type.
+                    else:                        # pragma: no cover
+                        raise EmptyArrayError()  # pragma: no cover
+            # Standard date type (i.e, not compound or vlen.
+            else:
+                return data.dtype
+        # If all else has failed, try to determine the datatype from the first element of the array
+        if len(data) > 0:
+            return get_type(data[0])
+        else:
             raise EmptyArrayError()
-        return get_type(data[0])
 
 
 def check_shape(expected, received):
