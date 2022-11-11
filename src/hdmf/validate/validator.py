@@ -131,6 +131,7 @@ def get_type(data):
     else:
         # Object has 'dtype' attribute, e.g., an h5py.Dataset
         if hasattr(data, 'dtype'):
+            # Compound data type
             if isinstance(data.dtype, list):
                 return [get_type(data[0][i]) for i in range(len(data.dtype))]
             # Variable length data type
