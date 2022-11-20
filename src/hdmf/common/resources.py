@@ -456,8 +456,8 @@ class ExternalResources(Container):
         # Find all the entities/resources for each key.
         for key_idx in keys:
             entity_idx = self.entities.which(keys_idx=key_idx)
-            entities.append(self.entities.__getitem__(entity_idx[0]))
-        df = pd.DataFrame(entities, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
+            entities.append(list(self.entities.__getitem__(entity_idx[0])))
+        df = pd.DataFrame([entities], columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
         return df
 
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,
