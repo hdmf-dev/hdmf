@@ -266,9 +266,9 @@ class ExternalResources(Container):
 
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
-        elif len(objecttable_idx) == 0 and create==True:
+        elif len(objecttable_idx) == 0 and create:
             return self._add_object(container, relative_path, field)
-        elif len(objecttable_idx) == 0 and create==False:
+        elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
         else:
             raise ValueError("Found multiple instances of the same object id, relative path, "
