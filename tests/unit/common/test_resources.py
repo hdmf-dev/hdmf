@@ -328,14 +328,17 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_get_object_resources(self):
         er = ExternalResources(name='terms')
-        data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
-                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        table = DynamicTable(name='test_table', description='test table description')
+        table.add_column(name='test_col', description='test column description')
+        table.add_row(test_col='Mouse')
 
-        er.add_ref(container=data, key='Mus musculus', resource_name='NCBI_Taxonomy',
-                   resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
+        er.add_ref(container=table, attribute='test_col',key='Mouse',
+                   resource_name='NCBI_Taxonomy',
+                   resource_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi',
                    entity_id='NCBI:txid10090',
-                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        received = er.get_object_resources(data)
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
+                   )
+        received = er.get_object_resources(table['test_col'])
         expected = pd.DataFrame(
             data=[[0, 0, 'NCBI:txid10090', 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090']],
             columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
@@ -366,13 +369,19 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         self.assertEqual(er.objects.data, [('uuid1', '', ''), (data.object_id, '', '')])
 
-    def test_check_object_field_error(self):
+    def test_check_object_field_multi_error(self):
         er = ExternalResources(name='terms')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er._check_object_field(data, '')
         er._add_object(data, '', '')
         with self.assertRaises(ValueError):
             er._check_object_field(data, '')
+
+    def test_check_object_field_not_in_obj_table(self):
+        er = ExternalResources(name='terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        with self.assertRaises(ValueError):
+            er._check_object_field(container=data, relative_path='', field='', create=False)
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id

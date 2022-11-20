@@ -243,8 +243,9 @@ class ExternalResources(Container):
                      'an external resource reference key. Use an empty string if not applicable.'),
              'default': ''},
             {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')})
-    def _check_object_field(self, container, relative_path, field):
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'create', 'type': bool, 'default': True})
+    def _check_object_field(self, container, relative_path, field, create):
         """
         Check if a container, relative path, and field have been added.
 
@@ -265,8 +266,10 @@ class ExternalResources(Container):
 
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
-        elif len(objecttable_idx) == 0:
+        elif len(objecttable_idx) == 0 and create==True:
             return self._add_object(container, relative_path, field)
+        elif len(objecttable_idx) == 0 and create==False:
+            raise ValueError("Object not in Object Table.")
         else:
             raise ValueError("Found multiple instances of the same object id, relative path, "
                              "and field in objects table.")
@@ -449,7 +452,8 @@ class ExternalResources(Container):
 
         keys = []
         entities = []
-        object_field = self._check_object_field(container, relative_path, field)
+        object_field = self._check_object_field(container=container, relative_path=relative_path,
+                                                field=field, create=False)
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
             keys.append(self.object_keys['keys_idx', row_idx])
