@@ -332,7 +332,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_column(name='test_col', description='test column description')
         table.add_row(test_col='Mouse')
 
-        er.add_ref(container=table, attribute='test_col',key='Mouse',
+        er.add_ref(container=table, attribute='test_col', key='Mouse',
                    resource_name='NCBI_Taxonomy',
                    resource_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi',
                    entity_id='NCBI:txid10090',
