@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.4.8 (November 20, 2022)
+
+### Bug fixes
+Fixed an issue with external resources where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added (as well as the corresponing unit test). @mavaylon1 ([#784](https://github.com/hdmf-dev/hdmf/issues/784))
+
 ## HDMF 3.4.7 (November 9, 2022)
 
 ### Minor improvements
