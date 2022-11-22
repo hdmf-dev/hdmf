@@ -1,3 +1,4 @@
+"""Module with data structures for managing links to external resources, e.g., ontologies or persistent identifiers"""
 import pandas as pd
 import re
 from . import register_class, EXP_NAMESPACE

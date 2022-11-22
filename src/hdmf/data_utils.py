@@ -1,3 +1,4 @@
+"""Module with data utilities, e.g., dataset I/O wrappers for iterative write and for defining I/O properties"""
 import copy
 import math
 import functools  # TODO: remove when Python 3.7 support is dropped

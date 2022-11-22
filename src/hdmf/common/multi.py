@@ -1,3 +1,4 @@
+"""Module for multi-Container interfaces that usually manage multiple instances of set of particular Container types"""
 from . import register_class
 from ..container import Container, Data, MultiContainerInterface
 from ..utils import docval, popargs, AllowPositional

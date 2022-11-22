@@ -1,3 +1,4 @@
+"""Object mapper definitions for types implemented in :py:mod:`~hdmf.common.resources`"""
 from .. import register_map
 from ..resources import ExternalResources, KeyTable, ResourceTable, ObjectTable, ObjectKeyTable, EntityTable
 from ...build import ObjectMapper

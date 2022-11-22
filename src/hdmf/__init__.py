@@ -1,3 +1,8 @@
+"""
+The Hierarchical Data Modeling Framework, or HDMF, is a Python package for working with hierarchical data.
+It provides APIs for specifying data models, reading and writing data to different storage backends,
+and representing data with Python objects.
+"""
 from . import query  # noqa: F401
 from .container import Container, Data, DataRegion
 from .utils import docval, getargs
@@ -9,8 +14,9 @@ from .backends.hdf5.h5_utils import H5RegionSlicer, H5Dataset
         {'name': 'region', 'type': None, 'doc': 'the region reference to use to slice'},
         is_method=False)
 def get_region_slicer(**kwargs):
+    """get_region_slicer is deprecated and will be removed in HDMF 4.0"""
     import warnings  # noqa: E402
-    warnings.warn('get_region_slicer is deprecated and will be removed in HDMF 3.0.', DeprecationWarning)
+    warnings.warn('get_region_slicer is deprecated and will be removed in HDMF 4.0.', DeprecationWarning)
 
     dataset, region = getargs('dataset', 'region', kwargs)
     if isinstance(dataset, (list, tuple, Data)):

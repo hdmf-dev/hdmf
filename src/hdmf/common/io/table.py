@@ -1,3 +1,4 @@
+"""Object mapper definitions for types implemented in :py:mod:`~hdmf.common.table`"""
 from .. import register_map
 from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
 from ...build import ObjectMapper, BuildManager, CustomClassGenerator

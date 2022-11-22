@@ -1,3 +1,4 @@
+"""Module with dataset wrapper classes used to support lazy evaluation of data slicing operations on read."""
 from abc import ABCMeta, abstractmethod
 from operator import itemgetter
 

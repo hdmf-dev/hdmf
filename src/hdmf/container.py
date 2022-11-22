@@ -1,3 +1,4 @@
+"""Module with base classes for creating frontend data APIs based on the concept of Containers"""
 import types
 from abc import abstractmethod
 from collections import OrderedDict

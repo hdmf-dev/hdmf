@@ -1,3 +1,5 @@
+"""Module defining the base ObjectMapper for mapping between Spec objects and AbstractContainer attributes"""
+
 import logging
 import re
 import warnings

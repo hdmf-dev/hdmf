@@ -1,3 +1,4 @@
+"""Package for creating format schema, managing collections of scheme definitions, and reading/writing schema."""
 from .catalog import SpecCatalog
 from .namespace import NamespaceCatalog, SpecNamespace, SpecReader
 from .spec import (AttributeSpec, DatasetSpec, DtypeHelper, DtypeSpec, GroupSpec, LinkSpec,

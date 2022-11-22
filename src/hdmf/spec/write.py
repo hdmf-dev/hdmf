@@ -1,3 +1,8 @@
+"""
+Collection of classes to export format specifications to YAML/JSON
+
+For reading namespace from file see :py:mod:`~hdmf.spec.namespace`
+"""
 import copy
 import json
 import os.path
