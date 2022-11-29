@@ -292,7 +292,8 @@ class CustomClassGenerator:
         parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
         new_args = list()
         for attr_name, field_spec in not_inherited_fields.items():
-            # auto-initialize arguments not found in superclass
+            # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
+            # so that they are set after calling base.__init__
             if attr_name not in parent_docval_args:
                 new_args.append(attr_name)
 
@@ -300,13 +301,24 @@ class CustomClassGenerator:
         def __init__(self, **kwargs):
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)
+
+            # remove arguments from kwargs that correspond to fields that are new (not inherited)
+            # set these arguments after calling base.__init__
             new_kwargs = dict()
             for f in new_args:
                 new_kwargs[f] = popargs(f, kwargs) if f in kwargs else None
-            base.__init__(self, **kwargs)  # special case: need to pass self to __init__
+
+            # NOTE: the docval of some constructors do not include all of the fields. the constructor may set
+            # some fields to fixed values. so only keep the kwargs that are used in the constructor docval
+            kwargs_to_pass = {k: v for k, v in kwargs.items() if k in parent_docval_args}
+
+            base.__init__(self, **kwargs_to_pass)  # special case: need to pass self to __init__
             # TODO should super() be used above instead of base?
+
+            # set the fields that are new to this class (not inherited)
             for f, arg_val in new_kwargs.items():
                 setattr(self, f, arg_val)
+
         classdict['__init__'] = __init__
 
 
@@ -379,17 +391,18 @@ class MCIClassGenerator(CustomClassGenerator):
 
             @docval(*docval_args, allow_positional=AllowPositional.WARNING)
             def __init__(self, **kwargs):
-                # first call the next superclass init
-                # previous_init(**kwargs)
-
-                # store the values passed to init for each MCI attribute
+                # store the values passed to init for each MCI attribute so that they can be added
+                # after calling __init__
                 new_kwargs = list()
                 for field_clsconf in classdict['__clsconf__']:
                     attr_name = field_clsconf['attr']
+                    # do not store the value if it is None or not present
+                    if attr_name not in kwargs or kwargs[attr_name] is None:
+                        continue
                     add_method_name = field_clsconf['add']
                     new_kwarg = dict(
                         attr_name=attr_name,
-                        value=popargs(attr_name, kwargs) if attr_name in kwargs else None,
+                        value=popargs(attr_name, kwargs),
                         add_method_name=add_method_name
                     )
                     new_kwargs.append(new_kwarg)

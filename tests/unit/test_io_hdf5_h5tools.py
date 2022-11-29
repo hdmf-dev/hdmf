@@ -3137,3 +3137,29 @@ class HDF5IOClassmethodTests(TestCase):
         HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
         with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
             HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+
+
+class H5DataIOTests(TestCase):
+
+    def _bad_arg_cm(self):
+        return self.assertRaisesRegex(ValueError, "Must specify 'dtype' and 'shape' "
+                                                  "if not specifying 'data'")
+
+    def test_dataio_bad_args(self):
+        with self._bad_arg_cm():
+            H5DataIO(shape=(10, 10))
+        with self._bad_arg_cm():
+            H5DataIO(dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'dtype' is ignored when 'data' is specified"):
+            H5DataIO(data=np.zeros((10, 10)), dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'shape' is ignored when 'data' is specified"):
+            H5DataIO(data=np.zeros((10, 10)), shape=(10, 10))
+
+    def test_dataio_len(self):
+        dataio = H5DataIO(shape=(10, 10), dtype=int)
+        self.assertEqual(len(dataio), 10)
+
+    def test_dataio_shape_then_data(self):
+        dataio = H5DataIO(shape=(10, 10), dtype=int)
+        with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
+            dataio.data = list()

@@ -1,5 +1,52 @@
 # HDMF Changelog
 
+## HDMF 3.4.8 (November 20, 2022)
+
+### Bug fixes
+Fixed an issue with external resources where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added (as well as the corresponing unit test). @mavaylon1 ([#784](https://github.com/hdmf-dev/hdmf/issues/784))
+
+## HDMF 3.4.7 (November 9, 2022)
+
+### Minor improvements
+- Update CI, versioneer, and some requirements. @rly ([#786](https://github.com/hdmf-dev/hdmf/pull/786))
+
+### Bug fixes
+- Fix an issue where not providing an optional argument to `__init__` of an auto-generated `MultiContainerInterface`
+  class raised an error. @rly ([#779](https://github.com/hdmf-dev/hdmf/pull/779))
+- Fixed an issue with the `data_utils.GenericDataChunkIterator` where if the underlying dataset was such that the `numpy.product` of the `maxshape` exceeded the range of the default `int32`, buffer overflow would occur and cause the true buffer shape to exceed available memory. This has been resolved by dropping all `numpy` operations (which forced casting within the passed data type) in favor of the unlimited precision of Python builtin integer types @codycbakerphd ([#780](https://github.com/hdmf-dev/hdmf/pull/780)) ([#781](https://github.com/hdmf-dev/hdmf/pull/781))
+
+## HDMF 3.4.6 (October 4, 2022)
+
+### Minor improvements
+- When data is not specified in DataIO, 1) require dtype and shape both be specified and 2) determine length from shape. @ajtritt ([#771](https://github.com/hdmf-dev/hdmf/pull/771))
+
+### Bug fixes
+- Fix an issue when autogenerating a class that extends a class where the constructor docval does not include all of
+the fields (i.e., when the constructor sets some fields to fixed values). @rly
+([#773](https://github.com/hdmf-dev/hdmf/pull/773))
+
+## HDMF 3.4.5 (September 22, 2022)
+
+### Minor improvements
+- Allow passing arguments through to column class constructur (argument `col_cls`) when calling `DynamicTable.add_column`. @ajtritt ([#769](https://github.com/hdmf-dev/hdmf/pull/769))
+
+## HDMF 3.4.4 (September 20, 2022)
+
+### Bug fixes
+- Fixed missing dependency "packaging" introduced in 3.4.3. The code has been updated to avoid the dependency. @rly @oruebel ([#770](https://github.com/hdmf-dev/hdmf/pull/770))
+
+## HDMF 3.4.3 (September 14, 2022)
+
+### Minor improvements
+- Began to deprecate the use of the testing script `test.py` in favor of `pytest` and `test_gallery.py`.
+  @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+- Updated installation and maintainer documentation. @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+
+### Bug fixes
+- Fixed CI and flake8 issues. @rly ([#760](https://github.com/hdmf-dev/hdmf/pull/760))
+- Updated uses of pandas.DataFrame.set_index to avoid FutureWarnings for pandas >=1.5.x @oruebel ([#762](https://github.com/hdmf-dev/hdmf/pull/762))
+- Fixed broken `hdmf.common.get_hdf5io` function. @rly ([#765](https://github.com/hdmf-dev/hdmf/pull/765))
+
 ## HDMF 3.4.2 (August 26, 2022)
 
 ### Minor improvements

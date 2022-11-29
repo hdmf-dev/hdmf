@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0  # tags are required for versioneer to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
@@ -43,7 +43,7 @@ jobs:
         run: |
           python -m pip install twine
           ls -1 dist
-          # twine upload --repository testpypi -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
+          # twine upload --repository-url https://test.pypi.org/legacy/ -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
           twine upload -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
 
       - name: Publish wheel and source distributions as a GitHub release
