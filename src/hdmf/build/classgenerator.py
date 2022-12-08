@@ -222,9 +222,14 @@ class CustomClassGenerator:
                        'doc': field_spec['doc']}
         if cls._ischild(dtype) and issubclass(parent_cls, Container) and not isinstance(field_spec, LinkSpec):
             fields_conf['child'] = True
-        # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
-        #     fields_conf['settable'] = False
+        fixed_value = getattr(field_spec, 'value', None)
+        if fixed_value is not None:
+            fields_conf['settable'] = False
         classdict.setdefault(parent_cls._fieldsname, list()).append(fields_conf)
+
+        if fixed_value is not None:  # field has fixed value - do not create arg on __init__
+            classdict[attr_name] = fixed_value  # set the fixed value on the class
+            return
 
         docval_arg = dict(
             name=attr_name,
