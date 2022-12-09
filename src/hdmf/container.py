@@ -62,11 +62,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
             return None
 
         def setter(self, val):
-            try:
-                local_fields = self.fields
-            except AttributeError:
-                msg = "Cannot set field value '%s' before calling init" % name
-                raise AttributeError(msg)
             if val is None:
                 return
             if name in self.fields:
