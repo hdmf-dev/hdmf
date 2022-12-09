@@ -4,7 +4,7 @@ import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer, MultiContainerInterface
-from ..utils import docval, popargs, call_docval_func
+from ..utils import docval, popargs, call_docval_func, AllowPositional
 from ..build import TypeMap
 
 

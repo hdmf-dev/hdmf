@@ -118,6 +118,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
              'object_id': {0: data1.object_id, 1: data1.object_id,
                            2: data2.object_id, 3: data2.object_id, 4: data2.object_id,
                            5: data3.object_id, 6: data3.object_id},
+             'relative_path': {0: '', 1: '', 2: '', 3: '',
+                          4: '', 5: '', 6: ''},
              'field': {0: 'species', 1: 'species', 2: '', 3: '', 4: '', 5: '', 6: ''},
              'keys_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 3},
              'key': {0: 'Mus musculus', 1: 'Homo sapiens', 2: 'Mus musculus', 3: 'Homo sapiens',
@@ -140,17 +142,19 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                             5: 'http://www.informatics.jax.org/marker/MGI:1343464',
                             6: 'https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
+        breakpoint()
         pd.testing.assert_frame_equal(result_df, expected_df)
 
         # Convert to dataframe with categories and compare against the expected result
         result_df = er.to_dataframe(use_categories=True)
         cols_with_categories = [
-            ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+            ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'relative_path'), ('objects', 'field'),
             ('keys', 'keys_idx'), ('keys', 'key'),
             ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
             ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
         expected_df_data = {c: expected_df_data[c[1]] for c in cols_with_categories}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
+        breakpoint()
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_add_ref(self):
