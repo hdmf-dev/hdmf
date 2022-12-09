@@ -142,7 +142,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                             5: 'http://www.informatics.jax.org/marker/MGI:1343464',
                             6: 'https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
-        breakpoint()
         pd.testing.assert_frame_equal(result_df, expected_df)
 
         # Convert to dataframe with categories and compare against the expected result
@@ -154,7 +153,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
         expected_df_data = {c: expected_df_data[c[1]] for c in cols_with_categories}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
-        breakpoint()
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_add_ref(self):
