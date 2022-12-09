@@ -3,8 +3,8 @@ import numpy as np
 import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, MultiContainerInterface
-from ..utils import docval, popargs, call_docval_func, AllowPositional
+from ..container import Table, Row, Container, AbstractContainer
+from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 
 
