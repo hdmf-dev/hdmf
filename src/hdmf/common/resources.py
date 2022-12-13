@@ -721,14 +721,16 @@ class ExternalResources(Container):
         row id in the flattened table and does not have a label, i.e., the first and second
         row will start with '\t', and subseqent rows are numbered sequentially 1,2,3,... .
         For example:
+        
         .. code-block:: tsv
             :linenos:
                 objects objects objects objects keys    keys    resources   resources   resources   entities    entities    entities
                 objects_idx object_id   relative_path   field   keys_idx    key resources_idx   resource    resource_uri    entities_idx    entity_id   entity_uri
             0   0   1fc87200-e91e-45b3-978c-6d295af144c3        species 0   Mus musculus    0   NCBI_Taxonomy   https://www.ncbi.nlm.nih.gov/taxonomy   0   NCBI:txid10090  https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
             1   0   9bf0c58e-09dc-4457-a652-94065b112c41        species 1   Homo sapiens    0   NCBI_Taxonomy   https://www.ncbi.nlm.nih.gov/taxonomy   1   NCBI:txid9606  https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
+        
         See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
-        """  # noqa  E501
+        """  # noqa: E501
 
         path = popargs('path', kwargs)
         df = self.to_dataframe(use_categories=True)
