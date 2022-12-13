@@ -525,7 +525,7 @@ class ExternalResources(Container):
         Return a DataFrame with information about keys used to make references to external resources.
         The DataFrame will contain the following columns:
             - *key_name*:              the key that will be used for referencing an external resource
-            - *resources_idx*: cs        the index for the resourcetable
+            - *resources_idx*:         the index for the resourcetable
             - *entity_id*:    the index for the entity at the external resource
             - *entity_uri*:   the URI for the entity at the external resource
 
