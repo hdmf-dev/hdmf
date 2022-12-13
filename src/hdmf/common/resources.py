@@ -712,7 +712,7 @@ class ExternalResources(Container):
     def to_tsv(self, **kwargs):
         """
         Write ExternalResources as a single, flat table to TSV
-        Internally, the function uses :py:meth:`pandas.DataFrame.to_tsv`. Pandas can
+        Internally, the function uses :py:meth:`pandas.DataFrame.to_csv`. Pandas can
         infer compression based on the filename, i.e., by changing the file extension to
         ‘.gz’, ‘.bz2’, ‘.zip’, ‘.xz’, or ‘.zst’ we can write compressed files.
         The TSV is formatted as follows: 1) line one is indicates for each column the name of the table
