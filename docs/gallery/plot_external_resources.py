@@ -45,7 +45,7 @@ collection of interlinked tables.
 
 The :py:class:`~hdmf.common.resources.ExternalResources` class then provides
 convenience functions to simplify interaction with these tables, allowing users
-to treat :py:class:`~hdmf.common.resources.ExternalResources`as a single large table as
+to treat :py:class:`~hdmf.common.resources.ExternalResources` as a single large table as
 much as possible.
 
 Rules to ExternalResources

@@ -170,16 +170,17 @@ class ExternalResources(Container):
     def assert_external_resources_equal(left, right, check_dtype=True):
         """
         Compare that the keys, resources, entities, objects, and object_keys tables match
+
         :param left: ExternalResources object to compare with right
-        :parma right: ExternalResources object to compare with left
+        :param right: ExternalResources object to compare with left
         :param check_dtype: Enforce strict checking of dtypes. Dtypes may be different
-                      for example for ids, where depending on how the data was saved
-                      ids may change from int64 to int32. (Default: True)
+            for example for ids, where depending on how the data was saved
+            ids may change from int64 to int32. (Default: True)
         :returns: The function returns True if all values match. If mismatches are found,
-                  AssertionError will be raised.
+            AssertionError will be raised.
         :raises AssertionError: Raised if any differences are found. The function collects
-                all differences into a single error so that the assertion will indicate
-                all found differences.
+            all differences into a single error so that the assertion will indicate
+            all found differences.
         """
         errors = []
         try:
@@ -637,9 +638,9 @@ class ExternalResources(Container):
         offset must be applied to the relevant foreign keys.
 
         :raises: The function will raise errors if connection to the database fails. If
-                 the given db_file already exists, then there is also the possibility that
-                 certain updates may result in errors if there are collisions between the
-                 new and existing data.
+            the given db_file already exists, then there is also the possibility that
+            certain updates may result in errors if there are collisions between the
+            new and existing data.
         """
         import sqlite3
         # connect to the database
@@ -719,19 +720,19 @@ class ExternalResources(Container):
         the column belongs to, 2) line two is the name of the column within the table, 3) subsequent
         lines are each a row in the flattened ExternalResources table. The first column is the
         row id in the flattened table and does not have a label, i.e., the first and second
-        row will start with '\t', and subseqent rows are numbered sequentially 1,2,3,... .
+        row will start with a tab character, and subseqent rows are numbered sequentially 1,2,3,... .
         For example:
-        
-        .. code-block:: tsv
+
+        .. code-block::
             :linenos:
-                objects objects objects objects keys    keys    resources   resources   resources   entities    entities    entities
-                objects_idx object_id   relative_path   field   keys_idx    key resources_idx   resource    resource_uri    entities_idx    entity_id   entity_uri
-            0   0   1fc87200-e91e-45b3-978c-6d295af144c3        species 0   Mus musculus    0   NCBI_Taxonomy   https://www.ncbi.nlm.nih.gov/taxonomy   0   NCBI:txid10090  https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
-            1   0   9bf0c58e-09dc-4457-a652-94065b112c41        species 1   Homo sapiens    0   NCBI_Taxonomy   https://www.ncbi.nlm.nih.gov/taxonomy   1   NCBI:txid9606  https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
-        
+
+            \tobjects\tobjects\tobjects\tobjects\tkeys\tkeys\tresources\tresources\tresources\tentities\tentities\tentities
+            \tobjects_idx\tobject_id\trelative_path\tfield\tkeys_idx\tkey\tresources_idx\tresource\tresource_uri\tentities_idx\tentity_id\tentity_uri
+            0\t0\t1fc87200-e91e-45b3-978c-6d295af144c3\t\tspecies\t0\tMus musculus\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t0\tNCBI:txid10090\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
+            1\t0\t9bf0c58e-09dc-4457-a652-94065b112c41\t\tspecies\t1\tHomo sapiens\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t1\tNCBI:txid9606\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
+
         See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
         """  # noqa: E501
-
         path = popargs('path', kwargs)
         df = self.to_dataframe(use_categories=True)
         df.to_csv(path, sep='\t')
@@ -750,6 +751,7 @@ class ExternalResources(Container):
         Inconsistencies in other (non-index) fields (e.g., when two rows with same resource_idx
         listresource_uri values) are not checked and will be ignored. In this case the value
         from the first row that contains the corresponding entry will be kept.
+
         .. note::
            Since TSV files may be edited by hand or other applications, it is possible that data
            in the TSV may be inconsistent. E.g., object_idx may be missing if rows were removed
@@ -757,7 +759,7 @@ class ExternalResources(Container):
            (i.e., data is stored with duplication, rather than normalized across several tables),
            it is possible that values may be inconsistent if edited outside, e.g., we may have
            objects with the same index (object_idx) but different object_id, relative_path, or field
-           values. While flat TSVs are sometimes preferred for ease of sharing,  editing
+           values. While flat TSVs are sometimes preferred for ease of sharing, editing
            the TSV without using the :py:meth:`~hdmf.common.resources.ExternalResources` class
            should be done with great care!
         """
