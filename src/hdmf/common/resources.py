@@ -715,18 +715,18 @@ class ExternalResources(Container):
         Internally, the function uses :py:meth:`pandas.DataFrame.to_csv`. Pandas can
         infer compression based on the filename, i.e., by changing the file extension to
         ‘.gz’, ‘.bz2’, ‘.zip’, ‘.xz’, or ‘.zst’ we can write compressed files.
-        The TSV is formatted as follows: 1) line one is indicates for each column the name of the table
+        The TSV is formatted as follows: 1) line one indicates for each column the name of the table
         the column belongs to, 2) line two is the name of the column within the table, 3) subsequent
         lines are each a row in the flattened ExternalResources table. The first column is the
         row id in the flattened table and does not have a label, i.e., the first and second
-        row will start with ',', and subseqent rows are numbered sequentially 1,2,3,... .
+        row will start with '\t', and subseqent rows are numbered sequentially 1,2,3,... .
         For example:
         .. code-block:: tsv
             :linenos:
-            ,objects,objects,objects,objects,keys,keys,resources,resources,resources,entities,entities,entities
-            ,objects_idx,object_id,relative_path,field,keys_idx,key,resources_idx,resource,resource_uri,entities_idx,entity_id,entity_uri
-            0,0,1fc87200-e91e-45b3-978c-6d295af144c3,,species,0,Mus musculus,0,NCBI_Taxonomy,https://www.ncbi.nlm.nih.gov/taxonomy,0,NCBI:txid10090,https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
-            1,0,9bf0c58e-09dc-4457-a652-94065b112c41,,species,1,Homo sapiens,0,NCBI_Taxonomy,https://www.ncbi.nlm.nih.gov/taxonomy,1,NCBI:txid9606,https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
+                objects objects objects objects keys    keys    resources   resources   resources   entities    entities    entities
+                objects_idx object_id   relative_path   field   keys_idx    key resources_idx   resource    resource_uri    entities_idx    entity_id   entity_uri
+            0   0   1fc87200-e91e-45b3-978c-6d295af144c3        species 0   Mus musculus    0   NCBI_Taxonomy   https://www.ncbi.nlm.nih.gov/taxonomy   0   NCBI:txid10090  https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
+            1   0   9bf0c58e-09dc-4457-a652-94065b112c41        species 1   Homo sapiens    0   NCBI_Taxonomy   https://www.ncbi.nlm.nih.gov/taxonomy   1   NCBI:txid9606  https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
         See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
         """  # noqa  E501
 
