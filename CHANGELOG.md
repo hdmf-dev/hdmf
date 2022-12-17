@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.5.0 (Upcoming)
+
+### Minor improvements
+- Added support for Python 3.11. Dropped support for Python 3.7. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+- No longer set upper bounds on dependencies. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+
 ## HDMF 3.4.8 (Upcoming)
 
 ### Bug fixes
