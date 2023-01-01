@@ -52,11 +52,13 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.extlinks',
     'sphinx_gallery.gen_gallery',
     'sphinx_copybutton'
 ]
 
-from sphinx_gallery.sorting import ExplicitOrder
+# from sphinx_gallery.sorting import ExplicitOrder
 
 sphinx_gallery_conf = {
     # path to your examples scripts
@@ -83,6 +85,9 @@ linkcheck_ignore = [
     'https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key',
     'https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request',
 ]
+
+extlinks = {'hdmf': ('https://github.com/hdmf-dev/hdmf/%s', ''),
+            }
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -332,5 +337,5 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
-    app.add_css_file("theme_overrides.css")
+    app.add_css_file("theme_overrides.css")  # overrides for wide tables in RTD theme
     app.connect("autodoc-skip-member", skip)

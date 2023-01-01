@@ -16,7 +16,7 @@ A core developer should use the following steps to create a release ``X.Y.Z`` of
 Prerequisites
 -------------
 
-* All CI tests are passing on `GitHub Actions`_.
+* All CI tests are passing on :hdmf:`GitHub Actions <actions>`.
 
 * You have a `GPG signing key`_.
 
@@ -61,7 +61,7 @@ means that ``echo "Hello"`` should be copied and evaluated in the terminal.
 Publish release on PyPI: Step-by-step
 -------------------------------------
 
-1. Make sure that all CI tests are passing on `GitHub Actions`_.
+1. Make sure that all CI tests are passing on :hdmf:`GitHub Actions <actions>`.
 
 
 2. List all tags sorted by version.
@@ -110,18 +110,18 @@ Publish release on PyPI: Step-by-step
   .. important::
 
       This will trigger the "Deploy release" GitHub Actions workflow which will automatically upload the wheels
-      and source distribution to both the `HDMF PyPI project page`_ and a new `GitHub release`_
+      and source distribution to both the `HDMF PyPI project page`_ and a new :hdmf:`GitHub release <releases>`
       using the hdmf-bot account.
 
 
-7. Check the status of the builds on `GitHub Actions`_.
+7. Check the status of the builds on :hdmf:`GitHub Actions <actions>`.
 
 
 8. Once the builds are completed, check that the distributions are available on `HDMF PyPI project page`_ and that
-   a new `GitHub release`_ was created.
+   a new :hdmf:`GitHub release <releases>` was created.
 
 
-9. Copy the release notes from ``CHANGELOG.md`` to the newly created `GitHub release`_.
+9. Copy the release notes from ``CHANGELOG.md`` to the newly created :hdmf:`GitHub release <releases>`.
 
 
 10. Create a clean testing environment to test the installation.
@@ -157,10 +157,9 @@ Publish release on PyPI: Step-by-step
 
 .. _GPG signing key: https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key
 .. _ReadTheDocs project: https://readthedocs.org/projects/hdmf/builds/
-.. _GitHub Actions: https://github.com/hdmf-dev/hdmf/actions
-.. _GitHub release: https://github.com/hdmf-dev/hdmf/releases
 .. _HDMF PyPI project page: https://pypi.org/project/hdmf
 .. _Python instructions for creating a virtual environment: https://docs.python.org/3/library/venv.html#creating-virtual-environments
+.. _PyPI: https://pypi.org/project/hdmf
 
 
 --------------------------------------------
