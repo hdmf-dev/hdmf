@@ -5,31 +5,28 @@
 GenericDataChunkIterator Tutorial
 ==================================
 
-This is a tutorial for interacting with ``GenericDataChunkIterator`` objects. This tutorial
+This is a tutorial for interacting with :py:class:`~hdmf.data_utils.GenericDataChunkIterator` objects. This tutorial
 is written for beginners and does not describe the full capabilities and nuances
 of the functionality. This tutorial is designed to give
 you basic familiarity with how :py:class:`~hdmf.data_utils.GenericDataChunkIterator` works and help you get started
 with creating a specific instance for your data format or API access pattern.
 
+Introduction
+------------
+The :py:class:`~hdmf.data_utils.GenericDataChunkIterator` class represents a semi-abstract
+version of a :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` that automatically handles the selection
+of buffer regions
+and resolves communication of compatible chunk regions within a H5DataIO wrapper. It does not,
+however, know how data (values) or metadata (data type, full shape) ought to be directly
+accessed. This is by intention to be fully agnostic to a range of indexing methods and
+format-independent APIs, rather than make strong assumptions about how data ranges are to be sliced.
+
+Constructing a simple child class
+---------------------------------
+We will begin with a simple example case of data access to a standard Numpy array.
+To create a :py:class:`~hdmf.data_utils.GenericDataChunkIterator` that accomplishes this,
+we begin by defining our child class.
 """
-
-###############################################################################
-# Introduction
-# ------------
-# The :py:class:`~hdmf.data_utils.GenericDataChunkIterator` class represents a semi-abstract
-# version of a :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` that automatically handles the selection
-# of buffer regions
-# and resolves communication of compatible chunk regions within a H5DataIO wrapper. It does not,
-# however, know how data (values) or metadata (data type, full shape) ought to be directly
-# accessed. This is by intention to be fully agnostic to a range of indexing methods and
-# format-independent APIs, rather than make strong assumptions about how data ranges are to be sliced.
-
-###############################################################################
-# Constructing a simple child class
-# ---------------------------------
-# We will begin with a simple example case of data access to a standard Numpy array.
-# To create a :py:class:`~hdmf.data_utils.GenericDataChunkIterator` that accomplishes this,
-# we begin by defining our child class.
 
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_generic_data_chunk_tutorial.png'
 import numpy as np
