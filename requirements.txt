@@ -1,7 +1,7 @@
 # pinned dependencies to reproduce an entire development environment to use HDMF
 # note that python 3.7 end of life is 27 Jun 2023
 h5py==3.7.0
-jsonschema==4.9.1
+jsonschema==4.17.3
 numpy==1.23.3;python_version>='3.8'
 numpy==1.21.5;python_version<'3.8'  # note that numpy 1.22 dropped python 3.7 support
 pandas==1.5.0;python_version>='3.8'
