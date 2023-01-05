@@ -161,6 +161,7 @@ class FooFile(Container):
     def foo_link(self, value):
         if self.__foo_link is None:
             self.__foo_link = value
+            self.set_modified(True)
         else:
             raise ValueError("can't reset foo_link attribute")
 
@@ -172,6 +173,7 @@ class FooFile(Container):
     def foofile_data(self, value):
         if self.__foofile_data is None:
             self.__foofile_data = value
+            self.set_modified(True)
         else:
             raise ValueError("can't reset foofile_data attribute")
 
@@ -183,6 +185,7 @@ class FooFile(Container):
     def foo_ref_attr(self, value):
         if self.__foo_ref_attr is None:
             self.__foo_ref_attr = value
+            self.set_modified(True)
         else:
             raise ValueError("can't reset foo_ref_attr attribute")
 

@@ -2489,6 +2489,31 @@ class TestExport(TestCase):
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile3.foo_link.container_source, self.paths[0])
 
+    def test_new_soft_link(self):
+        """Test that exporting a file with a newly created soft link makes the link internally."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            read_foofile.foo_link = read_foofile.buckets['bucket1'].foos['foo1']
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the exported file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
+
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
