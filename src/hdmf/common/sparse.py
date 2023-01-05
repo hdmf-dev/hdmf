@@ -1,54 +1,57 @@
 import scipy.sparse as sps
-import numpy as np
-import h5py
-
-from ..container import Container
-from ..utils import docval, getargs, call_docval_func
-
 from . import register_class
+from ..container import Container
+from ..utils import docval, popargs, to_uint_array,  get_data_shape, AllowPositional
 
 
 @register_class('CSRMatrix')
 class CSRMatrix(Container):
 
-    @docval({'name': 'data', 'type': (sps.csr_matrix, np.ndarray, h5py.Dataset),
+    @docval({'name': 'data', 'type': (sps.csr_matrix, 'array_data'),
              'doc': 'the data to use for this CSRMatrix or CSR data array.'
                     'If passing CSR data array, *indices*, *indptr*, and *shape* must also be provided'},
-            {'name': 'indices', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index array', 'default': None},
-            {'name': 'indptr', 'type': (np.ndarray, h5py.Dataset), 'doc': 'CSR index pointer array', 'default': None},
-            {'name': 'shape', 'type': (list, tuple, np.ndarray), 'doc': 'the shape of the matrix', 'default': None},
-            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'})
+            {'name': 'indices', 'type': 'array_data', 'doc': 'CSR index array', 'default': None},
+            {'name': 'indptr', 'type': 'array_data', 'doc': 'CSR index pointer array', 'default': None},
+            {'name': 'shape', 'type': 'array_data', 'doc': 'the shape of the matrix', 'default': None},
+            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-        data = getargs('data', kwargs)
-        if isinstance(data, (np.ndarray, h5py.Dataset)):
-            if data.ndim == 2:
-                data = sps.csr_matrix(self.data)
-            elif data.ndim == 1:
-                indptr, indices, shape = getargs('indptr', 'indices', 'shape', kwargs)
+        data, indices, indptr, shape = popargs('data', 'indices', 'indptr', 'shape', kwargs)
+        super().__init__(**kwargs)
+        if not isinstance(data, sps.csr_matrix):
+            temp_shape = get_data_shape(data)
+            temp_ndim = len(temp_shape)
+            if temp_ndim == 2:
+                data = sps.csr_matrix(data)
+            elif temp_ndim == 1:
                 if any(_ is None for _ in (indptr, indices, shape)):
-                    raise ValueError("must specify indptr, indices, and shape when passing data array")
-                self.__check_ind(indptr, 'indptr')
-                self.__check_ind(indices, 'indices')
+                    raise ValueError("Must specify 'indptr', 'indices', and 'shape' arguments when passing data array.")
+                indptr = self.__check_arr(indptr, 'indptr')
+                indices = self.__check_arr(indices, 'indices')
+                shape = self.__check_arr(shape, 'shape')
                 if len(shape) != 2:
-                    raise ValueError('shape must specify two and only two dimensions')
+                    raise ValueError("'shape' argument must specify two and only two dimensions.")
                 data = sps.csr_matrix((data, indices, indptr), shape=shape)
             else:
-                raise ValueError("cannot use ndarray of dimensionality > 2")
+                raise ValueError("'data' argument cannot be ndarray of dimensionality > 2.")
         self.__data = data
-        self.__shape = data.shape
 
     @staticmethod
-    def __check_ind(ar, arg):
-        if not (ar.ndim == 1 or np.issubdtype(ar.dtype, int)):
-            raise ValueError('%s must be a 1D array of integers' % arg)
+    def __check_arr(ar, arg):
+        try:
+            ar = to_uint_array(ar)
+        except ValueError as ve:
+            raise ValueError("Cannot convert '%s' to an array of unsigned integers." % arg) from ve
+        if ar.ndim != 1:
+            raise ValueError("'%s' must be a 1D array of unsigned integers." % arg)
+        return ar
 
     def __getattr__(self, val):
-        return getattr(self.__data, val)
-
-    @property
-    def shape(self):
-        return self.__shape
+        # NOTE: this provides access to self.data, self.indices, self.indptr, self.shape
+        attr = getattr(self.__data, val)
+        if val in ('indices', 'indptr', 'shape'):  # needed because sps.csr_matrix may contain int arrays for these
+            attr = to_uint_array(attr)
+        return attr
 
     def to_spmat(self):
         return self.__data

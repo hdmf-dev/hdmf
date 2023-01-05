@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
-from .utils import docval, getargs, call_docval_func
 from .data_utils import AbstractDataChunkIterator, DataChunkIterator, DataChunk
+from .utils import docval, getargs
 
 
 class NotYetExhausted(Exception):
@@ -60,7 +60,7 @@ class DataChunkProcessor(AbstractDataChunkIterator, metaclass=ABCMeta):
 class NumSampleCounter(DataChunkProcessor):
 
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.__sample_count = 0
 
     @docval({'name': 'data_chunk', 'type': DataChunk, 'doc': 'a chunk to process'})

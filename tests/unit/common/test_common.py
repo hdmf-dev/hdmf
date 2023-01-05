@@ -7,7 +7,7 @@ class TestCommonTypeMap(TestCase):
 
     def test_base_types(self):
         tm = get_type_map()
-        cls = tm.get_container_cls('hdmf-common', 'Container')
+        cls = tm.get_dt_container_cls('Container', 'hdmf-common')
         self.assertIs(cls, Container)
-        cls = tm.get_container_cls('hdmf-common', 'Data')
+        cls = tm.get_dt_container_cls('Data', 'hdmf-common')
         self.assertIs(cls, Data)

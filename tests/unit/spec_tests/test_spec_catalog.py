@@ -180,3 +180,50 @@ class SpecCatalogTest(TestCase):
         re = copy.deepcopy(self.catalog)
         self.assertTupleEqual(self.catalog.get_registered_types(),
                               re.get_registered_types())
+
+    def test_catch_duplicate_spec_nested(self):
+        spec1 = GroupSpec(
+            data_type_def='Group1',
+            doc='This is my new group 1',
+        )
+        spec2 = GroupSpec(
+            data_type_def='Group2',
+            doc='This is my new group 2',
+            groups=[spec1],  # nested definition
+        )
+        source = 'test_extension.yaml'
+        self.catalog.register_spec(spec1, source)
+        self.catalog.register_spec(spec2, source)  # this is OK because Group1 is the same spec
+        ret = self.catalog.get_spec('Group1')
+        self.assertIs(ret, spec1)
+
+    def test_catch_duplicate_spec_different(self):
+        spec1 = GroupSpec(
+            data_type_def='Group1',
+            doc='This is my new group 1',
+        )
+        spec2 = GroupSpec(
+            data_type_def='Group1',
+            doc='This is my other group 1',
+        )
+        source = 'test_extension.yaml'
+        self.catalog.register_spec(spec1, source)
+        msg = "'Group1' - cannot overwrite existing specification"
+        with self.assertRaisesWith(ValueError, msg):
+            self.catalog.register_spec(spec2, source)
+
+    def test_catch_duplicate_spec_different_source(self):
+        spec1 = GroupSpec(
+            data_type_def='Group1',
+            doc='This is my new group 1',
+        )
+        spec2 = GroupSpec(
+            data_type_def='Group1',
+            doc='This is my new group 1',
+        )
+        source1 = 'test_extension1.yaml'
+        source2 = 'test_extension2.yaml'
+        self.catalog.register_spec(spec1, source1)
+        msg = "'Group1' - cannot overwrite existing specification"
+        with self.assertRaisesWith(ValueError, msg):
+            self.catalog.register_spec(spec2, source2)

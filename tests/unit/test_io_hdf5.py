@@ -1,16 +1,14 @@
-import os
-from h5py import File, Dataset, Reference
-from numbers import Number
 import json
-import numpy as np
+import os
+from numbers import Number
 
+import numpy as np
+from h5py import File, Dataset, Reference
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
-from hdmf.utils import get_data_shape
 from hdmf.testing import TestCase
-
-from tests.unit.utils import Foo
-from tests.unit.test_io_hdf5_h5tools import _get_manager
+from hdmf.utils import get_data_shape
+from tests.unit.utils import Foo, get_foo_buildmanager
 
 
 class HDF5Encoder(json.JSONEncoder):
@@ -21,7 +19,7 @@ class HDF5Encoder(json.JSONEncoder):
                 try:
                     ret = t(obj)
                     break
-                except:  # noqa: F722
+                except:  # noqa: E722
                     pass
             if ret is None:
                 return obj
@@ -149,7 +147,7 @@ class GroupBuilderTestCase(TestCase):
 class TestHDF5Writer(GroupBuilderTestCase):
 
     def setUp(self):
-        self.manager = _get_manager()
+        self.manager = get_foo_buildmanager()
         self.path = "test_io_hdf5.h5"
 
         self.foo_builder = GroupBuilder('foo1',
@@ -219,15 +217,6 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io.write_builder(self.builder)
         builder = io.read_builder()
         self.assertBuilderEqual(builder, self.builder)
-        io.close()
-
-    def test_overwrite_written(self):
-        self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
-        io.write_builder(self.builder)
-        builder = io.read_builder()
-        with self.assertRaisesWith(ValueError, "cannot change written to not written"):
-            builder.written = False
         io.close()
 
     def test_dataset_shape(self):

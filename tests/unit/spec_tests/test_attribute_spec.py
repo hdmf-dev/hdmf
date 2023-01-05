@@ -1,6 +1,6 @@
 import json
 
-from hdmf.spec import AttributeSpec
+from hdmf.spec import AttributeSpec, RefSpec
 from hdmf.testing import TestCase
 
 
@@ -64,3 +64,30 @@ class AttributeSpecTests(TestCase):
                              'text',
                              dims=['test'])
         self.assertEqual(spec.shape, (None, ))
+
+    def test_build_spec(self):
+        spec_dict = {'name': 'attribute1',
+                     'doc': 'my first attribute',
+                     'dtype': 'text',
+                     'shape': [None],
+                     'dims': ['dim1'],
+                     'value': ['a', 'b']}
+        ret = AttributeSpec.build_spec(spec_dict)
+        self.assertTrue(isinstance(ret, AttributeSpec))
+        self.assertDictEqual(ret, spec_dict)
+
+    def test_build_spec_reftype(self):
+        spec_dict = {'name': 'attribute1',
+                     'doc': 'my first attribute',
+                     'dtype': {'target_type': 'AnotherType', 'reftype': 'object'}}
+        expected = spec_dict.copy()
+        expected['dtype'] = RefSpec(target_type='AnotherType', reftype='object')
+        ret = AttributeSpec.build_spec(spec_dict)
+        self.assertTrue(isinstance(ret, AttributeSpec))
+        self.assertDictEqual(ret, expected)
+
+    def test_build_spec_no_doc(self):
+        spec_dict = {'name': 'attribute1', 'dtype': 'text'}
+        msg = "AttributeSpec.__init__: missing argument 'doc'"
+        with self.assertRaisesWith(TypeError, msg):
+            AttributeSpec.build_spec(spec_dict)

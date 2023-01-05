@@ -1,10 +1,56 @@
+import copy
+import math
+import functools  # TODO: remove when Python 3.7 support is dropped
+import operator  # TODO: remove when Python 3.7 support is dropped
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-import numpy as np
 from warnings import warn
-import copy
+from typing import Tuple
+from itertools import product, chain
+
+import h5py
+import numpy as np
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
+
+
+def append_data(data, arg):
+    if isinstance(data, (list, DataIO)):
+        data.append(arg)
+        return data
+    elif isinstance(data, np.ndarray):
+        return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+    elif isinstance(data, h5py.Dataset):
+        shape = list(data.shape)
+        shape[0] += 1
+        data.resize(shape)
+        data[-1] = arg
+        return data
+    else:
+        msg = "Data cannot append to object of type '%s'" % type(data)
+        raise ValueError(msg)
+
+
+def extend_data(data, arg):
+    """Add all the elements of the iterable arg to the end of data.
+
+    :param data: The array to extend
+    :type data: list, DataIO, np.ndarray, h5py.Dataset
+    """
+    if isinstance(data, (list, DataIO)):
+        data.extend(arg)
+        return data
+    elif isinstance(data, np.ndarray):
+        return np.vstack((data, arg))
+    elif isinstance(data, h5py.Dataset):
+        shape = list(data.shape)
+        shape[0] += len(arg)
+        data.resize(shape)
+        data[-len(arg):] = arg
+        return data
+    else:
+        msg = "Data cannot extend object of type '%s'" % type(data)
+        raise ValueError(msg)
 
 
 @docval_macro('array_data')
@@ -14,6 +60,8 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
 
     Derived classes must ensure that all abstract methods and abstract properties are implemented, in
     particular, dtype, maxshape, __iter__, ___next__, recommended_chunk_shape, and recommended_data_shape.
+
+    Iterating over AbstractContainer objects is not yet supported.
     """
 
     @abstractmethod
@@ -37,6 +85,7 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
     @abstractmethod
     def recommended_chunk_shape(self):
         """
+        Recommend the chunk shape for the data array.
 
         :return: NumPy-style shape tuple describing the recommended shape for the chunks of the target
                  array or None. This may or may not be the same as the shape of the chunks returned in the
@@ -81,6 +130,293 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
         raise NotImplementedError("maxshape not implemented for derived class")
 
 
+class GenericDataChunkIterator(AbstractDataChunkIterator):
+    """DataChunkIterator that lets the user specify chunk and buffer shapes."""
+
+    __docval_init = (
+        dict(
+            name="buffer_gb",
+            type=(float, int),
+            doc=(
+                "If buffer_shape is not specified, it will be inferred as the smallest chunk "
+                "below the buffer_gb threshold."
+                "Defaults to 1GB."
+            ),
+            default=None,
+        ),
+        dict(
+            name="buffer_shape",
+            type=tuple,
+            doc="Manually defined shape of the buffer.",
+            default=None,
+        ),
+        dict(
+            name="chunk_mb",
+            type=(float, int),
+            doc=(
+                "If chunk_shape is not specified, it will be inferred as the smallest chunk "
+                "below the chunk_mb threshold.",
+                "Defaults to 1MB.",
+            ),
+            default=None,
+        ),
+        dict(
+            name="chunk_shape",
+            type=tuple,
+            doc="Manually defined shape of the chunks.",
+            default=None,
+        ),
+        dict(
+            name="display_progress",
+            type=bool,
+            doc="Display a progress bar with iteration rate and estimated completion time.",
+            default=False,
+        ),
+        dict(
+            name="progress_bar_options",
+            type=None,
+            doc="Dictionary of keyword arguments to be passed directly to tqdm.",
+            default=None,
+        ),
+    )
+
+    @docval(*__docval_init)
+    def __init__(self, **kwargs):
+        """
+        Break a dataset into buffers containing multiple chunks to be written into an HDF5 dataset.
+
+        Basic users should set the buffer_gb argument to as much free RAM space as can be safely allocated.
+        Advanced users are offered full control over the shape paramters for the buffer and the chunks; however,
+        the chunk shape must perfectly divide the buffer shape along each axis.
+
+        HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
+        See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
+        for more details.
+        """
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, self.progress_bar_options = getargs(
+            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
+        )
+
+        if buffer_gb is None and buffer_shape is None:
+            buffer_gb = 1.0
+        if chunk_mb is None and chunk_shape is None:
+            chunk_mb = 1.0
+        assert (buffer_gb is not None) != (
+            buffer_shape is not None
+        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        assert (chunk_mb is not None) != (
+            chunk_shape is not None
+        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
+
+        self._dtype = self._get_dtype()
+        self._maxshape = tuple(int(x) for x in self._get_maxshape())
+        chunk_shape = tuple(int(x) for x in chunk_shape) if chunk_shape else chunk_shape
+        self.chunk_shape = chunk_shape or self._get_default_chunk_shape(chunk_mb=chunk_mb)
+        buffer_shape = tuple(int(x) for x in buffer_shape) if buffer_shape else buffer_shape
+        self.buffer_shape = buffer_shape or self._get_default_buffer_shape(buffer_gb=buffer_gb)
+
+        # Shape assertions
+        assert all(
+            buffer_axis > 0 for buffer_axis in self.buffer_shape
+        ), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
+        assert all(
+            chunk_axis <= maxshape_axis for chunk_axis, maxshape_axis in zip(self.chunk_shape, self.maxshape)
+        ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
+        assert all(
+            buffer_axis <= maxshape_axis for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
+        ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+        assert all(
+            (chunk_axis <= buffer_axis for chunk_axis, buffer_axis in zip(self.chunk_shape, self.buffer_shape))
+        ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the buffer shape ({self.buffer_shape})!"
+        assert all(
+            buffer_axis % chunk_axis == 0
+            for chunk_axis, buffer_axis, maxshape_axis in zip(self.chunk_shape, self.buffer_shape, self.maxshape)
+            if buffer_axis != maxshape_axis
+        ), (
+            f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
+            f"evenly divide the buffer shape ({self.buffer_shape})!"
+        )
+
+        self.num_buffers = functools.reduce(  # TODO: replace with math.prod when Python 3.7 support is dropped
+            operator.mul,
+            [
+                math.ceil(maxshape_axis / buffer_axis)
+                for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
+            ],
+            1,
+        )
+        self.buffer_selection_generator = (
+            tuple(
+                [
+                    slice(lower_bound, upper_bound)
+                    for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)
+                ]
+            )
+            for lower_bounds, upper_bounds in zip(
+                product(
+                    *[
+                        range(0, max_shape_axis, buffer_shape_axis)
+                        for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
+                    ]
+                ),
+                product(
+                    *[
+                        chain(range(buffer_shape_axis, max_shape_axis, buffer_shape_axis), [max_shape_axis])
+                        for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
+                    ]
+                ),
+            )
+        )
+
+        if self.display_progress:
+            if self.progress_bar_options is None:
+                self.progress_bar_options = dict()
+
+            try:
+                from tqdm import tqdm
+
+                if "total" in self.progress_bar_options:
+                    warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
+                    self.progress_bar_options.pop("total")
+                self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
+            except ImportError:
+                warn(
+                    "You must install tqdm to use the progress bar feature (pip install tqdm)! "
+                    "Progress bar is disabled."
+                )
+                self.display_progress = False
+
+    @docval(
+        dict(
+            name="chunk_mb",
+            type=(float, int),
+            doc="Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.",
+            default=None,
+        )
+    )
+    def _get_default_chunk_shape(self, **kwargs) -> Tuple[int, ...]:
+        """
+        Select chunk shape with size in MB less than the threshold of chunk_mb.
+
+        Keeps the dimensional ratios of the original data.
+        """
+        chunk_mb = getargs("chunk_mb", kwargs)
+        assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
+
+        n_dims = len(self.maxshape)
+        itemsize = self.dtype.itemsize
+        chunk_bytes = chunk_mb * 1e6
+
+        min_maxshape = min(self.maxshape)
+        v = tuple(math.floor(maxshape_axis / min_maxshape) for maxshape_axis in self.maxshape)
+        prod_v = functools.reduce(operator.mul, v, 1)  # TODO: replace with math.prod when Python 3.7 support is dropped
+        while prod_v * itemsize > chunk_bytes and prod_v != 1:
+            non_unit_min_v = min(x for x in v if x != 1)
+            v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
+            # TODO: replace with math.prod when Python 3.7 support is dropped
+            prod_v = functools.reduce(operator.mul, v, 1)
+        k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
+        return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
+
+    @docval(
+        dict(
+            name="buffer_gb",
+            type=(float, int),
+            doc="Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.",
+            default=None,
+        )
+    )
+    def _get_default_buffer_shape(self, **kwargs) -> Tuple[int, ...]:
+        """
+        Select buffer shape with size in GB less than the threshold of buffer_gb.
+
+        Keeps the dimensional ratios of the original data.
+        Assumes the chunk_shape has already been set.
+        """
+        buffer_gb = getargs("buffer_gb", kwargs)
+        assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
+        assert all(chunk_axis > 0 for chunk_axis in self.chunk_shape), (
+            f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
+        )
+
+        # TODO: replace with math.prod when Python 3.7 support is dropped
+        k = math.floor(
+            (
+                buffer_gb * 1e9 / (functools.reduce(operator.mul, self.chunk_shape, 1) * self.dtype.itemsize)
+            ) ** (1 / len(self.chunk_shape))
+        )
+        return tuple(
+            [
+                min(max(k * x, self.chunk_shape[j]), self.maxshape[j])
+                for j, x in enumerate(self.chunk_shape)
+            ]
+        )
+
+    def recommended_chunk_shape(self) -> Tuple[int, ...]:
+        return self.chunk_shape
+
+    def recommended_data_shape(self) -> Tuple[int, ...]:
+        return self.maxshape
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        """
+        Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary.
+
+        :returns: DataChunk object with the data and selection of the current buffer.
+        :rtype: DataChunk
+        """
+        if self.display_progress:
+            self.progress_bar.update(n=1)
+        try:
+            buffer_selection = next(self.buffer_selection_generator)
+            return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
+        except StopIteration:
+            if self.display_progress:
+                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
+            raise StopIteration
+
+    @abstractmethod
+    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+        """
+        Retrieve the data specified by the selection using minimal I/O.
+
+        The developer of a new implementation of the GenericDataChunkIterator must ensure the data is actually
+        loaded into memory, and not simply mapped.
+
+        :param selection: Tuple of slices, each indicating the selection indexed with respect to maxshape for that axis
+        :type selection: tuple of slices
+
+        :returns: Array of data specified by selection
+        :rtype: np.ndarray
+        Parameters
+        ----------
+        selection : tuple of slices
+            Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
+        """
+        raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
+
+    @property
+    def maxshape(self) -> Tuple[int, ...]:
+        return self._maxshape
+
+    @abstractmethod
+    def _get_maxshape(self) -> Tuple[int, ...]:
+        """Retrieve the maximum bounds of the data shape using minimal I/O."""
+        raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
+
+    @property
+    def dtype(self) -> np.dtype:
+        return self._dtype
+
+    @abstractmethod
+    def _get_dtype(self) -> np.dtype:
+        """Retrieve the dtype of the data using minimal I/O."""
+        raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
+
+
 class DataChunkIterator(AbstractDataChunkIterator):
     """
     Custom iterator class used to iterate over chunks of data.
@@ -93,14 +429,14 @@ class DataChunkIterator(AbstractDataChunkIterator):
     """
 
     __docval_init = (
-            {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
-            {'name': 'maxshape', 'type': tuple,
-             'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
-             'default': None},
-            {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
-            {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
-            {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
-            )
+        {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
+        {'name': 'maxshape', 'type': tuple,
+         'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
+         'default': None},
+        {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
+        {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
+        {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
+    )
 
     @docval(*__docval_init)
     def __init__(self, **kwargs):
@@ -136,7 +472,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         # Determine the shape of the data if possible
         if self.__maxshape is None:
             # If the self.data object identifies its shape, then use it
-            if hasattr(self.data,  "shape"):
+            if hasattr(self.data, "shape"):
                 self.__maxshape = self.data.shape
                 # Avoid the special case of scalar values by making them into a 1D numpy array
                 if len(self.__maxshape) == 0:
@@ -144,7 +480,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                     self.__maxshape = self.data.shape
                     self.__data_iter = iter(self.data)
             # Try to get an accurate idea of __maxshape for other Python data structures if possible.
-            # Don't just callget_shape for a generator as that would potentially trigger loading of all the data
+            # Don't just call get_data_shape for a generator as that would potentially trigger loading of all the data
             elif isinstance(self.data, list) or isinstance(self.data, tuple):
                 self.__maxshape = get_data_shape(self.data, strict_no_data_load=True)
 
@@ -156,6 +492,10 @@ class DataChunkIterator(AbstractDataChunkIterator):
         if self.__next_chunk.data is not None:
             self.__dtype = self.__next_chunk.data.dtype
             self.__first_chunk_shape = get_data_shape(self.__next_chunk.data)
+
+        # This should be done as a last resort only
+        if self.__first_chunk_shape is None and self.__maxshape is not None:
+            self.__first_chunk_shape = tuple(1 if i is None else i for i in self.__maxshape)
 
         if self.__dtype is None:
             raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
@@ -342,11 +682,9 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
 class DataChunk:
     """
-    Class used to describe a data chunk. Used in DataChunkIterator to describe
-
-    :ivar data: Numpy ndarray with the data value(s) of the chunk
-    :ivar selection: Numpy index tuple describing the location of the chunk
+    Class used to describe a data chunk. Used in DataChunkIterator.
     """
+
     @docval({'name': 'data', 'type': np.ndarray,
              'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},
             {'name': 'selection', 'type': None,
@@ -389,6 +727,30 @@ class DataChunk:
         :returns: np.dtype of the values in the DataChunk
         """
         return self.data.dtype
+
+    def get_min_bounds(self):
+        """
+        Helper function to compute the minimum dataset size required to fit the selection of this chunk.
+
+        :raises TypeError: If the the selection is not a single int, slice, or tuple of slices.
+
+        :return: Tuple with the minimum shape required to store the selection
+        """
+        if isinstance(self.selection, tuple):
+            # Determine the minimum array dimensions to fit the chunk selection
+            max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x+1 for x in self.selection])
+        elif isinstance(self.selection, int):
+            max_bounds = (self.selection+1, )
+        elif isinstance(self.selection, slice):
+            max_bounds = (self.selection.stop or 0, )
+        else:
+            # Note: Technically any numpy index tuple would be allowed, but h5py is not as general and this case
+            #       only implements the selections supported by h5py. We could add more cases to support a
+            #       broader range of valid numpy selection types
+            msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
+                   "and/or integers") % str(self.selection)
+            raise TypeError(msg)
+        return max_bounds
 
 
 def assertEqualShape(data1,
@@ -453,10 +815,10 @@ def assertEqualShape(data1,
         response.message = response.SHAPE_ERROR[response.error]
         if np.max(response.axes1) >= num_dims_1:
             response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % \
-                                (n1, np.max(response.axes1)+1, num_dims_1)
+                                (n1, np.max(response.axes1) + 1, num_dims_1)
         elif np.max(response.axes2) >= num_dims_2:
             response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % \
-                                (n2, np.max(response.axes2)+1, num_dims_2)
+                                (n2, np.max(response.axes2) + 1, num_dims_2)
     # 4) Compare the length of the dimensions we should validate
     else:
         unmatched = []
@@ -517,18 +879,18 @@ class ShapeValidatorResult:
             {'name': 'message', 'type': str,
              'doc': 'Message describing the result of the shape validation', 'default': None},
             {'name': 'ignored', 'type': tuple,
-             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None,)},
             {'name': 'unmatched', 'type': tuple,
-             'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None, )},
+             'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None,)},
             {'name': 'error', 'type': str, 'doc': 'Error that may have occurred. One of ERROR_TYPE', 'default': None},
             {'name': 'shape1', 'type': tuple,
-             'doc': 'Shape of the first array for comparison', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Shape of the first array for comparison', 'default': tuple(), 'shape': (None,)},
             {'name': 'shape2', 'type': tuple,
-             'doc': 'Shape of the second array for comparison', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Shape of the second array for comparison', 'default': tuple(), 'shape': (None,)},
             {'name': 'axes1', 'type': tuple,
-             'doc': 'Axes for the first array that should match', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Axes for the first array that should match', 'default': tuple(), 'shape': (None,)},
             {'name': 'axes2', 'type': tuple,
-             'doc': 'Axes for the second array that should match', 'default': tuple(), 'shape': (None, )},
+             'doc': 'Axes for the second array that should match', 'default': tuple(), 'shape': (None,)},
             )
     def __init__(self, **kwargs):
         self.result, self.message, self.ignored, self.unmatched, \
@@ -565,10 +927,34 @@ class DataIO:
     Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
     """
-    @docval({'name': 'data', 'type': 'array_data', 'doc': 'the data to be written', 'default': None})
+
+    @docval({'name': 'data',
+             'type': 'array_data',
+             'doc': 'the data to be written',
+             'default': None},
+            {'name': 'dtype',
+             'type': (type, np.dtype),
+             'doc': 'the data type of the dataset. Not used if data is specified.',
+             'default': None},
+            {'name': 'shape',
+             'type': tuple,
+             'doc': 'the shape of the dataset. Not used if data is specified.',
+             'default': None})
     def __init__(self, **kwargs):
-        data = popargs('data', kwargs)
+        data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
+        if data is None:
+            if (dtype is None) ^ (shape is None):
+                raise ValueError("Must specify 'dtype' and 'shape' if not specifying 'data'")
+        else:
+            if dtype is not None:
+                warn("Argument 'dtype' is ignored when 'data' is specified")
+                dtype = None
+            if shape is not None:
+                warn("Argument 'shape' is ignored when 'data' is specified")
+                shape = None
         self.__data = data
+        self.__dtype = dtype
+        self.__shape = shape
 
     def get_io_params(self):
         """
@@ -586,7 +972,19 @@ class DataIO:
         """Set the wrapped data object"""
         if self.__data is not None:
             raise ValueError("cannot overwrite 'data' on DataIO")
+        if not (self.__dtype is None and self.__shape is None):
+            raise ValueError("Setting data when dtype and shape are not None is not supported")
         self.__data = val
+
+    @property
+    def dtype(self):
+        """Get the wrapped data object"""
+        return self.__dtype or self.__getattr__("dtype")
+
+    @property
+    def shape(self):
+        """Get the wrapped data object"""
+        return self.__shape or self.__getattr__("shape")
 
     def __copy__(self):
         """
@@ -599,6 +997,12 @@ class DataIO:
         """
         newobj = DataIO(data=self.data)
         return newobj
+
+    def append(self, arg):
+        self.__data = append_data(self.__data, arg)
+
+    def extend(self, arg):
+        self.__data = extend_data(self.__data, arg)
 
     def __deepcopy__(self, memo):
         """
@@ -617,15 +1021,24 @@ class DataIO:
 
     def __len__(self):
         """Number of values in self.data"""
+        if self.__shape is not None:
+            return self.__shape[0]
         if not self.valid:
             raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
         return len(self.data)
 
     def __bool__(self):
-        return self.valid and len(self) > 0
+        if self.valid:
+            if isinstance(self.data, AbstractDataChunkIterator):
+                return True
+            return len(self) > 0
+        return False
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
+        if attr == '__array_struct__' and not self.valid:
+            # np.array() checks __array__ or __array_struct__ attribute dep. on numpy version
+            raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
         if not self.valid:
             raise InvalidDataIOError("Cannot get attribute '%s' of data. Data is not valid." % attr)
         return getattr(self.data, attr)

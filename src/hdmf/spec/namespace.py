@@ -1,17 +1,15 @@
-from collections import OrderedDict
-from datetime import datetime
-from copy import deepcopy, copy
-import ruamel.yaml as yaml
 import os.path
+import ruamel.yaml as yaml
 import string
-from warnings import warn
-from itertools import chain
 from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+from copy import copy
+from datetime import datetime
+from warnings import warn
 
-from ..utils import docval, getargs, popargs, get_docval, call_docval_func
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec
-
+from ..utils import docval, getargs, popargs, get_docval
 
 _namespace_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this namespace represents'},
@@ -36,7 +34,9 @@ class SpecNamespace(dict):
 
     __types_key = 'data_types'
 
-    @docval(*deepcopy(_namespace_args))
+    UNVERSIONED = None  # value representing missing version
+
+    @docval(*_namespace_args)
     def __init__(self, **kwargs):
         doc, full_name, name, version, date, author, contact, schema, catalog = \
             popargs('doc', 'full_name', 'name', 'version', 'date', 'author', 'contact', 'schema', 'catalog', kwargs)
@@ -48,8 +48,17 @@ class SpecNamespace(dict):
         self['name'] = name
         if full_name is not None:
             self['full_name'] = full_name
-        if version is not None:
-            self['version'] = version
+        if version == str(SpecNamespace.UNVERSIONED):
+            # the unversioned version may be written to file as a string and read from file as a string
+            warn("Loaded namespace '%s' is unversioned. Please notify the extension author." % name)
+            version = SpecNamespace.UNVERSIONED
+        if version is None:
+            # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
+            # be able to read older files with extensions that are missing the version key.
+            warn(("Loaded namespace '%s' is missing the required key 'version'. Version will be set to '%s'. "
+                  "Please notify the extension author.") % (name, SpecNamespace.UNVERSIONED))
+            version = SpecNamespace.UNVERSIONED
+        self['version'] = version
         if date is not None:
             self['date'] = date
         if author is not None:
@@ -78,13 +87,16 @@ class SpecNamespace(dict):
 
     @property
     def author(self):
-        """String or list of strings with the authors or  None"""
+        """String or list of strings with the authors or None"""
         return self.get('author', None)
 
     @property
     def version(self):
-        """String, list, or tuple with the version or None """
-        return self.get('version', None)
+        """
+        String, list, or tuple with the version or SpecNamespace.UNVERSIONED
+        if the version is missing or empty
+        """
+        return self.get('version', None) or SpecNamespace.UNVERSIONED
 
     @property
     def date(self):
@@ -183,13 +195,13 @@ class YAMLSpecReader(SpecReader):
 
     @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
     def __init__(self, **kwargs):
-        super_kwargs = {'source': kwargs['indir']}
-        call_docval_func(super().__init__, super_kwargs)
+        super().__init__(source=kwargs['indir'])
 
     def read_namespace(self, namespace_path):
         namespaces = None
         with open(namespace_path, 'r') as stream:
-            d = yaml.safe_load(stream)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            d = yaml_obj.load(stream)
             namespaces = d.get('namespaces')
             if namespaces is None:
                 raise ValueError("no 'namespaces' found in %s" % namespace_path)
@@ -198,7 +210,8 @@ class YAMLSpecReader(SpecReader):
     def read_spec(self, spec_path):
         specs = None
         with open(self.__get_spec_path(spec_path), 'r') as stream:
-            specs = yaml.safe_load(stream)
+            yaml_obj = yaml.YAML(typ='safe', pure=True)
+            specs = yaml_obj.load(stream)
             if not ('datasets' in specs or 'groups' in specs):
                 raise ValueError("no 'groups' or 'datasets' found in %s" % spec_path)
         return specs
@@ -216,7 +229,7 @@ class NamespaceCatalog:
             {'name': 'dataset_spec_cls', 'type': type,
              'doc': 'the class to use for dataset specifications', 'default': DatasetSpec},
             {'name': 'spec_namespace_cls', 'type': type,
-             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace},)
+             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         """Create a catalog for storing  multiple Namespaces"""
         self.__namespaces = OrderedDict()
@@ -276,7 +289,9 @@ class NamespaceCatalog:
         self.__namespaces[name] = namespace
         for dt in namespace.catalog.get_registered_types():
             source = namespace.catalog.get_spec_source_file(dt)
-            self.__loaded_specs.setdefault(source, list()).append(dt)
+            # do not add types that have already been loaded
+            # use dict with None values as ordered set because order of specs does matter
+            self.__loaded_specs.setdefault(source, dict()).update({dt: None})
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             returns="the SpecNamespace with the given name", rtype=SpecNamespace)
@@ -313,6 +328,18 @@ class NamespaceCatalog:
             raise KeyError("'%s' not a namespace" % namespace)
         return spec_ns.get_hierarchy(data_type)
 
+    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace containing the data_type'},
+            {'name': 'data_type', 'type': str, 'doc': 'the data_type to check'},
+            {'name': 'parent_data_type', 'type': str, 'doc': 'the potential parent data_type'},
+            returns="True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise", rtype=bool)
+    def is_sub_data_type(self, **kwargs):
+        '''
+        Return whether or not *data_type* is a sub `data_type` of *parent_data_type*
+        '''
+        ns, dt, parent_dt = getargs('namespace', 'data_type', 'parent_data_type', kwargs)
+        hier = self.get_hierarchy(ns, dt)
+        return parent_dt in hier
+
     @docval(rtype=tuple)
     def get_sources(self, **kwargs):
         '''
@@ -339,67 +366,85 @@ class NamespaceCatalog:
         ret = self.__loaded_specs.get(source)
         if ret is not None:
             ret = tuple(ret)
+        else:
+            ret = tuple()
         return ret
 
-    def __load_spec_file(self, reader, spec_source, catalog, dtypes=None, resolve=True):
+    def __load_spec_file(self, reader, spec_source, catalog, types_to_load=None, resolve=True):
         ret = self.__loaded_specs.get(spec_source)
         if ret is not None:
             raise ValueError("spec source '%s' already loaded" % spec_source)
 
         def __reg_spec(spec_cls, spec_dict):
-            parent_cls = GroupSpec if issubclass(spec_cls, GroupSpec) else DatasetSpec
-            dt_def = spec_dict.get(spec_cls.def_key(), spec_dict.get(parent_cls.def_key()))
+            dt_def = spec_dict.get(spec_cls.def_key())
             if dt_def is None:
-                msg = 'no %s or %s found in spec %s' % (spec_cls.def_key(), parent_cls.def_key(), spec_source)
+                msg = 'No data type def key found in spec %s' % spec_source
                 raise ValueError(msg)
-            if dtypes and dt_def not in dtypes:
+            if types_to_load and dt_def not in types_to_load:
                 return
             if resolve:
-                self.__resolve_includes(spec_dict, catalog)
+                self.__resolve_includes(spec_cls, spec_dict, catalog)
             spec_obj = spec_cls.build_spec(spec_dict)
             return catalog.auto_register(spec_obj, spec_source)
 
         if ret is None:
-            ret = list()
+            ret = dict()  # this is used as an ordered set -- values are all none
             d = reader.read_spec(spec_source)
             specs = d.get('datasets', list())
             for spec_dict in specs:
-                ret.extend(__reg_spec(self.__dataset_spec_cls, spec_dict))
+                self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
+                temp_dict = {k: None for k in __reg_spec(self.__dataset_spec_cls, spec_dict)}
+                ret.update(temp_dict)
             specs = d.get('groups', list())
             for spec_dict in specs:
-                ret.extend(__reg_spec(self.__group_spec_cls, spec_dict))
+                self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
+                temp_dict = {k: None for k in __reg_spec(self.__group_spec_cls, spec_dict)}
+                ret.update(temp_dict)
             self.__loaded_specs[spec_source] = ret
         return ret
 
-    def __resolve_includes(self, spec_dict, catalog):
+    def __convert_spec_cls_keys(self, parent_cls, spec_cls, spec_dict):
+        """Replace instances of data_type_def/inc in spec_dict with new values from spec_cls."""
+        # this is necessary because the def_key and inc_key may be different in each namespace
+        # NOTE: this does not handle more than one custom set of keys
+        if parent_cls.def_key() in spec_dict:
+            spec_dict[spec_cls.def_key()] = spec_dict.pop(parent_cls.def_key())
+        if parent_cls.inc_key() in spec_dict:
+            spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
+
+    def __resolve_includes(self, spec_cls, spec_dict, catalog):
+        """Replace data type inc strings with the spec definition so the new spec is built with included fields.
         """
-            Pull in any attributes, datasets, or groups included
-        """
-        dt_inc = spec_dict.get(self.__group_spec_cls.inc_key())
-        dt_def = spec_dict.get(self.__group_spec_cls.def_key())
+        dt_def = spec_dict.get(spec_cls.def_key())
+        dt_inc = spec_dict.get(spec_cls.inc_key())
         if dt_inc is not None and dt_def is not None:
             parent_spec = catalog.get_spec(dt_inc)
             if parent_spec is None:
                 msg = "Cannot resolve include spec '%s' for type '%s'" % (dt_inc, dt_def)
                 raise ValueError(msg)
-            spec_dict[self.__group_spec_cls.inc_key()] = parent_spec
-        it = chain(spec_dict.get('groups', list()), spec_dict.get('datasets', list()))
-        for subspec_dict in it:
-            self.__resolve_includes(subspec_dict, catalog)
+            # replace the inc key value from string to the inc spec so that the spec can be updated with all of the
+            # attributes, datasets, groups, and links of the inc spec when spec_cls.build_spec(spec_dict) is called
+            spec_dict[spec_cls.inc_key()] = parent_spec
+        for subspec_dict in spec_dict.get('groups', list()):
+            self.__resolve_includes(self.__group_spec_cls, subspec_dict, catalog)
+        for subspec_dict in spec_dict.get('datasets', list()):
+            self.__resolve_includes(self.__dataset_spec_cls, subspec_dict, catalog)
 
-    def __load_namespace(self, namespace, reader, types_key, resolve=True):
+    def __load_namespace(self, namespace, reader, resolve=True):
         ns_name = namespace['name']
-        if ns_name in self.__namespaces:
+        if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
         catalog = SpecCatalog()
         included_types = dict()
         for s in namespace['schema']:
+            # types_key may be different in each spec namespace, so check both the __spec_namespace_cls types key
+            # and the parent SpecNamespace types key. NOTE: this does not handle more than one custom types key
+            types_to_load = s.get(self.__spec_namespace_cls.types_key(), s.get(SpecNamespace.types_key()))
+            if types_to_load is not None:  # schema specifies specific types from 'source' or 'namespace'
+                types_to_load = set(types_to_load)
             if 'source' in s:
                 # read specs from file
-                dtypes = None
-                if types_key in s:
-                    dtypes = set(s[types_key])
-                self.__load_spec_file(reader, s['source'], catalog, dtypes=dtypes, resolve=resolve)
+                self.__load_spec_file(reader, s['source'], catalog, types_to_load=types_to_load, resolve=resolve)
                 self.__included_sources.setdefault(ns_name, list()).append(s['source'])
             elif 'namespace' in s:
                 # load specs from namespace
@@ -407,22 +452,52 @@ class NamespaceCatalog:
                     inc_ns = self.get_namespace(s['namespace'])
                 except KeyError as e:
                     raise ValueError("Could not load namespace '%s'" % s['namespace']) from e
-                if types_key in s:
-                    types = s[types_key]
-                else:
-                    types = inc_ns.get_registered_types()
-                for ndt in types:
-                    spec = inc_ns.get_spec(ndt)
-                    spec_file = inc_ns.catalog.get_spec_source_file(ndt)
-                    if isinstance(spec, DatasetSpec):
-                        spec = self.dataset_spec_cls.build_spec(spec)
-                    else:
-                        spec = self.group_spec_cls.build_spec(spec)
-                    catalog.register_spec(spec, spec_file)
-                included_types[s['namespace']] = tuple(types)
+                if types_to_load is None:
+                    types_to_load = inc_ns.get_registered_types()  # load all types in namespace
+                registered_types = set()
+                for ndt in types_to_load:
+                    self.__register_type(ndt, inc_ns, catalog, registered_types)
+                included_types[s['namespace']] = tuple(sorted(registered_types))
+            else:
+                raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
         # construct namespace
-        self.__namespaces[ns_name] = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        self.__namespaces[ns_name] = ns
         return included_types
+
+    def __register_type(self, ndt, inc_ns, catalog, registered_types):
+        spec = inc_ns.get_spec(ndt)
+        spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+        self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
+        if isinstance(spec, DatasetSpec):
+            built_spec = self.dataset_spec_cls.build_spec(spec)
+        else:
+            built_spec = self.group_spec_cls.build_spec(spec)
+        registered_types.add(ndt)
+        catalog.register_spec(built_spec, spec_file)
+
+    def __register_dependent_types(self, spec, inc_ns, catalog, registered_types):
+        """Ensure that classes for all types used by this type are registered
+        """
+        # TODO test cross-namespace registration...
+        def __register_dependent_types_helper(spec, inc_ns, catalog, registered_types):
+            if isinstance(spec, (GroupSpec, DatasetSpec)):
+                if spec.data_type_inc is not None:
+                    # TODO handle recursive definitions
+                    self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
+                if spec.data_type_def is not None:  # nested type definition
+                    self.__register_type(spec.data_type_def, inc_ns, catalog, registered_types)
+            else:  # spec is a LinkSpec
+                self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
+            if isinstance(spec, GroupSpec):
+                for child_spec in (spec.groups + spec.datasets + spec.links):
+                    __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)
+
+        if spec.data_type_inc is not None:
+            self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
+        if isinstance(spec, GroupSpec):
+            for child_spec in (spec.groups + spec.datasets + spec.links):
+                __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve',
@@ -448,15 +523,17 @@ class NamespaceCatalog:
         else:
             return ret
         namespaces = reader.read_namespace(namespace_path)
-        types_key = self.__spec_namespace_cls.types_key()
         to_load = list()
         for ns in namespaces:
             if ns['name'] in self.__namespaces:
-                warn("ignoring namespace '%s' because it already exists" % ns['name'])
+                if ns['version'] != self.__namespaces.get(ns['name'])['version']:
+                    # warn if the cached namespace differs from the already loaded namespace
+                    warn("Ignoring cached namespace '%s' version %s because version %s is already loaded."
+                         % (ns['name'], ns['version'], self.__namespaces.get(ns['name'])['version']))
             else:
                 to_load.append(ns)
         # now load specs into namespace
         for ns in to_load:
-            ret[ns['name']] = self.__load_namespace(ns, reader, types_key, resolve=resolve)
+            ret[ns['name']] = self.__load_namespace(ns, reader, resolve=resolve)
         self.__included_specs[ns_path_key] = ret
         return ret

@@ -230,3 +230,18 @@ class DatasetSpecTests(TestCase):
                         [dtype3],
                         data_type_inc=base,
                         data_type_def='ExtendedTable')
+
+    def test_data_type_property_value(self):
+        """Test that the property data_type has the expected value"""
+        test_cases = {
+            ('Foo', 'Bar'): 'Bar',
+            ('Foo', None): 'Foo',
+            (None, 'Bar'): 'Bar',
+            (None, None): None,
+        }
+        for (data_type_inc, data_type_def), data_type in test_cases.items():
+            with self.subTest(data_type_inc=data_type_inc,
+                              data_type_def=data_type_def, data_type=data_type):
+                group = GroupSpec('A group', name='group',
+                                  data_type_inc=data_type_inc, data_type_def=data_type_def)
+                self.assertEqual(group.data_type, data_type)

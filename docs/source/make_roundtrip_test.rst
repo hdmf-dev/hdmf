@@ -1,20 +1,20 @@
-=============================
-How to Make a Roundtrip  Test
-=============================
+============================
+How to Make a Roundtrip Test
+============================
 
 The HDMF test suite has tools for easily doing round-trip tests of container classes. These
-tools exist in the integration test suite in ``tests/integration/ui_write/base.py`` for this reason
-and for the sake of keeping the repository organized, we recommend you write your tests in
-the ``tests/integration/ui_write`` subdirectory of the Git repository.
+tools exist in the :py:mod:`hdmf.testing` module. Round-trip tests exist for the container classes in the
+:py:mod:`hdmf.common` module. We recommend you write any additional round-trip tests in
+the ``tests/unit/common`` subdirectory of the Git repository.
 
 For executing your new tests, we recommend using the `test.py` script in the top of the Git
-repository. Roundtrip tests will get executed as part of the integration test suite, which can be executed
+repository. Roundtrip tests will get executed as part of the full test suite, which can be executed
 with the following command::
 
-    $ python test.py -i
+    $ python test.py
 
 The roundtrip test will generate a new HDMF file with the name ``test_<CLASS_NAME>.h5`` where ``CLASS_NAME`` is
-the class name of the :py:class:`~hdmf..container.Container` class you are roundtripping. The test
+the class name of the container class you are roundtripping. The test
 will write an HDMF file with an instance of the container to disk, read this instance back in, and compare it
 to the instance that was used for writing to disk. Once the test is complete, the HDMF file will be deleted.
 You can keep the HDMF file around after the test completes by setting the environment variable ``CLEAN_HDMF``
@@ -24,134 +24,36 @@ cause the roundtrip HDMF file to be deleted once the test has completed
 Before writing tests, we also suggest you familiarize yourself with the
 :ref:`software architecture <software-architecture>` of HDMF.
 
---------------------
-``TestMapRoundTrip``
---------------------
+------------------------
+``H5RoundTripMixin``
+------------------------
 
-To write a roundtrip test, you will need to subclass the ``TestMapRoundTrip`` class and override some of
-its instance methods.
-
-``TestMapRoundTrip`` provides four methods for testing the process of going from in-memory Python object to data
-stored on disk and back. Three of these methods--``setUpContainer``, ``addContainer``, and ``getContainer``--are
-required for carrying out the roundtrip test. The fourth method is required for testing the conversion
-from the container to the :py:mod:`builder <hdmf..build.builders>`--the intermediate data structure
-that gets used by :py:class:`~hdmf..backends.io.FORMIO` implementations for writing to disk.
-
-If you do not want to test step of the process, you can just implement ``setUpContainer``, ``addContainer``, and
-``getContainer``.
+To write a roundtrip test, you will need to subclass the
+:py:class:`~hdmf.testing.testcase.H5RoundTripMixin` class and the
+:py:class:`~hdmf.testing.testcase.TestCase` class, in that order, and override some of the instance methods of the
+:py:class:`~hdmf.testing.testcase.H5RoundTripMixin` class to test the process of going from in-memory Python object
+to data stored on disk and back.
 
 ##################
 ``setUpContainer``
 ##################
 
-The first thing (and possibly the *only* thing -- see :ref:`rt_below`) you need to do is override is the ``setUpContainer``
-method. This method should take no arguments, and return an instance of the container class you are testing.
+To configure the test for a particular container class, you need to override the
+:py:meth:`~hdmf.testing.testcase.H5RoundTripMixin.setUpContainer` method. This method should take no arguments, and
+return an instance of the container class you are testing.
 
-Here is an example using a generic :py:class:`~hdmf.base.TimeSeries`:
+Here is an example using a :py:class:`~hdmf.common.sparse.CSRMatrix`:
 
 .. code-block:: python
 
-    from . base import TestMapRoundTrip
+    from hdmf.common import CSRMatrix
+    from hdmf.testing import TestCase, H5RoundTripMixin
+    import numpy as np
 
-    class TimeSeriesRoundTrip(TestMapRoundTrip):
+    class TestCSRMatrixRoundTrip(H5RoundTripMixin, TestCase):
 
         def setUpContainer(self):
-            return TimeSeries('test_timeseries', 'example_source', list(range(100, 200, 10)),
-                              'SIunit', timestamps=list(range(10)), resolution=0.1)
-
-
-################
-``addContainer``
-################
-
-The next thing is to tell the ``TestMapRoundTrip`` how to add the container to an HDMFFile. This method takes a single
-argument--the :py:class:`~hdmf.container.HDMFFile` instance that will be used to write your container.
-
-This method is required because different container types are allowed in different parts of an HDMFFile. This method is
-also where you can add additonial containers that your container of interest depends on. For example, for the
-:py:class:`~hdmf.ecephys.ElectricalSeries` roundtrip test, ``addContainer`` handles adding the
-:py:class:`~hdmf.ecephys.ElectrodeGroup`, :py:class:`~hdmf.ecephys.ElectrodeTable`, and
-:py:class:`~hdmf.ecephys.Device` dependencies.
-
-
-Continuing from our example above, we will add the method for adding a generic :py:class:`~hdmf.base.TimeSeries` instance:
-
-
-.. code-block:: python
-
-    class TimeSeriesRoundTrip(TestMapRoundTrip):
-
-        def addContainer(self, hdmf_file):
-            hdmf_file.add_acquisition(self.container)
-
-
-################
-``getContainer``
-################
-
-Finally, you need to tell ``TestMapRoundTrip`` how to get back the container we added. As with ``addContainer``, this
-method takes an :py:class:`~hdmf.container.HDMFFile` as its single argument. The only difference is that this
-:py:class:`~hdmf.container.HDMFFile` instance is what was read back in.
-
-Again, since not all containers go in the same place, we need to tell the test harness how to get back our container
-of interest.
-
-To finish off example from above, we will add the method for getting back our generic :py:class:`~hdmf.base.TimeSeries` instance:
-
-.. code-block:: python
-
-    class TimeSeriesRoundTrip(TestMapRoundTrip):
-
-        def getContainer(self, hdmf_file):
-            return hdmf_file.get_acquisition(self.container.name)
-
-
-################
-``setUpBuilder``
-################
-
-As mentioned above, there is an optional method to override. This method will add two additional tests. First, it will
-add a test for converting your container into a builder to make sure the intermerdiate data structure gets built
-appropriately. Second it will add a test for constructing your container from the builder returned by your overridden
-``setUpBuilder`` method.  This method takes no arguments, and should return the builder representation of your
-container class instance.
-
-
-This method is not required, but can serve as an additional check to make sure your containers are getting converted
-to the expected structure as described in your specification.
-
-Continuing from the :py:class:`~hdmf.base.TimeSeries` example, lets add ``setUpBuilder``:
-
-.. code-block:: python
-
-    from hdmf..build import GroupBuilder
-
-    class TimeSeriesRoundTrip(TestMapRoundTrip):
-
-        def setUpBuilder(self):
-            return GroupBuilder('test_timeseries',
-                                attributes={'source': 'example_source',
-                                            'namespace': base.CORE_NAMESPACE,
-                                            'neurodata_type': 'TimeSeries',
-                                            'description': 'no description',
-                                            'comments': 'no comments',
-                                            'help': 'General time series object'},
-                                datasets={'data': DatasetBuilder('data', list(range(100, 200, 10)),
-                                                                 attributes={'unit': 'SIunit',
-                                                                             'conversion': 1.0,
-                                                                             'resolution': 0.1}),
-                                          'timestamps': DatasetBuilder('timestamps', list(range(10)),
-                                                                       attributes={'unit': 'Seconds', 'interval': 1})})
-
-.. _rt_below:
-
------------------------
-``TestDataInterfaceIO``
------------------------
-
-If you are testing something that can go in *acquisition*, you can avoid writing ``addContainer`` and ``getContainer``
-by extending ``TestDataInterfaceIO``.  This class has already overridden these methods to add your container object to
-acquisition.
-
-Even if your container can go in acquisition, you may still need to override ``addContainer`` if your container depends
-other containers that you need to add to the :py:class:`~hdmf.container.HDMFFile` that will be written.
+            data = np.array([1, 2, 3, 4, 5, 6])
+            indices = np.array([0, 2, 2, 0, 1, 2])
+            indptr = np.array([0, 2, 3, 6])
+            return CSRMatrix(data, indices, indptr, (3, 3))

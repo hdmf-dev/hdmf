@@ -1,7 +1,11 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*
+import sys
 
 from setuptools import setup, find_packages
-import re
+
+# Some Python installations don't add the current directory to path.
+if '' not in sys.path:
+    sys.path.insert(0, '')
 
 import versioneer
 
@@ -13,9 +17,15 @@ print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
 
-reqs_re = re.compile("[<=>]+")
-with open('requirements.txt', 'r') as fp:
-    reqs = [reqs_re.split(x.strip())[0] for x in fp.readlines()]
+reqs = [
+    'h5py>=2.10,<4',
+    'jsonschema>=2.6.0,<5',
+    'numpy>=1.16,<1.24',
+    'pandas>=1.0.5,<2',
+    'ruamel.yaml>=0.16,<1',
+    'scipy>=1.1,<2',
+    'setuptools',
+]
 
 print(reqs)
 
@@ -34,13 +44,15 @@ setup_args = {
     'packages': pkgs,
     'package_dir': {'': 'src'},
     'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
+    'python_requires': '>=3.7',
     'classifiers': [
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: BSD License",
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Operating System :: Microsoft :: Windows",
@@ -57,7 +69,10 @@ setup_args = {
                 'open-source '
                 'open-science '
                 'reproducible-research ',
-    'zip_safe': False
+    'zip_safe': False,
+    'entry_points': {
+        'console_scripts': ['validate_hdmf_spec=hdmf.testing.validate_spec:main'],
+    }
 }
 
 if __name__ == '__main__':

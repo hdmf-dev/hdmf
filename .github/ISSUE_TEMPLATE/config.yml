@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Read the Documentation
+    url: https://hdmf.readthedocs.io/en/stable/
+    about: Check out the full documentation.

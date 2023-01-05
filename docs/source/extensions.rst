@@ -1,28 +1,24 @@
 .. _extending-standard:
 
-Extending standards
+Extending Standards
 ===================
 
 The following page will discuss how to extend a standard using HDMF.
-
-.. note::
-
-    A simple example demonstrating the creation and use of a custom extension is available as part of the
-    tutorial :ref:`tutorial-extending-standard`.
 
 .. _creating-extensions:
 
 Creating new Extensions
 -----------------------
 
-Standards specified using HDMF are designed to be extended. Extension for a standard can be done so using classes provided in the :py:mod:`hdmf.spec` module.
-The classes :py:class:`~hdmf.spec.GroupSpec`, :py:class:`~hdmf.spec.DatasetSpec`, :py:class:`~hdmf.spec.AttributeSpec`, and :py:class:`~hdmf.spec.LinkSpec`
+Standards specified using HDMF are designed to be extended. Extension for a standard can be done so using classes
+provided in the :py:mod:`hdmf.spec` module. The classes :py:class:`~hdmf.spec.spec.GroupSpec`,
+:py:class:`~hdmf.spec.spec.DatasetSpec`, :py:class:`~hdmf.spec.spec.AttributeSpec`, and :py:class:`~hdmf.spec.spec.LinkSpec`
 can be used to define custom types.
 
 Attribute Specifications
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Specifying attributes is done with :py:class:`~hdmf.spec.AttributeSpec`.
+Specifying attributes is done with :py:class:`~hdmf.spec.spec.AttributeSpec`.
 
 .. code-block:: python
 
@@ -33,7 +29,7 @@ Specifying attributes is done with :py:class:`~hdmf.spec.AttributeSpec`.
 Dataset Specifications
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Specifying datasets is done with :py:class:`~hdmf.spec.DatasetSpec`.
+Specifying datasets is done with :py:class:`~hdmf.spec.spec.DatasetSpec`.
 
 .. code-block:: python
 
@@ -50,8 +46,8 @@ Specifying datasets is done with :py:class:`~hdmf.spec.DatasetSpec`.
 Using datasets to specify tables
 ++++++++++++++++++++++++++++++++
 
-Tables can be specified using :py:class:`~hdmf.spec.DtypeSpec`. To specify a table, provide a
-list of :py:class:`~hdmf.spec.DtypeSpec` objects to the *dtype* argument.
+Tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a table, provide a
+list of :py:class:`~hdmf.spec.spec.DtypeSpec` objects to the *dtype* argument.
 
 .. code-block:: python
 
@@ -70,7 +66,7 @@ list of :py:class:`~hdmf.spec.DtypeSpec` objects to the *dtype* argument.
 Group Specifications
 ^^^^^^^^^^^^^^^^^^^^
 
-Specifying groups is done with the :py:class:`~hdmf.spec.GroupSpec` class.
+Specifying groups is done with the :py:class:`~hdmf.spec.spec.GroupSpec` class.
 
 .. code-block:: python
 
@@ -82,12 +78,12 @@ Specifying groups is done with the :py:class:`~hdmf.spec.GroupSpec` class.
                         datasets=[...],
                         groups=[...])
 
-Neurodata Type Specifications
+Data Type Specifications
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:py:class:`~hdmf.spec.GroupSpec` and :py:class:`~hdmf.spec.DatasetSpec` use the arguments `neurodata_type_inc` and `neurodata_type_def` for
-declaring new types and extending existing types. New types are specified by setting the argument `neurodata_type_def`. New types can extend an existing type
-by specifying the argument `neurodata_type_inc`.
+:py:class:`~hdmf.spec.spec.GroupSpec` and :py:class:`~hdmf.spec.spec.DatasetSpec` use the arguments `data_type_inc` and
+`data_type_def` for declaring new types and extending existing types. New types are specified by setting the argument
+`data_type_def`. New types can extend an existing type by specifying the argument `data_type_inc`.
 
 Create a new type
 
@@ -105,7 +101,7 @@ Create a new type
                         attributes=addl_attributes,
                         datasets=addl_datasets,
                         groups=addl_groups,
-                        neurodata_type_def='MyNewType')
+                        data_type_def='MyNewType')
 
 Extend an existing type
 
@@ -123,10 +119,10 @@ Extend an existing type
                         attributes=addl_attributes,
                         datasets=addl_datasets,
                         groups=addl_groups,
-                        neurodata_type_inc='SpikeEventSeries',
-                        neurodata_type_def='MyExtendedSpikeEventSeries')
+                        data_type_inc='SpikeEventSeries',
+                        data_type_def='MyExtendedSpikeEventSeries')
 
-Existing types can be instantiated by specifying `neurodata_type_inc` alone.
+Existing types can be instantiated by specifying `data_type_inc` alone.
 
 .. code-block:: python
 
@@ -135,16 +131,16 @@ Existing types can be instantiated by specifying `neurodata_type_inc` alone.
     # use another GroupSpec object to specify that a group of type
     # ElectricalSeries should be present in the new type defined below
     addl_groups = [ GroupSpec('An included ElectricalSeries instance',
-                                 neurodata_type_inc='ElectricalSeries') ]
+                                 data_type_inc='ElectricalSeries') ]
 
     spec = GroupSpec('An extended data type',
                         groups=addl_groups,
-                        neurodata_type_inc='SpikeEventSeries',
-                        neurodata_type_def='MyExtendedSpikeEventSeries')
+                        data_type_inc='SpikeEventSeries',
+                        data_type_def='MyExtendedSpikeEventSeries')
 
 
-Datasets can be extended in the same manner (with regard to `neurodata_type_inc` and `neurodata_type_def`,
-by using the class :py:class:`~hdmf.spec.DatasetSpec`.
+Datasets can be extended in the same manner (with regard to `data_type_inc` and `data_type_def`,
+by using the class :py:class:`~hdmf.spec.spec.DatasetSpec`.
 
 .. _saving-extensions:
 
@@ -152,7 +148,7 @@ Saving Extensions
 -----------------
 
 Extensions are used by including them in a loaded namespace. Namespaces and extensions need to be saved to file
-for downstream use. The class :py:class:`~hdmf.spec.NamespaceBuilder` can be used to create new namespace and
+for downstream use. The class :py:class:`~hdmf.spec.write.NamespaceBuilder` can be used to create new namespace and
 specification files.
 
 Create a new namespace with extensions
@@ -169,15 +165,15 @@ Create a new namespace with extensions
                         attributes=[...]
                         datasets=[...],
                         groups=[...],
-                        neurodata_type_inc='SpikeEventSeries',
-                        neurodata_type_def='MyExtendedSpikeEventSeries')
+                        data_type_inc='SpikeEventSeries',
+                        data_type_def='MyExtendedSpikeEventSeries')
 
     ext2 = GroupSpec('A custom EventDetection interface',
                         attributes=[...]
                         datasets=[...],
                         groups=[...],
-                        neurodata_type_inc='EventDetection',
-                        neurodata_type_def='MyExtendedEventDetection')
+                        data_type_inc='EventDetection',
+                        data_type_def='MyExtendedEventDetection')
 
 
     # add the extension
@@ -206,8 +202,8 @@ Create a new namespace with extensions
 Incorporating extensions
 ------------------------
 
-HDMF supports extending existing data types (See :ref:`extending-standard` for more details on creating extensions).
-Extensions must be registered with HDMF to be used for reading and writing of custom neurodata types.
+HDMF supports extending existing data types.
+Extensions must be registered with HDMF to be used for reading and writing of custom data types.
 
 The following code demonstrates how to load custom namespaces.
 
@@ -224,36 +220,43 @@ The following code demonstrates how to load custom namespaces.
 Container : Representing custom data
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To read and write custom data, corresponding :py:class:`~hdmf.core.Container` classes must be associated with their respective specifications.
-:py:class:`~hdmf.core.Container` classes are associated with their respective specification using the decorator :py:func:`~hdmf.register_class`.
+To read and write custom data, corresponding :py:class:`~hdmf.container.Container` classes must be associated with their
+respective specifications. :py:class:`~hdmf.container.Container` classes are associated with their respective
+specification using the decorator :py:func:`~hdmf.common.register_class`.
 
-The following code demonstrates how to associate a specification with the :py:class:`~hdmf.core.Container` class that represents it.
+The following code demonstrates how to associate a specification with the :py:class:`~hdmf.container.Container` class
+that represents it.
 
 .. code-block:: python
 
-    from hdmf import register_class
+    from hdmf.common import register_class
+    from hdmf.container import Container
+
     @register_class('MyExtension', 'my_namespace')
     class MyExtensionContainer(Container):
         ...
 
-:py:func:`~hdmf.register_class` can also be used as a function.
+:py:func:`~hdmf.common.register_class` can also be used as a function.
 
 .. code-block:: python
 
-    from hdmf import register_class
+    from hdmf.common import register_class
+    from hdmf.container import Container
+
     class MyExtensionContainer(Container):
         ...
-    register_class('my_namespace', 'MyExtension', MyExtensionContainer)
 
-If you do not have an :py:class:`~hdmf.core.Container` subclass to associate with your extension specification,
+    register_class(data_type='MyExtension', namespace='my_namespace', container_cls=MyExtensionContainer)
+
+If you do not have an :py:class:`~hdmf.container.Container` subclass to associate with your extension specification,
 a dynamically created class is created by default.
 
-To use the dynamic class, you will need to retrieve the class object using the function :py:func:`~hdmf.get_class`.
+To use the dynamic class, you will need to retrieve the class object using the function :py:func:`~hdmf.common.get_class`.
 Once you have retrieved the class object, you can use it just like you would a statically defined class.
 
 .. code-block:: python
 
-    from hdmf import get_class
+    from hdmf.common import get_class
     MyExtensionContainer = get_class('my_namespace', 'MyExtension')
     my_ext_inst = MyExtensionContainer(...)
 
@@ -263,40 +266,38 @@ If using iPython, you can access documentation for the class's constructor using
 ObjectMapper : Customizing the mapping between Container and the Spec
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If your :py:class:`~hdmf.core.Container` extension requires custom mapping of the :py:class:`~hdmf.core.Container`
-class for reading and writing, you will need to implement and register a custom :py:class:`~hdmf..build.map.ObjectMapper`.
+If your :py:class:`~hdmf.container.Container` extension requires custom mapping of the
+:py:class:`~hdmf.container.Container` class for reading and writing, you will need to implement and register a custom
+:py:class:`~hdmf.build.objectmapper.ObjectMapper`.
 
-:py:class:`~hdmf..build.map.ObjectMapper` extensions are registered with the decorator :py:func:`~hdmf.register_map`.
+:py:class:`~hdmf.build.objectmapper.ObjectMapper` extensions are registered with the decorator
+:py:func:`~hdmf.common.register_map`.
 
 .. code-block:: python
 
-    from hdmf import register_map
-    from form import ObjectMapper
+    from hdmf.common import register_map
+    from hdmf.build import ObjectMapper
+
     @register_map(MyExtensionContainer)
     class MyExtensionMapper(ObjectMapper)
         ...
 
-:py:func:`~hdmf.register_map` can also be used as a function.
+:py:func:`~hdmf.common.register_map` can also be used as a function.
 
 .. code-block:: python
 
-    from hdmf import register_map
-    from form import ObjectMapper
+    from hdmf.common import register_map
+    from hdmf.build import ObjectMapper
+
     class MyExtensionMapper(ObjectMapper)
         ...
+
     register_map(MyExtensionContainer, MyExtensionMapper)
 
 .. tip::
 
     ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your Container in
-    Python. This is useful, e.g., in cases where you want ot customize the default mapping. For example in
-    TimeSeries the attribute ``unit`` which is defined on the dataset ``data`` (i.e., ``data.unit``) would
-    by default be mapped to the attribute ``data_unit`` on :py:class:`~hdmf.base.TimeSeries`. The ObjectMapper
-    :py:class:`~hdmf.io.base.TimeSeriesMap` then changes this mapping to map ``data.unit`` to the attribute ``unit``
-    on :py:class:`~hdmf.base.TimeSeries` . ObjectMappers also allow you to customize how constructor arguments
-    for your ``Container`` are constructed. E.g., in TimeSeries instead of explicit ``timestamps`` we
-    may only have a ``starting_time`` and ``rate``. In the ObjectMapper we could then construct ``timestamps``
-    from this data on data load to always have ``timestamps`` available for the user.
+    Python. This is useful, e.g., in cases where you want to customize the default mapping.
     For an overview of the concepts of containers, spec, builders, object mappers in HDMF see also
     :ref:`software-architecture`
 
@@ -306,10 +307,9 @@ class for reading and writing, you will need to implement and register a custom 
 Documenting Extensions
 ----------------------
 
-Comming soon!
+Coming soon!
 
 Further Reading
 ---------------
 
-* **Using Extensions:** See :ref:`extending-standard` for an example on how to use extensions during read and write.
-* **Specification Language:** For a detailed overview of the specification language itself see https://schema-language.readthedocs.io/en/latest/
+* **Specification Language:** For a detailed overview of the specification language itself see https://hdmf-schema-language.readthedocs.io/en/latest/index.html

@@ -1,0 +1,16 @@
+.wy-side-nav-search .wy-dropdown>a.icon img.logo, .wy-side-nav-search>a.icon img.logo {
+  width: 150px;
+}
+
+.wy-nav-content {
+  max-width: 1000px !important;
+}
+
+button.copybtn {
+    height:25px;
+    width:25px;
+    opacity: 0.5;
+    padding: 0;
+    border: none;
+    background: none;
+}

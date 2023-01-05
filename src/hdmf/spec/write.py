@@ -1,16 +1,15 @@
 import copy
 import json
-import ruamel.yaml as yaml
 import os.path
 import warnings
-from collections import OrderedDict
 from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
 from datetime import datetime
+import ruamel.yaml as yaml
 
+from .catalog import SpecCatalog
 from .namespace import SpecNamespace
 from .spec import GroupSpec, DatasetSpec
-from .catalog import SpecCatalog
-
 from ..utils import docval, getargs, popargs
 
 
@@ -35,19 +34,27 @@ class YAMLSpecWriter(SpecWriter):
 
     def __dump_spec(self, specs, stream):
         specs_plain_dict = json.loads(json.dumps(specs))
-        yaml.main.safe_dump(specs_plain_dict, stream, default_flow_style=False)
+        yaml_obj = yaml.YAML(typ='safe', pure=True)
+        yaml_obj.default_flow_style = False
+        yaml_obj.dump(specs_plain_dict, stream)
 
     def write_spec(self, spec_file_dict, path):
         out_fullpath = os.path.join(self.__outdir, path)
         spec_plain_dict = json.loads(json.dumps(spec_file_dict))
         sorted_data = self.sort_keys(spec_plain_dict)
         with open(out_fullpath, 'w') as fd_write:
-            yaml.dump(sorted_data, fd_write, Dumper=yaml.dumper.RoundTripDumper)
+            yaml_obj = yaml.YAML(pure=True)
+            yaml_obj.dump(sorted_data, fd_write)
 
     def write_namespace(self, namespace, path):
+        """Write the given namespace key-value pairs as YAML to the given path.
+
+        :param namespace: SpecNamespace holding the key-value pairs that define the namespace
+        :param path: File path to write the namespace to as YAML under the key 'namespaces'
+        """
         with open(os.path.join(self.__outdir, path), 'w') as stream:
-            ns = namespace
             # Convert the date to a string if necessary
+            ns = namespace
             if 'date' in namespace and isinstance(namespace['date'], datetime):
                 ns = copy.copy(ns)  # copy the namespace to avoid side-effects
                 ns['date'] = ns['date'].isoformat()
@@ -55,18 +62,19 @@ class YAMLSpecWriter(SpecWriter):
 
     def reorder_yaml(self, path):
         """
-        Open a YAML file, load it as python data, sort the data, and write it back out to the
+        Open a YAML file, load it as python data, sort the data alphabetically, and write it back out to the
         same path.
         """
         with open(path, 'rb') as fd_read:
-            data = yaml.load(fd_read, Loader=yaml.loader.RoundTripLoader, preserve_quotes=True)
+            yaml_obj = yaml.YAML(pure=True)
+            data = yaml_obj.load(fd_read)
         self.write_spec(data, path)
 
     def sort_keys(self, obj):
-
         # Represent None as null
         def my_represent_none(self, data):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
+
         yaml.representer.RoundTripRepresenter.add_representer(type(None), my_represent_none)
 
         order = ['neurodata_type_def', 'neurodata_type_inc', 'data_type_def', 'data_type_inc',
@@ -109,6 +117,11 @@ class NamespaceBuilder:
             {'name': 'namespace_cls', 'type': type, 'doc': 'the SpecNamespace type', 'default': SpecNamespace})
     def __init__(self, **kwargs):
         ns_cls = popargs('namespace_cls', kwargs)
+        if kwargs['version'] is None:
+            # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
+            # without a verison
+            raise ValueError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
+                             % kwargs['name'])
         self.__ns_args = copy.deepcopy(kwargs)
         self.__namespaces = OrderedDict()
         self.__sources = OrderedDict()
@@ -236,9 +249,6 @@ def export_spec(ns_builder, new_data_types, output_dir):
     if len(new_data_types) == 0:
         warnings.warn('No data types specified. Exiting.')
         return
-
-    if not ns_builder.name:
-        raise RuntimeError('Namespace name is required to export specs')
 
     ns_path = ns_builder.name + '.namespace.yaml'
     ext_path = ns_builder.name + '.extensions.yaml'

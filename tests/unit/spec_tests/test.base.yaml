@@ -1,0 +1,13 @@
+datasets:
+- my_data_type_def: TestData
+  my_data_type_inc: Data
+  doc: An abstract data type for a dataset.
+
+groups:
+- my_data_type_def: TestContainer
+  my_data_type_inc: Container
+  doc: An abstract data type for a generic container storing collections of data and metadata.
+
+- my_data_type_def: TestTable
+  my_data_type_inc: DynamicTable
+  doc: An abstract data type for a table.

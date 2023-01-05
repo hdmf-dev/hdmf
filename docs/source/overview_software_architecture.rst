@@ -123,7 +123,7 @@ ObjectMapper
    * Given a `Builder`_, return a Container representation
    * Given a `Container`_, return a Builder representation
 
-* **Main Module:** :py:class:`hdmf.build.map`
+* **Main Module:** :py:class:`hdmf.build.objectmapper`
 
 .. _fig-software-architecture-mainconcepts:
 
@@ -162,7 +162,7 @@ TypeMap
 
 * HDMF has one of these classes:
 
-   * the base class (i.e. :py:class:`~hdmf.build.map.TypeMap`)
+   * the base class (i.e. :py:class:`~hdmf.build.manager.TypeMap`)
 
 * TypeMaps can be merged, which is useful when combining extensions
 
@@ -172,7 +172,7 @@ BuildManager
 
 * Responsible for `memoizing <https://en.wikipedia.org/wiki/Memoization>`_ `Builder`_ and `Container`_
 * Constructed from a `TypeMap`_
-* HDMF only has one of these: :py:class:`hdmf.build.map.BuildManager`
+* HDMF only has one of these: :py:class:`hdmf.build.manager.BuildManager`
 
 .. _fig-software-architecture-buildmanager:
 

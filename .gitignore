@@ -8,15 +8,14 @@
 ### HDMF ###
 
 # Auto-generated apidocs RST files
-/docs/source/modules.rst
 /docs/source/gen_modules/
-/docs/source/modules/generated
+/docs/source/hdmf*.rst
+/docs/gallery/*.hdf5
+/docs/gallery/*.sqlite
 
 # Auto-generated files after running tutorials
-*_example.nwb
 mylab.*.yaml
 *.npy
-*.nwb
 manifest.json
 
 # Auto-generated tutorials
@@ -31,7 +30,6 @@ __pycache__/
 # Sphinx documentation
 /docs/_build/
 /docs/build/
-/docs/source/pynwb.*.rst
 
 
 # setuptools
@@ -54,6 +52,10 @@ __pycache__/
 # coverage output
 /tests/coverage/htmlcov
 .coverage
+coverage.xml
+
+# duecredit output
+.duecredit.p
 
 # tox
 .tox
@@ -63,3 +65,9 @@ __pycache__/
 
 #mypy
 .mypy_cache/
+
+#DS_Store
+.DS_Store
+
+#sqlite
+.sqlite

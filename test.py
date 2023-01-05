@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+# NOTE This script is deprecated. Please use pytest to run unit tests and run python test_gallery.py to
+# test Sphinx Gallery files.
 
 import warnings
 import re
@@ -11,23 +12,42 @@ import os
 import sys
 import traceback
 import unittest
-from tests.coloredtestrunner import ColoredTestRunner, ColoredTestResult
 
-flags = {'hdmf': 1, 'integration': 3, 'example': 4}
+flags = {'hdmf': 1, 'example': 4}
 
 TOTAL = 0
 FAILURES = 0
 ERRORS = 0
 
 
+class SuccessRecordingResult(unittest.TextTestResult):
+    '''A unittest test result class that stores successful test cases as well
+    as failures and skips.
+    '''
+
+    def addSuccess(self, test):
+        if not hasattr(self, 'successes'):
+            self.successes = [test]
+        else:
+            self.successes.append(test)
+
+    def get_all_cases_run(self):
+        '''Return a list of each test case which failed or succeeded
+        '''
+        cases = []
+
+        if hasattr(self, 'successes'):
+            cases.extend(self.successes)
+        cases.extend([failure[0] for failure in self.failures])
+
+        return cases
+
+
 def run_test_suite(directory, description="", verbose=True):
     global TOTAL, FAILURES, ERRORS
     logging.info("running %s" % description)
     directory = os.path.join(os.path.dirname(__file__), directory)
-    if verbose > 1:
-        runner = ColoredTestRunner(verbosity=verbose)
-    else:
-        runner = unittest.TextTestRunner(verbosity=verbose, resultclass=ColoredTestResult)
+    runner = unittest.TextTestRunner(verbosity=verbose, resultclass=SuccessRecordingResult)
     test_result = runner.run(unittest.TestLoader().discover(directory))
 
     TOTAL += test_result.testsRun
@@ -73,6 +93,12 @@ def run_example_tests():
 
 
 def main():
+    warnings.warn(
+        "python test.py is deprecated. Please use pytest to run unit tests and run python test_gallery.py to "
+        "test Sphinx Gallery files.",
+        DeprecationWarning
+    )
+
     # setup and parse arguments
     parser = argparse.ArgumentParser('python test.py [options]')
     parser.set_defaults(verbosity=1, suites=[])
@@ -89,21 +115,15 @@ def main():
 
     # set up logger
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.INFO)
     formatter = logging.Formatter('======================================================================\n'
                                   '%(asctime)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
     warnings.simplefilter('always')
-
-    # many tests use NamespaceCatalog.add_namespace, which is deprecated, to set up tests.
-    # ignore these warnings for now.
-    warnings.filterwarnings("ignore", category=DeprecationWarning, module="hdmf.spec.namespace",
-                            message=("NamespaceCatalog.add_namespace has been deprecated. "
-                                     "SpecNamespaces should be added with load_namespaces."))
 
     # Run unit tests for hdmf package
     if flags['hdmf'] in args.suites:

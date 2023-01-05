@@ -1,5 +1,5 @@
-from collections import OrderedDict
 import copy
+from collections import OrderedDict
 
 from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
@@ -31,7 +31,7 @@ class SpecCatalog:
              'doc': 'path to the source file from which the spec was loaded', 'default': None})
     def register_spec(self, **kwargs):
         '''
-        Associate a specified object type with an HDF5 specification
+        Associate a specified object type with a specification
         '''
         spec, source_file = getargs('spec', 'source_file', kwargs)
         ndt = spec.data_type_inc
@@ -42,7 +42,8 @@ class SpecCatalog:
             self.__parent_types[ndt_def] = ndt
         type_name = ndt_def if ndt_def is not None else ndt
         if type_name in self.__specs:
-            raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
+            if self.__specs[type_name] != spec or self.__spec_source_files[type_name] != source_file:
+                raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
 
@@ -152,7 +153,7 @@ class SpecCatalog:
         # Compute the type hierarchy
         for rt in sorted(registered_types):
             rt_spec = self.get_spec(rt)
-            if isinstance(rt_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+            if isinstance(rt_spec, BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
                 if rt_spec.get(rt_spec.inc_key(), None) is None:
                     type_hierarchy[rt] = get_type_hierarchy(rt, self)
 
@@ -169,20 +170,18 @@ class SpecCatalog:
         """
         For a given data type recursively find all the subtypes that inherit from it.
 
-        E.g., assume we have the following inheritance hierarchy:
+        E.g., assume we have the following inheritance hierarchy::
 
-        -BaseContainer--+-->AContainer--->ADContainer
-                        |
-                        +-->BContainer
+            -BaseContainer--+-->AContainer--->ADContainer
+                            |
+                            +-->BContainer
 
-
-        In this case the the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
-        for AContainer the subtypes would be (ADContainer) and for BContainer the list of subtypes
-        would be empty ().
+        In this case, the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
+        the subtypes of AContainer would be (ADContainer), and the subtypes of BContainer would be empty ().
         """
         data_type, recursive = getargs('data_type', 'recursive', kwargs)
         curr_spec = self.get_spec(data_type)
-        if isinstance(curr_spec,  BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
+        if isinstance(curr_spec, BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
             subtypes = []
             spec_inc_key = curr_spec.inc_key()
             spec_def_key = curr_spec.def_key()
@@ -192,7 +191,7 @@ class SpecCatalog:
                     subtypes.append(rt)
                     if recursive:
                         subtypes += self.get_subtypes(rt)
-            return tuple(set(subtypes))   # Convert to a set to make sure we don't have any duplicates
+            return tuple(set(subtypes))  # Convert to a set to make sure we don't have any duplicates
         else:
             return ()
 

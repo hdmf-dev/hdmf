@@ -4,9 +4,9 @@ The Hierarchical Data Modeling Framework
 
 The Hierarchical Data Modeling Framework, or *HDMF*, is a Python package for working with hierarchical data.
 It provides APIs for specifying data models, reading and writing data to different storage backends, and
-representing data with Python object.
+representing data with Python objects.
 
-Documentation of HDMF can be found at https://hdmf.readthedocs.io
+Documentation of HDMF can be found at https://hdmf.readthedocs.io.
 
 Latest Release
 ==============
@@ -18,27 +18,29 @@ Latest Release
      :target: https://anaconda.org/conda-forge/hdmf
 
 
-Build Status
-============
-
-.. table::
-
-  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
-  | Linux                                                               | Windows and macOS                                                                                |
-  +=====================================================================+==================================================================================================+
-  | .. image:: https://circleci.com/gh/hdmf-dev/hdmf.svg?style=shield   | .. image:: https://dev.azure.com/hdmf-dev/hdmf/_apis/build/status/hdmf-dev.hdmf?branchName=dev   |
-  |     :target: https://circleci.com/gh/hdmf-dev/hdmf                  |     :target: https://dev.azure.com/hdmf-dev/hdmf/_build/latest?definitionId=1&branchName=dev     |
-  +---------------------------------------------------------------------+--------------------------------------------------------------------------------------------------+
-
-
-**Conda**
-
-.. image:: https://circleci.com/gh/conda-forge/hdmf-feedstock.svg?style=shield
-     :target: https://circleci.com/gh/conda-forge/hdmf-feedstock
-
-
 Overall Health
 ==============
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20code%20coverage/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_coverage.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20tests/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20style%20check/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_flake8.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Check%20Sphinx%20external%20links/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/check_external_links.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20PyNWB%20tests/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20all%20tests/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/workflows/Deploy%20release/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/deploy_release.yml
 
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
@@ -47,14 +49,14 @@ Overall Health
      :target: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
      :alt: Requirements Status
 
-.. image:: https://readthedocs.org/projects/hdmf/badge/?version=latest
-     :target: https://hdmf.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/hdmf/badge/?version=stable
+     :target: https://hdmf.readthedocs.io/en/stable/?badge=stable
      :alt: Documentation Status
 
 Installation
 ============
 
-See the HDMF documentation for details http://hdmf.readthedocs.io/en/latest/getting_started.html#installation
+See the `HDMF documentation <http://hdmf.readthedocs.io/en/stable/getting_started.html#installation>`_.
 
 Code of Conduct
 ===============
@@ -66,10 +68,31 @@ Contributing
 
 For details on how to contribute to HDMF see our `contribution guidelines <docs/CONTRIBUTING.rst>`_.
 
+Citing HDMF
+===========
+
+* **Manuscript:**
+
+.. code-block:: bibtex
+
+  @INPROCEEDINGS{9005648,
+    author={A. J. {Tritt} and O. {Rübel} and B. {Dichter} and R. {Ly} and D. {Kang} and E. F. {Chang} and L. M. {Frank} and K. {Bouchard}},
+    booktitle={2019 IEEE International Conference on Big Data (Big Data)},
+    title={HDMF: Hierarchical Data Modeling Framework for Modern Science Data Standards},
+    year={2019},
+    volume={},
+    number={},
+    pages={165-179},
+    doi={10.1109/BigData47090.2019.9005648},
+    note={}}
+
+* **RRID:**  (Hierarchical Data Modeling Framework, RRID:SCR_021303)
+
+
 LICENSE
 =======
 
-"hdmf" Copyright (c) 2017-2019, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2022, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 (1) Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -85,7 +108,7 @@ You are under no obligation whatsoever to provide any bug fixes, patches, or upg
 COPYRIGHT
 =========
 
-"hdmf" Copyright (c) 2017-2019, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2022, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
 
 NOTICE.  This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so.

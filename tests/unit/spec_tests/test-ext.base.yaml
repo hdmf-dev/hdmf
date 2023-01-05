@@ -1,0 +1,13 @@
+datasets:
+- my_data_type_def: TestExtData
+  my_data_type_inc: TestData
+  doc: An abstract data type for a dataset.
+
+groups:
+- my_data_type_def: TestExtContainer
+  my_data_type_inc: Container
+  doc: An abstract data type for a generic container storing collections of data and metadata.
+
+- my_data_type_def: TestExtTable
+  my_data_type_inc: TestTable
+  doc: An abstract data type for a table.

@@ -14,7 +14,6 @@
 import sys
 import os
 import sphinx_rtd_theme
-from sphinx.domains.python import PythonDomain
 
 
 # -- Support building doc without install --------------------------------------
@@ -53,7 +52,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
-    'sphinx_gallery.gen_gallery'
+    'sphinx_gallery.gen_gallery',
+    'sphinx_copybutton'
 ]
 
 from sphinx_gallery.sorting import ExplicitOrder
@@ -63,19 +63,26 @@ sphinx_gallery_conf = {
     'examples_dirs': ['../gallery'],
     # path where to save gallery generated examples
     'gallery_dirs': ['tutorials'],
-    'subsection_order': ExplicitOrder(['../gallery/general', '../gallery/domain']),
+    # 'subsection_order': ExplicitOrder(['../gallery/section1', '../gallery/section2']),
     'backreferences_dir': 'gen_modules/backreferences',
-    'download_section_examples': False,
-    'min_reported_time': 5
+    'min_reported_time': 5,
+    'remove_config_comments': True
 }
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.5', None),
-    'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'scipy': ('http://docs.scipy.org/doc/scipy/reference', None),
-    'matplotlib': ('http://matplotlib.org', None),
-    'h5py': ('http://docs.h5py.org/en/latest/', None),
+    'python': ('https://docs.python.org/3.10', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    'matplotlib': ('https://matplotlib.org/stable/', None),
+    'h5py': ('https://docs.h5py.org/en/latest/', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
 }
+
+# these links cannot be checked in github actions
+linkcheck_ignore = [
+    'https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key',
+    'https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -92,7 +99,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'HDMF'
-copyright = u'2017-2019, Hierarchical Data Modeling Framework'
+copyright = u'2017-2022, Hierarchical Data Modeling Framework'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -304,25 +311,16 @@ latex_logo = 'hdmf_logo.pdf'
 #
 
 def run_apidoc(_):
-    from sphinx.apidoc import main
+    from sphinx.ext.apidoc import main as apidoc_main
     import os
     import sys
     out_dir = os.path.dirname(__file__)
     src_dir = os.path.join(out_dir, '../../src')
     sys.path.append(src_dir)
-    main(['-f', '-e', '-o', out_dir, src_dir])
+    apidoc_main(['-f', '-e', '--no-toc', '-o', out_dir, src_dir])
 
 
-# https://github.com/sphinx-doc/sphinx/issues/3866
-class PatchedPythonDomain(PythonDomain):
-    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
-        if 'refspecific' in node:
-            del node['refspecific']
-        return super(PatchedPythonDomain, self).resolve_xref(
-            env, fromdocname, builder, typ, target, node, contnode)
-
-
-from abc import abstractmethod, abstractproperty
+from abc import abstractproperty
 
 def skip(app, what, name, obj, skip, options):
     if isinstance(obj, abstractproperty) or getattr(obj, '__isabstractmethod__', False):
@@ -334,6 +332,5 @@ def skip(app, what, name, obj, skip, options):
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
-    app.add_stylesheet("theme_overrides.css")  # overrides for wide tables in RTD theme
-    app.override_domain(PatchedPythonDomain)
+    app.add_css_file("theme_overrides.css")
     app.connect("autodoc-skip-member", skip)

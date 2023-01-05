@@ -1,7 +1,6 @@
 import numpy as np
-
-from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorData
+from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.testing import TestCase
 
 
@@ -183,22 +182,12 @@ class ShapeValidatorTests(TestCase):
             VectorData(name=s['name'], description=s['description'], data=d)
             for s, d in zip(dt_spec, dt_data)
         ]
-        dt = DynamicTable("with_columns_and_data",
-                          "a test table", columns=columns)
+        dt = DynamicTable(name="with_columns_and_data", description="a test table", columns=columns)
         # Create test DynamicTableRegion
-        dtr = DynamicTableRegion('dtr', [1, 2, 2], 'desc', table=dt)
+        dtr = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=dt)
         # Confirm that the shapes match
         res = assertEqualShape(dtr, np.arange(9).reshape(3, 3))
         self.assertTrue(res.result)
-
-    def with_table_columns(self):
-        cols = [VectorData(**d) for d in self.spec]
-        table = DynamicTable("with_table_columns", 'a test table', columns=cols)
-        return table
-
-    def with_columns_and_data(self):
-
-        return
 
 
 class ShapeValidatorResultTests(TestCase):
