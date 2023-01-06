@@ -211,10 +211,10 @@ class ExternalResources(Container):
             pd.testing.assert_frame_equal(left.object_keys.to_dataframe(),
                                           right.object_keys.to_dataframe(),
                                           check_dtype=check_dtype)
-
-        if len(errors) > 0:
-            msg = ''.join(str(e)+"\n\n" for e in errors)
-            raise AssertionError(msg)
+        finally:                             
+            if len(errors) > 0:
+                msg = ''.join(str(e)+"\n\n" for e in errors)
+                raise AssertionError(msg)
         return True
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the key to be added.'})
