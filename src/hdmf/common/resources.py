@@ -211,7 +211,7 @@ class ExternalResources(Container):
             pd.testing.assert_frame_equal(left.object_keys.to_dataframe(),
                                           right.object_keys.to_dataframe(),
                                           check_dtype=check_dtype)
-        finally:                             
+        finally:
             if len(errors) > 0:
                 msg = ''.join(str(e)+"\n\n" for e in errors)
                 raise AssertionError(msg)
