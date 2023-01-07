@@ -132,6 +132,5 @@ class HDMFIO(metaclass=ABCMeta):
 
     def __exit__(self, type, value, traceback):
         self.close()
-        
     def __del__(self):
         self.close()
