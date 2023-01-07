@@ -34,29 +34,39 @@ class TestCase(unittest.TestCase):
 
         return self.assertWarnsRegex(warn_type, '^%s$' % re.escape(exc_msg), *args, **kwargs)
 
-    def assertContainerEqual(self, container1, container2,
-                             ignore_name=False, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
+    def assertContainerEqual(self,
+                             container1,
+                             container2,
+                             ignore_name=False,
+                             ignore_hdmf_attrs=False,
+                             ignore_string_to_byte=False,
+                             message=None):
         """
         Asserts that the two AbstractContainers have equal contents. This applies to both Container and Data types.
 
+        :param container1: First container
+        :type container1: AbstractContainer
+        :param container2: Second container to compare with container 1
+        :type container2: AbstractContainer
         :param ignore_name: whether to ignore testing equality of name of the top-level container
         :param ignore_hdmf_attrs: whether to ignore testing equality of HDMF container attributes, such as
                                   container_source and object_id
         :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
+        :param message: custom additional message to show when assertions as part of this assert are failing
         """
-        self.assertTrue(isinstance(container1, AbstractContainer))
-        self.assertTrue(isinstance(container2, AbstractContainer))
+        self.assertTrue(isinstance(container1, AbstractContainer), message)
+        self.assertTrue(isinstance(container2, AbstractContainer), message)
         type1 = type(container1)
         type2 = type(container2)
-        self.assertEqual(type1, type2)
+        self.assertEqual(type1, type2, message)
         if not ignore_name:
-            self.assertEqual(container1.name, container2.name)
+            self.assertEqual(container1.name, container2.name, message)
         if not ignore_hdmf_attrs:
-            self.assertEqual(container1.container_source, container2.container_source)
-            self.assertEqual(container1.object_id, container2.object_id)
+            self.assertEqual(container1.container_source, container2.container_source, message)
+            self.assertEqual(container1.object_id, container2.object_id, message)
         # NOTE: parent is not tested because it can lead to infinite loops
         if isinstance(container1, Container):
-            self.assertEqual(len(container1.children), len(container2.children))
+            self.assertEqual(len(container1.children), len(container2.children), message)
         # do not actually check the children values here. all children *should* also be fields, which is checked below.
         # this is in case non-field children are added to one and not the other
 
@@ -66,47 +76,103 @@ class TestCase(unittest.TestCase):
                 f2 = getattr(container2, field)
                 self._assert_field_equal(f1, f2,
                                          ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                         ignore_string_to_byte=ignore_string_to_byte)
+                                         ignore_string_to_byte=ignore_string_to_byte,
+                                         message=message)
 
-    def _assert_field_equal(self, f1, f2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
+    def _assert_field_equal(self,
+                            f1,
+                            f2,
+                            ignore_hdmf_attrs=False,
+                            ignore_string_to_byte=False,
+                            message=None):
+        """
+        Internal helper function used to compare two fields from Container objects
+
+        :param f1: The first field
+        :param f2: The second field
+        :param ignore_hdmf_attrs: whether to ignore testing equality of HDMF container attributes, such as
+                                  container_source and object_id
+        :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
+        :param message: custom additional message to show when assertions as part of this assert are failing
+        """
         array_data_types = get_docval_macro('array_data')
         if (isinstance(f1, array_data_types) or isinstance(f2, array_data_types)):
             self._assert_array_equal(f1, f2,
                                      ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                     ignore_string_to_byte=ignore_string_to_byte)
+                                     ignore_string_to_byte=ignore_string_to_byte,
+                                     message=message)
         elif isinstance(f1, dict) and len(f1) and isinstance(f1.values()[0], Container):
-            self.assertIsInstance(f2, dict)
+            self.assertIsInstance(f2, dict, message)
             f1_keys = set(f1.keys())
             f2_keys = set(f2.keys())
-            self.assertSetEqual(f1_keys, f2_keys)
+            self.assertSetEqual(f1_keys, f2_keys, message)
             for k in f1_keys:
                 with self.subTest(module_name=k):
                     self.assertContainerEqual(f1[k], f2[k],
                                               ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                              ignore_string_to_byte=ignore_string_to_byte)
+                                              ignore_string_to_byte=ignore_string_to_byte,
+                                              message=message)
         elif isinstance(f1, Container):
             self.assertContainerEqual(f1, f2,
                                       ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                      ignore_string_to_byte=ignore_string_to_byte)
+                                      ignore_string_to_byte=ignore_string_to_byte,
+                                      message=message)
         elif isinstance(f1, Data):
             self._assert_data_equal(f1, f2,
                                     ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                    ignore_string_to_byte=ignore_string_to_byte)
+                                    ignore_string_to_byte=ignore_string_to_byte,
+                                    message=message)
         elif isinstance(f1, (float, np.floating)):
             np.testing.assert_allclose(f1, f2)
         else:
-            self.assertEqual(f1, f2)
+            self.assertEqual(f1, f2, message)
 
-    def _assert_data_equal(self, data1, data2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
-        self.assertTrue(isinstance(data1, Data))
-        self.assertTrue(isinstance(data2, Data))
-        self.assertEqual(len(data1), len(data2))
+    def _assert_data_equal(self,
+                           data1,
+                           data2,
+                           ignore_hdmf_attrs=False,
+                           ignore_string_to_byte=False,
+                           message=None):
+        """
+        Internal helper function used to compare two :py:class:`~hdmf.container.Data` objects
+
+        :param data1: The first :py:class:`~hdmf.container.Data` object
+        :type data1: :py:class:`hdmf.container.Data`
+        :param data1: The second :py:class:`~hdmf.container.Data` object
+        :type data1: :py:class:`hdmf.container.Data
+        :param ignore_hdmf_attrs: whether to ignore testing equality of HDMF container attributes, such as
+                                  container_source and object_id
+        :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
+        :param message: custom additional message to show when assertions as part of this assert are failing
+        """
+        self.assertTrue(isinstance(data1, Data), message)
+        self.assertTrue(isinstance(data2, Data), message)
+        self.assertEqual(len(data1), len(data2), message)
         self._assert_array_equal(data1.data, data2.data,
                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                 ignore_string_to_byte=ignore_string_to_byte)
-        self.assertContainerEqual(data1, data2, ignore_hdmf_attrs=ignore_hdmf_attrs)
+                                 ignore_string_to_byte=ignore_string_to_byte,
+                                 message=message)
+        self.assertContainerEqual(container1=data1,
+                                  container2=data2,
+                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                  message=message)
 
-    def _assert_array_equal(self, arr1, arr2, ignore_hdmf_attrs=False, ignore_string_to_byte=False):
+    def _assert_array_equal(self,
+                            arr1,
+                            arr2,
+                            ignore_hdmf_attrs=False,
+                            ignore_string_to_byte=False,
+                            message=None):
+        """
+        Internal helper function used to check whether two arrays are equal
+
+        :param arr1: The first array
+        :param arr2: The second array
+        :param ignore_hdmf_attrs: whether to ignore testing equality of HDMF container attributes, such as
+                                  container_source and object_id
+        :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
+        :param message: custom additional message to show when assertions as part of this assert are failing
+        """
         array_data_types = tuple([i for i in get_docval_macro('array_data')
                                   if (i != list and i != tuple and i != AbstractDataChunkIterator)])
         # We construct array_data_types this way to avoid explicit dependency on h5py, Zarr and other
@@ -126,9 +192,9 @@ class TestCase(unittest.TestCase):
                         arr1 = arr1.decode('utf-8')
                     if isinstance(arr2, bytes):
                         arr2 = arr2.decode('utf-8')
-                self.assertEqual(arr1, arr2)  # scalar
+                self.assertEqual(arr1, arr2, message)  # scalar
         else:
-            self.assertEqual(len(arr1), len(arr2))
+            self.assertEqual(len(arr1), len(arr2), message)
             if isinstance(arr1, np.ndarray) and len(arr1.dtype) > 1:  # compound type
                 arr1 = arr1.tolist()
             if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
@@ -143,28 +209,48 @@ class TestCase(unittest.TestCase):
                     if isinstance(sub1, Container):
                         self.assertContainerEqual(sub1, sub2,
                                                   ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                                  ignore_string_to_byte=ignore_string_to_byte)
+                                                  ignore_string_to_byte=ignore_string_to_byte,
+                                                  message=message)
                     elif isinstance(sub1, Data):
                         self._assert_data_equal(sub1, sub2,
                                                 ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                                ignore_string_to_byte=ignore_string_to_byte)
+                                                ignore_string_to_byte=ignore_string_to_byte,
+                                                message=message)
                     else:
                         self._assert_array_equal(sub1, sub2,
                                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                                 ignore_string_to_byte=ignore_string_to_byte)
+                                                 ignore_string_to_byte=ignore_string_to_byte,
+                                                 message=message)
 
-    def assertBuilderEqual(self, builder1, builder2, check_path=True, check_source=True):
-        """Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
+    def assertBuilderEqual(self,
+                           builder1,
+                           builder2,
+                           check_path=True,
+                           check_source=True,
+                           message=None):
         """
-        self.assertTrue(isinstance(builder1, Builder))
-        self.assertTrue(isinstance(builder2, Builder))
-        self.assertEqual(type(builder1), type(builder2))
-        self.assertEqual(builder1.name, builder2.name)
+        Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
+
+        :param builder1: The first builder
+        :type builder1: Builder
+        :param builder2: The second builder
+        :type builder2: Builder
+        :param check_path: Check that the builder.path values are equal
+        :type check_path: bool
+        :param check_source: Check that the builder.source values are equal
+        :type check_source: bool
+        :param message: Custom message to add when any asserts as part of this assert are failing
+        :type message: str or None (default=None)
+        """
+        self.assertTrue(isinstance(builder1, Builder), message)
+        self.assertTrue(isinstance(builder2, Builder), message)
+        self.assertEqual(type(builder1), type(builder2), message)
+        self.assertEqual(builder1.name, builder2.name, message)
         if check_path:
-            self.assertEqual(builder1.path, builder2.path)
+            self.assertEqual(builder1.path, builder2.path, message)
         if check_source:
-            self.assertEqual(builder1.source, builder2.source)
-        self.assertDictEqual(builder1, builder2)
+            self.assertEqual(builder1.source, builder2.source, message)
+        self.assertDictEqual(builder1, builder2, message)
 
 
 class H5RoundTripMixin(metaclass=ABCMeta):
