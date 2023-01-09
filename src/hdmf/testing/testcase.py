@@ -123,7 +123,7 @@ class TestCase(unittest.TestCase):
                                     ignore_string_to_byte=ignore_string_to_byte,
                                     message=message)
         elif isinstance(f1, (float, np.floating)):
-            np.testing.assert_allclose(f1, f2)
+            np.testing.assert_allclose(f1, f2, err_msg=message)
         else:
             self.assertEqual(f1, f2, message)
 
@@ -185,7 +185,7 @@ class TestCase(unittest.TestCase):
             arr2 = arr2[()]
         if not isinstance(arr1, (tuple, list, np.ndarray)) and not isinstance(arr2, (tuple, list, np.ndarray)):
             if isinstance(arr1, (float, np.floating)):
-                np.testing.assert_allclose(arr1, arr2)
+                np.testing.assert_allclose(arr1, arr2, err_msg=message)
             else:
                 if ignore_string_to_byte:
                     if isinstance(arr1, bytes):
@@ -201,9 +201,9 @@ class TestCase(unittest.TestCase):
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
                 if np.issubdtype(arr1.dtype, np.number):
-                    np.testing.assert_allclose(arr1, arr2)
+                    np.testing.assert_allclose(arr1, arr2, err_msg=message)
                 else:
-                    np.testing.assert_array_equal(arr1, arr2)
+                    np.testing.assert_array_equal(arr1, arr2, err_msg=message)
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
