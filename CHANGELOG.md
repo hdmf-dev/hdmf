@@ -11,6 +11,7 @@
 - Added support for reading and writing `ExternalResources` to and from denormalized TSV files. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
 - Changed the name of `ExternalResources.export_to_sqlite` to `ExternalResources.to_sqlite`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
 - Updated the tutorial for `ExternalResources`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Added `message` argument for assert methods defined by `hdmf.testing.TestCase` to allow developers to include custom error messages with asserts. @oruebel [#812](https://github.com/hdmf-dev/hdmf/pull/812)
 
 ## HDMF 3.4.7 (November 9, 2022)
 
