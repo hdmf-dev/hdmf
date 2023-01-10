@@ -8,6 +8,10 @@
 - Fixed export of newly added links to existing elements of the exported file. @rly [#808](https://github.com/hdmf-dev/hdmf/pull/808)
 - Added ``HDMFIO.__del__`` to ensure that I/O objects are being closed on delete. @oruebel[#811](https://github.com/hdmf-dev/hdmf/pull/811)
 
+### Minor improvements
+- Added `message` argument for assert methods defined by `hdmf.testing.TestCase` to allow developers to include custom error messages with asserts. @oruebel [#812](https://github.com/hdmf-dev/hdmf/pull/812)
+
+
 ## HDMF 3.4.7 (November 9, 2022)
 
 ### Minor improvements
