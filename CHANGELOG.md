@@ -3,14 +3,16 @@
 ## HDMF 3.4.8 (Upcoming)
 
 ### Bug fixes
-- Fixed an issue with external resources where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added (as well as the corresponing unit test). @mavaylon1 [#784](https://github.com/hdmf-dev/hdmf/issues/784)
+- Fixed an issue with `ExternalResources` where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added. @mavaylon1 [#790](https://github.com/hdmf-dev/hdmf/pull/790)
 - Fixed an issue with the `tox` tool when upgrading to tox 4. @rly [#802](https://github.com/hdmf-dev/hdmf/pull/802)
 - Fixed export of newly added links to existing elements of the exported file. @rly [#808](https://github.com/hdmf-dev/hdmf/pull/808)
 - Added ``HDMFIO.__del__`` to ensure that I/O objects are being closed on delete. @oruebel[#811](https://github.com/hdmf-dev/hdmf/pull/811)
 
 ### Minor improvements
+- Added support for reading and writing `ExternalResources` to and from denormalized TSV files. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Changed the name of `ExternalResources.export_to_sqlite` to `ExternalResources.to_sqlite`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Updated the tutorial for `ExternalResources`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
 - Added `message` argument for assert methods defined by `hdmf.testing.TestCase` to allow developers to include custom error messages with asserts. @oruebel [#812](https://github.com/hdmf-dev/hdmf/pull/812)
-
 
 ## HDMF 3.4.7 (November 9, 2022)
 
