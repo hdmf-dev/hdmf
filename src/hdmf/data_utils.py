@@ -426,6 +426,16 @@ class DataChunkIterator(AbstractDataChunkIterator):
     i.e., multiple values from the input iterator can be combined to a single chunk. This is
     useful for buffered I/O operations, e.g., to improve performance by accumulating data
     in memory and writing larger blocks at once.
+
+    .. note::
+
+         DataChunkIterator assumes that the iterator that it wraps returns one element along the
+         iteration dimension at a time. I.e., the iterator is expected to return chunks that are
+         one dimension lower than the array itself. For example, when iterating over the first dimension
+         of a dataset with shape (1000, 10, 10), then the iterator would return 1000 chunks of
+         shape (10, 10) one-chunk-at-a-time. If this pattern does not match your use-case then
+         using :py:class:`~hdmf.data_utils.GenericDataChunkIterator` or
+         :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` may be more appropriate.
     """
 
     __docval_init = (
@@ -585,10 +595,13 @@ class DataChunkIterator(AbstractDataChunkIterator):
         return self.__next_chunk
 
     def __next__(self):
-        r"""Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
+        """
+        Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved.
 
-        HINT: numpy.s\_ provides a convenient way to generate index tuples using standard array slicing. This
-        is often useful to define the DataChunk.selection of the current chunk
+        .. tip::
+
+            :py:attr:`numpy.s\_` provides a convenient way to generate index tuples using standard array slicing. This
+            is often useful to define the DataChunk.selection of the current chunk
 
         :returns: DataChunk object with the data and selection of the current chunk
         :rtype: DataChunk
@@ -639,11 +652,19 @@ class DataChunkIterator(AbstractDataChunkIterator):
     @property
     def maxshape(self):
         """
-        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator. If an iterator
-        is provided and no data has been read yet, then the first chunk will be read (i.e., next will be called on the
-        iterator) in order to determine the maxshape.
+        Get a shape tuple describing the maximum shape of the array described by this DataChunkIterator.
 
-        :return: Shape tuple. None is used for dimenwions where the maximum shape is not known or unlimited.
+        .. note::
+
+            If an iterator is provided and no data has been read yet, then the first chunk will be read
+            (i.e., next will be called on the iterator) in order to determine the maxshape. The iterator
+            is expected to return single chunks along the iterator dimension, this means that maxshape will
+            add an additional dimension along the iteration dimension. E.g., if we iterate over
+            the first dimension and the iterator returns chunks of shape (10, 10), then the maxshape would
+            be (None, 10, 10) or (len(self.data), 10, 10), depending on whether size of the
+            iteration dimension is known.
+
+        :return: Shape tuple. None is used for dimensions where the maximum shape is not known or unlimited.
         """
         if self.__maxshape is None:
             # If no data has been read from the iterator yet, read the first chunk and use it to determine the maxshape
