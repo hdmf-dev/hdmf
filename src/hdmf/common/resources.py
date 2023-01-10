@@ -213,10 +213,9 @@ class ExternalResources(Container):
                                           check_dtype=check_dtype)
         except AssertionError as e:
             errors.append(e)
-        finally:
-            if len(errors) > 0:
-                msg = ''.join(str(e)+"\n\n" for e in errors)
-                raise AssertionError(msg)
+        if len(errors) > 0:
+            msg = ''.join(str(e)+"\n\n" for e in errors)
+            raise AssertionError(msg)
         return True
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the key to be added.'})
