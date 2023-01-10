@@ -95,5 +95,5 @@ attaches those files to all releases as an asset. These files currently do not c
 thus do not serve as a complete installation. For a complete source code archive, use the source distribution generated
 by GitHub Actions, typically named ``hdmf-{version}.tar.gz``.
 
-.. _versioneer: https://github.com/warner/python-versioneer
+.. _versioneer: https://github.com/python-versioneer/python-versioneer
 .. _release: https://github.com/hdmf-dev/hdmf/releases

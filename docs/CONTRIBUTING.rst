@@ -95,7 +95,7 @@ To check whether your code conforms to the HDMF style guide, simply run the flak
 directory.
 
 .. _flake8: https://flake8.pycqa.org/en/latest/
-.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _PEP8: https://peps.python.org/pep-0008/
 
 .. code::
 
