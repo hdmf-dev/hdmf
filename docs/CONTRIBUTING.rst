@@ -94,7 +94,7 @@ Before you create a Pull Request, make sure you are following the HDMF style gui
 To check whether your code conforms to the HDMF style guide, simply run the flake8_ tool in the project's root
 directory.
 
-.. _flake8: http://flake8.pycqa.org/en/latest/
+.. _flake8: https://flake8.pycqa.org/en/latest/
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 
 .. code::

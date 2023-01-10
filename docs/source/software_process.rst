@@ -33,7 +33,7 @@ codecov_, which shows line by line which lines are covered by the tests.
 
 .. _coverage: https://coverage.readthedocs.io
 .. _GitHub Action workflow: https://github.com/hdmf-dev/hdmf/actions?query=workflow%3A%22Run+coverage%22
-.. _codecov: https://codecov.io/gh/hdmf-dev/hdmf/tree/dev/src/hdmf
+.. _codecov: https://app.codecov.io/gh/hdmf-dev/hdmf/tree/dev/src/hdmf
 
 ..  _software_process_requirement_specifications:
 
