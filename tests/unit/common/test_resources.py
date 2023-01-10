@@ -246,6 +246,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             entity_id="id11", entity_uri='url11')
 
         er_right = ExternalResources('terms')
+        er_right._add_key('key')
         er_right.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
