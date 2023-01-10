@@ -769,7 +769,7 @@ class HDF5IO(HDMFIO):
         for name, dbldr in f_builder.datasets.items():
             self.write_dataset(self.__file, dbldr, **kwargs)
         for name, lbldr in f_builder.links.items():
-            self.write_link(self.__file, lbldr)
+            self.write_link(self.__file, lbldr, export_source=kwargs.get("export_source"))
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
         self.__dci_queue.exhaust_queue()
@@ -957,7 +957,7 @@ class HDF5IO(HDMFIO):
         links = builder.links
         if links:
             for link_name, sub_builder in links.items():
-                self.write_link(group, sub_builder)
+                self.write_link(group, sub_builder, export_source=kwargs.get("export_source"))
         attributes = builder.attributes
         self.set_attributes(group, attributes)
         self.__set_written(builder)
@@ -985,9 +985,11 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'},
+            {'name': 'export_source', 'type': str,
+             'doc': 'The source of the builders when exporting', 'default': None},
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
-        parent, builder = getargs('parent', 'builder', kwargs)
+        parent, builder, export_source = getargs('parent', 'builder', 'export_source', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             self.logger.debug("    LinkBuilder '%s' is already written" % builder.name)
@@ -996,7 +998,12 @@ class HDF5IO(HDMFIO):
         target_builder = builder.builder
         path = self.__get_path(target_builder)
         # source will indicate target_builder's location
-        if builder.source == target_builder.source:
+        if export_source is None:
+            write_source = builder.source
+        else:
+            write_source = export_source
+
+        if write_source == target_builder.source:
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                               % (parent.name, name, link_obj.path))
