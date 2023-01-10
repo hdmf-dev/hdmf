@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
@@ -164,6 +165,58 @@ class ExternalResources(Container):
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
         self.type_map = kwargs['type_map'] or get_type_map()
+
+    @staticmethod
+    def assert_external_resources_equal(left, right, check_dtype=True):
+        """
+        Compare that the keys, resources, entities, objects, and object_keys tables match
+
+        :param left: ExternalResources object to compare with right
+        :param right: ExternalResources object to compare with left
+        :param check_dtype: Enforce strict checking of dtypes. Dtypes may be different
+            for example for ids, where depending on how the data was saved
+            ids may change from int64 to int32. (Default: True)
+        :returns: The function returns True if all values match. If mismatches are found,
+            AssertionError will be raised.
+        :raises AssertionError: Raised if any differences are found. The function collects
+            all differences into a single error so that the assertion will indicate
+            all found differences.
+        """
+        errors = []
+        try:
+            pd.testing.assert_frame_equal(left.keys.to_dataframe(),
+                                          right.keys.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        try:
+            pd.testing.assert_frame_equal(left.objects.to_dataframe(),
+                                          right.objects.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        try:
+            pd.testing.assert_frame_equal(left.resources.to_dataframe(),
+                                          right.resources.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        try:
+            pd.testing.assert_frame_equal(left.entities.to_dataframe(),
+                                          right.entities.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        try:
+            pd.testing.assert_frame_equal(left.object_keys.to_dataframe(),
+                                          right.object_keys.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        if len(errors) > 0:
+            msg = ''.join(str(e)+"\n\n" for e in errors)
+            raise AssertionError(msg)
+        return True
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the key to be added.'})
     def _add_key(self, **kwargs):
@@ -553,7 +606,8 @@ class ExternalResources(Container):
 
         # Step 4: Clean up the index and sort columns by table type and name
         result_df.reset_index(inplace=True, drop=True)
-        column_labels = [('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'field'),
+        column_labels = [('objects', 'objects_idx'), ('objects', 'object_id'),
+                         ('objects', 'relative_path'), ('objects', 'field'),
                          ('keys', 'keys_idx'), ('keys', 'key'),
                          ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
                          ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
@@ -566,9 +620,8 @@ class ExternalResources(Container):
         # return the result
         return result_df
 
-    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'},
-            rtype=pd.DataFrame, returns='A DataFrame with all data merged into a flat, denormalized table.')
-    def export_to_sqlite(self, db_file):
+    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
+    def to_sqlite(self, db_file):
         """
         Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
 
@@ -584,9 +637,9 @@ class ExternalResources(Container):
         offset must be applied to the relevant foreign keys.
 
         :raises: The function will raise errors if connection to the database fails. If
-                 the given db_file already exists, then there is also the possibility that
-                 certain updates may result in errors if there are collisions between the
-                 new and existing data.
+            the given db_file already exists, then there is also the possibility that
+            certain updates may result in errors if there are collisions between the
+            new and existing data.
         """
         import sqlite3
         # connect to the database
@@ -654,3 +707,138 @@ class ExternalResources(Container):
             self.entities[:])
         connection.commit()
         connection.close()
+
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to write'})
+    def to_tsv(self, **kwargs):
+        """
+        Write ExternalResources as a single, flat table to TSV
+        Internally, the function uses :py:meth:`pandas.DataFrame.to_csv`. Pandas can
+        infer compression based on the filename, i.e., by changing the file extension to
+        ‘.gz’, ‘.bz2’, ‘.zip’, ‘.xz’, or ‘.zst’ we can write compressed files.
+        The TSV is formatted as follows: 1) line one indicates for each column the name of the table
+        the column belongs to, 2) line two is the name of the column within the table, 3) subsequent
+        lines are each a row in the flattened ExternalResources table. The first column is the
+        row id in the flattened table and does not have a label, i.e., the first and second
+        row will start with a tab character, and subseqent rows are numbered sequentially 1,2,3,... .
+        For example:
+
+        .. code-block::
+            :linenos:
+
+            \tobjects\tobjects\tobjects\tobjects\tkeys\tkeys\tresources\tresources\tresources\tentities\tentities\tentities
+            \tobjects_idx\tobject_id\trelative_path\tfield\tkeys_idx\tkey\tresources_idx\tresource\tresource_uri\tentities_idx\tentity_id\tentity_uri
+            0\t0\t1fc87200-e91e-45b3-978c-6d295af144c3\t\tspecies\t0\tMus musculus\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t0\tNCBI:txid10090\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
+            1\t0\t9bf0c58e-09dc-4457-a652-94065b112c41\t\tspecies\t1\tHomo sapiens\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t1\tNCBI:txid9606\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
+
+        See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
+        """  # noqa: E501
+        path = popargs('path', kwargs)
+        df = self.to_dataframe(use_categories=True)
+        df.to_csv(path, sep='\t')
+
+    @classmethod
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to read'},
+            returns="ExternalResources loaded from TSV", rtype="ExternalResources")
+    def from_tsv(cls, **kwargs):
+        """
+        Read ExternalResources from a flat tsv file
+        Formatting of the TSV file is assumed to be consistent with the format
+        generated by :py:meth:`~hdmf.common.resources.ExternalResources.to_tsv`.
+        The function attempts to validate that the data in the TSV is consistent
+        and parses the data from the denormalized table in the TSV to the
+        normalized linked table structure used by ExternalResources.
+        Currently the checks focus on ensuring that row id links between tables are valid.
+        Inconsistencies in other (non-index) fields (e.g., when two rows with the same resource_idx
+        have different resource_uri values) are not checked and will be ignored. In this case, the value
+        from the first row that contains the corresponding entry will be kept.
+
+        .. note::
+           Since TSV files may be edited by hand or other applications, it is possible that data
+           in the TSV may be inconsistent. E.g., object_idx may be missing if rows were removed
+           and ids not updated. Also since the TSV is flattened into a single denormalized table
+           (i.e., data are stored with duplication, rather than normalized across several tables),
+           it is possible that values may be inconsistent if edited outside. E.g., we may have
+           objects with the same index (object_idx) but different object_id, relative_path, or field
+           values. While flat TSVs are sometimes preferred for ease of sharing, editing
+           the TSV without using the :py:meth:`~hdmf.common.resources.ExternalResources` class
+           should be done with great care!
+        """
+        def check_idx(idx_arr, name):
+            """Check that indices are consecutively numbered without missing values"""
+            idx_diff = np.diff(idx_arr)
+            if np.any(idx_diff != 1):
+                missing_idx = [i for i in range(np.max(idx_arr)) if i not in idx_arr]
+                msg = "Missing %s entries %s" % (name, str(missing_idx))
+                raise ValueError(msg)
+
+        path = popargs('path', kwargs)
+        df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
+        # Construct the ExternalResources
+        er = ExternalResources(name="external_resources")
+
+        # Retrieve all the objects
+        ob_idx, ob_rows = np.unique(df[('objects', 'objects_idx')], return_index=True)
+        # Sort objects based on their index
+        ob_order = np.argsort(ob_idx)
+        ob_idx = ob_idx[ob_order]
+        ob_rows = ob_rows[ob_order]
+        # Check that objects are consecutively numbered
+        check_idx(idx_arr=ob_idx, name='objects_idx')
+        # Add the objects to the Object table
+        ob_ids = df[('objects', 'object_id')].iloc[ob_rows]
+        ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
+        ob_fields = df[('objects', 'field')].iloc[ob_rows]
+        for ob in zip(ob_ids, ob_relpaths, ob_fields):
+            er._add_object(container=ob[0], relative_path=ob[1], field=ob[2])
+
+        # Retrieve all keys
+        keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)
+        # Sort keys based on their index
+        keys_order = np.argsort(keys_idx)
+        keys_idx = keys_idx[keys_order]
+        keys_rows = keys_rows[keys_order]
+        # Check that keys are consecutively numbered
+        check_idx(idx_arr=keys_idx, name='keys_idx')
+        # Add the keys to the Keys table
+        keys_key = df[('keys', 'key')].iloc[keys_rows]
+        all_added_keys = [er._add_key(k) for k in keys_key]
+
+        # Add all the object keys to the ObjectKeys table. A single key may be assigned to multiple
+        # objects. As such it is not sufficient to iterate over the unique ob_rows with the unique
+        # objects, but we need to find all unique (objects_idx, keys_idx) combinations.
+        ob_keys_idx = np.unique(df[[('objects', 'objects_idx'), ('keys', 'keys_idx')]], axis=0)
+        for obk in ob_keys_idx:
+            er._add_object_key(obj=obk[0], key=obk[1])
+
+        # Retrieve all resources
+        resources_idx, resources_rows = np.unique(df[('resources', 'resources_idx')], return_index=True)
+        # Sort resources based on their index
+        resources_order = np.argsort(resources_idx)
+        resources_idx = resources_idx[resources_order]
+        resources_rows = resources_rows[resources_order]
+        # Check that resources are consecutively numbered
+        check_idx(idx_arr=resources_idx, name='resources_idx')
+        # Add the resources to the Resources table
+        resources_resource = df[('resources', 'resource')].iloc[resources_rows]
+        resources_uri = df[('resources', 'resource_uri')].iloc[resources_rows]
+        for r in zip(resources_resource, resources_uri):
+            er._add_resource(resource=r[0], uri=r[1])
+
+        # Retrieve all entities
+        entities_idx, entities_rows = np.unique(df[('entities', 'entities_idx')], return_index=True)
+        # Sort entities based on their index
+        entities_order = np.argsort(entities_idx)
+        entities_idx = entities_idx[entities_order]
+        entities_rows = entities_rows[entities_order]
+        # Check that entities are consecutively numbered
+        check_idx(idx_arr=entities_idx, name='entities_idx')
+        # Add the entities ot the Resources table
+        entities_id = df[('entities', 'entity_id')].iloc[entities_rows]
+        entities_uri = df[('entities', 'entity_uri')].iloc[entities_rows]
+        entities_keys = np.array(all_added_keys)[df[('keys', 'keys_idx')].iloc[entities_rows]]
+        entities_resources_idx = df[('resources', 'resources_idx')].iloc[entities_rows]
+        for e in zip(entities_keys, entities_resources_idx, entities_id, entities_uri):
+            er._add_entity(key=e[0], resources_idx=e[1], entity_id=e[2], entity_uri=e[3])
+
+        # Return the reconstructed ExternalResources
+        return er

@@ -170,7 +170,7 @@ Publish release on conda-forge: Step-by-step
 .. warning::
 
    Publishing on conda requires you to have the corresponding package version uploaded on
-   `PyPI`_. So you have to do the PyPI and Github release before you do the conda release.
+   PyPI. So you have to do the PyPI and GitHub release before you do the conda release.
 
 .. note::
 
