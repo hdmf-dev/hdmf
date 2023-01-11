@@ -22,7 +22,7 @@ jobs:
           TOKEN: ${{ steps.generate_token.outputs.token }}
         uses: actions/add-to-project@v0.4.0
         with:
-          project-url: https://github.com/orgs/NeurodataWithoutBorders/projects/7
+          project-url: https://github.com/orgs/hdmf-dev/projects/7
           github-token: ${{ env.TOKEN }}
       
       - name: Add to Community Board
@@ -30,5 +30,5 @@ jobs:
           TOKEN: ${{ steps.generate_token.outputs.token }}
         uses: actions/add-to-project@v0.4.0
         with:
-          project-url: https://github.com/orgs/NeurodataWithoutBorders/projects/8
+          project-url: https://github.com/orgs/hdmf-dev/projects/8
           github-token: ${{ env.TOKEN }}
