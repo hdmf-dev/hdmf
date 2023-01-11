@@ -6,6 +6,7 @@
 - Fixed an issue with `ExternalResources` where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added. @mavaylon1 [#790](https://github.com/hdmf-dev/hdmf/pull/790)
 - Fixed an issue with the `tox` tool when upgrading to tox 4. @rly [#802](https://github.com/hdmf-dev/hdmf/pull/802)
 - Fixed export of newly added links to existing elements of the exported file. @rly [#808](https://github.com/hdmf-dev/hdmf/pull/808)
+- Added ``HDMFIO.__del__`` to ensure that I/O objects are being closed on delete. @oruebel[#811](https://github.com/hdmf-dev/hdmf/pull/811)
 
 ### Minor improvements
 - Added support for reading and writing `ExternalResources` to and from denormalized TSV files. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
