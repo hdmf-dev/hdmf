@@ -13,6 +13,7 @@
 - Changed the name of `ExternalResources.export_to_sqlite` to `ExternalResources.to_sqlite`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
 - Updated the tutorial for `ExternalResources`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
 - Added `message` argument for assert methods defined by `hdmf.testing.TestCase` to allow developers to include custom error messages with asserts. @oruebel [#812](https://github.com/hdmf-dev/hdmf/pull/812)
+- Clarify the expected chunk shape behavior for `DataChunkIterator`. @oruebel [#813](https://github.com/hdmf-dev/hdmf/pull/813)
 
 ## HDMF 3.4.7 (November 9, 2022)
 
