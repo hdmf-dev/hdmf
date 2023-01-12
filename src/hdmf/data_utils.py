@@ -600,7 +600,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
         .. tip::
 
-            :py:attr:`numpy.s\_` provides a convenient way to generate index tuples using standard array slicing. This
+            :py:attr:`numpy.s_` provides a convenient way to generate index tuples using standard array slicing. This
             is often useful to define the DataChunk.selection of the current chunk
 
         :returns: DataChunk object with the data and selection of the current chunk
