@@ -29,4 +29,4 @@ You can also install HDMF using ``conda`` by running the following command in a 
 
    conda install -c conda-forge hdmf
 
-.. _Anaconda Distribution: https://www.anaconda.com/distribution
+.. _Anaconda Distribution: https://www.anaconda.com/products/distribution
