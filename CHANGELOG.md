@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.4.8 (Upcoming)
+## HDMF 3.5.0 (Upcoming)
 
 ### Bug fixes
 - Fixed an issue with `ExternalResources` where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added. @mavaylon1 [#790](https://github.com/hdmf-dev/hdmf/pull/790)
