@@ -55,6 +55,9 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
                                                               kwargs)
 
+        self.__open_links = []  # keep track of other files opened from links in this file
+        self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
+
         if path is None and file_obj is None:
             raise ValueError("You must supply either a path or a file.")
 
@@ -89,7 +92,6 @@ class HDF5IO(HDMFIO):
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
         self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
-        self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
     def comm(self):
