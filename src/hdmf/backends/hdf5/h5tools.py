@@ -746,10 +746,15 @@ class HDF5IO(HDMFIO):
         not, which prevents the linked-to file from being deleted or truncated. Use this method to close all opened,
         linked-to files.
         """
-        for obj in self.__open_links:
-            if obj:
-                obj.file.close()
-        self.__open_links = []
+        # Make sure
+        try:
+            for obj in self.__open_links:
+                if obj:
+                    obj.file.close()
+        except AttributeError:  # In case that self.__open_links does not exist on delete
+            pass
+        finally:
+            self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,
