@@ -736,8 +736,15 @@ class HDF5IO(HDMFIO):
         """
         if close_links:
             self.close_linked_files()
-        if self.__file is not None:
-            self.__file.close()
+        try:
+            if self.__file is not None:
+                self.__file.close()
+        except AttributeError:
+            # Do not do anything in case that self._file does not exist. This
+            # may happen in case that an error occurs before HDF5IO has been fully
+            # setup in __init__, e.g,. if a child class such as NWBHDF5IO raises
+            # and error before self.__file has been created
+            warnings.warn("HDF5IO was not fully initialized before close. Missing self.__file")
 
     def close_linked_files(self):
         """Close all opened, linked-to files.
@@ -751,8 +758,12 @@ class HDF5IO(HDMFIO):
             for obj in self.__open_links:
                 if obj:
                     obj.file.close()
-        except AttributeError:  # In case that self.__open_links does not exist on delete
-            pass
+        except AttributeError:
+            # Do not do anything in case that self.__open_links does not exist. This
+            # may happen in case that an error occurs before HDF5IO has been fully
+            # setup in __init__, e.g,. if a child class such as NWBHDF5IO raises
+            # and error before self.__open_links has been created.
+            warnings.warn("HDF5IO was not fully initialized before close. Missing self.__open_links.")
         finally:
             self.__open_links = []
 
