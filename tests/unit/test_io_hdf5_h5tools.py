@@ -826,6 +826,40 @@ class TestHDF5IO(TestCase):
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
 
+    def test_delete_with_incomplete_construction_missing_file(self):
+        """
+        Here we test what happens when close is called before HDF5IO.__init__ has
+        bee completed. In this case self.__file is missing
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                raise ValueError("test error")
+        with self.assertWarnsWith(warn_type=UserWarning,
+                                  exc_msg="HDF5IO was not fully initialized before close. Missing self.__file"):
+            try:
+                with MyHDF5IO() as _:
+                    pass
+            except ValueError:
+                pass
+
+    def test_delete_with_incomplete_construction_missing_open_files(self):
+        """
+        Here we test what happens when close is called before HDF5IO.__init__ has
+        bee completed. In this case self.__open_file is missing
+        """
+
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                raise ValueError("test error")
+
+        with self.assertWarnsWith(warn_type=UserWarning,
+                                  exc_msg="HDF5IO was not fully initialized before close. Missing self.__open_links."):
+            try:
+                with MyHDF5IO() as _:
+                    pass
+            except ValueError:
+                pass
+
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'w')
         err_msg = ("You argued %s as this object's path, but supplied a file with filename: %s"
