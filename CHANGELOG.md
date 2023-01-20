@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.5.1 (Upcoming)
+
+### Documentation and tutorial enhancements:
+- Updated `DynamicTable` how to tutorial to clarify the status of `EnumData`. @oruebel [#819](https://github.com/hdmf-dev/hdmf/pull/819)
+
 ## HDMF 3.5.0 (January 17, 2023)
 
 ### Bug fixes
