@@ -23,7 +23,7 @@ reqs = [
     'numpy>=1.16',
     'pandas>=1.0.5',
     'ruamel.yaml>=0.16',
-    'scipy>=1.1',
+    'scipy>=1.4',
     'setuptools',
 ]
 
