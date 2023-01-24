@@ -2,7 +2,11 @@
 
 ## HDMF 3.5.1 (January 24, 2023)
 
+### Bug fixes
 - Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed. @oruebel [#817](https://github.com/hdmf-dev/hdmf/pull/817)  
+
+### Documentation and tutorial enhancements:
+- Updated `DynamicTable` how to tutorial to clarify the status of `EnumData`. @oruebel [#819](https://github.com/hdmf-dev/hdmf/pull/819)
 
 ## HDMF 3.5.0 (January 17, 2023)
 
