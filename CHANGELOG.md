@@ -1,8 +1,8 @@
 # HDMF Changelog
 
-## HDMF 3.5.1 (Upcoming)
+## HDMF 3.5.1 (January 24, 2023)
 
-- Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed  @oruebel[#817](https://github.com/hdmf-dev/hdmf/pull/817)  
+- Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed. @oruebel [#817](https://github.com/hdmf-dev/hdmf/pull/817)  
 
 ## HDMF 3.5.0 (January 17, 2023)
 

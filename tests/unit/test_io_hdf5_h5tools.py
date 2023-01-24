@@ -828,8 +828,8 @@ class TestHDF5IO(TestCase):
 
     def test_delete_with_incomplete_construction_missing_file(self):
         """
-        Here we test what happens when close is called before HDF5IO.__init__ has
-        bee completed. In this case self.__file is missing
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__file is missing.
         """
         class MyHDF5IO(HDF5IO):
             def __init__(self):
@@ -842,8 +842,8 @@ class TestHDF5IO(TestCase):
 
     def test_delete_with_incomplete_construction_missing_open_files(self):
         """
-        Here we test what happens when close is called before HDF5IO.__init__ has
-        bee completed. In this case self.__open_file is missing
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__open_files is missing.
         """
         class MyHDF5IO(HDF5IO):
             def __init__(self):
