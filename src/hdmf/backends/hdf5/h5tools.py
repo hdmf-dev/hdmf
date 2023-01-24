@@ -746,7 +746,7 @@ class HDF5IO(HDMFIO):
             # may happen in case that an error occurs before HDF5IO has been fully
             # setup in __init__, e.g,. if a child class such as NWBHDF5IO raises
             # and error before self.__file has been created
-            warnings.warn("HDF5IO was not fully initialized before close. Missing self.__file")
+            pass
 
     def close_linked_files(self):
         """Close all opened, linked-to files.
@@ -765,7 +765,7 @@ class HDF5IO(HDMFIO):
             # may happen in case that an error occurs before HDF5IO has been fully
             # setup in __init__, e.g,. if a child class such as NWBHDF5IO raises
             # and error before self.__open_links has been created.
-            warnings.warn("HDF5IO was not fully initialized before close. Missing self.__open_links.")
+            pass
         finally:
             self.__open_links = []
 
