@@ -746,7 +746,7 @@ class HDF5IO(HDMFIO):
             # may happen in case that an error occurs before HDF5IO has been fully
             # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
             # an error before self.__file has been created
-            pass
+            self.__file = None
 
     def close_linked_files(self):
         """Close all opened, linked-to files.
