@@ -744,8 +744,8 @@ class HDF5IO(HDMFIO):
         except AttributeError:
             # Do not do anything in case that self._file does not exist. This
             # may happen in case that an error occurs before HDF5IO has been fully
-            # setup in __init__, e.g,. if a child class such as NWBHDF5IO raises
-            # and error before self.__file has been created
+            # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
+            # an error before self.__file has been created
             pass
 
     def close_linked_files(self):
@@ -763,8 +763,8 @@ class HDF5IO(HDMFIO):
         except AttributeError:
             # Do not do anything in case that self.__open_links does not exist. This
             # may happen in case that an error occurs before HDF5IO has been fully
-            # setup in __init__, e.g,. if a child class such as NWBHDF5IO raises
-            # and error before self.__open_links has been created.
+            # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
+            # an error before self.__open_links has been created.
             pass
         finally:
             self.__open_links = []
