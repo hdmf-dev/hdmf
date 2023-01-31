@@ -3,7 +3,7 @@
 ## Upcoming
 
 ### Minor improvements
-- Added support for Python 3.11. Dropped support for Python 3.7. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+- Added support for Python 3.11. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
 - No longer set upper bounds on dependencies. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
 
 

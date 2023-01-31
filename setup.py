@@ -20,10 +20,10 @@ schema_dir = 'common/hdmf-common-schema/common'
 reqs = [
     'h5py>=2.10',
     'jsonschema>=2.6.0',
-    'numpy>=1.18',
+    'numpy>=1.16',
     'pandas>=1.0.5',
     'ruamel.yaml>=0.16',
-    'scipy>=1.4',
+    'scipy>=1.1',
     'setuptools',
 ]
 
@@ -44,9 +44,10 @@ setup_args = {
     'packages': pkgs,
     'package_dir': {'': 'src'},
     'package_data': {'hdmf': ["%s/*.yaml" % schema_dir, "%s/*.json" % schema_dir]},
-    'python_requires': '>=3.8',
+    'python_requires': '>=3.7',
     'classifiers': [
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
