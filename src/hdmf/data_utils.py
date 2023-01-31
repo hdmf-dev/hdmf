@@ -237,7 +237,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
 
-         # TODO: replace with below when Python 3.7 support is dropped
+        # TODO: replace with below when Python 3.7 support is dropped
         # self.num_buffers = math.prod(
         self.num_buffers = functools.reduce(
             operator.mul,
