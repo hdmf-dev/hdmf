@@ -55,6 +55,9 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
                                                               kwargs)
 
+        self.__open_links = []  # keep track of other files opened from links in this file
+        self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
+
         if path is None and file_obj is None:
             raise ValueError("You must supply either a path or a file.")
 
@@ -89,7 +92,6 @@ class HDF5IO(HDMFIO):
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
         self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
-        self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
     def comm(self):
@@ -736,8 +738,15 @@ class HDF5IO(HDMFIO):
         """
         if close_links:
             self.close_linked_files()
-        if self.__file is not None:
-            self.__file.close()
+        try:
+            if self.__file is not None:
+                self.__file.close()
+        except AttributeError:
+            # Do not do anything in case that self._file does not exist. This
+            # may happen in case that an error occurs before HDF5IO has been fully
+            # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
+            # an error before self.__file has been created
+            self.__file = None
 
     def close_linked_files(self):
         """Close all opened, linked-to files.
@@ -746,10 +755,19 @@ class HDF5IO(HDMFIO):
         not, which prevents the linked-to file from being deleted or truncated. Use this method to close all opened,
         linked-to files.
         """
-        for obj in self.__open_links:
-            if obj:
-                obj.file.close()
-        self.__open_links = []
+        # Make sure
+        try:
+            for obj in self.__open_links:
+                if obj:
+                    obj.file.close()
+        except AttributeError:
+            # Do not do anything in case that self.__open_links does not exist. This
+            # may happen in case that an error occurs before HDF5IO has been fully
+            # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
+            # an error before self.__open_links has been created.
+            pass
+        finally:
+            self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,

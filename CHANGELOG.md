@@ -6,8 +6,15 @@
 - Added support for Python 3.11. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
 - No longer set upper bounds on dependencies. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
 
+## HDMF 3.5.1 (January 26, 2023)
 
-## HDMF 3.4.8 (January 17, 2023)
+### Bug fixes
+- Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed. @oruebel [#817](https://github.com/hdmf-dev/hdmf/pull/817)  
+
+### Documentation and tutorial enhancements:
+- Updated `DynamicTable` how to tutorial to clarify the status of `EnumData`. @oruebel [#819](https://github.com/hdmf-dev/hdmf/pull/819)
+
+## HDMF 3.5.0 (January 17, 2023)
 
 ### Bug fixes
 - Fixed an issue with `ExternalResources` where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added. @mavaylon1 [#790](https://github.com/hdmf-dev/hdmf/pull/790)
