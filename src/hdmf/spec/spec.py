@@ -1245,17 +1245,17 @@ class GroupSpec(BaseStorageSpec):
 
     @property
     def groups(self):
-        ''' The groups specificed in this GroupSpec '''
+        ''' The groups specified in this GroupSpec '''
         return tuple(self.get('groups', tuple()))
 
     @property
     def datasets(self):
-        ''' The datasets specificed in this GroupSpec '''
+        ''' The datasets specified in this GroupSpec '''
         return tuple(self.get('datasets', tuple()))
 
     @property
     def links(self):
-        ''' The links specificed in this GroupSpec '''
+        ''' The links specified in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
     @docval(*_group_args)

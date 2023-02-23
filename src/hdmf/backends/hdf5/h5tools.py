@@ -1147,7 +1147,7 @@ class HDF5IO(HDMFIO):
             for i, dts in enumerate(options['dtype']):
                 if self.__is_ref(dts):
                     refs.append(i)
-            # If one ore more of the parts of the compound data type are references then we need to deal with those
+            # If one or more of the parts of the compound data type are references then we need to deal with those
             if len(refs) > 0:
                 try:
                     _dtype = self.__resolve_dtype__(options['dtype'], data)
