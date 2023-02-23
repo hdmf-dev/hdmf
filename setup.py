@@ -12,7 +12,7 @@ import versioneer
 with open('README.rst', 'r') as fp:
     readme = fp.read()
 
-pkgs = find_packages('src', exclude=['data'])
+pkgs = find_namespace_packages('src', exclude=['data'])
 print('found these packages:', pkgs)
 
 schema_dir = 'common/hdmf-common-schema/common'
