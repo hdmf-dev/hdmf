@@ -97,7 +97,7 @@ class ShapeValidatorTests(TestCase):
         self.assertTupleEqual(res.axes2, (1,))
 
     def test_array_axis_index_out_of_bounds_single_axis(self):
-        # Test too large frist axis
+        # Test too large first axis
         d1 = np.arange(10).reshape(2, 5)
         d2 = np.arange(20).reshape(5, 2, 2)
         res = assertEqualShape(d1, d2, 4, 1)

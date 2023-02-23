@@ -142,7 +142,7 @@ class VectorIndex(VectorData):
 
     def __adjust_precision(self, uint):
         """
-        Adjust precision of data to specificied unsigned integer precision.
+        Adjust precision of data to specified unsigned integer precision.
         """
         if isinstance(self.data, list):
             for i in range(len(self.data)):

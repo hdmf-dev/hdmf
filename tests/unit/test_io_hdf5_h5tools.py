@@ -618,7 +618,7 @@ class H5IOTest(TestCase):
         # Make sure we warn when gzip with szip compression options is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=('ec', 16))
-        # Make sure we warn if gzip with a too high agression is used
+        # Make sure we warn if gzip with a too high aggression is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=100)
         # Make sure we warn if lzf with gzip compression option is used

@@ -560,7 +560,7 @@ class ExternalResources(Container):
         """
         Convert the data from the keys, resources, entities, objects, and object_keys tables
         to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
-        are used across multiple enities or objects will duplicated across the corresponding
+        are used across multiple entities or objects will duplicated across the corresponding
         rows.
 
         Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
@@ -719,7 +719,7 @@ class ExternalResources(Container):
         the column belongs to, 2) line two is the name of the column within the table, 3) subsequent
         lines are each a row in the flattened ExternalResources table. The first column is the
         row id in the flattened table and does not have a label, i.e., the first and second
-        row will start with a tab character, and subseqent rows are numbered sequentially 1,2,3,... .
+        row will start with a tab character, and subsequent rows are numbered sequentially 1,2,3,... .
         For example:
 
         .. code-block::

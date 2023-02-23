@@ -33,7 +33,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         resource1 = er._add_resource(resource='resource0', uri='resource_uri0')
         # the user will have to supply this info as well. This is the information
-        # needed to retrieve info about the controled term
+        # needed to retrieve info about the controlled term
         er._add_entity(key, resource1, '10090', 'uri')
 
         # The user can also pass in the container or it can be wrapped up under NWBFILE

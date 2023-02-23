@@ -76,7 +76,7 @@ class TestLinkedAlignedDynamicTables(TestCase):
     Test functionality specific to AlignedDynamicTables containing DynamicTableRegion columns.
 
     Since these functions only implements front-end convenient functions for DynamicTable
-    we do not need to worry about I/O here (that is tested elsewere), but it is sufficient if
+    we do not need to worry about I/O here (that is tested elsewhere), but it is sufficient if
     we test with container class. The only time I/O becomes relevant is on read in case that, e.g., a
     h5py.Dataset may behave differently than a numpy array.
     """
@@ -625,7 +625,7 @@ class TestLinkedDynamicTables(TestCase):
     Test functionality specific to DynamicTables containing DynamicTableRegion columns.
 
     Since these functions only implements front-end convenient functions for DynamicTable
-    we do not need to worry about I/O here (that is tested elsewere), ut it is sufficient if
+    we do not need to worry about I/O here (that is tested elsewhere), ut it is sufficient if
     we test with container class. The only time I/O becomes relevant is on read in case that, e.g., a
     h5py.Dataset may behave differently than a numpy array.
     """

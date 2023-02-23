@@ -174,7 +174,7 @@ class ReferenceResolver(metaclass=ABCMeta):
     def get_inverse_class(cls):
         """
         Return the class the represents the ReferenceResolver
-        that resolves refernces to the opposite type.
+        that resolves references to the opposite type.
 
         BuilderResolver.get_inverse_class should return a class
         that subclasses ContainerResolver.
