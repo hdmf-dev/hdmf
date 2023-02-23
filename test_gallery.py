@@ -17,9 +17,13 @@ ERRORS = 0
 
 
 def _import_from_file(script):
+    print(script)
     modname = os.path.basename(script)
+    print(modname)
     spec = importlib.util.spec_from_file_location(os.path.basename(script), script)
+    print(spec)
     module = importlib.util.module_from_spec(spec)
+    print(module)
     sys.modules[modname] = module
     spec.loader.exec_module(module)
 
@@ -100,6 +104,7 @@ def main():
         final_message = "%s - OK" % final_message
 
     logging.info(final_message)
+    print("local",locals())
 
     return exitcode
 

@@ -6,6 +6,7 @@ from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+from pynert import TermSet
 
 
 class KeyTable(Table):
@@ -379,6 +380,57 @@ class ExternalResources(Container):
             raise ValueError(msg)
         else:
             return self.resources.row[resource_table_idx[0]]
+
+    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'The PyNert term_set'}
+            )
+    def add_ref_termset(self, **kwargs):
+        """
+        This also requires the term set to have only one ontology source. This requires the data to be the keys and
+        requires the data to match the term set (Homo Sapiens is Homo sapiens and not human).
+        """
+        container = kwargs['container']
+        attribute = kwargs['attribute']
+        key = kwargs['key']
+        field = kwargs['field']
+        term_set = kwargs['term_set']
+
+        if key is not None:
+            keys = [key]
+        else:
+            if attribute is None:
+                keys = container.data
+            else:
+                keys = container[attribute].data
+        for key in keys:
+            term = term_set.retrieve_term(term_name=key)
+            entity_id = term[0]
+            entity_uri = term[2]
+
+            # parse and setup resources
+            marker = ':'
+            prefix = entity_id.split(marker, 1)[0]
+            resource_name = prefix # the resource name is now the prefix
+            resource_uri = term_set.sources[resource_name]['prefix_reference']
+
+
+            return self.add_ref(container=container,
+                                attribute=attribute,
+                                field=field,
+                                key=key,
+                                resource_name=resource_name,
+                                resource_uri=resource_uri,
+                                entity_id=entity_id,
+                                entity_uri=entity_uri
+                                )
 
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
