@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 import sys
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
 # Some Python installations don't add the current directory to path.
 if '' not in sys.path:
