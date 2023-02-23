@@ -444,7 +444,7 @@ class TestHierarchicalTable(TestCase):
     def test_to_hierarchical_dataframe_indexed_data_nparray(self):
         # Test that we can convert a table that contains a VectorIndex column as regular data,
         # i.e., it is not our DynamicTableRegion column that is index but a regular data column.
-        # In this test the data is defined as an numpy nd.array so that an nd.array is injected
+        # In this test the data is defined as an numpy ndarray so that an ndarray is injected
         # into the MultiIndex of the table. As a numpy array is not hashable this would normally
         # create an error when creating the MultiIndex
         # Parent table

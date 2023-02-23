@@ -832,7 +832,7 @@ class ExternalResources(Container):
         entities_rows = entities_rows[entities_order]
         # Check that entities are consecutively numbered
         check_idx(idx_arr=entities_idx, name='entities_idx')
-        # Add the entities ot the Resources table
+        # Add the entities to the Resources table
         entities_id = df[('entities', 'entity_id')].iloc[entities_rows]
         entities_uri = df[('entities', 'entity_uri')].iloc[entities_rows]
         entities_keys = np.array(all_added_keys)[df[('keys', 'keys_idx')].iloc[entities_rows]]
