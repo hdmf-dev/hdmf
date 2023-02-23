@@ -605,7 +605,7 @@ class H5DataIO(DataIO):
                        int with the registered filter ID, e.g. 307
         :type filter: String, int
         :param allow_plugin_filters: bool indicating whether the given filter can be dynamically loaded
-        :return: bool indicating wether the given filter is available
+        :return: bool indicating whether the given filter is available
         """
         if filter is not None:
             if filter in h5py_filters.encode:

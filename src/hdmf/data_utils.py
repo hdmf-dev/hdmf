@@ -721,7 +721,7 @@ class DataChunk:
             return 0
 
     def __getattr__(self, attr):
-        """Delegate retrival of attributes to the data in self.data"""
+        """Delegate retrieval of attributes to the data in self.data"""
         return getattr(self.data, attr)
 
     def __copy__(self):
@@ -935,7 +935,7 @@ class ShapeValidatorResult:
 
     def __getattr__(self, item):
         """
-        Overwrite to allow dynamic retrival of the default message
+        Overwrite to allow dynamic retrieval of the default message
         """
         if item == 'default_message':
             return self.SHAPE_ERROR[self.error]

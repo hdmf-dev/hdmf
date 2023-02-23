@@ -633,7 +633,7 @@ class H5IOTest(TestCase):
         # Make sure szip raises a ValueError if bad options are used (odd compression option)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 3))
-        # Make sure szip raises a ValueError if bad options are used (bad methos)
+        # Make sure szip raises a ValueError if bad options are used (bad methods)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('bad_method', 16))
 
