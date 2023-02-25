@@ -37,7 +37,7 @@ collection of interlinked tables.
   :py:class:`~hdmf.common.resources.Resource`
 * :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
   :py:class:`~hdmf.common.resources.Entity`
-* :py:class:`~hdmf.common.resources.ObjectTable` where each row descibes an
+* :py:class:`~hdmf.common.resources.ObjectTable` where each row describes an
   :py:class:`~hdmf.common.resources.Object`
 * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
   :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
@@ -45,7 +45,7 @@ collection of interlinked tables.
 
 The :py:class:`~hdmf.common.resources.ExternalResources` class then provides
 convenience functions to simplify interaction with these tables, allowing users
-to treat :py:class:`~hdmf.common.resources.ExternalResources`as a single large table as
+to treat :py:class:`~hdmf.common.resources.ExternalResources` as a single large table as
 much as possible.
 
 Rules to ExternalResources
@@ -206,7 +206,7 @@ er.add_ref(
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
 ###############################################################################
-# Using the add_ref method with a field
+# Using the add_ref method with an attribute
 # ------------------------------------------------------
 # It is important to keep in mind that when adding and :py:class:`~hdmf.common.resources.Object` to
 # the :py:class:~hdmf.common.resources.ObjectTable, the parent object identified by
@@ -493,7 +493,7 @@ if os.path.exists(db_file):
 ###############################################################################
 # Export the data stored in the :py:class:`~hdmf.common.resources.ExternalResources`
 # object to a SQLite database.
-er.export_to_sqlite(db_file)
+er.to_sqlite(db_file)
 
 ###############################################################################
 # Test that the generated SQLite database is correct

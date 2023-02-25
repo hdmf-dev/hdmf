@@ -55,6 +55,9 @@ class HDF5IO(HDMFIO):
         path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
                                                               kwargs)
 
+        self.__open_links = []  # keep track of other files opened from links in this file
+        self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
+
         if path is None and file_obj is None:
             raise ValueError("You must supply either a path or a file.")
 
@@ -89,7 +92,6 @@ class HDF5IO(HDMFIO):
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
         self._written_builders = WriteStatusTracker()  # track which builders were written (or read) by this IO object
-        self.__open_links = []      # keep track of other files opened from links in this file
 
     @property
     def comm(self):
@@ -736,8 +738,15 @@ class HDF5IO(HDMFIO):
         """
         if close_links:
             self.close_linked_files()
-        if self.__file is not None:
-            self.__file.close()
+        try:
+            if self.__file is not None:
+                self.__file.close()
+        except AttributeError:
+            # Do not do anything in case that self._file does not exist. This
+            # may happen in case that an error occurs before HDF5IO has been fully
+            # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
+            # an error before self.__file has been created
+            self.__file = None
 
     def close_linked_files(self):
         """Close all opened, linked-to files.
@@ -746,10 +755,19 @@ class HDF5IO(HDMFIO):
         not, which prevents the linked-to file from being deleted or truncated. Use this method to close all opened,
         linked-to files.
         """
-        for obj in self.__open_links:
-            if obj:
-                obj.file.close()
-        self.__open_links = []
+        # Make sure
+        try:
+            for obj in self.__open_links:
+                if obj:
+                    obj.file.close()
+        except AttributeError:
+            # Do not do anything in case that self.__open_links does not exist. This
+            # may happen in case that an error occurs before HDF5IO has been fully
+            # setup in __init__, e.g,. if a child class (such as NWBHDF5IO) raises
+            # an error before self.__open_links has been created.
+            pass
+        finally:
+            self.__open_links = []
 
     @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the HDF5 file'},
             {'name': 'link_data', 'type': bool,
@@ -769,7 +787,7 @@ class HDF5IO(HDMFIO):
         for name, dbldr in f_builder.datasets.items():
             self.write_dataset(self.__file, dbldr, **kwargs)
         for name, lbldr in f_builder.links.items():
-            self.write_link(self.__file, lbldr)
+            self.write_link(self.__file, lbldr, export_source=kwargs.get("export_source"))
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
         self.__dci_queue.exhaust_queue()
@@ -957,7 +975,7 @@ class HDF5IO(HDMFIO):
         links = builder.links
         if links:
             for link_name, sub_builder in links.items():
-                self.write_link(group, sub_builder)
+                self.write_link(group, sub_builder, export_source=kwargs.get("export_source"))
         attributes = builder.attributes
         self.set_attributes(group, attributes)
         self.__set_written(builder)
@@ -985,9 +1003,11 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'parent', 'type': Group, 'doc': 'the parent HDF5 object'},
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'},
+            {'name': 'export_source', 'type': str,
+             'doc': 'The source of the builders when exporting', 'default': None},
             returns='the Link that was created', rtype='Link')
     def write_link(self, **kwargs):
-        parent, builder = getargs('parent', 'builder', kwargs)
+        parent, builder, export_source = getargs('parent', 'builder', 'export_source', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
             self.logger.debug("    LinkBuilder '%s' is already written" % builder.name)
@@ -996,7 +1016,12 @@ class HDF5IO(HDMFIO):
         target_builder = builder.builder
         path = self.__get_path(target_builder)
         # source will indicate target_builder's location
-        if builder.source == target_builder.source:
+        if export_source is None:
+            write_source = builder.source
+        else:
+            write_source = export_source
+
+        if write_source == target_builder.source:
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                               % (parent.name, name, link_obj.path))
@@ -1122,7 +1147,7 @@ class HDF5IO(HDMFIO):
             for i, dts in enumerate(options['dtype']):
                 if self.__is_ref(dts):
                     refs.append(i)
-            # If one ore more of the parts of the compound data type are references then we need to deal with those
+            # If one or more of the parts of the compound data type are references then we need to deal with those
             if len(refs) > 0:
                 try:
                     _dtype = self.__resolve_dtype__(options['dtype'], data)

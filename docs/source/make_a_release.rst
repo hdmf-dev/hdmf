@@ -170,7 +170,7 @@ Publish release on conda-forge: Step-by-step
 .. warning::
 
    Publishing on conda requires you to have the corresponding package version uploaded on
-   `PyPI`_. So you have to do the PyPI and Github release before you do the conda release.
+   PyPI. So you have to do the PyPI and GitHub release before you do the conda release.
 
 .. note::
 
@@ -221,8 +221,8 @@ In order to release a new version on conda-forge manually, follow the steps belo
 
 6. Modify ``meta.yaml``.
 
-   Update the `version string <https://github.com/conda-forge/hdmf-feedstock/blob/master/recipe/meta.yaml#L2>`_ and
-   `sha256 <https://github.com/conda-forge/hdmf-feedstock/blob/master/recipe/meta.yaml#L3>`_.
+   Update the `version string <https://github.com/conda-forge/hdmf-feedstock/blob/main/recipe/meta.yaml#L2>`_ and
+   `sha256 <https://github.com/conda-forge/hdmf-feedstock/blob/main/recipe/meta.yaml#L3>`_.
 
    We have to modify the sha and the version string in the ``meta.yaml`` file.
 

@@ -122,7 +122,7 @@ create a virtual environment, install dependencies, and run the test suite for d
 This can take some time to run.
 
 .. _pytest: https://docs.pytest.org/
-.. _tox: https://tox.readthedocs.io/en/latest/
+.. _tox: https://tox.wiki/en/latest/
 
 .. code:: bash
 
