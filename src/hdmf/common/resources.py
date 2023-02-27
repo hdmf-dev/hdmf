@@ -1,11 +1,17 @@
 import pandas as pd
 import numpy as np
+from glob import glob
 import re
+import os
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer
+from ..container import Table, Row, Container, AbstractContainer, Data
+from ..data_utils import DataIO
+
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+from pynert import TermSet
+
 
 
 class KeyTable(Table):
@@ -88,6 +94,8 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
+        {'name': 'object_container_id', 'type':str,
+         'doc': 'The ID for the container the object parent in, e.g. NWBFile ID'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
         {'name': 'relative_path', 'type': str,
@@ -261,7 +269,9 @@ class ExternalResources(Container):
         resource = Resource(resource_name, uri, table=self.resources)
         return resource
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
+    @docval({'name': 'parent_container', 'type': (str, AbstractContainer),
+             'doc': 'The parent Container/Data object to add or the object id of the parent Container/Data object to add.'},
+            {'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
@@ -272,10 +282,12 @@ class ExternalResources(Container):
         """
         Add an object that references an external resource.
         """
-        container, relative_path, field = popargs('container', 'relative_path', 'field', kwargs)
+        parent_container, container, relative_path, field = popargs('parent_container', 'container', 'relative_path', 'field', kwargs)
         if isinstance(container, AbstractContainer):
             container = container.object_id
-        obj = Object(container, relative_path, field, table=self.objects)
+        if isinstance(parent_container, AbstractContainer):
+            parent_container = parent_container.object_id
+        obj = Object(parent_container, container, relative_path, field, table=self.objects)
         return obj
 
     @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
@@ -288,7 +300,10 @@ class ExternalResources(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
+    @docval({'name': 'object_container', 'type': (str, AbstractContainer),
+             'doc': ('The parent Container/Data object that uses the key or '
+                     'the object id for the parent Container/Data object that uses the key.')},
+            {'name': 'container', 'type': (str, AbstractContainer),
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str,
@@ -298,7 +313,7 @@ class ExternalResources(Container):
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'create', 'type': bool, 'default': True})
-    def _check_object_field(self, container, relative_path, field, create):
+    def _check_object_field(self, object_container, container, relative_path, field, create):
         """
         Check if a container, relative path, and field have been added.
 
@@ -320,7 +335,7 @@ class ExternalResources(Container):
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0 and create:
-            return self._add_object(container, relative_path, field)
+            return self._add_object(object_container, container, relative_path, field)
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
         else:
@@ -350,7 +365,8 @@ class ExternalResources(Container):
         if container is not None:
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._check_object_field(container, relative_path, field)
+            object_field = self._check_object_field(object_container=object_container, container=container, relative_path=relative_path,
+                                                    field=field)
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
@@ -380,7 +396,10 @@ class ExternalResources(Container):
         else:
             return self.resources.row[resource_table_idx[0]]
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+    @docval({'name': 'object_container', 'type': (str, AbstractContainer), 'default': '',
+             'doc': ('The parent Container/Data object that uses the key or '
+                     'the object_id for the parent Container/Data object that uses the key.')},
+            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key.')},
             {'name': 'attribute', 'type': str,
@@ -405,6 +424,7 @@ class ExternalResources(Container):
         field combination. This method does not support such functionality by default.
         """
         ###############################################################
+        object_container = kwargs['object_container']
         container = kwargs['container']
         attribute = kwargs['attribute']
         key = kwargs['key']
@@ -415,12 +435,13 @@ class ExternalResources(Container):
 
         if attribute is None:  # Trivial Case
             relative_path = ''
-            object_field = self._check_object_field(container, relative_path, field)
+            object_field = self._check_object_field(object_container=object_container, container=container, relative_path=relative_path,
+                                                    field=field)
         else:  # DataType Attribute Case
             attribute_object = getattr(container, attribute)  # returns attribute object
             if isinstance(attribute_object, AbstractContainer):
                 relative_path = ''
-                object_field = self._check_object_field(attribute_object, relative_path, field)
+                object_field = self._check_object_field(object_container=object_container, container=attribute_object, relative_path=relative_path, field=field)
             else:  # Non-DataType Attribute Case:
                 obj_mapper = self.type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
@@ -434,7 +455,7 @@ class ExternalResources(Container):
                         # We need to get the path of the spec for relative_path
                         absolute_path = spec.path
                         relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
-                        object_field = self._check_object_field(parent_id, relative_path, field)
+                        object_field = self._check_object_field(object_container=object_container, container=parent_id, relative_path=relative_path, field=field)
                     else:
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
@@ -443,7 +464,7 @@ class ExternalResources(Container):
                     absolute_path = spec.path
                     relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
                     # this regex removes everything prior to the container on the absolute_path
-                    object_field = self._check_object_field(parent_id, relative_path, field)
+                    object_field = self._check_object_field(object_container=object_container, container=parent_id, relative_path=relative_path, field=field)
 
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
@@ -487,7 +508,71 @@ class ExternalResources(Container):
 
         return key, resource_table_idx, entity
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
+    @docval({'name': 'object_container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The parent Container/Data object that uses the key or '
+                     'the object_id for the parent Container/Data object that uses the key.')},
+            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'resource_name', 'type': str, 'doc': 'The name of the resource to be created.', 'default': None},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'The set of terms for references'}
+            )
+    def add_ref_term_set(self, **kwargs):
+        object_container = kwargs['object_container']
+        container = kwargs['container']
+        attribute = kwargs['attribute']
+        key = kwargs['key']
+        field = kwargs['field']
+        resource_name = kwargs['resource_name']
+        term_set = kwargs['term_set']
+
+        # if key is provided then add_ref proceeds as normal
+        # use key provided as the term in the term_set for entity look-up
+        if key is not None:
+            data = [key]
+        else:
+            if attribute is None:
+                data_object = container
+            else:
+                data_object = container[attribute]
+            if isinstance(data_object, (Data, DataIO)):
+                data = data_object.data
+            elif isinstance(data_object, (list, np.ndarray)):
+                data = data_object
+        missing_terms = []
+        for term in data:
+            try:
+                term_info = term_set.retrieve_term(term_name=term)
+            except ValueError:
+                missing_terms.append(term)
+                continue
+
+            entity_id = term_info[0]
+            entity_uri = term_info[2]
+            resource_uri = term_set.sources[resource_name]['prefix_reference']
+            self.add_ref(object_container=object_container,
+                         container=container,
+                         attribute=attribute,
+                         key=term,
+                         field=field,
+                         entity_id=entity_id,
+                         entity_uri=entity_uri,
+                         resource_name=resource_name,
+                         resource_uri=resource_uri)
+        if len(missing_terms)>0:
+            return {"Missing Values in TermSet": missing_terms}
+        else:
+            return True
+
+    @docval({'name': 'object_container', 'type': (str, AbstractContainer),
+             'doc': 'The parent Container/data object of the object that is linked to resources/entities.'},
+            {'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/data object that is linked to resources/entities.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
@@ -499,13 +584,15 @@ class ExternalResources(Container):
         """
         Get all entities/resources associated with an object.
         """
+        object_container = kwargs['object_container']
         container = kwargs['container']
+        object_container = kwargs['object_container']
         relative_path = kwargs['relative_path']
         field = kwargs['field']
 
         keys = []
         entities = []
-        object_field = self._check_object_field(container=container, relative_path=relative_path,
+        object_field = self._check_object_field(object_container=object_container, container=container, relative_path=relative_path,
                                                 field=field, create=False)
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
@@ -606,7 +693,7 @@ class ExternalResources(Container):
 
         # Step 4: Clean up the index and sort columns by table type and name
         result_df.reset_index(inplace=True, drop=True)
-        column_labels = [('objects', 'objects_idx'), ('objects', 'object_id'),
+        column_labels = [('objects', 'objects_idx'), ('objects', 'object_container_id'), ('objects', 'object_id'),
                          ('objects', 'relative_path'), ('objects', 'field'),
                          ('keys', 'keys_idx'), ('keys', 'key'),
                          ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
@@ -708,8 +795,18 @@ class ExternalResources(Container):
         connection.commit()
         connection.close()
 
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the folder tsv file to write'})
+    def to_norm_tsv(self, **kwargs):
+        """
+        Write the tables in ExternalResources to individual tsv files.
+        """
+        folder_path = kwargs['path']
+        for child in self.children:
+            df = child.to_dataframe()
+            df.to_csv(folder_path+'/'+child.name+'.tsv', sep='\t', index=False)
+
     @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to write'})
-    def to_tsv(self, **kwargs):
+    def to_flat_tsv(self, **kwargs):
         """
         Write ExternalResources as a single, flat table to TSV
         Internally, the function uses :py:meth:`pandas.DataFrame.to_csv`. Pandas can
@@ -730,20 +827,31 @@ class ExternalResources(Container):
             0\t0\t1fc87200-e91e-45b3-978c-6d295af144c3\t\tspecies\t0\tMus musculus\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t0\tNCBI:txid10090\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
             1\t0\t9bf0c58e-09dc-4457-a652-94065b112c41\t\tspecies\t1\tHomo sapiens\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t1\tNCBI:txid9606\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
 
-        See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
+        See also :py:meth:`~hdmf.common.resources.ExternalResources.from_flat_tsv`
         """  # noqa: E501
         path = popargs('path', kwargs)
         df = self.to_dataframe(use_categories=True)
         df.to_csv(path, sep='\t')
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to read'},
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
-    def from_tsv(cls, **kwargs):
+    def from_norm_tsv(cls, **kwargs):
+        path = kwargs['path']
+        er = cls.from_flat_tsv(path=path,flat=False)
+        return er
+
+    @classmethod
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to read', 'default': None},
+            {'name': 'flat', 'type': bool,
+             'doc': 'If true, the path is to the tsv file. If false, the path is to a folder of tsv files for each table.',
+             'default': True},
+            returns="ExternalResources loaded from TSV", rtype="ExternalResources")
+    def from_flat_tsv(cls, **kwargs):
         """
         Read ExternalResources from a flat tsv file
         Formatting of the TSV file is assumed to be consistent with the format
-        generated by :py:meth:`~hdmf.common.resources.ExternalResources.to_tsv`.
+        generated by :py:meth:`~hdmf.common.resources.ExternalResources.to_flat_tsv`.
         The function attempts to validate that the data in the TSV is consistent
         and parses the data from the denormalized table in the TSV to the
         normalized linked table structure used by ExternalResources.
@@ -771,8 +879,43 @@ class ExternalResources(Container):
                 msg = "Missing %s entries %s" % (name, str(missing_idx))
                 raise ValueError(msg)
 
-        path = popargs('path', kwargs)
-        df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
+        path = kwargs['path']
+        flat = kwargs['flat']
+        if flat:
+            df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
+        else:
+            tsv_paths =  glob(path+'/*')
+
+            for file in tsv_paths:
+                file_name = os.path.basename(file)
+                if file_name=='keys.tsv':
+                    keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                    keys = KeyTable().from_dataframe(df=keys_df, name='keys', extra_ok=False)
+                    continue
+                if file_name=='resources.tsv':
+                    resources_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                    resources = ResourceTable().from_dataframe(df=resources_df, name='resources', extra_ok=False)
+                    continue
+                if file_name=='entities.tsv':
+                    entities_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                    entities = EntityTable().from_dataframe(df=entities_df, name='entities', extra_ok=False)
+                    continue
+                if file_name=='objects.tsv':
+                    objects_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                    objects = ObjectTable().from_dataframe(df=objects_df, name='objects', extra_ok=False)
+                    continue
+                if file_name=='object_keys.tsv':
+                    object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                    object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
+                    continue
+
+            foo_er = ExternalResources(name="external_resources",
+                                       keys=keys,
+                                       resources=resources,
+                                       entities=entities,
+                                       objects=objects,
+                                       object_keys=object_keys)
+            df = foo_er.to_dataframe(use_categories=True)
         # Construct the ExternalResources
         er = ExternalResources(name="external_resources")
 
@@ -785,11 +928,12 @@ class ExternalResources(Container):
         # Check that objects are consecutively numbered
         check_idx(idx_arr=ob_idx, name='objects_idx')
         # Add the objects to the Object table
+        ob_container_id = df[('objects', 'object_container_id')].iloc[ob_rows]
         ob_ids = df[('objects', 'object_id')].iloc[ob_rows]
         ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
         ob_fields = df[('objects', 'field')].iloc[ob_rows]
-        for ob in zip(ob_ids, ob_relpaths, ob_fields):
-            er._add_object(container=ob[0], relative_path=ob[1], field=ob[2])
+        for ob in zip(ob_container_id, ob_ids, ob_relpaths, ob_fields):
+            er._add_object(parent_container=ob[0], container=ob[1], relative_path=ob[2], field=ob[3])
 
         # Retrieve all keys
         keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)

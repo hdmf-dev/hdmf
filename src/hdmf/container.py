@@ -5,6 +5,8 @@ from copy import deepcopy
 from uuid import uuid4
 from warnings import warn
 
+from pynert import TermSet
+
 import h5py
 import numpy as np
 import pandas as pd
@@ -509,15 +511,50 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None},
+            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data on initial add',
+             'default': False})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
+        self.term_set = popargs('term_set', kwargs)
+        self.validate = popargs('validate', kwargs)
         super().__init__(**kwargs)
-        self.__data = data
+
+
+        if self.term_set is None or (self.term_set is not None and not self.validate):
+            self.__data = data
+
+        elif self.term_set is not None and self.validate:
+            self.__raw_data = data
+            validated_data = []
+            for data in self.__raw_data:
+                if self.validate_data(data):
+                    validated_data.append(data)
+                else:
+                    continue
+            self.__data = validated_data
 
     @property
     def data(self):
         return self.__data
+
+    @property
+    def raw_data(self):
+        return self.__raw_data
+
+    @property
+    def missing_data(self):
+        """
+        Returns the data missing in the term_set after initial validation
+        """
+        if self.term_set is not None and self.validate:
+            missing_data = list(set(self.__raw_data).difference(self.__data))
+            return missing_data
+        else:
+            msg = 'Missing TermSet or Validate was set to False'
+            raise ValueError(msg)
 
     @property
     def shape(self):
@@ -572,7 +609,11 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
-        self.__data = append_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = append_data(self.__data, arg)
+        else:
+            if self.validate_data(arg):
+                self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
         """
@@ -581,7 +622,21 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
-        self.__data = extend_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = extend_data(self.__data, arg)
+        else:
+            for item in arg:
+                self.append(item)
+
+    def validate_data(self, arg):
+            """
+            Validate term in dataset towards a termset.
+            """
+            try:
+                term_info = self.term_set.retrieve_term(term_name=arg)
+                return True
+            except ValueError:
+                return False
 
 
 class DataRegion(Data):

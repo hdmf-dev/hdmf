@@ -268,15 +268,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(data.object_id, '', '')])
 
-    def test_to_tsv_and_from_tsv(self):
+    def test_to_flat_tsv_and_from_flat_tsv(self):
         # write er to file
-        self.container.to_tsv(path=self.export_filename)
+        self.container.to_flat_tsv(path=self.export_filename)
         # read er back from file and compare
-        er_obj = ExternalResources.from_tsv(path=self.export_filename)
+        er_obj = ExternalResources.from_flat_tsv(path=self.export_filename)
         # Check that the data is correct
         ExternalResources.assert_external_resources_equal(er_obj, self.container, check_dtype=False)
 
-    def test_to_tsv_and_from_tsv_missing_keyidx(self):
+    def test_to_flat_tsv_and_from_flat_tsv_missing_keyidx(self):
         # write er to file
         df = self.container.to_dataframe(use_categories=True)
         df.at[0, ('keys', 'keys_idx')] = 10  # Change key_ix 0 to 10
@@ -284,9 +284,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # read er back from file and compare
         msg = "Missing keys_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_tsv(path=self.export_filename)
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
-    def test_to_tsv_and_from_tsv_missing_objectidx(self):
+    def test_to_flat_tsv_and_from_flat_tsv_missing_objectidx(self):
         # write er to file
         df = self.container.to_dataframe(use_categories=True)
         df.at[0, ('objects', 'objects_idx')] = 10  # Change key_ix 0 to 10
@@ -294,9 +294,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # read er back from file and compare
         msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_tsv(path=self.export_filename)
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
-    def test_to_tsv_and_from_tsv_missing_resourcesidx(self):
+    def test_to_flat_tsv_and_from_flat_tsv_missing_resourcesidx(self):
         # write er to file
         df = self.container.to_dataframe(use_categories=True)
         df.at[0, ('resources', 'resources_idx')] = 10  # Change key_ix 0 to 10
@@ -304,9 +304,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # read er back from file and compare
         msg = "Missing resources_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_tsv(path=self.export_filename)
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
-    def test_to_tsv_and_from_tsv_missing_entitiesidx(self):
+    def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
         # write er to file
         df = self.container.to_dataframe(use_categories=True)
         df.at[0, ('entities', 'entities_idx')] = 10  # Change key_ix 0 to 10
@@ -314,7 +314,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # read er back from file and compare
         msg = "Missing entities_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_tsv(path=self.export_filename)
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_add_ref_duplicate_resource(self):
         er = ExternalResources(name='terms')
