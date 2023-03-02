@@ -235,7 +235,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         2. child: A boolean value to set the parent/child relationship between the field property and the container.
         3. required_name: The name the field property must have such that `name` matches `required_name`.
         4. doc: Documentation of the field property
-        5. settable: TBD
+        5. settable: If true a setter function is created so that the field can be changed after creation;otherwice, it cannot be set after init.
         '''
         return self.__field_values
 
