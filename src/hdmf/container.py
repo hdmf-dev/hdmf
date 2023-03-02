@@ -231,7 +231,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
         '''
         Subclasses use this class attribute to add properties to autogenerate.
         `fields` allows for lists and for dicts with the keys {'name', 'child', 'required_name', 'doc', 'settable'}.
-        
         1. name: The name of the field property
         2. child: A boolean value to set the parent/child relationship between the field property and the container.
         3. required_name: TBD
