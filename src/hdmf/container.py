@@ -233,7 +233,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         `fields` allows for lists and for dicts with the keys {'name', 'child', 'required_name', 'doc', 'settable'}.
         1. name: The name of the field property
         2. child: A boolean value to set the parent/child relationship between the field property and the container.
-        3. required_name: TBD
+        3. required_name: The name the field property must have such that `name` matches `required_name`.
         4. doc: Documentation of the field property
         5. settable: TBD
         '''
