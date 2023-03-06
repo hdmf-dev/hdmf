@@ -25,7 +25,7 @@ def _import_from_file(script):
 
 
 _namespace = (
-    "Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')"
+    "Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')`"
 )
 
 _pkg_resources_warning = (
