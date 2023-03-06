@@ -26,6 +26,9 @@ def _import_from_file(script):
 
 _namespace = (
     "Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')`"
+    "Implementing implicit namespace packages (as specified in PEP 420) is preferred to "
+    "`pkg_resources.declare_namespace`. "
+    "See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages"
 )
 
 _pkg_resources_warning = (
