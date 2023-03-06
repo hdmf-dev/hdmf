@@ -62,7 +62,9 @@ def run_gallery_tests():
                 warnings.filterwarnings(
                     "ignore", message=_experimental_warning_re, category=UserWarning
                 )
-                warnings.filterwarnings("ignore", message=_pkg_resources_warning, category=DeprecationWarning)
+                warnings.filterwarnings(
+                    "ignore", message=_pkg_resources_warning, category=DeprecationWarning
+                )
                 warnings.filterwarnings(
                     # this warning is triggered from pandas when HDMF is installed with the minimum requirements
                     "ignore", message=_distutils_warning_re, category=DeprecationWarning
