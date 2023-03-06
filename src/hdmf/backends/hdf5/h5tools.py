@@ -612,7 +612,7 @@ class HDF5IO(HDMFIO):
                         self.__set_built(sub_h5obj.file.filename, sub_h5obj.id, builder)
                     obj_type[builder.name] = builder
             else:
-                warnings.warn(os.path.join(h5obj.name, k), BrokenLinkWarning)
+                warnings.warn('Group with missing key at ' + os.path.join(h5obj.name, k), BrokenLinkWarning)
                 kwargs['datasets'][k] = None
                 continue
         kwargs['source'] = h5obj.file.filename

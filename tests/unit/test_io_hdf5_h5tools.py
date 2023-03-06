@@ -1726,7 +1726,7 @@ class TestReadLink(TestCase):
         """Test that opening a file with a broken link raises a warning but is still readable."""
         os.remove(self.target_path)
         # with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):  # can't check both warnings
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_group'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Group with missing key at /link_to_test_group'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -1746,7 +1746,7 @@ class TestReadLink(TestCase):
                 write_io.write_builder(root2, link_data=True)
 
         os.remove(self.target_path)
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Group with missing key at /link_to_test_dataset'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
