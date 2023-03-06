@@ -24,16 +24,9 @@ def _import_from_file(script):
     spec.loader.exec_module(module)
 
 
-_namespace = (
-    "Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')`"
-    "Implementing implicit namespace packages (as specified in PEP 420) is preferred to "
-    "`pkg_resources.declare_namespace`. "
-    "See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages"
-)
-
-_pkg_resources_warning = (
-    "pkg_resources is deprecated as an API"
-)
+# _pkg_resources_warning = (
+#     "pkg_resources is deprecated as an API"
+# )
 
 _numpy_warning_re = (
     "numpy.ufunc size changed, may indicate binary incompatibility. Expected 216, got 192"
@@ -72,12 +65,9 @@ def run_gallery_tests():
                 warnings.filterwarnings(
                     "ignore", message=_experimental_warning_re, category=UserWarning
                 )
-                warnings.filterwarnings(
-                    "ignore", message=_pkg_resources_warning, category=DeprecationWarning
-                )
-                warnings.filterwarnings(
-                    "ignore", message=_namespace, category=DeprecationWarning
-                )
+                # warnings.filterwarnings(
+                #     "ignore", message=_pkg_resources_warning, category=DeprecationWarning
+                # )
                 warnings.filterwarnings(
                     # this warning is triggered from pandas when HDMF is installed with the minimum requirements
                     "ignore", message=_distutils_warning_re, category=DeprecationWarning
