@@ -73,10 +73,12 @@ def register_map(**kwargs):
 def __get_resources():
     try:
         from importlib_resources import files
+
         def resource_filename(package_or_requirement, resource_name):
             return str(files(package_or_requirement) / resource_name)
-    except:
+    except ImportError:
         import importlib.resources
+        
         def resource_filename(package_or_requirement, resource_name):
             return str(importlib.resources.files(package_or_requirement) / resource_name)
 
