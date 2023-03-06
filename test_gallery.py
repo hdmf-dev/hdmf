@@ -23,7 +23,9 @@ def _import_from_file(script):
     sys.modules[modname] = module
     spec.loader.exec_module(module)
 
-_pkg_resources_warning = ("pkg_resources is deprecated as an API")
+_pkg_resources_warning = (
+    "pkg_resources is deprecated as an API"
+)
 
 _numpy_warning_re = (
     "numpy.ufunc size changed, may indicate binary incompatibility. Expected 216, got 192"
