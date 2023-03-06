@@ -24,6 +24,10 @@ def _import_from_file(script):
     spec.loader.exec_module(module)
 
 
+_namespace = (
+    "Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')"
+)
+
 _pkg_resources_warning = (
     "pkg_resources is deprecated as an API"
 )
@@ -67,6 +71,9 @@ def run_gallery_tests():
                 )
                 warnings.filterwarnings(
                     "ignore", message=_pkg_resources_warning, category=DeprecationWarning
+                )
+                warnings.filterwarnings(
+                    "ignore", message=_namespace, category=DeprecationWarning
                 )
                 warnings.filterwarnings(
                     # this warning is triggered from pandas when HDMF is installed with the minimum requirements
