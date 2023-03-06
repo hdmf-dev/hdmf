@@ -148,7 +148,7 @@ jobs:
           conda info
           # the conda dependency resolution for tox under python 3.7 can install the wrong importlib_metadata
           conda install -c conda-forge tox "importlib_metadata>4"
-          conda install importlib_resources
+          conda install -c conda-forge importlib_resources
 
       - name: Conda reporting
         run: |
