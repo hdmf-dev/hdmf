@@ -23,6 +23,7 @@ def _import_from_file(script):
     sys.modules[modname] = module
     spec.loader.exec_module(module)
 
+_pkg_resources_warning = ("pkg_resources is deprecated as an API")
 
 _numpy_warning_re = (
     "numpy.ufunc size changed, may indicate binary incompatibility. Expected 216, got 192"
@@ -61,6 +62,7 @@ def run_gallery_tests():
                 warnings.filterwarnings(
                     "ignore", message=_experimental_warning_re, category=UserWarning
                 )
+                warnings.filterwarnings("ignore", message=_pkg_resources_warning, category=DeprecationWarning)
                 warnings.filterwarnings(
                     # this warning is triggered from pandas when HDMF is installed with the minimum requirements
                     "ignore", message=_distutils_warning_re, category=DeprecationWarning
