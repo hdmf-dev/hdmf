@@ -78,7 +78,7 @@ def __get_resources():
         def resource_filename(package_or_requirement, resource_name):
             return str(importlib.resources.files(package_or_requirement) / resource_name)
     except ImportError:
-    HAS_IMPORTLIB_RESOURCES = False
+        HAS_IMPORTLIB_RESOURCES = False
 
 
     from os.path import join
