@@ -71,15 +71,9 @@ def register_map(**kwargs):
 
 
 def __get_resources():
-    try:
-        import importlib.resources
-        HAS_IMPORTLIB_RESOURCES = True
-
-        def resource_filename(package_or_requirement, resource_name):
-            return str(importlib.resources.files(package_or_requirement) / resource_name)
-    except ImportError:
-        HAS_IMPORTLIB_RESOURCES = False
-
+    import importlib.resources
+    def resource_filename(package_or_requirement, resource_name):
+        return str(importlib.resources.files(package_or_requirement) / resource_name)
 
     from os.path import join
     __core_ns_file_name = 'namespace.yaml'
