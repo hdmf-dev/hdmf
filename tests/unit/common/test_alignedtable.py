@@ -403,7 +403,7 @@ class TestAlignedDynamicTableContainer(TestCase):
         # Test slice with slice
         self.assertListEqual(temp[5:7].iloc[0].tolist(), [7, 7, 5, 8, 9])
         self.assertListEqual(temp[5:7].iloc[1].tolist(), [8, 8, 6, 9, 10])
-        # Test slice with numpy index arrya
+        # Test slice with numpy index array
         self.assertListEqual(temp[np.asarray([5, 8])].iloc[0].tolist(), [7, 7, 5, 8, 9])
         self.assertListEqual(temp[np.asarray([5, 8])].iloc[1].tolist(), [10, 10, 8, 11, 12])
         # Test slicing for a single column
@@ -430,7 +430,7 @@ class TestAlignedDynamicTableContainer(TestCase):
         self.assertListEqual(re.columns.to_list(), ['id', 'c1', 'c2'])
         self.assertListEqual(re.index.names, [('test_aligned_table', 'id')])
         self.assertListEqual(re.values.tolist()[0], [0, 3, 4])
-        # Select a single cell from a columm
+        # Select a single cell from a column
         self.assertEqual(temp[1, ('test_aligned_table', 'main_c1')], 3)
 
     def test_to_dataframe(self):
@@ -568,7 +568,7 @@ class TestAlignedDynamicTableContainer(TestCase):
         # Default, only get the colnames of the main table. Same as adt.colnames property
         expected_colnames = ('main_c1', 'main_c2', 'main_c3')
         self.assertTupleEqual(adt.get_colnames(), expected_colnames)
-        # Same as default because if we don't include the catgories than ignore_category_ids has no effect
+        # Same as default because if we don't include the categories than ignore_category_ids has no effect
         self.assertTupleEqual(adt.get_colnames(include_category_tables=False, ignore_category_ids=True),
                               expected_colnames)
         # Full set of columns

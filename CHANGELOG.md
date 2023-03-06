@@ -1,9 +1,18 @@
 # HDMF Changelog
 
+## Upcoming
+
+### Bug fixes
+- Fixed issue with conda CI. @rly [#823](https://github.com/hdmf-dev/hdmf/pull/823)
+
+### Internal improvements
+- A number of typos fixed and Github action running codespell to ensure that no typo sneaks in [#825](https://github.com/hdmf-dev/hdmf/pull/825) was added.
+- Added additional documentation for `__fields__` in `AbstactContainer`. @mavaylon [#827](https://github.com/hdmf-dev/hdmf/pull/827)
+
 ## HDMF 3.5.1 (January 26, 2023)
 
 ### Bug fixes
-- Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed. @oruebel [#817](https://github.com/hdmf-dev/hdmf/pull/817)  
+- Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed. @oruebel [#817](https://github.com/hdmf-dev/hdmf/pull/817)
 
 ### Documentation and tutorial enhancements:
 - Updated `DynamicTable` how to tutorial to clarify the status of `EnumData`. @oruebel [#819](https://github.com/hdmf-dev/hdmf/pull/819)
@@ -46,7 +55,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
 ## HDMF 3.4.5 (September 22, 2022)
 
 ### Minor improvements
-- Allow passing arguments through to column class constructur (argument `col_cls`) when calling `DynamicTable.add_column`. @ajtritt ([#769](https://github.com/hdmf-dev/hdmf/pull/769))
+- Allow passing arguments through to column class constructor (argument `col_cls`) when calling `DynamicTable.add_column`. @ajtritt ([#769](https://github.com/hdmf-dev/hdmf/pull/769))
 
 ## HDMF 3.4.4 (September 20, 2022)
 
@@ -200,7 +209,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
 
 ### Bug fixes
 - Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
-- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to referenece ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
+- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to reference ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
 - Fixed #651 to support selection of cells in an ``AlignedDynamicTable`` via slicing with  ``[int, (str, str)]``(and ``[int, str, str]``) to select a single cell, and ``[int, str]`` to select a single row of a category table. @oruebel (#645)
 
 ### Minor improvements

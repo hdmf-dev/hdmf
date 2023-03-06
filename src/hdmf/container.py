@@ -228,6 +228,15 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
     @property
     def fields(self):
+        '''
+        Subclasses use this class attribute to add properties to autogenerate.
+        `fields` allows for lists and for dicts with the keys {'name', 'child', 'required_name', 'doc', 'settable'}.
+        1. name: The name of the field property
+        2. child: A boolean value to set the parent/child relationship between the field property and the container.
+        3. required_name: The name the field property must have such that `name` matches `required_name`.
+        4. doc: Documentation of the field property
+        5. settable: If true, a setter function is created so that the field can be changed after creation.
+        '''
         return self.__field_values
 
     @property
@@ -567,7 +576,7 @@ class Data(AbstractContainer):
         if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list, np.ndarray)):
             return [self.data[i] for i in args]
         if isinstance(self.data, h5py.Dataset) and isinstance(args, np.ndarray):
-            # This is needed for h5py 2.9 compatability
+            # This is needed for h5py 2.9 compatibility
             args = args.tolist()
         return self.data[args]
 

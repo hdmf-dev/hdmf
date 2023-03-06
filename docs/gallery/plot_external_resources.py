@@ -37,7 +37,7 @@ collection of interlinked tables.
   :py:class:`~hdmf.common.resources.Resource`
 * :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
   :py:class:`~hdmf.common.resources.Entity`
-* :py:class:`~hdmf.common.resources.ObjectTable` where each row descibes an
+* :py:class:`~hdmf.common.resources.ObjectTable` where each row describes an
   :py:class:`~hdmf.common.resources.Object`
 * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
   :py:class:`~hdmf.common.resources.ObjectKey` pair identifying which keys
