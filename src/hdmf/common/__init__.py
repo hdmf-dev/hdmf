@@ -76,7 +76,7 @@ def __get_resources():
 
         def resource_filename(package_or_requirement, resource_name):
             return str(files(package_or_requirement) / resource_name)
-    except ImportError:
+    except ImportError: # TODO: Remove when python 3.9 becomes the new minimum
         from importlib_resources import files
 
         def resource_filename(package_or_requirement, resource_name):
