@@ -618,7 +618,7 @@ class H5IOTest(TestCase):
         # Make sure we warn when gzip with szip compression options is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=('ec', 16))
-        # Make sure we warn if gzip with a too high agression is used
+        # Make sure we warn if gzip with a too high aggression is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=100)
         # Make sure we warn if lzf with gzip compression option is used
@@ -633,7 +633,7 @@ class H5IOTest(TestCase):
         # Make sure szip raises a ValueError if bad options are used (odd compression option)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 3))
-        # Make sure szip raises a ValueError if bad options are used (bad methos)
+        # Make sure szip raises a ValueError if bad options are used (bad methods)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('bad_method', 16))
 
@@ -825,6 +825,34 @@ class TestHDF5IO(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
+
+    def test_delete_with_incomplete_construction_missing_file(self):
+        """
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__file is missing.
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                self.__open_links = []
+                raise ValueError("interrupt before HDF5IO.__file is initialized")
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="interrupt before HDF5IO.__file is initialized"):
+            with MyHDF5IO() as _:
+                pass
+
+    def test_delete_with_incomplete_construction_missing_open_files(self):
+        """
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__open_files is missing.
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                self.__file = None
+                raise ValueError("interrupt before HDF5IO.__open_files is initialized")
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="interrupt before HDF5IO.__open_files is initialized"):
+            with MyHDF5IO() as _:
+                pass
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'w')
@@ -1697,8 +1725,7 @@ class TestReadLink(TestCase):
     def test_broken_link(self):
         """Test that opening a file with a broken link raises a warning but is still readable."""
         os.remove(self.target_path)
-        # with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):  # can't check both warnings
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_group'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Path to Group altered/broken at /link_to_test_group'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -1718,7 +1745,7 @@ class TestReadLink(TestCase):
                 write_io.write_builder(root2, link_data=True)
 
         os.remove(self.target_path)
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Path to Group altered/broken at /link_to_test_dataset'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -2488,6 +2515,31 @@ class TestExport(TestCase):
 
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile3.foo_link.container_source, self.paths[0])
+
+    def test_new_soft_link(self):
+        """Test that exporting a file with a newly created soft link makes the link internally."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            read_foofile.foo_link = read_foofile.buckets['bucket1'].foos['foo1']
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the exported file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
 
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""

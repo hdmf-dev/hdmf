@@ -14,7 +14,7 @@ Prepare for release of HDMF [version]
   (`pytest && python test_gallery.py`)
 - [ ] Run PyNWB tests locally including gallery and validation tests, and inspect all warnings and outputs
   (`cd pynwb; python test.py -v > out.txt 2>&1`)
-- [ ] Test docs locally (`make clean`, `make html`)
+- [ ] Test docs locally by going into the `docs` directory and running the following: `make clean && make html`
 - [ ] Push changes to this PR and make sure all PRs to be included in this release have been merged
 - [ ] Check that the readthedocs build for this PR succeeds (build latest to pull the new branch, then activate and
   build docs for new branch): https://readthedocs.org/projects/hdmf/builds/

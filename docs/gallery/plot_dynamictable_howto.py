@@ -142,8 +142,16 @@ table.add_column(
 # references those values by index. Using this method is more efficient than storing
 # a single value many times, and has the advantage of communicating to downstream
 # tools that the data is categorical in nature.
+#
+# .. warning::
+#
+#    :py:class:`~hdmf.common.table.EnumData` is currently an experimental
+#    feature and as such should not be used for production use.
+#
 
 from hdmf.common.table import EnumData
+import warnings
+warnings.filterwarnings(action="ignore", message="EnumData is experimental")
 
 # this column has a length of 5, not 3. the first row has value "aa"
 enum_col = EnumData(
