@@ -307,7 +307,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_default_sub(self):
         """Test that docval works with a four positional arguments and
            two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations
+           argument is specified in both the parent and subclass implementations
         """
         kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', 200.0)
         expected = {'arg1': 'a string', 'arg2': 100,
@@ -318,7 +318,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_default_sub_missing_args(self):
         """Test that docval catches missing arguments with a four positional arguments
            and two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations,
+           argument is specified in both the parent and subclass implementations,
            when using default values for keyword arguments
         """
         with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: missing argument 'arg5'"):
@@ -328,7 +328,7 @@ class TestDocValidator(TestCase):
         """Test that docval works when called with a four positional
            arguments and two keyword arguments, where two positional
            and one keyword argument is specified in both the parent
-           and sublcass implementations
+           and subclass implementations
         """
         kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', 200.0, arg6=True)
         expected = {'arg1': 'a string', 'arg2': 100,
@@ -339,7 +339,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_kwsyntax_sub_missing_args(self):
         """Test that docval catches missing arguments when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations
+           argument is specified in both the parent and subclass implementations
         """
         with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: missing argument 'arg5'"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)
@@ -347,7 +347,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
         """Test that docval catches NoneType when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations
+           argument is specified in both the parent and subclass implementations
         """
         msg = "MyTestSubclass.basic_add2_kw: None is not allowed for 'arg5' (expected 'float', not None)"
         with self.assertRaisesWith(TypeError, msg):
