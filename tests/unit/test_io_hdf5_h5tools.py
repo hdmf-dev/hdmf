@@ -85,11 +85,11 @@ class H5IOTest(TestCase):
             for iter_axis in iter_axis_opts:
                 for buffer_size in buffer_size_opts:
                     with self.subTest(data_type=data_type, iter_axis=iter_axis, buffer_size=buffer_size):
-                        with warnings.catch_warnings(record=True) as w:
+                        with warnings.catch_warnings(record=True):
                             # init may throw UserWarning for iterating over not-first dim of a list. ignore here
                             msg = ("Iterating over an axis other than the first dimension of list or tuple data "
-                               "involves converting the data object to a numpy ndarray, which may incur a "
-                               "computational cost.")
+                                   "involves converting the data object to a numpy ndarray, which may incur a "
+                                   "computational cost.")
                             warnings.filterwarnings("ignore", message=msg, category=UserWarning)
                             dci = DataChunkIterator(data=data, buffer_size=buffer_size, iter_axis=iter_axis)
 
