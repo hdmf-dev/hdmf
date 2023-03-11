@@ -512,7 +512,7 @@ class TypeMap:
                     namespace = ns_key
                     break
         if namespace is None:
-            raise ValueError("namespace could not be resolved.")
+            raise ValueError("Namespace could not be resolved.")
 
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None and autogen:  # dynamically generate a class
