@@ -659,7 +659,6 @@ class H5IOTest(TestCase):
                      maxshape=(10, 20),
                      chunks=(10,),
                      fillvalue=100)
-            # self.assertEqual(len(w), 7)
 
     def test_h5dataio_array_conversion_numpy(self):
         # Test that H5DataIO.__array__ is working when wrapping an ndarray
