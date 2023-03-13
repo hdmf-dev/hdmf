@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## Upcoming
+## HDMF 3.5.2 (March 13, 2023)
 
 ### Bug fixes
 - Fixed issue with conda CI. @rly [#823](https://github.com/hdmf-dev/hdmf/pull/823)
