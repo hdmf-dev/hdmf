@@ -71,7 +71,18 @@ def register_map(**kwargs):
 
 
 def __get_resources():
-    from pkg_resources import resource_filename
+    try:
+        from importlib.resources import files
+
+        def resource_filename(package_or_requirement, resource_name):
+            return str(files(package_or_requirement) / resource_name)
+    except ImportError:
+        # TODO: Remove when python 3.9 becomes the new minimum
+        from importlib_resources import files
+
+        def resource_filename(package_or_requirement, resource_name):
+            return str(files(package_or_requirement) / resource_name)
+
     from os.path import join
     __core_ns_file_name = 'namespace.yaml'
 

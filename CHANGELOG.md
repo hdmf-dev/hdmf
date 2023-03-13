@@ -4,9 +4,13 @@
 
 ### Bug fixes
 - Fixed issue with conda CI. @rly [#823](https://github.com/hdmf-dev/hdmf/pull/823)
+- Fixed issue with deprecated `pkg_resources`. @mavaylon [822](https://github.com/hdmf-dev/hdmf/pull/822)
+- Fixed `hdmf.common` deprecation warning. @mavaylon [826]((https://github.com/hdmf-dev/hdmf/pull/826)
 
 ### Internal improvements
 - A number of typos fixed and Github action running codespell to ensure that no typo sneaks in [#825](https://github.com/hdmf-dev/hdmf/pull/825) was added.
+- Added additional documentation for `__fields__` in `AbstactContainer`. @mavaylon [#827](https://github.com/hdmf-dev/hdmf/pull/827)
+- Updated warning message for broken links. @mavaylon [#829](https://github.com/hdmf-dev/hdmf/pull/829)
 
 ## HDMF 3.5.1 (January 26, 2023)
 
