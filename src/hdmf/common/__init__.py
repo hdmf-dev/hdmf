@@ -73,21 +73,16 @@ def register_map(**kwargs):
 def __get_resources():
     try:
         from importlib.resources import files
-
-        def resource_filename(package_or_requirement, resource_name):
-            return str(files(package_or_requirement) / resource_name)
     except ImportError:
         # TODO: Remove when python 3.9 becomes the new minimum
         from importlib_resources import files
 
-        def resource_filename(package_or_requirement, resource_name):
-            return str(files(package_or_requirement) / resource_name)
-
-    from os.path import join
+    __location_of_this_file = files(__name__)
     __core_ns_file_name = 'namespace.yaml'
+    __schema_dir = 'hdmf-common-schema/common'
 
     ret = dict()
-    ret['namespace_path'] = join(resource_filename(__name__, 'hdmf-common-schema/common'), __core_ns_file_name)
+    ret['namespace_path'] = str(__location_of_this_file / __schema_dir / __core_ns_file_name)
     return ret
 
 

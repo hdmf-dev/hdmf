@@ -155,13 +155,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_assert_external_resources_equal(self):
-        er_left = ExternalResources('terms')
+        er_left = ExternalResources(name='terms')
         er_left.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="id11", entity_uri='url11')
 
-        er_right = ExternalResources('terms')
+        er_right = ExternalResources(name='terms')
         er_right.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
@@ -171,13 +171,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                                                           er_right))
 
     def test_invalid_keys_assert_external_resources_equal(self):
-        er_left = ExternalResources('terms')
+        er_left = ExternalResources(name='terms')
         er_left.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="id11", entity_uri='url11')
 
-        er_right = ExternalResources('terms')
+        er_right = ExternalResources(name='terms')
         er_right.add_ref(
             container='invalid', key='invalid',
             resource_name='resource11', resource_uri='resource_uri11',
@@ -188,13 +188,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                                               er_right)
 
     def test_invalid_objects_assert_external_resources_equal(self):
-        er_left = ExternalResources('terms')
+        er_left = ExternalResources(name='terms')
         er_left.add_ref(
             container='invalid', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="id11", entity_uri='url11')
 
-        er_right = ExternalResources('terms')
+        er_right = ExternalResources(name='terms')
         er_right.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
@@ -205,13 +205,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                                               er_right)
 
     def test_invalid_resources_assert_external_resources_equal(self):
-        er_left = ExternalResources('terms')
+        er_left = ExternalResources(name='terms')
         er_left.add_ref(
             container='uuid1', key='key1',
             resource_name='invalid', resource_uri='invalid',
             entity_id="id11", entity_uri='url11')
 
-        er_right = ExternalResources('terms')
+        er_right = ExternalResources(name='terms')
         er_right.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
@@ -222,13 +222,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                                               er_right)
 
     def test_invalid_entity_assert_external_resources_equal(self):
-        er_left = ExternalResources('terms')
+        er_left = ExternalResources(name='terms')
         er_left.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="invalid", entity_uri='invalid')
 
-        er_right = ExternalResources('terms')
+        er_right = ExternalResources(name='terms')
         er_right.add_ref(
             container='uuid1', key='key1',
             resource_name='resource11', resource_uri='resource_uri11',
@@ -239,13 +239,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                                               er_right)
 
     def test_invalid_object_keys_assert_external_resources_equal(self):
-        er_left = ExternalResources('terms')
+        er_left = ExternalResources(name='terms')
         er_left.add_ref(
             container='invalid', key='invalid',
             resource_name='resource11', resource_uri='resource_uri11',
             entity_id="id11", entity_uri='url11')
 
-        er_right = ExternalResources('terms')
+        er_right = ExternalResources(name='terms')
         er_right._add_key('key')
         er_right.add_ref(
             container='uuid1', key='key1',
