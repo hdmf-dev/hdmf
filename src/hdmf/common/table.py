@@ -11,6 +11,8 @@ from warnings import warn
 import numpy as np
 import pandas as pd
 import itertools
+from pynert import TermSet
+
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
@@ -38,6 +40,10 @@ class VectorData(Data):
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None},
+            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data on initial add',
+             'default': False},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         description = popargs('description', kwargs)
