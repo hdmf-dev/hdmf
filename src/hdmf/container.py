@@ -241,6 +241,21 @@ class AbstractContainer(metaclass=ExtenderMeta):
         '''
         return self.__field_values
 
+    @docval({'name': 'term', 'type': str, 'doc': "term to be validated"},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None})
+    def validate_data(self, **kwargs):
+            """
+            Validate term in dataset towards a termset.
+            """
+            term = kwargs['term']
+            term_set = kwargs['term_set']
+            try:
+                term_info = term_set.retrieve_term(term_name=term)
+                return True
+            except ValueError:
+                return False
+
     @property
     def object_id(self):
         if self.__object_id is None:
@@ -536,7 +551,7 @@ class Data(AbstractContainer):
 
         elif self.term_set is not None and self.validate:
             for term in data:
-                if self.validate_data(term):
+                if self.validate_data(term=term, term_set=self.term_set):
                     continue
                 else:
                     msg = ("%s is not in the term set." % term)
@@ -555,16 +570,6 @@ class Data(AbstractContainer):
         :rtype: tuple of ints
         """
         return get_data_shape(self.__data)
-
-    def validate_data(self, arg):
-            """
-            Validate term in dataset towards a termset.
-            """
-            try:
-                term_info = self.term_set.retrieve_term(term_name=arg)
-                return True
-            except ValueError:
-                return False
 
     @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
     def set_dataio(self, **kwargs):
@@ -610,7 +615,17 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
-        self.__data = append_data(self.__data, arg)
+
+        if self.term_set is None:
+            self.__data = append_data(self.__data, arg)
+        else:
+            if self.validate_data(term=arg, term_set=self.term_set):
+                self.__data = append_data(self.__data, arg)
+                msg = ("%s is valid and has been added." % arg)
+                return msg, True
+            else:
+                msg = ("%s is not in the term set." % arg)
+                return msg, False
 
     def extend(self, arg):
         """
@@ -619,7 +634,19 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
-        self.__data = extend_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = extend_data(self.__data, arg)
+            return True
+        else:
+            bad_data = []
+            g='hi'
+            for item in arg:
+                if self.append(item)[1]:
+                    continue
+                else:
+                    bad_data.append(item)
+            # if len(bad_data)!=0:
+            return(g)
 
 
 class DataRegion(Data):
