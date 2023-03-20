@@ -80,6 +80,27 @@ class Entity(Row):
     __table__ = EntityTable
 
 
+class FileTable(Table):
+    """
+    A table for storing NWBFile ids used in external resources.
+    """
+
+    __defaultname__ = 'files'
+
+    __columns__ = (
+        {'name': 'file_id', 'type': str,
+         'doc': 'The file id of the NWBFile that contains the object'},
+    )
+
+
+class File(Row):
+    """
+    A Row class for representing rows in the FileTable.
+    """
+
+    __table__ = FileTable
+
+
 class ObjectTable(Table):
     """
     A table for storing objects (i.e. Containers) that contain keys that refer to external resources.
@@ -88,6 +109,8 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
+        {'name': 'file_id_idx', 'type': str,
+         'doc': 'The row idx for the file_id in FileTable containing the object.'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
         {'name': 'relative_path', 'type': str,
@@ -136,6 +159,7 @@ class ExternalResources(Container):
 
     __fields__ = (
         {'name': 'keys', 'child': True},
+        {'name': 'files', 'child': True},
         {'name': 'resources', 'child': True},
         {'name': 'objects', 'child': True},
         {'name': 'object_keys', 'child': True},
@@ -145,6 +169,8 @@ class ExternalResources(Container):
     @docval({'name': 'name', 'type': str, 'doc': 'The name of this ExternalResources container.'},
             {'name': 'keys', 'type': KeyTable, 'default': None,
              'doc': 'The table storing user keys for referencing resources.'},
+            {'name': 'files', 'type': FileTable, 'default': None,
+             'doc': 'The table for storing NWBFile ids used in external resources.'},
             {'name': 'resources', 'type': ResourceTable, 'default': None,
              'doc': 'The table for storing names and URIs of resources.'},
             {'name': 'entities', 'type': EntityTable, 'default': None,
@@ -160,6 +186,7 @@ class ExternalResources(Container):
         name = popargs('name', kwargs)
         super().__init__(name)
         self.keys = kwargs['keys'] or KeyTable()
+        self.files = kwargs['files'] or FileTable()
         self.resources = kwargs['resources'] or ResourceTable()
         self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
@@ -186,6 +213,12 @@ class ExternalResources(Container):
         try:
             pd.testing.assert_frame_equal(left.keys.to_dataframe(),
                                           right.keys.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        try:
+            pd.testing.assert_frame_equal(left.files.to_dataframe(),
+                                          right.files.to_dataframe(),
                                           check_dtype=check_dtype)
         except AssertionError as e:
             errors.append(e)
@@ -233,6 +266,16 @@ class ExternalResources(Container):
         key = kwargs['key_name']
         return Key(key, table=self.keys)
 
+    @docval({'name': 'file_id', 'type': str, 'doc': 'The id of the NWBFile'})
+    def _add_file(self, **kwargs):
+        """
+        Add a file to be used for making references to external resources.
+
+        This is optional when working in HDMF.
+        """
+        file_id = kwargs['file_id']
+        return File(file_id, table=self.files)
+
     @docval({'name': 'key', 'type': (str, Key), 'doc': 'The key to associate the entity with.'},
             {'name': 'resources_idx', 'type': (int, Resource), 'doc': 'The id of the resource.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
@@ -263,6 +306,8 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
+            {'name': 'file_id_idx', 'type': str,
+             'doc': 'The file_id row idx.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
                      'an external resource reference key. Use an empty string if not applicable.')},
@@ -272,10 +317,11 @@ class ExternalResources(Container):
         """
         Add an object that references an external resource.
         """
-        container, relative_path, field = popargs('container', 'relative_path', 'field', kwargs)
+        file_id_idx, container, relative_path, field = popargs('file_id_idx','container', 'relative_path', 'field', kwargs)
+
         if isinstance(container, AbstractContainer):
             container = container.object_id
-        obj = Object(container, relative_path, field, table=self.objects)
+        obj = Object(file_id_idx, container, relative_path, field, table=self.objects)
         return obj
 
     @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
@@ -288,7 +334,9 @@ class ExternalResources(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
+    @docval({'name': 'file',  'type': (str, AbstractContainer), 'doc': 'The identifier for the NWBFILE.',
+             'default': None,},
+            {'name': 'container', 'type': (str, AbstractContainer),
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str,
@@ -298,7 +346,7 @@ class ExternalResources(Container):
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'create', 'type': bool, 'default': True})
-    def _check_object_field(self, container, relative_path, field, create):
+    def _check_object_field(self, **kwargs):
         """
         Check if a container, relative path, and field have been added.
 
@@ -307,6 +355,28 @@ class ExternalResources(Container):
         If the container, relative_path, and field have not been added, add them
         and return the corresponding Object. Otherwise, just return the Object.
         """
+        file = kwargs['file']
+        container = kwargs['container']
+        relative_path = kwargs['relative_path']
+        field = kwargs['field']
+        create = kwargs['create']
+        if file is not None:
+            if isinstance(file, str):
+                file_id = file
+                file_id_idx = self.files.which(file_id=file_id)
+            else:
+                file_id = file.object_id
+                file_id_idx = self.files.which(file_id=file_id)
+
+            if len(file_id_idx) > 1:
+                raise ValueError("Found multiple instances of the same file.")
+            elif len(file_id_idx) == 1:
+                file_id_idx = file_id_idx[0]
+            else:
+                self._add_file(file_id)
+        else:
+            file_id_idx = ''
+
         if isinstance(container, str):
             objecttable_idx = self.objects.which(object_id=container)
         else:
@@ -316,11 +386,10 @@ class ExternalResources(Container):
             relative_path_idx = self.objects.which(relative_path=relative_path)
             field_idx = self.objects.which(field=field)
             objecttable_idx = list(set(objecttable_idx) & set(relative_path_idx) & set(field_idx))
-
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0 and create:
-            return self._add_object(container, relative_path, field)
+            return self._add_object(file_id_idx=file_id_idx, container=container, relative_path=relative_path, field=field)
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
         else:
@@ -350,7 +419,7 @@ class ExternalResources(Container):
         if container is not None:
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._check_object_field(container, relative_path, field)
+            object_field = self._check_object_field(container=container, relative_path=relative_path, field=field)
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
@@ -394,7 +463,9 @@ class ExternalResources(Container):
             {'name': 'resource_uri', 'type': str, 'doc': 'The URI of the resource to be created.', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.',
              'default': None},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None}
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
+            {'name': 'file',  'type': (str, AbstractContainer), 'doc': 'The identifier for the NWBFILE.',
+             'default': None,},
             )
     def add_ref(self, **kwargs):
         """
@@ -413,14 +484,16 @@ class ExternalResources(Container):
         entity_uri = kwargs['entity_uri']
         add_entity = False
 
+        file = kwargs['file']
+
         if attribute is None:  # Trivial Case
             relative_path = ''
-            object_field = self._check_object_field(container, relative_path, field)
+            object_field = self._check_object_field(file=file, container=container, relative_path=relative_path, field=field)
         else:  # DataType Attribute Case
             attribute_object = getattr(container, attribute)  # returns attribute object
             if isinstance(attribute_object, AbstractContainer):
                 relative_path = ''
-                object_field = self._check_object_field(attribute_object, relative_path, field)
+                object_field = self._check_object_field(file=file, container=attribute_object, relative_path=relative_path, field=field)
             else:  # Non-DataType Attribute Case:
                 obj_mapper = self.type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
@@ -434,7 +507,7 @@ class ExternalResources(Container):
                         # We need to get the path of the spec for relative_path
                         absolute_path = spec.path
                         relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
-                        object_field = self._check_object_field(parent_id, relative_path, field)
+                        object_field = self._check_object_field(file=file, container=parent_id, relative_path=relative_path, field=field)
                     else:
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
@@ -443,7 +516,7 @@ class ExternalResources(Container):
                     absolute_path = spec.path
                     relative_path = re.sub("^.+?(?="+container.data_type+")", "", absolute_path)
                     # this regex removes everything prior to the container on the absolute_path
-                    object_field = self._check_object_field(parent_id, relative_path, field)
+                    object_field = self._check_object_field(file=file, container=parent_id, relative_path=relative_path, field=field)
 
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
@@ -606,7 +679,7 @@ class ExternalResources(Container):
 
         # Step 4: Clean up the index and sort columns by table type and name
         result_df.reset_index(inplace=True, drop=True)
-        column_labels = [('objects', 'objects_idx'), ('objects', 'object_id'),
+        column_labels = [('objects', 'file_id_idx'), ('objects', 'objects_idx'), ('objects', 'object_id'),
                          ('objects', 'relative_path'), ('objects', 'field'),
                          ('keys', 'keys_idx'), ('keys', 'key'),
                          ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
@@ -785,11 +858,12 @@ class ExternalResources(Container):
         # Check that objects are consecutively numbered
         check_idx(idx_arr=ob_idx, name='objects_idx')
         # Add the objects to the Object table
+        ob_files = df[('objects', 'file_id_idx')].iloc[ob_rows]
         ob_ids = df[('objects', 'object_id')].iloc[ob_rows]
         ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
         ob_fields = df[('objects', 'field')].iloc[ob_rows]
-        for ob in zip(ob_ids, ob_relpaths, ob_fields):
-            er._add_object(container=ob[0], relative_path=ob[1], field=ob[2])
+        for ob in zip(ob_files, ob_ids, ob_relpaths, ob_fields):
+            er._add_object(file_id_idx=ob[0], container=ob[1], relative_path=ob[2], field=ob[3])
 
         # Retrieve all keys
         keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)

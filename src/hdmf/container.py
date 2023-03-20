@@ -12,6 +12,8 @@ import pandas as pd
 from .data_utils import DataIO, append_data, extend_data
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
+from pynert import TermSet
+
 
 def _set_exp(cls):
     """Set a class as being experimental"""
@@ -518,11 +520,28 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None},
+            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data on initial add',
+             'default': False})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
+        self.term_set = popargs('term_set', kwargs)
+        self.validate = popargs('validate', kwargs)
         super().__init__(**kwargs)
-        self.__data = data
+
+        if self.term_set is None or (self.term_set is not None and not self.validate):
+            self.__data = data
+
+        elif self.term_set is not None and self.validate:
+            for term in data:
+                if self.validate_data(term):
+                    continue
+                else:
+                    msg = ("%s is not in the term set." % term)
+                    raise ValueError(msg)
+            self.__data = data
 
     @property
     def data(self):
@@ -536,6 +555,16 @@ class Data(AbstractContainer):
         :rtype: tuple of ints
         """
         return get_data_shape(self.__data)
+
+    def validate_data(self, arg):
+            """
+            Validate term in dataset towards a termset.
+            """
+            try:
+                term_info = self.term_set.retrieve_term(term_name=arg)
+                return True
+            except ValueError:
+                return False
 
     @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
     def set_dataio(self, **kwargs):
