@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## Upcoming
+
+### Bug fixes
+- Fixed issue with dynamic class generation for a multi-container interface where one or more are required. @rly
+  [#839](https://github.com/hdmf-dev/hdmf/pull/839)
+
 ## HDMF 3.5.2 (March 13, 2023)
 
 ### Bug fixes
