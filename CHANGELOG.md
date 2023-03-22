@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## Upcoming
+
+### Bug fixes
+- Fixed search bar and missing jquery in ReadTheDocs documentation. @rly
+  [#840](https://github.com/hdmf-dev/hdmf/pull/840)
+
 ## HDMF 3.5.2 (March 13, 2023)
 
 ### Bug fixes
