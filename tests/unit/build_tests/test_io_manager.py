@@ -315,6 +315,17 @@ class TestTypeMap(TestBase):
         self.assertEqual(ns, 'CORE')
 
 
+class TestRetrieveContainerClass(TestBase):
+
+    def test_get_dt_container_cls(self):
+        ret = self.type_map.get_dt_container_cls(data_type="Foo")
+        self.assertIs(ret, Foo)
+
+    def test_get_dt_container_cls_no_namespace(self):
+        with self.assertRaisesWith(ValueError, "Namespace could not be resolved."):
+            self.type_map.get_dt_container_cls(data_type="Unknown")
+
+
 # TODO:
 class TestWildCardNamedSpecs(TestCase):
     pass

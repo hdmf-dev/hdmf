@@ -89,7 +89,7 @@ class TestRow(TestCase):
         self.assertEqual(row1.col1, 'foo')
         self.assertEqual(row1.col2, 100)
 
-        # make sure Row object is stored in Table peroperly
+        # make sure Row object is stored in Table properly
         tmp_row1 = self.table.row[0]
         self.assertEqual(tmp_row1, row1)
 

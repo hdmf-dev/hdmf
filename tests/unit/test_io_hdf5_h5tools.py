@@ -85,11 +85,13 @@ class H5IOTest(TestCase):
             for iter_axis in iter_axis_opts:
                 for buffer_size in buffer_size_opts:
                     with self.subTest(data_type=data_type, iter_axis=iter_axis, buffer_size=buffer_size):
-                        with warnings.catch_warnings(record=True) as w:
+                        with warnings.catch_warnings(record=True):
+                            # init may throw UserWarning for iterating over not-first dim of a list. ignore here
+                            msg = ("Iterating over an axis other than the first dimension of list or tuple data "
+                                   "involves converting the data object to a numpy ndarray, which may incur a "
+                                   "computational cost.")
+                            warnings.filterwarnings("ignore", message=msg, category=UserWarning)
                             dci = DataChunkIterator(data=data, buffer_size=buffer_size, iter_axis=iter_axis)
-                            if len(w) <= 1:
-                                # init may throw UserWarning for iterating over not-first dim of a list. ignore here
-                                pass
 
                         dset_name = '%s, %d, %d' % (data_type, iter_axis, buffer_size)
                         my_dset = HDF5IO.__chunked_iter_fill__(self.f, dset_name, dci)
@@ -211,13 +213,14 @@ class H5IOTest(TestCase):
         self.assertEqual(dset.compression, 'gzip')
 
     def test_write_dataset_list_disable_default_compress(self):
-        with warnings.catch_warnings(record=True) as w:
+        msg = ("Compression disabled by compression=False setting. compression_opts parameter will, therefore, "
+               "be ignored.")
+        with self.assertWarnsWith(UserWarning, msg):
             a = H5DataIO(np.arange(30).reshape(5, 2, 3),
                          compression=False,
                          compression_opts=5)
-            self.assertEqual(len(w), 1)  # We expect a warning that compression options are being ignored
-            self.assertFalse('compression_ops' in a.io_settings)
-            self.assertFalse('compression' in a.io_settings)
+        self.assertFalse('compression_ops' in a.io_settings)
+        self.assertFalse('compression' in a.io_settings)
 
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
@@ -618,7 +621,7 @@ class H5IOTest(TestCase):
         # Make sure we warn when gzip with szip compression options is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=('ec', 16))
-        # Make sure we warn if gzip with a too high agression is used
+        # Make sure we warn if gzip with a too high aggression is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=100)
         # Make sure we warn if lzf with gzip compression option is used
@@ -633,20 +636,21 @@ class H5IOTest(TestCase):
         # Make sure szip raises a ValueError if bad options are used (odd compression option)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 3))
-        # Make sure szip raises a ValueError if bad options are used (bad methos)
+        # Make sure szip raises a ValueError if bad options are used (bad methods)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('bad_method', 16))
 
     def test_warning_on_linking_of_regular_array(self):
-        with warnings.catch_warnings(record=True) as w:
+        msg = "link_data parameter in H5DataIO will be ignored"
+        with self.assertWarnsWith(UserWarning, msg):
             dset = H5DataIO(np.arange(30),
                             link_data=True)
-            self.assertEqual(len(w), 1)
             self.assertEqual(dset.link_data, False)
 
     def test_warning_on_setting_io_options_on_h5dataset_input(self):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
-        with warnings.catch_warnings(record=True) as w:
+        msg = "maxshape in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset"
+        with self.assertWarnsWith(UserWarning, msg):
             H5DataIO(self.f['test_dataset'],
                      compression='gzip',
                      compression_opts=4,
@@ -655,7 +659,6 @@ class H5IOTest(TestCase):
                      maxshape=(10, 20),
                      chunks=(10,),
                      fillvalue=100)
-            self.assertEqual(len(w), 7)
 
     def test_h5dataio_array_conversion_numpy(self):
         # Test that H5DataIO.__array__ is working when wrapping an ndarray
@@ -825,6 +828,34 @@ class TestHDF5IO(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
+
+    def test_delete_with_incomplete_construction_missing_file(self):
+        """
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__file is missing.
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                self.__open_links = []
+                raise ValueError("interrupt before HDF5IO.__file is initialized")
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="interrupt before HDF5IO.__file is initialized"):
+            with MyHDF5IO() as _:
+                pass
+
+    def test_delete_with_incomplete_construction_missing_open_files(self):
+        """
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__open_files is missing.
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                self.__file = None
+                raise ValueError("interrupt before HDF5IO.__open_files is initialized")
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="interrupt before HDF5IO.__open_files is initialized"):
+            with MyHDF5IO() as _:
+                pass
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'w')
@@ -1697,8 +1728,7 @@ class TestReadLink(TestCase):
     def test_broken_link(self):
         """Test that opening a file with a broken link raises a warning but is still readable."""
         os.remove(self.target_path)
-        # with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):  # can't check both warnings
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_group'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Path to Group altered/broken at /link_to_test_group'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -1718,7 +1748,7 @@ class TestReadLink(TestCase):
                 write_io.write_builder(root2, link_data=True)
 
         os.remove(self.target_path)
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Path to Group altered/broken at /link_to_test_dataset'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -2488,6 +2518,31 @@ class TestExport(TestCase):
 
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile3.foo_link.container_source, self.paths[0])
+
+    def test_new_soft_link(self):
+        """Test that exporting a file with a newly created soft link makes the link internally."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            read_foofile.foo_link = read_foofile.buckets['bucket1'].foos['foo1']
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the exported file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
 
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""
