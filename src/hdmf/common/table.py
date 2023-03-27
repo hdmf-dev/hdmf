@@ -51,11 +51,19 @@ class VectorData(Data):
         self.description = description
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
+    def _validator(self, **kwargs):
+        val = getargs('val', kwargs)
+        if self.validate_data(term=val, term_set=self.term_set):
+            return True
+        else:
+            return False
+
+    @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
         if self.validate:
-            if self.validate_data(term=val, term_set=self.term_set):
+            if self._validator(val=val):
                 self.append(val)
             else:
                 msg = ("%s is not in the term set." % val)
@@ -579,6 +587,8 @@ class DynamicTable(Container):
 
     @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
+            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data',
+             'default': False},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
              'default': False},
             allow_extra=True)
@@ -586,11 +596,28 @@ class DynamicTable(Container):
         """
         Add a row to the table. If *id* is not provided, it will auto-increment.
         """
-        data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
+        data, row_id, validate, enforce_unique_id = popargs('data', 'id', 'validate', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
         missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
+
+        if validate:
+            bad_data = []
+            for colname, colnum in self.__colids.items():
+                if colname not in data:
+                    raise ValueError("column '%s' missing" % colname)
+                c = self.__df_cols[colnum]
+                if isinstance(c, VectorIndex):
+                    continue
+                else:
+                    if c._validator(data[colname]):
+                        continue
+                    else:
+                        bad_data.append(data[colname])
+            if len(bad_data)!=0:
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
 
         # check to see if any of the extra columns just need to be added
         if extra_columns:

@@ -29,29 +29,6 @@ class Key(Row):
     __table__ = KeyTable
 
 
-class ResourceTable(Table):
-    """
-    A table for storing names and URIs of ontology sources.
-    """
-
-    __defaultname__ = 'resources'
-
-    __columns__ = (
-        {'name': 'resource', 'type': str,
-         'doc': 'The resource/registry that the term/symbol comes from.'},
-        {'name': 'resource_uri', 'type': str,
-         'doc': 'The URI for the resource term / registry symbol.'},
-    )
-
-
-class Resource(Row):
-    """
-    A Row class for representing rows in the ResourceTable.
-    """
-
-    __table__ = ResourceTable
-
-
 class EntityTable(Table):
     """
     A table for storing the external resources a key refers to.
@@ -63,8 +40,6 @@ class EntityTable(Table):
         {'name': 'keys_idx', 'type': (int, Key),
          'doc': ('The index into the keys table for the user key that '
                  'maps to the resource term / registry symbol.')},
-        {'name': 'resources_idx', 'type': (int, Resource),
-         'doc': 'The index into the ResourceTable.'},
         {'name': 'entity_id', 'type': str,
          'doc': 'The unique ID for the resource term / registry symbol.'},
         {'name': 'entity_uri', 'type': str,
@@ -160,7 +135,6 @@ class ExternalResources(Container):
     __fields__ = (
         {'name': 'keys', 'child': True},
         {'name': 'files', 'child': True},
-        {'name': 'resources', 'child': True},
         {'name': 'objects', 'child': True},
         {'name': 'object_keys', 'child': True},
         {'name': 'entities', 'child': True},
@@ -171,8 +145,6 @@ class ExternalResources(Container):
              'doc': 'The table storing user keys for referencing resources.'},
             {'name': 'files', 'type': FileTable, 'default': None,
              'doc': 'The table for storing NWBFile ids used in external resources.'},
-            {'name': 'resources', 'type': ResourceTable, 'default': None,
-             'doc': 'The table for storing names and URIs of resources.'},
             {'name': 'entities', 'type': EntityTable, 'default': None,
              'doc': 'The table storing entity information.'},
             {'name': 'objects', 'type': ObjectTable, 'default': None,
@@ -187,7 +159,6 @@ class ExternalResources(Container):
         super().__init__(name)
         self.keys = kwargs['keys'] or KeyTable()
         self.files = kwargs['files'] or FileTable()
-        self.resources = kwargs['resources'] or ResourceTable()
         self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
@@ -225,12 +196,6 @@ class ExternalResources(Container):
         try:
             pd.testing.assert_frame_equal(left.objects.to_dataframe(),
                                           right.objects.to_dataframe(),
-                                          check_dtype=check_dtype)
-        except AssertionError as e:
-            errors.append(e)
-        try:
-            pd.testing.assert_frame_equal(left.resources.to_dataframe(),
-                                          right.resources.to_dataframe(),
                                           check_dtype=check_dtype)
         except AssertionError as e:
             errors.append(e)
@@ -277,7 +242,6 @@ class ExternalResources(Container):
         return File(file_id, table=self.files)
 
     @docval({'name': 'key', 'type': (str, Key), 'doc': 'The key to associate the entity with.'},
-            {'name': 'resources_idx', 'type': (int, Resource), 'doc': 'The id of the resource.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
     def _add_entity(self, **kwargs):
@@ -285,24 +249,12 @@ class ExternalResources(Container):
         Add an entity that will be referenced to using the given key.
         """
         key = kwargs['key']
-        resources_idx = kwargs['resources_idx']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         if not isinstance(key, Key):
             key = self._add_key(key)
-        resource_entity = Entity(key, resources_idx, entity_id, entity_uri, table=self.entities)
-        return resource_entity
-
-    @docval({'name': 'resource', 'type': str, 'doc': 'The name of the ontology resource.'},
-            {'name': 'uri', 'type': str, 'doc': 'The URI associated with ontology resource.'})
-    def _add_resource(self, **kwargs):
-        """
-        Add resource name and URI to ResourceTable that will be referenced by the ResourceTable idx.
-        """
-        resource_name = kwargs['resource']
-        uri = kwargs['uri']
-        resource = Resource(resource_name, uri, table=self.resources)
-        return resource
+        entity = Entity(key,entity_id, entity_uri, table=self.entities)
+        return entity
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
@@ -436,19 +388,6 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_idx_matches[0]]
 
-    @docval({'name': 'resource_name', 'type': str, 'doc': 'The name of the resource.'})
-    def get_resource(self, **kwargs):
-        """
-        Retrieve resource object with the given resource_name.
-        """
-        resource_table_idx = self.resources.which(resource=kwargs['resource_name'])
-        if len(resource_table_idx) == 0:
-            # Resource hasn't been created
-            msg = "No resource '%s' exists. Use _add_resource to create a new resource" % kwargs['resource_name']
-            raise ValueError(msg)
-        else:
-            return self.resources.row[resource_table_idx[0]]
-
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key.')},
@@ -458,9 +397,6 @@ class ExternalResources(Container):
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'resources_idx', 'type': Resource, 'doc': 'The Resource from the ResourceTable.', 'default': None},
-            {'name': 'resource_name', 'type': str, 'doc': 'The name of the resource to be created.', 'default': None},
-            {'name': 'resource_uri', 'type': str, 'doc': 'The URI of the resource to be created.', 'default': None},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.',
              'default': None},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
@@ -532,99 +468,54 @@ class ExternalResources(Container):
             key = self._add_key(key)
             self._add_object_key(object_field, key)
 
-        if kwargs['resources_idx'] is not None and kwargs['resource_name'] is None and kwargs['resource_uri'] is None:
-            resource_table_idx = kwargs['resources_idx']
-        elif (
-            kwargs['resources_idx'] is not None
-            and (kwargs['resource_name'] is not None
-                 or kwargs['resource_uri'] is not None)):
-            msg = "Can't have resource_idx with resource_name or resource_uri."
-            raise ValueError(msg)
-        elif len(self.resources.which(resource=kwargs['resource_name'])) == 0:
-            resource_name = kwargs['resource_name']
-            resource_uri = kwargs['resource_uri']
-            resource_table_idx = self._add_resource(resource_name, resource_uri)
-        else:
-            idx = self.resources.which(resource=kwargs['resource_name'])
-            resource_table_idx = self.resources.row[idx[0]]
-
-        if (resource_table_idx is not None and entity_id is not None and entity_uri is not None):
+        if (entity_id is not None and entity_uri is not None):
             add_entity = True
-        elif not (resource_table_idx is None and entity_id is None and resource_uri is None):
+        else:
             msg = ("Specify resource, entity_id, and entity_uri arguments."
                    "All three are required to create a reference")
             raise ValueError(msg)
 
         if add_entity:
-            entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
+            # entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
+            entity = self._add_entity(key, entity_id, entity_uri)
 
-        return key, resource_table_idx, entity
+        return key, entity
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
-             'doc': 'The Container/data object that is linked to resources/entities.'},
-            {'name': 'relative_path', 'type': str,
-             'doc': ('The relative_path of the attribute of the object that uses ',
-                     'an external resource reference key. Use an empty string if not applicable.'),
-             'default': ''},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')})
-    def get_object_resources(self, **kwargs):
-        """
-        Get all entities/resources associated with an object.
-        """
-        container = kwargs['container']
-        relative_path = kwargs['relative_path']
-        field = kwargs['field']
-
-        keys = []
-        entities = []
-        object_field = self._check_object_field(container=container, relative_path=relative_path,
-                                                field=field, create=False)
-        # Find all keys associated with the object
-        for row_idx in self.object_keys.which(objects_idx=object_field.idx):
-            keys.append(self.object_keys['keys_idx', row_idx])
-        # Find all the entities/resources for each key.
-        for key_idx in keys:
-            entity_idx = self.entities.which(keys_idx=key_idx)
-            entities.append(list(self.entities.__getitem__(entity_idx[0])))
-        df = pd.DataFrame(entities, columns=['keys_idx', 'resource_idx', 'entity_id', 'entity_uri'])
-        return df
-
-    @docval({'name': 'keys', 'type': (list, Key), 'default': None,
-             'doc': 'The Key(s) to get external resource data for.'},
-            rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
-    def get_keys(self, **kwargs):
-        """
-        Return a DataFrame with information about keys used to make references to external resources.
-        The DataFrame will contain the following columns:
-            - *key_name*:              the key that will be used for referencing an external resource
-            - *resources_idx*:         the index for the resourcetable
-            - *entity_id*:    the index for the entity at the external resource
-            - *entity_uri*:   the URI for the entity at the external resource
-
-        It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-        used within the same object, relative_path, field. This method doesn't support such functionality by default. To
-        select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
-        if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
-        be required to keep the different instances separate. If a single call is made, it is left up to the caller to
-        distinguish the different instances.
-        """
-        keys = popargs('keys', kwargs)
-        if keys is None:
-            keys = [self.keys.row[i] for i in range(len(self.keys))]
-        else:
-            if not isinstance(keys, list):
-                keys = [keys]
-        data = list()
-        for key in keys:
-            rsc_ids = self.entities.which(keys_idx=key.idx)
-            for rsc_id in rsc_ids:
-                rsc_row = self.entities.row[rsc_id].todict()
-                rsc_row.pop('keys_idx')
-                rsc_row['key_name'] = key.key
-                data.append(rsc_row)
-        return pd.DataFrame(data=data, columns=['key_name', 'resources_idx',
-                                                'entity_id', 'entity_uri'])
+    # @docval({'name': 'keys', 'type': (list, Key), 'default': None,
+    #          'doc': 'The Key(s) to get external resource data for.'},
+    #         rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
+    # def get_keys(self, **kwargs):
+    #     """
+    #     Return a DataFrame with information about keys used to make references to external resources.
+    #     The DataFrame will contain the following columns:
+    #         - *key_name*:              the key that will be used for referencing an external resource
+    #         - *resources_idx*:         the index for the resourcetable
+    #         - *entity_id*:    the index for the entity at the external resource
+    #         - *entity_uri*:   the URI for the entity at the external resource
+    #
+    #     It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
+    #     used within the same object, relative_path, field. This method doesn't support such functionality by default. To
+    #     select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
+    #     if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
+    #     be required to keep the different instances separate. If a single call is made, it is left up to the caller to
+    #     distinguish the different instances.
+    #     """
+    #     keys = popargs('keys', kwargs)
+    #     if keys is None:
+    #         keys = [self.keys.row[i] for i in range(len(self.keys))]
+    #     else:
+    #         if not isinstance(keys, list):
+    #             keys = [keys]
+    #     data = list()
+    #     for key in keys:
+    #         rsc_ids = self.entities.which(keys_idx=key.idx)
+    #         for rsc_id in rsc_ids:
+    #             rsc_row = self.entities.row[rsc_id].todict()
+    #             rsc_row.pop('keys_idx')
+    #             rsc_row['key_name'] = key.key
+    #             data.append(rsc_row)
+    #     return pd.DataFrame(data=data, columns=['key_name', 'resources_idx',
+    #                                             'entity_id', 'entity_uri'])
 
     @docval({'name': 'use_categories', 'type': bool, 'default': False,
              'doc': 'Use a multi-index on the columns to indicate which category each column belongs to.'},
@@ -647,9 +538,9 @@ class ExternalResources(Container):
         # entities, and 3) reset the index to avoid duplicate values in the index, which causes errors when merging
         keys_mapped_df = self.keys.to_dataframe().iloc[entities_df['keys_idx']].reset_index(drop=True)
         # Map the resources to entities using the same strategy as for the keys
-        resources_mapped_df = self.resources.to_dataframe().iloc[entities_df['resources_idx']].reset_index(drop=True)
+        # resources_mapped_df = self.resources.to_dataframe().iloc[entities_df['resources_idx']].reset_index(drop=True)
         # Merge the mapped keys and resources with the entities tables
-        entities_df = pd.concat(objs=[entities_df, keys_mapped_df, resources_mapped_df],
+        entities_df = pd.concat(objs=[entities_df, keys_mapped_df],
                                 axis=1, verify_integrity=False)
         # Add a column for the entity id (for consistency with the other tables and to facilitate query)
         entities_df['entities_idx'] = entities_df.index
@@ -682,7 +573,6 @@ class ExternalResources(Container):
         column_labels = [('objects', 'file_id_idx'), ('objects', 'objects_idx'), ('objects', 'object_id'),
                          ('objects', 'relative_path'), ('objects', 'field'),
                          ('keys', 'keys_idx'), ('keys', 'key'),
-                         ('resources', 'resources_idx'), ('resources', 'resource'), ('resources', 'resource_uri'),
                          ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
         # sort the columns based on our custom order
         result_df = result_df.reindex(labels=[c[1] for c in column_labels],
@@ -693,96 +583,106 @@ class ExternalResources(Container):
         # return the result
         return result_df
 
-    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
-    def to_sqlite(self, db_file):
+    # @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
+    # def to_sqlite(self, db_file):
+    #     """
+    #     Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
+    #
+    #     The function will first create the tables (if they do not already exist) and then
+    #     add the data from this ExternalResource object to the database. If the database file already
+    #     exists, then the data will be appended as rows to the existing database tables.
+    #
+    #     Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
+    #     will not match between the ExternalResources here and the exported database, but they are adjusted
+    #     automatically here, to ensure the foreign keys point to the correct rows in the exported database.
+    #     This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
+    #     1-based indexing and 2) if data is appended to existing tables then a corresponding additional
+    #     offset must be applied to the relevant foreign keys.
+    #
+    #     :raises: The function will raise errors if connection to the database fails. If
+    #         the given db_file already exists, then there is also the possibility that
+    #         certain updates may result in errors if there are collisions between the
+    #         new and existing data.
+    #     """
+    #     import sqlite3
+    #     # connect to the database
+    #     connection = sqlite3.connect(db_file)
+    #     cursor = connection.cursor()
+    #     # sql calls to setup the tables
+    #     sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
+    #                                     id integer PRIMARY KEY,
+    #                                     key text NOT NULL
+    #                                 ); """
+    #     sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
+    #                                         id integer PRIMARY KEY,
+    #                                         object_id text NOT NULL,
+    #                                         relative_path text NOT NULL,
+    #                                         field text
+    #                                    ); """
+    #     sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
+    #                                          id integer PRIMARY KEY,
+    #                                          resource text NOT NULL,
+    #                                          resource_uri text NOT NULL
+    #                                     ); """
+    #     sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
+    #                                            id integer PRIMARY KEY,
+    #                                            objects_idx int NOT NULL,
+    #                                            keys_idx int NOT NULL,
+    #                                            FOREIGN KEY (objects_idx) REFERENCES objects (id),
+    #                                            FOREIGN KEY (keys_idx) REFERENCES keys (id)
+    #                                     ); """
+    #     sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
+    #                                          id integer PRIMARY KEY,
+    #                                          keys_idx int NOT NULL,
+    #                                          resources_idx int NOT NULL,
+    #                                          entity_id text NOT NULL,
+    #                                          entity_uri text NOT NULL,
+    #                                          FOREIGN KEY (keys_idx) REFERENCES keys (id),
+    #                                          FOREIGN KEY (resources_idx) REFERENCES resources (id)
+    #                                     ); """
+    #     # execute setting up the tables
+    #     cursor.execute(sql_create_keys_table)
+    #     cursor.execute(sql_create_objects_table)
+    #     cursor.execute(sql_create_resources_table)
+    #     cursor.execute(sql_create_object_keys_table)
+    #     cursor.execute(sql_create_entities_table)
+    #
+    #     # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
+    #     # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
+    #     keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
+    #     objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
+    #     resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
+    #
+    #     # populate the tables and fix foreign keys during insert
+    #     cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
+    #     connection.commit()
+    #     cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
+    #     connection.commit()
+    #     cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
+    #     connection.commit()
+    #     cursor.executemany(
+    #         " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
+    #         self.object_keys[:])
+    #     connection.commit()
+    #     cursor.executemany(
+    #         " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
+    #         % (keys_offset, resources_offset),
+    #         self.entities[:])
+    #     connection.commit()
+    #     connection.close()
+
+    @docval({'name': 'path', 'type': str, 'doc': 'path of the folder tsv file to write'})
+    def to_norm_tsv(self, **kwargs):
         """
-        Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
-
-        The function will first create the tables (if they do not already exist) and then
-        add the data from this ExternalResource object to the database. If the database file already
-        exists, then the data will be appended as rows to the existing database tables.
-
-        Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
-        will not match between the ExternalResources here and the exported database, but they are adjusted
-        automatically here, to ensure the foreign keys point to the correct rows in the exported database.
-        This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
-        1-based indexing and 2) if data is appended to existing tables then a corresponding additional
-        offset must be applied to the relevant foreign keys.
-
-        :raises: The function will raise errors if connection to the database fails. If
-            the given db_file already exists, then there is also the possibility that
-            certain updates may result in errors if there are collisions between the
-            new and existing data.
+        Write the tables in ExternalResources to individual tsv files.
         """
-        import sqlite3
-        # connect to the database
-        connection = sqlite3.connect(db_file)
-        cursor = connection.cursor()
-        # sql calls to setup the tables
-        sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
-                                        id integer PRIMARY KEY,
-                                        key text NOT NULL
-                                    ); """
-        sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
-                                            id integer PRIMARY KEY,
-                                            object_id text NOT NULL,
-                                            relative_path text NOT NULL,
-                                            field text
-                                       ); """
-        sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
-                                             id integer PRIMARY KEY,
-                                             resource text NOT NULL,
-                                             resource_uri text NOT NULL
-                                        ); """
-        sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
-                                               id integer PRIMARY KEY,
-                                               objects_idx int NOT NULL,
-                                               keys_idx int NOT NULL,
-                                               FOREIGN KEY (objects_idx) REFERENCES objects (id),
-                                               FOREIGN KEY (keys_idx) REFERENCES keys (id)
-                                        ); """
-        sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
-                                             id integer PRIMARY KEY,
-                                             keys_idx int NOT NULL,
-                                             resources_idx int NOT NULL,
-                                             entity_id text NOT NULL,
-                                             entity_uri text NOT NULL,
-                                             FOREIGN KEY (keys_idx) REFERENCES keys (id),
-                                             FOREIGN KEY (resources_idx) REFERENCES resources (id)
-                                        ); """
-        # execute setting up the tables
-        cursor.execute(sql_create_keys_table)
-        cursor.execute(sql_create_objects_table)
-        cursor.execute(sql_create_resources_table)
-        cursor.execute(sql_create_object_keys_table)
-        cursor.execute(sql_create_entities_table)
-
-        # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
-        # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
-        keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
-        objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
-        resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
-
-        # populate the tables and fix foreign keys during insert
-        cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
-        connection.commit()
-        cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
-        connection.commit()
-        cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
-        connection.commit()
-        cursor.executemany(
-            " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
-            self.object_keys[:])
-        connection.commit()
-        cursor.executemany(
-            " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
-            % (keys_offset, resources_offset),
-            self.entities[:])
-        connection.commit()
-        connection.close()
+        folder_path = kwargs['path']
+        for child in self.children:
+            df = child.to_dataframe()
+            df.to_csv(folder_path+'/'+child.name+'.tsv', sep='\t', index=False)
 
     @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to write'})
-    def to_tsv(self, **kwargs):
+    def to_flat_tsv(self, **kwargs):
         """
         Write ExternalResources as a single, flat table to TSV
         Internally, the function uses :py:meth:`pandas.DataFrame.to_csv`. Pandas can
@@ -793,15 +693,6 @@ class ExternalResources(Container):
         lines are each a row in the flattened ExternalResources table. The first column is the
         row id in the flattened table and does not have a label, i.e., the first and second
         row will start with a tab character, and subsequent rows are numbered sequentially 1,2,3,... .
-        For example:
-
-        .. code-block::
-            :linenos:
-
-            \tobjects\tobjects\tobjects\tobjects\tkeys\tkeys\tresources\tresources\tresources\tentities\tentities\tentities
-            \tobjects_idx\tobject_id\trelative_path\tfield\tkeys_idx\tkey\tresources_idx\tresource\tresource_uri\tentities_idx\tentity_id\tentity_uri
-            0\t0\t1fc87200-e91e-45b3-978c-6d295af144c3\t\tspecies\t0\tMus musculus\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t0\tNCBI:txid10090\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090
-            1\t0\t9bf0c58e-09dc-4457-a652-94065b112c41\t\tspecies\t1\tHomo sapiens\t0\tNCBI_Taxonomy\thttps://www.ncbi.nlm.nih.gov/taxonomy\t1\tNCBI:txid9606\thttps://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606
 
         See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
         """  # noqa: E501
@@ -812,7 +703,7 @@ class ExternalResources(Container):
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to read'},
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
-    def from_tsv(cls, **kwargs):
+    def from_flat_tsv(cls, **kwargs):
         """
         Read ExternalResources from a flat tsv file
         Formatting of the TSV file is assumed to be consistent with the format
@@ -884,19 +775,6 @@ class ExternalResources(Container):
         for obk in ob_keys_idx:
             er._add_object_key(obj=obk[0], key=obk[1])
 
-        # Retrieve all resources
-        resources_idx, resources_rows = np.unique(df[('resources', 'resources_idx')], return_index=True)
-        # Sort resources based on their index
-        resources_order = np.argsort(resources_idx)
-        resources_idx = resources_idx[resources_order]
-        resources_rows = resources_rows[resources_order]
-        # Check that resources are consecutively numbered
-        check_idx(idx_arr=resources_idx, name='resources_idx')
-        # Add the resources to the Resources table
-        resources_resource = df[('resources', 'resource')].iloc[resources_rows]
-        resources_uri = df[('resources', 'resource_uri')].iloc[resources_rows]
-        for r in zip(resources_resource, resources_uri):
-            er._add_resource(resource=r[0], uri=r[1])
 
         # Retrieve all entities
         entities_idx, entities_rows = np.unique(df[('entities', 'entities_idx')], return_index=True)
@@ -910,9 +788,9 @@ class ExternalResources(Container):
         entities_id = df[('entities', 'entity_id')].iloc[entities_rows]
         entities_uri = df[('entities', 'entity_uri')].iloc[entities_rows]
         entities_keys = np.array(all_added_keys)[df[('keys', 'keys_idx')].iloc[entities_rows]]
-        entities_resources_idx = df[('resources', 'resources_idx')].iloc[entities_rows]
-        for e in zip(entities_keys, entities_resources_idx, entities_id, entities_uri):
-            er._add_entity(key=e[0], resources_idx=e[1], entity_id=e[2], entity_uri=e[3])
+        # entities_resources_idx = df[('resources', 'resources_idx')].iloc[entities_rows]
+        for e in zip(entities_keys, entities_id, entities_uri):
+            er._add_entity(key=e[0], entity_id=e[1], entity_uri=e[2])
 
         # Return the reconstructed ExternalResources
         return er

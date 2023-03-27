@@ -550,12 +550,15 @@ class Data(AbstractContainer):
             self.__data = data
 
         elif self.term_set is not None and self.validate:
+            bad_data = []
             for term in data:
                 if self.validate_data(term=term, term_set=self.term_set):
                     continue
                 else:
-                    msg = ("%s is not in the term set." % term)
-                    raise ValueError(msg)
+                    bad_data.append(term)
+            if len(bad_data)!=0:
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
             self.__data = data
 
     @property
@@ -621,11 +624,9 @@ class Data(AbstractContainer):
         else:
             if self.validate_data(term=arg, term_set=self.term_set):
                 self.__data = append_data(self.__data, arg)
-                msg = ("%s is valid and has been added." % arg)
-                return msg, True
             else:
-                msg = ("%s is not in the term set." % arg)
-                return msg, False
+                msg = ('"%s" is not in the term set.' % arg)
+                raise ValueError(msg)
 
     def extend(self, arg):
         """
@@ -636,17 +637,16 @@ class Data(AbstractContainer):
         """
         if self.term_set is None:
             self.__data = extend_data(self.__data, arg)
-            return True
         else:
             bad_data = []
-            g='hi'
             for item in arg:
-                if self.append(item)[1]:
-                    continue
-                else:
+                try:
+                    self.append(item)
+                except ValueError:
                     bad_data.append(item)
-            # if len(bad_data)!=0:
-            return(g)
+            if len(bad_data)!=0:
+                return bad_data
+
 
 
 class DataRegion(Data):
