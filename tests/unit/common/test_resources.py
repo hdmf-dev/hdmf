@@ -247,44 +247,41 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            ('', 'uuid2', '', ''),
                                            ('', 'uuid3', '', '')])
 
-    # def test_get_keys(self):
-    #     er = ExternalResources(name='terms')
-    #
-    #     er.add_ref(
-    #         container='uuid1', key='key1', entity_id="id11", entity_uri='url11')
-    #     er.add_ref(
-    #         container='uuid2', key='key2', entity_id="id12", entity_uri='url21')
-    #     er.add_ref(
-    #         container='uuid1', key=er.get_key(key_name='key1'), resource_name='resource3',
-    #         resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
-    #     received = er.get_keys()
-    #
-    #     expected = pd.DataFrame(
-    #         data=[['key1', 0, 'id11', 'url11'],
-    #               ['key1', 2, 'id13', 'url31'],
-    #               ['key2', 1, 'id12', 'url21']],
-    #         columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri'])
-    #     pd.testing.assert_frame_equal(received, expected)
+    def test_get_keys(self):
+        er = ExternalResources(name='terms')
 
-    # def test_get_keys_subset(self):
-    #     er = ExternalResources(name='terms')
-    #     er.add_ref(
-    #         container='uuid1', key='key1', resource_name='resource1',
-    #         resource_uri='resource_uri1', entity_id="id11", entity_uri='url11')
-    #     er.add_ref(
-    #         container='uuid2', key='key2', resource_name='resource2',
-    #         resource_uri='resource_uri2', entity_id="id12", entity_uri='url21')
-    #     er.add_ref(
-    #         container='uuid1', key=er.get_key(key_name='key1'), resource_name='resource3',
-    #         resource_uri='resource_uri3', entity_id="id13", entity_uri='url31')
-    #     key = er.keys.row[0]
-    #     received = er.get_keys(keys=key)
-    #
-    #     expected = pd.DataFrame(
-    #         data=[['key1', 0, 'id11', 'url11'],
-    #               ['key1', 2, 'id13', 'url31']],
-    #         columns=['key_name', 'resources_idx', 'entity_id', 'entity_uri'])
-    #     pd.testing.assert_frame_equal(received, expected)
+        er.add_ref(
+            container='uuid1', key='key1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', key='key2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', key=er.get_key(key_name='key1'), entity_id="id13", entity_uri='url31')
+        received = er.get_keys()
+
+        expected = pd.DataFrame(
+            data=[['key1', 'id11', 'url11'],
+                  ['key1', 'id13', 'url31'],
+                  ['key2', 'id12', 'url21']],
+            columns=['key_name', 'entity_id', 'entity_uri'])
+        pd.testing.assert_frame_equal(received, expected)
+
+    def test_get_keys_subset(self):
+        er = ExternalResources(name='terms')
+        er.add_ref(
+            container='uuid1', key='key1', entity_id="id11", entity_uri='url11')
+        er.add_ref(
+            container='uuid2', key='key2', entity_id="id12", entity_uri='url21')
+        er.add_ref(
+            container='uuid1', key=er.get_key(key_name='key1'), entity_id="id13",
+            entity_uri='url31')
+        key = er.keys.row[0]
+        received = er.get_keys(keys=key)
+
+        expected = pd.DataFrame(
+            data=[['key1', 'id11', 'url11'],
+                  ['key1', 'id13', 'url31']],
+            columns=['key_name', 'entity_id', 'entity_uri'])
+        pd.testing.assert_frame_equal(received, expected)
 
     def test_object_key_unqiueness(self):
         er = ExternalResources(name='terms')

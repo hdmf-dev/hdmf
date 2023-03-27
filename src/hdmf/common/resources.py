@@ -471,8 +471,8 @@ class ExternalResources(Container):
         if (entity_id is not None and entity_uri is not None):
             add_entity = True
         else:
-            msg = ("Specify resource, entity_id, and entity_uri arguments."
-                   "All three are required to create a reference")
+            msg = ("Specify entity_id, and entity_uri arguments."
+                   "Both are required to create a reference")
             raise ValueError(msg)
 
         if add_entity:
@@ -481,41 +481,39 @@ class ExternalResources(Container):
 
         return key, entity
 
-    # @docval({'name': 'keys', 'type': (list, Key), 'default': None,
-    #          'doc': 'The Key(s) to get external resource data for.'},
-    #         rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
-    # def get_keys(self, **kwargs):
-    #     """
-    #     Return a DataFrame with information about keys used to make references to external resources.
-    #     The DataFrame will contain the following columns:
-    #         - *key_name*:              the key that will be used for referencing an external resource
-    #         - *resources_idx*:         the index for the resourcetable
-    #         - *entity_id*:    the index for the entity at the external resource
-    #         - *entity_uri*:   the URI for the entity at the external resource
-    #
-    #     It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-    #     used within the same object, relative_path, field. This method doesn't support such functionality by default. To
-    #     select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
-    #     if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
-    #     be required to keep the different instances separate. If a single call is made, it is left up to the caller to
-    #     distinguish the different instances.
-    #     """
-    #     keys = popargs('keys', kwargs)
-    #     if keys is None:
-    #         keys = [self.keys.row[i] for i in range(len(self.keys))]
-    #     else:
-    #         if not isinstance(keys, list):
-    #             keys = [keys]
-    #     data = list()
-    #     for key in keys:
-    #         rsc_ids = self.entities.which(keys_idx=key.idx)
-    #         for rsc_id in rsc_ids:
-    #             rsc_row = self.entities.row[rsc_id].todict()
-    #             rsc_row.pop('keys_idx')
-    #             rsc_row['key_name'] = key.key
-    #             data.append(rsc_row)
-    #     return pd.DataFrame(data=data, columns=['key_name', 'resources_idx',
-    #                                             'entity_id', 'entity_uri'])
+    @docval({'name': 'keys', 'type': (list, Key), 'default': None,
+             'doc': 'The Key(s) to get external resource data for.'},
+            rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
+    def get_keys(self, **kwargs):
+        """
+        Return a DataFrame with information about keys used to make references to external resources.
+        The DataFrame will contain the following columns:
+            - *key_name*:              the key that will be used for referencing an external resource
+            - *entity_id*:    the index for the entity at the external resource
+            - *entity_uri*:   the URI for the entity at the external resource
+
+        It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
+        used within the same object, relative_path, field. This method doesn't support such functionality by default. To
+        select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
+        if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
+        be required to keep the different instances separate. If a single call is made, it is left up to the caller to
+        distinguish the different instances.
+        """
+        keys = popargs('keys', kwargs)
+        if keys is None:
+            keys = [self.keys.row[i] for i in range(len(self.keys))]
+        else:
+            if not isinstance(keys, list):
+                keys = [keys]
+        data = list()
+        for key in keys:
+            rsc_ids = self.entities.which(keys_idx=key.idx)
+            for rsc_id in rsc_ids:
+                rsc_row = self.entities.row[rsc_id].todict()
+                rsc_row.pop('keys_idx')
+                rsc_row['key_name'] = key.key
+                data.append(rsc_row)
+        return pd.DataFrame(data=data, columns=['key_name', 'entity_id', 'entity_uri'])
 
     @docval({'name': 'use_categories', 'type': bool, 'default': False,
              'doc': 'Use a multi-index on the columns to indicate which category each column belongs to.'},
@@ -583,93 +581,93 @@ class ExternalResources(Container):
         # return the result
         return result_df
 
-    # @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
-    # def to_sqlite(self, db_file):
-    #     """
-    #     Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
-    #
-    #     The function will first create the tables (if they do not already exist) and then
-    #     add the data from this ExternalResource object to the database. If the database file already
-    #     exists, then the data will be appended as rows to the existing database tables.
-    #
-    #     Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
-    #     will not match between the ExternalResources here and the exported database, but they are adjusted
-    #     automatically here, to ensure the foreign keys point to the correct rows in the exported database.
-    #     This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
-    #     1-based indexing and 2) if data is appended to existing tables then a corresponding additional
-    #     offset must be applied to the relevant foreign keys.
-    #
-    #     :raises: The function will raise errors if connection to the database fails. If
-    #         the given db_file already exists, then there is also the possibility that
-    #         certain updates may result in errors if there are collisions between the
-    #         new and existing data.
-    #     """
-    #     import sqlite3
-    #     # connect to the database
-    #     connection = sqlite3.connect(db_file)
-    #     cursor = connection.cursor()
-    #     # sql calls to setup the tables
-    #     sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
-    #                                     id integer PRIMARY KEY,
-    #                                     key text NOT NULL
-    #                                 ); """
-    #     sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
-    #                                         id integer PRIMARY KEY,
-    #                                         object_id text NOT NULL,
-    #                                         relative_path text NOT NULL,
-    #                                         field text
-    #                                    ); """
-    #     sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
-    #                                          id integer PRIMARY KEY,
-    #                                          resource text NOT NULL,
-    #                                          resource_uri text NOT NULL
-    #                                     ); """
-    #     sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
-    #                                            id integer PRIMARY KEY,
-    #                                            objects_idx int NOT NULL,
-    #                                            keys_idx int NOT NULL,
-    #                                            FOREIGN KEY (objects_idx) REFERENCES objects (id),
-    #                                            FOREIGN KEY (keys_idx) REFERENCES keys (id)
-    #                                     ); """
-    #     sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
-    #                                          id integer PRIMARY KEY,
-    #                                          keys_idx int NOT NULL,
-    #                                          resources_idx int NOT NULL,
-    #                                          entity_id text NOT NULL,
-    #                                          entity_uri text NOT NULL,
-    #                                          FOREIGN KEY (keys_idx) REFERENCES keys (id),
-    #                                          FOREIGN KEY (resources_idx) REFERENCES resources (id)
-    #                                     ); """
-    #     # execute setting up the tables
-    #     cursor.execute(sql_create_keys_table)
-    #     cursor.execute(sql_create_objects_table)
-    #     cursor.execute(sql_create_resources_table)
-    #     cursor.execute(sql_create_object_keys_table)
-    #     cursor.execute(sql_create_entities_table)
-    #
-    #     # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
-    #     # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
-    #     keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
-    #     objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
-    #     resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
-    #
-    #     # populate the tables and fix foreign keys during insert
-    #     cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
-    #     connection.commit()
-    #     cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
-    #     connection.commit()
-    #     cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
-    #     connection.commit()
-    #     cursor.executemany(
-    #         " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
-    #         self.object_keys[:])
-    #     connection.commit()
-    #     cursor.executemany(
-    #         " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
-    #         % (keys_offset, resources_offset),
-    #         self.entities[:])
-    #     connection.commit()
-    #     connection.close()
+    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
+    def to_sqlite(self, db_file):
+        """
+        Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
+
+        The function will first create the tables (if they do not already exist) and then
+        add the data from this ExternalResource object to the database. If the database file already
+        exists, then the data will be appended as rows to the existing database tables.
+
+        Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
+        will not match between the ExternalResources here and the exported database, but they are adjusted
+        automatically here, to ensure the foreign keys point to the correct rows in the exported database.
+        This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
+        1-based indexing and 2) if data is appended to existing tables then a corresponding additional
+        offset must be applied to the relevant foreign keys.
+
+        :raises: The function will raise errors if connection to the database fails. If
+            the given db_file already exists, then there is also the possibility that
+            certain updates may result in errors if there are collisions between the
+            new and existing data.
+        """
+        import sqlite3
+        # connect to the database
+        connection = sqlite3.connect(db_file)
+        cursor = connection.cursor()
+        # sql calls to setup the tables
+        sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
+                                        id integer PRIMARY KEY,
+                                        key text NOT NULL
+                                    ); """
+        sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
+                                            id integer PRIMARY KEY,
+                                            object_id text NOT NULL,
+                                            relative_path text NOT NULL,
+                                            field text
+                                       ); """
+        sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
+                                             id integer PRIMARY KEY,
+                                             resource text NOT NULL,
+                                             resource_uri text NOT NULL
+                                        ); """
+        sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
+                                               id integer PRIMARY KEY,
+                                               objects_idx int NOT NULL,
+                                               keys_idx int NOT NULL,
+                                               FOREIGN KEY (objects_idx) REFERENCES objects (id),
+                                               FOREIGN KEY (keys_idx) REFERENCES keys (id)
+                                        ); """
+        sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
+                                             id integer PRIMARY KEY,
+                                             keys_idx int NOT NULL,
+                                             resources_idx int NOT NULL,
+                                             entity_id text NOT NULL,
+                                             entity_uri text NOT NULL,
+                                             FOREIGN KEY (keys_idx) REFERENCES keys (id),
+                                             FOREIGN KEY (resources_idx) REFERENCES resources (id)
+                                        ); """
+        # execute setting up the tables
+        cursor.execute(sql_create_keys_table)
+        cursor.execute(sql_create_objects_table)
+        cursor.execute(sql_create_resources_table)
+        cursor.execute(sql_create_object_keys_table)
+        cursor.execute(sql_create_entities_table)
+
+        # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
+        # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
+        keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
+        objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
+        resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
+
+        # populate the tables and fix foreign keys during insert
+        cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
+        connection.commit()
+        cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
+        connection.commit()
+        cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
+        connection.commit()
+        cursor.executemany(
+            " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
+            self.object_keys[:])
+        connection.commit()
+        cursor.executemany(
+            " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
+            % (keys_offset, resources_offset),
+            self.entities[:])
+        connection.commit()
+        connection.close()
 
     @docval({'name': 'path', 'type': str, 'doc': 'path of the folder tsv file to write'})
     def to_norm_tsv(self, **kwargs):
