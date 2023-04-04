@@ -205,6 +205,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
+        self.set_er()
 
     @property
     def name(self):
@@ -240,6 +241,26 @@ class AbstractContainer(metaclass=ExtenderMeta):
         5. settable: If true, a setter function is created so that the field can be changed after creation.
         '''
         return self.__field_values
+
+    @docval({'name': 'external_resources', 'type': 'ExternalResources',
+             'doc': 'The external resources to be used for the container.',
+             'default': None},)
+    def set_er(self, **kwargs):
+        """
+        Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
+        """
+        external_resources = kwargs['external_resources']
+        self._external_resources = external_resources
+        if self._external_resources is not None:
+            self.add_child(self._external_resources)
+
+    @property
+    def external_resources(self):
+        if self._external_resources is not None:
+            return self._external_resources
+        else:
+            msg = "ExternalResources is not set"
+            raise ValueError(msg)
 
     @docval({'name': 'term', 'type': str, 'doc': "term to be validated"},
             {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
@@ -540,10 +561,13 @@ class Data(AbstractContainer):
              'default': None},
             {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data on initial add',
              'default': False})
+            # {'name': 'add_er', 'type': bool, 'doc': 'boolean value to add data to er after validation',
+            #  'default': False})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         self.term_set = popargs('term_set', kwargs)
         self.validate = popargs('validate', kwargs)
+        # self.add_er = popargs('add_er', kwargs)
         super().__init__(**kwargs)
 
         if self.term_set is None or (self.term_set is not None and not self.validate):
@@ -560,6 +584,16 @@ class Data(AbstractContainer):
                 msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
                 raise ValueError(msg)
             self.__data = data
+
+        # if self.validate and self.add_er:
+        #     # check for parent ER
+        #     container = self.get_ancestor(data_type='ExternalResources')
+        #     if container is None:
+        #         msg = "Cannot find ExternalResources."
+        #         raise ValueError(msg)
+        # elif self.add_er and not self.validate:
+        #     msg = 'Cannot add to ExternalResources without validation'
+        #     raise ValueError(msg)
 
     @property
     def data(self):
@@ -645,8 +679,8 @@ class Data(AbstractContainer):
                 except ValueError:
                     bad_data.append(item)
             if len(bad_data)!=0:
-                return bad_data
-
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
 
 
 class DataRegion(Data):

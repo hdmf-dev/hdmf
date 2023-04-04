@@ -3,9 +3,16 @@ import numpy as np
 import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer
+from ..container import Table, Row, Container, AbstractContainer, Data
+from ..data_utils import DataIO
+
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+
+from pynert import TermSet
+from glob import glob
+import os
+
 
 
 class KeyTable(Table):
@@ -84,7 +91,7 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
-        {'name': 'file_id_idx', 'type': str,
+        {'name': 'file_id_idx', 'type': int,
          'doc': 'The row idx for the file_id in FileTable containing the object.'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
@@ -258,7 +265,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'file_id_idx', 'type': str,
+            {'name': 'file_id_idx', 'type': int,
              'doc': 'The file_id row idx.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
@@ -326,6 +333,7 @@ class ExternalResources(Container):
                 file_id_idx = file_id_idx[0]
             else:
                 self._add_file(file_id)
+                file_id_idx = self.files.which(file_id=file_id)[0]
         else:
             file_id_idx = ''
 
@@ -481,6 +489,62 @@ class ExternalResources(Container):
 
         return key, entity
 
+    @docval({'name': 'file',  'type': (str, AbstractContainer), 'doc': 'The identifier for the NWBFILE.',
+             'default': None,},
+            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'The set of terms for references'}
+            )
+    def add_ref_term_set(self, **kwargs):
+        file = kwargs['file']
+        container = kwargs['container']
+        attribute = kwargs['attribute']
+        key = kwargs['key']
+        field = kwargs['field']
+        term_set = kwargs['term_set']
+
+        # if key is provided then add_ref proceeds as normal
+        # use key provided as the term in the term_set for entity look-up
+        if key is not None:
+            data = [key]
+        else:
+            if attribute is None:
+                data_object = container
+            else:
+                data_object = container[attribute]
+            if isinstance(data_object, (Data, DataIO)):
+                data = data_object.data
+            elif isinstance(data_object, (list, np.ndarray)):
+                data = data_object
+        missing_terms = []
+        for term in data:
+            try:
+                term_info = term_set.retrieve_term(term_name=term)
+            except ValueError:
+                missing_terms.append(term)
+                continue
+
+            entity_id = term_info[0]
+            entity_uri = term_info[2]
+            self.add_ref(file=file,
+                         container=container,
+                         attribute=attribute,
+                         key=term,
+                         field=field,
+                         entity_id=entity_id,
+                         entity_uri=entity_uri)
+        if len(missing_terms)>0:
+            return {"Missing Values in TermSet": missing_terms}
+        else:
+            return True
+
     @docval({'name': 'keys', 'type': (list, Key), 'default': None,
              'doc': 'The Key(s) to get external resource data for.'},
             rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
@@ -581,93 +645,93 @@ class ExternalResources(Container):
         # return the result
         return result_df
 
-    @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
-    def to_sqlite(self, db_file):
-        """
-        Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
-
-        The function will first create the tables (if they do not already exist) and then
-        add the data from this ExternalResource object to the database. If the database file already
-        exists, then the data will be appended as rows to the existing database tables.
-
-        Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
-        will not match between the ExternalResources here and the exported database, but they are adjusted
-        automatically here, to ensure the foreign keys point to the correct rows in the exported database.
-        This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
-        1-based indexing and 2) if data is appended to existing tables then a corresponding additional
-        offset must be applied to the relevant foreign keys.
-
-        :raises: The function will raise errors if connection to the database fails. If
-            the given db_file already exists, then there is also the possibility that
-            certain updates may result in errors if there are collisions between the
-            new and existing data.
-        """
-        import sqlite3
-        # connect to the database
-        connection = sqlite3.connect(db_file)
-        cursor = connection.cursor()
-        # sql calls to setup the tables
-        sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
-                                        id integer PRIMARY KEY,
-                                        key text NOT NULL
-                                    ); """
-        sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
-                                            id integer PRIMARY KEY,
-                                            object_id text NOT NULL,
-                                            relative_path text NOT NULL,
-                                            field text
-                                       ); """
-        sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
-                                             id integer PRIMARY KEY,
-                                             resource text NOT NULL,
-                                             resource_uri text NOT NULL
-                                        ); """
-        sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
-                                               id integer PRIMARY KEY,
-                                               objects_idx int NOT NULL,
-                                               keys_idx int NOT NULL,
-                                               FOREIGN KEY (objects_idx) REFERENCES objects (id),
-                                               FOREIGN KEY (keys_idx) REFERENCES keys (id)
-                                        ); """
-        sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
-                                             id integer PRIMARY KEY,
-                                             keys_idx int NOT NULL,
-                                             resources_idx int NOT NULL,
-                                             entity_id text NOT NULL,
-                                             entity_uri text NOT NULL,
-                                             FOREIGN KEY (keys_idx) REFERENCES keys (id),
-                                             FOREIGN KEY (resources_idx) REFERENCES resources (id)
-                                        ); """
-        # execute setting up the tables
-        cursor.execute(sql_create_keys_table)
-        cursor.execute(sql_create_objects_table)
-        cursor.execute(sql_create_resources_table)
-        cursor.execute(sql_create_object_keys_table)
-        cursor.execute(sql_create_entities_table)
-
-        # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
-        # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
-        keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
-        objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
-        resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
-
-        # populate the tables and fix foreign keys during insert
-        cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
-        connection.commit()
-        cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
-        connection.commit()
-        cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
-        connection.commit()
-        cursor.executemany(
-            " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
-            self.object_keys[:])
-        connection.commit()
-        cursor.executemany(
-            " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
-            % (keys_offset, resources_offset),
-            self.entities[:])
-        connection.commit()
-        connection.close()
+    # @docval({'name': 'db_file', 'type': str, 'doc': 'Name of the SQLite database file'})
+    # def to_sqlite(self, db_file):
+    #     """
+    #     Save the keys, resources, entities, objects, and object_keys tables using sqlite3 to the given db_file.
+    #
+    #     The function will first create the tables (if they do not already exist) and then
+    #     add the data from this ExternalResource object to the database. If the database file already
+    #     exists, then the data will be appended as rows to the existing database tables.
+    #
+    #     Note, the index values of foreign keys (e.g., keys_idx, objects_idx, resources_idx) in the tables
+    #     will not match between the ExternalResources here and the exported database, but they are adjusted
+    #     automatically here, to ensure the foreign keys point to the correct rows in the exported database.
+    #     This is because: 1) ExternalResources uses 0-based indexing for foreign keys, whereas SQLite uses
+    #     1-based indexing and 2) if data is appended to existing tables then a corresponding additional
+    #     offset must be applied to the relevant foreign keys.
+    #
+    #     :raises: The function will raise errors if connection to the database fails. If
+    #         the given db_file already exists, then there is also the possibility that
+    #         certain updates may result in errors if there are collisions between the
+    #         new and existing data.
+    #     """
+    #     import sqlite3
+    #     # connect to the database
+    #     connection = sqlite3.connect(db_file)
+    #     cursor = connection.cursor()
+    #     # sql calls to setup the tables
+    #     sql_create_keys_table = """ CREATE TABLE IF NOT EXISTS keys (
+    #                                     id integer PRIMARY KEY,
+    #                                     key text NOT NULL
+    #                                 ); """
+    #     sql_create_objects_table = """ CREATE TABLE IF NOT EXISTS objects (
+    #                                         id integer PRIMARY KEY,
+    #                                         object_id text NOT NULL,
+    #                                         relative_path text NOT NULL,
+    #                                         field text
+    #                                    ); """
+    #     sql_create_resources_table = """ CREATE TABLE IF NOT EXISTS resources (
+    #                                          id integer PRIMARY KEY,
+    #                                          resource text NOT NULL,
+    #                                          resource_uri text NOT NULL
+    #                                     ); """
+    #     sql_create_object_keys_table = """ CREATE TABLE IF NOT EXISTS object_keys (
+    #                                            id integer PRIMARY KEY,
+    #                                            objects_idx int NOT NULL,
+    #                                            keys_idx int NOT NULL,
+    #                                            FOREIGN KEY (objects_idx) REFERENCES objects (id),
+    #                                            FOREIGN KEY (keys_idx) REFERENCES keys (id)
+    #                                     ); """
+    #     sql_create_entities_table = """ CREATE TABLE IF NOT EXISTS entities (
+    #                                          id integer PRIMARY KEY,
+    #                                          keys_idx int NOT NULL,
+    #                                          resources_idx int NOT NULL,
+    #                                          entity_id text NOT NULL,
+    #                                          entity_uri text NOT NULL,
+    #                                          FOREIGN KEY (keys_idx) REFERENCES keys (id),
+    #                                          FOREIGN KEY (resources_idx) REFERENCES resources (id)
+    #                                     ); """
+    #     # execute setting up the tables
+    #     cursor.execute(sql_create_keys_table)
+    #     cursor.execute(sql_create_objects_table)
+    #     cursor.execute(sql_create_resources_table)
+    #     cursor.execute(sql_create_object_keys_table)
+    #     cursor.execute(sql_create_entities_table)
+    #
+    #     # NOTE: sqlite uses a 1-based row-index so we need to update all foreign key columns accordingly
+    #     # NOTE: If we are adding to an existing sqlite database then we need to also adjust for he number of rows
+    #     keys_offset = len(cursor.execute('select * from keys;').fetchall()) + 1
+    #     objects_offset = len(cursor.execute('select * from objects;').fetchall()) + 1
+    #     resources_offset = len(cursor.execute('select * from resources;').fetchall()) + 1
+    #
+    #     # populate the tables and fix foreign keys during insert
+    #     cursor.executemany(" INSERT INTO keys(key) VALUES(?) ", self.keys[:])
+    #     connection.commit()
+    #     cursor.executemany(" INSERT INTO objects(object_id, relative_path, field) VALUES(?, ?, ?) ", self.objects[:])
+    #     connection.commit()
+    #     cursor.executemany(" INSERT INTO resources(resource, resource_uri) VALUES(?, ?) ", self.resources[:])
+    #     connection.commit()
+    #     cursor.executemany(
+    #         " INSERT INTO object_keys(objects_idx, keys_idx) VALUES(?+%i, ?+%i) " % (objects_offset, keys_offset),
+    #         self.object_keys[:])
+    #     connection.commit()
+    #     cursor.executemany(
+    #         " INSERT INTO entities(keys_idx, resources_idx, entity_id, entity_uri) VALUES(?+%i, ?+%i, ?, ?) "
+    #         % (keys_offset, resources_offset),
+    #         self.entities[:])
+    #     connection.commit()
+    #     connection.close()
 
     @docval({'name': 'path', 'type': str, 'doc': 'path of the folder tsv file to write'})
     def to_norm_tsv(self, **kwargs):
@@ -678,6 +742,69 @@ class ExternalResources(Container):
         for child in self.children:
             df = child.to_dataframe()
             df.to_csv(folder_path+'/'+child.name+'.tsv', sep='\t', index=False)
+
+    @docval({'name': 'name','type': str, 'doc': 'The name for the ExternalResources instance'},
+            {'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
+            returns="ExternalResources loaded from TSV", rtype="ExternalResources")
+    def from_norm_tsv(cls, **kwargs):
+        path = kwargs['path']
+        name = kwargs['name']
+        tsv_paths =  glob(path+'/*')
+
+        for file in tsv_paths:
+            file_name = os.path.basename(file)
+            if file_name=='files.tsv':
+                files_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                files = FileTable().from_dataframe(df=files_df, name='files', extra_ok=False)
+                continue
+            if file_name=='keys.tsv':
+                keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                keys = KeyTable().from_dataframe(df=keys_df, name='keys', extra_ok=False)
+                continue
+            if file_name=='entities.tsv':
+                entities_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                entities = EntityTable().from_dataframe(df=entities_df, name='entities', extra_ok=False)
+                continue
+            if file_name=='objects.tsv':
+                objects_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                objects = ObjectTable().from_dataframe(df=objects_df, name='objects', extra_ok=False)
+                continue
+            if file_name=='object_keys.tsv':
+                object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
+                continue
+
+        # we need to check the idx columns in entities, objects, and object_keys
+        keys_idx = entities['keys_idx']
+        for idx in keys_idx:
+            if not idx<keys.__len__():
+                msg = "Key Index out of range in EntityTable. Please check for alterations."
+                raise ValueError(msg)
+
+        file_id_idx = objects['file_id_idx']
+        for idx in file_id_idx:
+            if not idx<files.__len__():
+                msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
+                raise ValueError(msg)
+
+        object_idx = object_keys['objects_idx']
+        for idx in object_idx:
+            if not idx<objects.__len__():
+                msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
+                raise ValueError(msg)
+
+        keys_idx = object_keys['keys_idx']
+        for idx in keys_idx:
+            if not idx<keys.__len__():
+                msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
+                raise ValueError(msg)
+
+        er = ExternalResources(name=name,
+                               keys=keys,
+                               entities=entities,
+                               objects=objects,
+                               object_keys=object_keys)
+        return er
 
     @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to write'})
     def to_flat_tsv(self, **kwargs):

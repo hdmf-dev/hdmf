@@ -23,10 +23,6 @@ class ExternalResourcesMap(ObjectMapper):
     def keys(self, builder, manager):
         return self.construct_helper('keys', builder, KeyTable, manager)
 
-    # @ObjectMapper.constructor_arg('resources')
-    # def resources(self, builder, manager):
-    #     return self.construct_helper('resources', builder, ResourceTable, manager)
-
     @ObjectMapper.constructor_arg('entities')
     def entities(self, builder, manager):
         return self.construct_helper('entities', builder, EntityTable, manager)
