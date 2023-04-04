@@ -334,6 +334,8 @@ class ExternalResources(Container):
             else:
                 self._add_file(file_id)
                 file_id_idx = self.files.which(file_id=file_id)[0]
+
+            file_id_idx=str(file_id_idx)
         else:
             file_id_idx = ''
 
@@ -883,7 +885,7 @@ class ExternalResources(Container):
         ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
         ob_fields = df[('objects', 'field')].iloc[ob_rows]
         for ob in zip(ob_files, ob_ids, ob_relpaths, ob_fields):
-            er._add_object(file_id_idx=ob[0], container=ob[1], relative_path=ob[2], field=ob[3])
+            er._add_object(file_id_idx=str(ob[0]), container=ob[1], relative_path=ob[2], field=ob[3])
 
         # Retrieve all keys
         keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)
