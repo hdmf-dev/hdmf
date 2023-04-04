@@ -612,7 +612,7 @@ class HDF5IO(HDMFIO):
                         self.__set_built(sub_h5obj.file.filename, sub_h5obj.id, builder)
                     obj_type[builder.name] = builder
             else:
-                warnings.warn(os.path.join(h5obj.name, k), BrokenLinkWarning)
+                warnings.warn('Path to Group altered/broken at ' + os.path.join(h5obj.name, k), BrokenLinkWarning)
                 kwargs['datasets'][k] = None
                 continue
         kwargs['source'] = h5obj.file.filename
@@ -1147,7 +1147,7 @@ class HDF5IO(HDMFIO):
             for i, dts in enumerate(options['dtype']):
                 if self.__is_ref(dts):
                     refs.append(i)
-            # If one ore more of the parts of the compound data type are references then we need to deal with those
+            # If one or more of the parts of the compound data type are references then we need to deal with those
             if len(refs) > 0:
                 try:
                     _dtype = self.__resolve_dtype__(options['dtype'], data)

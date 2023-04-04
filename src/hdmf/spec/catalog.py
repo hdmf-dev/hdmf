@@ -18,7 +18,7 @@ class SpecCatalog:
         :ivar __spec_source_files: Dict with the path to the source files (if available) for each registered type
         :ivar __hierarchy: Dict describing the hierarchy for each registered type.
                     NOTE: Always use SpecCatalog.get_hierarchy(...) to retrieve the hierarchy
-                    as this dictionary is used like a cache, i.e., to avoid repeated calcuation
+                    as this dictionary is used like a cache, i.e., to avoid repeated calculation
                     of the hierarchy but the contents are computed on first request by SpecCatalog.get_hierarchy(...)
         '''
         self.__specs = OrderedDict()
@@ -143,7 +143,7 @@ class SpecCatalog:
         registered_types = self.get_registered_types()
         type_hierarchy = OrderedDict()
 
-        # Internal helper function to recurisvely construct the hierarchy of types
+        # Internal helper function to recursively construct the hierarchy of types
         def get_type_hierarchy(data_type, spec_catalog):
             dtype_hier = OrderedDict()
             for dtype in sorted(self.get_subtypes(data_type=data_type, recursive=False)):

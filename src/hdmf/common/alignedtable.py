@@ -46,7 +46,7 @@ class AlignedDynamicTable(DynamicTable):
                 if isinstance(v, AlignedDynamicTable):
                     raise ValueError("Category table with index %i is an AlignedDynamicTable. "
                                      "Nesting of AlignedDynamicTable is currently not supported." % i)
-        # set in_categories from the in_category_tables if it is empy
+        # set in_categories from the in_category_tables if it is empty
         if in_categories is None and in_category_tables is not None:
             in_categories = [tab.name for tab in in_category_tables]
         # check that if categories is given that we also have category_tables

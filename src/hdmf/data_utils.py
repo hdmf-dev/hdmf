@@ -124,7 +124,7 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
         """
         Property describing the maximum shape of the data array that is being iterated over
 
-        :return: NumPy-style shape tuple indicating the maxiumum dimensions up to which the dataset may be
+        :return: NumPy-style shape tuple indicating the maximum dimensions up to which the dataset may be
                  resized. Axes with None are unlimited.
         """
         raise NotImplementedError("maxshape not implemented for derived class")
@@ -186,7 +186,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Break a dataset into buffers containing multiple chunks to be written into an HDF5 dataset.
 
         Basic users should set the buffer_gb argument to as much free RAM space as can be safely allocated.
-        Advanced users are offered full control over the shape paramters for the buffer and the chunks; however,
+        Advanced users are offered full control over the shape parameters for the buffer and the chunks; however,
         the chunk shape must perfectly divide the buffer shape along each axis.
 
         HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
@@ -626,7 +626,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         curr_chunk = DataChunk(self.__next_chunk.data,
                                self.__next_chunk.selection)
         # Remove the data for the next chunk from our list since we are returning it here.
-        # This is to allow the GarbageCollector to remmove the data when it goes out of scope and avoid
+        # This is to allow the GarbageCollector to remove the data when it goes out of scope and avoid
         # having 2 full chunks in memory if not necessary
         self.__next_chunk.data = None
         # Return the current next chunk
@@ -727,7 +727,7 @@ class DataChunk:
             return 0
 
     def __getattr__(self, attr):
-        """Delegate retrival of attributes to the data in self.data"""
+        """Delegate retrieval of attributes to the data in self.data"""
         return getattr(self.data, attr)
 
     def __copy__(self):
@@ -835,7 +835,7 @@ def assertEqualShape(data1,
         response.error = 'NUM_AXES_ERROR'
         response.message = response.SHAPE_ERROR[response.error]
         response.message += " Cannot compare axes %s with %s" % (str(response.axes1), str(response.axes2))
-    # 3) Check that the datasets have sufficient numner of dimensions
+    # 3) Check that the datasets have sufficient number of dimensions
     elif np.max(response.axes1) >= num_dims_1 or np.max(response.axes2) >= num_dims_2:
         response.result = False
         response.error = 'AXIS_OUT_OF_BOUNDS'
@@ -941,7 +941,7 @@ class ShapeValidatorResult:
 
     def __getattr__(self, item):
         """
-        Overwrite to allow dynamic retrival of the default message
+        Overwrite to allow dynamic retrieval of the default message
         """
         if item == 'default_message':
             return self.SHAPE_ERROR[self.error]

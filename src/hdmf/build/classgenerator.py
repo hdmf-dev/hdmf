@@ -407,6 +407,11 @@ class MCIClassGenerator(CustomClassGenerator):
                     )
                     new_kwargs.append(new_kwarg)
 
+                    # pass an empty list to previous_init in case attr_name field is required
+                    # (one or many). we do not want previous_init to set the attribute directly.
+                    # instead, we will use the add_method after previous_init is finished.
+                    kwargs[attr_name] = list()
+
                 # call the parent class init without the MCI attribute
                 previous_init(self, **kwargs)
 
