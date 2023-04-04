@@ -992,7 +992,7 @@ class DynamicTable(Container):
                 df_input[k] = [coldata[k]]
             else:  # scalar, don't wrap
                 df_input[k] = coldata[k]
-        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index, dtype=np.int64))
         ret.name = self.name
         return ret
 
@@ -1017,7 +1017,7 @@ class DynamicTable(Container):
                 df_input[k] = [coldata[k].iloc[[i]] for i in range(len(coldata[k]))]
             else:
                 df_input[k] = coldata[k]
-        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index, dtype=np.int64))
         ret.name = self.name
         return ret
 
