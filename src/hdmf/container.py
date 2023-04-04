@@ -205,7 +205,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
-        self.set_er()
+        # self.set_er()
 
     @property
     def name(self):
@@ -242,17 +242,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
         '''
         return self.__field_values
 
-    @docval({'name': 'external_resources', 'type': 'ExternalResources',
-             'doc': 'The external resources to be used for the container.',
-             'default': None},)
-    def set_er(self, **kwargs):
-        """
-        Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
-        """
-        external_resources = kwargs['external_resources']
-        self._external_resources = external_resources
-        if self._external_resources is not None:
-            self.add_child(self._external_resources)
+    # @docval({'name': 'external_resources', 'type': 'ExternalResources',
+    #          'doc': 'The external resources to be used for the container.',
+    #          'default': None},)
+    # def set_er(self, **kwargs):
+    #     """
+    #     Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
+    #     """
+    #     external_resources = kwargs['external_resources']
+    #     self._external_resources = external_resources
+    #     if self._external_resources is not None:
+    #         self.add_child(self._external_resources)
 
     @property
     def external_resources(self):
