@@ -91,7 +91,7 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
-        {'name': 'file_id_idx', 'type': int,
+        {'name': 'file_id_idx', 'type': str,
          'doc': 'The row idx for the file_id in FileTable containing the object.'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
@@ -265,7 +265,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'file_id_idx', 'type': int,
+            {'name': 'file_id_idx', 'type': str,
              'doc': 'The file_id row idx.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
@@ -743,12 +743,13 @@ class ExternalResources(Container):
             df = child.to_dataframe()
             df.to_csv(folder_path+'/'+child.name+'.tsv', sep='\t', index=False)
 
+    @classmethod
     @docval({'name': 'name','type': str, 'doc': 'The name for the ExternalResources instance'},
             {'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
     def from_norm_tsv(cls, **kwargs):
-        path = kwargs['path']
         name = kwargs['name']
+        path = kwargs['path']
         tsv_paths =  glob(path+'/*')
 
         for file in tsv_paths:
@@ -777,25 +778,28 @@ class ExternalResources(Container):
         # we need to check the idx columns in entities, objects, and object_keys
         keys_idx = entities['keys_idx']
         for idx in keys_idx:
-            if not idx<keys.__len__():
+            if not int(idx)<keys.__len__():
                 msg = "Key Index out of range in EntityTable. Please check for alterations."
                 raise ValueError(msg)
 
         file_id_idx = objects['file_id_idx']
         for idx in file_id_idx:
-            if not idx<files.__len__():
-                msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
-                raise ValueError(msg)
+            if idx=='':
+                continue
+            else:
+                if not int(idx)<files.__len__():
+                    msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
+                    raise ValueError(msg)
 
         object_idx = object_keys['objects_idx']
         for idx in object_idx:
-            if not idx<objects.__len__():
+            if not int(idx)<objects.__len__():
                 msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
         keys_idx = object_keys['keys_idx']
         for idx in keys_idx:
-            if not idx<keys.__len__():
+            if not int(idx)<keys.__len__():
                 msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 

@@ -2,7 +2,7 @@ import pandas as pd
 from hdmf.common import DynamicTable
 from hdmf.common.resources import ExternalResources, Key
 from hdmf import Data
-from hdmf.testing import TestCase, H5RoundTripMixin
+from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 import numpy as np
 import unittest
 from tests.unit.build_tests.test_io_map import Bar
@@ -22,58 +22,56 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             container='uuid2', key='key2', entity_id="id12", entity_uri='url21')
         return er
 
-    # def test_to_dataframe(self):
-    #     # Setup complex external resources with keys reused across objects and
-    #     # multiple resources per key
-    #     er = ExternalResources(name='example')
-    #     # Add a species dataset with 2 keys
-    #     data1 = Data(
-    #         name='data_name',
-    #         data=np.array(
-    #             [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
-    #             dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
-    #         )
-    #     )
-    #     k1, e1 = er.add_ref(
-    #         container=data1,
-    #         field='species',
-    #         key='Mus musculus',
-    #         entity_id='NCBI:txid10090',
-    #         entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
-    #     )
-    #     k2, e2 = er.add_ref(
-    #         container=data1,
-    #         field='species',
-    #         key='Homo sapiens',
-    #         entity_id='NCBI:txid9606',
-    #         entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
-    #     )
-    #     # Convert to dataframe and compare against the expected result
-    #     result_df = er.to_dataframe()
-    #     expected_df_data = \
-    #         {'file_id_idx': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '', 6: ''},
-    #          'objects_idx': {0: 0, 1: 0, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2},
-    #          'object_id': {0: data1.object_id, 1: data1.object_id,
-    #                        2: data2.object_id, 3: data2.object_id, 4: data2.object_id,
-    #                        5: data3.object_id, 6: data3.object_id},
-    #          'relative_path': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '', 6: ''},
-    #          'field': {0: 'species', 1: 'species', 2: '', 3: '', 4: '', 5: '', 6: ''},
-    #          'keys_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 3},
-    #          'key': {0: 'Mus musculus', 1: 'Homo sapiens', 2: 'Mus musculus', 3: 'Homo sapiens',
-    #                  4: 'Pongo abelii', 5: 'Rorb', 6: 'Rorb'},
-    #          'entities_idx': {0: 0, 1: 1, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4},
-    #          'entity_id': {0: 'NCBI:txid10090', 1: 'NCBI:txid9606', 2: 'NCBI:txid10090', 3: 'NCBI:txid9606',
-    #                        4: 'NCBI:txid9601', 5: 'MGI:1346434', 6: 'ENSG00000198963'},
-    #          'entity_uri': {0: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
-    #                         1: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606',
-    #                         2: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
-    #                         3: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606',
-    #                         4: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601',
-    #                         5: 'http://www.informatics.jax.org/marker/MGI:1343464',
-    #                         6: 'https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'}}
-    #     expected_df = pd.DataFrame.from_dict(expected_df_data)
-    #
-    #     pd.testing.assert_frame_equal(result_df, expected_df)
+    def remove_er_files(self):
+        remove_test_file('./entities.tsv')
+        remove_test_file('./objects.tsv')
+        remove_test_file('./object_keys.tsv')
+        remove_test_file('./keys.tsv')
+        remove_test_file('./files.tsv')
+
+    def test_to_dataframe(self):
+        # Setup complex external resources with keys reused across objects and
+        # multiple resources per key
+        er = ExternalResources(name='example')
+        # Add a species dataset with 2 keys
+        data1 = Data(
+            name='data_name',
+            data=np.array(
+                [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
+                dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
+            )
+        )
+        k1, e1 = er.add_ref(
+            container=data1,
+            field='species',
+            key='Mus musculus',
+            entity_id='NCBI:txid10090',
+            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+        )
+        k2, e2 = er.add_ref(
+            container=data1,
+            field='species',
+            key='Homo sapiens',
+            entity_id='NCBI:txid9606',
+            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+        )
+        # Convert to dataframe and compare against the expected result
+        result_df = er.to_dataframe()
+        expected_df_data = \
+            {'file_id_idx': {0: '', 1: ''},
+             'objects_idx': {0: 0, 1: 0},
+             'object_id': {0: data1.object_id, 1: data1.object_id},
+             'relative_path': {0: '', 1: ''},
+             'field': {0: 'species', 1: 'species'},
+             'keys_idx': {0: 0, 1: 1},
+             'key': {0: 'Mus musculus', 1: 'Homo sapiens'},
+             'entities_idx': {0: 0, 1: 1},
+             'entity_id': {0: 'NCBI:txid10090', 1: 'NCBI:txid9606'},
+             'entity_uri': {0: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
+                            1: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_assert_external_resources_equal(self):
         er_left = ExternalResources(name='terms')
@@ -159,6 +157,91 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [('', data.object_id, '', '')])
+
+    def test_to_and_from_norm_tsv(self):
+        er = ExternalResources(name='terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        er_read = ExternalResources.from_norm_tsv(name='terms', path='./')
+        ExternalResources.assert_external_resources_equal(er_read, er, check_dtype=False)
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_entity_value_error(self):
+        er = ExternalResources(name='terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        df = er.entities.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entities.tsv', sep='\t', index=False)
+
+        msg = "Key Index out of range in EntityTable. Please check for alterations."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_norm_tsv(name='terms', path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_object_value_error(self):
+        er = ExternalResources(name='terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        df = er.objects.to_dataframe()
+        df.at[0, ('file_id_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./objects.tsv', sep='\t', index=False)
+
+        msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_norm_tsv(name='terms', path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_object_keys_object_idx_value_error(self):
+        er = ExternalResources(name='terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        df = er.object_keys.to_dataframe()
+        df.at[0, ('objects_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./object_keys.tsv', sep='\t', index=False)
+
+        msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_norm_tsv(name='terms', path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
+        er = ExternalResources(name='terms')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        df = er.object_keys.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./object_keys.tsv', sep='\t', index=False)
+
+        msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_norm_tsv(name='terms', path='./')
+
+        self.remove_er_files()
 
     def test_to_flat_tsv_and_from_flat_tsv(self):
         # write er to file
@@ -375,7 +458,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 'NCBI:txid10090', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [('', data.object_id, '', 'species')])
 
-#
+    @unittest.skip('Not needed due to read/write to tsv tests')
+    def test_roundtrip(self):
+        return
+
+    @unittest.skip('Not needed due to read/write to tsv tests')
+    def test_roundtrip_export(self):
+        return
+
+
 class TestExternalResourcesNestedAttributes(TestCase):
 
     def setUp(self):
