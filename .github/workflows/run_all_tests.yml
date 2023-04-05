@@ -98,7 +98,7 @@ jobs:
           - { name: windows-gallery-python3.7-minimum    , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: windows-latest }
           - { name: windows-gallery-python3.11-upgraded  , test-tox-env: gallery-py311-upgraded  , python-ver: "3.11", os: windows-latest }
           - { name: windows-gallery-python3.11-prerelease, test-tox-env: gallery-py311-prerelease, python-ver: "3.11", os: windows-latest }
-          - { name: macos-gallery-python3.7-minimum      , test-tox-env: gallery-py38-minimum    , python-ver: "3.7" , os: macos-latest }
+          - { name: macos-gallery-python3.7-minimum      , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: macos-latest }
           - { name: macos-gallery-python3.11-upgraded    , test-tox-env: gallery-py311-upgraded  , python-ver: "3.11", os: macos-latest }
           - { name: macos-gallery-python3.11-prerelease  , test-tox-env: gallery-py311-prerelease, python-ver: "3.11", os: macos-latest }
     steps:
