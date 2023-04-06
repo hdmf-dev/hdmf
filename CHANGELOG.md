@@ -1,5 +1,13 @@
 # HDMF Changelog
 
+## HDMF 3.6.0 (Upcoming)
+
+### Minor improvements
+- Replaced `setup.py` with `pyproject.toml`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Set code style guide to black with isort. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Replaced versioneer with setuptools_scm for versioning. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Now recommending developers use pre-commit. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+
 ## HDMF 3.5.3 (April 4, 2023)
 
 ### Bug fixes
