@@ -222,6 +222,7 @@ if os.path.exists(__resources['namespace_path']):
 else:
     raise RuntimeError("Unable to load a TypeMap - no namespace file found")
 
+# from .resources import ExternalResourcesManager
 
 DynamicTable = get_class('DynamicTable', CORE_NAMESPACE)
 VectorData = get_class('VectorData', CORE_NAMESPACE)

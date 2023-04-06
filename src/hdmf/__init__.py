@@ -1,5 +1,5 @@
 from . import query  # noqa: F401
-from .container import Container, Data, DataRegion
+from .container import Container, Data, DataRegion, ExternalResourcesManager
 from .utils import docval, getargs
 from .region import ListSlicer
 from .backends.hdf5.h5_utils import H5RegionSlicer, H5Dataset

@@ -29,6 +29,30 @@ def _exp_warn_msg(cls):
            'is not guaranteed to maintain backward compatibility') % pfx
     return msg
 
+class ExternalResourcesManager():
+    """
+    This class manages whether to set/attach an instance of ExternalResources to the subclass.
+    """
+    @docval({'name': 'external_resources', 'type': 'ExternalResources',
+             'doc': 'The external resources to be used for the container.',
+             'default': None},)
+    def set_external_resources(self, **kwargs):
+        """
+        Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
+        """
+        external_resources = kwargs['external_resources']
+        self._external_resources = external_resources
+        if self._external_resources is not None:
+            self.add_child(self._external_resources)
+
+    @property
+    def external_resources(self):
+        if self._external_resources is not None:
+            return self._external_resources
+        else:
+            msg = "ExternalResources is not set"
+            raise ValueError(msg)
+
 
 class AbstractContainer(metaclass=ExtenderMeta):
     # The name of the class attribute that subclasses use to autogenerate properties
@@ -205,7 +229,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
-        # self.set_er()
 
     @property
     def name(self):
@@ -241,26 +264,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
         5. settable: If true, a setter function is created so that the field can be changed after creation.
         '''
         return self.__field_values
-
-    # @docval({'name': 'external_resources', 'type': 'ExternalResources',
-    #          'doc': 'The external resources to be used for the container.',
-    #          'default': None},)
-    # def set_er(self, **kwargs):
-    #     """
-    #     Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
-    #     """
-    #     external_resources = kwargs['external_resources']
-    #     self._external_resources = external_resources
-    #     if self._external_resources is not None:
-    #         self.add_child(self._external_resources)
-
-    @property
-    def external_resources(self):
-        if self._external_resources is not None:
-            return self._external_resources
-        else:
-            msg = "ExternalResources is not set"
-            raise ValueError(msg)
 
     @docval({'name': 'term', 'type': str, 'doc': "term to be validated"},
             {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
@@ -375,6 +378,40 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+
+                try:
+                    if self.validate:
+                        parent = self.parent
+                        if parent is not None:
+                            while parent is not None:
+                                if isinstance(parent, ExternalResourcesManager):
+                                    parent.external_resources.add_ref_term_set(file=parent, container=self, term_set=self.term_set)
+                                    break
+                                elif parent.name=='root':
+                                    msg = 'Could not find ExternalResourcesManager for root.'
+                                    raise ValueError(msg)
+                                else:
+                                    parent = parent.parent
+                except AttributeError:
+                    pass
+
+                for child in self.children:
+                    try:
+                        if child.validate:
+                            parent = child.parent
+                            if parent is not None:
+                                while parent is not None:
+                                    if isinstance(parent, ExternalResourcesManager):
+                                        parent.external_resources.add_ref_term_set(file=parent, container=child, term_set=child.term_set)
+                                        break
+                                    elif parent.name=='root':
+                                        msg = 'Could not find ExternalResourcesManager for root.'
+                                        raise ValueError(msg)
+                                    else:
+                                        parent = parent.parent
+                    except AttributeError:
+                        continue
+
 
     def _remove_child(self, child):
         """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""

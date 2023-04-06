@@ -13,24 +13,6 @@ from pynert import TermSet
 from glob import glob
 import os
 
-class ExternalResourcesManager():
-    """
-    This class manages whether to set/attach an instance of ExternalResources to the subclass.
-    """
-    def __init__(self):
-        pass
-
-    @docval({'name': 'external_resources', 'type': 'ExternalResources',
-             'doc': 'The external resources to be used for the container.',
-             'default': None},)
-    def set_er(self, **kwargs):
-        """
-        Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
-        """
-        external_resources = kwargs['external_resources']
-        self._external_resources = external_resources
-        if self._external_resources is not None:
-            self.add_child(self._external_resources)
 
 class KeyTable(Table):
     """
@@ -549,7 +531,7 @@ class ExternalResources(Container):
             except ValueError:
                 missing_terms.append(term)
                 continue
-
+            breakpoint()
             entity_id = term_info[0]
             entity_uri = term_info[2]
             self.add_ref(file=file,
