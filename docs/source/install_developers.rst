@@ -74,7 +74,7 @@ environment by using the ``conda remove --name hdmf-venv --all`` command.
     that includes conda-forge as a default channel.
 
 .. _Anaconda: https://www.anaconda.com/products/distribution
-.. _Mambaforge: https://github.com/conda-forge/miniforge#mambaforge
+.. _Mambaforge: https://github.com/conda-forge/miniforge
 
 Install from GitHub
 -------------------
