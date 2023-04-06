@@ -49,7 +49,7 @@ zarr = ["zarr>=2.12.0"]
 validate_hdmf_spec = "hdmf.testing.validate_spec:main"
 
 [tool.setuptools.package-data]
-mypkg = ["common/hdmf-common-schema/common/*.yaml", "common/hdmf-common-schema/common/*.json"]
+hdmf = ["common/hdmf-common-schema/common/*.yaml", "common/hdmf-common-schema/common/*.json"]
 
 # [tool.mypy]
 # no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664
