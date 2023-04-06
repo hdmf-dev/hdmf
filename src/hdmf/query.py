@@ -3,17 +3,17 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from .array import Array
-from .utils import ExtenderMeta, docval_macro, docval, getargs
+from .utils import ExtenderMeta, docval, docval_macro, getargs
 
 
 class Query(metaclass=ExtenderMeta):
     __operations__ = (
-        '__lt__',
-        '__gt__',
-        '__le__',
-        '__ge__',
-        '__eq__',
-        '__ne__',
+        "__lt__",
+        "__gt__",
+        "__le__",
+        "__ge__",
+        "__eq__",
+        "__ne__",
     )
 
     @classmethod
@@ -26,8 +26,12 @@ class Query(metaclass=ExtenderMeta):
         if not isinstance(cls.__operations__, tuple):
             raise TypeError("'__operations__' must be of type tuple")
         # add any new operations
-        if len(bases) and 'Query' in globals() and issubclass(bases[-1], Query) \
-                and bases[-1].__operations__ is not cls.__operations__:
+        if (
+            len(bases)
+            and "Query" in globals()
+            and issubclass(bases[-1], Query)
+            and bases[-1].__operations__ is not cls.__operations__
+        ):
             new_operations = list(cls.__operations__)
             new_operations[0:0] = bases[-1].__operations__
             cls.__operations__ = tuple(new_operations)
@@ -42,9 +46,16 @@ class Query(metaclass=ExtenderMeta):
         self.collapsed = None
         self.expanded = None
 
-    @docval({'name': 'expand', 'type': bool, 'help': 'whether or not to expand result', 'default': True})
+    @docval(
+        {
+            "name": "expand",
+            "type": bool,
+            "help": "whether or not to expand result",
+            "default": True,
+        }
+    )
     def evaluate(self, **kwargs):
-        expand = getargs('expand', kwargs)
+        expand = getargs("expand", kwargs)
         if expand:
             if self.expanded is None:
                 self.expanded = self.__evalhelper()
@@ -92,15 +103,15 @@ class Query(metaclass=ExtenderMeta):
         return NotImplemented
 
 
-@docval_macro('array_data')
+@docval_macro("array_data")
 class HDMFDataset(metaclass=ExtenderMeta):
     __operations__ = (
-        '__lt__',
-        '__gt__',
-        '__le__',
-        '__ge__',
-        '__eq__',
-        '__ne__',
+        "__lt__",
+        "__gt__",
+        "__le__",
+        "__ge__",
+        "__eq__",
+        "__ne__",
     )
 
     @classmethod
@@ -108,7 +119,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
         def __func(self, arg):
             return Query(self, op, arg)
 
-        setattr(__func, '__name__', op)
+        setattr(__func, "__name__", op)
         return __func
 
     @ExtenderMeta.pre_init
@@ -116,8 +127,12 @@ class HDMFDataset(metaclass=ExtenderMeta):
         if not isinstance(cls.__operations__, tuple):
             raise TypeError("'__operations__' must be of type tuple")
         # add any new operations
-        if len(bases) and 'Query' in globals() and issubclass(bases[-1], Query) \
-                and bases[-1].__operations__ is not cls.__operations__:
+        if (
+            len(bases)
+            and "Query" in globals()
+            and issubclass(bases[-1], Query)
+            and bases[-1].__operations__ is not cls.__operations__
+        ):
             new_operations = list(cls.__operations__)
             new_operations[0:0] = bases[-1].__operations__
             cls.__operations__ = tuple(new_operations)
@@ -138,10 +153,16 @@ class HDMFDataset(metaclass=ExtenderMeta):
         idx = self.__evaluate_key(key)
         return self.dataset[idx]
 
-    @docval({'name': 'dataset', 'type': ('array_data', Array), 'doc': 'the HDF5 file lazily evaluate'})
+    @docval(
+        {
+            "name": "dataset",
+            "type": ("array_data", Array),
+            "doc": "the HDF5 file lazily evaluate",
+        }
+    )
     def __init__(self, **kwargs):
         super().__init__()
-        self.__dataset = getargs('dataset', kwargs)
+        self.__dataset = getargs("dataset", kwargs)
 
     @property
     def dataset(self):

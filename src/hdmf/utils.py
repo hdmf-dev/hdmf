@@ -8,23 +8,23 @@ from enum import Enum
 import h5py
 import numpy as np
 
-
 __macros = {
-    'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, bytes, bool],
-    'data': []
+    "array_data": [np.ndarray, list, tuple, h5py.Dataset],
+    "scalar_data": [str, int, float, bytes, bool],
+    "data": [],
 }
 
 try:
     # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
     import zarr
-    __macros['array_data'].append(zarr.Array)
+
+    __macros["array_data"].append(zarr.Array)
 except ImportError:
     pass
 
 
 # code to signify how to handle positional arguments in docval
-AllowPositional = Enum('AllowPositional', 'ALLOWED WARNING ERROR')
+AllowPositional = Enum("AllowPositional", "ALLOWED WARNING ERROR")
 
 __supported_bool_types = (bool, np.bool_)
 __supported_uint_types = (np.uint8, np.uint16, np.uint32, np.uint64)
@@ -37,13 +37,13 @@ if hasattr(np, "longdouble"):  # pragma: no cover
     # non-deterministically. a future version of h5py will fix this. see #112
     __supported_float_types.append(np.longdouble)
 __supported_float_types = tuple(__supported_float_types)
-__allowed_enum_types = (__supported_bool_types + __supported_uint_types + __supported_int_types
-                        + __supported_float_types + (str,))
+__allowed_enum_types = (
+    __supported_bool_types + __supported_uint_types + __supported_int_types + __supported_float_types + (str,)
+)
 
 
 def docval_macro(macro):
-    """Class decorator to add the class to a list of types associated with the key macro in the __macros dict
-    """
+    """Class decorator to add the class to a list of types associated with the key macro in the __macros dict"""
 
     def _dec(cls):
         if macro not in __macros:
@@ -70,31 +70,31 @@ def get_docval_macro(key=None):
 def __type_okay(value, argtype, allow_none=False):
     """Check a value against a type
 
-       The difference between this function and :py:func:`isinstance` is that
-       it allows specifying a type as a string. Furthermore, strings allow for specifying more general
-       types, such as a simple numeric type (i.e. ``argtype``="num").
+    The difference between this function and :py:func:`isinstance` is that
+    it allows specifying a type as a string. Furthermore, strings allow for specifying more general
+    types, such as a simple numeric type (i.e. ``argtype``="num").
 
-       Args:
-           value (any): the value to check
-           argtype (type, str): the type to check for
-           allow_none (bool): whether or not to allow None as a valid value
+    Args:
+        value (any): the value to check
+        argtype (type, str): the type to check for
+        allow_none (bool): whether or not to allow None as a valid value
 
 
-       Returns:
-           bool: True if value is a valid instance of argtype
+    Returns:
+        bool: True if value is a valid instance of argtype
     """
     if value is None:
         return allow_none
     if isinstance(argtype, str):
         if argtype in __macros:
             return __type_okay(value, __macros[argtype], allow_none=allow_none)
-        elif argtype == 'uint':
+        elif argtype == "uint":
             return __is_uint(value)
-        elif argtype == 'int':
+        elif argtype == "int":
             return __is_int(value)
-        elif argtype == 'float':
+        elif argtype == "float":
             return __is_float(value)
-        elif argtype == 'bool':
+        elif argtype == "bool":
             return __is_bool(value)
         return argtype in [cls.__name__ for cls in value.__class__.__mro__]
     elif isinstance(argtype, type):
@@ -170,22 +170,30 @@ def __check_enum(argval, arg):
 
     :return: None if the value validates successfully, error message if the value does not.
     """
-    if argval not in arg['enum']:
-        return "forbidden value for '{}' (got {}, expected {})".format(arg['name'], __fmt_str_quotes(argval),
-                                                                       arg['enum'])
+    if argval not in arg["enum"]:
+        return "forbidden value for '{}' (got {}, expected {})".format(
+            arg["name"], __fmt_str_quotes(argval), arg["enum"]
+        )
 
 
 def __fmt_str_quotes(x):
     """Return a string or list of strings where the input string or list of strings have single quotes around strings"""
     if isinstance(x, (list, tuple)):
-        return '{}'.format(x)
+        return "{}".format(x)
     if isinstance(x, str):
         return "'%s'" % x
     return str(x)
 
 
-def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
-                 allow_positional=AllowPositional.ALLOWED):
+def __parse_args(  # noqa: C901
+    validator,
+    args,
+    kwargs,
+    enforce_type=True,
+    enforce_shape=True,
+    allow_extra=False,
+    allow_positional=AllowPositional.ALLOWED,
+):
     """
     Internal helper function used by the docval decorator to parse and validate function arguments
 
@@ -217,32 +225,40 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
 
     try:
         # check for duplicates in docval
-        names = [x['name'] for x in validator]
-        duplicated = [item for item, count in collections.Counter(names).items()
-                      if count > 1]
+        names = [x["name"] for x in validator]
+        duplicated = [item for item, count in collections.Counter(names).items() if count > 1]
         if duplicated:
-            raise ValueError(
-                'The following names are duplicated: {}'.format(duplicated))
+            raise ValueError("The following names are duplicated: {}".format(duplicated))
 
         if allow_extra:  # extra keyword arguments are allowed so do not consider them when checking number of args
             if len(args) > len(validator):
                 raise TypeError(
-                    'Expected at most %d arguments %r, got %d positional' % (len(validator), names, len(args))
+                    "Expected at most %d arguments %r, got %d positional" % (len(validator), names, len(args))
                 )
         else:  # allow for keyword args
             if len(args) + len(kwargs) > len(validator):
                 raise TypeError(
-                    'Expected at most %d arguments %r, got %d: %d positional and %d keyword %s'
-                    % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
+                    "Expected at most %d arguments %r, got %d: %d positional and %d keyword %s"
+                    % (
+                        len(validator),
+                        names,
+                        len(args) + len(kwargs),
+                        len(args),
+                        len(kwargs),
+                        sorted(kwargs),
+                    )
                 )
 
         if args:
             if allow_positional == AllowPositional.WARNING:
-                msg = ('Using positional arguments for this method is discouraged and will be deprecated '
-                       'in a future major release. Please use keyword arguments to ensure future compatibility.')
+                msg = (
+                    "Using positional arguments for this method is discouraged and will"
+                    " be deprecated in a future major release. Please use keyword"
+                    " arguments to ensure future compatibility."
+                )
                 future_warnings.append(msg)
             elif allow_positional == AllowPositional.ERROR:
-                msg = 'Only keyword arguments (e.g., func(argname=value, ...)) are allowed for this method.'
+                msg = "Only keyword arguments (e.g., func(argname=value, ...)) are allowed for this method."
                 syntax_errors.append(msg)
 
         # iterate through the docval specification and find a matching value in args / kwargs
@@ -252,9 +268,9 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         # process positional arguments of the docval specification (no default value)
         extras = dict(kwargs)
         while True:
-            if 'default' in arg:
+            if "default" in arg:
                 break
-            argname = arg['name']
+            argname = arg["name"]
             argval_set = False
             if argname in kwargs:
                 # if this positional arg is specified by a keyword arg and there are remaining positional args that
@@ -273,30 +289,35 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 type_errors.append("missing argument '%s'" % argname)
             else:
                 if enforce_type:
-                    if not __type_okay(argval, arg['type']):
+                    if not __type_okay(argval, arg["type"]):
                         if argval is None:
-                            fmt_val = (argname, __format_type(arg['type']))
+                            fmt_val = (argname, __format_type(arg["type"]))
                             type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
                         else:
-                            fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                            fmt_val = (
+                                argname,
+                                type(argval).__name__,
+                                __format_type(arg["type"]),
+                            )
                             type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
-                if enforce_shape and 'shape' in arg:
+                if enforce_shape and "shape" in arg:
                     valshape = get_data_shape(argval)
                     while valshape is None:
                         if argval is None:
                             break
                         if not hasattr(argval, argname):
-                            fmt_val = (argval, argname, arg['shape'])
-                            value_errors.append("cannot check shape of object '%s' for argument '%s' "
-                                                "(expected shape '%s')" % fmt_val)
+                            fmt_val = (argval, argname, arg["shape"])
+                            value_errors.append(
+                                "cannot check shape of object '%s' for argument '%s' (expected shape '%s')" % fmt_val
+                            )
                             break
                         # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
                         argval = getattr(argval, argname)
                         valshape = get_data_shape(argval)
-                    if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                        fmt_val = (argname, valshape, arg['shape'])
+                    if valshape is not None and not __shape_okay_multi(argval, arg["shape"]):
+                        fmt_val = (argname, valshape, arg["shape"])
                         value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
-                if 'enum' in arg:
+                if "enum" in arg:
                     err = __check_enum(argval, arg)
                     if err:
                         value_errors.append(err)
@@ -308,7 +329,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         # process arguments of the docval specification with a default value
         # NOTE: the default value will be deepcopied, so 'default': list() is safe unlike in normal python
         while True:
-            argname = arg['name']
+            argname = arg["name"]
             if argname in kwargs:
                 ret[argname] = kwargs.get(argname)
                 extras.pop(argname, None)
@@ -316,33 +337,42 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 ret[argname] = args[argsi]
                 argsi += 1
             else:
-                ret[argname] = _copy.deepcopy(arg['default'])
+                ret[argname] = _copy.deepcopy(arg["default"])
             argval = ret[argname]
             if enforce_type:
-                if not __type_okay(argval, arg['type'], arg['default'] is None or arg.get('allow_none', False)):
-                    if argval is None and arg['default'] is None:
-                        fmt_val = (argname, __format_type(arg['type']))
+                if not __type_okay(
+                    argval,
+                    arg["type"],
+                    arg["default"] is None or arg.get("allow_none", False),
+                ):
+                    if argval is None and arg["default"] is None:
+                        fmt_val = (argname, __format_type(arg["type"]))
                         type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
                     else:
-                        fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
+                        fmt_val = (
+                            argname,
+                            type(argval).__name__,
+                            __format_type(arg["type"]),
+                        )
                         type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
-            if enforce_shape and 'shape' in arg and argval is not None:
+            if enforce_shape and "shape" in arg and argval is not None:
                 valshape = get_data_shape(argval)
                 while valshape is None:
                     if argval is None:
                         break
                     if not hasattr(argval, argname):
-                        fmt_val = (argval, argname, arg['shape'])
-                        value_errors.append("cannot check shape of object '%s' for argument '%s' (expected shape '%s')"
-                                            % fmt_val)
+                        fmt_val = (argval, argname, arg["shape"])
+                        value_errors.append(
+                            "cannot check shape of object '%s' for argument '%s' (expected shape '%s')" % fmt_val
+                        )
                         break
                     # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
                     argval = getattr(argval, argname)
                     valshape = get_data_shape(argval)
-                if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                    fmt_val = (argname, valshape, arg['shape'])
+                if valshape is not None and not __shape_okay_multi(argval, arg["shape"]):
+                    fmt_val = (argname, valshape, arg["shape"])
                     value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
-            if 'enum' in arg and argval is not None:
+            if "enum" in arg and argval is not None:
                 err = __check_enum(argval, arg)
                 if err:
                     value_errors.append(err)
@@ -363,19 +393,24 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         # allow_extra needs to be tracked on a function so that fmt_docval_args doesn't strip them out
         for key in extras.keys():
             ret[key] = extras[key]
-    return {'args': ret, 'future_warnings': future_warnings, 'type_errors': type_errors, 'value_errors': value_errors,
-            'syntax_errors': syntax_errors}
+    return {
+        "args": ret,
+        "future_warnings": future_warnings,
+        "type_errors": type_errors,
+        "value_errors": value_errors,
+        "syntax_errors": syntax_errors,
+    }
 
 
-docval_idx_name = '__dv_idx__'
-docval_attr_name = '__docval__'
-__docval_args_loc = 'args'
+docval_idx_name = "__dv_idx__"
+docval_attr_name = "__docval__"
+__docval_args_loc = "args"
 
 
 def get_docval(func, *args):
-    '''Get a copy of docval arguments for a function.
+    """Get a copy of docval arguments for a function.
     If args are supplied, return only docval arguments with value for 'name' key equal to the args
-    '''
+    """
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
         if args:
@@ -383,11 +418,11 @@ def get_docval(func, *args):
             try:
                 return tuple(docval_idx[name] for name in args)
             except KeyError as ke:
-                raise ValueError('Function %s does not have docval argument %s' % (func.__name__, str(ke)))
+                raise ValueError("Function %s does not have docval argument %s" % (func.__name__, str(ke)))
         return tuple(func_docval[__docval_args_loc])
     else:
         if args:
-            raise ValueError('Function %s has no docval arguments' % func.__name__)
+            raise ValueError("Function %s has no docval arguments" % func.__name__)
         return tuple()
 
 
@@ -406,32 +441,38 @@ def get_docval(func, *args):
 
 
 def fmt_docval_args(func, kwargs):
-    ''' Separate positional and keyword arguments
+    """Separate positional and keyword arguments
 
     Useful for methods that wrap other methods
-    '''
-    warnings.warn("fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
-                  "call the function directly with the kwargs. Please note that fmt_docval_args "
-                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
-                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
-                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
-                  PendingDeprecationWarning)
+    """
+    warnings.warn(
+        (
+            "fmt_docval_args will be deprecated in a future version of HDMF. Instead of"
+            " using fmt_docval_args, call the function directly with the kwargs. Please"
+            " note that fmt_docval_args removes all arguments not accepted by the"
+            " function's docval, so if you are passing kwargs that includes extra"
+            " arguments and the function's docval does not allow extra arguments"
+            " (allow_extra=True is set), then you will need to pop the extra arguments"
+            " out of kwargs before calling the function."
+        ),
+        PendingDeprecationWarning,
+    )
     func_docval = getattr(func, docval_attr_name, None)
     ret_args = list()
     ret_kwargs = dict()
     kwargs_copy = _copy.copy(kwargs)
     if func_docval:
         for arg in func_docval[__docval_args_loc]:
-            val = kwargs_copy.pop(arg['name'], None)
-            if 'default' in arg:
+            val = kwargs_copy.pop(arg["name"], None)
+            if "default" in arg:
                 if val is not None:
-                    ret_kwargs[arg['name']] = val
+                    ret_kwargs[arg["name"]] = val
             else:
                 ret_args.append(val)
-        if func_docval['allow_extra']:
+        if func_docval["allow_extra"]:
             ret_kwargs.update(kwargs_copy)
     else:
-        raise ValueError('no docval found on %s' % str(func))
+        raise ValueError("no docval found on %s" % str(func))
     return ret_args, ret_kwargs
 
 
@@ -464,12 +505,18 @@ def call_docval_func(func, kwargs):
 
     Extra keyword arguments are not passed to the function unless the function's docval has allow_extra=True.
     """
-    warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
-                  "call the function directly with the kwargs. Please note that call_docval_func "
-                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
-                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
-                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
-                  PendingDeprecationWarning)
+    warnings.warn(
+        (
+            "call_docval_func will be deprecated in a future version of HDMF. Instead"
+            " of using call_docval_func, call the function directly with the kwargs."
+            " Please note that call_docval_func removes all arguments not accepted by"
+            " the function's docval, so if you are passing kwargs that includes extra"
+            " arguments and the function's docval does not allow extra arguments"
+            " (allow_extra=True is set), then you will need to pop the extra arguments"
+            " out of kwargs before calling the function."
+        ),
+        PendingDeprecationWarning,
+    )
     with warnings.catch_warnings(record=True):
         # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
         # PendingDeprecationWarnings saying the same thing are not raised
@@ -512,7 +559,7 @@ def __check_enum_argtype(argtype):
 
 
 def docval(*validator, **options):  # noqa: C901
-    '''A decorator for documenting and enforcing type for instance method arguments.
+    """A decorator for documenting and enforcing type for instance method arguments.
 
     This decorator takes a list of dictionaries that specify the method parameters. These
     dictionaries are used for enforcing type and building a Sphinx docstring.
@@ -553,56 +600,75 @@ def docval(*validator, **options):  # noqa: C901
     :param allow_extra: Allow extra arguments (Default=False)
     :param allow_positional: Allow positional arguments (Default=True)
     :param options: additional options for documenting and validating method parameters
-    '''
-    enforce_type = options.pop('enforce_type', True)
-    enforce_shape = options.pop('enforce_shape', True)
-    returns = options.pop('returns', None)
-    rtype = options.pop('rtype', None)
-    is_method = options.pop('is_method', True)
-    allow_extra = options.pop('allow_extra', False)
-    allow_positional = options.pop('allow_positional', True)
+    """
+    enforce_type = options.pop("enforce_type", True)
+    enforce_shape = options.pop("enforce_shape", True)
+    returns = options.pop("returns", None)
+    rtype = options.pop("rtype", None)
+    is_method = options.pop("is_method", True)
+    allow_extra = options.pop("allow_extra", False)
+    allow_positional = options.pop("allow_positional", True)
 
     def dec(func):
         _docval = _copy.copy(options)
-        _docval['allow_extra'] = allow_extra
-        _docval['allow_positional'] = allow_positional
-        func.__name__ = _docval.get('func_name', func.__name__)
-        func.__doc__ = _docval.get('doc', func.__doc__)
+        _docval["allow_extra"] = allow_extra
+        _docval["allow_positional"] = allow_positional
+        func.__name__ = _docval.get("func_name", func.__name__)
+        func.__doc__ = _docval.get("doc", func.__doc__)
         pos = list()
         kw = list()
         for a in validator:
             # catch unsupported keys
-            allowable_terms = ('name', 'doc', 'type', 'shape', 'enum', 'default', 'allow_none', 'help')
+            allowable_terms = (
+                "name",
+                "doc",
+                "type",
+                "shape",
+                "enum",
+                "default",
+                "allow_none",
+                "help",
+            )
             unsupported_terms = set(a.keys()) - set(allowable_terms)
             if unsupported_terms:
-                raise Exception('docval for {}: keys {} are not supported by docval'.format(a['name'],
-                                                                                            sorted(unsupported_terms)))
+                raise Exception(
+                    "docval for {}: keys {} are not supported by docval".format(a["name"], sorted(unsupported_terms))
+                )
             # check that arg type is valid
             try:
-                a['type'] = __resolve_type(a['type'])
+                a["type"] = __resolve_type(a["type"])
             except Exception as e:
-                msg = "docval for %s: error parsing argument type: %s" % (a['name'], e.args[0])
+                msg = "docval for %s: error parsing argument type: %s" % (
+                    a["name"],
+                    e.args[0],
+                )
                 raise Exception(msg)
-            if 'enum' in a:
+            if "enum" in a:
                 # check that value for enum key is a list or tuple (cannot have only one allowed value)
-                if not isinstance(a['enum'], (list, tuple)):
-                    msg = ('docval for %s: enum value must be a list or tuple (received %s)'
-                           % (a['name'], type(a['enum'])))
+                if not isinstance(a["enum"], (list, tuple)):
+                    msg = "docval for %s: enum value must be a list or tuple (received %s)" % (
+                        a["name"],
+                        type(a["enum"]),
+                    )
                     raise Exception(msg)
                 # check that arg type is compatible with enum
-                if not __check_enum_argtype(a['type']):
-                    msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(a['name'], a['type'])
+                if not __check_enum_argtype(a["type"]):
+                    msg = "docval for {}: enum checking cannot be used with arg type {}".format(a["name"], a["type"])
                     raise Exception(msg)
                 # check that enum allowed values are allowed by arg type
-                if any([not __type_okay(x, a['type']) for x in a['enum']]):
-                    msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
-                           'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
+                if any([not __type_okay(x, a["type"]) for x in a["enum"]]):
+                    msg = (
+                        "docval for {}: enum values are of types not allowed by arg type (got {}, expected {})".format(
+                            a["name"], [type(x) for x in a["enum"]], a["type"]
+                        )
+                    )
                     raise Exception(msg)
-            if a.get('allow_none', False) and 'default' not in a:
-                msg = ('docval for {}: allow_none=True can only be set if a default value is provided.').format(
-                    a['name'])
+            if a.get("allow_none", False) and "default" not in a:
+                msg = ("docval for {}: allow_none=True can only be set if a default value is provided.").format(
+                    a["name"]
+                )
                 raise Exception(msg)
-            if 'default' in a:
+            if "default" in a:
                 kw.append(a)
             else:
                 pos.append(a)
@@ -620,30 +686,35 @@ def docval(*validator, **options):  # noqa: C901
                 enforce_type=enforce_type,
                 enforce_shape=enforce_shape,
                 allow_extra=allow_extra,
-                allow_positional=allow_positional
+                allow_positional=allow_positional,
             )
 
-            parse_warnings = parsed.get('future_warnings')
+            parse_warnings = parsed.get("future_warnings")
             if parse_warnings:
-                msg = '%s: %s' % (func.__qualname__, ', '.join(parse_warnings))
+                msg = "%s: %s" % (func.__qualname__, ", ".join(parse_warnings))
                 warnings.warn(msg, FutureWarning)
 
-            for error_type, ExceptionType in (('type_errors', TypeError),
-                                              ('value_errors', ValueError),
-                                              ('syntax_errors', SyntaxError)):
+            for error_type, ExceptionType in (
+                ("type_errors", TypeError),
+                ("value_errors", ValueError),
+                ("syntax_errors", SyntaxError),
+            ):
                 parse_err = parsed.get(error_type)
                 if parse_err:
-                    msg = '%s: %s' % (func.__qualname__, ', '.join(parse_err))
+                    msg = "%s: %s" % (func.__qualname__, ", ".join(parse_err))
                     raise ExceptionType(msg)
 
-            return parsed['args']
+            return parsed["args"]
 
         # this code is intentionally separated to make stepping through lines of code using pdb easier
         if is_method:
+
             def func_call(*args, **kwargs):
                 pargs = _check_args(args, kwargs)
                 return func(args[0], **pargs)
+
         else:
+
             def func_call(*args, **kwargs):
                 pargs = _check_args(args, kwargs)
                 return func(**pargs)
@@ -652,31 +723,39 @@ def docval(*validator, **options):  # noqa: C901
         if isinstance(rtype, type):
             _rtype = rtype.__name__
         docstring = __googledoc(func, _docval[__docval_args_loc], returns=returns, rtype=_rtype)
-        docval_idx = {a['name']: a for a in _docval[__docval_args_loc]}  # cache a name-indexed dictionary of args
-        setattr(func_call, '__doc__', docstring)
-        setattr(func_call, '__name__', func.__name__)
+        docval_idx = {a["name"]: a for a in _docval[__docval_args_loc]}  # cache a name-indexed dictionary of args
+        setattr(func_call, "__doc__", docstring)
+        setattr(func_call, "__name__", func.__name__)
         setattr(func_call, docval_attr_name, _docval)
         setattr(func_call, docval_idx_name, docval_idx)
-        setattr(func_call, '__module__', func.__module__)
+        setattr(func_call, "__module__", func.__module__)
         return func_call
 
     return dec
 
 
 def __sig_arg(argval):
-    if 'default' in argval:
-        default = argval['default']
+    if "default" in argval:
+        default = argval["default"]
         if isinstance(default, str):
             default = "'%s'" % default
         else:
             default = str(default)
-        return "%s=%s" % (argval['name'], default)
+        return "%s=%s" % (argval["name"], default)
     else:
-        return argval['name']
+        return argval["name"]
 
 
-def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=None, rtype=None):
-    '''Generate a Spinxy docstring'''
+def __builddoc(
+    func,
+    validator,
+    docstring_fmt,
+    arg_fmt,
+    ret_fmt=None,
+    returns=None,
+    rtype=None,
+):
+    """Generate a Spinxy docstring"""
 
     def to_str(argtype):
         if isinstance(argtype, type):
@@ -691,12 +770,12 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
 
     def __sphinx_arg(arg):
         fmt = dict()
-        fmt['name'] = arg.get('name')
-        fmt['doc'] = arg.get('doc')
-        if isinstance(arg['type'], tuple) or isinstance(arg['type'], list):
-            fmt['type'] = " or ".join(map(to_str, arg['type']))
+        fmt["name"] = arg.get("name")
+        fmt["doc"] = arg.get("doc")
+        if isinstance(arg["type"], tuple) or isinstance(arg["type"], list):
+            fmt["type"] = " or ".join(map(to_str, arg["type"]))
         else:
-            fmt['type'] = to_str(arg['type'])
+            fmt["type"] = to_str(arg["type"])
         return arg_fmt.format(**fmt)
 
     sig = "%s(%s)\n\n" % (func.__name__, ", ".join(map(__sig_arg, validator)))
@@ -709,13 +788,18 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
 
 
 def __sphinxdoc(func, validator, returns=None, rtype=None):
-    arg_fmt = (":param {name}: {doc}\n"
-               ":type  {name}: {type}")
-    docstring_fmt = ("{description}\n\n"
-                     "{args}\n")
-    ret_fmt = (":returns: {returns}\n"
-               ":rtype: {rtype}")
-    return __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=ret_fmt, returns=returns, rtype=rtype)
+    arg_fmt = ":param {name}: {doc}\n:type  {name}: {type}"
+    docstring_fmt = "{description}\n\n{args}\n"
+    ret_fmt = ":returns: {returns}\n:rtype: {rtype}"
+    return __builddoc(
+        func,
+        validator,
+        docstring_fmt,
+        arg_fmt,
+        ret_fmt=ret_fmt,
+        returns=returns,
+        rtype=rtype,
+    )
 
 
 def __googledoc(func, validator, returns=None, rtype=None):
@@ -723,9 +807,16 @@ def __googledoc(func, validator, returns=None, rtype=None):
     docstring_fmt = "{description}\n\n"
     if len(validator) > 0:
         docstring_fmt += "Args:\n{args}\n"
-    ret_fmt = ("\nReturns:\n"
-               "    {rtype}: {returns}")
-    return __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=ret_fmt, returns=returns, rtype=rtype)
+    ret_fmt = "\nReturns:\n    {rtype}: {returns}"
+    return __builddoc(
+        func,
+        validator,
+        docstring_fmt,
+        arg_fmt,
+        ret_fmt=ret_fmt,
+        returns=returns,
+        rtype=rtype,
+    )
 
 
 def getargs(*argnames):
@@ -740,9 +831,9 @@ def getargs(*argnames):
     :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
     """
     if len(argnames) < 2:
-        raise ValueError('Must supply at least one key and a dict')
+        raise ValueError("Must supply at least one key and a dict")
     if not isinstance(argnames[-1], dict):
-        raise ValueError('Last argument must be a dict')
+        raise ValueError("Last argument must be a dict")
     kwargs = argnames[-1]
     if len(argnames) == 2:
         if argnames[0] not in kwargs:
@@ -768,20 +859,20 @@ def popargs(*argnames):
     :return: a single value if there is only one argument, or a list of values corresponding to the given argument names
     """
     if len(argnames) < 2:
-        raise ValueError('Must supply at least one key and a dict')
+        raise ValueError("Must supply at least one key and a dict")
     if not isinstance(argnames[-1], dict):
-        raise ValueError('Last argument must be a dict')
+        raise ValueError("Last argument must be a dict")
     kwargs = argnames[-1]
     if len(argnames) == 2:
         try:
             ret = kwargs.pop(argnames[0])
         except KeyError as ke:
-            raise ValueError('Argument not found in dict: %s' % str(ke))
+            raise ValueError("Argument not found in dict: %s" % str(ke))
         return ret
     try:
         ret = [kwargs.pop(arg) for arg in argnames[:-1]]
     except KeyError as ke:
-        raise ValueError('Argument not found in dict: %s' % str(ke))
+        raise ValueError("Argument not found in dict: %s" % str(ke))
     return ret
 
 
@@ -802,35 +893,35 @@ def popargs_to_dict(keys, argdict):
         try:
             ret[arg] = argdict.pop(arg)
         except KeyError as ke:
-            raise ValueError('Argument not found in dict: %s' % str(ke))
+            raise ValueError("Argument not found in dict: %s" % str(ke))
     return ret
 
 
 class ExtenderMeta(ABCMeta):
     """A metaclass that will extend the base class initialization
-       routine by executing additional functions defined in
-       classes that use this metaclass
+    routine by executing additional functions defined in
+    classes that use this metaclass
 
-       In general, this class should only be used by core developers.
+    In general, this class should only be used by core developers.
     """
 
-    __preinit = '__preinit'
+    __preinit = "__preinit"
 
     @classmethod
     def pre_init(cls, func):
         setattr(func, cls.__preinit, True)
         return classmethod(func)
 
-    __postinit = '__postinit'
+    __postinit = "__postinit"
 
     @classmethod
     def post_init(cls, func):
-        '''A decorator for defining a routine to run after creation of a type object.
+        """A decorator for defining a routine to run after creation of a type object.
 
         An example use of this method would be to define a classmethod that gathers
         any defined methods or attributes after the base Python type construction (i.e. after
         :py:func:`type` has been called)
-        '''
+        """
         setattr(func, cls.__postinit, True)
         return classmethod(func)
 
@@ -867,7 +958,7 @@ def get_data_shape(data, strict_no_data_load=False):
 
     def __get_shape_helper(local_data):
         shape = list()
-        if hasattr(local_data, '__len__'):
+        if hasattr(local_data, "__len__"):
             shape.append(len(local_data))
             if len(local_data):
                 el = next(iter(local_data))
@@ -876,13 +967,13 @@ def get_data_shape(data, strict_no_data_load=False):
         return tuple(shape)
 
     # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
-    if hasattr(data, 'maxshape'):
+    if hasattr(data, "maxshape"):
         return data.maxshape
-    if hasattr(data, 'shape') and data.shape is not None:
+    if hasattr(data, "shape") and data.shape is not None:
         return data.shape
     if isinstance(data, dict):
         return None
-    if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
+    if hasattr(data, "__len__") and not isinstance(data, (str, bytes)):
         if not strict_no_data_load or isinstance(data, (list, tuple, set)):
             return __get_shape_helper(data)
     return None
@@ -893,7 +984,7 @@ def pystr(s):
     Convert a string of characters to Python str object
     """
     if isinstance(s, bytes):
-        return s.decode('utf-8')
+        return s.decode("utf-8")
     else:
         return s
 
@@ -911,10 +1002,10 @@ def to_uint_array(arr):
         return arr
     if np.issubdtype(arr.dtype, np.integer):
         if (arr < 0).any():
-            raise ValueError('Cannot convert negative integer values to uint.')
-        dt = np.dtype('uint' + str(int(arr.dtype.itemsize*8)))  # keep precision
+            raise ValueError("Cannot convert negative integer values to uint.")
+        dt = np.dtype("uint" + str(int(arr.dtype.itemsize * 8)))  # keep precision
         return arr.astype(dt)
-    raise ValueError('Cannot convert array of dtype %s to uint.' % arr.dtype)
+    raise ValueError("Cannot convert array of dtype %s to uint." % arr.dtype)
 
 
 class LabelledDict(dict):
@@ -959,18 +1050,34 @@ class LabelledDict(dict):
       ld['prop2 == b']       # Returns set([obj1, obj2]) - the set of all values v in ld where v.prop2 == 'b'
     """
 
-    @docval({'name': 'label', 'type': str, 'doc': 'the label on this dictionary'},
-            {'name': 'key_attr', 'type': str, 'doc': 'the attribute name to use as the key', 'default': 'name'},
-            {'name': 'add_callable', 'type': types.FunctionType,
-             'doc': 'function to call on an element after adding it to this dict using the add or __setitem__ methods',
-             'default': None},
-            {'name': 'remove_callable', 'type': types.FunctionType,
-             'doc': ('function to call on an element after removing it from this dict using the pop, popitem, clear, '
-                     'or __delitem__ methods'),
-             'default': None})
+    @docval(
+        {"name": "label", "type": str, "doc": "the label on this dictionary"},
+        {
+            "name": "key_attr",
+            "type": str,
+            "doc": "the attribute name to use as the key",
+            "default": "name",
+        },
+        {
+            "name": "add_callable",
+            "type": types.FunctionType,
+            "doc": "function to call on an element after adding it to this dict using the add or __setitem__ methods",
+            "default": None,
+        },
+        {
+            "name": "remove_callable",
+            "type": types.FunctionType,
+            "doc": (
+                "function to call on an element after removing it from this dict using"
+                " the pop, popitem, clear, or __delitem__ methods"
+            ),
+            "default": None,
+        },
+    )
     def __init__(self, **kwargs):
-        label, key_attr, add_callable, remove_callable = getargs('label', 'key_attr', 'add_callable', 'remove_callable',
-                                                                 kwargs)
+        label, key_attr, add_callable, remove_callable = getargs(
+            "label", "key_attr", "add_callable", "remove_callable", kwargs
+        )
         self.__label = label
         self.__key_attr = key_attr
         self.__add_callable = add_callable
@@ -995,7 +1102,7 @@ class LabelledDict(dict):
         returned, not a set.
         """
         key = args
-        if '==' in args:
+        if "==" in args:
             key, val = args.split("==")
             key = key.strip()
             val = val.strip()  # val is a string
@@ -1022,8 +1129,9 @@ class LabelledDict(dict):
         Raises ValueError if value does not have attribute key_attr.
         """
         if key in self:
-            raise TypeError("Key '%s' is already in this dict. Cannot reset items in a %s."
-                            % (key, self.__class__.__name__))
+            raise TypeError(
+                "Key '%s' is already in this dict. Cannot reset items in a %s." % (key, self.__class__.__name__)
+            )
         self.__check_value(value)
         if key != getattr(value, self.key_attr):
             raise KeyError("Key '%s' must equal attribute '%s' of '%s'." % (key, self.key_attr, value))
@@ -1041,8 +1149,10 @@ class LabelledDict(dict):
 
     def __check_value(self, value):
         if not hasattr(value, self.key_attr):
-            raise ValueError("Cannot set value '%s' in %s. Value must have attribute '%s'."
-                             % (value, self.__class__.__name__, self.key_attr))
+            raise ValueError(
+                "Cannot set value '%s' in %s. Value must have attribute '%s'."
+                % (value, self.__class__.__name__, self.key_attr)
+            )
 
     def pop(self, k):
         """Remove an item that matches the key. If remove_callable was initialized, call that on the returned value."""
@@ -1080,17 +1190,18 @@ class LabelledDict(dict):
 
     def setdefault(self, k):
         """setdefault is not supported. A TypeError will be raised."""
-        raise TypeError('setdefault is not supported for %s' % self.__class__.__name__)
+        raise TypeError("setdefault is not supported for %s" % self.__class__.__name__)
 
     def update(self, other):
         """update is not supported. A TypeError will be raised."""
-        raise TypeError('update is not supported for %s' % self.__class__.__name__)
+        raise TypeError("update is not supported for %s" % self.__class__.__name__)
 
 
-@docval_macro('array_data')
+@docval_macro("array_data")
 class StrDataset(h5py.Dataset):
     """Wrapper to decode strings on reading the dataset"""
-    def __init__(self, dset, encoding, errors='strict'):
+
+    def __init__(self, dset, encoding, errors="strict"):
         self.dset = dset
         if encoding is None:
             encoding = h5py.h5t.check_string_dtype(dset.dtype).encoding
@@ -1101,7 +1212,7 @@ class StrDataset(h5py.Dataset):
         return getattr(self.dset, name)
 
     def __repr__(self):
-        return '<StrDataset for %s>' % repr(self.dset)[1:-1]
+        return "<StrDataset for %s>" % repr(self.dset)[1:-1]
 
     def __len__(self):
         return len(self.dset)
@@ -1117,6 +1228,7 @@ class StrDataset(h5py.Dataset):
         if np.isscalar(bytes_arr):
             return bytes_arr.decode(self.encoding, self.errors)
 
-        return np.array([
-            b.decode(self.encoding, self.errors) for b in bytes_arr.flat
-        ], dtype=object).reshape(bytes_arr.shape)
+        return np.array(
+            [b.decode(self.encoding, self.errors) for b in bytes_arr.flat],
+            dtype=object,
+        ).reshape(bytes_arr.shape)

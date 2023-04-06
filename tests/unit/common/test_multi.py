@@ -1,16 +1,15 @@
 from hdmf.common import SimpleMultiContainer
 from hdmf.container import Container, Data
-from hdmf.testing import TestCase, H5RoundTripMixin
+from hdmf.testing import H5RoundTripMixin, TestCase
 
 
 class SimpleMultiContainerRoundTrip(H5RoundTripMixin, TestCase):
-
     def setUpContainer(self):
         containers = [
-            Container('container1'),
-            Container('container2'),
-            Data('data1', [0, 1, 2, 3, 4]),
-            Data('data2', [0.0, 1.0, 2.0, 3.0, 4.0]),
+            Container("container1"),
+            Container("container2"),
+            Data("data1", [0, 1, 2, 3, 4]),
+            Data("data2", [0.0, 1.0, 2.0, 3.0, 4.0]),
         ]
-        multi_container = SimpleMultiContainer(name='multi', containers=containers)
+        multi_container = SimpleMultiContainer(name="multi", containers=containers)
         return multi_container

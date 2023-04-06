@@ -7,11 +7,28 @@ from datetime import datetime
 
 import numpy as np
 
-from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
-from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
-                     ConstructError)
+from .builders import (
+    DatasetBuilder,
+    GroupBuilder,
+    LinkBuilder,
+    Builder,
+    ReferenceBuilder,
+    RegionBuilder,
+    BaseBuilder,
+)
+from .errors import (
+    BuildError,
+    OrphanContainerBuildError,
+    ReferenceTargetNotBuiltError,
+    ContainerConfigurationError,
+    ConstructError,
+)
 from .manager import Proxy, BuildManager
-from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from .warnings import (
+    MissingRequiredBuildWarning,
+    DtypeConversionWarning,
+    IncorrectQuantityBuildWarning,
+)
 from ..container import AbstractContainer, Data, DataRegion
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
@@ -19,20 +36,22 @@ from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpe
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 
-_const_arg = '__constructor_arg'
+_const_arg = "__constructor_arg"
 
 
-@docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-        is_method=False)
+@docval(
+    {"name": "name", "type": str, "doc": "the name of the constructor argument"},
+    is_method=False,
+)
 def _constructor_arg(**kwargs):
-    '''Decorator to override the default mapping scheme for a given constructor argument.
+    """Decorator to override the default mapping scheme for a given constructor argument.
 
     Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
     scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
     first argument the Builder object that is being mapped. The method should return the value to be passed
     to the target AbstractContainer class constructor argument given by *name*.
-    '''
-    name = getargs('name', kwargs)
+    """
+    name = getargs("name", kwargs)
 
     def _dec(func):
         setattr(func, _const_arg, name)
@@ -41,21 +60,23 @@ def _constructor_arg(**kwargs):
     return _dec
 
 
-_obj_attr = '__object_attr'
+_obj_attr = "__object_attr"
 
 
-@docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-        is_method=False)
+@docval(
+    {"name": "name", "type": str, "doc": "the name of the constructor argument"},
+    is_method=False,
+)
 def _object_attr(**kwargs):
-    '''Decorator to override the default mapping scheme for a given object attribute.
+    """Decorator to override the default mapping scheme for a given object attribute.
 
     Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
     scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
     first argument the AbstractContainer object that is being mapped. The method should return the child Builder
     object (or scalar if the object attribute corresponds to an AttributeSpec) that represents the
     attribute given by *name*.
-    '''
-    name = getargs('name', kwargs)
+    """
+    name = getargs("name", kwargs)
 
     def _dec(func):
         setattr(func, _obj_attr, name)
@@ -71,7 +92,7 @@ def _unicode(s):
     if isinstance(s, str):
         return s
     elif isinstance(s, bytes):
-        return s.decode('utf-8')
+        return s.decode("utf-8")
     else:
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
@@ -81,7 +102,7 @@ def _ascii(s):
     A helper function for converting to ASCII
     """
     if isinstance(s, str):
-        return s.encode('ascii', 'backslashreplace')
+        return s.encode("ascii", "backslashreplace")
     elif isinstance(s, bytes):
         return s
     else:
@@ -89,9 +110,7 @@ def _ascii(s):
 
 
 class ObjectMapper(metaclass=ExtenderMeta):
-    '''A class for mapping between Spec objects and AbstractContainer attributes
-
-    '''
+    """A class for mapping between Spec objects and AbstractContainer attributes"""
 
     # mapping from spec dtypes to numpy dtypes or functions for conversion of values to spec dtypes
     # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
@@ -143,35 +162,47 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if g.itemsize <= s.itemsize:  # given type has precision < precision of specified type
             # note: this allows float32 -> int32, bool -> int8, int16 -> uint16 which may involve buffer overflows,
             # truncated values, and other unexpected consequences.
-            warning_msg = ('Value with data type %s is being converted to data type %s as specified.'
-                           % (g.name, s.name))
+            warning_msg = "Value with data type %s is being converted to data type %s as specified." % (g.name, s.name)
             return s.type, warning_msg
         elif g.name[:3] == s.name[:3]:
             return g.type, None  # same base type, use higher-precision given type
         else:
             if np.issubdtype(s, np.unsignedinteger):
                 # e.g.: given int64 and spec uint32, return uint64. given float32 and spec uint8, return uint32.
-                ret_type = np.dtype('uint' + str(int(g.itemsize * 8)))
-                warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
-                               % (g.name, ret_type.name, s.name))
+                ret_type = np.dtype("uint" + str(int(g.itemsize * 8)))
+                warning_msg = "Value with data type %s is being converted to data type %s (min specification: %s)." % (
+                    g.name,
+                    ret_type.name,
+                    s.name,
+                )
                 return ret_type.type, warning_msg
             if np.issubdtype(s, np.floating):
                 # e.g.: given int64 and spec float32, return float64. given uint64 and spec float32, return float32.
-                ret_type = np.dtype('float' + str(max(int(g.itemsize * 8), 32)))
-                warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
-                               % (g.name, ret_type.name, s.name))
+                ret_type = np.dtype("float" + str(max(int(g.itemsize * 8), 32)))
+                warning_msg = "Value with data type %s is being converted to data type %s (min specification: %s)." % (
+                    g.name,
+                    ret_type.name,
+                    s.name,
+                )
                 return ret_type.type, warning_msg
             if np.issubdtype(s, np.integer):
                 # e.g.: given float64 and spec int8, return int64. given uint32 and spec int8, return int32.
-                ret_type = np.dtype('int' + str(int(g.itemsize * 8)))
-                warning_msg = ('Value with data type %s is being converted to data type %s (min specification: %s).'
-                               % (g.name, ret_type.name, s.name))
+                ret_type = np.dtype("int" + str(int(g.itemsize * 8)))
+                warning_msg = "Value with data type %s is being converted to data type %s (min specification: %s)." % (
+                    g.name,
+                    ret_type.name,
+                    s.name,
+                )
                 return ret_type.type, warning_msg
             if s.type is np.bool_:
-                msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
+                msg = "expected %s, received %s - must supply %s" % (
+                    s.name,
+                    g.name,
+                    s.name,
+                )
                 raise ValueError(msg)
             # all numeric types in __dtypes should be caught by the above
-            raise ValueError('Unsupported conversion to specification data type: %s' % s.name)
+            raise ValueError("Unsupported conversion to specification data type: %s" % s.name)
 
     @classmethod
     def no_convert(cls, obj_type):
@@ -205,13 +236,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec_dtype_type = cls.__dtypes[spec_dtype]
         warning_msg = None
         # Numpy Array or Zarr array
-        if (isinstance(value, np.ndarray) or
-                (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
+        if isinstance(value, np.ndarray) or (hasattr(value, "astype") and hasattr(value, "dtype")):
             if spec_dtype_type is _unicode:
-                ret = value.astype('U')
+                ret = value.astype("U")
                 ret_dtype = "utf8"
             elif spec_dtype_type is _ascii:
-                ret = value.astype('S')
+                ret = value.astype("S")
                 ret_dtype = "ascii"
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
@@ -224,9 +254,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
                 if spec_dtype_type is _unicode:
-                    ret_dtype = 'utf8'
+                    ret_dtype = "utf8"
                 elif spec_dtype_type is _ascii:
-                    ret_dtype = 'ascii'
+                    ret_dtype = "ascii"
                 else:
                     ret_dtype = spec_dtype_type
                 return value, ret_dtype
@@ -247,9 +277,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
             if spec_dtype_type in (_unicode, _ascii):
-                ret_dtype = 'ascii'
+                ret_dtype = "ascii"
                 if spec_dtype_type is _unicode:
-                    ret_dtype = 'utf8'
+                    ret_dtype = "utf8"
                 ret = spec_dtype_type(value)
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(type(value), spec_dtype_type)
@@ -264,9 +294,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def __check_convert_numeric(cls, value_type):
         # dtype 'numeric' allows only ints, floats, and uints
         value_dtype = np.dtype(value_type)
-        if not (np.issubdtype(value_dtype, np.unsignedinteger) or
-                np.issubdtype(value_dtype, np.floating) or
-                np.issubdtype(value_dtype, np.integer)):
+        if not (
+            np.issubdtype(value_dtype, np.unsignedinteger)
+            or np.issubdtype(value_dtype, np.floating)
+            or np.issubdtype(value_dtype, np.integer)
+        ):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
     @classmethod  # noqa: C901
@@ -288,15 +320,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 return value, value.dtype
             else:
                 return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
-        if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
+        if spec_dtype is None or spec_dtype == "numeric" or type(value) in cls.__no_convert:
             # infer type from value
-            if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
-                if spec_dtype == 'numeric':
+            if hasattr(value, "dtype"):  # covers numpy types, AbstractDataChunkIterator
+                if spec_dtype == "numeric":
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
-                    ret_dtype = 'utf8'
+                    ret_dtype = "utf8"
                 elif np.issubdtype(value.dtype, np.string_):
-                    ret_dtype = 'ascii'
+                    ret_dtype = "ascii"
                 else:
                     ret_dtype = value.dtype.type
                 return value, ret_dtype
@@ -304,14 +336,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if len(value) == 0:
                     msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
                     raise ValueError(msg)
-                return value, cls.__check_edgecases(spec, value[0], spec_dtype)[1]  # infer dtype from first element
+                return (
+                    value,
+                    cls.__check_edgecases(spec, value[0], spec_dtype)[1],
+                )  # infer dtype from first element
             ret_dtype = type(value)
-            if spec_dtype == 'numeric':
+            if spec_dtype == "numeric":
                 cls.__check_convert_numeric(ret_dtype)
             if ret_dtype is str:
-                ret_dtype = 'utf8'
+                ret_dtype = "utf8"
             elif ret_dtype is bytes:
-                ret_dtype = 'ascii'
+                ret_dtype = "ascii"
             return value, ret_dtype
         if isinstance(spec_dtype, RefSpec):
             if not isinstance(value, ReferenceBuilder):
@@ -323,37 +358,41 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ValueError(msg)
         return None, None
 
-    _const_arg = '__constructor_arg'
+    _const_arg = "__constructor_arg"
 
     @staticmethod
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-            is_method=False)
+    @docval(
+        {"name": "name", "type": str, "doc": "the name of the constructor argument"},
+        is_method=False,
+    )
     def constructor_arg(**kwargs):
-        '''Decorator to override the default mapping scheme for a given constructor argument.
+        """Decorator to override the default mapping scheme for a given constructor argument.
 
         Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
         scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
         first argument the Builder object that is being mapped. The method should return the value to be passed
         to the target AbstractContainer class constructor argument given by *name*.
-        '''
-        name = getargs('name', kwargs)
+        """
+        name = getargs("name", kwargs)
         return _constructor_arg(name)
 
-    _obj_attr = '__object_attr'
+    _obj_attr = "__object_attr"
 
     @staticmethod
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-            is_method=False)
+    @docval(
+        {"name": "name", "type": str, "doc": "the name of the constructor argument"},
+        is_method=False,
+    )
     def object_attr(**kwargs):
-        '''Decorator to override the default mapping scheme for a given object attribute.
+        """Decorator to override the default mapping scheme for a given object attribute.
 
         Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
         scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
         first argument the AbstractContainer object that is being mapped. The method should return the child Builder
         object (or scalar if the object attribute corresponds to an AttributeSpec) that represents the
         attribute given by *name*.
-        '''
-        name = getargs('name', kwargs)
+        """
+        name = getargs("name", kwargs)
         return _object_attr(name)
 
     @staticmethod
@@ -374,11 +413,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     @ExtenderMeta.post_init
     def __gather_procedures(cls, name, bases, classdict):
-        if hasattr(cls, 'constructor_args'):
+        if hasattr(cls, "constructor_args"):
             cls.constructor_args = copy(cls.constructor_args)
         else:
             cls.constructor_args = dict()
-        if hasattr(cls, 'obj_attrs'):
+        if hasattr(cls, "obj_attrs"):
             cls.obj_attrs = copy(cls.obj_attrs)
         else:
             cls.obj_attrs = dict()
@@ -388,12 +427,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif cls.__is_attr(func):
                 cls.obj_attrs[cls.__get_obj_attr(func)] = getattr(cls, name)
 
-    @docval({'name': 'spec', 'type': (DatasetSpec, GroupSpec),
-             'doc': 'The specification for mapping objects to builders'})
+    @docval(
+        {
+            "name": "spec",
+            "type": (DatasetSpec, GroupSpec),
+            "doc": "The specification for mapping objects to builders",
+        }
+    )
     def __init__(self, **kwargs):
-        """ Create a map from AbstractContainer attributes to specifications """
-        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        spec = getargs('spec', kwargs)
+        """Create a map from AbstractContainer attributes to specifications"""
+        self.logger = logging.getLogger("%s.%s" % (self.__class__.__module__, self.__class__.__qualname__))
+        spec = getargs("spec", kwargs)
         self.__spec = spec
         self.__data_type_key = spec.type_key()
         self.__spec2attr = dict()
@@ -404,24 +448,24 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     @property
     def spec(self):
-        ''' the Spec used in this ObjectMapper '''
+        """the Spec used in this ObjectMapper"""
         return self.__spec
 
-    @_constructor_arg('name')
+    @_constructor_arg("name")
     def get_container_name(self, *args):
         builder = args[0]
         return builder.name
 
     @classmethod
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to get the name for'})
+    @docval({"name": "spec", "type": Spec, "doc": "the specification to get the name for"})
     def convert_dt_name(cls, **kwargs):
-        '''Construct the attribute name corresponding to a specification'''
-        spec = getargs('spec', kwargs)
+        """Construct the attribute name corresponding to a specification"""
+        spec = getargs("spec", kwargs)
         name = cls.__get_data_type(spec)
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-        if name[-1] != 's' and spec.is_many():
-            name += 's'
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+        name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+        if name[-1] != "s" and spec.is_many():
+            name += "s"
         return name
 
     @classmethod
@@ -430,7 +474,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if spec.name is None:
             name = cls.convert_dt_name(spec)
         name_stack.append(name)
-        name = '__'.join(name_stack)
+        name = "__".join(name_stack)
         # TODO address potential name clashes, e.g., quantity '*' subgroups and links of same data_type_inc will
         # have the same name
         all_names[name] = spec
@@ -451,10 +495,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         name_stack.pop()
 
     @classmethod
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to get the object attribute names for'})
+    @docval(
+        {
+            "name": "spec",
+            "type": Spec,
+            "doc": "the specification to get the object attribute names for",
+        }
+    )
     def get_attr_names(cls, **kwargs):
-        '''Get the attribute names for each subspecification in a Spec'''
-        spec = getargs('spec', kwargs)
+        """Get the attribute names for each subspecification in a Spec"""
+        spec = getargs("spec", kwargs)
         names = OrderedDict()
         for subspec in spec.attributes:
             cls.__get_fields(list(), names, subspec)
@@ -472,46 +522,66 @@ class ObjectMapper(metaclass=ExtenderMeta):
         for k, v in attr_names.items():
             self.map_spec(k, v)
 
-    @docval({"name": "attr_name", "type": str, "doc": "the name of the object to map"},
-            {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
+    @docval(
+        {"name": "attr_name", "type": str, "doc": "the name of the object to map"},
+        {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"},
+    )
     def map_attr(self, **kwargs):
-        """ Map an attribute to spec. Use this to override default behavior """
-        attr_name, spec = getargs('attr_name', 'spec', kwargs)
+        """Map an attribute to spec. Use this to override default behavior"""
+        attr_name, spec = getargs("attr_name", "spec", kwargs)
         self.__spec2attr[spec] = attr_name
         self.__attr2spec[attr_name] = spec
 
     @docval({"name": "attr_name", "type": str, "doc": "the name of the attribute"})
     def get_attr_spec(self, **kwargs):
-        """ Return the Spec for a given attribute """
-        attr_name = getargs('attr_name', kwargs)
+        """Return the Spec for a given attribute"""
+        attr_name = getargs("attr_name", kwargs)
         return self.__attr2spec.get(attr_name)
 
-    @docval({"name": "carg_name", "type": str, "doc": "the name of the constructor argument"})
+    @docval(
+        {
+            "name": "carg_name",
+            "type": str,
+            "doc": "the name of the constructor argument",
+        }
+    )
     def get_carg_spec(self, **kwargs):
-        """ Return the Spec for a given constructor argument """
-        carg_name = getargs('carg_name', kwargs)
+        """Return the Spec for a given constructor argument"""
+        carg_name = getargs("carg_name", kwargs)
         return self.__carg2spec.get(carg_name)
 
-    @docval({"name": "const_arg", "type": str, "doc": "the name of the constructor argument to map"},
-            {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
+    @docval(
+        {
+            "name": "const_arg",
+            "type": str,
+            "doc": "the name of the constructor argument to map",
+        },
+        {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"},
+    )
     def map_const_arg(self, **kwargs):
-        """ Map an attribute to spec. Use this to override default behavior """
-        const_arg, spec = getargs('const_arg', 'spec', kwargs)
+        """Map an attribute to spec. Use this to override default behavior"""
+        const_arg, spec = getargs("const_arg", "spec", kwargs)
         self.__spec2carg[spec] = const_arg
         self.__carg2spec[const_arg] = spec
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
     def unmap(self, **kwargs):
-        """ Removing any mapping for a specification. Use this to override default mapping """
-        spec = getargs('spec', kwargs)
+        """Removing any mapping for a specification. Use this to override default mapping"""
+        spec = getargs("spec", kwargs)
         self.__spec2attr.pop(spec, None)
         self.__spec2carg.pop(spec, None)
 
-    @docval({"name": "attr_carg", "type": str, "doc": "the constructor argument/object attribute to map this spec to"},
-            {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
+    @docval(
+        {
+            "name": "attr_carg",
+            "type": str,
+            "doc": "the constructor argument/object attribute to map this spec to",
+        },
+        {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"},
+    )
     def map_spec(self, **kwargs):
-        """ Map the given specification to the construct argument and object attribute """
-        spec, attr_carg = getargs('spec', 'attr_carg', kwargs)
+        """Map the given specification to the construct argument and object attribute"""
+        spec, attr_carg = getargs("spec", "attr_carg", kwargs)
         self.map_const_arg(attr_carg, spec)
         self.map_attr(attr_carg, spec)
 
@@ -531,21 +601,38 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return func(self, container, manager)
         return None
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute for"},
-            returns='the attribute name', rtype=str)
+    @docval(
+        {"name": "spec", "type": Spec, "doc": "the spec to get the attribute for"},
+        returns="the attribute name",
+        rtype=str,
+    )
     def get_attribute(self, **kwargs):
-        ''' Get the object attribute name for the given Spec '''
-        spec = getargs('spec', kwargs)
+        """Get the object attribute name for the given Spec"""
+        spec = getargs("spec", kwargs)
         val = self.__spec2attr.get(spec, None)
         return val
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": AbstractContainer, "doc": "the container to get the attribute value from"},
-            {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
-            returns='the value of the attribute')
+    @docval(
+        {
+            "name": "spec",
+            "type": Spec,
+            "doc": "the spec to get the attribute value for",
+        },
+        {
+            "name": "container",
+            "type": AbstractContainer,
+            "doc": "the container to get the attribute value from",
+        },
+        {
+            "name": "manager",
+            "type": BuildManager,
+            "doc": "the BuildManager used for managing this build",
+        },
+        returns="the value of the attribute",
+    )
     def get_attr_value(self, **kwargs):
-        ''' Get the value of the attribute corresponding to this spec from the given container '''
-        spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
+        """Get the value of the attribute corresponding to this spec from the given container"""
+        spec, container, manager = getargs("spec", "container", "manager", kwargs)
         attr_name = self.get_attribute(spec)
         if attr_name is None:
             return None
@@ -554,8 +641,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             try:
                 attr_val = getattr(container, attr_name)
             except AttributeError:
-                msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
-                       % (container.__class__.__name__, container.name, attr_name, spec))
+                msg = "%s '%s' does not have attribute '%s' for mapping to spec: %s" % (
+                    container.__class__.__name__,
+                    container.name,
+                    attr_name,
+                    spec,
+                )
                 raise ContainerConfigurationError(msg)
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
@@ -564,8 +655,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     try:
                         attr_val = self.__filter_by_spec_dt(attr_val, spec_dt, manager)
                     except ValueError as e:
-                        msg = ("%s '%s' attribute '%s' has unexpected type."
-                               % (container.__class__.__name__, container.name, attr_name))
+                        msg = "%s '%s' attribute '%s' has unexpected type." % (
+                            container.__class__.__name__,
+                            container.name,
+                            attr_name,
+                        )
                         raise ContainerConfigurationError(msg) from e
             # else: attr_val is an attribute on the Container and its value is None
         # attr_val can be None, an AbstractContainer, or a list of AbstractContainers
@@ -589,7 +683,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """Convert string types to the specified dtype."""
         ret = value
         if isinstance(spec, AttributeSpec):
-            if 'text' in spec.dtype:
+            if "text" in spec.dtype:
                 if spec.shape is not None or spec.dims is not None:
                     ret = list(map(str, value))
                 else:
@@ -598,11 +692,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # TODO: make sure we can handle specs with data_type_inc set
             if spec.data_type_inc is None and spec.dtype is not None:
                 string_type = None
-                if 'text' in spec.dtype:
+                if "text" in spec.dtype:
                     string_type = str
-                elif 'ascii' in spec.dtype:
+                elif "ascii" in spec.dtype:
                     string_type = bytes
-                elif 'isodatetime' in spec.dtype:
+                elif "isodatetime" in spec.dtype:
                     string_type = datetime.isoformat
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
@@ -612,7 +706,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # copy over any I/O parameters if they were specified
                     if isinstance(value, DataIO):
                         params = value.get_io_params()
-                        params['data'] = ret
+                        params["data"] = ret
                         ret = value.__class__(**params)
         return ret
 
@@ -648,58 +742,114 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(ret) == 0:
                 ret = None
         else:
-            raise ValueError("Unexpected type for attr_value: %s. Only AbstractContainer, list, tuple, set, dict, are "
-                             "allowed." % type(attr_value))
+            raise ValueError(
+                "Unexpected type for attr_value: %s. Only AbstractContainer, list, tuple, set, dict, are allowed."
+                % type(attr_value)
+            )
         return ret
 
     def __check_quantity(self, attr_value, spec, container):
         if attr_value is None and spec.required:
             attr_name = self.get_attribute(spec)
-            msg = ("%s '%s' is missing required value for attribute '%s'."
-                   % (container.__class__.__name__, container.name, attr_name))
+            msg = "%s '%s' is missing required value for attribute '%s'." % (
+                container.__class__.__name__,
+                container.name,
+                attr_name,
+            )
             warnings.warn(msg, MissingRequiredBuildWarning)
-            self.logger.debug('MissingRequiredBuildWarning: ' + msg)
+            self.logger.debug("MissingRequiredBuildWarning: " + msg)
         elif attr_value is not None and self.__get_data_type(spec) is not None:
             # quantity is valid only for specs with a data type or target type
             if isinstance(attr_value, AbstractContainer):
                 attr_value = [attr_value]
             n = len(attr_value)
-            if (n and isinstance(attr_value[0], AbstractContainer) and
-                    ((n > 1 and not spec.is_many()) or (isinstance(spec.quantity, int) and n != spec.quantity))):
+            if (
+                n
+                and isinstance(attr_value[0], AbstractContainer)
+                and ((n > 1 and not spec.is_many()) or (isinstance(spec.quantity, int) and n != spec.quantity))
+            ):
                 attr_name = self.get_attribute(spec)
-                msg = ("%s '%s' has %d values for attribute '%s' but spec allows %s."
-                       % (container.__class__.__name__, container.name, n, attr_name, repr(spec.quantity)))
+                msg = "%s '%s' has %d values for attribute '%s' but spec allows %s." % (
+                    container.__class__.__name__,
+                    container.name,
+                    n,
+                    attr_name,
+                    repr(spec.quantity),
+                )
                 warnings.warn(msg, IncorrectQuantityBuildWarning)
-                self.logger.debug('IncorrectQuantityBuildWarning: ' + msg)
+                self.logger.debug("IncorrectQuantityBuildWarning: " + msg)
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the constructor argument for"},
-            returns="the name of the constructor argument", rtype=str)
+    @docval(
+        {
+            "name": "spec",
+            "type": Spec,
+            "doc": "the spec to get the constructor argument for",
+        },
+        returns="the name of the constructor argument",
+        rtype=str,
+    )
     def get_const_arg(self, **kwargs):
-        ''' Get the constructor argument for the given Spec '''
-        spec = getargs('spec', kwargs)
+        """Get the constructor argument for the given Spec"""
+        spec = getargs("spec", kwargs)
         return self.__spec2carg.get(spec, None)
 
-    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
-            {"name": "manager", "type": BuildManager, "doc": "the BuildManager to use for managing this build"},
-            {"name": "parent", "type": GroupBuilder, "doc": "the parent of the resulting Builder", 'default': None},
-            {"name": "source", "type": str,
-             "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
-            {"name": "export", "type": bool, "doc": "whether this build is for exporting",
-             'default': False},
-            returns="the Builder representing the given AbstractContainer", rtype=Builder)
+    @docval(
+        {
+            "name": "container",
+            "type": AbstractContainer,
+            "doc": "the container to convert to a Builder",
+        },
+        {
+            "name": "manager",
+            "type": BuildManager,
+            "doc": "the BuildManager to use for managing this build",
+        },
+        {
+            "name": "parent",
+            "type": GroupBuilder,
+            "doc": "the parent of the resulting Builder",
+            "default": None,
+        },
+        {
+            "name": "source",
+            "type": str,
+            "doc": "the source of container being built i.e. file path",
+            "default": None,
+        },
+        {
+            "name": "builder",
+            "type": BaseBuilder,
+            "doc": "the Builder to build on",
+            "default": None,
+        },
+        {
+            "name": "spec_ext",
+            "type": BaseStorageSpec,
+            "doc": "a spec extension",
+            "default": None,
+        },
+        {
+            "name": "export",
+            "type": bool,
+            "doc": "whether this build is for exporting",
+            "default": False,
+        },
+        returns="the Builder representing the given AbstractContainer",
+        rtype=Builder,
+    )
     def build(self, **kwargs):
-        '''Convert an AbstractContainer to a Builder representation.
+        """Convert an AbstractContainer to a Builder representation.
 
         References are not added but are queued to be added in the BuildManager.
-        '''
-        container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
-        builder, spec_ext, export = getargs('builder', 'spec_ext', 'export', kwargs)
+        """
+        container, manager, parent, source = getargs("container", "manager", "parent", "source", kwargs)
+        builder, spec_ext, export = getargs("builder", "spec_ext", "export", kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
-            self.logger.debug("Building %s '%s' as a group (source: %s)"
-                              % (container.__class__.__name__, container.name, repr(source)))
+            self.logger.debug(
+                "Building %s '%s' as a group (source: %s)"
+                % (container.__class__.__name__, container.name, repr(source))
+            )
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source, export)
@@ -712,43 +862,74 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     raise ValueError(msg)
                 spec_dtype, spec_shape, spec = self.__check_dset_spec(self.spec, spec_ext)
                 if isinstance(spec_dtype, RefSpec):
-                    self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
-                                      % (container.__class__.__name__, container.name, repr(source)))
+                    self.logger.debug(
+                        "Building %s '%s' as a dataset of references (source: %s)"
+                        % (container.__class__.__name__, container.name, repr(source))
+                    )
                     # create dataset builder with data=None as a placeholder. fill in with refs later
-                    builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype=spec_dtype.reftype)
+                    builder = DatasetBuilder(
+                        name,
+                        data=None,
+                        parent=parent,
+                        source=source,
+                        dtype=spec_dtype.reftype,
+                    )
                     manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
                 elif isinstance(spec_dtype, list):
                     # a compound dataset
-                    self.logger.debug("Building %s '%s' as a dataset of compound dtypes (source: %s)"
-                                      % (container.__class__.__name__, container.name, repr(source)))
+                    self.logger.debug(
+                        "Building %s '%s' as a dataset of compound dtypes (source: %s)"
+                        % (container.__class__.__name__, container.name, repr(source))
+                    )
                     # create dataset builder with data=None, dtype=None as a placeholder. fill in with refs later
                     builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype=spec_dtype)
-                    manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
-                                                                          manager))
+                    manager.queue_ref(
+                        self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container, manager)
+                    )
                 else:
                     # a regular dtype
                     if spec_dtype is None and self.__is_reftype(container.data):
-                        self.logger.debug("Building %s '%s' containing references as a dataset of unspecified dtype "
-                                          "(source: %s)"
-                                          % (container.__class__.__name__, container.name, repr(source)))
+                        self.logger.debug(
+                            "Building %s '%s' containing references as a dataset of unspecified dtype (source: %s)"
+                            % (
+                                container.__class__.__name__,
+                                container.name,
+                                repr(source),
+                            )
+                        )
                         # an unspecified dtype and we were given references
                         # create dataset builder with data=None as a placeholder. fill in with refs later
-                        builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype='object')
+                        builder = DatasetBuilder(
+                            name,
+                            data=None,
+                            parent=parent,
+                            source=source,
+                            dtype="object",
+                        )
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
                     else:
                         # a dataset that has no references, pass the conversion off to the convert_dtype method
-                        self.logger.debug("Building %s '%s' as a dataset (source: %s)"
-                                          % (container.__class__.__name__, container.name, repr(source)))
+                        self.logger.debug(
+                            "Building %s '%s' as a dataset (source: %s)"
+                            % (
+                                container.__class__.__name__,
+                                container.name,
+                                repr(source),
+                            )
+                        )
                         try:
                             # use spec_dtype from self.spec when spec_ext does not specify dtype
                             bldr_data, dtype = self.convert_dtype(spec, container.data, spec_dtype=spec_dtype)
                         except Exception as ex:
-                            msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
+                            msg = "could not resolve dtype for %s '%s'" % (
+                                type(container).__name__,
+                                container.name,
+                            )
                             raise Exception(msg) from ex
                         builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
 
         # Add attributes from the specification extension to the list of attributes
-        all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
+        all_attrs = self.__spec.attributes + getattr(spec_ext, "attributes", tuple())
         # If the spec_ext refines an existing attribute it will now appear twice in the list. The
         # refinement should only be relevant for validation (not for write). To avoid problems with the
         # write we here remove duplicates and keep the original spec of the two to make write work.
@@ -774,18 +955,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return dtype, shape, spec
 
     def __is_reftype(self, data):
-        if (isinstance(data, AbstractDataChunkIterator) or
-                (isinstance(data, DataIO) and isinstance(data.data, AbstractDataChunkIterator))):
+        if isinstance(data, AbstractDataChunkIterator) or (
+            isinstance(data, DataIO) and isinstance(data.data, AbstractDataChunkIterator)
+        ):
             return False
 
         tmp = data
-        while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, str, bytes)):
+        while hasattr(tmp, "__len__") and not isinstance(tmp, (AbstractContainer, str, bytes)):
             tmptmp = None
             for t in tmp:
                 # In case of a numeric array stop the iteration at the first element to avoid long-running loop
                 if isinstance(t, (int, float, complex, bool)):
                     break
-                if hasattr(t, '__len__') and len(t) > 0 and not isinstance(t, (AbstractContainer, str, bytes)):
+                if hasattr(t, "__len__") and len(t) > 0 and not isinstance(t, (AbstractContainer, str, bytes)):
                     tmptmp = tmp[0]
                     break
             if tmptmp is not None:
@@ -801,8 +983,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return False
 
     def __set_dataset_to_refs(self, builder, dtype, shape, container, build_manager):
-        self.logger.debug("Queueing set dataset of references %s '%s' to reference builder(s)"
-                          % (builder.__class__.__name__, builder.name))
+        self.logger.debug(
+            "Queueing set dataset of references %s '%s' to reference builder(s)"
+            % (builder.__class__.__name__, builder.name)
+        )
 
         def _filler():
             builder.data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
@@ -810,12 +994,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return _filler
 
     def __set_compound_dataset_to_refs(self, builder, spec, spec_dtype, container, build_manager):
-        self.logger.debug("Queueing convert compound dataset %s '%s' and set any references to reference builders"
-                          % (builder.__class__.__name__, builder.name))
+        self.logger.debug(
+            "Queueing convert compound dataset %s '%s' and set any references to reference builders"
+            % (builder.__class__.__name__, builder.name)
+        )
 
         def _filler():
-            self.logger.debug("Converting compound dataset %s '%s' and setting any references to reference builders"
-                              % (builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Converting compound dataset %s '%s' and setting any references to reference builders"
+                % (builder.__class__.__name__, builder.name)
+            )
             # convert the reference part(s) of a compound dataset to ReferenceBuilders, row by row
             refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
             bldr_data = list()
@@ -829,12 +1017,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return _filler
 
     def __set_untyped_dataset_to_refs(self, builder, container, build_manager):
-        self.logger.debug("Queueing set untyped dataset %s '%s' to reference builders"
-                          % (builder.__class__.__name__, builder.name))
+        self.logger.debug(
+            "Queueing set untyped dataset %s '%s' to reference builders" % (builder.__class__.__name__, builder.name)
+        )
 
         def _filler():
-            self.logger.debug("Setting untyped dataset %s '%s' to list of reference builders"
-                              % (builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Setting untyped dataset %s '%s' to list of reference builders"
+                % (builder.__class__.__name__, builder.name)
+            )
             bldr_data = list()
             for d in container.data:
                 if d is None:
@@ -853,30 +1044,36 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if not isinstance(container, DataRegion):
                     msg = "'container' must be of type DataRegion if spec represents region reference"
                     raise ValueError(msg)
-                self.logger.debug("Setting %s '%s' data to region reference builder"
-                                  % (builder.__class__.__name__, builder.name))
+                self.logger.debug(
+                    "Setting %s '%s' data to region reference builder" % (builder.__class__.__name__, builder.name)
+                )
                 target_builder = self.__get_target_builder(container.data, build_manager, builder)
                 bldr_data = RegionBuilder(container.region, target_builder)
             else:
-                self.logger.debug("Setting %s '%s' data to list of region reference builders"
-                                  % (builder.__class__.__name__, builder.name))
+                self.logger.debug(
+                    "Setting %s '%s' data to list of region reference builders"
+                    % (builder.__class__.__name__, builder.name)
+                )
                 bldr_data = list()
                 for d in container.data:
                     target_builder = self.__get_target_builder(d.target, build_manager, builder)
                     bldr_data.append(RegionBuilder(d.slice, target_builder))
         else:
-            self.logger.debug("Setting object reference dataset on %s '%s' data"
-                              % (builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Setting object reference dataset on %s '%s' data" % (builder.__class__.__name__, builder.name)
+            )
             if isinstance(container, Data):
-                self.logger.debug("Setting %s '%s' data to list of reference builders"
-                                  % (builder.__class__.__name__, builder.name))
+                self.logger.debug(
+                    "Setting %s '%s' data to list of reference builders" % (builder.__class__.__name__, builder.name)
+                )
                 bldr_data = list()
                 for d in container.data:
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
             else:
-                self.logger.debug("Setting %s '%s' data to reference builder"
-                                  % (builder.__class__.__name__, builder.name))
+                self.logger.debug(
+                    "Setting %s '%s' data to reference builder" % (builder.__class__.__name__, builder.name)
+                )
                 target_builder = self.__get_target_builder(container, build_manager, builder)
                 bldr_data = ReferenceBuilder(target_builder)
         return bldr_data
@@ -889,12 +1086,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __add_attributes(self, builder, attributes, container, build_manager, source, export):
         if attributes:
-            self.logger.debug("Adding attributes from %s '%s' to %s '%s'"
-                              % (container.__class__.__name__, container.name,
-                                 builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Adding attributes from %s '%s' to %s '%s'"
+                % (
+                    container.__class__.__name__,
+                    container.name,
+                    builder.__class__.__name__,
+                    builder.name,
+                )
+            )
         for spec in attributes:
-            self.logger.debug("    Adding attribute for spec name: %s (dtype: %s)"
-                              % (repr(spec.name), spec.dtype.__class__.__name__))
+            self.logger.debug(
+                "    Adding attribute for spec name: %s (dtype: %s)" % (repr(spec.name), spec.dtype.__class__.__name__)
+            )
             if spec.value is not None:
                 attr_value = spec.value
             else:
@@ -911,8 +1115,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
-                    msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
-                           % (spec.name, type(attr_value)))
+                    msg = "invalid type for reference '%s' (%s) - must be AbstractContainer" % (
+                        spec.name,
+                        type(attr_value),
+                    )
                     raise ValueError(msg)
 
                 build_manager.queue_ref(self.__set_attr_to_ref(builder, attr_value, build_manager, spec))
@@ -921,7 +1127,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 try:
                     attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                 except Exception as ex:
-                    msg = 'could not convert %s for %s %s' % (spec.name, type(container).__name__, container.name)
+                    msg = "could not convert %s for %s %s" % (
+                        spec.name,
+                        type(container).__name__,
+                        container.name,
+                    )
                     raise BuildError(builder, msg) from ex
 
                 # do not write empty or null valued objects
@@ -933,14 +1143,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
             builder.set_attribute(spec.name, attr_value)
 
     def __set_attr_to_ref(self, builder, attr_value, build_manager, spec):
-        self.logger.debug("Queueing set reference attribute on %s '%s' attribute '%s' to %s"
-                          % (builder.__class__.__name__, builder.name, spec.name,
-                             attr_value.__class__.__name__))
+        self.logger.debug(
+            "Queueing set reference attribute on %s '%s' attribute '%s' to %s"
+            % (
+                builder.__class__.__name__,
+                builder.name,
+                spec.name,
+                attr_value.__class__.__name__,
+            )
+        )
 
         def _filler():
-            self.logger.debug("Setting reference attribute on %s '%s' attribute '%s' to %s"
-                              % (builder.__class__.__name__, builder.name, spec.name,
-                                 attr_value.__class__.__name__))
+            self.logger.debug(
+                "Setting reference attribute on %s '%s' attribute '%s' to %s"
+                % (
+                    builder.__class__.__name__,
+                    builder.name,
+                    spec.name,
+                    attr_value.__class__.__name__,
+                )
+            )
             target_builder = self.__get_target_builder(attr_value, build_manager, builder)
             ref_attr_value = ReferenceBuilder(target_builder)
             builder.set_attribute(spec.name, ref_attr_value)
@@ -949,12 +1171,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __add_links(self, builder, links, container, build_manager, source, export):
         if links:
-            self.logger.debug("Adding links from %s '%s' to %s '%s'"
-                              % (container.__class__.__name__, container.name,
-                                 builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Adding links from %s '%s' to %s '%s'"
+                % (
+                    container.__class__.__name__,
+                    container.name,
+                    builder.__class__.__name__,
+                    builder.name,
+                )
+            )
         for spec in links:
-            self.logger.debug("    Adding link for spec name: %s, target_type: %s"
-                              % (repr(spec.name), repr(spec.target_type)))
+            self.logger.debug(
+                "    Adding link for spec name: %s, target_type: %s" % (repr(spec.name), repr(spec.target_type))
+            )
             attr_value = self.get_attr_value(spec, container, build_manager)
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
@@ -964,12 +1193,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __add_datasets(self, builder, datasets, container, build_manager, source, export):
         if datasets:
-            self.logger.debug("Adding datasets from %s '%s' to %s '%s'"
-                              % (container.__class__.__name__, container.name,
-                                 builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Adding datasets from %s '%s' to %s '%s'"
+                % (
+                    container.__class__.__name__,
+                    container.name,
+                    builder.__class__.__name__,
+                    builder.name,
+                )
+            )
         for spec in datasets:
-            self.logger.debug("    Adding dataset for spec name: %s (dtype: %s)"
-                              % (repr(spec.name), spec.dtype.__class__.__name__))
+            self.logger.debug(
+                "    Adding dataset for spec name: %s (dtype: %s)" % (repr(spec.name), spec.dtype.__class__.__name__)
+            )
             attr_value = self.get_attr_value(spec, container, build_manager)
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
@@ -977,43 +1213,78 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             attr_value = self.__check_ref_resolver(attr_value)
             if isinstance(attr_value, LinkBuilder):
-                self.logger.debug("        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
-                                  % (attr_value.name, attr_value.__class__.__name__,
-                                     repr(spec.name),
-                                     spec.def_key(), repr(spec.data_type_def),
-                                     spec.inc_key(), repr(spec.data_type_inc)))
+                self.logger.debug(
+                    "        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
+                    % (
+                        attr_value.name,
+                        attr_value.__class__.__name__,
+                        repr(spec.name),
+                        spec.def_key(),
+                        repr(spec.data_type_def),
+                        spec.inc_key(),
+                        repr(spec.data_type_inc),
+                    )
+                )
                 builder.set_link(attr_value)  # add the existing builder
             elif spec.data_type_def is None and spec.data_type_inc is None:  # untyped, named dataset
                 if spec.name in builder.datasets:
                     sub_builder = builder.datasets[spec.name]
-                    self.logger.debug("        Retrieving existing DatasetBuilder '%s' for spec name %s and adding "
-                                      "attributes" % (sub_builder.name, repr(spec.name)))
+                    self.logger.debug(
+                        "        Retrieving existing DatasetBuilder '%s' for spec name %s and adding attributes"
+                        % (sub_builder.name, repr(spec.name))
+                    )
                 else:
-                    self.logger.debug("        Converting untyped dataset for spec name %s to spec dtype %s"
-                                      % (repr(spec.name), repr(spec.dtype)))
+                    self.logger.debug(
+                        "        Converting untyped dataset for spec name %s to spec dtype %s"
+                        % (repr(spec.name), repr(spec.dtype))
+                    )
                     try:
                         data, dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
-                        msg = 'could not convert \'%s\' for %s \'%s\''
-                        msg = msg % (spec.name, type(container).__name__, container.name)
+                        msg = "could not convert '%s' for %s '%s'"
+                        msg = msg % (
+                            spec.name,
+                            type(container).__name__,
+                            container.name,
+                        )
                         raise BuildError(builder, msg) from ex
-                    self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
-                                      % repr(spec.name))
+                    self.logger.debug(
+                        "        Adding untyped dataset for spec name %s and adding attributes" % repr(spec.name)
+                    )
                     sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
                     builder.set_dataset(sub_builder)
-                self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
+                self.__add_attributes(
+                    sub_builder,
+                    spec.attributes,
+                    container,
+                    build_manager,
+                    source,
+                    export,
+                )
             else:
-                self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
-                                  % (repr(spec.name),
-                                     spec.def_key(), repr(spec.data_type_def),
-                                     spec.inc_key(), repr(spec.data_type_inc)))
+                self.logger.debug(
+                    "        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
+                    % (
+                        repr(spec.name),
+                        spec.def_key(),
+                        repr(spec.data_type_def),
+                        spec.inc_key(),
+                        repr(spec.data_type_inc),
+                    )
+                )
                 self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
 
     def __add_groups(self, builder, groups, container, build_manager, source, export):
         if groups:
-            self.logger.debug("Adding groups from %s '%s' to %s '%s'"
-                              % (container.__class__.__name__, container.name,
-                                 builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "Adding groups from %s '%s' to %s '%s'"
+                % (
+                    container.__class__.__name__,
+                    container.name,
+                    builder.__class__.__name__,
+                    builder.name,
+                )
+            )
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:
                 self.logger.debug("    Adding untyped group for spec name: %s" % repr(spec.name))
@@ -1021,7 +1292,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
-                self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
+                self.__add_attributes(
+                    sub_builder,
+                    spec.attributes,
+                    container,
+                    build_manager,
+                    source,
+                    export,
+                )
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source, export)
                 self.__add_links(sub_builder, spec.links, container, build_manager, source, export)
                 self.__add_groups(sub_builder, spec.groups, container, build_manager, source, export)
@@ -1030,24 +1308,47 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     if sub_builder.name not in builder.groups:
                         builder.set_group(sub_builder)
             else:
-                self.logger.debug("    Adding group for spec name: %s, %s: %s, %s: %s"
-                                  % (repr(spec.name),
-                                     spec.def_key(), repr(spec.data_type_def),
-                                     spec.inc_key(), repr(spec.data_type_inc)))
+                self.logger.debug(
+                    "    Adding group for spec name: %s, %s: %s, %s: %s"
+                    % (
+                        repr(spec.name),
+                        spec.def_key(),
+                        repr(spec.data_type_def),
+                        spec.inc_key(),
+                        repr(spec.data_type_inc),
+                    )
+                )
                 attr_value = self.get_attr_value(spec, container, build_manager)
                 self.__check_quantity(attr_value, spec, container)
                 if attr_value is not None:
-                    self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
+                    self.__add_containers(
+                        builder,
+                        spec,
+                        attr_value,
+                        build_manager,
+                        source,
+                        container,
+                        export,
+                    )
 
     def __add_containers(self, builder, spec, value, build_manager, source, parent_container, export):
         if isinstance(value, AbstractContainer):
-            self.logger.debug("    Adding container %s '%s' with parent %s '%s' to %s '%s'"
-                              % (value.__class__.__name__, value.name,
-                                 parent_container.__class__.__name__, parent_container.name,
-                                 builder.__class__.__name__, builder.name))
+            self.logger.debug(
+                "    Adding container %s '%s' with parent %s '%s' to %s '%s'"
+                % (
+                    value.__class__.__name__,
+                    value.name,
+                    parent_container.__class__.__name__,
+                    parent_container.name,
+                    builder.__class__.__name__,
+                    builder.name,
+                )
+            )
             if value.parent is None:
-                if (value.container_source == parent_container.container_source or
-                        build_manager.get_builder(value) is None):
+                if (
+                    value.container_source == parent_container.container_source
+                    or build_manager.get_builder(value) is None
+                ):
                     # value was removed (or parent not set) and there is a link to it in same file
                     # or value was read from an external link
                     raise OrphanContainerBuildError(builder, value)
@@ -1062,43 +1363,72 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     new_builder = build_manager.build(value, source=source, export=export)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
-                    self.logger.debug("    Adding link to %s '%s' in %s '%s'"
-                                      % (new_builder.__class__.__name__, new_builder.name,
-                                         builder.__class__.__name__, builder.name))
+                    self.logger.debug(
+                        "    Adding link to %s '%s' in %s '%s'"
+                        % (
+                            new_builder.__class__.__name__,
+                            new_builder.name,
+                            builder.__class__.__name__,
+                            builder.name,
+                        )
+                    )
                     builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
-                    self.logger.debug("    Adding dataset %s '%s' to %s '%s'"
-                                      % (new_builder.__class__.__name__, new_builder.name,
-                                         builder.__class__.__name__, builder.name))
+                    self.logger.debug(
+                        "    Adding dataset %s '%s' to %s '%s'"
+                        % (
+                            new_builder.__class__.__name__,
+                            new_builder.name,
+                            builder.__class__.__name__,
+                            builder.name,
+                        )
+                    )
                     builder.set_dataset(new_builder)
                 else:
-                    self.logger.debug("    Adding subgroup %s '%s' to %s '%s'"
-                                      % (new_builder.__class__.__name__, new_builder.name,
-                                         builder.__class__.__name__, builder.name))
+                    self.logger.debug(
+                        "    Adding subgroup %s '%s' to %s '%s'"
+                        % (
+                            new_builder.__class__.__name__,
+                            new_builder.name,
+                            builder.__class__.__name__,
+                            builder.name,
+                        )
+                    )
                     builder.set_group(new_builder)
             elif value.container_source:  # make a link to an existing container
-                if (value.container_source != parent_container.container_source
-                        or value.parent is not parent_container):
-                    self.logger.debug("    Building %s '%s' (container source: %s) and adding a link to it"
-                                      % (value.__class__.__name__, value.name, value.container_source))
+                if value.container_source != parent_container.container_source or value.parent is not parent_container:
+                    self.logger.debug(
+                        "    Building %s '%s' (container source: %s) and adding a link to it"
+                        % (value.__class__.__name__, value.name, value.container_source)
+                    )
                     if isinstance(spec, BaseStorageSpec):
                         new_builder = build_manager.build(value, source=source, spec_ext=spec, export=export)
                     else:
                         new_builder = build_manager.build(value, source=source, export=export)
                     builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
                 else:
-                    self.logger.debug("    Skipping build for %s '%s' because both it and its parents were read "
-                                      "from the same source."
-                                      % (value.__class__.__name__, value.name))
+                    self.logger.debug(
+                        "    Skipping build for %s '%s' because both it and its parents were read from the same source."
+                        % (value.__class__.__name__, value.name)
+                    )
             else:
-                raise ValueError("Found unmodified AbstractContainer with no source - '%s' with parent '%s'" %
-                                 (value.name, parent_container.name))
+                raise ValueError(
+                    "Found unmodified AbstractContainer with no source - '%s' with parent '%s'"
+                    % (value.name, parent_container.name)
+                )
         elif isinstance(value, list):
             for container in value:
-                self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
+                self.__add_containers(
+                    builder,
+                    spec,
+                    container,
+                    build_manager,
+                    source,
+                    parent_container,
+                    export,
+                )
         else:  # pragma: no cover
-            msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
-                   % value.__class__.__name__)
+            msg = "Received %s, expected AbstractContainer or a list of AbstractContainers." % value.__class__.__name__
             raise ValueError(msg)
 
     def __get_subspec_values(self, builder, spec, manager):
@@ -1149,10 +1479,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(spec, DatasetSpec):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
-            if (spec.shape is None and getattr(builder.data, 'shape', None) == (1,) and
-                    type(builder.data[0]) != np.void):
+            if spec.shape is None and getattr(builder.data, "shape", None) == (1,) and type(builder.data[0]) != np.void:
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
-                builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
+                builder["data"] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)
         return ret
 
@@ -1205,14 +1534,27 @@ class ObjectMapper(metaclass=ExtenderMeta):
             tmp = tmp[0]
         return tmp
 
-    @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
-             'doc': 'the builder to construct the AbstractContainer from'},
-            {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'},
-            {'name': 'parent', 'type': (Proxy, AbstractContainer),
-             'doc': 'the parent AbstractContainer/Proxy for the AbstractContainer being built', 'default': None})
+    @docval(
+        {
+            "name": "builder",
+            "type": (DatasetBuilder, GroupBuilder),
+            "doc": "the builder to construct the AbstractContainer from",
+        },
+        {
+            "name": "manager",
+            "type": BuildManager,
+            "doc": "the BuildManager for this build",
+        },
+        {
+            "name": "parent",
+            "type": (Proxy, AbstractContainer),
+            "doc": "the parent AbstractContainer/Proxy for the AbstractContainer being built",
+            "default": None,
+        },
+    )
     def construct(self, **kwargs):
-        ''' Construct an AbstractContainer from the given Builder '''
-        builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
+        """Construct an AbstractContainer from the given Builder"""
+        builder, manager, parent = getargs("builder", "manager", "parent", kwargs)
         cls = manager.get_cls(builder)
         # gather all subspecs
         subspecs = self.__get_subspec_values(builder, self.spec, manager)
@@ -1222,8 +1564,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # there is no sub-specification that maps to that argument under the default logic
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
-                raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
-            const_args['data'] = self.__check_ref_resolver(builder.data)
+                raise ValueError("Can only construct a Data object from a DatasetBuilder - got %s" % type(builder))
+            const_args["data"] = self.__check_ref_resolver(builder.data)
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
@@ -1235,7 +1577,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # build kwargs for the constructor
         kwargs = dict()
         for const_arg in get_docval(cls.__init__):
-            argname = const_arg['name']
+            argname = const_arg["name"]
             override = self.__get_override_carg(argname, builder, manager)
             if override is not None:
                 val = override
@@ -1245,28 +1587,43 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             kwargs[argname] = val
         try:
-            obj = self.__new_container__(cls, builder.source, parent, builder.attributes.get(self.__spec.id_key()),
-                                         **kwargs)
+            obj = self.__new_container__(
+                cls,
+                builder.source,
+                parent,
+                builder.attributes.get(self.__spec.id_key()),
+                **kwargs,
+            )
         except Exception as ex:
-            msg = 'Could not construct %s object due to: %s' % (cls.__name__, ex)
+            msg = "Could not construct %s object due to: %s" % (cls.__name__, ex)
             raise ConstructError(builder, msg) from ex
         return obj
 
     def __new_container__(self, cls, container_source, parent, object_id, **kwargs):
         """A wrapper function for ensuring a container gets everything set appropriately"""
-        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id,
-                          in_construct_mode=True)
+        obj = cls.__new__(
+            cls,
+            container_source=container_source,
+            parent=parent,
+            object_id=object_id,
+            in_construct_mode=True,
+        )
         # obj has been created and is in construction mode, indicating that the object is being constructed by
         # the automatic construct process during read, rather than by the user
         obj.__init__(**kwargs)
         obj._in_construct_mode = False  # reset to False to indicate that the construction of the object is complete
         return obj
 
-    @docval({'name': 'container', 'type': AbstractContainer,
-             'doc': 'the AbstractContainer to get the Builder name for'})
+    @docval(
+        {
+            "name": "container",
+            "type": AbstractContainer,
+            "doc": "the AbstractContainer to get the Builder name for",
+        }
+    )
     def get_builder_name(self, **kwargs):
-        '''Get the name of a Builder that represents a AbstractContainer'''
-        container = getargs('container', kwargs)
+        """Get the name of a Builder that represents a AbstractContainer"""
+        container = getargs("container", kwargs)
         if self.__spec.name is not None:
             ret = self.__spec.name
         else:

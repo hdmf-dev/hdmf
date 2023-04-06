@@ -1,17 +1,17 @@
 import copy
-import math
 import functools  # TODO: remove when Python 3.7 support is dropped - see #785
+import math
 import operator  # TODO: remove when Python 3.7 support is dropped
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-from warnings import warn
+from itertools import chain, product
 from typing import Tuple
-from itertools import product, chain
+from warnings import warn
 
 import h5py
 import numpy as np
 
-from .utils import docval, getargs, popargs, docval_macro, get_data_shape
+from .utils import docval, docval_macro, get_data_shape, getargs, popargs
 
 
 def append_data(data, arg):
@@ -19,7 +19,7 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+        return np.append(data, np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1
@@ -46,14 +46,14 @@ def extend_data(data, arg):
         shape = list(data.shape)
         shape[0] += len(arg)
         data.resize(shape)
-        data[-len(arg):] = arg
+        data[-len(arg) :] = arg
         return data
     else:
         msg = "Data cannot extend object of type '%s'" % type(data)
         raise ValueError(msg)
 
 
-@docval_macro('array_data')
+@docval_macro("array_data")
 class AbstractDataChunkIterator(metaclass=ABCMeta):
     """
     Abstract iterator class used to iterate over DataChunks.
@@ -138,9 +138,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             name="buffer_gb",
             type=(float, int),
             doc=(
-                "If buffer_shape is not specified, it will be inferred as the smallest chunk "
-                "below the buffer_gb threshold."
-                "Defaults to 1GB."
+                "If buffer_shape is not specified, it will be inferred as the smallest"
+                " chunk below the buffer_gb threshold.Defaults to 1GB."
             ),
             default=None,
         ),
@@ -154,8 +153,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             name="chunk_mb",
             type=(float, int),
             doc=(
-                "If chunk_shape is not specified, it will be inferred as the smallest chunk "
-                "below the chunk_mb threshold.",
+                (
+                    "If chunk_shape is not specified, it will be inferred as the"
+                    " smallest chunk below the chunk_mb threshold."
+                ),
                 "Defaults to 1MB.",
             ),
             default=None,
@@ -193,8 +194,21 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, self.progress_bar_options = getargs(
-            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
+        (
+            buffer_gb,
+            buffer_shape,
+            chunk_mb,
+            chunk_shape,
+            self.display_progress,
+            self.progress_bar_options,
+        ) = getargs(
+            "buffer_gb",
+            "buffer_shape",
+            "chunk_mb",
+            "chunk_shape",
+            "display_progress",
+            "progress_bar_options",
+            kwargs,
         )
 
         if buffer_gb is None and buffer_shape is None:
@@ -248,12 +262,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             1,
         )
         self.buffer_selection_generator = (
-            tuple(
-                [
-                    slice(lower_bound, upper_bound)
-                    for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)
-                ]
-            )
+            tuple([slice(lower_bound, upper_bound) for lower_bound, upper_bound in zip(lower_bounds, upper_bounds)])
             for lower_bounds, upper_bounds in zip(
                 product(
                     *[
@@ -263,7 +272,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 ),
                 product(
                     *[
-                        chain(range(buffer_shape_axis, max_shape_axis, buffer_shape_axis), [max_shape_axis])
+                        chain(
+                            range(
+                                buffer_shape_axis,
+                                max_shape_axis,
+                                buffer_shape_axis,
+                            ),
+                            [max_shape_axis],
+                        )
                         for max_shape_axis, buffer_shape_axis in zip(self.maxshape, self.buffer_shape)
                     ]
                 ),
@@ -283,8 +299,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
             except ImportError:
                 warn(
-                    "You must install tqdm to use the progress bar feature (pip install tqdm)! "
-                    "Progress bar is disabled."
+                    "You must install tqdm to use the progress bar feature (pip install"
+                    " tqdm)! Progress bar is disabled."
                 )
                 self.display_progress = False
 
@@ -340,23 +356,21 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         """
         buffer_gb = getargs("buffer_gb", kwargs)
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
-        assert all(chunk_axis > 0 for chunk_axis in self.chunk_shape), (
-            f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
-        )
+        assert all(
+            chunk_axis > 0 for chunk_axis in self.chunk_shape
+        ), f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
 
         k = math.floor(
             (
                 # TODO: replace with below when Python 3.7 support is dropped
                 # buffer_gb * 1e9 / (math.prod(self.chunk_shape) * self.dtype.itemsize)
-                buffer_gb * 1e9 / (functools.reduce(operator.mul, self.chunk_shape, 1) * self.dtype.itemsize)
-            ) ** (1 / len(self.chunk_shape))
+                buffer_gb
+                * 1e9
+                / (functools.reduce(operator.mul, self.chunk_shape, 1) * self.dtype.itemsize)
+            )
+            ** (1 / len(self.chunk_shape))
         )
-        return tuple(
-            [
-                min(max(k * x, self.chunk_shape[j]), self.maxshape[j])
-                for j, x in enumerate(self.chunk_shape)
-            ]
-        )
+        return tuple([min(max(k * x, self.chunk_shape[j]), self.maxshape[j]) for j, x in enumerate(self.chunk_shape)])
 
     def recommended_chunk_shape(self) -> Tuple[int, ...]:
         return self.chunk_shape
@@ -378,7 +392,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             self.progress_bar.update(n=1)
         try:
             buffer_selection = next(self.buffer_selection_generator)
-            return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
+            return DataChunk(
+                data=self._get_data(selection=buffer_selection),
+                selection=buffer_selection,
+            )
         except StopIteration:
             if self.display_progress:
                 self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
@@ -445,13 +462,36 @@ class DataChunkIterator(AbstractDataChunkIterator):
     """
 
     __docval_init = (
-        {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
-        {'name': 'maxshape', 'type': tuple,
-         'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
-         'default': None},
-        {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
-        {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
-        {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
+        {
+            "name": "data",
+            "type": None,
+            "doc": "The data object used for iteration",
+            "default": None,
+        },
+        {
+            "name": "maxshape",
+            "type": tuple,
+            "doc": "The maximum shape of the full data array. Use None to indicate unlimited dimensions",
+            "default": None,
+        },
+        {
+            "name": "dtype",
+            "type": np.dtype,
+            "doc": "The Numpy data type for the array",
+            "default": None,
+        },
+        {
+            "name": "buffer_size",
+            "type": int,
+            "doc": "Number of values to be buffered in a chunk",
+            "default": 1,
+        },
+        {
+            "name": "iter_axis",
+            "type": int,
+            "doc": "The dimension to iterate over",
+            "default": 0,
+        },
     )
 
     @docval(*__docval_init)
@@ -461,19 +501,22 @@ class DataChunkIterator(AbstractDataChunkIterator):
         the dtype of the data.
         """
         # Get the user parameters
-        self.data, self.__maxshape, self.__dtype, self.buffer_size, self.iter_axis = getargs('data',
-                                                                                             'maxshape',
-                                                                                             'dtype',
-                                                                                             'buffer_size',
-                                                                                             'iter_axis',
-                                                                                             kwargs)
+        (
+            self.data,
+            self.__maxshape,
+            self.__dtype,
+            self.buffer_size,
+            self.iter_axis,
+        ) = getargs("data", "maxshape", "dtype", "buffer_size", "iter_axis", kwargs)
         self.chunk_index = 0
         # Create an iterator for the data if possible
         if isinstance(self.data, Iterable):
             if self.iter_axis != 0 and isinstance(self.data, (list, tuple)):
-                warn('Iterating over an axis other than the first dimension of list or tuple data '
-                     'involves converting the data object to a numpy ndarray, which may incur a computational '
-                     'cost.')
+                warn(
+                    "Iterating over an axis other than the first dimension of list or"
+                    " tuple data involves converting the data object to a numpy"
+                    " ndarray, which may incur a computational cost."
+                )
                 self.data = np.asarray(self.data)
             if isinstance(self.data, np.ndarray):
                 # iterate over the given axis by adding a new view on data (iter only works on the first dim)
@@ -492,7 +535,11 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__maxshape = self.data.shape
                 # Avoid the special case of scalar values by making them into a 1D numpy array
                 if len(self.__maxshape) == 0:
-                    self.data = np.asarray([self.data, ])
+                    self.data = np.asarray(
+                        [
+                            self.data,
+                        ]
+                    )
                     self.__maxshape = self.data.shape
                     self.__data_iter = iter(self.data)
             # Try to get an accurate idea of __maxshape for other Python data structures if possible.
@@ -514,7 +561,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
             self.__first_chunk_shape = tuple(1 if i is None else i for i in self.__maxshape)
 
         if self.__dtype is None:
-            raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
+            raise Exception("Data type could not be determined. Please specify dtype in DataChunkIterator init.")
 
     @classmethod
     @docval(*__docval_init)
@@ -531,6 +578,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         :returns: self.__next_chunk, i.e., the DataChunk object describing the next chunk
         """
         from h5py import Dataset as H5Dataset
+
         if isinstance(self.data, H5Dataset):
             start_index = self.chunk_index * self.buffer_size
             stop_index = start_index + self.buffer_size
@@ -585,8 +633,10 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 self.__next_chunk.data = np.stack(iter_pieces, axis=self.iter_axis)
 
                 selection = [slice(None)] * len(self.maxshape)
-                selection[self.iter_axis] = slice(self.__next_chunk_start + curr_chunk_offset,
-                                                  self.__next_chunk_start + curr_chunk_offset + next_chunk_size)
+                selection[self.iter_axis] = slice(
+                    self.__next_chunk_start + curr_chunk_offset,
+                    self.__next_chunk_start + curr_chunk_offset + next_chunk_size,
+                )
                 self.__next_chunk.selection = tuple(selection)
 
                 # next chunk should start at self.__next_chunk.selection[self.iter_axis].stop
@@ -623,8 +673,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
         if self.__first_chunk_shape is None:
             self.__first_chunk_shape = self.__next_chunk.data.shape
         # Keep the next chunk we need to return
-        curr_chunk = DataChunk(self.__next_chunk.data,
-                               self.__next_chunk.selection)
+        curr_chunk = DataChunk(self.__next_chunk.data, self.__next_chunk.selection)
         # Remove the data for the next chunk from our list since we are returning it here.
         # This is to allow the GarbageCollector to remove the data when it goes out of scope and avoid
         # having 2 full chunks in memory if not necessary
@@ -634,19 +683,22 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
     next = __next__
 
-    @docval(returns='Tuple with the recommended chunk shape or None if no particular shape is recommended.')
+    @docval(returns="Tuple with the recommended chunk shape or None if no particular shape is recommended.")
     def recommended_chunk_shape(self):
         """Recommend a chunk shape.
 
         To optimize iterative write the chunk should be aligned with the common shape of chunks returned by __next__
         or if those chunks are too large, then a well-aligned subset of those chunks. This may also be
         any other value in case one wants to recommend chunk shapes to optimize read rather
-        than write. The default implementation returns None, indicating no preferential chunking option."""
+        than write. The default implementation returns None, indicating no preferential chunking option.
+        """
         return None
 
-    @docval(returns='Recommended initial shape for the full data. This should be the shape of the full dataset' +
-                    'if known beforehand or alternatively the minimum shape of the dataset. Return None if no ' +
-                    'recommendation is available')
+    @docval(
+        returns="Recommended initial shape for the full data. This should be the shape of the full dataset"
+        + "if known beforehand or alternatively the minimum shape of the dataset. Return None if no "
+        + "recommendation is available"
+    )
     def recommended_data_shape(self):
         """Recommend an initial shape of the data. This is useful when progressively writing data and
         we want to recommend an initial size for the dataset"""
@@ -686,7 +738,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 # Size of self.__next_chunk.data along self.iter_axis is not accurate for maxshape because it is just a
                 # chunk. So try to set maxshape along the dimension self.iter_axis based on the shape of self.data if
                 # possible. Otherwise, use None to represent an unlimited size
-                if hasattr(self.data, '__len__') and self.iter_axis == 0:
+                if hasattr(self.data, "__len__") and self.iter_axis == 0:
                     # special case of 1-D array
                     self.__maxshape[0] = len(self.data)
                 else:
@@ -712,12 +764,22 @@ class DataChunk:
     Class used to describe a data chunk. Used in DataChunkIterator.
     """
 
-    @docval({'name': 'data', 'type': np.ndarray,
-             'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},
-            {'name': 'selection', 'type': None,
-             'doc': 'Numpy index tuple describing the location of the chunk', 'default': None})
+    @docval(
+        {
+            "name": "data",
+            "type": np.ndarray,
+            "doc": "Numpy array with the data value(s) of the chunk",
+            "default": None,
+        },
+        {
+            "name": "selection",
+            "type": None,
+            "doc": "Numpy index tuple describing the location of the chunk",
+            "default": None,
+        },
+    )
     def __init__(self, **kwargs):
-        self.data, self.selection = getargs('data', 'selection', kwargs)
+        self.data, self.selection = getargs("data", "selection", kwargs)
 
     def __len__(self):
         """Get the number of values in the data chunk"""
@@ -731,20 +793,20 @@ class DataChunk:
         return getattr(self.data, attr)
 
     def __copy__(self):
-        newobj = DataChunk(data=self.data,
-                           selection=self.selection)
+        newobj = DataChunk(data=self.data, selection=self.selection)
         return newobj
 
     def __deepcopy__(self, memo):
-        result = DataChunk(data=copy.deepcopy(self.data),
-                           selection=copy.deepcopy(self.selection))
+        result = DataChunk(
+            data=copy.deepcopy(self.data),
+            selection=copy.deepcopy(self.selection),
+        )
         memo[id(self)] = result
         return result
 
     def astype(self, dtype):
         """Get a new DataChunk with the self.data converted to the given type"""
-        return DataChunk(data=self.data.astype(dtype),
-                         selection=self.selection)
+        return DataChunk(data=self.data.astype(dtype), selection=self.selection)
 
     @property
     def dtype(self):
@@ -765,28 +827,31 @@ class DataChunk:
         """
         if isinstance(self.selection, tuple):
             # Determine the minimum array dimensions to fit the chunk selection
-            max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x+1 for x in self.selection])
+            max_bounds = tuple([x.stop or 0 if isinstance(x, slice) else x + 1 for x in self.selection])
         elif isinstance(self.selection, int):
-            max_bounds = (self.selection+1, )
+            max_bounds = (self.selection + 1,)
         elif isinstance(self.selection, slice):
-            max_bounds = (self.selection.stop or 0, )
+            max_bounds = (self.selection.stop or 0,)
         else:
             # Note: Technically any numpy index tuple would be allowed, but h5py is not as general and this case
             #       only implements the selections supported by h5py. We could add more cases to support a
             #       broader range of valid numpy selection types
-            msg = ("Chunk selection %s must be a single int, single slice, or tuple of slices "
-                   "and/or integers") % str(self.selection)
+            msg = "Chunk selection %s must be a single int, single slice, or tuple of slices and/or integers" % str(
+                self.selection
+            )
             raise TypeError(msg)
         return max_bounds
 
 
-def assertEqualShape(data1,
-                     data2,
-                     axes1=None,
-                     axes2=None,
-                     name1=None,
-                     name2=None,
-                     ignore_undetermined=True):
+def assertEqualShape(
+    data1,
+    data2,
+    axes1=None,
+    axes2=None,
+    name1=None,
+    name2=None,
+    ignore_undetermined=True,
+):
     """
     Ensure that the shape of data1 and data2 match along the given dimensions
 
@@ -826,26 +891,40 @@ def assertEqualShape(data1,
     # 1) Check the number of dimensions of the arrays
     if (response.axes1 is None and response.axes2 is None) and num_dims_1 != num_dims_2:
         response.result = False
-        response.error = 'NUM_DIMS_ERROR'
+        response.error = "NUM_DIMS_ERROR"
         response.message = response.SHAPE_ERROR[response.error]
-        response.message += " %s is %sD and %s is %sD" % (n1, num_dims_1, n2, num_dims_2)
+        response.message += " %s is %sD and %s is %sD" % (
+            n1,
+            num_dims_1,
+            n2,
+            num_dims_2,
+        )
     # 2) Check that we have the same number of dimensions to compare on both arrays
     elif len(response.axes1) != len(response.axes2):
         response.result = False
-        response.error = 'NUM_AXES_ERROR'
+        response.error = "NUM_AXES_ERROR"
         response.message = response.SHAPE_ERROR[response.error]
-        response.message += " Cannot compare axes %s with %s" % (str(response.axes1), str(response.axes2))
+        response.message += " Cannot compare axes %s with %s" % (
+            str(response.axes1),
+            str(response.axes2),
+        )
     # 3) Check that the datasets have sufficient number of dimensions
     elif np.max(response.axes1) >= num_dims_1 or np.max(response.axes2) >= num_dims_2:
         response.result = False
-        response.error = 'AXIS_OUT_OF_BOUNDS'
+        response.error = "AXIS_OUT_OF_BOUNDS"
         response.message = response.SHAPE_ERROR[response.error]
         if np.max(response.axes1) >= num_dims_1:
-            response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % \
-                                (n1, np.max(response.axes1) + 1, num_dims_1)
+            response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % (
+                n1,
+                np.max(response.axes1) + 1,
+                num_dims_1,
+            )
         elif np.max(response.axes2) >= num_dims_2:
-            response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % \
-                                (n2, np.max(response.axes2) + 1, num_dims_2)
+            response.message += "Insufficient number of dimensions for %s -- Expected %i found %i" % (
+                n2,
+                np.max(response.axes2) + 1,
+                num_dims_2,
+            )
     # 4) Compare the length of the dimensions we should validate
     else:
         unmatched = []
@@ -868,15 +947,16 @@ def assertEqualShape(data1,
                 response.message += " Ignored undetermined axes %s" % str(response.ignored)
         else:
             response.result = False
-            response.error = 'AXIS_LEN_ERROR'
+            response.error = "AXIS_LEN_ERROR"
             response.message = response.SHAPE_ERROR[response.error]
-            response.message += "Axes %s with size %s of %s did not match dimensions %s with sizes %s of %s." % \
-                                (str([un[0] for un in response.unmatched]),
-                                 str([response.shape1[un[0]] for un in response.unmatched]),
-                                 n1,
-                                 str([un[1] for un in response.unmatched]),
-                                 str([response.shape2[un[1]] for un in response.unmatched]),
-                                 n2)
+            response.message += "Axes %s with size %s of %s did not match dimensions %s with sizes %s of %s." % (
+                str([un[0] for un in response.unmatched]),
+                str([response.shape1[un[0]] for un in response.unmatched]),
+                n1,
+                str([un[1] for un in response.unmatched]),
+                str([response.shape2[un[1]] for un in response.unmatched]),
+                n2,
+            )
             if len(response.ignored) > 0:
                 response.message += " Ignored undetermined axes %s" % str(response.ignored)
     return response
@@ -892,49 +972,125 @@ class ShapeValidatorResult:
     :ivar message: Message indicating the result of the matching procedure
     :type messaage: str, None
     """
-    SHAPE_ERROR = {None: 'All required axes matched',
-                   'NUM_DIMS_ERROR': 'Unequal number of dimensions.',
-                   'NUM_AXES_ERROR': "Unequal number of axes for comparison.",
-                   'AXIS_OUT_OF_BOUNDS': "Axis index for comparison out of bounds.",
-                   'AXIS_LEN_ERROR': "Unequal length of axes."}
+
+    SHAPE_ERROR = {
+        None: "All required axes matched",
+        "NUM_DIMS_ERROR": "Unequal number of dimensions.",
+        "NUM_AXES_ERROR": "Unequal number of axes for comparison.",
+        "AXIS_OUT_OF_BOUNDS": "Axis index for comparison out of bounds.",
+        "AXIS_LEN_ERROR": "Unequal length of axes.",
+    }
     """
     Dict where the Keys are the type of errors that may have occurred during shape comparison and the
     values are strings with default error messages for the type.
     """
 
-    @docval({'name': 'result', 'type': bool, 'doc': 'Result of the shape validation', 'default': False},
-            {'name': 'message', 'type': str,
-             'doc': 'Message describing the result of the shape validation', 'default': None},
-            {'name': 'ignored', 'type': tuple,
-             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None,)},
-            {'name': 'unmatched', 'type': tuple,
-             'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None,)},
-            {'name': 'error', 'type': str, 'doc': 'Error that may have occurred. One of ERROR_TYPE', 'default': None},
-            {'name': 'shape1', 'type': tuple,
-             'doc': 'Shape of the first array for comparison', 'default': tuple(), 'shape': (None,)},
-            {'name': 'shape2', 'type': tuple,
-             'doc': 'Shape of the second array for comparison', 'default': tuple(), 'shape': (None,)},
-            {'name': 'axes1', 'type': tuple,
-             'doc': 'Axes for the first array that should match', 'default': tuple(), 'shape': (None,)},
-            {'name': 'axes2', 'type': tuple,
-             'doc': 'Axes for the second array that should match', 'default': tuple(), 'shape': (None,)},
-            )
+    @docval(
+        {
+            "name": "result",
+            "type": bool,
+            "doc": "Result of the shape validation",
+            "default": False,
+        },
+        {
+            "name": "message",
+            "type": str,
+            "doc": "Message describing the result of the shape validation",
+            "default": None,
+        },
+        {
+            "name": "ignored",
+            "type": tuple,
+            "doc": "Axes that have been ignored in the validaton process",
+            "default": tuple(),
+            "shape": (None,),
+        },
+        {
+            "name": "unmatched",
+            "type": tuple,
+            "doc": "List of axes that did not match during shape validation",
+            "default": tuple(),
+            "shape": (None,),
+        },
+        {
+            "name": "error",
+            "type": str,
+            "doc": "Error that may have occurred. One of ERROR_TYPE",
+            "default": None,
+        },
+        {
+            "name": "shape1",
+            "type": tuple,
+            "doc": "Shape of the first array for comparison",
+            "default": tuple(),
+            "shape": (None,),
+        },
+        {
+            "name": "shape2",
+            "type": tuple,
+            "doc": "Shape of the second array for comparison",
+            "default": tuple(),
+            "shape": (None,),
+        },
+        {
+            "name": "axes1",
+            "type": tuple,
+            "doc": "Axes for the first array that should match",
+            "default": tuple(),
+            "shape": (None,),
+        },
+        {
+            "name": "axes2",
+            "type": tuple,
+            "doc": "Axes for the second array that should match",
+            "default": tuple(),
+            "shape": (None,),
+        },
+    )
     def __init__(self, **kwargs):
-        self.result, self.message, self.ignored, self.unmatched, \
-            self.error, self.shape1, self.shape2, self.axes1, self.axes2 = getargs(
-                'result', 'message', 'ignored', 'unmatched', 'error', 'shape1', 'shape2', 'axes1', 'axes2', kwargs)
+        (
+            self.result,
+            self.message,
+            self.ignored,
+            self.unmatched,
+            self.error,
+            self.shape1,
+            self.shape2,
+            self.axes1,
+            self.axes2,
+        ) = getargs(
+            "result",
+            "message",
+            "ignored",
+            "unmatched",
+            "error",
+            "shape1",
+            "shape2",
+            "axes1",
+            "axes2",
+            kwargs,
+        )
 
     def __setattr__(self, key, value):
         """
         Overwrite to ensure that, e.g., error_message is not set to an illegal value.
         """
-        if key == 'error':
+        if key == "error":
             if value not in self.SHAPE_ERROR.keys():
-                raise ValueError("Illegal error type. Error must be one of ShapeValidatorResult.SHAPE_ERROR: %s"
-                                 % str(self.SHAPE_ERROR))
+                raise ValueError(
+                    "Illegal error type. Error must be one of ShapeValidatorResult.SHAPE_ERROR: %s"
+                    % str(self.SHAPE_ERROR)
+                )
             else:
                 super().__setattr__(key, value)
-        elif key in ['shape1', 'shape2', 'axes1', 'axes2', 'ignored', 'unmatched']:  # Make sure we sore tuples
+        elif key in [
+            "shape1",
+            "shape2",
+            "axes1",
+            "axes2",
+            "ignored",
+            "unmatched",
+        ]:  # Make sure we sore tuples
             super().__setattr__(key, tuple(value))
         else:
             super().__setattr__(key, value)
@@ -943,32 +1099,40 @@ class ShapeValidatorResult:
         """
         Overwrite to allow dynamic retrieval of the default message
         """
-        if item == 'default_message':
+        if item == "default_message":
             return self.SHAPE_ERROR[self.error]
         return self.__getattribute__(item)
 
 
-@docval_macro('data')
+@docval_macro("data")
 class DataIO:
     """
     Base class for wrapping data arrays for I/O. Derived classes of DataIO are typically
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
     """
 
-    @docval({'name': 'data',
-             'type': 'array_data',
-             'doc': 'the data to be written',
-             'default': None},
-            {'name': 'dtype',
-             'type': (type, np.dtype),
-             'doc': 'the data type of the dataset. Not used if data is specified.',
-             'default': None},
-            {'name': 'shape',
-             'type': tuple,
-             'doc': 'the shape of the dataset. Not used if data is specified.',
-             'default': None})
+    @docval(
+        {
+            "name": "data",
+            "type": "array_data",
+            "doc": "the data to be written",
+            "default": None,
+        },
+        {
+            "name": "dtype",
+            "type": (type, np.dtype),
+            "doc": "the data type of the dataset. Not used if data is specified.",
+            "default": None,
+        },
+        {
+            "name": "shape",
+            "type": tuple,
+            "doc": "the shape of the dataset. Not used if data is specified.",
+            "default": None,
+        },
+    )
     def __init__(self, **kwargs):
-        data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
+        data, dtype, shape = popargs("data", "dtype", "shape", kwargs)
         if data is None:
             if (dtype is None) ^ (shape is None):
                 raise ValueError("Must specify 'dtype' and 'shape' if not specifying 'data'")
@@ -1063,7 +1227,7 @@ class DataIO:
 
     def __getattr__(self, attr):
         """Delegate attribute lookup to data object"""
-        if attr == '__array_struct__' and not self.valid:
+        if attr == "__array_struct__" and not self.valid:
             # np.array() checks __array__ or __array_struct__ attribute dep. on numpy version
             raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
         if not self.valid:
@@ -1085,7 +1249,7 @@ class DataIO:
         """
         if not self.valid:
             raise InvalidDataIOError("Cannot convert data to array. Data is not valid.")
-        if hasattr(self.data, '__array__'):
+        if hasattr(self.data, "__array__"):
             return self.data.__array__()
         elif isinstance(self.data, DataChunkIterator):
             raise NotImplementedError("Conversion of DataChunkIterator to array not supported")

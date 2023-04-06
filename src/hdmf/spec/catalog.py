@@ -1,14 +1,13 @@
 import copy
 from collections import OrderedDict
 
-from .spec import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
+from .spec import BaseStorageSpec, GroupSpec
 
 
 class SpecCatalog:
-
     def __init__(self):
-        '''
+        """
         Create a new catalog for storing specifications
 
         ** Private Instance Variables **
@@ -20,24 +19,30 @@ class SpecCatalog:
                     NOTE: Always use SpecCatalog.get_hierarchy(...) to retrieve the hierarchy
                     as this dictionary is used like a cache, i.e., to avoid repeated calculation
                     of the hierarchy but the contents are computed on first request by SpecCatalog.get_hierarchy(...)
-        '''
+        """
         self.__specs = OrderedDict()
         self.__parent_types = dict()
         self.__hierarchy = dict()
         self.__spec_source_files = dict()
 
-    @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'a Spec object'},
-            {'name': 'source_file', 'type': str,
-             'doc': 'path to the source file from which the spec was loaded', 'default': None})
+    @docval(
+        {"name": "spec", "type": BaseStorageSpec, "doc": "a Spec object"},
+        {
+            "name": "source_file",
+            "type": str,
+            "doc": "path to the source file from which the spec was loaded",
+            "default": None,
+        },
+    )
     def register_spec(self, **kwargs):
-        '''
+        """
         Associate a specified object type with a specification
-        '''
-        spec, source_file = getargs('spec', 'source_file', kwargs)
+        """
+        spec, source_file = getargs("spec", "source_file", kwargs)
         ndt = spec.data_type_inc
         ndt_def = spec.data_type_def
         if ndt_def is None:
-            raise ValueError('cannot register spec that has no data_type_def')
+            raise ValueError("cannot register spec that has no data_type_def")
         if ndt_def != ndt:
             self.__parent_types[ndt_def] = ndt
         type_name = ndt_def if ndt_def is not None else ndt
@@ -47,46 +52,69 @@ class SpecCatalog:
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the Spec for'},
-            returns="the specification for writing the given object type to HDF5 ", rtype='Spec')
+    @docval(
+        {
+            "name": "data_type",
+            "type": str,
+            "doc": "the data_type to get the Spec for",
+        },
+        returns="the specification for writing the given object type to HDF5 ",
+        rtype="Spec",
+    )
     def get_spec(self, **kwargs):
-        '''
+        """
         Get the Spec object for the given type
-        '''
-        data_type = getargs('data_type', kwargs)
+        """
+        data_type = getargs("data_type", kwargs)
         return self.__specs.get(data_type, None)
 
     @docval(rtype=tuple)
     def get_registered_types(self, **kwargs):
-        '''
+        """
         Return all registered specifications
-        '''
+        """
         # kwargs is not used here but is used by docval
         return tuple(self.__specs.keys())
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type of the spec to get the source file for'},
-            returns="the path to source specification file from which the spec was originally loaded or None ",
-            rtype='str')
+    @docval(
+        {
+            "name": "data_type",
+            "type": str,
+            "doc": "the data_type of the spec to get the source file for",
+        },
+        returns="the path to source specification file from which the spec was originally loaded or None ",
+        rtype="str",
+    )
     def get_spec_source_file(self, **kwargs):
-        '''
+        """
         Return the path to the source file from which the spec for the given
         type was loaded from. None is returned if no file path is available
         for the spec. Note: The spec in the file may not be identical to the
         object in case the spec is modified after load.
-        '''
-        data_type = getargs('data_type', kwargs)
+        """
+        data_type = getargs("data_type", kwargs)
         return self.__spec_source_files.get(data_type, None)
 
-    @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'the Spec object to register'},
-            {'name': 'source_file',
-             'type': str,
-             'doc': 'path to the source file from which the spec was loaded', 'default': None},
-            rtype=tuple, returns='the types that were registered with this spec')
+    @docval(
+        {
+            "name": "spec",
+            "type": BaseStorageSpec,
+            "doc": "the Spec object to register",
+        },
+        {
+            "name": "source_file",
+            "type": str,
+            "doc": "path to the source file from which the spec was loaded",
+            "default": None,
+        },
+        rtype=tuple,
+        returns="the types that were registered with this spec",
+    )
     def auto_register(self, **kwargs):
-        '''
+        """
         Register this specification and all sub-specification using data_type as object type name
-        '''
-        spec, source_file = getargs('spec', 'source_file', kwargs)
+        """
+        spec, source_file = getargs("spec", "source_file", kwargs)
         ndt = spec.data_type_def
         ret = list()
         if ndt is not None:
@@ -102,10 +130,15 @@ class SpecCatalog:
                 ret.extend(self.auto_register(group_spec, source_file))
         return tuple(ret)
 
-    @docval({'name': 'data_type', 'type': (str, type),
-             'doc': 'the data_type to get the hierarchy of'},
-            returns="Tuple of strings with the names of the types the given data_type inherits from.",
-            rtype=tuple)
+    @docval(
+        {
+            "name": "data_type",
+            "type": (str, type),
+            "doc": "the data_type to get the hierarchy of",
+        },
+        returns="Tuple of strings with the names of the types the given data_type inherits from.",
+        rtype=tuple,
+    )
     def get_hierarchy(self, **kwargs):
         """
         For a given type get the type inheritance hierarchy for that type.
@@ -113,7 +146,7 @@ class SpecCatalog:
         E.g., if we have a type MyContainer that inherits from BaseContainer then
         the result will be a tuple with the strings ('MyContainer', 'BaseContainer')
         """
-        data_type = getargs('data_type', kwargs)
+        data_type = getargs("data_type", kwargs)
         if isinstance(data_type, type):
             data_type = data_type.__name__
         ret = self.__hierarchy.get(data_type)
@@ -132,8 +165,10 @@ class SpecCatalog:
                 tmp_hier = tmp_hier[1:]
         return tuple(ret)
 
-    @docval(returns="Hierarchically nested OrderedDict with the hierarchy of all the types",
-            rtype=OrderedDict)
+    @docval(
+        returns="Hierarchically nested OrderedDict with the hierarchy of all the types",
+        rtype=OrderedDict,
+    )
     def get_full_hierarchy(self):
         """
         Get the complete hierarchy of all types. The function attempts to sort types by name using
@@ -159,13 +194,21 @@ class SpecCatalog:
 
         return type_hierarchy
 
-    @docval({'name': 'data_type', 'type': (str, type),
-             'doc': 'the data_type to get the subtypes for'},
-            {'name': 'recursive', 'type': bool,
-             'doc': 'recursively get all subtypes. Set to False to only get the direct subtypes',
-             'default': True},
-            returns="Tuple of strings with the names of all types of the given data_type.",
-            rtype=tuple)
+    @docval(
+        {
+            "name": "data_type",
+            "type": (str, type),
+            "doc": "the data_type to get the subtypes for",
+        },
+        {
+            "name": "recursive",
+            "type": bool,
+            "doc": "recursively get all subtypes. Set to False to only get the direct subtypes",
+            "default": True,
+        },
+        returns="Tuple of strings with the names of all types of the given data_type.",
+        rtype=tuple,
+    )
     def get_subtypes(self, **kwargs):
         """
         For a given data type recursively find all the subtypes that inherit from it.
@@ -179,7 +222,7 @@ class SpecCatalog:
         In this case, the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
         the subtypes of AContainer would be (ADContainer), and the subtypes of BContainer would be empty ().
         """
-        data_type, recursive = getargs('data_type', 'recursive', kwargs)
+        data_type, recursive = getargs("data_type", "recursive", kwargs)
         curr_spec = self.get_spec(data_type)
         if isinstance(curr_spec, BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
             subtypes = []

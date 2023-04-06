@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hdmf"
+authors = [
+  { name="Ryan Ly", email="rly@lbl.gov" },
+  { name="Andrew Tritt", email="ajtritt@lbl.gov" },
+  { name="Oliver Ruebel", email="oruebel@lbl.gov" },
+  { name="Ben Dichter", email="ben.dichter@gmail.com" },
+]
+description = "A hierarchical data modeling framework for modern science data standards"
+readme = "README.rst"
+requires-python = ">=3.7"
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: BSD License",
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "h5py>=2.10",
+    "jsonschema>=2.6.0",
+    "numpy>=1.16",
+    "pandas>=1.0.5",
+    "ruamel.yaml>=0.16",
+    "scipy>=1.1",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+zarr = ["zarr>=2.12.0"]
+
+[project.urls]
+"Homepage" = "https://github.com/hdmf-dev/hdmf"
+"Bug Tracker" = "https://github.com/hdmf-dev/hdmf/issues"
+
+[project.scripts]
+validate_hdmf_spec = "hdmf.testing.validate_spec:main"
+
+[tool.setuptools.package-data]
+mypkg = ["common/hdmf-common-schema/common/*.yaml", "common/hdmf-common-schema/common/*.json"]
+
+# [tool.mypy]
+# no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664
+
+[tool.isort]
+profile = "black"
+extend_skip = ["src/hdmf/common/hdmf-common-schema"]
+
+# [tool.interrogate]
+# fail-under = 95
+# verbose = 1
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-report html"
+norecursedirs = "tests/unit/helpers"
+
+[tool.codespell]
+skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb"
+ignore-words-list = "datas"
+
+[tool.coverage.run]
+branch = true
+source = ["src/"]
+omit = [
+    "src/hdmf/_due.py",
+    "src/hdmf/testing/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "@abstract"
+]
+
+[tool.setuptools_scm]
+
+[tool.black]
+line-length = 120
+preview = true
+extend-exclude = "src/hdmf/common/hdmf-common-schema"

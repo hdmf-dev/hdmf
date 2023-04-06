@@ -84,22 +84,43 @@ From your local copy directory, use the following commands.
 
 .. _sec-styleguides:
 
-Styleguides
------------
+Style Guides
+------------
 
-Python Code Styleguide
-^^^^^^^^^^^^^^^^^^^^^^
+Python Code Style Guide
+^^^^^^^^^^^^^^^^^^^^^^^
 
-Before you create a Pull Request, make sure you are following the HDMF style guide (PEP8_).
-To check whether your code conforms to the HDMF style guide, simply run the flake8_ tool in the project's root
-directory.
+Before you create a Pull Request, make sure you are following the Black_ preview style guide, which follows flake8,
+with code E203 ignored. We also break from the Black format by configuring it with a max line length of 120.
+To check whether your code conforms to the Black_ preview style guide, simply run the ``black`` tool in the project's root
+directory with the ``--check`` argument. You can also run the ``black`` tool without the ``--check`` argument to have
+black automatically format the codebase to comply with the black preview style guide.
 
+We also use the isort_ tool to sort python imports automatically, the flake8_ tool to double-check that the codebase
+conforms to PEP8 standards, and the codespell_ tool to check spelling.
+
+The black, isort, and flake8 tools are installed when you follow the developer installation instructions. See
+:ref:`install_developers`.
+
+.. _Black: https://black.readthedocs.io/en/stable/
+.. _isort: https://pycqa.github.io/isort/
 .. _flake8: https://flake8.pycqa.org/en/latest/
-.. _PEP8: https://peps.python.org/pep-0008/
 
 .. code::
 
+   $ black .
+   $ isort .
    $ flake8
+   $ codespell
+
+Pre-Commit
+^^^^^^^^^^
+
+We encourage developers to use pre-commit_ tool to automatically process the codebase to follow the style guide,
+as well as identify issues before making a commit. See installation and operation instructions in the pre-commit_
+documentation.
+
+.. _pre-commit: https://pre-commit.com/
 
 Git Commit Message Styleguide
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

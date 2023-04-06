@@ -88,16 +88,19 @@ are rules to how users store information in the interlinked tables.
 # Creating an instance of the ExternalResources class
 # ----------------------------------------------------
 
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
-from hdmf.common import ExternalResources
-from hdmf.common import DynamicTable
-from hdmf import Data
-import numpy as np
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
+
+import numpy as np
+
+from hdmf import Data
+
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
+from hdmf.common import DynamicTable, ExternalResources
+
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
 
-er = ExternalResources(name='example')
+er = ExternalResources(name="example")
 
 ###############################################################################
 # Using the add_ref method
@@ -110,23 +113,23 @@ er = ExternalResources(name='example')
 # :py:func:`~hdmf.common.resources.ExternalResources.add_ref` taking care of populating
 # the underlying data structures accordingly.
 
-data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+data = Data(name="species", data=["Homo sapiens", "Mus musculus"])
 er.add_ref(
     container=data,
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+    key="Homo sapiens",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid9606",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606",
 )
 
 key, resource, entity = er.add_ref(
     container=data,
-    key='Mus musculus',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+    key="Mus musculus",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid10090",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
 )
 
 # Print result from the last add_ref call
@@ -147,27 +150,27 @@ print(entity)
 # resource.
 
 # Let's create a new instance of ExternalResources.
-er = ExternalResources(name='example')
+er = ExternalResources(name="example")
 
-data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+data = Data(name="species", data=["Homo sapiens", "Mus musculus"])
 
 er.add_ref(
     container=data,
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+    key="Homo sapiens",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid9606",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606",
 )
 
 # Using get_resource
-existing_resource = er.get_resource('NCBI_Taxonomy')
+existing_resource = er.get_resource("NCBI_Taxonomy")
 er.add_ref(
     container=data,
-    key='Mus musculus',
+    key="Mus musculus",
     resources_idx=existing_resource,
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+    entity_id="NCBI:txid10090",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
 )
 
 ###############################################################################
@@ -183,27 +186,29 @@ er.add_ref(
 # resource.
 
 # Let's create a new instance of ExternalResources.
-er = ExternalResources(name='example')
+er = ExternalResources(name="example")
 
-data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+data = Data(name="species", data=["Homo sapiens", "Mus musculus"])
 er.add_ref(
     container=data,
-    field='',
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+    field="",
+    key="Homo sapiens",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid9606",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606",
+)
 
 # Using get_resource
-existing_resource = er.get_resource('NCBI_Taxonomy')
+existing_resource = er.get_resource("NCBI_Taxonomy")
 er.add_ref(
     container=data,
-    field='',
-    key='Mus musculus',
+    field="",
+    key="Mus musculus",
     resources_idx=existing_resource,
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+    entity_id="NCBI:txid10090",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
+)
 
 ###############################################################################
 # Using the add_ref method with an attribute
@@ -225,17 +230,17 @@ er.add_ref(
 # of the ``genotypes.genotype_name`` :py:class:`~hdmf.common.table.VectorData` column and
 # not the object_id of the genotypes table.
 
-genotypes = DynamicTable(name='genotypes', description='My genotypes')
-genotypes.add_column(name='genotype_name', description="Name of genotypes")
-genotypes.add_row(id=0, genotype_name='Rorb')
+genotypes = DynamicTable(name="genotypes", description="My genotypes")
+genotypes.add_column(name="genotype_name", description="Name of genotypes")
+genotypes.add_row(id=0, genotype_name="Rorb")
 er.add_ref(
     container=genotypes,
-    attribute='genotype_name',
-    key='Rorb',
-    resource_name='MGI Database',
-    resource_uri='http://www.informatics.jax.org/',
-    entity_id='MGI:1346434',
-    entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
+    attribute="genotype_name",
+    key="Rorb",
+    resource_name="MGI Database",
+    resource_uri="http://www.informatics.jax.org/",
+    entity_id="MGI:1346434",
+    entity_uri="http://www.informatics.jax.org/marker/MGI:1343464",
 )
 
 ###############################################################################
@@ -250,10 +255,10 @@ er.add_ref(
 er.get_keys()
 
 # Single Key
-er.get_keys(keys=er.get_key('Homo sapiens'))
+er.get_keys(keys=er.get_key("Homo sapiens"))
 
 # List of Specific Keys
-er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
+er.get_keys(keys=[er.get_key("Homo sapiens"), er.get_key("Mus musculus")])
 
 ###############################################################################
 # Using the get_key method
@@ -265,7 +270,7 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # :py:class:`~hdmf.common.resources.ExternalResources`.
 
 # The get_key method will return the key object of the unique (key, container, relative_path, field).
-key_object = er.get_key(key_name='Rorb', container=genotypes.columns[0])
+key_object = er.get_key(key_name="Rorb", container=genotypes.columns[0])
 
 ###############################################################################
 # Using the add_ref method with a key_object
@@ -279,12 +284,12 @@ key_object = er.get_key(key_name='Rorb', container=genotypes.columns[0])
 
 er.add_ref(
     container=genotypes,
-    attribute='genotype_name',
+    attribute="genotype_name",
     key=key_object,
-    resource_name='Ensembl',
-    resource_uri='https://uswest.ensembl.org/index.html',
-    entity_id='ENSG00000198963',
-    entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
+    resource_name="Ensembl",
+    resource_uri="https://uswest.ensembl.org/index.html",
+    entity_id="ENSG00000198963",
+    entity_uri="https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963",
 )
 
 # Let's use get_keys to visualize all the keys that have been added up to now
@@ -310,24 +315,24 @@ er.get_object_resources(container=genotypes.columns[0])
 # 'x' is using the external reference.
 
 # Let's create a new instance of ExternalResources.
-er = ExternalResources(name='example')
+er = ExternalResources(name="example")
 
 data = Data(
-    name='data_name',
+    name="data_name",
     data=np.array(
-        [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
-        dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
-    )
+        [("Mus musculus", 9, 81.0), ("Homo sapiens", 3, 27.0)],
+        dtype=[("species", "U14"), ("age", "i4"), ("weight", "f4")],
+    ),
 )
 
 er.add_ref(
     container=data,
-    field='species',
-    key='Mus musculus',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+    field="species",
+    key="Mus musculus",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid10090",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
 )
 
 ###############################################################################
@@ -340,12 +345,12 @@ er.add_ref(
 
 er.add_ref(
     container=data,
-    field='species',
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+    field="species",
+    key="Homo sapiens",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid9606",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606",
 )
 
 
@@ -354,52 +359,52 @@ er.add_ref(
 # -----------------------------------------------
 #
 
-er = ExternalResources(name='example')
+er = ExternalResources(name="example")
 
 data1 = Data(
-    name='data_name',
+    name="data_name",
     data=np.array(
-        [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
-        dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
-    )
+        [("Mus musculus", 9, 81.0), ("Homo sapiens", 3, 27.0)],
+        dtype=[("species", "U14"), ("age", "i4"), ("weight", "f4")],
+    ),
 )
 
 k1, r1, e1 = er.add_ref(
     container=data1,
-    field='species',
-    key='Mus musculus',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+    field="species",
+    key="Mus musculus",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid10090",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
 )
 
 
 k2, r2, e2 = er.add_ref(
     container=data1,
-    field='species',
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
+    field="species",
+    key="Homo sapiens",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid9606",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606",
 )
 
 # Want to use the same key, resources, and entities for both. But we'll add an extra key just for this one
-data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus', 'Pongo abelii'])
+data2 = Data(name="species", data=["Homo sapiens", "Mus musculus", "Pongo abelii"])
 
-o2 = er._add_object(data2, relative_path='', field='')
+o2 = er._add_object(data2, relative_path="", field="")
 er._add_object_key(o2, k1)
 er._add_object_key(o2, k2)
 
 k2, r2, e2 = er.add_ref(
     container=data2,
-    field='',
-    key='Pongo abelii',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9601',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601'
+    field="",
+    key="Pongo abelii",
+    resource_name="NCBI_Taxonomy",
+    resource_uri="https://www.ncbi.nlm.nih.gov/taxonomy",
+    entity_id="NCBI:txid9601",
+    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601",
 )
 
 # Question:
@@ -416,26 +421,26 @@ k2, r2, e2 = er.add_ref(
 #      )
 #
 
-genotypes = DynamicTable(name='genotypes', description='My genotypes')
-genotypes.add_column(name='genotype_name', description="Name of genotypes")
-genotypes.add_row(id=0, genotype_name='Rorb')
+genotypes = DynamicTable(name="genotypes", description="My genotypes")
+genotypes.add_column(name="genotype_name", description="Name of genotypes")
+genotypes.add_row(id=0, genotype_name="Rorb")
 k3, r3, e3 = er.add_ref(
-    container=genotypes['genotype_name'],
-    field='',
-    key='Rorb',
-    resource_name='MGI Database',
-    resource_uri='http://www.informatics.jax.org/',
-    entity_id='MGI:1346434',
-    entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
+    container=genotypes["genotype_name"],
+    field="",
+    key="Rorb",
+    resource_name="MGI Database",
+    resource_uri="http://www.informatics.jax.org/",
+    entity_id="MGI:1346434",
+    entity_uri="http://www.informatics.jax.org/marker/MGI:1343464",
 )
 er.add_ref(
-    container=genotypes['genotype_name'],
-    field='',
+    container=genotypes["genotype_name"],
+    field="",
     key=k3,
-    resource_name='Ensembl',
-    resource_uri='https://uswest.ensembl.org/index.html',
-    entity_id='ENSG00000198963',
-    entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
+    resource_name="Ensembl",
+    resource_uri="https://uswest.ensembl.org/index.html",
+    entity_id="ENSG00000198963",
+    entity_uri="https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963",
 )
 
 
@@ -486,6 +491,7 @@ er.to_dataframe(use_categories=True)
 
 # Set the database file to use and clean up the file if it exists
 import os
+
 db_file = "test_externalresources.sqlite"
 if os.path.exists(db_file):
     os.remove(db_file)
@@ -499,8 +505,9 @@ er.to_sqlite(db_file)
 # Test that the generated SQLite database is correct
 
 import sqlite3
-import pandas as pd
 from contextlib import closing
+
+import pandas as pd
 
 with closing(sqlite3.connect(db_file)) as db:
     cursor = db.cursor()
@@ -511,7 +518,7 @@ with closing(sqlite3.connect(db_file)) as db:
     for table_name in tables:
         table_name = table_name[0]
         table = pd.read_sql_query("SELECT * from %s" % table_name, db)
-        table = table.set_index('id')
+        table = table.set_index("id")
         ref_table = getattr(er, table_name).to_dataframe()
         assert np.all(np.array(table.index) == np.array(ref_table.index) + 1)
         for c in table.columns:

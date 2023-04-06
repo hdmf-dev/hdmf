@@ -3,25 +3,26 @@ Utilities for the HDF5 I/O backend,
 e.g., for wrapping HDF5 datasets on read, wrapping arrays for configuring write, or
 writing the spec among others"""
 
-from collections import deque
+import json
+import logging
+import os
+import warnings
 from abc import ABCMeta, abstractmethod
+from collections import deque
 from collections.abc import Iterable
 from copy import copy
 
-from h5py import Group, Dataset, RegionReference, Reference, special_dtype
-from h5py import filters as h5py_filters
-import json
 import numpy as np
-import warnings
-import os
-import logging
+from h5py import Dataset, Group, Reference, RegionReference
+from h5py import filters as h5py_filters
+from h5py import special_dtype
 
 from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator
-from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
+from ...data_utils import AbstractDataChunkIterator, DataIO
+from ...query import BuilderResolver, ContainerResolver, HDMFDataset, ReferenceResolver
 from ...region import RegionSlicer
-from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, get_docval
+from ...spec import SpecReader, SpecWriter
+from ...utils import docval, get_docval, getargs, popargs
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -31,8 +32,9 @@ class HDF5IODataChunkIteratorQueue(deque):
     Each queue element must be a tuple of two elements:
     1) the dataset to write to and 2) the AbstractDataChunkIterator with the data
     """
+
     def __init__(self):
-        self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
+        self.logger = logging.getLogger("%s.%s" % (self.__class__.__module__, self.__class__.__qualname__))
         super().__init__()
 
     @classmethod
@@ -85,10 +87,20 @@ class HDF5IODataChunkIteratorQueue(deque):
 
 
 class H5Dataset(HDMFDataset):
-    @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
-            {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
+    @docval(
+        {
+            "name": "dataset",
+            "type": (Dataset, Array),
+            "doc": "the HDF5 file lazily evaluate",
+        },
+        {
+            "name": "io",
+            "type": "HDF5IO",
+            "doc": "the IO object that was used to read the underlying dataset",
+        },
+    )
     def __init__(self, **kwargs):
-        self.__io = popargs('io', kwargs)
+        self.__io = popargs("io", kwargs)
         super().__init__(**kwargs)
 
     @property
@@ -126,12 +138,12 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
         Return an object that defers reference resolution
         but in the opposite direction.
         """
-        if not hasattr(self, '__inverted'):
+        if not hasattr(self, "__inverted"):
             cls = self.get_inverse_class()
             docval = get_docval(cls.__init__)
             kwargs = dict()
             for arg in docval:
-                kwargs[arg['name']] = getattr(self, arg['name'])
+                kwargs[arg["name"]] = getattr(self, arg["name"])
             self.__inverted = cls(**kwargs)
         return self.__inverted
 
@@ -173,13 +185,25 @@ class ContainerResolverMixin(ContainerResolver):
 
 
 class AbstractH5TableDataset(DatasetOfReferences):
-
-    @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
-            {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'},
-            {'name': 'types', 'type': (list, tuple),
-             'doc': 'the IO object that was used to read the underlying dataset'})
+    @docval(
+        {
+            "name": "dataset",
+            "type": (Dataset, Array),
+            "doc": "the HDF5 file lazily evaluate",
+        },
+        {
+            "name": "io",
+            "type": "HDF5IO",
+            "doc": "the IO object that was used to read the underlying dataset",
+        },
+        {
+            "name": "types",
+            "type": (list, tuple),
+            "doc": "the IO object that was used to read the underlying dataset",
+        },
+    )
     def __init__(self, **kwargs):
-        types = popargs('types', kwargs)
+        types = popargs("types", kwargs)
         super().__init__(**kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
@@ -197,18 +221,18 @@ class AbstractH5TableDataset(DatasetOfReferences):
         for i in range(len(self.dataset.dtype)):
             sub = self.dataset.dtype[i]
             if sub.metadata:
-                if 'vlen' in sub.metadata:
-                    t = sub.metadata['vlen']
+                if "vlen" in sub.metadata:
+                    t = sub.metadata["vlen"]
                     if t is str:
-                        tmp.append('utf')
+                        tmp.append("utf")
                     elif t is bytes:
-                        tmp.append('ascii')
-                elif 'ref' in sub.metadata:
-                    t = sub.metadata['ref']
+                        tmp.append("ascii")
+                elif "ref" in sub.metadata:
+                    t = sub.metadata["ref"]
                     if t is Reference:
-                        tmp.append('object')
+                        tmp.append("object")
                     elif t is RegionReference:
-                        tmp.append('region')
+                        tmp.append("region")
             else:
                 tmp.append(sub.type.__name__)
         self.__dtype = tmp
@@ -239,14 +263,14 @@ class AbstractH5TableDataset(DatasetOfReferences):
         """
         Decode a dataset element to unicode
         """
-        return string.decode('utf-8') if isinstance(string, bytes) else string
+        return string.decode("utf-8") if isinstance(string, bytes) else string
 
     def __get_regref(self, ref):
         obj = self._get_ref(ref)
         return obj[ref]
 
     def resolve(self, manager):
-        return self[0:len(self)]
+        return self[0 : len(self)]
 
     def __iter__(self):
         for i in range(len(self)):
@@ -254,7 +278,6 @@ class AbstractH5TableDataset(DatasetOfReferences):
 
 
 class AbstractH5ReferenceDataset(DatasetOfReferences):
-
     def __getitem__(self, arg):
         ref = super().__getitem__(arg)
         if isinstance(ref, np.ndarray):
@@ -264,11 +287,10 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
 
     @property
     def dtype(self):
-        return 'object'
+        return "object"
 
 
 class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
-
     def __getitem__(self, arg):
         obj = super().__getitem__(arg)
         ref = self.dataset[arg]
@@ -276,7 +298,7 @@ class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
 
     @property
     def dtype(self):
-        return 'region'
+        return "region"
 
 
 class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
@@ -346,19 +368,24 @@ class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
 
 
 class H5SpecWriter(SpecWriter):
-
     __str_type = special_dtype(vlen=str)
 
-    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to write specs to'})
+    @docval(
+        {
+            "name": "group",
+            "type": Group,
+            "doc": "the HDF5 file to write specs to",
+        }
+    )
     def __init__(self, **kwargs):
-        self.__group = getargs('group', kwargs)
+        self.__group = getargs("group", kwargs)
 
     @staticmethod
     def stringify(spec):
-        '''
+        """
         Converts a spec into a JSON string to write to a dataset
-        '''
-        return json.dumps(spec, separators=(',', ':'))
+        """
+        return json.dumps(spec, separators=(",", ":"))
 
     def __write(self, d, name):
         data = self.stringify(d)
@@ -370,16 +397,25 @@ class H5SpecWriter(SpecWriter):
         return self.__write(spec, path)
 
     def write_namespace(self, namespace, path):
-        return self.__write({'namespaces': [namespace]}, path)
+        return self.__write({"namespaces": [namespace]}, path)
 
 
 class H5SpecReader(SpecReader):
     """Class that reads cached JSON-formatted namespace and spec data from an HDF5 group."""
 
-    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 group to read specs from'})
+    @docval(
+        {
+            "name": "group",
+            "type": Group,
+            "doc": "the HDF5 group to read specs from",
+        }
+    )
     def __init__(self, **kwargs):
-        self.__group = popargs('group', kwargs)
-        source = "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)
+        self.__group = popargs("group", kwargs)
+        source = "%s:%s" % (
+            os.path.abspath(self.__group.file.name),
+            self.__group.name,
+        )
         super().__init__(source=source)
         self.__cache = None
 
@@ -389,7 +425,7 @@ class H5SpecReader(SpecReader):
             s = s[0]
 
         if isinstance(s, bytes):
-            s = s.decode('UTF-8')
+            s = s.decode("UTF-8")
 
         d = json.loads(s)
         return d
@@ -400,17 +436,26 @@ class H5SpecReader(SpecReader):
     def read_namespace(self, ns_path):
         if self.__cache is None:
             self.__cache = self.__read(ns_path)
-        ret = self.__cache['namespaces']
+        ret = self.__cache["namespaces"]
         return ret
 
 
 class H5RegionSlicer(RegionSlicer):
-
-    @docval({'name': 'dataset', 'type': (Dataset, H5Dataset), 'doc': 'the HDF5 dataset to slice'},
-            {'name': 'region', 'type': RegionReference, 'doc': 'the region reference to use to slice'})
+    @docval(
+        {
+            "name": "dataset",
+            "type": (Dataset, H5Dataset),
+            "doc": "the HDF5 dataset to slice",
+        },
+        {
+            "name": "region",
+            "type": RegionReference,
+            "doc": "the region reference to use to slice",
+        },
+    )
     def __init__(self, **kwargs):
-        self.__dataset = getargs('dataset', kwargs)
-        self.__regref = getargs('region', kwargs)
+        self.__dataset = getargs("dataset", kwargs)
+        self.__regref = getargs("region", kwargs)
         self.__len = self.__dataset.regionref.selection(self.__regref)[0]
         self.__region = None
 
@@ -432,105 +477,152 @@ class H5DataIO(DataIO):
     for data arrays.
     """
 
-    @docval({'name': 'data',
-             'type': (np.ndarray, list, tuple, Dataset, Iterable),
-             'doc': 'the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data' +
-                    ' will be ignored as the dataset will either be linked to or copied as is in H5DataIO.',
-             'default': None},
-            {'name': 'maxshape',
-             'type': tuple,
-             'doc': 'Dataset will be resizable up to this shape (Tuple). Automatically enables chunking.' +
-                    'Use None for the axes you want to be unlimited.',
-             'default': None},
-            {'name': 'chunks',
-             'type': (bool, tuple),
-             'doc': 'Chunk shape or True to enable auto-chunking',
-             'default': None},
-            {'name': 'compression',
-             'type': (str, bool, int),
-             'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default.' +
-                    'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
-             'default': None},
-            {'name': 'compression_opts',
-             'type': (int, tuple),
-             'doc': 'Parameter for compression filter',
-             'default': None},
-            {'name': 'fillvalue',
-             'type': None,
-             'doc': 'Value to be returned when reading uninitialized parts of the dataset',
-             'default': None},
-            {'name': 'shuffle',
-             'type': bool,
-             'doc': 'Enable shuffle I/O filter. http://docs.h5py.org/en/latest/high/dataset.html#dataset-shuffle',
-             'default': None},
-            {'name': 'fletcher32',
-             'type': bool,
-             'doc': 'Enable fletcher32 checksum. http://docs.h5py.org/en/latest/high/dataset.html#dataset-fletcher32',
-             'default': None},
-            {'name': 'link_data',
-             'type': bool,
-             'doc': 'If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is only ' +
-                    'allowed if data is an h5py.Dataset',
-             'default': False},
-            {'name': 'allow_plugin_filters',
-             'type': bool,
-             'doc': 'Enable passing dynamically loaded filters as compression parameter',
-             'default': False},
-            {'name': 'shape',
-             'type': tuple,
-             'doc': 'the shape of the new dataset, used only if data is None',
-             'default': None},
-            {'name': 'dtype',
-             'type': (str, type, np.dtype),
-             'doc': 'the data type of the new dataset, used only if data is None',
-             'default': None}
-            )
+    @docval(
+        {
+            "name": "data",
+            "type": (np.ndarray, list, tuple, Dataset, Iterable),
+            "doc": (
+                "the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data"
+                + " will be ignored as the dataset will either be linked to or copied as is in H5DataIO."
+            ),
+            "default": None,
+        },
+        {
+            "name": "maxshape",
+            "type": tuple,
+            "doc": (
+                "Dataset will be resizable up to this shape (Tuple). Automatically enables chunking."
+                + "Use None for the axes you want to be unlimited."
+            ),
+            "default": None,
+        },
+        {
+            "name": "chunks",
+            "type": (bool, tuple),
+            "doc": "Chunk shape or True to enable auto-chunking",
+            "default": None,
+        },
+        {
+            "name": "compression",
+            "type": (str, bool, int),
+            "doc": (
+                "Compression strategy. If a bool is given, then gzip compression will be used by default."
+                + "http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression"
+            ),
+            "default": None,
+        },
+        {
+            "name": "compression_opts",
+            "type": (int, tuple),
+            "doc": "Parameter for compression filter",
+            "default": None,
+        },
+        {
+            "name": "fillvalue",
+            "type": None,
+            "doc": "Value to be returned when reading uninitialized parts of the dataset",
+            "default": None,
+        },
+        {
+            "name": "shuffle",
+            "type": bool,
+            "doc": "Enable shuffle I/O filter. http://docs.h5py.org/en/latest/high/dataset.html#dataset-shuffle",
+            "default": None,
+        },
+        {
+            "name": "fletcher32",
+            "type": bool,
+            "doc": "Enable fletcher32 checksum. http://docs.h5py.org/en/latest/high/dataset.html#dataset-fletcher32",
+            "default": None,
+        },
+        {
+            "name": "link_data",
+            "type": bool,
+            "doc": (
+                "If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is only "
+                + "allowed if data is an h5py.Dataset"
+            ),
+            "default": False,
+        },
+        {
+            "name": "allow_plugin_filters",
+            "type": bool,
+            "doc": "Enable passing dynamically loaded filters as compression parameter",
+            "default": False,
+        },
+        {
+            "name": "shape",
+            "type": tuple,
+            "doc": "the shape of the new dataset, used only if data is None",
+            "default": None,
+        },
+        {
+            "name": "dtype",
+            "type": (str, type, np.dtype),
+            "doc": "the data type of the new dataset, used only if data is None",
+            "default": None,
+        },
+    )
     def __init__(self, **kwargs):
         # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters',
-                                                                      'dtype', 'shape']]
+        ioarg_names = [
+            name
+            for name in kwargs.keys()
+            if name
+            not in [
+                "data",
+                "link_data",
+                "allow_plugin_filters",
+                "dtype",
+                "shape",
+            ]
+        ]
 
         # Remove the ioargs from kwargs
         ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
         # Consume link_data parameter
-        self.__link_data = popargs('link_data', kwargs)
+        self.__link_data = popargs("link_data", kwargs)
         # Consume allow_plugin_filters parameter
-        self.__allow_plugin_filters = popargs('allow_plugin_filters', kwargs)
+        self.__allow_plugin_filters = popargs("allow_plugin_filters", kwargs)
         # Check for possible collision with other parameters
-        if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
+        if not isinstance(getargs("data", kwargs), Dataset) and self.__link_data:
             self.__link_data = False
-            warnings.warn('link_data parameter in H5DataIO will be ignored')
+            warnings.warn("link_data parameter in H5DataIO will be ignored")
         # Call the super constructor and consume the data parameter
         super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
         self.__iosettings = {k: v for k, v in zip(ioarg_names, ioarg_values) if v is not None}
         if self.data is None:
-            self.__iosettings['dtype'] = self.dtype
-            self.__iosettings['shape'] = self.shape
+            self.__iosettings["dtype"] = self.dtype
+            self.__iosettings["shape"] = self.shape
         # Set io_properties for DataChunkIterators
         if isinstance(self.data, AbstractDataChunkIterator):
             # Define the chunking options if the user has not set them explicitly.
-            if 'chunks' not in self.__iosettings and self.data.recommended_chunk_shape() is not None:
-                self.__iosettings['chunks'] = self.data.recommended_chunk_shape()
+            if "chunks" not in self.__iosettings and self.data.recommended_chunk_shape() is not None:
+                self.__iosettings["chunks"] = self.data.recommended_chunk_shape()
             # Define the maxshape of the data if not provided by the user
-            if 'maxshape' not in self.__iosettings:
-                self.__iosettings['maxshape'] = self.data.maxshape
+            if "maxshape" not in self.__iosettings:
+                self.__iosettings["maxshape"] = self.data.maxshape
         # Make default settings when compression set to bool (True/False)
-        if isinstance(self.__iosettings.get('compression', None), bool):
-            if self.__iosettings['compression']:
-                self.__iosettings['compression'] = 'gzip'
+        if isinstance(self.__iosettings.get("compression", None), bool):
+            if self.__iosettings["compression"]:
+                self.__iosettings["compression"] = "gzip"
             else:
-                self.__iosettings.pop('compression', None)
-                if 'compression_opts' in self.__iosettings:
-                    warnings.warn('Compression disabled by compression=False setting. ' +
-                                  'compression_opts parameter will, therefore, be ignored.')
-                    self.__iosettings.pop('compression_opts', None)
+                self.__iosettings.pop("compression", None)
+                if "compression_opts" in self.__iosettings:
+                    warnings.warn(
+                        "Compression disabled by compression=False setting. "
+                        + "compression_opts parameter will, therefore, be ignored."
+                    )
+                    self.__iosettings.pop("compression_opts", None)
         # Validate the compression options used
         self._check_compression_options()
         # Confirm that the compressor is supported by h5py
-        if not self.filter_available(self.__iosettings.get('compression', None),
-                                     self.__allow_plugin_filters):
-            msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
+        if not self.filter_available(
+            self.__iosettings.get("compression", None),
+            self.__allow_plugin_filters,
+        ):
+            msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings["compression"])
             if not self.__allow_plugin_filters:
                 msg += " Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
             raise ValueError(msg)
@@ -556,7 +648,7 @@ class H5DataIO(DataIO):
         Returns a dict with the I/O parameters specified in this DataIO.
         """
         ret = dict(self.__iosettings)
-        ret['link_data'] = self.__link_data
+        ret["link_data"] = self.__link_data
         return ret
 
     def _check_compression_options(self):
@@ -566,35 +658,44 @@ class H5DataIO(DataIO):
 
         :raises ValueError: If incompatible options are detected
         """
-        if 'compression' in self.__iosettings:
-            if 'compression_opts' in self.__iosettings:
-                if self.__iosettings['compression'] == 'gzip':
-                    if self.__iosettings['compression_opts'] not in range(10):
-                        raise ValueError("GZIP compression_opts setting must be an integer from 0-9, "
-                                         "not " + str(self.__iosettings['compression_opts']))
-                elif self.__iosettings['compression'] == 'lzf':
-                    if self.__iosettings['compression_opts'] is not None:
+        if "compression" in self.__iosettings:
+            if "compression_opts" in self.__iosettings:
+                if self.__iosettings["compression"] == "gzip":
+                    if self.__iosettings["compression_opts"] not in range(10):
+                        raise ValueError(
+                            "GZIP compression_opts setting must be an integer from 0-9, not "
+                            + str(self.__iosettings["compression_opts"])
+                        )
+                elif self.__iosettings["compression"] == "lzf":
+                    if self.__iosettings["compression_opts"] is not None:
                         raise ValueError("LZF compression filter accepts no compression_opts")
-                elif self.__iosettings['compression'] == 'szip':
+                elif self.__iosettings["compression"] == "szip":
                     szip_opts_error = False
                     # Check that we have a tuple
-                    szip_opts_error |= not isinstance(self.__iosettings['compression_opts'], tuple)
+                    szip_opts_error |= not isinstance(self.__iosettings["compression_opts"], tuple)
                     # Check that we have a tuple of the right length and correct settings
                     if not szip_opts_error:
                         try:
-                            szmethod, szpix = self.__iosettings['compression_opts']
-                            szip_opts_error |= (szmethod not in ('ec', 'nn'))
-                            szip_opts_error |= (not (0 < szpix <= 32 and szpix % 2 == 0))
+                            szmethod, szpix = self.__iosettings["compression_opts"]
+                            szip_opts_error |= szmethod not in ("ec", "nn")
+                            szip_opts_error |= not (0 < szpix <= 32 and szpix % 2 == 0)
                         except ValueError:  # ValueError is raised if tuple does not have the right length to unpack
                             szip_opts_error = True
                     if szip_opts_error:
-                        raise ValueError("SZIP compression filter compression_opts"
-                                         " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
+                        raise ValueError(
+                            "SZIP compression filter compression_opts must be a 2-tuple ('ec'|'nn', even integer 0-32)."
+                        )
             # Warn if compressor other than gzip is being used
-            if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
-                              "the generated HDF5 files.")
+            if self.__iosettings["compression"] not in [
+                "gzip",
+                h5py_filters.h5z.FILTER_DEFLATE,
+            ]:
+                warnings.warn(
+                    str(self.__iosettings["compression"])
+                    + " compression may not be available on all installations of HDF5."
+                    " Use of gzip is recommended to ensure portability of the"
+                    " generated HDF5 files."
+                )
 
     @staticmethod
     def filter_available(filter, allow_plugin_filters):
@@ -614,8 +715,10 @@ class H5DataIO(DataIO):
                 if type(filter) == int:
                     if h5py_filters.h5z.filter_avail(filter):
                         filter_info = h5py_filters.h5z.get_filter_info(filter)
-                        if filter_info == (h5py_filters.h5z.FILTER_CONFIG_DECODE_ENABLED +
-                                           h5py_filters.h5z.FILTER_CONFIG_ENCODE_ENABLED):
+                        if filter_info == (
+                            h5py_filters.h5z.FILTER_CONFIG_DECODE_ENABLED
+                            + h5py_filters.h5z.FILTER_CONFIG_ENCODE_ENABLED
+                        ):
                             return True
             return False
         else:

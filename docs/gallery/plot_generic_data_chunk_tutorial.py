@@ -96,7 +96,12 @@ my_array = np.random.randint(low=0, high=10, size=maxshape, dtype="int32")
 my_custom_iterator = NumpyArrayDataChunkIterator(array=my_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
 out_file = "my_temporary_test_file.hdf5"
 with h5py.File(name=out_file, mode="w") as f:
-    dset = f.create_dataset(name="test", shape=maxshape, dtype="int16", chunks=my_custom_iterator.chunk_shape)
+    dset = f.create_dataset(
+        name="test",
+        shape=maxshape,
+        dtype="int16",
+        chunks=my_custom_iterator.chunk_shape,
+    )
     for buffer in my_custom_iterator:
         dset[buffer.selection] = buffer.data
 # Remember to remove the temporary file after running this and exploring the contents!
@@ -132,5 +137,6 @@ with h5py.File(name=out_file, mode="w") as f:
 ###############################################################################
 # Remove the test file
 import os
+
 if os.path.exists(out_file):
     os.remove(out_file)
