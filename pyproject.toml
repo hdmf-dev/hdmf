@@ -35,7 +35,7 @@ dependencies = [
     "pandas>=1.0.5",
     "ruamel.yaml>=0.16",
     "scipy>=1.1",
-    "importlib-metadata; python_version < '3.8'",  # TODO: remove when minimum python version is 3.8
+    "importlib-metadata<4.3; python_version < '3.8'",  # TODO: remove when minimum python version is 3.8
     "importlib-resources; python_version < '3.9'",  # TODO: remove when minimum python version is 3.9
 ]
 dynamic = ["version"]
