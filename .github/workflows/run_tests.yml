@@ -52,7 +52,7 @@ jobs:
 
       - name: Run tox tests
         run: |
-          tox -e ${{ matrix.test-tox-env }} -v
+          tox -e ${{ matrix.test-tox-env }} -vv
 
       - name: Build wheel and source distribution
         run: |
