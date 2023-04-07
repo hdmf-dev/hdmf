@@ -8,7 +8,12 @@
 - Replaced versioneer with setuptools_scm for versioning. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
 - Now recommending developers use pre-commit. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
 
-## HDMF 3.5.3 (April 4, 2023)
+## HDMF 3.5.4 (April 7, 2023)
+
+### Bug fixes
+- Fixed typo in deploy release workflow. @rly [#845](https://github.com/hdmf-dev/hdmf/pull/845)
+
+## HDMF 3.5.3 (April 7, 2023)
 
 ### Bug fixes
 - Fixed search bar and missing jquery in ReadTheDocs documentation. @rly
