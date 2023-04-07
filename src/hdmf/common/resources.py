@@ -531,7 +531,6 @@ class ExternalResources(Container):
             except ValueError:
                 missing_terms.append(term)
                 continue
-            breakpoint()
             entity_id = term_info[0]
             entity_uri = term_info[2]
             self.add_ref(file=file,
@@ -831,7 +830,8 @@ class ExternalResources(Container):
         df.to_csv(path, sep='\t')
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to read'},
+    @docval({'name': 'name','type': str, 'doc': 'The name for the ExternalResources instance'},
+            {'name': 'path', 'type': str, 'doc': 'path of the tsv file to read'},
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
     def from_flat_tsv(cls, **kwargs):
         """
@@ -866,9 +866,10 @@ class ExternalResources(Container):
                 raise ValueError(msg)
 
         path = popargs('path', kwargs)
+        name = popargs('name', kwargs)
         df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
         # Construct the ExternalResources
-        er = ExternalResources(name="external_resources")
+        er = ExternalResources(name=name)
 
         # Retrieve all the objects
         ob_idx, ob_rows = np.unique(df[('objects', 'objects_idx')], return_index=True)
