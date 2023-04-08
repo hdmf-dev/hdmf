@@ -53,7 +53,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx_gallery.gen_gallery',
-    'sphinx_copybutton'
+    'sphinx_copybutton',
+    "sphinxcontrib.jquery",  # can be removed as soon as the theme no longer depends on jQuery
 ]
 
 from sphinx_gallery.sorting import ExplicitOrder
@@ -70,7 +71,7 @@ sphinx_gallery_conf = {
 }
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.10', None),
+    'python': ('https://docs.python.org/3.11', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'matplotlib': ('https://matplotlib.org/stable/', None),

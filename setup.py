@@ -18,12 +18,12 @@ print('found these packages:', pkgs)
 schema_dir = 'common/hdmf-common-schema/common'
 
 reqs = [
-    'h5py>=2.10,<4',
-    'jsonschema>=2.6.0,<5',
-    'numpy>=1.16,<1.24',
-    'pandas>=1.0.5,<2',
-    'ruamel.yaml>=0.16,<1',
-    'scipy>=1.1,<2',
+    'h5py>=2.10',
+    'jsonschema>=2.6.0',
+    'numpy>=1.16',
+    'pandas>=1.0.5',
+    'ruamel.yaml>=0.16',
+    'scipy>=1.1',
     'setuptools',
 ]
 
@@ -51,6 +51,7 @@ setup_args = {
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: BSD License",
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",

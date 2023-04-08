@@ -1,5 +1,23 @@
 # HDMF Changelog
 
+## HDMF 3.5.4 (April 7, 2023)
+
+### Bug fixes
+- Fixed typo in deploy release workflow. @rly [#845](https://github.com/hdmf-dev/hdmf/pull/845)
+
+## HDMF 3.5.3 (April 7, 2023)
+
+### Bug fixes
+- Fixed search bar and missing jquery in ReadTheDocs documentation. @rly
+  [#840](https://github.com/hdmf-dev/hdmf/pull/840)
+- Fixed issue with dynamic class generation for a multi-container interface where one or more are required. @rly
+  [#839](https://github.com/hdmf-dev/hdmf/pull/839)
+
+### Minor improvements
+- Added support for Python 3.11. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+- No longer set upper bounds on dependencies. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+- `DynamicTable.to_dataframe()` now sets the index (id) column dtype to int64 rather than the OS default (int32 on Windows, int64 on Mac, Linux). @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+
 ## HDMF 3.5.2 (March 13, 2023)
 
 ### Bug fixes
