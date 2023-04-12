@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.5.5 (Upcoming)
+
+### Bug fixes
+- Remove unused, deprecated `codecov` package from dev installation requirements. @rly
+  [#849](https://github.com/hdmf-dev/hdmf/pull/849)
+
 ## HDMF 3.5.4 (April 7, 2023)
 
 ### Bug fixes
