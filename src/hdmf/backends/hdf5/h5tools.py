@@ -1021,13 +1021,13 @@ class HDF5IO(HDMFIO):
         else:
             write_source = export_source
 
-        if write_source == target_builder.source:
+        parent_filename = os.path.abspath(parent.file.filename)
+        if target_builder.source in (write_source, parent_filename):
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                               % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
-            parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
             if target_builder.location is not None:
                 path = target_builder.location + "/" + target_builder.name
