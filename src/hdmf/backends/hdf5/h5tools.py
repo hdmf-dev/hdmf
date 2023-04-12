@@ -391,6 +391,8 @@ class HDF5IO(HDMFIO):
          'default': None},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
+         # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
+         # so it is not available on HDF5IO
     )
 
     @docval(*_export_args)
@@ -415,6 +417,8 @@ class HDF5IO(HDMFIO):
         write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
         ckwargs = kwargs.copy()
         ckwargs['write_args'] = write_args
+        if not write_args.get('link_data', True):
+            ckwargs['clear_cache'] = True
         super().export(**ckwargs)
         if cache_spec:
             self.__cache_spec()
