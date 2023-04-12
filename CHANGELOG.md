@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.5.5 (Upcoming)
+
+### Bug fixes
+- Fixed error during export where an external link to the same file was created in some situations.
+  @rly [#847](https://github.com/hdmf-dev/hdmf/pull/847)
+
 ## HDMF 3.5.4 (April 7, 2023)
 
 ### Bug fixes
