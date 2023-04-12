@@ -2445,6 +2445,36 @@ class TestExport(TestCase):
             self.assertEqual(f['links/foo_link'].file.filename, self.paths[1])
             self.assertIsInstance(f.get('links/foo_link', getlink=True), h5py.SoftLink)
 
+    def test_soft_link_group_modified_rel_path(self):
+        """Test that exporting a written file with soft linked groups keeps links within the file."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
+        self.paths[0] = os.path.basename(self.paths[0])  # make temp file in relative path location
+        self.paths[1] = os.path.basename(self.paths[1])  # make temp file in relative path location
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            read_foofile2.foo_link.set_modified()  # trigger a rebuild of foo_link and its parents
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is within the same file
+            self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[1]))
+
+        # make sure the linked group is a soft link
+        with File(self.paths[1], 'r') as f:
+            self.assertEqual(f['links/foo_link'].file.filename, self.paths[1])
+            self.assertIsInstance(f.get('links/foo_link', getlink=True), h5py.SoftLink)
+
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -2475,6 +2505,39 @@ class TestExport(TestCase):
 
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[0])
+
+    def test_external_link_group_rel_path(self):
+        """Test that exporting a written file from a relative filepath works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+        self.paths[0] = os.path.basename(self.paths[0])  # make temp file in relative path location
+        self.paths[1] = os.path.basename(self.paths[1])  # make temp file in relative path location
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as read_io:
+            read_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
+
+            with HDF5IO(self.paths[1], manager=manager, mode='w') as write_io:
+                write_io.write(foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io)
+
+        with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the first file
+            self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[0]))
 
     def test_external_link_dataset(self):
         """Test that exporting a written file with external linked datasets maintains the links."""
