@@ -391,8 +391,8 @@ class HDF5IO(HDMFIO):
          'default': None},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
-         # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
-         # so it is not available on HDF5IO
+        # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
+        # so it is not available on HDF5IO
     )
 
     @docval(*_export_args)
