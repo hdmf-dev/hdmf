@@ -1,10 +1,14 @@
 # HDMF Changelog
 
-## HDMF 3.5.5 (Upcoming)
+## HDMF 3.5.5 (April 13, 2023)
 
 ### Bug fixes
 - Fixed error during export where an external link to the same file was created in some situations.
   @rly [#847](https://github.com/hdmf-dev/hdmf/pull/847)
+- Remove unused, deprecated `codecov` package from dev installation requirements. @rly
+  [#849](https://github.com/hdmf-dev/hdmf/pull/849)
+- Fix export with `'link_data': False'` not copying datasets in some situations. @rly
+  [#842](https://github.com/hdmf-dev/hdmf/pull/842)
 
 ## HDMF 3.5.4 (April 7, 2023)
 

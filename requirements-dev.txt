@@ -1,6 +1,5 @@
 # pinned dependencies to reproduce an entire development environment to use HDMF, run HDMF tests, check code style,
 # compute coverage, and create test environments
-codecov==2.1.12
 coverage==6.4.2
 flake8==5.0.4
 flake8-debugger==4.1.2
