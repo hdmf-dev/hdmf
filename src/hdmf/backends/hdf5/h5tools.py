@@ -414,7 +414,7 @@ class HDF5IO(HDMFIO):
             raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write argument "
                                        "link_data=True." % src_io.__class__.__name__)
 
-        write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
+        write_args['export_source'] = os.path.abspath(src_io.source) if src_io.source is not None else None
         ckwargs = kwargs.copy()
         ckwargs['write_args'] = write_args
         if not write_args.get('link_data', True):
@@ -580,7 +580,7 @@ class HDF5IO(HDMFIO):
                 if sub_h5obj.name in ignore:
                     continue
                 link_type = h5obj.get(k, getlink=True)
-                if isinstance(link_type, SoftLink) or isinstance(link_type, ExternalLink):
+                if isinstance(link_type, (SoftLink, ExternalLink)):
                     # Reading links might be better suited in its own function
                     # get path of link (the key used for tracking what's been built)
                     target_path = link_type.path
@@ -595,7 +595,7 @@ class HDF5IO(HDMFIO):
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
                         self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
-                    link_builder = LinkBuilder(builder=builder, name=k, source=h5obj.file.filename)
+                    link_builder = LinkBuilder(builder=builder, name=k, source=os.path.abspath(h5obj.file.filename))
                     link_builder.location = h5obj.name
                     self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
@@ -619,7 +619,7 @@ class HDF5IO(HDMFIO):
                 warnings.warn('Path to Group altered/broken at ' + os.path.join(h5obj.name, k), BrokenLinkWarning)
                 kwargs['datasets'][k] = None
                 continue
-        kwargs['source'] = h5obj.file.filename
+        kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ret = GroupBuilder(name, **kwargs)
         ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
@@ -637,7 +637,7 @@ class HDF5IO(HDMFIO):
 
         if name is None:
             name = str(os.path.basename(h5obj.name))
-        kwargs['source'] = h5obj.file.filename
+        kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ndims = len(h5obj.shape)
         if ndims == 0:                                       # read scalar
             scalar = h5obj[()]
@@ -1025,13 +1025,13 @@ class HDF5IO(HDMFIO):
         else:
             write_source = export_source
 
-        if write_source == target_builder.source:
+        parent_filename = os.path.abspath(parent.file.filename)
+        if target_builder.source in (write_source, parent_filename):
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                               % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
-            parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
             if target_builder.location is not None:
                 path = target_builder.location + "/" + target_builder.name

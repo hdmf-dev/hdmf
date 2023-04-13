@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import os
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
@@ -15,7 +16,9 @@ class HDMFIO(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         manager, source = getargs('manager', 'source', kwargs)
         if isinstance(source, Path):
-            source = str(source)
+            source = source.resolve()
+        elif isinstance(source, str):
+            source = os.path.abspath(source)
 
         self.__manager = manager
         self.__built = dict()
