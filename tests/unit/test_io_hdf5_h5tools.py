@@ -2450,8 +2450,9 @@ class TestExport(TestCase):
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile(buckets=[foobucket], foo_link=foo1)
-        self.paths[0] = os.path.basename(self.paths[0])  # make temp file in relative path location
-        self.paths[1] = os.path.basename(self.paths[1])  # make temp file in relative path location
+        # make temp files in relative path location
+        self.paths[0] = os.path.basename(self.paths[0])
+        self.paths[1] = os.path.basename(self.paths[1])
 
         with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
@@ -2511,8 +2512,10 @@ class TestExport(TestCase):
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile(buckets=[foobucket])
-        self.paths[0] = os.path.basename(self.paths[0])  # make temp file in relative path location
-        self.paths[1] = os.path.basename(self.paths[1])  # make temp file in relative path location
+        # make temp files in relative path location
+        self.paths[0] = os.path.basename(self.paths[0])
+        self.paths[1] = os.path.basename(self.paths[1])
+        self.paths[2] = os.path.basename(self.paths[2])
 
         with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as read_io:
             read_io.write(foofile)
