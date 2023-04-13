@@ -252,6 +252,10 @@ class BuildManager:
                 self.__builders.pop(container_id)
                 self.__containers.pop(builder_id)
 
+    def clear_cache(self):
+        self.__builders.clear()
+        self.__containers.clear()
+
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to get the builder for"})
     def get_builder(self, **kwargs):
         """Return the prebuilt builder for the given container or None if it does not exist."""
