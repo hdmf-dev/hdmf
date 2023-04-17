@@ -157,7 +157,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
-        self.assertEqual(er.objects.data, [(0, data.object_id, '', '')])
+        self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 #
 #     def test_to_and_from_norm_tsv(self):
 #         er = ExternalResources()
@@ -460,13 +460,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 #         self.assertEqual(er.entities.data, [(0, 'NCBI:txid10090', 'entity_0_uri')])
 #         self.assertEqual(er.objects.data, [(0, data.object_id, '', 'species')])
 #
-#     @unittest.skip('Not needed due to read/write to tsv tests')
-#     def test_roundtrip(self):
-#         return
-#
-#     @unittest.skip('Not needed due to read/write to tsv tests')
-#     def test_roundtrip_export(self):
-#         return
+    @unittest.skip('Not needed due to read/write to tsv tests')
+    def test_roundtrip(self):
+        return
+
+    @unittest.skip('Not needed due to read/write to tsv tests')
+    def test_roundtrip_export(self):
+        return
 #
 #
 # class TestExternalResourcesNestedAttributes(TestCase):

@@ -279,7 +279,6 @@ class ExternalResources(Container):
         file_id_idx, container, relative_path, field = popargs('file_id_idx','container', 'relative_path', 'field', kwargs)
 
         object_type = container.__class__.__name__
-        breakpoint()
 
         if isinstance(container, AbstractContainer):
             container = container.object_id
