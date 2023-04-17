@@ -597,6 +597,34 @@ class ExternalResources(Container):
         else:
             return True
 
+    @docval({'name': 'object_type', 'type': str,
+             'doc': 'The type of the object. This is also the parent in relative_path.'},
+            {'name': 'relative_path', 'type': str,
+             'doc': ('The relative_path of the attribute of the object that uses ',
+                     'an external resource reference key. Use an empty string if not applicable.'),
+             'default': ''},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'all_instances', 'type': bool, 'default': False,
+             'doc': ('The bool to return all a dataframe with all instances of the object_type.',
+                     'If True, relative_path and field inputs will be ignored.')})
+    def get_object_type(self, **kwargs):
+        """
+        Get all entities/resources associated with an object_type.
+        """
+        object_type = kwargs['object_type']
+        relative_path = kwargs['relative_path']
+        field = kwargs['field']
+        all_instances = kwargs['all_instances']
+
+        df = self.to_dataframe()
+
+        if all_instances:
+            df = df.loc[df['object_type']==object_type]
+        else:
+            df = df.loc[(df['relative_path']==relative_path) & (df['object_type']==object_type) & (df['object_type']==object_type)]
+        return df
+
     @docval({'name': 'file',  'type': AbstractContainer, 'doc': 'The NWBFILE.',
              'default': None,},
             {'name': 'container', 'type': (str, AbstractContainer),
@@ -756,7 +784,7 @@ class ExternalResources(Container):
         result_df['file_id'] = file_id_col
         column_labels = [('files', 'file_id'),
                          ('objects', 'file_id_idx'), ('objects', 'objects_idx'), ('objects', 'object_id'),
-                         ('objects', 'relative_path'), ('objects', 'field'),
+                         ('objects', 'object_type'), ('objects', 'relative_path'), ('objects', 'field'),
                          ('keys', 'keys_idx'), ('keys', 'key'),
                          ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
         # sort the columns based on our custom order
