@@ -42,8 +42,6 @@ class VectorData(Data):
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
             {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
              'default': None},
-            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data on initial add',
-             'default': False},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         description = popargs('description', kwargs)
@@ -697,8 +695,6 @@ class DynamicTable(Container):
              'default': False},
             {'name': 'enum', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a fixed set of elements')},
-            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data',
-             'default': False},
             {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
              'default': None},
             {'name': 'col_cls', 'type': type, 'default': VectorData,
@@ -717,9 +713,9 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, enum, col_cls, validate, term_set= popargs('index', 'table', 'enum', 'col_cls', 'validate', 'term_set', kwargs)
+        index, table, enum, col_cls, term_set= popargs('index', 'table', 'enum', 'col_cls', 'term_set', kwargs)
 
-        if validate:
+        if term_set is not None:
             bad_data = []
             for val in data:
                 if self.validate_data(term=val, term_set=term_set):

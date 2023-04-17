@@ -33,25 +33,18 @@ class ExternalResourcesManager():
     """
     This class manages whether to set/attach an instance of ExternalResources to the subclass.
     """
+
     @docval({'name': 'external_resources', 'type': 'ExternalResources',
-             'doc': 'The external resources to be used for the container.',
-             'default': None},)
-    def set_external_resources(self, **kwargs):
+             'doc': 'The external resources to be used for the container.'},)
+    def link_resources(self, **kwargs):
         """
         Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
         """
         external_resources = kwargs['external_resources']
         self._external_resources = external_resources
-        if self._external_resources is not None:
-            self.add_child(self._external_resources)
 
-    @property
-    def external_resources(self):
-        if self._external_resources is not None:
-            return self._external_resources
-        else:
-            msg = "ExternalResources is not set"
-            raise ValueError(msg)
+    def get_linked_resources(self):
+        return self._external_resources
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -385,7 +378,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         if parent is not None:
                             while parent is not None:
                                 if isinstance(parent, ExternalResourcesManager):
-                                    parent.external_resources.add_ref_term_set(file=parent, container=self, term_set=self.term_set)
+                                    parent.external_resources.add_ref_term_set(file=parent, container=self)
                                     break
                                 elif parent.name=='root':
                                     msg = 'Could not find ExternalResourcesManager for root.'
@@ -402,7 +395,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                             if parent is not None:
                                 while parent is not None:
                                     if isinstance(parent, ExternalResourcesManager):
-                                        parent.external_resources.add_ref_term_set(file=parent, container=child, term_set=child.term_set)
+                                        parent.external_resources.add_ref_term_set(file=parent, container=child)
                                         break
                                     elif parent.name=='root':
                                         msg = 'Could not find ExternalResourcesManager for root.'
@@ -595,17 +588,15 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
             {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
-             'default': None},
-            {'name': 'validate', 'type': bool, 'doc': 'boolean value to validate data on initial add',
-             'default': False})
-            # {'name': 'add_er', 'type': bool, 'doc': 'boolean value to add data to er after validation',
-            #  'default': False})
+             'default': None})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         self.term_set = popargs('term_set', kwargs)
-        self.validate = popargs('validate', kwargs)
-        # self.add_er = popargs('add_er', kwargs)
         super().__init__(**kwargs)
+        if self.term_set is not None:
+            self.validate = True
+        else:
+            self.validate = False
 
         if self.term_set is None or (self.term_set is not None and not self.validate):
             self.__data = data
@@ -621,16 +612,6 @@ class Data(AbstractContainer):
                 msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
                 raise ValueError(msg)
             self.__data = data
-
-        # if self.validate and self.add_er:
-        #     # check for parent ER
-        #     container = self.get_ancestor(data_type='ExternalResources')
-        #     if container is None:
-        #         msg = "Cannot find ExternalResources."
-        #         raise ValueError(msg)
-        # elif self.add_er and not self.validate:
-        #     msg = 'Cannot add to ExternalResources without validation'
-        #     raise ValueError(msg)
 
     @property
     def data(self):
