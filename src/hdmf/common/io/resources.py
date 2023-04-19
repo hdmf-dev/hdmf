@@ -24,7 +24,7 @@ class ExternalResourcesMap(ObjectMapper):
         return self.construct_helper('keys', builder, KeyTable, manager)
 
     @ObjectMapper.constructor_arg('files')
-    def resources(self, builder, manager):
+    def files(self, builder, manager):
         return self.construct_helper('files', builder, FileTable, manager)
 
     @ObjectMapper.constructor_arg('entities')
