@@ -267,6 +267,8 @@ class ExternalResources(Container):
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
             {'name': 'file_id_idx', 'type': int,
              'doc': 'The file_id row idx.'},
+            {'name': 'object_type', 'type': str, 'default': None,
+             'doc': ('The type of the object. This is also the parent in relative_path.')},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
                      'an external resource reference key. Use an empty string if not applicable.')},
@@ -276,9 +278,10 @@ class ExternalResources(Container):
         """
         Add an object that references an external resource.
         """
-        file_id_idx, container, relative_path, field = popargs('file_id_idx','container', 'relative_path', 'field', kwargs)
+        file_id_idx, container, object_type, relative_path, field = popargs('file_id_idx','container', 'object_type', 'relative_path', 'field', kwargs)
 
-        object_type = container.__class__.__name__
+        if object_type is None:
+            object_type = container.__class__.__name__
 
         if isinstance(container, AbstractContainer):
             container = container.object_id
@@ -296,7 +299,7 @@ class ExternalResources(Container):
         return ObjectKey(obj, key, table=self.object_keys)
 
     @docval({'name': 'file',  'type': AbstractContainer, 'doc': 'The identifier for the NWBFILE.'},
-            {'name': 'container', 'type': (str, AbstractContainer),
+            {'name': 'container', 'type': AbstractContainer,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
             {'name': 'relative_path', 'type': str,
@@ -331,10 +334,7 @@ class ExternalResources(Container):
             self._add_file(file_id)
             file_id_idx = self.files.which(file_id=file_id)[0]
 
-        if isinstance(container, str):
-            objecttable_idx = self.objects.which(object_id=container)
-        else:
-            objecttable_idx = self.objects.which(object_id=container.object_id)
+        objecttable_idx = self.objects.which(object_id=container.object_id)
 
         if len(objecttable_idx) > 0:
             relative_path_idx = self.objects.which(relative_path=relative_path)
@@ -1008,6 +1008,7 @@ class ExternalResources(Container):
         def check_idx(idx_arr, name):
             """Check that indices are consecutively numbered without missing values"""
             idx_diff = np.diff(idx_arr)
+            # breakpoint()
             if np.any(idx_diff != 1):
                 missing_idx = [i for i in range(np.max(idx_arr)) if i not in idx_arr]
                 msg = "Missing %s entries %s" % (name, str(missing_idx))
@@ -1015,6 +1016,7 @@ class ExternalResources(Container):
 
         path = popargs('path', kwargs)
         df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
+        breakpoint()
         # Construct the ExternalResources
         er = ExternalResources()
         # breakpoint()
@@ -1023,6 +1025,7 @@ class ExternalResources(Container):
         file_order = np.argsort(files_idx)
         file_idx = files_idx[file_order]
         files_rows = files_rows[file_order]
+        # breakpoint()
         # Check that files are consecutively numbered
         check_idx(idx_arr=file_idx, name='file_id')
         files = df[('files', 'file_id')].iloc[files_rows]
@@ -1040,11 +1043,11 @@ class ExternalResources(Container):
         # Add the objects to the Object table
         ob_files = df[('objects', 'file_id_idx')].iloc[ob_rows]
         ob_ids = df[('objects', 'object_id')].iloc[ob_rows]
+        ob_types = df[('objects', 'object_type')].iloc[ob_rows]
         ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
         ob_fields = df[('objects', 'field')].iloc[ob_rows]
-        for ob in zip(ob_files, ob_ids, ob_relpaths, ob_fields):
-            er._add_object(file_id_idx=ob[0], container=ob[1], relative_path=ob[2], field=ob[3])
-
+        for ob in zip(ob_files, ob_ids, ob_types, ob_relpaths, ob_fields):
+            er._add_object(file_id_idx=ob[0], container=ob[1], object_type=ob[2], relative_path=ob[3], field=ob[4])
         # Retrieve all keys
         keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)
         # Sort keys based on their index
@@ -1067,6 +1070,7 @@ class ExternalResources(Container):
 
         # Retrieve all entities
         entities_idx, entities_rows = np.unique(df[('entities', 'entities_idx')], return_index=True)
+        breakpoint()
         # Sort entities based on their index
         entities_order = np.argsort(entities_idx)
         entities_idx = entities_idx[entities_order]
@@ -1080,6 +1084,5 @@ class ExternalResources(Container):
         # entities_resources_idx = df[('resources', 'resources_idx')].iloc[entities_rows]
         for e in zip(entities_keys, entities_id, entities_uri):
             er._add_entity(key=e[0], entity_id=e[1], entity_uri=e[2])
-
         # Return the reconstructed ExternalResources
         return er
