@@ -25,6 +25,7 @@ reqs = [
     'ruamel.yaml>=0.16,<1',
     'scipy>=1.1,<2',
     'setuptools',
+    'linkml-runtime'
 ]
 
 print(reqs)
