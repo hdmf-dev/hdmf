@@ -9,7 +9,7 @@ from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 
-from pynert import TermSet
+from ..term_set import TermSet
 from glob import glob
 import os
 

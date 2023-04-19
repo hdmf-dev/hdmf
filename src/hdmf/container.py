@@ -12,7 +12,7 @@ import pandas as pd
 from .data_utils import DataIO, append_data, extend_data
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
-from pynert import TermSet
+from .term_set import TermSet
 
 
 def _set_exp(cls):
