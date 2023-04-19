@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import itertools
 
-from pynert import TermSet
+from ..term_set import TermSet
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data

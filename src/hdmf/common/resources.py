@@ -1018,7 +1018,7 @@ class ExternalResources(Container):
         # Construct the ExternalResources
         er = ExternalResources()
         # breakpoint()
-        # Retrive all the Files
+        # Retrieve all the Files
         files_idx, files_rows = np.unique(df[('files', 'file_id')], return_index=True)
         file_order = np.argsort(files_idx)
         file_idx = files_idx[file_order]
