@@ -10,4 +10,5 @@ dependencies:
   - numpy==1.24.2
   - pandas==2.0.0
   - python-dateutil==2.8.2
+  - pytest==7.1.2
   - setuptools
