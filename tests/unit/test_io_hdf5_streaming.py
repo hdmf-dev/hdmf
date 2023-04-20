@@ -76,7 +76,6 @@ class TestRos3(TestCase):
 
         self.manager = BuildManager(type_map)
 
-
     def tearDown(self):
         if os.path.exists(self.ns_filename):
             os.remove(self.ns_filename)
@@ -89,7 +88,6 @@ class TestRos3(TestCase):
         with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3") as io:
             file = io.read()
             print(file)
-
 
 ### Util functions and classes to enable loading of the NWB namespace -- see pynwb/src/pynwb/spec.py
 
