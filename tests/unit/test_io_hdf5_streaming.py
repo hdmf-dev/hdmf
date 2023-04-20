@@ -10,7 +10,11 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval, get_docval
 
 
-class TestHDF5IOStreaming(TestCase):
+class TestRos3(TestCase):
+    """Test reading an HDMF file using HDF5 ROS3 streaming.
+
+    TODO: test streaming via fsspec/h5py
+    """
 
     def setUp(self):
         # Skip ROS3 tests if internet is not available or the ROS3 driver is not installed
