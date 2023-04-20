@@ -18,7 +18,9 @@ class HDMFIO(metaclass=ABCMeta):
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
-              not (source.startswith("http://") or source.startswith("https://") or source  .startswith("s3://"))):
+              not (source.lower().startswith("http://") or 
+                   source.lower().startswith("https://") or 
+                   source.lower().startswith("s3://"))):
             source = os.path.abspath(source)
 
         self.__manager = manager
