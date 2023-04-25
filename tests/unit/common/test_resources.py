@@ -1,7 +1,7 @@
 import pandas as pd
 from hdmf.common import DynamicTable
 from hdmf.common.resources import ExternalResources, Key
-from hdmf import Data, Container
+from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 import numpy as np
 import unittest
@@ -9,6 +9,11 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
+class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
+    def __init__(self, **kwargs):
+        name = 'ExternalResourcesManagerContainer'
+        kwargs['name'] = name
+        super().__init__(**kwargs)
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
 
@@ -32,8 +37,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
         remove_test_file('./er.tsv')
-
-
 
     def test_to_dataframe(self):
         # Setup complex external resources with keys reused across objects and
@@ -159,6 +162,51 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         with self.assertRaises(AssertionError):
             ExternalResources.assert_external_resources_equal(er_left,
                                                               er_right)
+
+    def test_add_ref_search_for_file(self):
+        em = ExternalResourcesManagerContainer()
+        er = ExternalResources()
+        er.add_ref(container=em, key='key1',
+                   entity_id='entity_id1', entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.objects.data, [(0, em.object_id, 'ExternalResourcesManagerContainer', '', '')])
+
+    def test_add_ref_search_for_file_parent(self):
+        em = ExternalResourcesManagerContainer()
+
+        child = Container(name='child')
+        em.add_child(child)
+
+        er = ExternalResources()
+        er.add_ref(container=child, key='key1',
+                   entity_id='entity_id1', entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.objects.data, [(0, child.object_id, 'Container', '', '')])
+
+    def test_add_ref_search_for_file_nested_parent(self):
+        em = ExternalResourcesManagerContainer()
+
+        nested_child = Container(name='nested_child')
+        child = Container(name='child')
+        child.add_child(nested_child)
+        em.add_child(child)
+
+        er = ExternalResources()
+        er.add_ref(container=nested_child, key='key1',
+                   entity_id='entity_id1', entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('key1',)])
+        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.objects.data, [(0, nested_child.object_id, 'Container', '', '')])
+
+    def test_add_ref_search_for_file_error(self):
+        container = Container(name='container')
+        er = ExternalResources()
+
+        with self.assertRaises(ValueError):
+            er.add_ref(container=container, key='key1',
+                   entity_id='entity_id1', entity_uri='entity1')
 
     def test_add_ref(self):
         er = ExternalResources()
@@ -420,6 +468,17 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er._check_object_field(container=data, file=Container(name='file'), relative_path='', field='')
 
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
+
+    def test_check_object_field_multi_files(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file=Container(name='file')
+        er._check_object_field(container=data, file=file, relative_path='', field='')
+        er._add_file(file.object_id)
+
+        data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        with self.assertRaises(ValueError):
+            er._check_object_field(container=data2, file=file, relative_path='', field='')
 
     def test_check_object_field_multi_error(self):
         er = ExternalResources()
