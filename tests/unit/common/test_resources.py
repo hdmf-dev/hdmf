@@ -19,13 +19,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         er = ExternalResources()
-        file=Container(name='file')
-        file2=Container(name='file2')
+        file=ExternalResourcesManagerContainer(name='file')
+        file2=ExternalResourcesManagerContainer(name='file2')
         er.add_ref(file=file,
-            container=Container(name='Container'), key='special',
+            container=file, key='special',
             entity_id="id11", entity_uri='url11')
         er.add_ref(file=file2,
-            container=Container(name='Container2'), key='key2',
+            container=file2, key='key2',
             entity_id="id12", entity_uri='url12')
 
         return er
@@ -50,7 +50,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                 dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
             )
         )
-        file = Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         k1, e1 = er.add_ref(file=file,
             container=data1,
             field='species',
@@ -87,7 +87,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_assert_external_resources_equal(self):
-        file = Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
         er_left = ExternalResources()
         er_left.add_ref(file=file,
@@ -104,12 +104,12 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_invalid_keys_assert_external_resources_equal(self):
         er_left = ExternalResources()
-        er_left.add_ref(file=Container(name='file'),
+        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1',
             entity_id="id11", entity_uri='url11')
 
         er_right = ExternalResources()
-        er_right.add_ref(file=Container(name='file'),
+        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='invalid',
             entity_id="id11", entity_uri='url11')
 
@@ -119,12 +119,12 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_invalid_objects_assert_external_resources_equal(self):
         er_left = ExternalResources()
-        er_left.add_ref(file=Container(name='file'),
+        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1',
             entity_id="id11", entity_uri='url11')
 
         er_right = ExternalResources()
-        er_right.add_ref(file=Container(name='file'),
+        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1',
             entity_id="id11", entity_uri='url11')
 
@@ -134,12 +134,12 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_invalid_entity_assert_external_resources_equal(self):
         er_left = ExternalResources()
-        er_left.add_ref(file=Container(name='file'),
+        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1',
             entity_id="invalid", entity_uri='invalid')
 
         er_right = ExternalResources()
-        er_right.add_ref(file=Container(name='file'),
+        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1',
             entity_id="id11", entity_uri='url11')
 
@@ -149,13 +149,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_invalid_object_keys_assert_external_resources_equal(self):
         er_left = ExternalResources()
-        er_left.add_ref(file=Container(name='file'),
+        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='invalid',
             entity_id="id11", entity_uri='url11')
 
         er_right = ExternalResources()
         er_right._add_key('key')
-        er_right.add_ref(file=Container(name='file'),
+        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1',
             entity_id="id11", entity_uri='url11')
 
@@ -211,7 +211,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_add_ref(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
@@ -220,7 +220,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_get_object_type(self):
         er = ExternalResources()
-        file=Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=file,
             container=data, key='key1',
@@ -248,7 +248,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_get_object_type_all_instances(self):
         er = ExternalResources()
-        file=Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=file,
             container=data, key='key1',
@@ -277,7 +277,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_get_entities(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file=Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         er.add_ref(file=file,
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
@@ -355,7 +355,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_get_entities_file_none_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file=Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         er.add_ref(file=file,
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
@@ -368,7 +368,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
-        file=Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
 
         er = ExternalResources()
         er.add_ref(file=file,container=table,
@@ -391,7 +391,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_to_and_from_norm_tsv(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_norm_tsv(path='./')
@@ -404,7 +404,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_to_and_from_norm_tsv_entity_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_norm_tsv(path='./')
@@ -422,7 +422,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_to_and_from_norm_tsv_object_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_norm_tsv(path='./')
@@ -440,7 +440,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_to_and_from_norm_tsv_object_keys_object_idx_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_norm_tsv(path='./')
@@ -458,7 +458,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_norm_tsv(path='./')
@@ -477,7 +477,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # write er to file
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_flat_tsv(path='./er.tsv')
@@ -530,9 +530,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources()
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_1, key='key1', entity_id="id11", entity_uri='url11')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_2, key='key2', entity_id="id12", entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key2',)])
@@ -545,9 +545,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources()
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_1, key='key1', entity_id="id11", entity_uri='url11')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_2, key='key1', entity_id="id12", entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key1',)])
@@ -560,11 +560,11 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
         ref_container_3 = Container(name='Container_2')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_1, key='key1', entity_id="id11", entity_uri='url11')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_2, key='key1', entity_id="id12", entity_uri='url21')
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=ref_container_3, key='key1', entity_id="id13", entity_uri='url31')
         self.assertEqual(er.keys.data, [('key1',), ('key1',), ('key1',)])
         self.assertEqual(
@@ -581,11 +581,11 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=Container(name='file'),container=data, key='Mus musculus',
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),container=data, key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=Container(name='file'),container=data, key=existing_key,
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),container=data, key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
 
@@ -594,14 +594,14 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_check_object_field_add(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er._check_object_field(container=data, file=Container(name='file'), relative_path='', field='')
+        er._check_object_field(container=data, file=ExternalResourcesManagerContainer(name='file'), relative_path='', field='')
 
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
     def test_check_object_field_multi_files(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file=Container(name='file')
+        file=ExternalResourcesManagerContainer(name='file')
         er._check_object_field(container=data, file=file, relative_path='', field='')
         er._add_file(file.object_id)
 
@@ -612,16 +612,16 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     def test_check_object_field_multi_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er._check_object_field(container=data, file=Container(name='file'), relative_path='', field='')
+        er._check_object_field(container=data, file=ExternalResourcesManagerContainer(name='file'), relative_path='', field='')
         er._add_object(file_id_idx=0,container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
-            er._check_object_field(container=data, file=Container(name='file'), relative_path='', field='')
+            er._check_object_field(container=data, file=ExternalResourcesManagerContainer(name='file'), relative_path='', field='')
 
     def test_check_object_field_not_in_obj_table(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         with self.assertRaises(ValueError):
-            er._check_object_field(container=data, file=Container(name='file'), relative_path='', field='', create=False)
+            er._check_object_field(container=data, file=ExternalResourcesManagerContainer(name='file'), relative_path='', field='', create=False)
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
@@ -631,7 +631,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_row(id=0, col1='data')
 
         er = ExternalResources()
-        er.add_ref(file=Container(name='file'),container=table,
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),container=table,
                    attribute='id',
                    key='key1',
                    entity_id='entity_0',
@@ -649,7 +649,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_row(id=0, col1='data')
 
         er = ExternalResources()
-        er.add_ref(file=Container(name='file'),container=table,
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),container=table,
                    attribute='col1',
                    key='key1',
                    entity_id='entity_0',
@@ -667,7 +667,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             data=np.array(
                 [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
                 dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
-        er.add_ref(file=Container(name='file'),
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=data,
             field='species',
             key='Mus musculus',
@@ -676,11 +676,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         )
         self.assertEqual(er.keys.data, [('Mus musculus',)])
         self.assertEqual(er.entities.data, [(0, 'NCBI:txid10090', 'entity_0_uri')])
-        file=Container(name='file'),self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', 'species')])
+        file=ExternalResourcesManagerContainer(name='file'),self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', 'species')])
 
     def test_roundtrip(self):
         read_container = self.roundtripContainer()
-        breakpoint()
         self.assertTrue(ExternalResources.assert_external_resources_equal(read_container,
                                                                           self.container))
 
@@ -725,7 +724,7 @@ class TestExternalResourcesNestedAttributes(TestCase):
         table.add_row(id=0, col1='data')
 
         er = ExternalResources()
-        er.add_ref(file=Container(name='file'),container=table,
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),container=table,
                    attribute='description',
                    key='key1',
                    entity_id='entity_0',
@@ -736,7 +735,7 @@ class TestExternalResourcesNestedAttributes(TestCase):
 
     def test_add_ref_deep_nested(self):
         er = ExternalResources(type_map=self.type_map)
-        er.add_ref(file=Container(name='file'),container=self.bar,
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),container=self.bar,
                    attribute='attr2',
                    key='key1',
                    entity_id='entity_0',
@@ -750,9 +749,9 @@ class TestExternalResourcesGetKey(TestCase):
         self.er = ExternalResources()
 
     def test_get_key_error_more_info(self):
-        self.er.add_ref(file=Container(name='file'),
+        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-        self.er.add_ref(file=Container(name='file'),
+        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
 
         msg = "There are more than one key with that name. Please search with additional information."
@@ -760,7 +759,7 @@ class TestExternalResourcesGetKey(TestCase):
             keys = self.er.get_key(key_name='key1')
 
     def test_get_key(self):
-        self.er.add_ref(file=Container(name='file'),
+        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
 
         key = self.er.get_key(key_name='key1')
@@ -768,7 +767,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_bad_arg(self):
-        self.er.add_ref(file=Container(name='file'),
+        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
 
         with self.assertRaises(ValueError):

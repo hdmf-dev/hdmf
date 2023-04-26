@@ -297,7 +297,7 @@ class ExternalResources(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'file',  'type': AbstractContainer, 'doc': 'The identifier for the NWBFILE.'},
+    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the NWBFILE.'},
             {'name': 'container', 'type': AbstractContainer,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
@@ -350,7 +350,7 @@ class ExternalResources(Container):
                              "and field in objects table.")
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
-            {'name': 'file',  'type': AbstractContainer, 'doc': 'The identifier for the NWBFILE.',
+            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the NWBFILE.',
              'default': None,},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
@@ -419,7 +419,7 @@ class ExternalResources(Container):
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
-            {'name': 'file',  'type': AbstractContainer, 'doc': 'The identifier for the NWBFILE.',
+            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the NWBFILE.',
              'default': None,},
             )
     def add_ref(self, **kwargs):
@@ -543,7 +543,7 @@ class ExternalResources(Container):
             df = df.loc[(df['relative_path']==relative_path) & (df['object_type']==object_type) & (df['object_type']==object_type)]
         return df
 
-    @docval({'name': 'file',  'type': AbstractContainer, 'doc': 'The NWBFILE.',
+    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The NWBFILE.',
              'default': None,},
             {'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/data object that is linked to resources/entities.'},
