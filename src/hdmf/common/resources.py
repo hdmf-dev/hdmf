@@ -894,7 +894,6 @@ class ExternalResources(Container):
         def check_idx(idx_arr, name):
             """Check that indices are consecutively numbered without missing values"""
             idx_diff = np.diff(idx_arr)
-            # breakpoint()
             if np.any(idx_diff != 1):
                 missing_idx = [i for i in range(np.max(idx_arr)) if i not in idx_arr]
                 msg = "Missing %s entries %s" % (name, str(missing_idx))
@@ -902,16 +901,15 @@ class ExternalResources(Container):
 
         path = popargs('path', kwargs)
         df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
-        # breakpoint()
         # Construct the ExternalResources
         er = ExternalResources()
-        # breakpoint()
         # Retrieve all the Files
         files_idx, files_rows = np.unique(df[('files', 'files_idx')], return_index=True)
         file_order = np.argsort(files_idx)
         file_idx = files_idx[file_order]
         files_rows = files_rows[file_order]
         # Check that files are consecutively numbered
+        # breakpoint()
         check_idx(idx_arr=file_idx, name='files_idx')
         files = df[('files', 'file_id')].iloc[files_rows]
         for file in zip(files):

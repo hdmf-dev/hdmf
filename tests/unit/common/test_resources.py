@@ -219,13 +219,174 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
     def test_get_object_type(self):
-        pass
+        er = ExternalResources()
+        file=Container(name='file')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=file,
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+
+        df = er.get_object_type(object_type='Data')
+
+        expected_df_data = \
+            {'files_idx': {0: 0},
+             'file_id': {0: file.object_id},
+             'objects_idx': {0: 0},
+             'object_id': {0: data.object_id},
+             'file_id_idx': {0: 0},
+             'object_type': {0: 'Data'},
+             'relative_path': {0: ''},
+             'field': {0: ''},
+             'keys_idx': {0: 0},
+             'key': {0: 'key1'},
+             'entities_idx': {0: 0},
+             'entity_id': {0: 'entity_id1'},
+             'entity_uri': {0: 'entity1'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_object_type_all_instances(self):
-        pass
+        er = ExternalResources()
+        file=Container(name='file')
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=file,
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+
+        df = er.get_object_type(object_type='Data', all_instances=True)
+
+        expected_df_data = \
+            {'files_idx': {0: 0},
+             'file_id': {0: file.object_id},
+             'objects_idx': {0: 0},
+             'object_id': {0: data.object_id},
+             'file_id_idx': {0: 0},
+             'object_type': {0: 'Data'},
+             'relative_path': {0: ''},
+             'field': {0: ''},
+             'keys_idx': {0: 0},
+             'key': {0: 'key1'},
+             'entities_idx': {0: 0},
+             'entity_id': {0: 'entity_id1'},
+             'entity_uri': {0: 'entity1'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_entities(self):
-        pass
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file=Container(name='file')
+        er.add_ref(file=file,
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+
+        df = er.get_object_entities(file=file,
+                                    container=data)
+        expected_df_data = \
+            {'key_names': {0: 'key1'},
+             'entity_id': {0: 'entity_id1'},
+             'entity_uri': {0: 'entity1'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
+
+    def test_get_entities_file_none_container(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = ExternalResourcesManagerContainer()
+        er.add_ref(container=file, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        df = er.get_object_entities(container=file)
+
+        expected_df_data = \
+            {'key_names': {0: 'key1'},
+             'entity_id': {0: 'entity_id1'},
+             'entity_uri': {0: 'entity1'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
+
+    def test_get_entities_file_none_not_container_nested(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = ExternalResourcesManagerContainer()
+        child = Container(name='child')
+
+        child.parent = file
+
+        er.add_ref(container=child, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        df = er.get_object_entities(container=child)
+
+        expected_df_data = \
+            {'key_names': {0: 'key1'},
+             'entity_id': {0: 'entity_id1'},
+             'entity_uri': {0: 'entity1'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
+
+    def test_get_entities_file_none_not_container_deep_nested(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = ExternalResourcesManagerContainer()
+        child = Container(name='child')
+        nested_child = Container(name='nested_child')
+
+
+        child.parent = file
+        nested_child.parent = child
+
+        er.add_ref(container=nested_child, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        df = er.get_object_entities(container=nested_child)
+
+        expected_df_data = \
+            {'key_names': {0: 'key1'},
+             'entity_id': {0: 'entity_id1'},
+             'entity_uri': {0: 'entity1'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
+
+
+    def test_get_entities_file_none_error(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file=Container(name='file')
+        er.add_ref(file=file,
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+        with self.assertRaisesWith(ValueError, msg):
+             df = er.get_object_entities(container=data)
+
+    def test_get_entities_attribute(self):
+        table = DynamicTable(name='table', description='table')
+        table.add_column(name='col1', description="column")
+        table.add_row(id=0, col1='data')
+
+        file=Container(name='file')
+
+        er = ExternalResources()
+        er.add_ref(file=file,container=table,
+                   attribute='col1',
+                   key='key1',
+                   entity_id='entity_0',
+                   entity_uri='entity_0_uri')
+        df = er.get_object_entities(file=file,
+                                    container=table,
+                                    attribute='col1')
+
+        expected_df_data = \
+            {'key_names': {0: 'key1'},
+             'entity_id': {0: 'entity_0'},
+             'entity_uri': {0: 'entity_0_uri'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
 
     def test_to_and_from_norm_tsv(self):
         er = ExternalResources()
@@ -355,7 +516,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     #     # read er back from file and compare
     #     msg = "Missing file_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
     #     with self.assertRaisesWith(ValueError, msg):
-    #         breakpoint()
     #         _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
