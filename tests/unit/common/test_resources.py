@@ -22,7 +22,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         file=Container(name='file')
         file2=Container(name='file2')
         er.add_ref(file=file,
-            container=Container(name='Container'), key='key1',
+            container=Container(name='Container'), key='special',
             entity_id="id11", entity_uri='url11')
         er.add_ref(file=file2,
             container=Container(name='Container2'), key='key2',
@@ -176,7 +176,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         em = ExternalResourcesManagerContainer()
 
         child = Container(name='child')
-        em.add_child(child)
+        child.parent = em
 
         er = ExternalResources()
         er.add_ref(container=child, key='key1',
@@ -190,8 +190,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         nested_child = Container(name='nested_child')
         child = Container(name='child')
-        child.add_child(nested_child)
-        em.add_child(child)
+        nested_child.parent = child
+        child.parent = em
 
         er = ExternalResources()
         er.add_ref(container=nested_child, key='key1',
@@ -355,7 +355,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er_df.to_csv('./er.tsv', sep='\t')
         # read er back from file and compare
         msg = "Missing entities_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-        # breakpoint()
         with self.assertRaisesWith(ValueError, msg):
             _ = ExternalResources.from_flat_tsv(path='./er.tsv')
 
@@ -549,14 +548,16 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 'NCBI:txid10090', 'entity_0_uri')])
         file=Container(name='file'),self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', 'species')])
 
-    @unittest.skip('Not needed due to read/write to tsv tests')
     def test_roundtrip(self):
-        return
+        read_container = self.roundtripContainer()
+        self.assertTrue(ExternalResources.assert_external_resources_equal(read_container,
+                                                                          self.container))
 
-    @unittest.skip('Not needed due to read/write to tsv tests')
     def test_roundtrip_export(self):
-        return
-#
+        read_container = self.roundtripExportContainer()
+        self.assertTrue(ExternalResources.assert_external_resources_equal(read_container,
+                                                                          self.container))
+
 #
 # class TestExternalResourcesNestedAttributes(TestCase):
 #
