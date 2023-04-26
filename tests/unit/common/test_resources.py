@@ -680,6 +680,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_roundtrip(self):
         read_container = self.roundtripContainer()
+        breakpoint()
         self.assertTrue(ExternalResources.assert_external_resources_equal(read_container,
                                                                           self.container))
 
