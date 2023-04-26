@@ -417,9 +417,8 @@ class ExternalResources(Container):
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.',
-             'default': None},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
+            {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
             {'name': 'file',  'type': AbstractContainer, 'doc': 'The identifier for the NWBFILE.',
              'default': None,},
             )
@@ -503,16 +502,16 @@ class ExternalResources(Container):
             key = self._add_key(key)
             self._add_object_key(object_field, key)
 
-        if (entity_id is not None and entity_uri is not None):
-            add_entity = True
-        else:
-            msg = ("Specify entity_id, and entity_uri arguments."
-                   "Both are required to create a reference")
-            raise ValueError(msg)
-
-        if add_entity:
-            # entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
-            entity = self._add_entity(key, entity_id, entity_uri)
+        # if (entity_id is not None and entity_uri is not None):
+        #     add_entity = True
+        # else:
+        #     msg = ("Specify entity_id, and entity_uri arguments."
+        #            "Both are required to create a reference")
+        #     raise ValueError(msg)
+        #
+        # if add_entity:
+        #     # entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
+        entity = self._add_entity(key, entity_id, entity_uri)
 
         return key, entity
 
@@ -607,40 +606,6 @@ class ExternalResources(Container):
         df['keys_idx'] = key_names
         df = df.rename(columns={'keys_idx': 'key_names', 'entity_id': 'entity_id', 'entity_uri': 'entity_uri'})
         return df
-
-    # @docval({'name': 'keys', 'type': (list, Key), 'default': None,
-    #          'doc': 'The Key(s) to get external resource data for.'},
-    #         rtype=pd.DataFrame, returns='a DataFrame with keys and external resource data')
-    # def get_keys(self, **kwargs):
-    #     """
-    #     Return a DataFrame with information about keys used to make references to external resources.
-    #     The DataFrame will contain the following columns:
-    #         - *key_name*:              the key that will be used for referencing an external resource
-    #         - *entity_id*:    the index for the entity at the external resource
-    #         - *entity_uri*:   the URI for the entity at the external resource
-    #
-    #     It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
-    #     used within the same object, relative_path, field. This method doesn't support such functionality by default. To
-    #     select specific keys, use the *keys* argument to pass in the Key object(s) representing the desired keys. Note,
-    #     if the same *key_name* is used more than once, multiple calls to this method with different Key objects will
-    #     be required to keep the different instances separate. If a single call is made, it is left up to the caller to
-    #     distinguish the different instances.
-    #     """
-    #     keys = popargs('keys', kwargs)
-    #     if keys is None:
-    #         keys = [self.keys.row[i] for i in range(len(self.keys))]
-    #     else:
-    #         if not isinstance(keys, list):
-    #             keys = [keys]
-    #     data = list()
-    #     for key in keys:
-    #         rsc_ids = self.entities.which(keys_idx=key.idx)
-    #         for rsc_id in rsc_ids:
-    #             rsc_row = self.entities.row[rsc_id].todict()
-    #             rsc_row.pop('keys_idx')
-    #             rsc_row['key_name'] = key.key
-    #             data.append(rsc_row)
-    #     return pd.DataFrame(data=data, columns=['key_name', 'entity_id', 'entity_uri'])
 
     @docval({'name': 'use_categories', 'type': bool, 'default': False,
              'doc': 'Use a multi-index on the columns to indicate which category each column belongs to.'},
@@ -857,10 +822,7 @@ class ExternalResources(Container):
 
         file_id_idx = objects['file_id_idx']
         for idx in file_id_idx:
-            if idx=='':
-                continue
-            else:
-                if not int(idx)<files.__len__():
+            if not int(idx)<files.__len__():
                     msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
                     raise ValueError(msg)
 
@@ -1003,7 +965,6 @@ class ExternalResources(Container):
         entities_id = df[('entities', 'entity_id')].iloc[entities_rows]
         entities_uri = df[('entities', 'entity_uri')].iloc[entities_rows]
         entities_keys = np.array(all_added_keys)[df[('keys', 'keys_idx')].iloc[entities_rows]]
-        # entities_resources_idx = df[('resources', 'resources_idx')].iloc[entities_rows]
         for e in zip(entities_keys, entities_id, entities_uri):
             er._add_entity(key=e[0], entity_id=e[1], entity_uri=e[2])
         # Return the reconstructed ExternalResources

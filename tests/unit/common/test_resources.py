@@ -218,6 +218,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
+    def test_get_object_type(self):
+        pass
+
+    def test_get_object_type_all_instances(self):
+        pass
+
+    def test_get_entities(self):
+        pass
+
     def test_to_and_from_norm_tsv(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
@@ -303,62 +312,61 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         self.remove_er_files()
 
-    # def test_to_flat_tsv_and_from_flat_tsv(self):
-    #     # write er to file
-    #     er = ExternalResources()
-    #     data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-    #     er.add_ref(file=Container(name='file'),
-    #         container=data, key='key1',
-    #         entity_id='entity_id1', entity_uri='entity1')
-    #     er.to_flat_tsv(path='./er.tsv')
-    #     # breakpoint()
-    #     # read er back from file and compare
-    #     er_obj = ExternalResources.from_flat_tsv(path='./er.tsv')
-    #     # Check that the data is correct
-    #     ExternalResources.assert_external_resources_equal(er_obj, er, check_dtype=False)
-    #     self.remove_er_files()
+    def test_to_flat_tsv_and_from_flat_tsv(self):
+        # write er to file
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=Container(name='file'),
+            container=data, key='key1',
+            entity_id='entity_id1', entity_uri='entity1')
+        er.to_flat_tsv(path='./er.tsv')
+        # breakpoint()
+        # read er back from file and compare
+        er_obj = ExternalResources.from_flat_tsv(path='./er.tsv')
+        # Check that the data is correct
+        ExternalResources.assert_external_resources_equal(er_obj, er, check_dtype=False)
+        self.remove_er_files()
 
-    # def test_to_flat_tsv_and_from_flat_tsv_missing_keyidx(self):
-    #     # write er to file
-    #     df = self.container.to_dataframe(use_categories=True)
-    #     df.at[0, ('keys', 'keys_idx')] = 10  # Change key_ix 0 to 10
-    #     df.to_csv(self.export_filename, sep='\t')
-    #     # read er back from file and compare
-    #     msg = "Missing keys_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         _ = ExternalResources.from_flat_tsv(path=self.export_filename)
-    #
-    # def test_to_flat_tsv_and_from_flat_tsv_missing_objectidx(self):
-    #     # write er to file
-    #     df = self.container.to_dataframe(use_categories=True)
-    #     df.at[0, ('objects', 'objects_idx')] = 10  # Change objects_idx 0 to 10
-    #     df.to_csv(self.export_filename, sep='\t')
-    #     # read er back from file and compare
-    #     msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         _ = ExternalResources.from_flat_tsv(path=self.export_filename)
-    #
+    def test_to_flat_tsv_and_from_flat_tsv_missing_keyidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('keys', 'keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv(self.export_filename, sep='\t')
+        # read er back from file and compare
+        msg = "Missing keys_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
+
+    def test_to_flat_tsv_and_from_flat_tsv_missing_objectidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('objects', 'objects_idx')] = 10  # Change objects_idx 0 to 10
+        df.to_csv(self.export_filename, sep='\t')
+        # read er back from file and compare
+        msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
+
     # def test_to_flat_tsv_and_from_flat_tsv_missing_fileidx(self):
     #     # write er to file
     #     df = self.container.to_dataframe(use_categories=True)
-    #     df.at[0, ('objects', 'file_idx')] = 10  # Change file_idx 0 to 10
+    #     df.at[0, ('files', 'files_idx')] = 10  # Change file_idx 0 to 10
     #     df.to_csv(self.export_filename, sep='\t')
     #     # read er back from file and compare
     #     msg = "Missing file_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
     #     with self.assertRaisesWith(ValueError, msg):
+    #         breakpoint()
     #         _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
         # write er to file
         er_df = self.container.to_dataframe(use_categories=True)
         er_df.at[0, ('entities', 'entities_idx')] = 10  # Change entities_idx 0 to 10
-        er_df.to_csv('./er.tsv', sep='\t')
+        er_df.to_csv(self.export_filename, sep='\t')
         # read er back from file and compare
         msg = "Missing entities_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path='./er.tsv')
-
-        self.remove_er_files()
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_add_ref_two_keys(self):
         er = ExternalResources()
@@ -409,42 +417,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', ''),
                                            (2, ref_container_3.object_id, 'Container', '', '')])
-
-    # def test_get_keys(self):
-    #     er = ExternalResources()
-    #
-    #     er.add_ref(file=Container(name='file'),
-    #         container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-    #     er.add_ref(file=Container(name='file'),
-    #         container=Container(name='Container'), key='key2', entity_id="id12", entity_uri='url21')
-    #     er.add_ref(file=Container(name='file'),
-    #         container=Container(name='Container'), key=er.get_key(key_name='key1'), entity_id="id13", entity_uri='url31')
-    #     received = er.get_keys()
-    #
-    #     expected = pd.DataFrame(
-    #         data=[['key1', 'id11', 'url11'],
-    #               ['key1', 'id13', 'url31'],
-    #               ['key2', 'id12', 'url21']],
-    #         columns=['key_name', 'entity_id', 'entity_uri'])
-    #     pd.testing.assert_frame_equal(received, expected)
-    #
-    # def test_get_keys_subset(self):
-    #     er = ExternalResources()
-    #     er.add_ref(file=Container(name='file'),
-    #         container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-    #     er.add_ref(file=Container(name='file'),
-    #         container=Container(name='Container'), key='key2', entity_id="id12", entity_uri='url21')
-    #     er.add_ref(file=Container(name='file'),
-    #         container=Container(name='Container'), key=er.get_key(key_name='key1'), entity_id="id13",
-    #         entity_uri='url31')
-    #     key = er.keys.row[0]
-    #     received = er.get_keys(keys=key)
-    #
-    #     expected = pd.DataFrame(
-    #         data=[['key1', 'id11', 'url11'],
-    #               ['key1', 'id13', 'url31']],
-    #         columns=['key_name', 'entity_id', 'entity_uri'])
-    #     pd.testing.assert_frame_equal(received, expected)
 
     def test_object_key_unqiueness(self):
         er = ExternalResources()
