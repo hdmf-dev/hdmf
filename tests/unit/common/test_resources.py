@@ -359,7 +359,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(file=file,
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
-        msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+        msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
         with self.assertRaisesWith(ValueError, msg):
              df = er.get_object_entities(container=data)
 
@@ -826,7 +826,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.er.add_ref(file=file,
             container=container1, key='key1', entity_id="id11", entity_uri='url11')
 
-        msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+        msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
         with self.assertRaisesWith(ValueError, msg):
             key = self.er.get_key(key_name='key1', container=container1)
 

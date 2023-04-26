@@ -62,14 +62,14 @@ class Entity(Row):
 
 class FileTable(Table):
     """
-    A table for storing NWBFile ids used in external resources.
+    A table for storing file ids used in external resources.
     """
 
     __defaultname__ = 'files'
 
     __columns__ = (
         {'name': 'file_id', 'type': str,
-         'doc': 'The file id of the NWBFile that contains the object'},
+         'doc': 'The file id of the file that contains the object'},
     )
 
 
@@ -150,7 +150,7 @@ class ExternalResources(Container):
     @docval({'name': 'keys', 'type': KeyTable, 'default': None,
              'doc': 'The table storing user keys for referencing resources.'},
             {'name': 'files', 'type': FileTable, 'default': None,
-             'doc': 'The table for storing NWBFile ids used in external resources.'},
+             'doc': 'The table for storing file ids used in external resources.'},
             {'name': 'entities', 'type': EntityTable, 'default': None,
              'doc': 'The table storing entity information.'},
             {'name': 'objects', 'type': ObjectTable, 'default': None,
@@ -237,7 +237,7 @@ class ExternalResources(Container):
         key = kwargs['key_name']
         return Key(key, table=self.keys)
 
-    @docval({'name': 'file_id', 'type': str, 'doc': 'The id of the NWBFile'})
+    @docval({'name': 'file_id', 'type': str, 'doc': 'The id of the file'})
     def _add_file(self, **kwargs):
         """
         Add a file to be used for making references to external resources.
@@ -297,7 +297,7 @@ class ExternalResources(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the NWBFILE.'},
+    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.'},
             {'name': 'container', 'type': AbstractContainer,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
@@ -350,7 +350,7 @@ class ExternalResources(Container):
                              "and field in objects table.")
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
-            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the NWBFILE.',
+            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.',
              'default': None,},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
@@ -387,7 +387,7 @@ class ExternalResources(Container):
                             else:
                                 parent = parent.parent
                     else:
-                        msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+                        msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
                         raise ValueError(msg)
             # if same key is used multiple times, determine
             # which instance based on the Container
@@ -419,7 +419,7 @@ class ExternalResources(Container):
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
-            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the NWBFILE.',
+            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.',
              'default': None,},
             )
     def add_ref(self, **kwargs):
@@ -453,7 +453,7 @@ class ExternalResources(Container):
                         else:
                             parent = parent.parent
                 else:
-                    msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+                    msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
                     raise ValueError(msg)
 
         if attribute is None:  # Trivial Case
@@ -543,7 +543,7 @@ class ExternalResources(Container):
             df = df.loc[(df['relative_path']==relative_path) & (df['object_type']==object_type) & (df['object_type']==object_type)]
         return df
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The NWBFILE.',
+    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file.',
              'default': None,},
             {'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/data object that is linked to resources/entities.'},
@@ -578,7 +578,7 @@ class ExternalResources(Container):
                         else:
                             parent = parent.parent
                 else:
-                    msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+                    msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
                     raise ValueError(msg)
 
         keys = []
