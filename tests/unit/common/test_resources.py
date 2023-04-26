@@ -481,7 +481,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             container=data, key='key1',
             entity_id='entity_id1', entity_uri='entity1')
         er.to_flat_tsv(path='./er.tsv')
-        # breakpoint()
         # read er back from file and compare
         er_obj = ExternalResources.from_flat_tsv(path='./er.tsv')
         # Check that the data is correct
@@ -508,15 +507,14 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         with self.assertRaisesWith(ValueError, msg):
             _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
-    # def test_to_flat_tsv_and_from_flat_tsv_missing_fileidx(self):
-    #     # write er to file
-    #     df = self.container.to_dataframe(use_categories=True)
-    #     df.at[0, ('files', 'files_idx')] = 10  # Change file_idx 0 to 10
-    #     df.to_csv(self.export_filename, sep='\t')
-    #     # read er back from file and compare
-    #     msg = "Missing file_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         _ = ExternalResources.from_flat_tsv(path=self.export_filename)
+    def test_to_flat_tsv_and_from_flat_tsv_missing_fileidx(self):
+        # write er to file
+        df = self.container.to_dataframe(use_categories=True)
+        df.at[0, ('files', 'files_idx')] = 10  # Change file_idx 0 to 10
+        df.to_csv(self.export_filename, sep='\t')
+        # read er back from file and compare
+        with self.assertRaises(ValueError):
+            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
         # write er to file
