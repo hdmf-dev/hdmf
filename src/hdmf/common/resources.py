@@ -396,15 +396,15 @@ class ExternalResources(Container):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
                     return self.keys.row[key_idx]
-            msg = ("No key '%s' found for container '%s', relative_path '%s', and field '%s'"
-                   % (key_name, container, relative_path, field))
+            msg = "No key found with that container."
             raise ValueError(msg)
         else:
             if len(key_idx_matches) == 0:
                 # the key has never been used before
                 raise ValueError("key '%s' does not exist" % key_name)
             elif len(key_idx_matches) > 1:
-                return [self.keys.row[i] for i in key_idx_matches]
+                msg = "There are more than one key with that name. Please search with additional information."
+                raise ValueError(msg)
             else:
                 return self.keys.row[key_idx_matches[0]]
 

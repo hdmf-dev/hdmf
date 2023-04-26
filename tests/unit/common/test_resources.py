@@ -745,66 +745,100 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.objects.data[0][3], 'data/attr2', '')
 
 
-# class TestExternalResourcesGetKey(TestCase):
-#
-#     def setUp(self):
-#         self.er = ExternalResources()
-#
-#     def test_get_key(self):
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
-#
-#         keys = self.er.get_key('key1', 'uuid2', '')
-#         self.assertIsInstance(keys, Key)
-#         self.assertEqual(keys.idx, 1)
-#
-#     def test_get_key_bad_arg(self):
-#         self.er._add_key('key2')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-#         with self.assertRaises(ValueError):
-#             self.er.get_key('key2', 'uuid1', '')
-#
-#     def test_get_key_w_object_info(self):
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
-#         keys = self.er.get_key('key1', 'uuid1', '')
-#         self.assertIsInstance(keys, Key)
-#         self.assertEqual(keys.key, 'key1')
-#
-#     def test_get_key_w_bad_object_info(self):
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
-#
-#         with self.assertRaisesRegex(ValueError, "No key 'key2'"):
-#             self.er.get_key('key2', 'uuid1', '')
-#
-#     def test_get_key_doesnt_exist(self):
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
-#         with self.assertRaisesRegex(ValueError, "key 'bad_key' does not exist"):
-#             self.er.get_key('bad_key')
-#
-#
-#     def test_get_key_same_keyname_specific(self):
-#         self.er = ExternalResources()
-#
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key='key2', entity_id="id12", entity_uri='url12')
-#         self.er.add_ref(file=Container(name='file'),
-#             container=Container(name='Container'), key=self.er.get_key('key1', 'uuid1', ''), entity_id="id13", entity_uri='url13')
-#
-#         keys = self.er.get_key('key1', 'uuid1', '')
-#         self.assertIsInstance(keys, Key)
-#         self.assertEqual(keys.key, 'key1')
-#         self.assertEqual(self.er.keys.data, [('key1',), ('key2',)])
+class TestExternalResourcesGetKey(TestCase):
+
+    def setUp(self):
+        self.er = ExternalResources()
+
+    def test_get_key_error_more_info(self):
+        self.er.add_ref(file=Container(name='file'),
+            container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(file=Container(name='file'),
+            container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
+
+        msg = "There are more than one key with that name. Please search with additional information."
+        with self.assertRaisesWith(ValueError, msg):
+            keys = self.er.get_key(key_name='key1')
+
+    def test_get_key(self):
+        self.er.add_ref(file=Container(name='file'),
+            container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
+
+        key = self.er.get_key(key_name='key1')
+        self.assertIsInstance(key, Key)
+        self.assertEqual(key.idx, 0)
+
+    def test_get_key_bad_arg(self):
+        self.er.add_ref(file=Container(name='file'),
+            container=Container(name='Container'), key='key1', entity_id="id11", entity_uri='url11')
+
+        with self.assertRaises(ValueError):
+            self.er.get_key(key_name='key2')
+
+    def test_get_key_file_container_provided(self):
+        file = ExternalResourcesManagerContainer()
+        container1 = Container(name='Container')
+        self.er.add_ref(file=file,
+            container=container1, key='key1', entity_id="id11", entity_uri='url11')
+        self.er.add_ref(file=file,
+            container=Container(name='Container'), key='key1', entity_id="id12", entity_uri='url21')
+
+        key = self.er.get_key(key_name='key1', container=container1, file=file)
+        self.assertIsInstance(key, Key)
+        self.assertEqual(key.idx, 0)
+
+    def test_get_key_no_file_container_provided(self):
+        file = ExternalResourcesManagerContainer()
+        self.er.add_ref(container=file, key='key1', entity_id="id11", entity_uri='url11')
+
+        key = self.er.get_key(key_name='key1', container=file)
+        self.assertIsInstance(key, Key)
+        self.assertEqual(key.idx, 0)
+
+    def test_get_key_no_file_nested_container_provided(self):
+        file = ExternalResourcesManagerContainer()
+        container1 = Container(name='Container')
+
+        container1.parent = file
+        self.er.add_ref(file=file,
+            container=container1, key='key1', entity_id="id11", entity_uri='url11')
+
+        key = self.er.get_key(key_name='key1', container=container1)
+        self.assertIsInstance(key, Key)
+        self.assertEqual(key.idx, 0)
+
+    def test_get_key_no_file_deep_nested_container_provided(self):
+        file = ExternalResourcesManagerContainer()
+        container1 = Container(name='Container1')
+        container2 = Container(name='Container2')
+
+        container1.parent = file
+        container2.parent = container1
+
+        self.er.add_ref(file=file,
+            container=container2, key='key1', entity_id="id11", entity_uri='url11')
+
+        key = self.er.get_key(key_name='key1', container=container2)
+        self.assertIsInstance(key, Key)
+        self.assertEqual(key.idx, 0)
+
+    def test_get_key_no_file_error(self):
+        file = ExternalResourcesManagerContainer()
+        container1 = Container(name='Container')
+        self.er.add_ref(file=file,
+            container=container1, key='key1', entity_id="id11", entity_uri='url11')
+
+        msg = 'Could not find NWBFile. Add container to the NWBFILE or provide the NWBFile object_id as a string.'
+        with self.assertRaisesWith(ValueError, msg):
+            key = self.er.get_key(key_name='key1', container=container1)
+
+
+    def test_get_key_no_key_found(self):
+        file = ExternalResourcesManagerContainer()
+        container1 = Container(name='Container')
+        self.er.add_ref(file=file,
+            container=container1, key='key1', entity_id="id11", entity_uri='url11')
+
+        msg = "No key found with that container."
+        with self.assertRaisesWith(ValueError, msg):
+            key = self.er.get_key(key_name='key2', container=container1, file=file)
