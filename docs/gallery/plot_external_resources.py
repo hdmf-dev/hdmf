@@ -91,13 +91,13 @@ are rules to how users store information in the interlinked tables.
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable
-from hdmf import Data
+from hdmf import Data, ExternalResourcesManagerContainer
 import numpy as np
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
 
-er = ExternalResources(name='example')
+er = ExternalResources()
 
 ###############################################################################
 # Using the add_ref method
@@ -110,100 +110,23 @@ er = ExternalResources(name='example')
 # :py:func:`~hdmf.common.resources.ExternalResources.add_ref` taking care of populating
 # the underlying data structures accordingly.
 
+file = ExternalResourcesManagerContainer(name='file')
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 er.add_ref(
+    file=file,
     container=data,
     key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
     entity_id='NCBI:txid9606',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
-key, resource, entity = er.add_ref(
+er.add_ref(
+    file=file,
     container=data,
     key='Mus musculus',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
     entity_id='NCBI:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
-
-# Print result from the last add_ref call
-print(key)
-print(resource)
-print(entity)
-
-###############################################################################
-# Using the add_ref method with get_resource
-# -------------------------------------------
-# When adding references to resources, you may want to refer to multiple entities
-# within the same resource. Resource names are unique, so if you call
-# :py:func:`~hdmf.common.resources.ExternalResources.add_ref` with the name of an
-# existing resource, then that resource will be reused. You can also use the
-# :py:func:`~hdmf.common.resources.ExternalResources.get_resource`
-# method to get the :py:class:`~hdmf.common.resources.Resource` object and pass that in
-# to :py:func:`~hdmf.common.resources.ExternalResources.add_ref` to reuse an existing
-# resource.
-
-# Let's create a new instance of ExternalResources.
-er = ExternalResources(name='example')
-
-data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-
-er.add_ref(
-    container=data,
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
-)
-
-# Using get_resource
-existing_resource = er.get_resource('NCBI_Taxonomy')
-er.add_ref(
-    container=data,
-    key='Mus musculus',
-    resources_idx=existing_resource,
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
-)
-
-###############################################################################
-# Using the add_ref method with get_resource
-# -------------------------------------------
-# When adding references to resources, you may want to refer to multiple entities
-# within the same resource. Resource names are unique, so if you call
-# :py:func:`~hdmf.common.resources.ExternalResources.add_ref` with the name of an
-# existing resource, then that resource will be reused. You can also use the
-# :py:func:`~hdmf.common.resources.ExternalResources.get_resource`
-# method to get the :py:class:`~hdmf.common.resources.Resource` object and pass that in
-# to :py:func:`~hdmf.common.resources.ExternalResources.add_ref` to reuse an existing
-# resource.
-
-# Let's create a new instance of ExternalResources.
-er = ExternalResources(name='example')
-
-data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(
-    container=data,
-    field='',
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
-
-# Using get_resource
-existing_resource = er.get_resource('NCBI_Taxonomy')
-er.add_ref(
-    container=data,
-    field='',
-    key='Mus musculus',
-    resources_idx=existing_resource,
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
 ###############################################################################
 # Using the add_ref method with an attribute
@@ -225,35 +148,18 @@ er.add_ref(
 # of the ``genotypes.genotype_name`` :py:class:`~hdmf.common.table.VectorData` column and
 # not the object_id of the genotypes table.
 
+file = ExternalResourcesManagerContainer(name='file')
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
 er.add_ref(
+    file=file,
     container=genotypes,
     attribute='genotype_name',
     key='Rorb',
-    resource_name='MGI Database',
-    resource_uri='http://www.informatics.jax.org/',
     entity_id='MGI:1346434',
     entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
 )
-
-###############################################################################
-# Using the get_keys method
-# ------------------------------------------------------
-# The :py:func:`~hdmf.common.resources.ExternalResources.get_keys` method
-# returns a :py:class:`~pandas.DataFrame` of ``key_name``, ``resource_table_idx``, ``entity_id``,
-# and ``entity_uri``. You can either pass a single key object,
-# a list of key objects, or leave the input parameters empty to return all.
-
-# All Keys
-er.get_keys()
-
-# Single Key
-er.get_keys(keys=er.get_key('Homo sapiens'))
-
-# List of Specific Keys
-er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 
 ###############################################################################
 # Using the get_key method
@@ -265,7 +171,7 @@ er.get_keys(keys=[er.get_key('Homo sapiens'), er.get_key('Mus musculus')])
 # :py:class:`~hdmf.common.resources.ExternalResources`.
 
 # The get_key method will return the key object of the unique (key, container, relative_path, field).
-key_object = er.get_key(key_name='Rorb', container=genotypes.columns[0])
+key_object = er.get_key(key_name='Rorb')
 
 ###############################################################################
 # Using the add_ref method with a key_object
@@ -278,26 +184,14 @@ key_object = er.get_key(key_name='Rorb', container=genotypes.columns[0])
 # is used, a new :py:class:`~hdmf.common.resources.Key` will be created.
 
 er.add_ref(
+    file=file,
     container=genotypes,
     attribute='genotype_name',
     key=key_object,
-    resource_name='Ensembl',
-    resource_uri='https://uswest.ensembl.org/index.html',
     entity_id='ENSG00000198963',
     entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
 )
 
-# Let's use get_keys to visualize all the keys that have been added up to now
-er.get_keys()
-
-###############################################################################
-# Using get_object_resources
-# ---------------------------
-# This method will return information regarding keys, resources, and entities for
-# an :py:class:`~hdmf.common.resources.Object`. You can pass either the ``AbstractContainer`` object or its
-# object ID for the ``container`` argument, and the corresponding relative_path and field.
-
-er.get_object_resources(container=genotypes.columns[0])
 
 ###############################################################################
 # Special Case: Using add_ref with compound data
@@ -310,7 +204,7 @@ er.get_object_resources(container=genotypes.columns[0])
 # 'x' is using the external reference.
 
 # Let's create a new instance of ExternalResources.
-er = ExternalResources(name='example')
+er = ExternalResources()
 
 data = Data(
     name='data_name',
@@ -321,207 +215,10 @@ data = Data(
 )
 
 er.add_ref(
+    file=file,
     container=data,
     field='species',
     key='Mus musculus',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
     entity_id='NCBI:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
-
-###############################################################################
-# Note that because the container is a :py:class:`~hdmf.container.Data` object, and the external resource is being
-# associated with the values of the dataset rather than an attribute of the dataset,
-# the field must be prefixed with 'data'. Normally, to associate an external resource
-# with the values of the dataset, the field can be left blank. This allows us to
-# differentiate between a dataset compound data type field named 'x' and a dataset
-# attribute named 'x'.
-
-er.add_ref(
-    container=data,
-    field='species',
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
-)
-
-
-###############################################################################
-# Convert ExternalResources to a single DataFrame
-# -----------------------------------------------
-#
-
-er = ExternalResources(name='example')
-
-data1 = Data(
-    name='data_name',
-    data=np.array(
-        [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
-        dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
-    )
-)
-
-k1, r1, e1 = er.add_ref(
-    container=data1,
-    field='species',
-    key='Mus musculus',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid10090',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
-)
-
-
-k2, r2, e2 = er.add_ref(
-    container=data1,
-    field='species',
-    key='Homo sapiens',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9606',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
-)
-
-# Want to use the same key, resources, and entities for both. But we'll add an extra key just for this one
-data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus', 'Pongo abelii'])
-
-o2 = er._add_object(data2, relative_path='', field='')
-er._add_object_key(o2, k1)
-er._add_object_key(o2, k2)
-
-k2, r2, e2 = er.add_ref(
-    container=data2,
-    field='',
-    key='Pongo abelii',
-    resource_name='NCBI_Taxonomy',
-    resource_uri='https://www.ncbi.nlm.nih.gov/taxonomy',
-    entity_id='NCBI:txid9601',
-    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9601'
-)
-
-# Question:
-# - Can add_ref be used to associate two different objects with the same keys, resources, and entities?
-#    - Here we use the private _add_object, and _add_object_key methods to do this but should this not be possible
-#      with add_ref? Specifically, add_ref allows Resource, Key, objects to be reused on input but not Entity? Why?
-#      E.g., should we be able to do:
-#      er.add_ref(
-#         container=data2,
-#         field='',
-#         key=k1,
-#         resources_idx=r1,
-#         entity_id=e1      # <-- not allowed
-#      )
-#
-
-genotypes = DynamicTable(name='genotypes', description='My genotypes')
-genotypes.add_column(name='genotype_name', description="Name of genotypes")
-genotypes.add_row(id=0, genotype_name='Rorb')
-k3, r3, e3 = er.add_ref(
-    container=genotypes['genotype_name'],
-    field='',
-    key='Rorb',
-    resource_name='MGI Database',
-    resource_uri='http://www.informatics.jax.org/',
-    entity_id='MGI:1346434',
-    entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
-)
-er.add_ref(
-    container=genotypes['genotype_name'],
-    field='',
-    key=k3,
-    resource_name='Ensembl',
-    resource_uri='https://uswest.ensembl.org/index.html',
-    entity_id='ENSG00000198963',
-    entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
-)
-
-
-###############################################################################
-# Convert the individual tables to DataFrames
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-er.keys.to_dataframe()
-###############################################################################
-#
-er.resources.to_dataframe()
-###############################################################################
-# Note that key 3 has 2 entities assigned to it in the entities table
-er.entities.to_dataframe()
-###############################################################################
-#
-er.objects.to_dataframe()
-###############################################################################
-# Note that key 0 and 1 are used by both object 0 and object 1 in the object_keys table
-er.object_keys.to_dataframe()
-###############################################################################
-# Convert the whole ExternalResources to a single DataFrame
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-# Using the :py:class:`~hdmf.common.resources.ExternalResources.to_dataframe` method of the
-# :py:class:`~hdmf.common.resources.ExternalResources` we can convert the data from the corresponding
-# :py:class:`~hdmf.common.resources.Keys`, :py:class:`~hdmf.common.resources.Resources`,
-# :py:class:`~hdmf.common.resources.Entities`, :py:class:`~hdmf.common.resources.Objects`, and
-# :py:class:`~hdmf.common.resources.ObjectKeys` tables to a single joint :py:class:`~pandas.DataFrame`.
-# In this conversion the data is being denormalized, such that e.g.,
-# the :py:class:`~hdmf.common.resources.Keys` that are used across multiple :py:class:`~hdmf.common.resources.Enitites`
-# are duplicated across the corresponding rows. Here this is the case, e.g., for the keys ``"Homo sapiens"`` and
-# ``"Mus musculus"`` which are used in the first two objects (rows with ``index=[0, 1, 2, 3]``), or the
-# ``Rorb`` key which appears in both the ``MGI Database`` and  ``Ensembl`` resource (rows with ``index=[5,6]``).
-er.to_dataframe()
-
-###############################################################################
-# By setting ``use_categories=True`` the function will use a :py:class:`pandas.MultiIndex` on the columns
-# instead to indicate for each column also the category (i.e., ``objects``, ``keys``, ``entities``, and ``resources``
-# the columns belong to. **Note:** The category in the combined table is not the same as the name of the source table
-# but rather represents the semantic category, e.g., ``keys_idx`` appears as a foreign key in both the
-# :py:class:`~hdmf.common.resources.ObjectKeys` and :py:class:`~hdmf.common.resources.Entities` tables
-# but in terms of the combined table is a logical property of the ``keys``.
-er.to_dataframe(use_categories=True)
-
-###############################################################################
-# Export ExternalResources to SQLite
-# ----------------------------------
-
-# Set the database file to use and clean up the file if it exists
-import os
-db_file = "test_externalresources.sqlite"
-if os.path.exists(db_file):
-    os.remove(db_file)
-
-###############################################################################
-# Export the data stored in the :py:class:`~hdmf.common.resources.ExternalResources`
-# object to a SQLite database.
-er.to_sqlite(db_file)
-
-###############################################################################
-# Test that the generated SQLite database is correct
-
-import sqlite3
-import pandas as pd
-from contextlib import closing
-
-with closing(sqlite3.connect(db_file)) as db:
-    cursor = db.cursor()
-    # read all tables
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
-    # convert all tables to pandas and compare with the original tables
-    for table_name in tables:
-        table_name = table_name[0]
-        table = pd.read_sql_query("SELECT * from %s" % table_name, db)
-        table = table.set_index('id')
-        ref_table = getattr(er, table_name).to_dataframe()
-        assert np.all(np.array(table.index) == np.array(ref_table.index) + 1)
-        for c in table.columns:
-            # NOTE: SQLite uses 1-based row-indices so we need adjust for that
-            if np.issubdtype(table[c].dtype, np.integer):
-                assert np.all(np.array(table[c]) == np.array(ref_table[c]) + 1)
-            else:
-                assert np.all(np.array(table[c]) == np.array(ref_table[c]))
-    cursor.close()
-
-###############################################################################
-# Remove the test file
-os.remove(db_file)

@@ -10,6 +10,7 @@ from hdmf.utils import docval
 class Subcontainer(Container):
     pass
 
+
 class TestExternalResourcesManager(TestCase):
     def test_link_and_get_resources(self):
         em = ExternalResourcesManager()
@@ -18,6 +19,7 @@ class TestExternalResourcesManager(TestCase):
         em.link_resources(er)
         er_get = em.get_linked_resources()
         self.assertEqual(er, er_get)
+
 
 class TestContainer(TestCase):
 

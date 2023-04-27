@@ -27,6 +27,7 @@ def _exp_warn_msg(cls):
            'is not guaranteed to maintain backward compatibility') % pfx
     return msg
 
+
 class ExternalResourcesManager():
     """
     This class manages whether to set/attach an instance of ExternalResources to the subclass.
@@ -1234,3 +1235,10 @@ class Table(Data):
         if name is None:
             return cls(data=data)
         return cls(name=name, data=data)
+
+
+class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
+    def __init__(self, **kwargs):
+        name = 'ExternalResourcesManagerContainer'
+        kwargs['name'] = name
+        super().__init__(**kwargs)

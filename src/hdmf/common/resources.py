@@ -1,14 +1,10 @@
 import pandas as pd
 import numpy as np
-import re
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, Data, ExternalResourcesManager
-from ..data_utils import DataIO
-
+from ..container import Table, Row, Container, AbstractContainer, ExternalResourcesManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
-
 from glob import glob
 import os
 
@@ -259,7 +255,7 @@ class ExternalResources(Container):
         entity_uri = kwargs['entity_uri']
         if not isinstance(key, Key):
             key = self._add_key(key)
-        entity = Entity(key,entity_id, entity_uri, table=self.entities)
+        entity = Entity(key, entity_id, entity_uri, table=self.entities)
         return entity
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
@@ -277,7 +273,11 @@ class ExternalResources(Container):
         """
         Add an object that references an external resource.
         """
-        file_idx, container, object_type, relative_path, field = popargs('file_idx','container', 'object_type', 'relative_path', 'field', kwargs)
+        file_idx, container, object_type, relative_path, field = popargs('file_idx',
+                                                                         'container',
+                                                                         'object_type',
+                                                                         'relative_path',
+                                                                         'field', kwargs)
 
         if object_type is None:
             object_type = container.__class__.__name__
@@ -351,7 +351,7 @@ class ExternalResources(Container):
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.',
-             'default': None,},
+             'default': None},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
@@ -387,11 +387,14 @@ class ExternalResources(Container):
                             else:
                                 parent = parent.parent
                     else:
-                        msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
+                        msg = 'Could not find file. Add container to the file.'
                         raise ValueError(msg)
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._check_object_field(file=file, container=container, relative_path=relative_path, field=field)
+            object_field = self._check_object_field(file=file,
+                                                    container=container,
+                                                    relative_path=relative_path,
+                                                    field=field)
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
@@ -420,7 +423,7 @@ class ExternalResources(Container):
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
             {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.',
-             'default': None,},
+             'default': None},
             )
     def add_ref(self, **kwargs):
         """
@@ -437,7 +440,6 @@ class ExternalResources(Container):
         field = kwargs['field']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        add_entity = False
         file = kwargs['file']
 
         if file is None:
@@ -458,12 +460,18 @@ class ExternalResources(Container):
 
         if attribute is None:  # Trivial Case
             relative_path = ''
-            object_field = self._check_object_field(file=file, container=container, relative_path=relative_path, field=field)
+            object_field = self._check_object_field(file=file,
+                                                    container=container,
+                                                    relative_path=relative_path,
+                                                    field=field)
         else:  # DataType Attribute Case
             attribute_object = getattr(container, attribute)  # returns attribute object
             if isinstance(attribute_object, AbstractContainer):
                 relative_path = ''
-                object_field = self._check_object_field(file=file, container=attribute_object, relative_path=relative_path, field=field)
+                object_field = self._check_object_field(file=file,
+                                                        container=attribute_object,
+                                                        relative_path=relative_path,
+                                                        field=field)
             else:  # Non-DataType Attribute Case:
                 obj_mapper = self.type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
@@ -477,7 +485,10 @@ class ExternalResources(Container):
                         # We need to get the path of the spec for relative_path
                         absolute_path = spec.path
                         relative_path = absolute_path[absolute_path.find('/')+1:]
-                        object_field = self._check_object_field(file=file, container=parent, relative_path=relative_path, field=field)
+                        object_field = self._check_object_field(file=file,
+                                                                container=parent,
+                                                                relative_path=relative_path,
+                                                                field=field)
                     else:
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
@@ -486,7 +497,10 @@ class ExternalResources(Container):
                     absolute_path = spec.path
                     relative_path = absolute_path[absolute_path.find('/')+1:]
                     # this regex removes everything prior to the container on the absolute_path
-                    object_field = self._check_object_field(file=file, container=parent, relative_path=relative_path, field=field)
+                    object_field = self._check_object_field(file=file,
+                                                            container=parent,
+                                                            relative_path=relative_path,
+                                                            field=field)
 
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
@@ -502,15 +516,6 @@ class ExternalResources(Container):
             key = self._add_key(key)
             self._add_object_key(object_field, key)
 
-        # if (entity_id is not None and entity_uri is not None):
-        #     add_entity = True
-        # else:
-        #     msg = ("Specify entity_id, and entity_uri arguments."
-        #            "Both are required to create a reference")
-        #     raise ValueError(msg)
-        #
-        # if add_entity:
-        #     # entity = self._add_entity(key, resource_table_idx, entity_id, entity_uri)
         entity = self._add_entity(key, entity_id, entity_uri)
 
         return key, entity
@@ -538,13 +543,15 @@ class ExternalResources(Container):
         df = self.to_dataframe()
 
         if all_instances:
-            df = df.loc[df['object_type']==object_type]
+            df = df.loc[df['object_type'] == object_type]
         else:
-            df = df.loc[(df['relative_path']==relative_path) & (df['object_type']==object_type) & (df['object_type']==object_type)]
+            df = df.loc[(df['object_type'] == object_type)
+                        & (df['relative_path'] == relative_path)
+                        & (df['field'] == field)]
         return df
 
     @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file.',
-             'default': None,},
+             'default': None},
             {'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/data object that is linked to resources/entities.'},
             {'name': 'attribute', 'type': str,
@@ -584,11 +591,17 @@ class ExternalResources(Container):
         keys = []
         entities = []
         if attribute is None:
-            object_field = self._check_object_field(file=file, container=container, relative_path=relative_path,
-                                                field=field, create=False)
+            object_field = self._check_object_field(file=file,
+                                                    container=container,
+                                                    relative_path=relative_path,
+                                                    field=field,
+                                                    create=False)
         else:
-            object_field = self._check_object_field(file=file, container=container[attribute], relative_path=relative_path,
-                                                field=field, create=False)
+            object_field = self._check_object_field(file=file,
+                                                    container=container[attribute],
+                                                    relative_path=relative_path,
+                                                    field=field,
+                                                    create=False)
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
             keys.append(self.object_keys['keys_idx', row_idx])
@@ -643,8 +656,8 @@ class ExternalResources(Container):
                                    verify_integrity=False)
         files_df = self.files.to_dataframe().iloc[object_keys_df['file_idx']]
         file_object_object_key_df = pd.concat(objs=[object_keys_df, files_df.reset_index(drop=True)],
-                                   axis=1,
-                                   verify_integrity=False)
+                                              axis=1,
+                                              verify_integrity=False)
         file_object_object_key_df['files_idx'] = files_df.index
         # Step 3: merge the combined entities_df and object_keys_df DataFrames
         result_df = pd.concat(
@@ -700,27 +713,27 @@ class ExternalResources(Container):
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
     def from_norm_tsv(cls, **kwargs):
         path = kwargs['path']
-        tsv_paths =  glob(path+'/*')
+        tsv_paths = glob(path+'/*')
 
         for file in tsv_paths:
             file_name = os.path.basename(file)
-            if file_name=='files.tsv':
+            if file_name == 'files.tsv':
                 files_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 files = FileTable().from_dataframe(df=files_df, name='files', extra_ok=False)
                 continue
-            if file_name=='keys.tsv':
+            if file_name == 'keys.tsv':
                 keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 keys = KeyTable().from_dataframe(df=keys_df, name='keys', extra_ok=False)
                 continue
-            if file_name=='entities.tsv':
+            if file_name == 'entities.tsv':
                 entities_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 entities = EntityTable().from_dataframe(df=entities_df, name='entities', extra_ok=False)
                 continue
-            if file_name=='objects.tsv':
+            if file_name == 'objects.tsv':
                 objects_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 objects = ObjectTable().from_dataframe(df=objects_df, name='objects', extra_ok=False)
                 continue
-            if file_name=='object_keys.tsv':
+            if file_name == 'object_keys.tsv':
                 object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
                 continue
@@ -728,25 +741,25 @@ class ExternalResources(Container):
         # we need to check the idx columns in entities, objects, and object_keys
         keys_idx = entities['keys_idx']
         for idx in keys_idx:
-            if not int(idx)<keys.__len__():
+            if not int(idx) < keys.__len__():
                 msg = "Key Index out of range in EntityTable. Please check for alterations."
                 raise ValueError(msg)
 
         file_idx = objects['file_idx']
         for idx in file_idx:
-            if not int(idx)<files.__len__():
-                    msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
-                    raise ValueError(msg)
+            if not int(idx) < files.__len__():
+                msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
+                raise ValueError(msg)
 
         object_idx = object_keys['objects_idx']
         for idx in object_idx:
-            if not int(idx)<objects.__len__():
+            if not int(idx) < objects.__len__():
                 msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
         keys_idx = object_keys['keys_idx']
         for idx in keys_idx:
-            if not int(idx)<keys.__len__():
+            if not int(idx) < keys.__len__():
                 msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
@@ -860,7 +873,6 @@ class ExternalResources(Container):
         ob_keys_idx = np.unique(df[[('objects', 'objects_idx'), ('keys', 'keys_idx')]], axis=0)
         for obk in ob_keys_idx:
             er._add_object_key(obj=obk[0], key=obk[1])
-
 
         # Retrieve all entities
         entities_idx, entities_rows = np.unique(df[('entities', 'entities_idx')], return_index=True)
