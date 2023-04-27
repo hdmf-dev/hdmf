@@ -72,7 +72,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
              'file_id': {0: file.object_id, 1: file.object_id},
              'objects_idx': {0: 0, 1: 0},
              'object_id': {0: data1.object_id, 1: data1.object_id},
-             'file_id_idx': {0: 0, 1: 0},
+             'file_idx': {0: 0, 1: 0},
              'object_type': {0: 'Data', 1: 'Data'},
              'relative_path': {0: '', 1: ''},
              'field': {0: 'species', 1: 'species'},
@@ -233,7 +233,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
              'file_id': {0: file.object_id},
              'objects_idx': {0: 0},
              'object_id': {0: data.object_id},
-             'file_id_idx': {0: 0},
+             'file_idx': {0: 0},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
@@ -261,7 +261,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
              'file_id': {0: file.object_id},
              'objects_idx': {0: 0},
              'object_id': {0: data.object_id},
-             'file_id_idx': {0: 0},
+             'file_idx': {0: 0},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
@@ -428,7 +428,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.to_norm_tsv(path='./')
 
         df = er.objects.to_dataframe()
-        df.at[0, ('file_id_idx')] = 10  # Change key_ix 0 to 10
+        df.at[0, ('file_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./objects.tsv', sep='\t', index=False)
 
         msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
@@ -613,7 +613,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er._check_object_field(container=data, file=ExternalResourcesManagerContainer(name='file'), relative_path='', field='')
-        er._add_object(file_id_idx=0,container=data, relative_path='', field='')
+        er._add_object(file_idx=0,container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
             er._check_object_field(container=data, file=ExternalResourcesManagerContainer(name='file'), relative_path='', field='')
 

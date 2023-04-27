@@ -299,7 +299,6 @@ class H5RoundTripMixin(metaclass=ABCMeta):
     def test_roundtrip(self):
         """Test whether the container read from a written file is the same as the original file."""
         read_container = self.roundtripContainer()
-        breakpoint()
         self._test_roundtrip(read_container, export=False)
 
     def test_roundtrip_export(self):
