@@ -363,7 +363,7 @@ class ExternalResources(Container):
              'doc': ('The field of the compound data type using an external resource.')})
     def get_key(self, **kwargs):
         """
-        Return a Key or a list of Key objects that correspond to the given key.
+        Return a Key.
 
         If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
         for the given container, relative_path, and field is returned.

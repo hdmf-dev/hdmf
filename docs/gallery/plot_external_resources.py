@@ -11,8 +11,8 @@ access of data stored with this type for your use cases.
 Introduction
 -------------
 The :py:class:`~hdmf.common.resources.ExternalResources` class provides a way
-to organize and map user terms (keys) to multiple resources and entities
-from the resources. A typical use case for external resources is to link data
+to organize and map user terms from their data (keys) to multiple entities
+from the external resources. A typical use case for external resources is to link data
 stored in datasets or attributes to ontologies. For example, you may have a
 dataset ``country`` storing locations. Using
 :py:class:`~hdmf.common.resources.ExternalResources` allows us to link the
@@ -23,9 +23,9 @@ introspection.
 From a user's perspective, one can think of the
 :py:class:`~hdmf.common.resources.ExternalResources` as a simple table, in which each
 row associates a particular ``key`` stored in a particular ``object`` (i.e., Attribute
-or Dataset in a file) with a particular ``entity`` (e.g., a term)  of an online
-``resource`` (e.g., an ontology). That is, ``(object, key)`` refer to parts inside a
-file and ``(resource, entity)`` refer to an external resource outside the file, and
+or Dataset in a file) with a particular ``entity`` (i.e, a term of an online
+resource). That is, ``(object, key)`` refer to parts inside a
+file and ``entity`` refers to an external resource outside the file, and
 :py:class:`~hdmf.common.resources.ExternalResources` allows us to link the two. To
 reduce data redundancy and improve data integrity,
 :py:class:`~hdmf.common.resources.ExternalResources` stores this data internally in a
@@ -33,8 +33,8 @@ collection of interlinked tables.
 
 * :py:class:`~hdmf.common.resources.KeyTable` where each row describes a
   :py:class:`~hdmf.common.resources.Key`
-* :py:class:`~hdmf.common.resources.ResourceTable` where each row describes a
-  :py:class:`~hdmf.common.resources.Resource`
+* :py:class:`~hdmf.common.resources.FileTable` where each row describes a
+  :py:class:`~hdmf.common.resources.File`
 * :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
   :py:class:`~hdmf.common.resources.Entity`
 * :py:class:`~hdmf.common.resources.ObjectTable` where each row describes an
@@ -55,17 +55,13 @@ are rules to how users store information in the interlinked tables.
 
 1. Multiple :py:class:`~hdmf.common.resources.Key` objects can have the same name.
    They are disambiguated by the :py:class:`~hdmf.common.resources.Object` associated
-   with each. I.e.,  we may have keys with the same name in different objects, but for a particular object
-   all keys must be unique. This means the :py:class:`~hdmf.common.resources.KeyTable` may contain
-   duplicate entries, but the :py:class:`~hdmf.common.resources.ObjectKeyTable` then must not assign
-   duplicate keys to the same object.
+   with each, meaning we may have keys with the same name in different objects, but for a particular object
+   all keys must be unique.
 2. In order to query specific records, the :py:class:`~hdmf.common.resources.ExternalResources` class
-   uses '(object_id, relative_path, field, Key)' as the unique identifier.
+   uses '(file, object_id, relative_path, field, key)' as the unique identifier.
 3. :py:class:`~hdmf.common.resources.Object` can have multiple :py:class:`~hdmf.common.resources.Key`
    objects.
 4. Multiple :py:class:`~hdmf.common.resources.Object` objects can use the same :py:class:`~hdmf.common.resources.Key`.
-   Note that the :py:class:`~hdmf.common.resources.Key` may already be associated with resources
-   and entities.
 5. Do not use the private methods to add into the :py:class:`~hdmf.common.resources.KeyTable`,
    :py:class:`~hdmf.common.resources.ResourceTable`, :py:class:`~hdmf.common.resources.EntityTable`,
    :py:class:`~hdmf.common.resources.ObjectTable`, :py:class:`~hdmf.common.resources.ObjectKeyTable`
@@ -83,6 +79,8 @@ are rules to how users store information in the interlinked tables.
    adding an external resource for an object with a data type, users should not provide an attribute.
    When adding an external resource for an attribute of an object, users need to provide
    the name of the attribute.
+10. The user mus provide a :py:class:`~hdmf.common.resources.File` or an :py:class:`~hdmf.common.resources.Object` that
+    has :py:class:`~hdmf.common.resources.File` along the parent hierarchy.
 """
 ######################################################
 # Creating an instance of the ExternalResources class
@@ -98,6 +96,8 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
 
 er = ExternalResources()
+file = ExternalResourcesManagerContainer(name='file')
+
 
 ###############################################################################
 # Using the add_ref method
@@ -110,7 +110,6 @@ er = ExternalResources()
 # :py:func:`~hdmf.common.resources.ExternalResources.add_ref` taking care of populating
 # the underlying data structures accordingly.
 
-file = ExternalResourcesManagerContainer(name='file')
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 er.add_ref(
     file=file,
@@ -141,14 +140,7 @@ er.add_ref(
 # :py:class:`~hdmf.common.table.VectorData` objects as columns. If we wanted to add an external
 # reference on a column from a :py:class:`~hdmf.common.table.DynamicTable`, then we would use the
 # column as the object and not the :py:class:`~hdmf.common.table.DynamicTable` (Refer to rule 9).
-#
-# Note: :py:func:`~hdmf.common.resources.ExternalResources.add_ref` internally resolves the object
-# to the closest parent, so that ``er.add_ref(container=genotypes, attribute='genotype_name')`` and
-# ``er.add_ref(container=genotypes.genotype_name, attribute=None)`` will ultimately both use the ``object_id``
-# of the ``genotypes.genotype_name`` :py:class:`~hdmf.common.table.VectorData` column and
-# not the object_id of the genotypes table.
 
-file = ExternalResourcesManagerContainer(name='file')
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
@@ -161,17 +153,43 @@ er.add_ref(
     entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
 )
 
+# Note: :py:func:`~hdmf.common.resources.ExternalResources.add_ref` internally resolves the object
+# to the closest parent, so that ``er.add_ref(container=genotypes, attribute='genotype_name')`` and
+# ``er.add_ref(container=genotypes.genotype_name, attribute=None)`` will ultimately both use the ``object_id``
+# of the ``genotypes.genotype_name`` :py:class:`~hdmf.common.table.VectorData` column and
+# not the object_id of the genotypes table.
+
+###############################################################################
+# Using the add_ref method without the file parameter.
+# ------------------------------------------------------
+
+# ADD
+
+###############################################################################
+# Visualize ExternalResources
+# ------------------------------------------------------
+
+# ADD to_dataframe and the to_dataframe of individual tables
+
 ###############################################################################
 # Using the get_key method
 # ------------------------------------------------------
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key`
 # method will return a :py:class:`~hdmf.common.resources.Key` object. In the current version of
 # :py:class:`~hdmf.common.resources.ExternalResources`, duplicate keys are allowed; however, each key needs a unique
-# linking Object. In other words, each combination of (container, relative_path, field, key) can exist only once in
-# :py:class:`~hdmf.common.resources.ExternalResources`.
+# linking Object. In other words, each combination of (file, container, relative_path, field, key)
+# can exist only once in :py:class:`~hdmf.common.resources.ExternalResources`.
 
-# The get_key method will return the key object of the unique (key, container, relative_path, field).
+# The :py:func:`~hdmf.common.resources.ExternalResources.get_key` method will be able to return the
+# :py:class:`~hdmf.common.resources.Key` object if the :py:class:`~hdmf.common.resources.Key` object is unique.
 key_object = er.get_key(key_name='Rorb')
+
+# If the :py:class:`~hdmf.common.resources.Key` object has a duplicate name, then the user will need
+# to provide the unique (file, container, relative_path, field, key) combination. # ADD
+
+# The :py:func:`~hdmf.common.resources.ExternalResources.get_key` also will check the
+# :py:class:`~hdmf.common.resources.Object` for a :py:class:`~hdmf.common.resources.File` along the parent hierarchy
+# if the file is not provided. # ADD
 
 ###############################################################################
 # Using the add_ref method with a key_object
@@ -192,6 +210,11 @@ er.add_ref(
     entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
 )
 
+###############################################################################
+# Using the get_object_entities
+# ------------------------------------------------------
+
+# ADD
 
 ###############################################################################
 # Special Case: Using add_ref with compound data
@@ -205,6 +228,7 @@ er.add_ref(
 
 # Let's create a new instance of ExternalResources.
 er = ExternalResources()
+file = ExternalResourcesManagerContainer(name='file')
 
 data = Data(
     name='data_name',
@@ -222,3 +246,15 @@ er.add_ref(
     entity_id='NCBI:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
+
+###############################################################################
+# Write ExternalResources
+# ------------------------------------------------------
+
+# ADD
+
+###############################################################################
+# Read ExternalResources
+# ------------------------------------------------------
+
+# ADD
