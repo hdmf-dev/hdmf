@@ -88,7 +88,7 @@ are rules to how users store information in the interlinked tables.
 
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import ExternalResources
-from hdmf.common import DynamicTable
+from hdmf.common import DynamicTable, VectorData
 from hdmf import Data, ExternalResourcesManagerContainer
 import numpy as np
 # Ignore experimental feature warnings in the tutorial to improve rendering
@@ -162,14 +162,42 @@ er.add_ref(
 ###############################################################################
 # Using the add_ref method without the file parameter.
 # ------------------------------------------------------
+# Even though :py:class:`~hdmf.common.resources.File` is required to create/add a new reference,
+# the user can omit the file parameter if the :py:class:`~hdmf.common.resources.Object` has a file
+# in its parent hierarchy.
 
-# ADD
+col1 = VectorData(
+    name='Species_Data',
+    description='species from NCBI and Ensemble',
+    data=['Homo sapiens', 'Ursus arctos horribilis'],
+)
+
+species = DynamicTable(name='species', description='My species', columns=[col1])
+species.parent = file
+
+er.add_ref(
+    container=species,
+    attribute='Species_Data',
+    key='Ursus arctos horribilis',
+    entity_id='NCBI_TAXON:116960	',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id'
+)
 
 ###############################################################################
 # Visualize ExternalResources
 # ------------------------------------------------------
+# Users can visualize `~hdmf.common.resources.ExternalResources` as a flattened table or
+# as separate tables.
 
-# ADD to_dataframe and the to_dataframe of individual tables
+# `~hdmf.common.resources.ExternalResources` as a flattened table
+er.to_dataframe()
+
+# The individual interlinked tables:
+er.files.to_dataframe()
+er.objects.to_dataframe()
+er.entities.to_dataframe()
+er.keys.to_dataframe()
+er.object_keys.to_dataframe()
 
 ###############################################################################
 # Using the get_key method
@@ -182,14 +210,17 @@ er.add_ref(
 
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key` method will be able to return the
 # :py:class:`~hdmf.common.resources.Key` object if the :py:class:`~hdmf.common.resources.Key` object is unique.
-key_object = er.get_key(key_name='Rorb')
+genotype_key_object = er.get_key(key_name='Rorb')
 
 # If the :py:class:`~hdmf.common.resources.Key` object has a duplicate name, then the user will need
-# to provide the unique (file, container, relative_path, field, key) combination. # ADD
+# to provide the unique (file, container, relative_path, field, key) combination.
+species_key_object = er.get_key(file=file,
+                                container=species['Species_Data'],
+                                key_name='Ursus arctos horribilis')
 
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key` also will check the
 # :py:class:`~hdmf.common.resources.Object` for a :py:class:`~hdmf.common.resources.File` along the parent hierarchy
-# if the file is not provided. # ADD
+# if the file is not provided as in :py:func:`~hdmf.common.resources.ExternalResources.add_ref`
 
 ###############################################################################
 # Using the add_ref method with a key_object
@@ -205,7 +236,7 @@ er.add_ref(
     file=file,
     container=genotypes,
     attribute='genotype_name',
-    key=key_object,
+    key=genotype_key_object,
     entity_id='ENSG00000198963',
     entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
 )
@@ -213,8 +244,22 @@ er.add_ref(
 ###############################################################################
 # Using the get_object_entities
 # ------------------------------------------------------
+# The :py:class:`~hdmf.common.resources.ExternalResources.get_object_entities` method
+# allows the user to retrieve all entities and key information associated with an `Object` in
+# the form of a pandas DataFrame.
 
-# ADD
+er.get_object_entities(file=file,
+                       container=genotypes['genotype_name'],
+                       relative_path='')
+
+###############################################################################
+# Using the get_object_type
+# ------------------------------------------------------
+# The :py:class:`~hdmf.common.resources.ExternalResources.get_object_entities` method
+# allows the user to retrieve all entities and key information associated with an `Object` in
+# the form of a pandas DataFrame.
+
+er.get_object_type(object_type='Data')
 
 ###############################################################################
 # Special Case: Using add_ref with compound data
@@ -226,7 +271,7 @@ er.add_ref(
 # column/field is associated with different ontologies, then use field='x' to denote that
 # 'x' is using the external reference.
 
-# Let's create a new instance of ExternalResources.
+# Let's create a new instance of :py:class:`~hdmf.common.resources.ExternalResources`.
 er = ExternalResources()
 file = ExternalResourcesManagerContainer(name='file')
 
@@ -250,11 +295,16 @@ er.add_ref(
 ###############################################################################
 # Write ExternalResources
 # ------------------------------------------------------
+# :py:class:`~hdmf.common.resources.ExternalResources` is written as a flattened tsv file.
+# The user provides the path, which contains the name of the file, to where the tsv
+# file will be written.
 
-# ADD
+er.to_flat_tsv(path='./er_example.tsv')
 
 ###############################################################################
 # Read ExternalResources
 # ------------------------------------------------------
+# Users can read :py:class:`~hdmf.common.resources.ExternalResources` from the tsv format
+# by providing the path to the file.
 
-# ADD
+er_read = ExternalResources.from_flat_tsv(path='./er_example.tsv')
