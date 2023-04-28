@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.5.6 (April 28, 2023)
+
+### Bug fixes
+- Remove references to discontinued `requires.io` service in documentation. @rly
+  [#854](https://github.com/hdmf-dev/hdmf/pull/854)
+
 ## HDMF 3.5.5 (April 13, 2023)
 
 ### Bug fixes
