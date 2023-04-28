@@ -89,7 +89,8 @@ class TestRos3(TestCase):
             file = io.read()
             print(file)
 
-### Util functions and classes to enable loading of the NWB namespace -- see pynwb/src/pynwb/spec.py
+# Util functions and classes to enable loading of the NWB namespace -- see pynwb/src/pynwb/spec.py
+
 
 def __swap_inc_def(cls):
     args = get_docval(cls.__init__)

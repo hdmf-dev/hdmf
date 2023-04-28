@@ -18,8 +18,8 @@ class HDMFIO(metaclass=ABCMeta):
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
-              not (source.lower().startswith("http://") or 
-                   source.lower().startswith("https://") or 
+              not (source.lower().startswith("http://") or
+                   source.lower().startswith("https://") or
                    source.lower().startswith("s3://"))):
             source = os.path.abspath(source)
 
