@@ -45,10 +45,6 @@ Overall Health
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
 
-.. image:: https://requires.io/github/hdmf-dev/hdmf/requirements.svg?branch=dev
-     :target: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
-     :alt: Requirements Status
-
 .. image:: https://readthedocs.org/projects/hdmf/badge/?version=stable
      :target: https://hdmf.readthedocs.io/en/stable/?badge=stable
      :alt: Documentation Status
