@@ -24,6 +24,7 @@ from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
+FF_LOC_ATTR = '.ffloc'
 H5_TEXT = special_dtype(vlen=str)
 H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
@@ -105,6 +106,9 @@ class HDF5IO(HDMFIO):
     @property
     def driver(self):
         return self.__driver
+
+    def read_foreign_fields(self):
+        pass
 
     @staticmethod
     def __resolve_file_obj(path, file_obj, driver):
@@ -1290,6 +1294,12 @@ class HDF5IO(HDMFIO):
         self.__set_written(builder)
         if exhaust_dci:
             self.__dci_queue.exhaust_queue()
+
+    def write_foreign_fields(self, foreign_fields):
+        path = 'foreign_fields'  # do something to figure out where the specifications should go
+        spec_group = self.__file.require_group(path)
+        self.__file.attrs[SPEC_LOC_ATTR] = spec_group.ref
+        pass
 
     @classmethod
     def __scalar_fill__(cls, parent, name, data, options=None):

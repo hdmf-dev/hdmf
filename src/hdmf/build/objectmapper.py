@@ -14,6 +14,7 @@ from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
 from ..container import AbstractContainer, Data, DataRegion
 from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..foreign import ForeignField
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
@@ -557,7 +558,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
-            if attr_val is not None:
+            if attr_val is not None and not isinstance(attr_val, ForeignField):
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:
@@ -628,6 +629,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
         Return None, an AbstractContainer, or a list of AbstractContainers
         """
+        if isinstance(attr_value, ForeignField):
+            if attr_value.data_type == spec_dt:
+                return attr_value
+            else:
+                if attr_value.namespace is not None and attr_value.data_type is not None:
+                    ns_cat = build_manager.type_map.namespace_catalog
+                    spec = None
+                    try:
+                        spec = ns_cat.get_spec(attr_value.namespace, attr_value.data_type)
+                    except ValueError:
+                        pass
+                    if spec is None:
+                        raise ValueError("No specification found for data_type '%s' in namespace '%s'")
+                return None
         if isinstance(attr_value, AbstractContainer):
             if build_manager.is_sub_data_type(attr_value, spec_dt):
                 return attr_value
@@ -648,11 +663,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(ret) == 0:
                 ret = None
         else:
+            # make this a specific exception type
+
             raise ValueError("Unexpected type for attr_value: %s. Only AbstractContainer, list, tuple, set, dict, are "
                              "allowed." % type(attr_value))
         return ret
 
     def __check_quantity(self, attr_value, spec, container):
+        """
+        Check to make sure quantity is satisfied and required values are present,
+        and issue appropriate warnings if necessary.
+        """
         if attr_value is None and spec.required:
             attr_name = self.get_attribute(spec)
             msg = ("%s '%s' is missing required value for attribute '%s'."
@@ -887,6 +908,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ReferenceTargetNotBuiltError(builder, container)
         return target_builder
 
+    def __is_foreign(self, val):
+        return isinstance(val, ForeignField)
+
     def __add_attributes(self, builder, attributes, container, build_manager, source, export):
         if attributes:
             self.logger.debug("Adding attributes from %s '%s' to %s '%s'"
@@ -901,14 +925,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 attr_value = self.get_attr_value(spec, container, build_manager)
                 if attr_value is None:
                     attr_value = spec.default_value
-
+            if self.__is_foreign(attr_value):
+                attr_value.path = spec.name
+                builder.add_foreign_field(attr_value)
+                self.logger.debug("        Storing attribute as foreign field")
+                continue
             attr_value = self.__check_ref_resolver(attr_value)
-
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
                 self.logger.debug("        Skipping empty attribute")
                 continue
-
             if isinstance(spec.dtype, RefSpec):
                 if not self.__is_reftype(attr_value):
                     msg = ("invalid type for reference '%s' (%s) - must be AbstractContainer"
@@ -918,6 +944,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 build_manager.queue_ref(self.__set_attr_to_ref(builder, attr_value, build_manager, spec))
                 continue
             else:
+                # If attr_value is a foreign field, add it as is as an attribute
                 try:
                     attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                 except Exception as ex:
@@ -956,6 +983,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("    Adding link for spec name: %s, target_type: %s"
                               % (repr(spec.name), repr(spec.target_type)))
             attr_value = self.get_attr_value(spec, container, build_manager)
+            if self.__is_foreign(attr_value):
+                builder.add_foreign_field(attr_value)
+                self.logger.debug("        Storing link as foreign field")
+                continue
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
                 self.logger.debug("        Skipping link - no attribute value")
@@ -971,6 +1002,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("    Adding dataset for spec name: %s (dtype: %s)"
                               % (repr(spec.name), spec.dtype.__class__.__name__))
             attr_value = self.get_attr_value(spec, container, build_manager)
+            if self.__is_foreign(attr_value):
+                attr_value.path = spec.name
+                builder.add_foreign_field(attr_value)
+                self.logger.debug("        Storing dataset as foreign field")
+                continue
             self.__check_quantity(attr_value, spec, container)
             if attr_value is None:
                 self.logger.debug("        Skipping dataset - no attribute value")
@@ -1096,6 +1132,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif isinstance(value, list):
             for container in value:
                 self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
+        elif self.__is_foreign(value):
+            if value.path is None:
+                if spec.is_many():
+                    msg = ("ambiguous ForeignField found for ambiguous spec -- "
+                           "ForeignField found on %s '%s' in attribute '%s' must have 'path' set")
+                    msg = msg % (parent_container.__class__.__name__, parent_container.name, self.__spec2attr[spec])
+                    raise ValueError(msg)
+                else:
+                    value.path = spec.name
+            builder.add_foreign_field(value)
+            self.logger.debug("        Storing group as foreign field")
         else:  # pragma: no cover
             msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
                    % value.__class__.__name__)

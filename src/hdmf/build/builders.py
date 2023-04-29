@@ -89,11 +89,16 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
         for name, val in attributes.items():
             self.set_attribute(name, val)
         self.__location = None
+        self.__foreign = list()
 
     @property
     def location(self):
         """The location of this Builder in its source."""
         return self.__location
+
+    @property
+    def foreign_fields(self):
+        return tuple(self.__foreign)
 
     @location.setter
     def location(self, val):
@@ -110,6 +115,12 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
         """Set an attribute for this group."""
         name, value = getargs('name', 'value', kwargs)
         self.attributes[name] = value
+
+    @docval({'name': 'ff', 'type': 'ForeignField', 'doc': 'the foreign field object'})
+    def add_foreign_field(self, **kwargs):
+        """Set an attribute for this group."""
+        ff = getargs('ff', kwargs)
+        self.__foreign.append(ff)
 
 
 class GroupBuilder(BaseBuilder):
