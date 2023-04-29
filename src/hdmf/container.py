@@ -39,8 +39,7 @@ class ExternalResourcesManager:
         """
         Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
         """
-        external_resources = kwargs['external_resources']
-        self._external_resources = external_resources
+        self._external_resources = kwargs['external_resources']
 
     def get_linked_resources(self):
         return self._external_resources
