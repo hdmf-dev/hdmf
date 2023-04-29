@@ -28,7 +28,7 @@ def _exp_warn_msg(cls):
     return msg
 
 
-class ExternalResourcesManager():
+class ExternalResourcesManager:
     """
     This class manages whether to set/attach an instance of ExternalResources to the subclass.
     """
