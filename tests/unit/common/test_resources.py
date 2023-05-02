@@ -67,11 +67,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # Convert to dataframe and compare against the expected result
         result_df = er.to_dataframe()
         expected_df_data = \
-            {'files_idx': {0: 0, 1: 0},
-             'file_id': {0: file.object_id, 1: file.object_id},
+            {'file_object_id': {0: file.object_id, 1: file.object_id},
              'objects_idx': {0: 0, 1: 0},
              'object_id': {0: data1.object_id, 1: data1.object_id},
-             'file_idx': {0: 0, 1: 0},
+             'files_idx': {0: 0, 1: 0},
              'object_type': {0: 'Data', 1: 'Data'},
              'relative_path': {0: '', 1: ''},
              'field': {0: 'species', 1: 'species'},
@@ -254,11 +253,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_type(object_type='Data')
 
         expected_df_data = \
-            {'files_idx': {0: 0},
-             'file_id': {0: file.object_id},
+            {'file_object_id': {0: file.object_id},
              'objects_idx': {0: 0},
              'object_id': {0: data.object_id},
-             'file_idx': {0: 0},
+             'files_idx': {0: 0},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
@@ -284,11 +282,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_type(object_type='Data', all_instances=True)
 
         expected_df_data = \
-            {'files_idx': {0: 0},
-             'file_id': {0: file.object_id},
+            {'file_object_id': {0: file.object_id},
              'objects_idx': {0: 0},
              'object_id': {0: data.object_id},
-             'file_idx': {0: 0},
+             'files_idx': {0: 0},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
@@ -467,7 +464,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.to_norm_tsv(path='./')
 
         df = er.objects.to_dataframe()
-        df.at[0, ('file_idx')] = 10  # Change key_ix 0 to 10
+        df.at[0, ('files_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./objects.tsv', sep='\t', index=False)
 
         msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
@@ -550,15 +547,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # read er back from file and compare
         msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
-
-    def test_to_flat_tsv_and_from_flat_tsv_missing_fileidx(self):
-        # write er to file
-        df = self.container.to_dataframe(use_categories=True)
-        df.at[0, ('files', 'files_idx')] = 10  # Change file_idx 0 to 10
-        df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        with self.assertRaises(ValueError):
             _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
@@ -690,7 +678,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                container=data,
                                relative_path='',
                                field='')
-        er._add_object(file_idx=0, container=data, relative_path='', field='')
+        er._add_object(files_idx=0, container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
             er._check_object_field(file=ExternalResourcesManagerContainer(name='file'),
                                    container=data,

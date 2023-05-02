@@ -64,7 +64,7 @@ class FileTable(Table):
     __defaultname__ = 'files'
 
     __columns__ = (
-        {'name': 'file_id', 'type': str,
+        {'name': 'file_object_id', 'type': str,
          'doc': 'The file id of the file that contains the object'},
     )
 
@@ -85,8 +85,8 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
-        {'name': 'file_idx', 'type': int,
-         'doc': 'The row idx for the file_id in FileTable containing the object.'},
+        {'name': 'files_idx', 'type': int,
+         'doc': 'The row idx for the file_object_id in FileTable containing the object.'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
         {'name': 'object_type', 'type': str,
@@ -233,15 +233,15 @@ class ExternalResources(Container):
         key = kwargs['key_name']
         return Key(key, table=self.keys)
 
-    @docval({'name': 'file_id', 'type': str, 'doc': 'The id of the file'})
+    @docval({'name': 'file_object_id', 'type': str, 'doc': 'The id of the file'})
     def _add_file(self, **kwargs):
         """
         Add a file to be used for making references to external resources.
 
         This is optional when working in HDMF.
         """
-        file_id = kwargs['file_id']
-        return File(file_id, table=self.files)
+        file_object_id = kwargs['file_object_id']
+        return File(file_object_id, table=self.files)
 
     @docval({'name': 'key', 'type': (str, Key), 'doc': 'The key to associate the entity with.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
@@ -260,8 +260,8 @@ class ExternalResources(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'file_idx', 'type': int,
-             'doc': 'The file_id row idx.'},
+            {'name': 'files_idx', 'type': int,
+             'doc': 'The file_object_id row idx.'},
             {'name': 'object_type', 'type': str, 'default': None,
              'doc': ('The type of the object. This is also the parent in relative_path.')},
             {'name': 'relative_path', 'type': str,
@@ -273,18 +273,18 @@ class ExternalResources(Container):
         """
         Add an object that references an external resource.
         """
-        file_idx, container, object_type, relative_path, field = popargs('file_idx',
-                                                                         'container',
-                                                                         'object_type',
-                                                                         'relative_path',
-                                                                         'field', kwargs)
+        files_idx, container, object_type, relative_path, field = popargs('files_idx',
+                                                                          'container',
+                                                                          'object_type',
+                                                                          'relative_path',
+                                                                          'field', kwargs)
 
         if object_type is None:
             object_type = container.__class__.__name__
 
         if isinstance(container, AbstractContainer):
             container = container.object_id
-        obj = Object(file_idx, container, object_type, relative_path, field, table=self.objects)
+        obj = Object(files_idx, container, object_type, relative_path, field, table=self.objects)
         return obj
 
     @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
@@ -322,16 +322,16 @@ class ExternalResources(Container):
         relative_path = kwargs['relative_path']
         field = kwargs['field']
         create = kwargs['create']
-        file_id = file.object_id
-        file_idx = self.files.which(file_id=file_id)
+        file_object_id = file.object_id
+        files_idx = self.files.which(file_object_id=file_object_id)
 
-        if len(file_idx) > 1:
+        if len(files_idx) > 1:
             raise ValueError("Found multiple instances of the same file.")
-        elif len(file_idx) == 1:
-            file_idx = file_idx[0]
+        elif len(files_idx) == 1:
+            files_idx = files_idx[0]
         else:
-            self._add_file(file_id)
-            file_idx = self.files.which(file_id=file_id)[0]
+            self._add_file(file_object_id)
+            files_idx = self.files.which(file_object_id=file_object_id)[0]
 
         objecttable_idx = self.objects.which(object_id=container.object_id)
 
@@ -342,7 +342,7 @@ class ExternalResources(Container):
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0 and create:
-            return self._add_object(file_idx=file_idx, container=container, relative_path=relative_path, field=field)
+            return self._add_object(files_idx=files_idx, container=container, relative_path=relative_path, field=field)
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
         else:
@@ -654,7 +654,7 @@ class ExternalResources(Container):
         object_keys_df = pd.concat(objs=[object_keys_df, objects_mapped_df],
                                    axis=1,
                                    verify_integrity=False)
-        files_df = self.files.to_dataframe().iloc[object_keys_df['file_idx']]
+        files_df = self.files.to_dataframe().iloc[object_keys_df['files_idx']]
         file_object_object_key_df = pd.concat(objs=[object_keys_df, files_df.reset_index(drop=True)],
                                               axis=1,
                                               verify_integrity=False)
@@ -679,13 +679,13 @@ class ExternalResources(Container):
         result_df.reset_index(inplace=True, drop=True)
         # ADD files
         file_id_col = []
-        for idx in result_df['file_idx']:
-            file_id_val = self.files.to_dataframe().iloc[int(idx)]['file_id']
+        for idx in result_df['files_idx']:
+            file_id_val = self.files.to_dataframe().iloc[int(idx)]['file_object_id']
             file_id_col.append(file_id_val)
 
-        result_df['file_id'] = file_id_col
-        column_labels = [('files', 'files_idx'), ('files', 'file_id'),
-                         ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'file_idx'),
+        result_df['file_object_id'] = file_id_col
+        column_labels = [('files', 'file_object_id'),
+                         ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'files_idx'),
                          ('objects', 'object_type'), ('objects', 'relative_path'), ('objects', 'field'),
                          ('keys', 'keys_idx'), ('keys', 'key'),
                          ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
@@ -745,8 +745,8 @@ class ExternalResources(Container):
                 msg = "Key Index out of range in EntityTable. Please check for alterations."
                 raise ValueError(msg)
 
-        file_idx = objects['file_idx']
-        for idx in file_idx:
+        files_idx = objects['files_idx']
+        for idx in files_idx:
             if not int(idx) < files.__len__():
                 msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
                 raise ValueError(msg)
@@ -829,15 +829,15 @@ class ExternalResources(Container):
         # Construct the ExternalResources
         er = ExternalResources()
         # Retrieve all the Files
-        files_idx, files_rows = np.unique(df[('files', 'files_idx')], return_index=True)
+        files_idx, files_rows = np.unique(df[('objects', 'files_idx')], return_index=True)
         file_order = np.argsort(files_idx)
-        file_idx = files_idx[file_order]
+        files_idx = files_idx[file_order]
         files_rows = files_rows[file_order]
         # Check that files are consecutively numbered
-        check_idx(idx_arr=file_idx, name='files_idx')
-        files = df[('files', 'file_id')].iloc[files_rows]
+        check_idx(idx_arr=files_idx, name='files_idx')
+        files = df[('files', 'file_object_id')].iloc[files_rows]
         for file in zip(files):
-            er._add_file(file_id=file[0])
+            er._add_file(file_object_id=file[0])
 
         # Retrieve all the objects
         ob_idx, ob_rows = np.unique(df[('objects', 'objects_idx')], return_index=True)
@@ -848,13 +848,13 @@ class ExternalResources(Container):
         # Check that objects are consecutively numbered
         check_idx(idx_arr=ob_idx, name='objects_idx')
         # Add the objects to the Object table
-        ob_files = df[('objects', 'file_idx')].iloc[ob_rows]
+        ob_files = df[('objects', 'files_idx')].iloc[ob_rows]
         ob_ids = df[('objects', 'object_id')].iloc[ob_rows]
         ob_types = df[('objects', 'object_type')].iloc[ob_rows]
         ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
         ob_fields = df[('objects', 'field')].iloc[ob_rows]
         for ob in zip(ob_files, ob_ids, ob_types, ob_relpaths, ob_fields):
-            er._add_object(file_idx=ob[0], container=ob[1], object_type=ob[2], relative_path=ob[3], field=ob[4])
+            er._add_object(files_idx=ob[0], container=ob[1], object_type=ob[2], relative_path=ob[3], field=ob[4])
         # Retrieve all keys
         keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)
         # Sort keys based on their index
