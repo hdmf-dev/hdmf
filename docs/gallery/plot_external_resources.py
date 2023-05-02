@@ -91,6 +91,7 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable, VectorData
 from hdmf import Container, ExternalResourcesManager
 from hdmf import Data
+from hdmf.testing import remove_test_file
 import numpy as np
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
@@ -317,3 +318,4 @@ er.to_flat_tsv(path='./er_example.tsv')
 # by providing the path to the file.
 
 er_read = ExternalResources.from_flat_tsv(path='./er_example.tsv')
+remove_test_file('./er_example.tsv')
