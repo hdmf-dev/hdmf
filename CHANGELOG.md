@@ -2,7 +2,7 @@
 
 ## HDMF 3.5.7 (Upcoming)
 
-### New features and Minor Improvments
+### New features and Minor Improvements
 - Updated `ExternalResources` to have `FilesTable` and new methods to query data. the `ResourcesTable` has been removed along with methods relating to `Resource`. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
 
 ### Documentation and tutorial enhancements:
