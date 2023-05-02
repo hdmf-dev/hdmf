@@ -1,12 +1,18 @@
 import pandas as pd
 from hdmf.common import DynamicTable
 from hdmf.common.resources import ExternalResources, Key
-from hdmf import Data, Container, ExternalResourcesManagerContainer
+from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 import numpy as np
 from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
+
+
+class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'ExternalResourcesManagerContainer'
+        super().__init__(**kwargs)
 
 
 class TestExternalResources(H5RoundTripMixin, TestCase):
@@ -68,15 +74,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         result_df = er.to_dataframe()
         expected_df_data = \
             {'file_object_id': {0: file.object_id, 1: file.object_id},
-             'objects_idx': {0: 0, 1: 0},
+             'objects_idx': {0: np.uint32(0), 1: np.uint32(0)},
              'object_id': {0: data1.object_id, 1: data1.object_id},
-             'files_idx': {0: 0, 1: 0},
+             'files_idx': {0: np.uint32(0), 1: np.uint32(0)},
              'object_type': {0: 'Data', 1: 'Data'},
              'relative_path': {0: '', 1: ''},
              'field': {0: 'species', 1: 'species'},
-             'keys_idx': {0: 0, 1: 1},
+             'keys_idx': {0: np.uint32(0), 1: np.uint32(1)},
              'key': {0: 'Mus musculus', 1: 'Homo sapiens'},
-             'entities_idx': {0: 0, 1: 1},
+             'entities_idx': {0: np.uint32(0), 1: np.uint32(1)},
              'entity_id': {0: 'NCBI:txid10090', 1: 'NCBI:txid9606'},
              'entity_uri': {0: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
                             1: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}}
@@ -254,19 +260,18 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         expected_df_data = \
             {'file_object_id': {0: file.object_id},
-             'objects_idx': {0: 0},
+             'objects_idx': {0: np.uint32(0)},
              'object_id': {0: data.object_id},
-             'files_idx': {0: 0},
+             'files_idx': {0: np.uint32(0)},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
-             'keys_idx': {0: 0},
+             'keys_idx': {0: np.uint32(0)},
              'key': {0: 'key1'},
-             'entities_idx': {0: 0},
+             'entities_idx': {0: np.uint32(0)},
              'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
-
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_object_type_all_instances(self):
@@ -283,15 +288,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         expected_df_data = \
             {'file_object_id': {0: file.object_id},
-             'objects_idx': {0: 0},
+             'objects_idx': {0: np.uint32(0)},
              'object_id': {0: data.object_id},
-             'files_idx': {0: 0},
+             'files_idx': {0: np.uint32(0)},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
-             'keys_idx': {0: 0},
+             'keys_idx': {0: np.uint32(0)},
              'key': {0: 'key1'},
-             'entities_idx': {0: 0},
+             'entities_idx': {0: np.uint32(0)},
              'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
@@ -754,13 +759,11 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_roundtrip(self):
         read_container = self.roundtripContainer()
-        self.assertTrue(ExternalResources.assert_external_resources_equal(read_container,
-                                                                          self.container))
+        pd.testing.assert_frame_equal(read_container.to_dataframe(), self.container.to_dataframe())
 
     def test_roundtrip_export(self):
         read_container = self.roundtripExportContainer()
-        self.assertTrue(ExternalResources.assert_external_resources_equal(read_container,
-                                                                          self.container))
+        pd.testing.assert_frame_equal(read_container.to_dataframe(), self.container.to_dataframe())
 
 
 class TestExternalResourcesNestedAttributes(TestCase):

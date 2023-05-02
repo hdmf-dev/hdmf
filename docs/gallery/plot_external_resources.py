@@ -89,11 +89,20 @@ are rules to how users store information in the interlinked tables.
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable, VectorData
-from hdmf import Data, ExternalResourcesManagerContainer
+from hdmf import Container, ExternalResourcesManager
+from hdmf import Data
 import numpy as np
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
+
+
+# Class to represent a file
+class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'ExternalResourcesManagerContainer'
+        super().__init__(**kwargs)
+
 
 er = ExternalResources()
 file = ExternalResourcesManagerContainer(name='file')

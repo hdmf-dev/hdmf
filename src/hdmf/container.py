@@ -1234,10 +1234,3 @@ class Table(Data):
         if name is None:
             return cls(data=data)
         return cls(name=name, data=data)
-
-
-class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
-    def __init__(self, **kwargs):
-        name = 'ExternalResourcesManagerContainer'
-        kwargs['name'] = name
-        super().__init__(**kwargs)

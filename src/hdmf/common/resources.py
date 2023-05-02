@@ -654,11 +654,10 @@ class ExternalResources(Container):
         object_keys_df = pd.concat(objs=[object_keys_df, objects_mapped_df],
                                    axis=1,
                                    verify_integrity=False)
-        files_df = self.files.to_dataframe().iloc[object_keys_df['files_idx']]
-        file_object_object_key_df = pd.concat(objs=[object_keys_df, files_df.reset_index(drop=True)],
+        files_df = self.files.to_dataframe().iloc[object_keys_df['files_idx']].reset_index(drop=True)
+        file_object_object_key_df = pd.concat(objs=[object_keys_df, files_df],
                                               axis=1,
                                               verify_integrity=False)
-        file_object_object_key_df['files_idx'] = files_df.index
         # Step 3: merge the combined entities_df and object_keys_df DataFrames
         result_df = pd.concat(
             # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
@@ -692,6 +691,10 @@ class ExternalResources(Container):
         # sort the columns based on our custom order
         result_df = result_df.reindex(labels=[c[1] for c in column_labels],
                                       axis=1)
+        result_df = result_df.astype({'keys_idx': 'uint32',
+                                      'objects_idx': 'uint32',
+                                      'files_idx': 'uint32',
+                                      'entities_idx': 'uint32'})
         # Add the categories if requested
         if use_categories:
             result_df.columns = pd.MultiIndex.from_tuples(column_labels)
