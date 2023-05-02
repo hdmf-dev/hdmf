@@ -74,20 +74,23 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         result_df = er.to_dataframe()
         expected_df_data = \
             {'file_object_id': {0: file.object_id, 1: file.object_id},
-             'objects_idx': {0: np.uint32(0), 1: np.uint32(0)},
+             'objects_idx': {0: 0, 1: 0},
              'object_id': {0: data1.object_id, 1: data1.object_id},
-             'files_idx': {0: np.uint32(0), 1: np.uint32(0)},
+             'files_idx': {0: 0, 1: 0},
              'object_type': {0: 'Data', 1: 'Data'},
              'relative_path': {0: '', 1: ''},
              'field': {0: 'species', 1: 'species'},
-             'keys_idx': {0: np.uint32(0), 1: np.uint32(1)},
+             'keys_idx': {0: 0, 1: 1},
              'key': {0: 'Mus musculus', 1: 'Homo sapiens'},
-             'entities_idx': {0: np.uint32(0), 1: np.uint32(1)},
+             'entities_idx': {0: 0, 1: 1},
              'entity_id': {0: 'NCBI:txid10090', 1: 'NCBI:txid9606'},
              'entity_uri': {0: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090',
                             1: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
-
+        expected_df = expected_df.astype({'keys_idx': 'uint32',
+                                          'objects_idx': 'uint32',
+                                          'files_idx': 'uint32',
+                                          'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_assert_external_resources_equal(self):
@@ -260,18 +263,22 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         expected_df_data = \
             {'file_object_id': {0: file.object_id},
-             'objects_idx': {0: np.uint32(0)},
+             'objects_idx': {0: 0},
              'object_id': {0: data.object_id},
-             'files_idx': {0: np.uint32(0)},
+             'files_idx': {0: 0},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
-             'keys_idx': {0: np.uint32(0)},
+             'keys_idx': {0: 0},
              'key': {0: 'key1'},
-             'entities_idx': {0: np.uint32(0)},
+             'entities_idx': {0: 0},
              'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
+        expected_df = expected_df.astype({'keys_idx': 'uint32',
+                                          'objects_idx': 'uint32',
+                                          'files_idx': 'uint32',
+                                          'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_object_type_all_instances(self):
@@ -288,19 +295,22 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         expected_df_data = \
             {'file_object_id': {0: file.object_id},
-             'objects_idx': {0: np.uint32(0)},
+             'objects_idx': {0: 0},
              'object_id': {0: data.object_id},
-             'files_idx': {0: np.uint32(0)},
+             'files_idx': {0: 0},
              'object_type': {0: 'Data'},
              'relative_path': {0: ''},
              'field': {0: ''},
-             'keys_idx': {0: np.uint32(0)},
+             'keys_idx': {0: 0},
              'key': {0: 'key1'},
-             'entities_idx': {0: np.uint32(0)},
+             'entities_idx': {0: 0},
              'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
-
+        expected_df = expected_df.astype({'keys_idx': 'uint32',
+                                          'objects_idx': 'uint32',
+                                          'files_idx': 'uint32',
+                                          'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_entities(self):
