@@ -42,7 +42,7 @@ class ExternalResourcesManager:
         self._external_resources = kwargs['external_resources']
 
     def get_linked_resources(self):
-        return self._external_resources
+        return self._external_resources if hasattr(self, "_external_resources") else None
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
