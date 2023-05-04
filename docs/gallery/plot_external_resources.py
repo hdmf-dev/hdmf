@@ -125,7 +125,7 @@ er.add_ref(
     file=file,
     container=data,
     key='Homo sapiens',
-    entity_id='NCBI:txid9606',
+    entity_id='NCBI_TAXON:9606',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
