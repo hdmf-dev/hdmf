@@ -299,7 +299,7 @@ er.add_ref(
     container=data,
     field='species',
     key='Mus musculus',
-    entity_id='NCBI:txid10090',
+    entity_id='NCBI_TAXON:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
