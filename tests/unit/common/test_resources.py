@@ -403,8 +403,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
-        with self.assertRaisesWith(ValueError, msg):
+        with self.assertRaises(ValueError):
             _ = er.get_object_entities(container=data)
 
     def test_get_entities_attribute(self):

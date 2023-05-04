@@ -298,7 +298,7 @@ class ExternalResources(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.'},
+    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.'},
             {'name': 'container', 'type': AbstractContainer,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
@@ -350,8 +350,33 @@ class ExternalResources(Container):
             raise ValueError("Found multiple instances of the same object id, relative path, "
                              "and field in objects table.")
 
+    @docval({'name': 'container', 'type': (str, AbstractContainer),
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object id for the Container/Data object that uses the key.')})
+    def _get_file_from_container(self, **kwargs):
+        """
+        Method to retrieve a file associated with the container in the case a file is not provided.
+        """
+        container = kwargs['container']
+
+        if isinstance(container, ExternalResourcesManager):
+            file = container
+            return file
+        else:
+            parent = container.parent
+            if parent is not None:
+                while parent is not None:
+                    if isinstance(parent, ExternalResourcesManager):
+                        file = parent
+                        return file
+                    else:
+                        parent = parent.parent
+            else:
+                msg = 'Could not find file. Add container to the file.'
+                raise ValueError(msg)
+
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
-            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.',
+            {'name': 'file', 'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
              'default': None},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
@@ -376,20 +401,7 @@ class ExternalResources(Container):
 
         if container is not None:
             if file is None:
-                if isinstance(container, ExternalResourcesManager):
-                    file = container
-                else:
-                    parent = container.parent
-                    if parent is not None:
-                        while parent is not None:
-                            if isinstance(parent, ExternalResourcesManager):
-                                file = parent
-                                break
-                            else:
-                                parent = parent.parent
-                    else:
-                        msg = 'Could not find file. Add container to the file.'
-                        raise ValueError(msg)
+                file = self._get_file_from_container(container=container)
             # if same key is used multiple times, determine
             # which instance based on the Container
             object_field = self._check_object_field(file=file,
@@ -423,7 +435,7 @@ class ExternalResources(Container):
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
-            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The identifier for the file.',
+            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
              'default': None},
             )
     def add_ref(self, **kwargs):
@@ -444,20 +456,7 @@ class ExternalResources(Container):
         file = kwargs['file']
 
         if file is None:
-            if isinstance(container, ExternalResourcesManager):
-                file = container
-            else:
-                parent = container.parent
-                if parent is not None:
-                    while parent is not None:
-                        if isinstance(parent, ExternalResourcesManager):
-                            file = parent
-                            break
-                        else:
-                            parent = parent.parent
-                else:
-                    msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
-                    raise ValueError(msg)
+            file = self._get_file_from_container(container=container)
 
         if attribute is None:  # Trivial Case
             relative_path = ''
@@ -574,20 +573,7 @@ class ExternalResources(Container):
         field = kwargs['field']
 
         if file is None:
-            if isinstance(container, ExternalResourcesManager):
-                file = container
-            else:
-                parent = container.parent
-                if parent is not None:
-                    while parent is not None:
-                        if isinstance(parent, ExternalResourcesManager):
-                            file = parent
-                            break
-                        else:
-                            parent = parent.parent
-                else:
-                    msg = 'Could not find file. Add container to the file or provide the file object_id as a string.'
-                    raise ValueError(msg)
+            file = self._get_file_from_container(container=container)
 
         keys = []
         entities = []
