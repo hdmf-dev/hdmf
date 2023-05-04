@@ -182,6 +182,7 @@ col1 = VectorData(
     data=['Homo sapiens', 'Ursus arctos horribilis'],
 )
 
+# Create a DynamicTable with this column and set the table parent to the file object created earlier
 species = DynamicTable(name='species', description='My species', columns=[col1])
 species.parent = file
 
