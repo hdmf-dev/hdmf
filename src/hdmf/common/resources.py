@@ -530,7 +530,7 @@ class ExternalResources(Container):
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'all_instances', 'type': bool, 'default': False,
-             'doc': ('The bool to return all a dataframe with all instances of the object_type.',
+             'doc': ('The bool to return a dataframe with all instances of the object_type.',
                      'If True, relative_path and field inputs will be ignored.')})
     def get_object_type(self, **kwargs):
         """
