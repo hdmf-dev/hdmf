@@ -79,7 +79,7 @@ are rules to how users store information in the interlinked tables.
    adding an external resource for an object with a data type, users should not provide an attribute.
    When adding an external resource for an attribute of an object, users need to provide
    the name of the attribute.
-10. The user mus provide a :py:class:`~hdmf.common.resources.File` or an :py:class:`~hdmf.common.resources.Object` that
+10. The user must provide a :py:class:`~hdmf.common.resources.File` or an :py:class:`~hdmf.common.resources.Object` that
     has :py:class:`~hdmf.common.resources.File` along the parent hierarchy.
 """
 ######################################################
