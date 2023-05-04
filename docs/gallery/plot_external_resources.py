@@ -248,7 +248,7 @@ er.add_ref(
     container=genotypes,
     attribute='genotype_name',
     key=genotype_key_object,
-    entity_id='ENSG00000198963',
+    entity_id='ENSEMBL:ENSG00000198963',
     entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
 )
 
