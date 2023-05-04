@@ -190,7 +190,7 @@ er.add_ref(
     container=species,
     attribute='Species_Data',
     key='Ursus arctos horribilis',
-    entity_id='NCBI_TAXON:116960	',
+    entity_id='NCBI_TAXON:116960',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id'
 )
 
