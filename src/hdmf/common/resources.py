@@ -263,7 +263,8 @@ class ExternalResources(Container):
             {'name': 'files_idx', 'type': int,
              'doc': 'The file_object_id row idx.'},
             {'name': 'object_type', 'type': str, 'default': None,
-             'doc': ('The type of the object. This is also the parent in relative_path.')},
+             'doc': ('The type of the object. This is also the parent in relative_path. If omitted, '
+                         'the name of the container class is used.')},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
                      'an external resource reference key. Use an empty string if not applicable.')},
