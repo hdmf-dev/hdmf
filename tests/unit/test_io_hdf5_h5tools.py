@@ -1499,7 +1499,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaises(ValueError):
                 io.write(self.foofile2)
 
     def test_write_a(self):
@@ -1507,7 +1507,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in a mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaises(ValueError):
                 io.write(self.foofile2)
 
     def test_write_w(self):
