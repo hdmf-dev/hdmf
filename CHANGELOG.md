@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.6.0 (Upcoming)
+
+### Bug fixes
+- Export cached specs that are loaded in source IO manager but not in export IO manager. @rly
+  [#855](https://github.com/hdmf-dev/hdmf/pull/855)
+
 ## HDMF 3.5.6 (April 28, 2023)
 
 ### Bug fixes

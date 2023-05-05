@@ -418,6 +418,13 @@ class HDF5IO(HDMFIO):
             ckwargs['clear_cache'] = True
         super().export(**ckwargs)
         if cache_spec:
+            # add any namespaces from the src_io that have not yet been loaded
+            for namespace in src_io.manager.namespace_catalog.namespaces:
+                if namespace not in self.manager.namespace_catalog.namespaces:
+                    self.manager.namespace_catalog.add_namespace(
+                        name=namespace,
+                        namespace=src_io.manager.namespace_catalog.get_namespace(namespace)
+                    )
             self.__cache_spec()
 
     @classmethod
