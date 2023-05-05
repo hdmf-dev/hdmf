@@ -2352,6 +2352,27 @@ class TestExport(TestCase):
                 with self.assertRaisesWith(ValueError, msg):
                     export_io.export(src_io=read_io, container=dummy_file)
 
+    def test_cache_spec_true(self):
+        """Test that exporting with cache_spec works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(
+                    src_io=read_io,
+                    container=read_foofile,
+                )
+
+        with File(self.paths[1], 'r') as f:
+            self.assertIn('specifications', "test-core")
+
     def test_cache_spec_false(self):
         """Test that exporting with cache_spec works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
