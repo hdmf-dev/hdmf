@@ -5,14 +5,14 @@
 ### Bug fixes
 - Export cached specs that are loaded in source IO manager but not in export IO manager. @rly
   [#855](https://github.com/hdmf-dev/hdmf/pull/855)
-
+- Fixed issue with passing an S3 URL for source in the constructor of ``HDMFIO`` @rly
+  [#853](https://github.com/hdmf-dev/hdmf/pull/853)
+  
 ## HDMF 3.5.6 (April 28, 2023)
 
 ### Bug fixes
 - Removed references to discontinued `requires.io` service in documentation. @rly
   [#854](https://github.com/hdmf-dev/hdmf/pull/854)
-- Fixed issue with passing an S3 URL for source in the constructor of ``HDMFIO`` @rly
-  [#853](https://github.com/hdmf-dev/hdmf/pull/853)
 
 ## HDMF 3.5.5 (April 13, 2023)
 
