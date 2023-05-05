@@ -2371,7 +2371,7 @@ class TestExport(TestCase):
                 )
 
         with File(self.paths[1], 'r') as f:
-            self.assertIn('specifications', "test-core")
+            self.assertIn("test_core", f["specifications"])
 
     def test_cache_spec_false(self):
         """Test that exporting with cache_spec works."""
