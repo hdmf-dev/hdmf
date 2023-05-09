@@ -29,7 +29,7 @@
 - Removed unused, deprecated `codecov` package from dev installation requirements. @rly
   [#849](https://github.com/hdmf-dev/hdmf/pull/849)
 - Fixed export with `'link_data': False'` not copying datasets in some situations. @rly
-  [#842](https://github.com/hdmf-dev/hdmf/pull/842)
+  [#848](https://github.com/hdmf-dev/hdmf/pull/848)
 
 ## HDMF 3.5.4 (April 7, 2023)
 
