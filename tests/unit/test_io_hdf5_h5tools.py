@@ -859,7 +859,7 @@ class TestHDF5IO(TestCase):
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'w')
-        err_msg = ("You argued %s as this object's path, but supplied a file with filename: %s"
+        err_msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
                    % (self.path, self.file_obj.filename))
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
@@ -870,7 +870,7 @@ class TestHDF5IO(TestCase):
             self.assertEqual(io.source, self.path)
 
     def test_path_or_file(self):
-        with self.assertRaisesWith(ValueError, "You must supply either a path or a file."):
+        with self.assertRaisesWith(ValueError, "Either the 'path' or 'file' argument must be supplied."):
             HDF5IO()
 
 
@@ -1499,7 +1499,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_a(self):
@@ -1507,7 +1507,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in a mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_w(self):
@@ -2351,6 +2351,27 @@ class TestExport(TestCase):
                 msg = "The provided container must have been read by the provided src_io."
                 with self.assertRaisesWith(ValueError, msg):
                     export_io.export(src_io=read_io, container=dummy_file)
+
+    def test_cache_spec_true(self):
+        """Test that exporting with cache_spec works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(
+                    src_io=read_io,
+                    container=read_foofile,
+                )
+
+        with File(self.paths[1], 'r') as f:
+            self.assertIn("test_core", f["specifications"])
 
     def test_cache_spec_false(self):
         """Test that exporting with cache_spec works."""

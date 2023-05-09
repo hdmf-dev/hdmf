@@ -58,16 +58,7 @@ class HDF5IO(HDMFIO):
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
 
-        if path is None and file_obj is None:
-            raise ValueError("You must supply either a path or a file.")
-
-        if isinstance(path, Path):
-            path = str(path)
-
-        if file_obj is not None and path is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            msg = 'You argued %s as this object\'s path, ' % path
-            msg += 'but supplied a file with filename: %s' % file_obj.filename
-            raise ValueError(msg)
+        path = self.__check_path_file_obj(path, file_obj)
 
         if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
@@ -85,7 +76,7 @@ class HDF5IO(HDMFIO):
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
-        super().__init__(manager, source=path)
+        super().__init__(manager, source=path)  # NOTE: source is not set if path is None and file_obj is passed
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
         self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
@@ -106,8 +97,8 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
-    @staticmethod
-    def __resolve_file_obj(path, file_obj, driver):
+    @classmethod
+    def __check_path_file_obj(cls, path, file_obj):
         if isinstance(path, Path):
             path = str(path)
 
@@ -119,6 +110,12 @@ class HDF5IO(HDMFIO):
                 msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
                        % (path, file_obj.filename))
                 raise ValueError(msg)
+
+        return path
+
+    @classmethod
+    def __resolve_file_obj(cls, path, file_obj, driver):
+        path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
             file_kwargs = dict()
@@ -421,6 +418,13 @@ class HDF5IO(HDMFIO):
             ckwargs['clear_cache'] = True
         super().export(**ckwargs)
         if cache_spec:
+            # add any namespaces from the src_io that have not yet been loaded
+            for namespace in src_io.manager.namespace_catalog.namespaces:
+                if namespace not in self.manager.namespace_catalog.namespaces:
+                    self.manager.namespace_catalog.add_namespace(
+                        name=namespace,
+                        namespace=src_io.manager.namespace_catalog.get_namespace(namespace)
+                    )
             self.__cache_spec()
 
     @classmethod
