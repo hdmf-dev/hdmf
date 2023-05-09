@@ -28,6 +28,23 @@ def _exp_warn_msg(cls):
     return msg
 
 
+class ExternalResourcesManager:
+    """
+    This class manages whether to set/attach an instance of ExternalResources to the subclass.
+    """
+
+    @docval({'name': 'external_resources', 'type': 'ExternalResources',
+             'doc': 'The external resources to be used for the container.'},)
+    def link_resources(self, **kwargs):
+        """
+        Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
+        """
+        self._external_resources = kwargs['external_resources']
+
+    def get_linked_resources(self):
+        return self._external_resources if hasattr(self, "_external_resources") else None
+
+
 class AbstractContainer(metaclass=ExtenderMeta):
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
