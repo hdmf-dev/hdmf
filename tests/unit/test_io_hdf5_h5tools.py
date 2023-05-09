@@ -859,7 +859,7 @@ class TestHDF5IO(TestCase):
 
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'w')
-        err_msg = ("You argued %s as this object's path, but supplied a file with filename: %s"
+        err_msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
                    % (self.path, self.file_obj.filename))
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
@@ -870,7 +870,7 @@ class TestHDF5IO(TestCase):
             self.assertEqual(io.source, self.path)
 
     def test_path_or_file(self):
-        with self.assertRaisesWith(ValueError, "You must supply either a path or a file."):
+        with self.assertRaisesWith(ValueError, "Either the 'path' or 'file' argument must be supplied."):
             HDF5IO()
 
 
@@ -1499,7 +1499,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_a(self):
@@ -1507,7 +1507,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in a mode
             # should throw an error
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_w(self):

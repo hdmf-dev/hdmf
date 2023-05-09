@@ -69,10 +69,14 @@ environments.
 The fourth one is requirements-opt.txt_, which lists the pinned (concrete) optional dependencies to use all
 available features in HDMF.
 
+The final one is environment-ros3.yml_, which lists the dependencies used to
+test ROS3 streaming in HDMF.
+
 .. _requirements-min.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-min.txt
 .. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
 .. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
 .. _requirements-opt.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-opt.txt
+.. _environment-ros3.yml: https://github.com/hdmf-dev/hdmf/blob/dev/environment-ros3.yml
 
 --------------------------
 Documentation Requirements
