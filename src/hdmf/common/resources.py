@@ -53,8 +53,16 @@ class EntityTable(Table):
             "type": (int, Key),
             "doc": "The index into the keys table for the user key that maps to the resource term / registry symbol.",
         },
-        {"name": "entity_id", "type": str, "doc": "The unique ID for the resource term / registry symbol."},
-        {"name": "entity_uri", "type": str, "doc": "The URI for the resource term / registry symbol."},
+        {
+            "name": "entity_id",
+            "type": str,
+            "doc": "The unique ID for the resource term / registry symbol.",
+        },
+        {
+            "name": "entity_uri",
+            "type": str,
+            "doc": "The URI for the resource term / registry symbol.",
+        },
     )
 
 
