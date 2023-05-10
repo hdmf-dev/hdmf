@@ -151,11 +151,7 @@ class H5IOTest(TestCase):
                                 iter_axis=iter_axis,
                             )
 
-                        dset_name = "%s, %d, %d" % (
-                            data_type,
-                            iter_axis,
-                            buffer_size,
-                        )
+                        dset_name = "%s, %d, %d" % (data_type, iter_axis, buffer_size)
                         my_dset = HDF5IO.__chunked_iter_fill__(self.f, dset_name, dci)
 
                         if data_type == "iterator":

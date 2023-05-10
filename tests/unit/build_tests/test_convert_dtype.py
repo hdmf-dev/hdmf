@@ -349,11 +349,7 @@ class TestConvertDtype(TestCase):
             with self.subTest(dtype=dtype):
                 s = np.dtype(self._get_type(spec_type))
                 g = np.dtype(self._get_type(dtype))
-                msg = "expected %s, received %s - must supply %s" % (
-                    s.name,
-                    g.name,
-                    s.name,
-                )
+                msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
                 with self.assertRaisesWith(ValueError, msg):
                     ObjectMapper.convert_dtype(spec, value)
 

@@ -106,29 +106,10 @@ class Spec(ConstructableDict):
     """A base specification class"""
 
     @docval(
-        {
-            "name": "doc",
-            "type": str,
-            "doc": "a description about what this specification represents",
-        },
-        {
-            "name": "name",
-            "type": str,
-            "doc": "The name of this attribute",
-            "default": None,
-        },
-        {
-            "name": "required",
-            "type": bool,
-            "doc": "whether or not this attribute is required",
-            "default": True,
-        },
-        {
-            "name": "parent",
-            "type": "Spec",
-            "doc": "the parent of this spec",
-            "default": None,
-        },
+        {"name": "doc", "type": str, "doc": "a description about what this specification represents"},
+        {"name": "name", "type": str, "doc": "The name of this attribute", "default": None},
+        {"name": "required", "type": bool, "doc": "whether or not this attribute is required", "default": True},
+        {"name": "parent", "type": "Spec", "doc": "the parent of this spec", "default": None},
     )
     def __init__(self, **kwargs):
         name, doc, required, parent = getargs("name", "doc", "required", "parent", kwargs)
@@ -193,16 +174,8 @@ class Spec(ConstructableDict):
 _target_type_key = "target_type"
 
 _ref_args = [
-    {
-        "name": _target_type_key,
-        "type": str,
-        "doc": "the target type GroupSpec or DatasetSpec",
-    },
-    {
-        "name": "reftype",
-        "type": str,
-        "doc": "the type of references this is i.e. region or object",
-    },
+    {"name": _target_type_key, "type": str, "doc": "the target type GroupSpec or DatasetSpec"},
+    {"name": "reftype", "type": str, "doc": "the type of references this is i.e. region or object"},
 ]
 
 
@@ -292,28 +265,8 @@ class AttributeSpec(Spec):
 
     @docval(*_attr_args)
     def __init__(self, **kwargs):
-        (
-            name,
-            dtype,
-            doc,
-            dims,
-            shape,
-            required,
-            parent,
-            value,
-            default_value,
-        ) = getargs(
-            "name",
-            "dtype",
-            "doc",
-            "dims",
-            "shape",
-            "required",
-            "parent",
-            "value",
-            "default_value",
-            kwargs,
-        )
+        name, dtype, doc, dims, shape = getargs("name", "dtype", "doc", "dims", "shape", kwargs)
+        required, parent, value, default_value = getargs("required", "parent", "value", "default_value", kwargs)
         super().__init__(doc, name=name, required=required, parent=parent)
         self["dtype"] = DtypeHelper.check_dtype(dtype)
         if value is not None:
@@ -437,24 +390,8 @@ class BaseStorageSpec(Spec):
 
     @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        (
-            name,
-            doc,
-            quantity,
-            attributes,
-            linkable,
-            data_type_def,
-            data_type_inc,
-        ) = getargs(
-            "name",
-            "doc",
-            "quantity",
-            "attributes",
-            "linkable",
-            "data_type_def",
-            "data_type_inc",
-            kwargs,
-        )
+        name, doc, quantity, attributes = getargs("name", "doc", "quantity", "attributes", kwargs)
+        linkable, data_type_def, data_type_inc = getargs("linkable", "data_type_def", "data_type_inc", kwargs)
         if name is None and data_type_def is None and data_type_inc is None:
             raise ValueError(
                 "Cannot create Group or Dataset spec with no name without specifying '%s' and/or '%s'."
@@ -520,13 +457,7 @@ class BaseStorageSpec(Spec):
         """Whether or not the this spec represents a required field"""
         return self.quantity not in (ZERO_OR_ONE, ZERO_OR_MANY)
 
-    @docval(
-        {
-            "name": "inc_spec",
-            "type": "BaseStorageSpec",
-            "doc": "the data type this specification represents",
-        }
-    )
+    @docval({"name": "inc_spec", "type": "BaseStorageSpec", "doc": "the data type this specification represents"})
     def resolve_spec(self, **kwargs):
         """Add attributes from the inc_spec to this spec and track which attributes are new and overridden."""
         inc_spec = getargs("inc_spec", kwargs)
@@ -538,13 +469,7 @@ class BaseStorageSpec(Spec):
                 self.set_attribute(attribute)
         self.__resolved = True
 
-    @docval(
-        {
-            "name": "spec",
-            "type": (Spec, str),
-            "doc": "the specification to check",
-        }
-    )
+    @docval({"name": "spec", "type": (Spec, str), "doc": "the specification to check"})
     def is_inherited_spec(self, **kwargs):
         """
         Return True if this spec was inherited from the parent type, False otherwise.
@@ -558,13 +483,7 @@ class BaseStorageSpec(Spec):
             return self.is_inherited_attribute(spec)
         return False
 
-    @docval(
-        {
-            "name": "spec",
-            "type": (Spec, str),
-            "doc": "the specification to check",
-        }
-    )
+    @docval({"name": "spec", "type": (Spec, str), "doc": "the specification to check"})
     def is_overridden_spec(self, **kwargs):
         """
         Return True if this spec overrides a specification from the parent type, False otherwise.
@@ -578,13 +497,7 @@ class BaseStorageSpec(Spec):
             return self.is_overridden_attribute(spec)
         return False
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "the name of the attribute to check",
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "the name of the attribute to check"})
     def is_inherited_attribute(self, **kwargs):
         """
         Return True if the attribute was inherited from the parent type, False otherwise.
@@ -596,13 +509,7 @@ class BaseStorageSpec(Spec):
             raise ValueError("Attribute '%s' not found" % name)
         return name not in self.__new_attributes
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "the name of the attribute to check",
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "the name of the attribute to check"})
     def is_overridden_attribute(self, **kwargs):
         """
         Return True if the given attribute overrides the specification from the parent, False otherwise.
@@ -707,13 +614,7 @@ class BaseStorageSpec(Spec):
         self.set_attribute(spec)
         return spec
 
-    @docval(
-        {
-            "name": "spec",
-            "type": AttributeSpec,
-            "doc": "the specification for the attribute to add",
-        }
-    )
+    @docval({"name": "spec", "type": AttributeSpec, "doc": "the specification for the attribute to add"})
     def set_attribute(self, **kwargs):
         """Set an attribute on this specification"""
         spec = kwargs.get("spec")
@@ -742,13 +643,7 @@ class BaseStorageSpec(Spec):
         self.__attributes[spec.name] = spec
         spec.parent = self
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "the name of the attribute to the Spec for",
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "the name of the attribute to the Spec for"})
     def get_attribute(self, **kwargs):
         """Get an attribute on this specification"""
         name = getargs("name", kwargs)
@@ -765,16 +660,8 @@ class BaseStorageSpec(Spec):
 
 _dt_args = [
     {"name": "name", "type": str, "doc": "the name of this column"},
-    {
-        "name": "doc",
-        "type": str,
-        "doc": "a description about what this data type is",
-    },
-    {
-        "name": "dtype",
-        "type": (str, list, RefSpec),
-        "doc": "the data type of this column",
-    },
+    {"name": "doc", "type": str, "doc": "a description about what this data type is"},
+    {"name": "dtype", "type": (str, list, RefSpec), "doc": "the data type of this column"},
 ]
 
 
@@ -821,11 +708,7 @@ class DtypeSpec(ConstructableDict):
 
     @staticmethod
     @docval(
-        {
-            "name": "spec",
-            "type": (str, dict),
-            "doc": "the spec object to check",
-        },
+        {"name": "spec", "type": (str, dict), "doc": "the spec object to check"},
         is_method=False,
     )
     def is_ref(**kwargs):
@@ -988,13 +871,7 @@ class DatasetSpec(BaseStorageSpec):
                 return False
             return new_prec >= orig_prec
 
-    @docval(
-        {
-            "name": "inc_spec",
-            "type": "DatasetSpec",
-            "doc": "the data type this specification represents",
-        }
-    )
+    @docval({"name": "inc_spec", "type": "DatasetSpec", "doc": "the data type this specification represents"})
     def resolve_spec(self, **kwargs):
         inc_spec = getargs("inc_spec", kwargs)
         if isinstance(self.dtype, list):
@@ -1239,13 +1116,7 @@ class GroupSpec(BaseStorageSpec):
         self.__overridden_groups = set()
         super().__init__(doc, **kwargs)
 
-    @docval(
-        {
-            "name": "inc_spec",
-            "type": "GroupSpec",
-            "doc": "the data type this specification represents",
-        }
-    )
+    @docval({"name": "inc_spec", "type": "GroupSpec", "doc": "the data type this specification represents"})
     def resolve_spec(self, **kwargs):
         inc_spec = getargs("inc_spec", kwargs)
         data_types = list()
@@ -1378,13 +1249,7 @@ class GroupSpec(BaseStorageSpec):
             raise ValueError("Link '%s' not found in spec" % name)
         return name in self.__overridden_links
 
-    @docval(
-        {
-            "name": "spec",
-            "type": (Spec, str),
-            "doc": "the specification to check",
-        }
-    )
+    @docval({"name": "spec", "type": (Spec, str), "doc": "the specification to check"})
     def is_inherited_spec(self, **kwargs):
         """Returns 'True' if specification was inherited from a parent type"""
         spec = getargs("spec", kwargs)
@@ -1424,13 +1289,7 @@ class GroupSpec(BaseStorageSpec):
                             return True
         return False
 
-    @docval(
-        {
-            "name": "spec",
-            "type": (Spec, str),
-            "doc": "the specification to check",
-        }
-    )
+    @docval({"name": "spec", "type": (Spec, str), "doc": "the specification to check"})
     def is_overridden_spec(self, **kwargs):  # noqa: C901
         """Returns 'True' if specification overrides a specification from the parent type"""
         spec = getargs("spec", kwargs)
@@ -1471,13 +1330,7 @@ class GroupSpec(BaseStorageSpec):
                             return True
         return False
 
-    @docval(
-        {
-            "name": "spec",
-            "type": (BaseStorageSpec, str),
-            "doc": "the specification to check",
-        }
-    )
+    @docval({"name": "spec", "type": (BaseStorageSpec, str), "doc": "the specification to check"})
     def is_inherited_type(self, **kwargs):
         """Returns True if `spec` represents a data type that was inherited"""
         spec = getargs("spec", kwargs)
@@ -1488,24 +1341,14 @@ class GroupSpec(BaseStorageSpec):
         return spec not in self.__new_data_types
 
     @docval(
-        {
-            "name": "spec",
-            "type": (BaseStorageSpec, str),
-            "doc": "the specification to check",
-        },
+        {"name": "spec", "type": (BaseStorageSpec, str), "doc": "the specification to check"},
         raises="ValueError, if 'name' is not part of this spec",
     )
     def is_overridden_type(self, **kwargs):
         """Returns True if `spec` represents a data type that overrides a specification from a parent type"""
         return self.is_inherited_type(**kwargs)
 
-    @docval(
-        {
-            "name": "spec",
-            "type": (LinkSpec, str),
-            "doc": "the specification to check",
-        }
-    )
+    @docval({"name": "spec", "type": (LinkSpec, str), "doc": "the specification to check"})
     def is_inherited_target_type(self, **kwargs):
         """Returns True if `spec` represents a target type that was inherited"""
         spec = getargs("spec", kwargs)
@@ -1514,11 +1357,7 @@ class GroupSpec(BaseStorageSpec):
         return spec not in self.__new_target_types
 
     @docval(
-        {
-            "name": "spec",
-            "type": (LinkSpec, str),
-            "doc": "the specification to check",
-        },
+        {"name": "spec", "type": (LinkSpec, str), "doc": "the specification to check"},
         raises="ValueError, if 'name' is not part of this spec",
     )
     def is_overridden_target_type(self, **kwargs):
@@ -1634,13 +1473,7 @@ class GroupSpec(BaseStorageSpec):
         ndt = getargs("data_type", kwargs)
         return self.__data_types.get(ndt, None)
 
-    @docval(
-        {
-            "name": "target_type",
-            "type": str,
-            "doc": "the target_type to retrieve",
-        }
-    )
+    @docval({"name": "target_type", "type": str, "doc": "the target_type to retrieve"})
     def get_target_type(self, **kwargs):
         """Get a specification by "target_type"
 
@@ -1676,13 +1509,7 @@ class GroupSpec(BaseStorageSpec):
         self.set_group(spec)
         return spec
 
-    @docval(
-        {
-            "name": "spec",
-            "type": "GroupSpec",
-            "doc": "the specification for the subgroup",
-        }
-    )
+    @docval({"name": "spec", "type": "GroupSpec", "doc": "the specification for the subgroup"})
     def set_group(self, **kwargs):
         """Add the given specification for a subgroup to this group specification"""
         spec = getargs("spec", kwargs)
@@ -1702,13 +1529,7 @@ class GroupSpec(BaseStorageSpec):
         self.setdefault("groups", list()).append(spec)
         spec.parent = self
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "the name of the group to the Spec for",
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "the name of the group to the Spec for"})
     def get_group(self, **kwargs):
         """Get a specification for a subgroup to this group specification"""
         name = getargs("name", kwargs)
@@ -1721,13 +1542,7 @@ class GroupSpec(BaseStorageSpec):
         self.set_dataset(spec)
         return spec
 
-    @docval(
-        {
-            "name": "spec",
-            "type": "DatasetSpec",
-            "doc": "the specification for the dataset",
-        }
-    )
+    @docval({"name": "spec", "type": "DatasetSpec", "doc": "the specification for the dataset"})
     def set_dataset(self, **kwargs):
         """Add the given specification for a dataset to this group specification"""
         spec = getargs("spec", kwargs)
@@ -1747,13 +1562,7 @@ class GroupSpec(BaseStorageSpec):
         self.setdefault("datasets", list()).append(spec)
         spec.parent = self
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "the name of the dataset to the Spec for",
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "the name of the dataset to the Spec for"})
     def get_dataset(self, **kwargs):
         """Get a specification for a dataset to this group specification"""
         name = getargs("name", kwargs)
@@ -1766,13 +1575,7 @@ class GroupSpec(BaseStorageSpec):
         self.set_link(spec)
         return spec
 
-    @docval(
-        {
-            "name": "spec",
-            "type": "LinkSpec",
-            "doc": "the specification for the object to link to",
-        }
-    )
+    @docval({"name": "spec", "type": "LinkSpec", "doc": "the specification for the object to link to"})
     def set_link(self, **kwargs):
         """Add a given specification for a link to this group specification"""
         spec = getargs("spec", kwargs)
@@ -1785,13 +1588,7 @@ class GroupSpec(BaseStorageSpec):
         self.setdefault("links", list()).append(spec)
         spec.parent = self
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "the name of the link to the Spec for",
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "the name of the link to the Spec for"})
     def get_link(self, **kwargs):
         """Get a specification for a link to this group specification"""
         name = getargs("name", kwargs)

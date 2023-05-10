@@ -18,7 +18,11 @@ _namespace_args = [
         "type": str,
         "doc": "a description about what this namespace represents",
     },
-    {"name": "name", "type": str, "doc": "the name of this namespace"},
+    {
+        "name": "name",
+        "type": str,
+        "doc": "the name of this namespace",
+    },
     {
         "name": "schema",
         "type": list,
@@ -74,28 +78,8 @@ class SpecNamespace(dict):
 
     @docval(*_namespace_args)
     def __init__(self, **kwargs):
-        (
-            doc,
-            full_name,
-            name,
-            version,
-            date,
-            author,
-            contact,
-            schema,
-            catalog,
-        ) = popargs(
-            "doc",
-            "full_name",
-            "name",
-            "version",
-            "date",
-            "author",
-            "contact",
-            "schema",
-            "catalog",
-            kwargs,
-        )
+        doc, full_name, name, version, date = popargs("doc", "full_name", "name", "version", "date", kwargs)
+        author, contact, schema, catalog = popargs("author", "contact", "schema", "catalog", kwargs)
         super().__init__()
         self["doc"] = doc
         self["schema"] = schema
@@ -202,13 +186,7 @@ class SpecNamespace(dict):
         """The SpecCatalog containing all the Specs"""
         return self.__catalog
 
-    @docval(
-        {
-            "name": "data_type",
-            "type": (str, type),
-            "doc": "the data_type to get the spec for",
-        }
-    )
+    @docval({"name": "data_type", "type": (str, type), "doc": "the data_type to get the spec for"})
     def get_spec(self, **kwargs):
         """Get the Spec object for the given data type"""
         data_type = getargs("data_type", kwargs)
@@ -223,11 +201,7 @@ class SpecNamespace(dict):
         return self.__catalog.get_registered_types()
 
     @docval(
-        {
-            "name": "data_type",
-            "type": (str, type),
-            "doc": "the data_type to get the hierarchy of",
-        },
+        {"name": "data_type", "type": (str, type), "doc": "the data_type to get the hierarchy of"},
         returns="a tuple with the type hierarchy",
         rtype=tuple,
     )
@@ -247,13 +221,7 @@ class SpecNamespace(dict):
 
 
 class SpecReader(metaclass=ABCMeta):
-    @docval(
-        {
-            "name": "source",
-            "type": str,
-            "doc": "the source from which this reader reads from",
-        }
-    )
+    @docval({"name": "source", "type": str, "doc": "the source from which this reader reads from"})
     def __init__(self, **kwargs):
         self.__source = getargs("source", kwargs)
 
@@ -271,14 +239,7 @@ class SpecReader(metaclass=ABCMeta):
 
 
 class YAMLSpecReader(SpecReader):
-    @docval(
-        {
-            "name": "indir",
-            "type": str,
-            "doc": "the path spec files are relative to",
-            "default": ".",
-        }
-    )
+    @docval({"name": "indir", "type": str, "doc": "the path spec files are relative to", "default": "."})
     def __init__(self, **kwargs):
         super().__init__(source=kwargs["indir"])
 
@@ -381,11 +342,7 @@ class NamespaceCatalog:
 
     @docval(
         {"name": "name", "type": str, "doc": "the name of this namespace"},
-        {
-            "name": "namespace",
-            "type": SpecNamespace,
-            "doc": "the SpecNamespace object",
-        },
+        {"name": "namespace", "type": SpecNamespace, "doc": "the SpecNamespace object"},
     )
     def add_namespace(self, **kwargs):
         """Add a namespace to this catalog"""
@@ -414,11 +371,7 @@ class NamespaceCatalog:
 
     @docval(
         {"name": "namespace", "type": str, "doc": "the name of the namespace"},
-        {
-            "name": "data_type",
-            "type": (str, type),
-            "doc": "the data_type to get the spec for",
-        },
+        {"name": "data_type", "type": (str, type), "doc": "the data_type to get the spec for"},
         returns="the specification for writing the given object type to HDF5 ",
         rtype="Spec",
     )
@@ -433,11 +386,7 @@ class NamespaceCatalog:
 
     @docval(
         {"name": "namespace", "type": str, "doc": "the name of the namespace"},
-        {
-            "name": "data_type",
-            "type": (str, type),
-            "doc": "the data_type to get the spec for",
-        },
+        {"name": "data_type", "type": (str, type), "doc": "the data_type to get the spec for"},
         returns="a tuple with the type hierarchy",
         rtype=tuple,
     )
@@ -452,17 +401,9 @@ class NamespaceCatalog:
         return spec_ns.get_hierarchy(data_type)
 
     @docval(
-        {
-            "name": "namespace",
-            "type": str,
-            "doc": "the name of the namespace containing the data_type",
-        },
+        {"name": "namespace", "type": str, "doc": "the name of the namespace containing the data_type"},
         {"name": "data_type", "type": str, "doc": "the data_type to check"},
-        {
-            "name": "parent_data_type",
-            "type": str,
-            "doc": "the potential parent data_type",
-        },
+        {"name": "parent_data_type", "type": str, "doc": "the potential parent data_type"},
         returns="True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise",
         rtype=bool,
     )
@@ -557,10 +498,7 @@ class NamespaceCatalog:
         if dt_inc is not None and dt_def is not None:
             parent_spec = catalog.get_spec(dt_inc)
             if parent_spec is None:
-                msg = "Cannot resolve include spec '%s' for type '%s'" % (
-                    dt_inc,
-                    dt_def,
-                )
+                msg = "Cannot resolve include spec '%s' for type '%s'" % (dt_inc, dt_def)
                 raise ValueError(msg)
             # replace the inc key value from string to the inc spec so that the spec can be updated with all of the
             # attributes, datasets, groups, and links of the inc spec when spec_cls.build_spec(spec_dict) is called
@@ -692,11 +630,7 @@ class NamespaceCatalog:
                     # warn if the cached namespace differs from the already loaded namespace
                     warn(
                         "Ignoring cached namespace '%s' version %s because version %s is already loaded."
-                        % (
-                            ns["name"],
-                            ns["version"],
-                            self.__namespaces.get(ns["name"])["version"],
-                        )
+                        % (ns["name"], ns["version"], self.__namespaces.get(ns["name"])["version"])
                     )
             else:
                 to_load.append(ns)

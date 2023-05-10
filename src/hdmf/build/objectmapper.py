@@ -195,11 +195,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 )
                 return ret_type.type, warning_msg
             if s.type is np.bool_:
-                msg = "expected %s, received %s - must supply %s" % (
-                    s.name,
-                    g.name,
-                    s.name,
-                )
+                msg = "expected %s, received %s - must supply %s" % (s.name, g.name, s.name)
                 raise ValueError(msg)
             # all numeric types in __dtypes should be caught by the above
             raise ValueError("Unsupported conversion to specification data type: %s" % s.name)
@@ -818,40 +814,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     if spec_dtype is None and self.__is_reftype(container.data):
                         self.logger.debug(
                             "Building %s '%s' containing references as a dataset of unspecified dtype (source: %s)"
-                            % (
-                                container.__class__.__name__,
-                                container.name,
-                                repr(source),
-                            )
+                            % (container.__class__.__name__, container.name, repr(source))
                         )
                         # an unspecified dtype and we were given references
                         # create dataset builder with data=None as a placeholder. fill in with refs later
-                        builder = DatasetBuilder(
-                            name,
-                            data=None,
-                            parent=parent,
-                            source=source,
-                            dtype="object",
-                        )
+                        builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype="object")
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
                     else:
                         # a dataset that has no references, pass the conversion off to the convert_dtype method
                         self.logger.debug(
                             "Building %s '%s' as a dataset (source: %s)"
-                            % (
-                                container.__class__.__name__,
-                                container.name,
-                                repr(source),
-                            )
+                            % (container.__class__.__name__, container.name, repr(source))
                         )
                         try:
                             # use spec_dtype from self.spec when spec_ext does not specify dtype
                             bldr_data, dtype = self.convert_dtype(spec, container.data, spec_dtype=spec_dtype)
                         except Exception as ex:
-                            msg = "could not resolve dtype for %s '%s'" % (
-                                type(container).__name__,
-                                container.name,
-                            )
+                            msg = "could not resolve dtype for %s '%s'" % (type(container).__name__, container.name)
                             raise Exception(msg) from ex
                         builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
 
@@ -1054,11 +1033,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 try:
                     attr_value, attr_dtype = self.convert_dtype(spec, attr_value)
                 except Exception as ex:
-                    msg = "could not convert %s for %s %s" % (
-                        spec.name,
-                        type(container).__name__,
-                        container.name,
-                    )
+                    msg = "could not convert %s for %s %s" % (spec.name, type(container).__name__, container.name)
                     raise BuildError(builder, msg) from ex
 
                 # do not write empty or null valued objects
@@ -1072,23 +1047,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def __set_attr_to_ref(self, builder, attr_value, build_manager, spec):
         self.logger.debug(
             "Queueing set reference attribute on %s '%s' attribute '%s' to %s"
-            % (
-                builder.__class__.__name__,
-                builder.name,
-                spec.name,
-                attr_value.__class__.__name__,
-            )
+            % (builder.__class__.__name__, builder.name, spec.name, attr_value.__class__.__name__)
         )
 
         def _filler():
             self.logger.debug(
                 "Setting reference attribute on %s '%s' attribute '%s' to %s"
-                % (
-                    builder.__class__.__name__,
-                    builder.name,
-                    spec.name,
-                    attr_value.__class__.__name__,
-                )
+                % (builder.__class__.__name__, builder.name, spec.name, attr_value.__class__.__name__)
             )
             target_builder = self.__get_target_builder(attr_value, build_manager, builder)
             ref_attr_value = ReferenceBuilder(target_builder)
@@ -1100,12 +1065,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if links:
             self.logger.debug(
                 "Adding links from %s '%s' to %s '%s'"
-                % (
-                    container.__class__.__name__,
-                    container.name,
-                    builder.__class__.__name__,
-                    builder.name,
-                )
+                % (container.__class__.__name__, container.name, builder.__class__.__name__, builder.name)
             )
         for spec in links:
             self.logger.debug(
@@ -1122,12 +1082,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if datasets:
             self.logger.debug(
                 "Adding datasets from %s '%s' to %s '%s'"
-                % (
-                    container.__class__.__name__,
-                    container.name,
-                    builder.__class__.__name__,
-                    builder.name,
-                )
+                % (container.__class__.__name__, container.name, builder.__class__.__name__, builder.name)
             )
         for spec in datasets:
             self.logger.debug(
@@ -1169,11 +1124,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         data, dtype = self.convert_dtype(spec, attr_value)
                     except Exception as ex:
                         msg = "could not convert '%s' for %s '%s'"
-                        msg = msg % (
-                            spec.name,
-                            type(container).__name__,
-                            container.name,
-                        )
+                        msg = msg % (spec.name, type(container).__name__, container.name)
                         raise BuildError(builder, msg) from ex
                     self.logger.debug(
                         "        Adding untyped dataset for spec name %s and adding attributes" % repr(spec.name)
@@ -1205,12 +1156,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if groups:
             self.logger.debug(
                 "Adding groups from %s '%s' to %s '%s'"
-                % (
-                    container.__class__.__name__,
-                    container.name,
-                    builder.__class__.__name__,
-                    builder.name,
-                )
+                % (container.__class__.__name__, container.name, builder.__class__.__name__, builder.name)
             )
         for spec in groups:
             if spec.data_type_def is None and spec.data_type_inc is None:
@@ -1292,34 +1238,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
                     self.logger.debug(
                         "    Adding link to %s '%s' in %s '%s'"
-                        % (
-                            new_builder.__class__.__name__,
-                            new_builder.name,
-                            builder.__class__.__name__,
-                            builder.name,
-                        )
+                        % (new_builder.__class__.__name__, new_builder.name, builder.__class__.__name__, builder.name)
                     )
                     builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
                 elif isinstance(spec, DatasetSpec):
                     self.logger.debug(
                         "    Adding dataset %s '%s' to %s '%s'"
-                        % (
-                            new_builder.__class__.__name__,
-                            new_builder.name,
-                            builder.__class__.__name__,
-                            builder.name,
-                        )
+                        % (new_builder.__class__.__name__, new_builder.name, builder.__class__.__name__, builder.name)
                     )
                     builder.set_dataset(new_builder)
                 else:
                     self.logger.debug(
                         "    Adding subgroup %s '%s' to %s '%s'"
-                        % (
-                            new_builder.__class__.__name__,
-                            new_builder.name,
-                            builder.__class__.__name__,
-                            builder.name,
-                        )
+                        % (new_builder.__class__.__name__, new_builder.name, builder.__class__.__name__, builder.name)
                     )
                     builder.set_group(new_builder)
             elif value.container_source:  # make a link to an existing container

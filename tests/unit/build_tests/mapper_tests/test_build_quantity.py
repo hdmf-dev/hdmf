@@ -55,24 +55,9 @@ class NotSimpleQux(Data):
 class SimpleBucket(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this SimpleBucket"},
-        {
-            "name": "foos",
-            "type": list,
-            "doc": "the SimpleFoo objects",
-            "default": list(),
-        },
-        {
-            "name": "quxs",
-            "type": list,
-            "doc": "the SimpleQux objects",
-            "default": list(),
-        },
-        {
-            "name": "links",
-            "type": list,
-            "doc": "another way to store SimpleFoo objects",
-            "default": list(),
-        },
+        {"name": "foos", "type": list, "doc": "the SimpleFoo objects", "default": list()},
+        {"name": "quxs", "type": list, "doc": "the SimpleQux objects", "default": list()},
+        {"name": "links", "type": list, "doc": "another way to store SimpleFoo objects", "default": list()},
     )
     def __init__(self, **kwargs):
         name, foos, quxs, links = getargs("name", "foos", "quxs", "links", kwargs)
@@ -91,7 +76,11 @@ class SimpleBucket(Container):
 
 class BasicBucket(Container):
     @docval(
-        {"name": "name", "type": str, "doc": "the name of this BasicBucket"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this BasicBucket",
+        },
         {
             "name": "untyped_dataset",
             "type": "scalar_data",

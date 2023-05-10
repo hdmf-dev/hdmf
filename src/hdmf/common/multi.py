@@ -13,7 +13,11 @@ class SimpleMultiContainer(MultiContainerInterface):
     }
 
     @docval(
-        {"name": "name", "type": str, "doc": "the name of this container"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this container",
+        },
         {
             "name": "containers",
             "type": (list, tuple),

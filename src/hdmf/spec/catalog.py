@@ -26,7 +26,11 @@ class SpecCatalog:
         self.__spec_source_files = dict()
 
     @docval(
-        {"name": "spec", "type": BaseStorageSpec, "doc": "a Spec object"},
+        {
+            "name": "spec",
+            "type": BaseStorageSpec,
+            "doc": "a Spec object",
+        },
         {
             "name": "source_file",
             "type": str,
@@ -53,11 +57,7 @@ class SpecCatalog:
         self.__spec_source_files[type_name] = source_file
 
     @docval(
-        {
-            "name": "data_type",
-            "type": str,
-            "doc": "the data_type to get the Spec for",
-        },
+        {"name": "data_type", "type": str, "doc": "the data_type to get the Spec for"},
         returns="the specification for writing the given object type to HDF5 ",
         rtype="Spec",
     )
@@ -77,11 +77,7 @@ class SpecCatalog:
         return tuple(self.__specs.keys())
 
     @docval(
-        {
-            "name": "data_type",
-            "type": str,
-            "doc": "the data_type of the spec to get the source file for",
-        },
+        {"name": "data_type", "type": str, "doc": "the data_type of the spec to get the source file for"},
         returns="the path to source specification file from which the spec was originally loaded or None ",
         rtype="str",
     )
@@ -131,11 +127,7 @@ class SpecCatalog:
         return tuple(ret)
 
     @docval(
-        {
-            "name": "data_type",
-            "type": (str, type),
-            "doc": "the data_type to get the hierarchy of",
-        },
+        {"name": "data_type", "type": (str, type), "doc": "the data_type to get the hierarchy of"},
         returns="Tuple of strings with the names of the types the given data_type inherits from.",
         rtype=tuple,
     )

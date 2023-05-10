@@ -9,13 +9,7 @@ class NotYetExhausted(Exception):
 
 
 class DataChunkProcessor(AbstractDataChunkIterator, metaclass=ABCMeta):
-    @docval(
-        {
-            "name": "data",
-            "type": DataChunkIterator,
-            "doc": "the DataChunkIterator to analyze",
-        }
-    )
+    @docval({"name": "data", "type": DataChunkIterator, "doc": "the DataChunkIterator to analyze"})
     def __init__(self, **kwargs):
         """Initialize the DataChunkIterator"""
         # Get the user parameters

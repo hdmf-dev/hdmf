@@ -35,7 +35,11 @@ class DynamicTableSingleDTR(DynamicTable):
     )
 
     @docval(
-        {"name": "name", "type": str, "doc": "The name of the table"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of the table",
+        },
         {
             "name": "child_table1",
             "type": DynamicTable,
@@ -74,7 +78,11 @@ class DynamicTableMultiDTR(DynamicTable):
     )
 
     @docval(
-        {"name": "name", "type": str, "doc": "The name of the table"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of the table",
+        },
         {
             "name": "child_table1",
             "type": DynamicTable,

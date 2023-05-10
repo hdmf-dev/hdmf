@@ -28,18 +28,8 @@ class Bar(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this Bar"},
         {"name": "attr1", "type": str, "doc": "a string attribute"},
-        {
-            "name": "attr2",
-            "type": "int",
-            "doc": "an int attribute",
-            "default": None,
-        },
-        {
-            "name": "ext_attr",
-            "type": bool,
-            "doc": "a boolean attribute",
-            "default": True,
-        },
+        {"name": "attr2", "type": "int", "doc": "an int attribute", "default": None},
+        {"name": "ext_attr", "type": bool, "doc": "a boolean attribute", "default": True},
     )
     def __init__(self, **kwargs):
         name, attr1, attr2, ext_attr = getargs("name", "attr1", "attr2", "ext_attr", kwargs)
@@ -68,12 +58,7 @@ class Bar(Container):
 class BarHolder(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this BarHolder"},
-        {
-            "name": "bars",
-            "type": ("data", "array_data"),
-            "doc": "bars",
-            "default": list(),
-        },
+        {"name": "bars", "type": ("data", "array_data"), "doc": "bars", "default": list()},
     )
     def __init__(self, **kwargs):
         name, bars = getargs("name", "bars", kwargs)
@@ -94,21 +79,9 @@ class BarHolder(Container):
 
 class ExtBarMapper(ObjectMapper):
     @docval(
-        {
-            "name": "spec",
-            "type": Spec,
-            "doc": "the spec to get the attribute value for",
-        },
-        {
-            "name": "container",
-            "type": Bar,
-            "doc": "the container to get the attribute value from",
-        },
-        {
-            "name": "manager",
-            "type": BuildManager,
-            "doc": "the BuildManager used for managing this build",
-        },
+        {"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
+        {"name": "container", "type": Bar, "doc": "the container to get the attribute value from"},
+        {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
         returns="the value of the attribute",
     )
     def get_attr_value(self, **kwargs):
@@ -343,18 +316,8 @@ class BarData(Data):
         {"name": "name", "type": str, "doc": "the name of this BarData"},
         {"name": "data", "type": ("data", "array_data"), "doc": "the data"},
         {"name": "attr1", "type": str, "doc": "a string attribute"},
-        {
-            "name": "attr2",
-            "type": "int",
-            "doc": "an int attribute",
-            "default": None,
-        },
-        {
-            "name": "ext_attr",
-            "type": bool,
-            "doc": "a boolean attribute",
-            "default": True,
-        },
+        {"name": "attr2", "type": "int", "doc": "an int attribute", "default": None},
+        {"name": "ext_attr", "type": bool, "doc": "a boolean attribute", "default": True},
     )
     def __init__(self, **kwargs):
         name, data, attr1, attr2, ext_attr = getargs("name", "data", "attr1", "attr2", "ext_attr", kwargs)
@@ -383,12 +346,7 @@ class BarData(Data):
 class BarDataHolder(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this BarDataHolder"},
-        {
-            "name": "bar_datas",
-            "type": ("data", "array_data"),
-            "doc": "bar_datas",
-            "default": list(),
-        },
+        {"name": "bar_datas", "type": ("data", "array_data"), "doc": "bar_datas", "default": list()},
     )
     def __init__(self, **kwargs):
         name, bar_datas = getargs("name", "bar_datas", kwargs)
@@ -409,21 +367,9 @@ class BarDataHolder(Container):
 
 class ExtBarDataMapper(ObjectMapper):
     @docval(
-        {
-            "name": "spec",
-            "type": Spec,
-            "doc": "the spec to get the attribute value for",
-        },
-        {
-            "name": "container",
-            "type": BarData,
-            "doc": "the container to get the attribute value from",
-        },
-        {
-            "name": "manager",
-            "type": BuildManager,
-            "doc": "the BuildManager used for managing this build",
-        },
+        {"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
+        {"name": "container", "type": BarData, "doc": "the container to get the attribute value from"},
+        {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
         returns="the value of the attribute",
     )
     def get_attr_value(self, **kwargs):

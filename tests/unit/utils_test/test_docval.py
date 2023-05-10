@@ -30,29 +30,14 @@ class MyTestClass(object):
     @docval(
         {"name": "arg1", "type": str, "doc": "argument1 is a str"},
         {"name": "arg2", "type": "int", "doc": "argument2 is a int"},
-        {
-            "name": "arg3",
-            "type": bool,
-            "doc": "argument3 is a bool. it defaults to False",
-            "default": False,
-        },
+        {"name": "arg3", "type": bool, "doc": "argument3 is a bool. it defaults to False", "default": False},
     )
     def basic_add2_kw(self, **kwargs):
         return kwargs
 
     @docval(
-        {
-            "name": "arg1",
-            "type": str,
-            "doc": "argument1 is a str",
-            "default": "a",
-        },
-        {
-            "name": "arg2",
-            "type": int,
-            "doc": "argument2 is a int",
-            "default": 1,
-        },
+        {"name": "arg1", "type": str, "doc": "argument1 is a str", "default": "a"},
+        {"name": "arg2", "type": int, "doc": "argument2 is a int", "default": 1},
     )
     def basic_only_kw(self, **kwargs):
         return kwargs
@@ -60,12 +45,7 @@ class MyTestClass(object):
     @docval(
         {"name": "arg1", "type": str, "doc": "argument1 is a str"},
         {"name": "arg2", "type": "int", "doc": "argument2 is a int"},
-        {
-            "name": "arg3",
-            "type": bool,
-            "doc": "argument3 is a bool. it defaults to False",
-            "default": False,
-        },
+        {"name": "arg3", "type": bool, "doc": "argument3 is a bool. it defaults to False", "default": False},
         allow_extra=True,
     )
     def basic_add2_kw_allow_extra(self, **kwargs):
@@ -83,20 +63,10 @@ class MyTestSubclass(MyTestClass):
     @docval(
         {"name": "arg1", "type": str, "doc": "argument1 is a str"},
         {"name": "arg2", "type": int, "doc": "argument2 is a int"},
-        {
-            "name": "arg3",
-            "type": bool,
-            "doc": "argument3 is a bool. it defaults to False",
-            "default": False,
-        },
+        {"name": "arg3", "type": bool, "doc": "argument3 is a bool. it defaults to False", "default": False},
         {"name": "arg4", "type": str, "doc": "argument4 is a str"},
         {"name": "arg5", "type": "float", "doc": "argument5 is a float"},
-        {
-            "name": "arg6",
-            "type": bool,
-            "doc": "argument6 is a bool. it defaults to None",
-            "default": None,
-        },
+        {"name": "arg6", "type": bool, "doc": "argument6 is a bool. it defaults to None", "default": None},
     )
     def basic_add2_kw(self, **kwargs):
         return kwargs
@@ -188,14 +158,7 @@ class TestDocValidator(TestCase):
             method(self, arg1=1234560)
 
     def test_bad_shape(self):
-        @docval(
-            {
-                "name": "arg1",
-                "type": "array_data",
-                "doc": "this is a bad shape",
-                "shape": (None, 2),
-            }
-        )
+        @docval({"name": "arg1", "type": "array_data", "doc": "this is a bad shape", "shape": (None, 2)})
         def method(self, **kwargs):
             pass
 
@@ -207,14 +170,7 @@ class TestDocValidator(TestCase):
         method(self, arg1=[[1, 1]])
 
     def test_multi_shape(self):
-        @docval(
-            {
-                "name": "arg1",
-                "type": "array_data",
-                "doc": "this is a bad shape",
-                "shape": ((None,), (None, 2)),
-            }
-        )
+        @docval({"name": "arg1", "type": "array_data", "doc": "this is a bad shape", "shape": ((None,), (None, 2))})
         def method1(self, **kwargs):
             pass
 
@@ -586,14 +542,7 @@ class TestDocValidator(TestCase):
         msg = "docval for arg1: keys ['unsupported'] are not supported by docval"
         with self.assertRaisesWith(Exception, msg):
 
-            @docval(
-                {
-                    "name": "arg1",
-                    "type": "array_data",
-                    "doc": "this is a bad shape",
-                    "unsupported": "hi!",
-                }
-            )
+            @docval({"name": "arg1", "type": "array_data", "doc": "this is a bad shape", "unsupported": "hi!"})
             def method(self, **kwargs):
                 pass
 
@@ -601,16 +550,8 @@ class TestDocValidator(TestCase):
         """Test that docval does not allow duplicate argument names"""
 
         @docval(
-            {
-                "name": "arg1",
-                "type": "array_data",
-                "doc": "this is a bad shape",
-            },
-            {
-                "name": "arg1",
-                "type": "array_data",
-                "doc": "this is a bad shape2",
-            },
+            {"name": "arg1", "type": "array_data", "doc": "this is a bad shape"},
+            {"name": "arg1", "type": "array_data", "doc": "this is a bad shape2"},
         )
         def method(self, **kwargs):
             pass
@@ -924,14 +865,7 @@ class TestDocValidator(TestCase):
     def test_enum_uint(self):
         """Test that the basic usage of an enum check on uints works"""
 
-        @docval(
-            {
-                "name": "arg1",
-                "type": np.uint,
-                "doc": "an arg",
-                "enum": (np.uint(1), np.uint(2)),
-            }
-        )
+        @docval({"name": "arg1", "type": np.uint, "doc": "an arg", "enum": (np.uint(1), np.uint(2))})
         def method(self, **kwargs):
             return popargs("arg1", kwargs)
 
@@ -991,14 +925,7 @@ class TestDocValidator(TestCase):
         )
         with self.assertRaisesWith(Exception, msg):
 
-            @docval(
-                {
-                    "name": "arg1",
-                    "type": (bool, int, str, np.float64, object),
-                    "doc": "an arg",
-                    "enum": (1, 2),
-                }
-            )
+            @docval({"name": "arg1", "type": (bool, int, str, np.float64, object), "doc": "an arg", "enum": (1, 2)})
             def method(self, **kwargs):
                 return popargs("arg1", kwargs)
 
@@ -1007,14 +934,7 @@ class TestDocValidator(TestCase):
         msg = "docval for arg1: enum checking cannot be used with arg type None"
         with self.assertRaisesWith(Exception, msg):
 
-            @docval(
-                {
-                    "name": "arg1",
-                    "type": None,
-                    "doc": "an arg",
-                    "enum": (True, 1, "true"),
-                }
-            )
+            @docval({"name": "arg1", "type": None, "doc": "an arg", "enum": (True, 1, "true")})
             def method(self, **kwargs):
                 pass
 
@@ -1023,29 +943,14 @@ class TestDocValidator(TestCase):
         msg = "docval for arg1: enum value must be a list or tuple (received <class 'str'>)"
         with self.assertRaisesWith(Exception, msg):
 
-            @docval(
-                {
-                    "name": "arg1",
-                    "type": str,
-                    "doc": "an arg",
-                    "enum": "only one value",
-                }
-            )
+            @docval({"name": "arg1", "type": str, "doc": "an arg", "enum": "only one value"})
             def method(self, **kwargs):
                 pass
 
     def test_enum_str_default(self):
         """Test that docval with an enum check on strings and a default value works"""
 
-        @docval(
-            {
-                "name": "arg1",
-                "type": str,
-                "doc": "an arg",
-                "default": "a",
-                "enum": ["a", "b"],
-            }
-        )
+        @docval({"name": "arg1", "type": str, "doc": "an arg", "default": "a", "enum": ["a", "b"]})
         def method(self, **kwargs):
             return popargs("arg1", kwargs)
 
@@ -1061,15 +966,7 @@ class TestDocValidator(TestCase):
     def test_enum_str_none_default(self):
         """Test that docval with an enum check on strings and a None default value works"""
 
-        @docval(
-            {
-                "name": "arg1",
-                "type": str,
-                "doc": "an arg",
-                "default": None,
-                "enum": ["a", "b"],
-            }
-        )
+        @docval({"name": "arg1", "type": str, "doc": "an arg", "default": None, "enum": ["a", "b"]})
         def method(self, **kwargs):
             return popargs("arg1", kwargs)
 
@@ -1083,14 +980,7 @@ class TestDocValidator(TestCase):
         )
         with self.assertRaisesWith(Exception, msg):
 
-            @docval(
-                {
-                    "name": "arg1",
-                    "type": bool,
-                    "doc": "an arg",
-                    "enum": (True, []),
-                }
-            )
+            @docval({"name": "arg1", "type": bool, "doc": "an arg", "enum": (True, [])})
             def method(self, **kwargs):
                 pass
 

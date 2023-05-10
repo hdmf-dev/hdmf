@@ -19,21 +19,9 @@ class DynamicTableMap(ObjectMapper):
         return container.colnames
 
     @docval(
-        {
-            "name": "spec",
-            "type": Spec,
-            "doc": "the spec to get the attribute value for",
-        },
-        {
-            "name": "container",
-            "type": DynamicTable,
-            "doc": "the container to get the attribute value from",
-        },
-        {
-            "name": "manager",
-            "type": BuildManager,
-            "doc": "the BuildManager used for managing this build",
-        },
+        {"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
+        {"name": "container", "type": DynamicTable, "doc": "the container to get the attribute value from"},
+        {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
         returns="the value of the attribute",
     )
     def get_attr_value(self, **kwargs):

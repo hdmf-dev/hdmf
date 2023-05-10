@@ -118,17 +118,11 @@ class HDF5IO(HDMFIO):
         path = self.__check_path_file_obj(path, file_obj)
 
         if file_obj is None and not os.path.exists(path) and (mode == "r" or mode == "r+") and driver != "ros3":
-            msg = "Unable to open file %s in '%s' mode. File does not exist." % (
-                path,
-                mode,
-            )
+            msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
             raise UnsupportedOperation(msg)
 
         if file_obj is None and os.path.exists(path) and (mode == "w-" or mode == "x"):
-            msg = "Unable to open file %s in '%s' mode. File already exists." % (
-                path,
-                mode,
-            )
+            msg = "Unable to open file %s in '%s' mode. File already exists." % (path, mode)
             raise UnsupportedOperation(msg)
 
         if manager is None:
@@ -1124,12 +1118,7 @@ class HDF5IO(HDMFIO):
                             value = np.array(value)
                     self.logger.debug(
                         "Setting %s '%s' attribute '%s' to %s"
-                        % (
-                            obj.__class__.__name__,
-                            obj.name,
-                            key,
-                            value.__class__.__name__,
-                        )
+                        % (obj.__class__.__name__, obj.name, key, value.__class__.__name__)
                     )
                     obj.attrs[key] = value
                 elif isinstance(value, (Container, Builder, ReferenceBuilder)):  # a reference
@@ -1137,21 +1126,13 @@ class HDF5IO(HDMFIO):
                 else:
                     self.logger.debug(
                         "Setting %s '%s' attribute '%s' to %s"
-                        % (
-                            obj.__class__.__name__,
-                            obj.name,
-                            key,
-                            value.__class__.__name__,
-                        )
+                        % (obj.__class__.__name__, obj.name, key, value.__class__.__name__)
                     )
                     if isinstance(value, np.ndarray) and value.dtype.kind == "U":
                         value = np.array(value, dtype=H5_TEXT)
                     obj.attrs[key] = value  # a regular scalar
             except Exception as e:
-                msg = "unable to write attribute '%s' on object '%s'" % (
-                    key,
-                    obj.name,
-                )
+                msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)
                 raise RuntimeError(msg) from e
 
     def _make_attr_ref_filler(self, obj, key, value):
@@ -1447,10 +1428,7 @@ class HDF5IO(HDMFIO):
                 try:
                     _dtype = self.__resolve_dtype__(options["dtype"], data)
                 except Exception as exc:
-                    msg = "cannot add %s to %s - could not determine type" % (
-                        name,
-                        parent.name,
-                    )
+                    msg = "cannot add %s to %s - could not determine type" % (name, parent.name)
                     raise Exception(msg) from exc
                 dset = parent.require_dataset(
                     name,
@@ -1625,18 +1603,12 @@ class HDF5IO(HDMFIO):
             try:
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
-                msg = "cannot add %s to %s - could not determine type" % (
-                    name,
-                    parent.name,
-                )
+                msg = "cannot add %s to %s - could not determine type" % (name, parent.name)
                 raise Exception(msg) from exc
         try:
             dset = parent.create_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
         except Exception as exc:
-            msg = "Could not create scalar dataset %s in %s" % (
-                name,
-                parent.name,
-            )
+            msg = "Could not create scalar dataset %s in %s" % (name, parent.name)
             raise Exception(msg) from exc
         return dset
 
@@ -1745,10 +1717,7 @@ class HDF5IO(HDMFIO):
             try:
                 dtype = cls.__resolve_dtype__(dtype, data)
             except Exception as exc:
-                msg = "cannot add %s to %s - could not determine type" % (
-                    name,
-                    parent.name,
-                )
+                msg = "cannot add %s to %s - could not determine type" % (name, parent.name)
                 raise Exception(msg) from exc
         # define the data shape
         if "shape" in io_settings:

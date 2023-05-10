@@ -194,22 +194,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
         """
-        (
-            buffer_gb,
-            buffer_shape,
-            chunk_mb,
-            chunk_shape,
-            self.display_progress,
-            self.progress_bar_options,
-        ) = getargs(
-            "buffer_gb",
-            "buffer_shape",
-            "chunk_mb",
-            "chunk_shape",
-            "display_progress",
-            "progress_bar_options",
-            kwargs,
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs(
+            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", kwargs
         )
+        self.display_progress, self.progress_bar_options = getargs("display_progress", "progress_bar_options", kwargs)
 
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
@@ -893,21 +881,13 @@ def assertEqualShape(
         response.result = False
         response.error = "NUM_DIMS_ERROR"
         response.message = response.SHAPE_ERROR[response.error]
-        response.message += " %s is %sD and %s is %sD" % (
-            n1,
-            num_dims_1,
-            n2,
-            num_dims_2,
-        )
+        response.message += " %s is %sD and %s is %sD" % (n1, num_dims_1, n2, num_dims_2)
     # 2) Check that we have the same number of dimensions to compare on both arrays
     elif len(response.axes1) != len(response.axes2):
         response.result = False
         response.error = "NUM_AXES_ERROR"
         response.message = response.SHAPE_ERROR[response.error]
-        response.message += " Cannot compare axes %s with %s" % (
-            str(response.axes1),
-            str(response.axes2),
-        )
+        response.message += " Cannot compare axes %s with %s" % (str(response.axes1), str(response.axes2))
     # 3) Check that the datasets have sufficient number of dimensions
     elif np.max(response.axes1) >= num_dims_1 or np.max(response.axes2) >= num_dims_2:
         response.result = False

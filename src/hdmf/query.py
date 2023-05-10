@@ -46,14 +46,7 @@ class Query(metaclass=ExtenderMeta):
         self.collapsed = None
         self.expanded = None
 
-    @docval(
-        {
-            "name": "expand",
-            "type": bool,
-            "help": "whether or not to expand result",
-            "default": True,
-        }
-    )
+    @docval({"name": "expand", "type": bool, "help": "whether or not to expand result", "default": True})
     def evaluate(self, **kwargs):
         expand = getargs("expand", kwargs)
         if expand:
@@ -153,13 +146,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
         idx = self.__evaluate_key(key)
         return self.dataset[idx]
 
-    @docval(
-        {
-            "name": "dataset",
-            "type": ("array_data", Array),
-            "doc": "the HDF5 file lazily evaluate",
-        }
-    )
+    @docval({"name": "dataset", "type": ("array_data", Array), "doc": "the HDF5 file lazily evaluate"})
     def __init__(self, **kwargs):
         super().__init__()
         self.__dataset = getargs("dataset", kwargs)

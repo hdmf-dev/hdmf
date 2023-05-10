@@ -35,11 +35,7 @@ from ..helpers.utils import CORE_NAMESPACE, Foo
 class Baz(Data):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this Baz"},
-        {
-            "name": "data",
-            "type": (list, h5py.Dataset, "data", "array_data"),
-            "doc": "some data",
-        },
+        {"name": "data", "type": (list, h5py.Dataset, "data", "array_data"), "doc": "some data"},
         {"name": "baz_attr", "type": str, "doc": "an attribute"},
     )
     def __init__(self, **kwargs):
@@ -55,12 +51,7 @@ class Baz(Data):
 class BazHolder(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this Baz"},
-        {
-            "name": "bazs",
-            "type": list,
-            "doc": "some Baz data",
-            "default": list(),
-        },
+        {"name": "bazs", "type": list, "doc": "some Baz data", "default": list()},
     )
     def __init__(self, **kwargs):
         name, bazs = getargs("name", "bazs", kwargs)

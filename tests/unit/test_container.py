@@ -527,14 +527,7 @@ class TestContainerFieldsConf(TestCase):
         class ContainerRequiredName(Container):
             __fields__ = ({"name": "field1", "required_name": "field1 value"},)
 
-            @docval(
-                {
-                    "name": "field1",
-                    "doc": "field1 doc",
-                    "type": None,
-                    "default": None,
-                }
-            )
+            @docval({"name": "field1", "doc": "field1 doc", "type": None, "default": None})
             def __init__(self, **kwargs):
                 super().__init__("test name")
                 self.field1 = kwargs["field1"]
@@ -559,14 +552,7 @@ class TestContainerFieldsConf(TestCase):
         class ContainerWithChild(Container):
             __fields__ = ({"name": "field1", "child": True},)
 
-            @docval(
-                {
-                    "name": "field1",
-                    "doc": "field1 doc",
-                    "type": None,
-                    "default": None,
-                }
-            )
+            @docval({"name": "field1", "doc": "field1 doc", "type": None, "default": None})
             def __init__(self, **kwargs):
                 super().__init__("test name")
                 self.field1 = kwargs["field1"]
@@ -591,14 +577,7 @@ class TestContainerFieldsConf(TestCase):
         class ContainerWithChild(Container):
             __fields__ = ({"name": "field1", "child": True},)
 
-            @docval(
-                {
-                    "name": "field1",
-                    "doc": "field1 doc",
-                    "type": None,
-                    "default": None,
-                }
-            )
+            @docval({"name": "field1", "doc": "field1 doc", "type": None, "default": None})
             def __init__(self, **kwargs):
                 super().__init__("test name")
                 self.field1 = kwargs["field1"]
@@ -623,14 +602,7 @@ class TestChangeFieldsName(TestCase):
             _fieldsname = "__newfields__"
             __newfields__ = ({"name": "field1", "doc": "field1 doc"},)
 
-            @docval(
-                {
-                    "name": "field1",
-                    "doc": "field1 doc",
-                    "type": None,
-                    "default": None,
-                }
-            )
+            @docval({"name": "field1", "doc": "field1 doc", "type": None, "default": None})
             def __init__(self, **kwargs):
                 super().__init__("test name")
                 self.field1 = kwargs["field1"]
@@ -645,14 +617,7 @@ class TestChangeFieldsName(TestCase):
         class ContainerOldFields(Container):
             __fields__ = ({"name": "field1", "doc": "field1 doc"},)
 
-            @docval(
-                {
-                    "name": "field1",
-                    "doc": "field1 doc",
-                    "type": None,
-                    "default": None,
-                }
-            )
+            @docval({"name": "field1", "doc": "field1 doc", "type": None, "default": None})
             def __init__(self, **kwargs):
                 super().__init__("test name")
                 self.field1 = kwargs["field1"]
@@ -662,18 +627,8 @@ class TestChangeFieldsName(TestCase):
             __newfields__ = ({"name": "field2", "doc": "field2 doc"},)
 
             @docval(
-                {
-                    "name": "field1",
-                    "doc": "field1 doc",
-                    "type": None,
-                    "default": None,
-                },
-                {
-                    "name": "field2",
-                    "doc": "field2 doc",
-                    "type": None,
-                    "default": None,
-                },
+                {"name": "field1", "doc": "field1 doc", "type": None, "default": None},
+                {"name": "field2", "doc": "field2 doc", "type": None, "default": None},
             )
             def __init__(self, **kwargs):
                 super().__init__(kwargs["field1"])

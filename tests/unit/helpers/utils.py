@@ -50,12 +50,7 @@ class Foo(Container):
         {"name": "my_data", "type": ("array_data", "data"), "doc": "some data"},
         {"name": "attr1", "type": str, "doc": "an attribute"},
         {"name": "attr2", "type": int, "doc": "another attribute"},
-        {
-            "name": "attr3",
-            "type": float,
-            "doc": "a third attribute",
-            "default": 3.14,
-        },
+        {"name": "attr3", "type": float, "doc": "a third attribute", "default": 3.14},
     )
     def __init__(self, **kwargs):
         name, my_data, attr1, attr2, attr3 = getargs("name", "my_data", "attr1", "attr2", "attr3", kwargs)
@@ -96,12 +91,7 @@ class Foo(Container):
 class FooBucket(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this bucket"},
-        {
-            "name": "foos",
-            "type": list,
-            "doc": "the Foo objects in this bucket",
-            "default": list(),
-        },
+        {"name": "foos", "type": list, "doc": "the Foo objects in this bucket", "default": list()},
     )
     def __init__(self, **kwargs):
         name, foos = getargs("name", "foos", kwargs)
@@ -136,30 +126,10 @@ class FooFile(Container):
     ROOT_NAME = "root"  # For HDF5 and Zarr this is the root. It should be set before use if different for the backend.
 
     @docval(
-        {
-            "name": "buckets",
-            "type": list,
-            "doc": "the FooBuckets in this file",
-            "default": list(),
-        },
-        {
-            "name": "foo_link",
-            "type": Foo,
-            "doc": "an optional linked Foo",
-            "default": None,
-        },
-        {
-            "name": "foofile_data",
-            "type": "array_data",
-            "doc": "an optional dataset",
-            "default": None,
-        },
-        {
-            "name": "foo_ref_attr",
-            "type": Foo,
-            "doc": "a reference Foo",
-            "default": None,
-        },
+        {"name": "buckets", "type": list, "doc": "the FooBuckets in this file", "default": list()},
+        {"name": "foo_link", "type": Foo, "doc": "an optional linked Foo", "default": None},
+        {"name": "foofile_data", "type": "array_data", "doc": "an optional dataset", "default": None},
+        {"name": "foo_ref_attr", "type": Foo, "doc": "a reference Foo", "default": None},
     )
     def __init__(self, **kwargs):
         buckets, foo_link, foofile_data, foo_ref_attr = getargs(
@@ -181,11 +151,7 @@ class FooFile(Container):
         )
 
     def __str__(self):
-        return "buckets=%s, foo_link=%s, foofile_data=%s" % (
-            self.buckets,
-            self.foo_link,
-            self.foofile_data,
-        )
+        return "buckets=%s, foo_link=%s, foofile_data=%s" % (self.buckets, self.foo_link, self.foofile_data)
 
     @property
     def buckets(self):
@@ -396,18 +362,8 @@ class BazBucket(Container):
     @docval(
         {"name": "name", "type": str, "doc": "the name of this bucket"},
         {"name": "bazs", "type": list, "doc": "the Baz objects in this bucket"},
-        {
-            "name": "baz_data",
-            "type": BazData,
-            "doc": "dataset of Baz references",
-            "default": None,
-        },
-        {
-            "name": "baz_cpd_data",
-            "type": BazCpdData,
-            "doc": "dataset of Baz references",
-            "default": None,
-        },
+        {"name": "baz_data", "type": BazData, "doc": "dataset of Baz references", "default": None},
+        {"name": "baz_cpd_data", "type": BazCpdData, "doc": "dataset of Baz references", "default": None},
     )
     def __init__(self, **kwargs):
         name, bazs, baz_data, baz_cpd_data = getargs("name", "bazs", "baz_data", "baz_cpd_data", kwargs)

@@ -57,16 +57,8 @@ class ListSlicer(RegionSlicer):
     """Implementation of RegionSlicer for slicing Lists and Data"""
 
     @docval(
-        {
-            "name": "dataset",
-            "type": (list, tuple, Data),
-            "doc": "the dataset to slice",
-        },
-        {
-            "name": "region",
-            "type": (list, tuple, slice),
-            "doc": "the region reference to use to slice",
-        },
+        {"name": "dataset", "type": (list, tuple, Data), "doc": "the dataset to slice"},
+        {"name": "region", "type": (list, tuple, slice), "doc": "the region reference to use to slice"},
     )
     def __init__(self, **kwargs):
         self.__dataset, self.__region = getargs("dataset", "region", kwargs)

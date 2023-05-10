@@ -251,14 +251,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         return self.__name
 
-    @docval(
-        {
-            "name": "data_type",
-            "type": str,
-            "doc": "the data_type to search for",
-            "default": None,
-        }
-    )
+    @docval({"name": "data_type", "type": str, "doc": "the data_type to search for", "default": None})
     def get_ancestor(self, **kwargs):
         """
         Traverse parent hierarchy and return first instance of the specified data_type
@@ -314,12 +307,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         return self.__modified
 
     @docval(
-        {
-            "name": "modified",
-            "type": bool,
-            "doc": "whether or not this Container has been modified",
-            "default": True,
-        }
+        {"name": "modified", "type": bool, "doc": "whether or not this Container has been modified", "default": True}
     )
     def set_modified(self, **kwargs):
         modified = getargs("modified", kwargs)
@@ -331,14 +319,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def children(self):
         return tuple(self.__children)
 
-    @docval(
-        {
-            "name": "child",
-            "type": "Container",
-            "doc": "the child Container for this Container",
-            "default": None,
-        }
-    )
+    @docval({"name": "child", "type": "Container", "doc": "the child Container for this Container", "default": None})
     def add_child(self, **kwargs):
         warn(DeprecationWarning("add_child is deprecated. Set the parent attribute instead."))
         child = getargs("child", kwargs)
@@ -411,12 +392,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         if child not in self.children:
             raise ValueError(
                 "%s '%s' is not a child of %s '%s'."
-                % (
-                    child.__class__.__name__,
-                    child.name,
-                    self.__class__.__name__,
-                    self.name,
-                )
+                % (child.__class__.__name__, child.name, self.__class__.__name__, self.name)
             )
         child.__parent = None
         self.__children.remove(child)
@@ -497,12 +473,7 @@ class Container(AbstractContainer):
 
     def __repr__(self):
         cls = self.__class__
-        template = "%s %s.%s at 0x%d" % (
-            self.name,
-            cls.__module__,
-            cls.__name__,
-            id(self),
-        )
+        template = "%s %s.%s at 0x%d" % (self.name, cls.__module__, cls.__name__, id(self))
         if len(self.fields):
             template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
@@ -602,11 +573,7 @@ class Data(AbstractContainer):
 
     @docval(
         {"name": "name", "type": str, "doc": "the name of this container"},
-        {
-            "name": "data",
-            "type": ("scalar_data", "array_data", "data"),
-            "doc": "the source of the data",
-        },
+        {"name": "data", "type": ("scalar_data", "array_data", "data"), "doc": "the source of the data"},
     )
     def __init__(self, **kwargs):
         data = popargs("data", kwargs)
@@ -641,13 +608,7 @@ class Data(AbstractContainer):
         dataio.data = self.__data
         self.__data = dataio
 
-    @docval(
-        {
-            "name": "func",
-            "type": types.FunctionType,
-            "doc": "a function to transform *data*",
-        }
-    )
+    @docval({"name": "func", "type": types.FunctionType, "doc": "a function to transform *data*"})
     def transform(self, **kwargs):
         """
         Transform data from the current underlying state.
@@ -775,18 +736,10 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_get(cls, func_name, attr_name, container_type):
-        doc = "Get %s from this %s" % (
-            cls.__add_article(container_type),
-            cls.__name__,
-        )
+        doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
 
         @docval(
-            {
-                "name": "name",
-                "type": str,
-                "doc": "the name of the %s" % cls.__join(container_type),
-                "default": None,
-            },
+            {"name": "name", "type": str, "doc": "the name of the %s" % cls.__join(container_type), "default": None},
             rtype=container_type,
             returns="the %s with the given name" % cls.__join(container_type),
             func_name=func_name,
@@ -805,11 +758,7 @@ class MultiContainerInterface(Container):
                     )
                     raise ValueError(msg)
                 elif len(d) == 0:
-                    msg = "%s of %s '%s' is empty." % (
-                        attr_name,
-                        cls.__name__,
-                        self.name,
-                    )
+                    msg = "%s of %s '%s' is empty." % (attr_name, cls.__name__, self.name)
                     raise ValueError(msg)
                 else:  # only one item in dict
                     for v in d.values():
@@ -817,12 +766,7 @@ class MultiContainerInterface(Container):
             else:
                 ret = d.get(name)
                 if ret is None:
-                    msg = "'%s' not found in %s of %s '%s'." % (
-                        name,
-                        attr_name,
-                        cls.__name__,
-                        self.name,
-                    )
+                    msg = "'%s' not found in %s of %s '%s'." % (name, attr_name, cls.__name__, self.name)
                     raise KeyError(msg)
             return ret
 
@@ -830,18 +774,10 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_getitem(cls, attr_name, container_type):
-        doc = "Get %s from this %s" % (
-            cls.__add_article(container_type),
-            cls.__name__,
-        )
+        doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
 
         @docval(
-            {
-                "name": "name",
-                "type": str,
-                "doc": "the name of the %s" % cls.__join(container_type),
-                "default": None,
-            },
+            {"name": "name", "type": str, "doc": "the name of the %s" % cls.__join(container_type), "default": None},
             rtype=container_type,
             returns="the %s with the given name" % cls.__join(container_type),
             func_name="__getitem__",
@@ -869,11 +805,7 @@ class MultiContainerInterface(Container):
             else:
                 ret = d.get(name)
                 if ret is None:
-                    msg = "'%s' not found in %s '%s'." % (
-                        name,
-                        cls.__name__,
-                        self.name,
-                    )
+                    msg = "'%s' not found in %s '%s'." % (name, cls.__name__, self.name)
                     raise KeyError(msg)
             return ret
 
@@ -881,19 +813,13 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_add(cls, func_name, attr_name, container_type):
-        doc = "Add one or multiple %s objects to this %s" % (
-            cls.__join(container_type),
-            cls.__name__,
-        )
+        doc = "Add one or multiple %s objects to this %s" % (cls.__join(container_type), cls.__name__)
 
         @docval(
             {
                 "name": attr_name,
                 "type": (list, tuple, dict, container_type),
-                "doc": "one or multiple %s objects to add to this %s" % (
-                    cls.__join(container_type),
-                    cls.__name__,
-                ),
+                "doc": "one or multiple %s objects to add to this %s" % (cls.__join(container_type), cls.__name__),
             },
             func_name=func_name,
             doc=doc,
@@ -915,11 +841,7 @@ class MultiContainerInterface(Container):
                     # still need to mark self as modified
                     self.set_modified()
                 if tmp.name in d:
-                    msg = "'%s' already exists in %s '%s'" % (
-                        tmp.name,
-                        cls.__name__,
-                        self.name,
-                    )
+                    msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
                     raise ValueError(msg)
                 d[tmp.name] = tmp
             return container
@@ -928,10 +850,7 @@ class MultiContainerInterface(Container):
 
     @classmethod
     def __make_create(cls, func_name, add_name, container_type):
-        doc = "Create %s object and add it to this %s" % (
-            cls.__add_article(container_type),
-            cls.__name__,
-        )
+        doc = "Create %s object and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
 
         @docval(
             *get_docval(container_type.__init__),
@@ -962,14 +881,7 @@ class MultiContainerInterface(Container):
                 }
             )
 
-        args.append(
-            {
-                "name": "name",
-                "type": str,
-                "doc": "the name of this container",
-                "default": cls.__name__,
-            }
-        )
+        args.append({"name": "name", "type": str, "doc": "the name of this container", "default": cls.__name__})
 
         @docval(*args, func_name="__init__")
         def _func(self, **kwargs):
@@ -1007,14 +919,7 @@ class MultiContainerInterface(Container):
     def __make_setter(cls, add_name):
         """Make a setter function for creating a :py:func:`property`"""
 
-        @docval(
-            {
-                "name": "val",
-                "type": (list, tuple, dict),
-                "doc": "the sub items to add",
-                "default": None,
-            }
-        )
+        @docval({"name": "val", "type": (list, tuple, dict), "doc": "the sub items to add", "default": None})
         def _func(self, **kwargs):
             val = getargs("val", kwargs)
             if val is None:
@@ -1087,10 +992,7 @@ class MultiContainerInterface(Container):
         if not hasattr(cls, attr):
             getter = cls.__make_getter(attr)
             setter = cls.__make_setter(add)
-            doc = "a dictionary containing the %s in this %s" % (
-                cls.__join(container_type),
-                cls.__name__,
-            )
+            doc = "a dictionary containing the %s in this %s" % (cls.__join(container_type), cls.__name__)
             setattr(cls, attr, property(getter, setter, None, doc))
 
         # create the add method
@@ -1168,12 +1070,7 @@ class Row(object, metaclass=ExtenderMeta):
                 for col in columns:
                     func_args.append(col)
                 func_args.append(
-                    {
-                        "name": "table",
-                        "type": Table,
-                        "default": None,
-                        "help": "the table this row is from",
-                    }
+                    {"name": "table", "type": Table, "default": None, "help": "the table this row is from"}
                 )
                 func_args.append(
                     {
@@ -1214,11 +1111,7 @@ class Row(object, metaclass=ExtenderMeta):
         return self.idx == other.idx and self.table is other.table
 
     def __str__(self):
-        return "Row(%i, %s) = %s" % (
-            self.idx,
-            self.table.name,
-            str(self.todict()),
-        )
+        return "Row(%i, %s) = %s" % (self.idx, self.table.name, str(self.todict()))
 
 
 class RowGetter:
@@ -1279,11 +1172,7 @@ class Table(Data):
             setattr(cls, "__colidx__", idx)
 
             if cls.__init__ == bases[-1].__init__:  # check if __init__ is overridden
-                name = {
-                    "name": "name",
-                    "type": str,
-                    "doc": "the name of this table",
-                }
+                name = {"name": "name", "type": str, "doc": "the name of this table"}
                 defname = getattr(cls, "__defaultname__", None)
                 if defname is not None:
                     name["default"] = defname  # override the name with the default name if present
@@ -1318,7 +1207,11 @@ class Table(Data):
             "type": (list, tuple),
             "doc": "a list of the columns in this table",
         },
-        {"name": "name", "type": str, "doc": "the name of this container"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this container",
+        },
         {
             "name": "data",
             "type": ("array_data", "data"),

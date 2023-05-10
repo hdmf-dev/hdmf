@@ -207,11 +207,7 @@ class BuildManager:
                     if container.container_source != source:
                         raise ValueError(
                             "Cannot change container_source once set: '%s' %s.%s"
-                            % (
-                                container.name,
-                                container.__class__.__module__,
-                                container.__class__.__name__,
-                            )
+                            % (container.name, container.__class__.__module__, container.__class__.__name__)
                         )
             # NOTE: if exporting, then existing cached builder will be ignored and overridden with new build result
             result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext, export=export)
@@ -222,12 +218,7 @@ class BuildManager:
             # if builder was built on file read and is then modified (append mode), it needs to be rebuilt
             self.logger.debug(
                 "Rebuilding modified %s '%s' (source: %s, extended spec: %s)"
-                % (
-                    container.__class__.__name__,
-                    container.name,
-                    repr(source),
-                    spec_ext is not None,
-                )
+                % (container.__class__.__name__, container.name, repr(source), spec_ext is not None)
             )
             result = self.__type_map.build(
                 container,
@@ -241,12 +232,7 @@ class BuildManager:
         else:
             self.logger.debug(
                 "Using prebuilt %s '%s' for %s '%s'"
-                % (
-                    result.__class__.__name__,
-                    result.name,
-                    container.__class__.__name__,
-                    container.name,
-                )
+                % (result.__class__.__name__, result.name, container.__class__.__name__, container.name)
             )
         if root:  # create reference builders only after building all other builders
             self.__add_refs()
@@ -322,12 +308,7 @@ class BuildManager:
                 builder_id = self.__bldrhash__(builder)
                 self.logger.debug(
                     "Purging %s '%s' for %s '%s' from prebuilt cache"
-                    % (
-                        builder.__class__.__name__,
-                        builder.name,
-                        container.__class__.__name__,
-                        container.name,
-                    )
+                    % (builder.__class__.__name__, builder.name, container.__class__.__name__, container.name)
                 )
                 self.__builders.pop(container_id)
                 self.__containers.pop(builder_id)

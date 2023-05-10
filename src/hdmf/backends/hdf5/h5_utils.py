@@ -392,10 +392,7 @@ class H5SpecReader(SpecReader):
     @docval({"name": "group", "type": Group, "doc": "the HDF5 group to read specs from"})
     def __init__(self, **kwargs):
         self.__group = popargs("group", kwargs)
-        source = "%s:%s" % (
-            os.path.abspath(self.__group.file.name),
-            self.__group.name,
-        )
+        source = "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)
         super().__init__(source=source)
         self.__cache = None
 

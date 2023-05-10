@@ -443,24 +443,10 @@ class TestDynamicContainer(TestCase):
         class FixedAttrBar(Bar):
             @docval(
                 {"name": "name", "type": str, "doc": "the name of this Bar"},
-                {
-                    "name": "data",
-                    "type": ("data", "array_data"),
-                    "doc": "some data",
-                },
+                {"name": "data", "type": ("data", "array_data"), "doc": "some data"},
                 {"name": "attr2", "type": int, "doc": "another attribute"},
-                {
-                    "name": "attr3",
-                    "type": float,
-                    "doc": "a third attribute",
-                    "default": 3.14,
-                },
-                {
-                    "name": "foo",
-                    "type": "Foo",
-                    "doc": "a group",
-                    "default": None,
-                },
+                {"name": "attr3", "type": float, "doc": "a third attribute", "default": 3.14},
+                {"name": "foo", "type": "Foo", "doc": "a group", "default": None},
             )
             def __init__(self, **kwargs):
                 kwargs["attr1"] = "fixed_attr1"

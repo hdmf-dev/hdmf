@@ -129,7 +129,11 @@ class NamespaceBuilder:
             "type": str,
             "doc": "Description about what the namespace represents",
         },
-        {"name": "name", "type": str, "doc": "Name of the namespace"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "Name of the namespace",
+        },
         {
             "name": "full_name",
             "type": str,
@@ -183,11 +187,7 @@ class NamespaceBuilder:
 
     @docval(
         {"name": "source", "type": str, "doc": "the path to write the spec to"},
-        {
-            "name": "spec",
-            "type": (GroupSpec, DatasetSpec),
-            "doc": "the Spec to add",
-        },
+        {"name": "spec", "type": (GroupSpec, DatasetSpec), "doc": "the Spec to add"},
     )
     def add_spec(self, **kwargs):
         """Add a Spec to the namespace"""
@@ -197,7 +197,11 @@ class NamespaceBuilder:
         self.__sources[source].setdefault(self.__dt_key, list()).append(spec)
 
     @docval(
-        {"name": "source", "type": str, "doc": "the path to write the spec to"},
+        {
+            "name": "source",
+            "type": str,
+            "doc": "the path to write the spec to",
+        },
         {
             "name": "doc",
             "type": str,
@@ -314,13 +318,7 @@ class NamespaceBuilder:
 
 
 class SpecFileBuilder(dict):
-    @docval(
-        {
-            "name": "spec",
-            "type": (GroupSpec, DatasetSpec),
-            "doc": "the Spec to add",
-        }
-    )
+    @docval({"name": "spec", "type": (GroupSpec, DatasetSpec), "doc": "the Spec to add"})
     def add_spec(self, **kwargs):
         spec = getargs("spec", kwargs)
         if isinstance(spec, GroupSpec):

@@ -148,11 +148,7 @@ class AlignedDynamicTable(DynamicTable):
         return list(self.category_tables.keys())
 
     @docval(
-        {
-            "name": "category",
-            "type": DynamicTable,
-            "doc": "Add a new DynamicTable category",
-        },
+        {"name": "category", "type": DynamicTable, "doc": "Add a new DynamicTable category"},
     )
     def add_category(self, **kwargs):
         """
@@ -179,14 +175,7 @@ class AlignedDynamicTable(DynamicTable):
         self.category_tables[category.name] = category
         category.parent = self
 
-    @docval(
-        {
-            "name": "name",
-            "type": str,
-            "doc": "Name of the category we want to retrieve",
-            "default": None,
-        }
-    )
+    @docval({"name": "name", "type": str, "doc": "Name of the category we want to retrieve", "default": None})
     def get_category(self, **kwargs):
         name = popargs("name", kwargs)
         if name is None or (name not in self.category_tables and name == self.name):
@@ -196,12 +185,7 @@ class AlignedDynamicTable(DynamicTable):
 
     @docval(
         *get_docval(DynamicTable.add_column),
-        {
-            "name": "category",
-            "type": str,
-            "doc": "The category the column should be added to",
-            "default": None,
-        },
+        {"name": "category", "type": str, "doc": "The category the column should be added to", "default": None},
     )
     def add_column(self, **kwargs):
         """
@@ -223,18 +207,8 @@ class AlignedDynamicTable(DynamicTable):
             category.add_column(**kwargs)
 
     @docval(
-        {
-            "name": "data",
-            "type": dict,
-            "doc": "the data to put in this row",
-            "default": None,
-        },
-        {
-            "name": "id",
-            "type": int,
-            "doc": "the ID for the row",
-            "default": None,
-        },
+        {"name": "data", "type": dict, "doc": "the data to put in this row", "default": None},
+        {"name": "id", "type": int, "doc": "the ID for the row", "default": None},
         {
             "name": "enforce_unique_id",
             "type": bool,

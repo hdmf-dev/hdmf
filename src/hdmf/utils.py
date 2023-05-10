@@ -239,14 +239,7 @@ def __parse_args(  # noqa: C901
             if len(args) + len(kwargs) > len(validator):
                 raise TypeError(
                     "Expected at most %d arguments %r, got %d: %d positional and %d keyword %s"
-                    % (
-                        len(validator),
-                        names,
-                        len(args) + len(kwargs),
-                        len(args),
-                        len(kwargs),
-                        sorted(kwargs),
-                    )
+                    % (len(validator), names, len(args) + len(kwargs), len(args), len(kwargs), sorted(kwargs))
                 )
 
         if args:
@@ -638,10 +631,7 @@ def docval(*validator, **options):  # noqa: C901
             try:
                 a["type"] = __resolve_type(a["type"])
             except Exception as e:
-                msg = "docval for %s: error parsing argument type: %s" % (
-                    a["name"],
-                    e.args[0],
-                )
+                msg = "docval for %s: error parsing argument type: %s" % (a["name"], e.args[0])
                 raise Exception(msg)
             if "enum" in a:
                 # check that value for enum key is a list or tuple (cannot have only one allowed value)
@@ -1051,7 +1041,11 @@ class LabelledDict(dict):
     """
 
     @docval(
-        {"name": "label", "type": str, "doc": "the label on this dictionary"},
+        {
+            "name": "label",
+            "type": str,
+            "doc": "the label on this dictionary",
+        },
         {
             "name": "key_attr",
             "type": str,

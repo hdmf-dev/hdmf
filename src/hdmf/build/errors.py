@@ -14,11 +14,7 @@ class BuildError(Exception):
     def __init__(self, **kwargs):
         self.__builder = getargs("builder", kwargs)
         self.__reason = getargs("reason", kwargs)
-        self.__message = "%s (%s): %s" % (
-            self.__builder.name,
-            self.__builder.path,
-            self.__reason,
-        )
+        self.__message = "%s (%s): %s" % (self.__builder.name, self.__builder.path, self.__reason)
         super().__init__(self.__message)
 
 

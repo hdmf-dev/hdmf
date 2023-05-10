@@ -88,7 +88,7 @@ exclude_lines = [
 [tool.black]
 line-length = 120
 preview = true
-exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build|dist|__pypackages__|.ipynb"
+exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb"
 force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
 
 [tool.ruff]
@@ -109,12 +109,7 @@ line-length = 120
 
 [tool.ruff.per-file-ignores]
 "docs/gallery/*" = ["E402", "T201"]
-"src/hdmf/__init__.py" = ["F401"]
-"src/hdmf/backends/__init__.py" = ["F401"]
-"src/hdmf/backends/hdf5/__init__.py" = ["F401"]
-"src/hdmf/build/__init__.py" = ["F401"]
-"src/hdmf/spec/__init__.py" = ["F401"]
-"src/hdmf/validate/__init__.py" = ["F401"]
+"src/*/__init__.py" = ["F401"]
 "setup.py" = ["T201"]
 "test_gallery.py" = ["T201"]
 

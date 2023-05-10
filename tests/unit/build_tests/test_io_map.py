@@ -37,12 +37,7 @@ class Bar(Container):
         {"name": "data", "type": ("data", "array_data"), "doc": "some data"},
         {"name": "attr1", "type": str, "doc": "an attribute"},
         {"name": "attr2", "type": int, "doc": "another attribute"},
-        {
-            "name": "attr3",
-            "type": float,
-            "doc": "a third attribute",
-            "default": 3.14,
-        },
+        {"name": "attr3", "type": float, "doc": "a third attribute", "default": 3.14},
         {"name": "foo", "type": "Foo", "doc": "a group", "default": None},
     )
     def __init__(self, **kwargs):

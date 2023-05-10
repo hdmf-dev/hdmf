@@ -35,7 +35,11 @@ class VectorData(Data):
     __fields__ = ("description",)
 
     @docval(
-        {"name": "name", "type": str, "doc": "the name of this VectorData"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this VectorData",
+        },
         {
             "name": "description",
             "type": str,
@@ -101,7 +105,11 @@ class VectorIndex(VectorData):
     __fields__ = ("target",)
 
     @docval(
-        {"name": "name", "type": str, "doc": "the name of this VectorIndex"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this VectorIndex",
+        },
         {
             "name": "data",
             "type": ("array_data", "data"),
@@ -333,7 +341,7 @@ class DynamicTable(Container):
             "name": "name",
             "type": str,
             "doc": "the name of this table",
-        },  # noqa: C901
+        },
         {
             "name": "description",
             "type": str,
@@ -530,13 +538,7 @@ class DynamicTable(Container):
                 "An attribute '%s' already exists on %s '%s' so this column cannot be"
                 " accessed as an attribute, e.g., table.%s; it can only be accessed"
                 " using other methods, e.g., table['%s']."
-                % (
-                    col.name,
-                    self.__class__.__name__,
-                    self.name,
-                    col.name,
-                    col.name,
-                )
+                % (col.name, self.__class__.__name__, self.name, col.name, col.name)
             )
             warn(msg)
         else:
@@ -748,7 +750,7 @@ class DynamicTable(Container):
             "name": "name",
             "type": str,
             "doc": "the name of this VectorData",
-        },  # noqa: C901
+        },
         {
             "name": "description",
             "type": str,
@@ -821,11 +823,7 @@ class DynamicTable(Container):
             )
 
         if name in self.__colids:  # column has already been added
-            msg = "column '%s' already exists in %s '%s'" % (
-                name,
-                self.__class__.__name__,
-                self.name,
-            )
+            msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
             raise ValueError(msg)
 
         if name in self.__uninit_cols:  # column is a predefined optional column from the spec
@@ -1023,10 +1021,7 @@ class DynamicTable(Container):
         region = getargs("region", kwargs)
         if isinstance(region, slice):
             if (region.start is not None and region.start < 0) or (region.stop is not None and region.stop > len(self)):
-                msg = "region slice %s is out of range for this DynamicTable of length %d" % (
-                    str(region),
-                    len(self),
-                )
+                msg = "region slice %s is out of range for this DynamicTable of length %d" % (str(region), len(self))
                 raise IndexError(msg)
             region = list(range(*region.indices(len(self))))
         else:
@@ -1345,8 +1340,16 @@ class DynamicTable(Container):
 
     @classmethod
     @docval(
-        {"name": "df", "type": pd.DataFrame, "doc": "source DataFrame"},
-        {"name": "name", "type": str, "doc": "the name of this table"},
+        {
+            "name": "df",
+            "type": pd.DataFrame,
+            "doc": "source DataFrame",
+        },
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this table",
+        },
         {
             "name": "index_column",
             "type": str,
@@ -1462,7 +1465,11 @@ class DynamicTableRegion(VectorData):
     __fields__ = ("table",)
 
     @docval(
-        {"name": "name", "type": str, "doc": "the name of this VectorData"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this VectorData",
+        },
         {
             "name": "data",
             "type": ("array_data", "data"),
@@ -1627,12 +1634,7 @@ class DynamicTableRegion(VectorData):
         :return: Human-readable string representation of the DynamicTableRegion
         """
         cls = self.__class__
-        template = "%s %s.%s at 0x%d\n" % (
-            self.name,
-            cls.__module__,
-            cls.__name__,
-            id(self),
-        )
+        template = "%s %s.%s at 0x%d\n" % (self.name, cls.__module__, cls.__name__, id(self))
         template += "    Target table: %s %s.%s at 0x%d\n" % (
             self.table.name,
             self.table.__class__.__module__,
@@ -1664,7 +1666,11 @@ class EnumData(VectorData):
     __fields__ = ("elements",)
 
     @docval(
-        {"name": "name", "type": str, "doc": "the name of this column"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of this column",
+        },
         {
             "name": "description",
             "type": str,
@@ -1761,12 +1767,7 @@ class EnumData(VectorData):
 
     @docval(
         {"name": "val", "type": None, "doc": "the value to add to this column"},
-        {
-            "name": "index",
-            "type": bool,
-            "doc": "whether or not the value being added is an index",
-            "default": False,
-        },
+        {"name": "index", "type": bool, "doc": "whether or not the value being added is an index", "default": False},
     )
     def add_row(self, **kwargs):
         """Append a data value to this EnumData column
