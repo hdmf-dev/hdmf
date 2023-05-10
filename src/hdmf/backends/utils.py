@@ -50,16 +50,8 @@ class NamespaceToBuilderHelper(object):
 
     @classmethod
     @docval(
-        {
-            "name": "ns_catalog",
-            "type": NamespaceCatalog,
-            "doc": "the namespace catalog with the specs",
-        },
-        {
-            "name": "namespace",
-            "type": str,
-            "doc": "the name of the namespace to be converted to a builder",
-        },
+        {"name": "ns_catalog", "type": NamespaceCatalog, "doc": "the namespace catalog with the specs"},
+        {"name": "namespace", "type": str, "doc": "the name of the namespace to be converted to a builder"},
         rtype=NamespaceBuilder,
     )
     def convert_namespace(cls, **kwargs):

@@ -60,11 +60,7 @@ class HDMFIO(metaclass=ABCMeta):
         return container
 
     @docval(
-        {
-            "name": "container",
-            "type": Container,
-            "doc": "the Container object to write",
-        },
+        {"name": "container", "type": Container, "doc": "the Container object to write"},
         allow_extra=True,
     )
     def write(self, **kwargs):
@@ -94,7 +90,12 @@ class HDMFIO(metaclass=ABCMeta):
             "doc": "arguments to pass to :py:meth:`write_builder`",
             "default": dict(),
         },
-        {"name": "clear_cache", "type": bool, "doc": "whether to clear the build manager cache", "default": False},
+        {
+            "name": "clear_cache",
+            "type": bool,
+            "doc": "whether to clear the build manager cache",
+            "default": False,
+        },
     )
     def export(self, **kwargs):
         """Export from one backend to the backend represented by this class.
@@ -156,21 +157,14 @@ class HDMFIO(metaclass=ABCMeta):
         self.write_builder(builder=bldr, **write_args)
 
     @abstractmethod
-    @docval(
-        returns="a GroupBuilder representing the read data",
-        rtype="GroupBuilder",
-    )
+    @docval(returns="a GroupBuilder representing the read data", rtype="GroupBuilder")
     def read_builder(self):
         """Read data and return the GroupBuilder representing it"""
         pass
 
     @abstractmethod
     @docval(
-        {
-            "name": "builder",
-            "type": GroupBuilder,
-            "doc": "the GroupBuilder object representing the Container",
-        },
+        {"name": "builder", "type": GroupBuilder, "doc": "the GroupBuilder object representing the Container"},
         allow_extra=True,
     )
     def write_builder(self, **kwargs):

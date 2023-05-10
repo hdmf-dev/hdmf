@@ -17,13 +17,7 @@ class ClassGenerator:
     def custom_generators(self):
         return self.__custom_generators
 
-    @docval(
-        {
-            "name": "generator",
-            "type": type,
-            "doc": "the CustomClassGenerator class to register",
-        }
-    )
+    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):
         """Add a custom class generator to this ClassGenerator.
 
@@ -37,11 +31,7 @@ class ClassGenerator:
         self.__custom_generators.insert(0, generator)
 
     @docval(
-        {
-            "name": "data_type",
-            "type": str,
-            "doc": "the data type to create a AbstractContainer class for",
-        },
+        {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
         {"name": "spec", "type": BaseStorageSpec, "doc": ""},
         {"name": "parent_cls", "type": type, "doc": ""},
         {"name": "attr_names", "type": dict, "doc": ""},

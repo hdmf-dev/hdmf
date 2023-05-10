@@ -291,24 +291,9 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     @docval(
-        {
-            "name": "path",
-            "type": (str, Path),
-            "doc": "the path to the HDF5 file",
-            "default": None,
-        },
-        {
-            "name": "file",
-            "type": File,
-            "doc": "a pre-existing h5py.File object",
-            "default": None,
-        },
-        {
-            "name": "driver",
-            "type": str,
-            "doc": "driver for h5py to use when opening HDF5 file",
-            "default": None,
-        },
+        {"name": "path", "type": (str, Path), "doc": "the path to the HDF5 file", "default": None},
+        {"name": "file", "type": File, "doc": "a pre-existing h5py.File object", "default": None},
+        {"name": "driver", "type": str, "doc": "driver for h5py to use when opening HDF5 file", "default": None},
         returns="dict mapping names to versions of the namespaces in the file",
         rtype=dict,
     )
@@ -546,7 +531,11 @@ class HDF5IO(HDMFIO):
             ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
-        {"name": "src_io", "type": "HDMFIO", "doc": "the HDMFIO object for reading the data to export"},
+        {
+            "name": "src_io",
+            "type": "HDMFIO",
+            "doc": "the HDMFIO object for reading the data to export",
+        },
         {
             "name": "container",
             "type": Container,
@@ -556,8 +545,18 @@ class HDF5IO(HDMFIO):
             ),
             "default": None,
         },
-        {"name": "write_args", "type": dict, "doc": "arguments to pass to :py:meth:`write_builder`", "default": None},
-        {"name": "cache_spec", "type": bool, "doc": "whether to cache the specification to file", "default": True},
+        {
+            "name": "write_args",
+            "type": dict,
+            "doc": "arguments to pass to :py:meth:`write_builder`",
+            "default": None,
+        },
+        {
+            "name": "cache_spec",
+            "type": bool,
+            "doc": "whether to cache the specification to file",
+            "default": True,
+        },
         # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
         # so it is not available on HDF5IO
     )
@@ -601,17 +600,8 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     @docval(
-        {
-            "name": "path",
-            "type": str,
-            "doc": "the path to the destination HDF5 file",
-        },
-        {
-            "name": "comm",
-            "type": "Intracomm",
-            "doc": "the MPI communicator to use for parallel I/O",
-            "default": None,
-        },
+        {"name": "path", "type": str, "doc": "the path to the destination HDF5 file"},
+        {"name": "comm", "type": "Intracomm", "doc": "the MPI communicator to use for parallel I/O", "default": None},
         *_export_args,
     )  # NOTE: src_io is required and is the second positional argument
     def export_io(self, **kwargs):
@@ -648,10 +638,7 @@ class HDF5IO(HDMFIO):
                     "Cannot read data from file %s in mode '%s'. There are no values." % (self.source, self.__mode)
                 )
 
-    @docval(
-        returns="a GroupBuilder representing the data object",
-        rtype="GroupBuilder",
-    )
+    @docval(returns="a GroupBuilder representing the data object", rtype="GroupBuilder")
     def read_builder(self):
         """
         Read data and return the GroupBuilder representing it.
@@ -722,13 +709,7 @@ class HDF5IO(HDMFIO):
         else:
             return None
 
-    @docval(
-        {
-            "name": "h5obj",
-            "type": (Dataset, Group),
-            "doc": "the HDF5 object to the corresponding Builder object for",
-        }
-    )
+    @docval({"name": "h5obj", "type": (Dataset, Group), "doc": "the HDF5 object to the corresponding Builder object"})
     def get_builder(self, **kwargs):
         """
         Get the builder for the corresponding h5py Group or Dataset
@@ -744,11 +725,7 @@ class HDF5IO(HDMFIO):
         return builder
 
     @docval(
-        {
-            "name": "h5obj",
-            "type": (Dataset, Group),
-            "doc": "the HDF5 object to the corresponding Container/Data object for",
-        }
+        {"name": "h5obj", "type": (Dataset, Group), "doc": "the HDF5 object to the corresponding Container/Data object"}
     )
     def get_container(self, **kwargs):
         """
@@ -1201,7 +1178,11 @@ class HDF5IO(HDMFIO):
         return _filler
 
     @docval(
-        {"name": "parent", "type": Group, "doc": "the parent HDF5 object"},
+        {
+            "name": "parent",
+            "type": Group,
+            "doc": "the parent HDF5 object",
+        },
         {
             "name": "builder",
             "type": GroupBuilder,
@@ -1284,17 +1265,8 @@ class HDF5IO(HDMFIO):
 
     @docval(
         {"name": "parent", "type": Group, "doc": "the parent HDF5 object"},
-        {
-            "name": "builder",
-            "type": LinkBuilder,
-            "doc": "the LinkBuilder to write",
-        },
-        {
-            "name": "export_source",
-            "type": str,
-            "doc": "The source of the builders when exporting",
-            "default": None,
-        },
+        {"name": "builder", "type": LinkBuilder, "doc": "the LinkBuilder to write"},
+        {"name": "export_source", "type": str, "doc": "The source of the builders when exporting", "default": None},
         returns="the Link that was created",
         rtype="Link",
     )

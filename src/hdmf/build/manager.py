@@ -48,26 +48,14 @@ class Proxy:
         """The data_type of Container that should match this Proxy"""
         return self.__data_type
 
-    @docval(
-        {
-            "name": "object",
-            "type": (BaseBuilder, Container),
-            "doc": "the container or builder to get a proxy for",
-        }
-    )
+    @docval({"name": "object", "type": (BaseBuilder, Container), "doc": "the container or builder to get a proxy for"})
     def matches(self, **kwargs):
         obj = getargs("object", kwargs)
         if not isinstance(obj, Proxy):
             obj = self.__manager.get_proxy(obj)
         return self == obj
 
-    @docval(
-        {
-            "name": "container",
-            "type": Container,
-            "doc": "the Container to add as a candidate match",
-        }
-    )
+    @docval({"name": "container", "type": Container, "doc": "the Container to add as a candidate match"})
     def add_candidate(self, **kwargs):
         container = getargs("container", kwargs)
         self.__candidates.append(container)
@@ -410,24 +398,14 @@ class BuildManager:
 
     # *** The following methods just delegate calls to self.__type_map ***
 
-    @docval(
-        {
-            "name": "builder",
-            "type": Builder,
-            "doc": "the Builder to get the class object for",
-        }
-    )
+    @docval({"name": "builder", "type": Builder, "doc": "the Builder to get the class object for"})
     def get_cls(self, **kwargs):
         """Get the class object for the given Builder"""
         builder = getargs("builder", kwargs)
         return self.__type_map.get_cls(builder)
 
     @docval(
-        {
-            "name": "container",
-            "type": AbstractContainer,
-            "doc": "the container to convert to a Builder",
-        },
+        {"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
         returns="The name a Builder should be given when building this container",
         rtype=str,
     )
@@ -517,7 +495,11 @@ class TypeSource:
             "type": str,
             "doc": "the namespace the from, which the data_type originated",
         },
-        {"name": "data_type", "type": str, "doc": "the name of the type"},
+        {
+            "name": "data_type",
+            "type": str,
+            "doc": "the name of the type",
+        },
     )
     def __init__(self, **kwargs):
         namespace, data_type = getargs("namespace", "data_type", kwargs)
@@ -537,18 +519,8 @@ class TypeMap:
     """A class to maintain the map between ObjectMappers and AbstractContainer classes"""
 
     @docval(
-        {
-            "name": "namespaces",
-            "type": NamespaceCatalog,
-            "doc": "the NamespaceCatalog to use",
-            "default": None,
-        },
-        {
-            "name": "mapper_cls",
-            "type": type,
-            "doc": "the ObjectMapper class to use",
-            "default": None,
-        },
+        {"name": "namespaces", "type": NamespaceCatalog, "doc": "the NamespaceCatalog to use", "default": None},
+        {"name": "mapper_cls", "type": type, "doc": "the ObjectMapper class to use", "default": None},
     )
     def __init__(self, **kwargs):
         namespaces, mapper_cls = getargs("namespaces", "mapper_cls", kwargs)
@@ -611,13 +583,7 @@ class TypeMap:
             # iterate in reverse order because generators are stored internally as a stack
             self.register_generator(custom_generators)
 
-    @docval(
-        {
-            "name": "generator",
-            "type": type,
-            "doc": "the CustomClassGenerator class to register",
-        }
-    )
+    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):
         """Add a custom class generator."""
         generator = getargs("generator", kwargs)
@@ -966,7 +932,11 @@ class TypeMap:
             "type": str,
             "doc": "the namespace containing the data_type to map the class to",
         },
-        {"name": "data_type", "type": str, "doc": "the data_type to map the class to"},
+        {
+            "name": "data_type",
+            "type": str,
+            "doc": "the data_type to map the class to",
+        },
         {
             "name": "container_cls",
             "type": (TypeSource, type),

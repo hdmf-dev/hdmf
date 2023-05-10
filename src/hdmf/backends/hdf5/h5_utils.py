@@ -88,16 +88,8 @@ class HDF5IODataChunkIteratorQueue(deque):
 
 class H5Dataset(HDMFDataset):
     @docval(
-        {
-            "name": "dataset",
-            "type": (Dataset, Array),
-            "doc": "the HDF5 file lazily evaluate",
-        },
-        {
-            "name": "io",
-            "type": "HDF5IO",
-            "doc": "the IO object that was used to read the underlying dataset",
-        },
+        {"name": "dataset", "type": (Dataset, Array), "doc": "the HDF5 file lazily evaluate"},
+        {"name": "io", "type": "HDF5IO", "doc": "the IO object that was used to read the underlying dataset"},
     )
     def __init__(self, **kwargs):
         self.__io = popargs("io", kwargs)
@@ -370,13 +362,7 @@ class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
 class H5SpecWriter(SpecWriter):
     __str_type = special_dtype(vlen=str)
 
-    @docval(
-        {
-            "name": "group",
-            "type": Group,
-            "doc": "the HDF5 file to write specs to",
-        }
-    )
+    @docval({"name": "group", "type": Group, "doc": "the HDF5 file to write specs to"})
     def __init__(self, **kwargs):
         self.__group = getargs("group", kwargs)
 
@@ -403,13 +389,7 @@ class H5SpecWriter(SpecWriter):
 class H5SpecReader(SpecReader):
     """Class that reads cached JSON-formatted namespace and spec data from an HDF5 group."""
 
-    @docval(
-        {
-            "name": "group",
-            "type": Group,
-            "doc": "the HDF5 group to read specs from",
-        }
-    )
+    @docval({"name": "group", "type": Group, "doc": "the HDF5 group to read specs from"})
     def __init__(self, **kwargs):
         self.__group = popargs("group", kwargs)
         source = "%s:%s" % (
@@ -442,16 +422,8 @@ class H5SpecReader(SpecReader):
 
 class H5RegionSlicer(RegionSlicer):
     @docval(
-        {
-            "name": "dataset",
-            "type": (Dataset, H5Dataset),
-            "doc": "the HDF5 dataset to slice",
-        },
-        {
-            "name": "region",
-            "type": RegionReference,
-            "doc": "the region reference to use to slice",
-        },
+        {"name": "dataset", "type": (Dataset, H5Dataset), "doc": "the HDF5 dataset to slice"},
+        {"name": "region", "type": RegionReference, "doc": "the region reference to use to slice"},
     )
     def __init__(self, **kwargs):
         self.__dataset = getargs("dataset", kwargs)
@@ -693,8 +665,7 @@ class H5DataIO(DataIO):
                 warnings.warn(
                     str(self.__iosettings["compression"])
                     + " compression may not be available on all installations of HDF5."
-                    " Use of gzip is recommended to ensure portability of the"
-                    " generated HDF5 files."
+                    " Use of gzip is recommended to ensure portability of the generated HDF5 files."
                 )
 
     @staticmethod

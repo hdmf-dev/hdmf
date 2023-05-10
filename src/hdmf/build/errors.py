@@ -24,16 +24,8 @@ class BuildError(Exception):
 
 class OrphanContainerBuildError(BuildError):
     @docval(
-        {
-            "name": "builder",
-            "type": Builder,
-            "doc": "the builder containing the broken link",
-        },
-        {
-            "name": "container",
-            "type": AbstractContainer,
-            "doc": "the container that has no parent",
-        },
+        {"name": "builder", "type": Builder, "doc": "the builder containing the broken link"},
+        {"name": "container", "type": AbstractContainer, "doc": "the container that has no parent"},
     )
     def __init__(self, **kwargs):
         builder = getargs("builder", kwargs)
@@ -47,16 +39,8 @@ class OrphanContainerBuildError(BuildError):
 
 class ReferenceTargetNotBuiltError(BuildError):
     @docval(
-        {
-            "name": "builder",
-            "type": Builder,
-            "doc": "the builder containing the reference that cannot be found",
-        },
-        {
-            "name": "container",
-            "type": AbstractContainer,
-            "doc": "the container that is not built yet",
-        },
+        {"name": "builder", "type": Builder, "doc": "the builder containing the reference that cannot be found"},
+        {"name": "container", "type": AbstractContainer, "doc": "the container that is not built yet"},
     )
     def __init__(self, **kwargs):
         builder = getargs("builder", kwargs)

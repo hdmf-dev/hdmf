@@ -428,11 +428,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 cls.obj_attrs[cls.__get_obj_attr(func)] = getattr(cls, name)
 
     @docval(
-        {
-            "name": "spec",
-            "type": (DatasetSpec, GroupSpec),
-            "doc": "The specification for mapping objects to builders",
-        }
+        {"name": "spec", "type": (DatasetSpec, GroupSpec), "doc": "The specification for mapping objects to builders"}
     )
     def __init__(self, **kwargs):
         """Create a map from AbstractContainer attributes to specifications"""
@@ -495,13 +491,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         name_stack.pop()
 
     @classmethod
-    @docval(
-        {
-            "name": "spec",
-            "type": Spec,
-            "doc": "the specification to get the object attribute names for",
-        }
-    )
+    @docval({"name": "spec", "type": Spec, "doc": "the specification to get the object attribute names for"})
     def get_attr_names(cls, **kwargs):
         """Get the attribute names for each subspecification in a Spec"""
         spec = getargs("spec", kwargs)
@@ -538,24 +528,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         attr_name = getargs("attr_name", kwargs)
         return self.__attr2spec.get(attr_name)
 
-    @docval(
-        {
-            "name": "carg_name",
-            "type": str,
-            "doc": "the name of the constructor argument",
-        }
-    )
+    @docval({"name": "carg_name", "type": str, "doc": "the name of the constructor argument"})
     def get_carg_spec(self, **kwargs):
         """Return the Spec for a given constructor argument"""
         carg_name = getargs("carg_name", kwargs)
         return self.__carg2spec.get(carg_name)
 
     @docval(
-        {
-            "name": "const_arg",
-            "type": str,
-            "doc": "the name of the constructor argument to map",
-        },
+        {"name": "const_arg", "type": str, "doc": "the name of the constructor argument to map"},
         {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"},
     )
     def map_const_arg(self, **kwargs):
@@ -572,11 +552,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         self.__spec2carg.pop(spec, None)
 
     @docval(
-        {
-            "name": "attr_carg",
-            "type": str,
-            "doc": "the constructor argument/object attribute to map this spec to",
-        },
+        {"name": "attr_carg", "type": str, "doc": "the constructor argument/object attribute to map this spec to"},
         {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"},
     )
     def map_spec(self, **kwargs):
@@ -613,21 +589,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return val
 
     @docval(
-        {
-            "name": "spec",
-            "type": Spec,
-            "doc": "the spec to get the attribute value for",
-        },
-        {
-            "name": "container",
-            "type": AbstractContainer,
-            "doc": "the container to get the attribute value from",
-        },
-        {
-            "name": "manager",
-            "type": BuildManager,
-            "doc": "the BuildManager used for managing this build",
-        },
+        {"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
+        {"name": "container", "type": AbstractContainer, "doc": "the container to get the attribute value from"},
+        {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
         returns="the value of the attribute",
     )
     def get_attr_value(self, **kwargs):
@@ -780,11 +744,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.logger.debug("IncorrectQuantityBuildWarning: " + msg)
 
     @docval(
-        {
-            "name": "spec",
-            "type": Spec,
-            "doc": "the spec to get the constructor argument for",
-        },
+        {"name": "spec", "type": Spec, "doc": "the spec to get the constructor argument for"},
         returns="the name of the constructor argument",
         rtype=str,
     )
@@ -794,46 +754,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return self.__spec2carg.get(spec, None)
 
     @docval(
-        {
-            "name": "container",
-            "type": AbstractContainer,
-            "doc": "the container to convert to a Builder",
-        },
-        {
-            "name": "manager",
-            "type": BuildManager,
-            "doc": "the BuildManager to use for managing this build",
-        },
-        {
-            "name": "parent",
-            "type": GroupBuilder,
-            "doc": "the parent of the resulting Builder",
-            "default": None,
-        },
-        {
-            "name": "source",
-            "type": str,
-            "doc": "the source of container being built i.e. file path",
-            "default": None,
-        },
-        {
-            "name": "builder",
-            "type": BaseBuilder,
-            "doc": "the Builder to build on",
-            "default": None,
-        },
-        {
-            "name": "spec_ext",
-            "type": BaseStorageSpec,
-            "doc": "a spec extension",
-            "default": None,
-        },
-        {
-            "name": "export",
-            "type": bool,
-            "doc": "whether this build is for exporting",
-            "default": False,
-        },
+        {"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
+        {"name": "manager", "type": BuildManager, "doc": "the BuildManager to use for managing this build"},
+        {"name": "parent", "type": GroupBuilder, "doc": "the parent of the resulting Builder", "default": None},
+        {"name": "source", "type": str, "doc": "the source of container being built i.e. file path", "default": None},
+        {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", "default": None},
+        {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", "default": None},
+        {"name": "export", "type": bool, "doc": "whether this build is for exporting", "default": False},
         returns="the Builder representing the given AbstractContainer",
         rtype=Builder,
     )
@@ -1615,11 +1542,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return obj
 
     @docval(
-        {
-            "name": "container",
-            "type": AbstractContainer,
-            "doc": "the AbstractContainer to get the Builder name for",
-        }
+        {"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to get the Builder name for"}
     )
     def get_builder_name(self, **kwargs):
         """Get the name of a Builder that represents a AbstractContainer"""

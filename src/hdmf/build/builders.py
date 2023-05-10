@@ -13,7 +13,11 @@ from ..utils import docval, getargs, get_docval
 
 class Builder(dict, metaclass=ABCMeta):
     @docval(
-        {"name": "name", "type": str, "doc": "the name of the group"},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "the name of the Builder",
+        },
         {
             "name": "parent",
             "type": "Builder",
@@ -87,7 +91,11 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
     __attribute = "attributes"  # self dictionary key for attributes
 
     @docval(
-        {"name": "name", "type": str, "doc": "The name of the builder."},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of the builder.",
+        },
         {
             "name": "attributes",
             "type": dict,
@@ -147,7 +155,11 @@ class GroupBuilder(BaseBuilder):
     __attribute = "attributes"
 
     @docval(
-        {"name": "name", "type": str, "doc": "The name of the group."},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of the group.",
+        },
         {
             "name": "groups",
             "type": (dict, list),
@@ -278,37 +290,19 @@ class GroupBuilder(BaseBuilder):
                 "'%s' already exists in %s.%s, cannot set in %s." % (name, self.name, self.obj_type[name], obj_type)
             )
 
-    @docval(
-        {
-            "name": "builder",
-            "type": "GroupBuilder",
-            "doc": "The GroupBuilder to add to this group.",
-        }
-    )
+    @docval({"name": "builder", "type": "GroupBuilder", "doc": "The GroupBuilder to add to this group."})
     def set_group(self, **kwargs):
         """Add a subgroup to this group."""
         builder = getargs("builder", kwargs)
         self.__set_builder(builder, GroupBuilder.__group)
 
-    @docval(
-        {
-            "name": "builder",
-            "type": "DatasetBuilder",
-            "doc": "The DatasetBuilder to add to this group.",
-        }
-    )
+    @docval({"name": "builder", "type": "DatasetBuilder", "doc": "The DatasetBuilder to add to this group."})
     def set_dataset(self, **kwargs):
         """Add a dataset to this group."""
         builder = getargs("builder", kwargs)
         self.__set_builder(builder, GroupBuilder.__dataset)
 
-    @docval(
-        {
-            "name": "builder",
-            "type": "LinkBuilder",
-            "doc": "The LinkBuilder to add to this group.",
-        }
-    )
+    @docval({"name": "builder", "type": "LinkBuilder", "doc": "The LinkBuilder to add to this group."})
     def set_link(self, **kwargs):
         """Add a link to this group."""
         builder = getargs("builder", kwargs)
@@ -406,7 +400,11 @@ class DatasetBuilder(BaseBuilder):
     REGION_REF_TYPE = "region"
 
     @docval(
-        {"name": "name", "type": str, "doc": "The name of the dataset."},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of the dataset.",
+        },
         {
             "name": "data",
             "type": (
@@ -522,7 +520,12 @@ class LinkBuilder(Builder):
             "type": (DatasetBuilder, GroupBuilder),
             "doc": "The target group or dataset of this link.",
         },
-        {"name": "name", "type": str, "doc": "The name of the link", "default": None},
+        {
+            "name": "name",
+            "type": str,
+            "doc": "The name of the link",
+            "default": None,
+        },
         {
             "name": "parent",
             "type": GroupBuilder,
