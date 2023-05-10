@@ -58,7 +58,7 @@ hdmf = ["common/hdmf-common-schema/common/*.yaml", "common/hdmf-common-schema/co
 
 [tool.isort]
 profile = "black"
-extend_skip = ["src/hdmf/common/hdmf-common-schema"]
+extend_skip = ["src/hdmf/common/hdmf-common-schema|docs/gallery"]
 
 # [tool.interrogate]
 # fail-under = 95
@@ -91,4 +91,4 @@ exclude_lines = [
 [tool.black]
 line-length = 120
 preview = true
-extend-exclude = "src/hdmf/common/hdmf-common-schema"
+extend-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
