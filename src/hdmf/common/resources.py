@@ -289,13 +289,7 @@ class ExternalResources(Container):
             raise AssertionError(msg)
         return True
 
-    @docval(
-        {
-            "name": "key_name",
-            "type": str,
-            "doc": "The name of the key to be added.",
-        }
-    )
+    @docval({"name": "key_name", "type": str, "doc": "The name of the key to be added."})
     def _add_key(self, **kwargs):
         """
         Add a key to be used for making references to external resources.
