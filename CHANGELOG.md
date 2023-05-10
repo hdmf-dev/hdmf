@@ -7,9 +7,10 @@
 - Updated hdmf-common-schema version to 1.6.0. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
 - Added testing of HDMF-Zarr on PR and nightly. @rly [#859](https://github.com/hdmf-dev/hdmf/pull/859)
 - Replaced `setup.py` with `pyproject.toml`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
-- Set code style guide to black with isort. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
-- Replaced versioneer with setuptools_scm for versioning. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
-- Now recommending developers use pre-commit. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Set code style guide to `black`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Use `ruff` instead of `flake8`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Replaced `versioneer` with `setuptools_scm` for versioning. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Now recommending developers use `pre-commit`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
 
 ### Bug fixes
 - Export cached specs that are loaded in source IO manager but not in export IO manager. @rly
