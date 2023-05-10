@@ -76,11 +76,7 @@ class CSRMatrix(Container):
     def __getattr__(self, val):
         # NOTE: this provides access to self.data, self.indices, self.indptr, self.shape
         attr = getattr(self.__data, val)
-        if val in (
-            "indices",
-            "indptr",
-            "shape",
-        ):  # needed because sps.csr_matrix may contain int arrays for these
+        if val in ("indices", "indptr", "shape"):  # needed because sps.csr_matrix may contain int arrays for these
             attr = to_uint_array(attr)
         return attr
 
