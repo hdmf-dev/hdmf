@@ -1,5 +1,5 @@
-from abc import ABCMeta, abstractmethod
 import os
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
@@ -27,10 +27,11 @@ class HDMFIO(metaclass=ABCMeta):
         manager, source = getargs("manager", "source", kwargs)
         if isinstance(source, Path):
             source = source.resolve()
-        elif (isinstance(source, str) and
-              not (source.lower().startswith("http://") or
-                   source.lower().startswith("https://") or
-                   source.lower().startswith("s3://"))):
+        elif isinstance(source, str) and not (
+            source.lower().startswith("http://")
+            or source.lower().startswith("https://")
+            or source.lower().startswith("s3://")
+        ):
             source = os.path.abspath(source)
 
         self.__manager = manager
@@ -93,8 +94,7 @@ class HDMFIO(metaclass=ABCMeta):
             "doc": "arguments to pass to :py:meth:`write_builder`",
             "default": dict(),
         },
-        {'name': 'clear_cache', 'type': bool, 'doc': 'whether to clear the build manager cache',
-             'default': False}
+        {"name": "clear_cache", "type": bool, "doc": "whether to clear the build manager cache", "default": False},
     )
     def export(self, **kwargs):
         """Export from one backend to the backend represented by this class.
@@ -123,7 +123,7 @@ class HDMFIO(metaclass=ABCMeta):
               and LinkBuilder.builder.source are the same, and if so the link should be internal to the
               current file (even if the Builder.source points to a different location).
         """
-        src_io, container, write_args, clear_cache = getargs('src_io', 'container', 'write_args', 'clear_cache', kwargs)
+        src_io, container, write_args, clear_cache = getargs("src_io", "container", "write_args", "clear_cache", kwargs)
         if container is None and clear_cache:
             # clear all containers and builders from cache so that they can all get rebuilt with export=True.
             # constructing the container is not efficient but there is no elegant way to trigger a

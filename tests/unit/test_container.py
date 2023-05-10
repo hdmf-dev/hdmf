@@ -2,8 +2,8 @@ from uuid import UUID, uuid4
 
 import numpy as np
 
-from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
 from hdmf.common.resources import ExternalResources
+from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 

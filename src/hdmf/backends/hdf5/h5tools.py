@@ -140,8 +140,8 @@ class HDF5IO(HDMFIO):
         self.__mode = mode
         self.__file = file_obj
         super().__init__(manager, source=path)  # NOTE: source is not set if path is None and file_obj is passed
-        self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
-        self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
+        self.__built = dict()  # keep track of each builder for each dataset/group/link for each file
+        self.__read = dict()  # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
@@ -546,15 +546,18 @@ class HDF5IO(HDMFIO):
             ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
-        {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
-        {'name': 'container', 'type': Container,
-         'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
-                 'exported'),
-         'default': None},
-        {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
-         'default': None},
-        {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
-         'default': True}
+        {"name": "src_io", "type": "HDMFIO", "doc": "the HDMFIO object for reading the data to export"},
+        {
+            "name": "container",
+            "type": Container,
+            "doc": (
+                "the Container object to export. If None, then the entire contents of the HDMFIO object will be "
+                "exported"
+            ),
+            "default": None,
+        },
+        {"name": "write_args", "type": dict, "doc": "arguments to pass to :py:meth:`write_builder`", "default": None},
+        {"name": "cache_spec", "type": bool, "doc": "whether to cache the specification to file", "default": True},
         # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
         # so it is not available on HDF5IO
     )
@@ -581,19 +584,18 @@ class HDF5IO(HDMFIO):
                 % src_io.__class__.__name__
             )
 
-        write_args['export_source'] = os.path.abspath(src_io.source) if src_io.source is not None else None
+        write_args["export_source"] = os.path.abspath(src_io.source) if src_io.source is not None else None
         ckwargs = kwargs.copy()
-        ckwargs['write_args'] = write_args
-        if not write_args.get('link_data', True):
-            ckwargs['clear_cache'] = True
+        ckwargs["write_args"] = write_args
+        if not write_args.get("link_data", True):
+            ckwargs["clear_cache"] = True
         super().export(**ckwargs)
         if cache_spec:
             # add any namespaces from the src_io that have not yet been loaded
             for namespace in src_io.manager.namespace_catalog.namespaces:
                 if namespace not in self.manager.namespace_catalog.namespaces:
                     self.manager.namespace_catalog.add_namespace(
-                        name=namespace,
-                        namespace=src_io.manager.namespace_catalog.get_namespace(namespace)
+                        name=namespace, namespace=src_io.manager.namespace_catalog.get_namespace(namespace)
                     )
             self.__cache_spec()
 
@@ -793,7 +795,7 @@ class HDF5IO(HDMFIO):
                             builder = self.__read_dataset(target_obj, builder_name)
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
+                        self.__set_built(sub_h5obj.file.filename, target_obj.id, builder)
                     link_builder = LinkBuilder(builder=builder, name=k, source=os.path.abspath(h5obj.file.filename))
                     link_builder.location = h5obj.name
                     self.__set_written(link_builder)
@@ -821,7 +823,7 @@ class HDF5IO(HDMFIO):
                 )
                 kwargs["datasets"][k] = None
                 continue
-        kwargs['source'] = os.path.abspath(h5obj.file.filename)
+        kwargs["source"] = os.path.abspath(h5obj.file.filename)
         ret = GroupBuilder(name, **kwargs)
         ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
@@ -839,7 +841,7 @@ class HDF5IO(HDMFIO):
 
         if name is None:
             name = str(os.path.basename(h5obj.name))
-        kwargs['source'] = os.path.abspath(h5obj.file.filename)
+        kwargs["source"] = os.path.abspath(h5obj.file.filename)
         ndims = len(h5obj.shape)
         if ndims == 0:  # read scalar
             scalar = h5obj[()]
