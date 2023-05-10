@@ -1,5 +1,4 @@
 PYTHON = python
-FLAKE = flake8
 COVERAGE = coverage
 
 help:
@@ -36,10 +35,6 @@ develop: build
 test:
 	pip install -r requirements-dev.txt
 	tox
-
-flake:
-	$(FLAKE) src/
-	$(FLAKE) tests/
 
 checkpdb:
 	find {src,tests} -name "[a-z]*.py" -exec grep -Hn -e pdb -e print\( -e breakpoint {} \;

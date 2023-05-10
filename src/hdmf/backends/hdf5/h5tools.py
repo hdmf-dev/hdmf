@@ -777,7 +777,7 @@ class HDF5IO(HDMFIO):
             name = str(os.path.basename(h5obj.name))
         for k in h5obj:
             sub_h5obj = h5obj.get(k)
-            if not (sub_h5obj is None):
+            if sub_h5obj is not None:
                 if sub_h5obj.name in ignore:
                     continue
                 link_type = h5obj.get(k, getlink=True)
