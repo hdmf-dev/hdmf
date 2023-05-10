@@ -1,4 +1,0 @@
-[codespell]
-skip = htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb
-ignore-words-list = datas
-# TODO delete this file when the codespell github action can read pyproject.toml settings
