@@ -91,4 +91,4 @@ exclude_lines = [
 [tool.black]
 line-length = 120
 preview = true
-extend-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
+force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
