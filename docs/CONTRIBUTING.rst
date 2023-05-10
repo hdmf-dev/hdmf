@@ -97,7 +97,7 @@ directory with the ``--check`` argument. You can also run the ``black`` tool wit
 black automatically format the codebase to comply with the black preview style guide.
 
 We also use the ruff_ tool to sort python imports automatically and double-check that the codebase
-conforms to PEP8 standards, and the codespell_ tool to check spelling.
+conforms to PEP8 standards, while using the codespell_ tool to check spelling.
 
 The ``black`` and ``ruff`` tools are installed when you follow the developer installation instructions. See
 :ref:`install_developers`.
