@@ -5,6 +5,7 @@
 ### New features and minor improvements
 - Updated `ExternalResources` to have `FileTable` and new methods to query data. the `ResourceTable` has been removed along with methods relating to `Resource`. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
 - Updated hdmf-common-schema version to 1.6.0. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+- Added testing of HDMF-Zarr on PR and nightly. @rly [#859](https://github.com/hdmf-dev/hdmf/pull/859)
 
 ### Bug fixes
 - Export cached specs that are loaded in source IO manager but not in export IO manager. @rly
