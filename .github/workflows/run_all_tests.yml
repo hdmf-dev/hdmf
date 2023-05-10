@@ -1,6 +1,5 @@
 name: Run all tests
 on:
-  pull_request:  # TODO remove me
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
   push:
