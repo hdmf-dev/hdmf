@@ -97,7 +97,11 @@ class ObjectTable(Table):
             "type": int,
             "doc": "The row idx for the file_object_id in FileTable containing the object.",
         },
-        {"name": "object_id", "type": str, "doc": "The object ID for the Container/Data."},
+        {
+            "name": "object_id",
+            "type": str,
+            "doc": "The object ID for the Container/Data.",
+        },
         {
             "name": "object_type",
             "type": str,
@@ -183,8 +187,18 @@ class ExternalResources(Container):
             "default": None,
             "doc": "The table for storing file ids used in external resources.",
         },
-        {"name": "entities", "type": EntityTable, "default": None, "doc": "The table storing entity information."},
-        {"name": "objects", "type": ObjectTable, "default": None, "doc": "The table storing object information."},
+        {
+            "name": "entities",
+            "type": EntityTable,
+            "default": None,
+            "doc": "The table storing entity information.",
+        },
+        {
+            "name": "objects",
+            "type": ObjectTable,
+            "default": None,
+            "doc": "The table storing object information.",
+        },
         {
             "name": "object_keys",
             "type": ObjectKeyTable,
@@ -321,7 +335,11 @@ class ExternalResources(Container):
             "type": (str, AbstractContainer),
             "doc": "The Container/Data object to add or the object id of the Container/Data object to add.",
         },
-        {"name": "files_idx", "type": int, "doc": "The file_object_id row idx."},
+        {
+            "name": "files_idx",
+            "type": int,
+            "doc": "The file_object_id row idx.",
+        },
         {
             "name": "object_type",
             "type": str,
@@ -363,16 +381,8 @@ class ExternalResources(Container):
         return obj
 
     @docval(
-        {
-            "name": "obj",
-            "type": (int, Object),
-            "doc": "The Object that uses the Key.",
-        },
-        {
-            "name": "key",
-            "type": (int, Key),
-            "doc": "The Key that the Object uses.",
-        },
+        {"name": "obj", "type": (int, Object), "doc": "The Object that uses the Key."},
+        {"name": "key", "type": (int, Key), "doc": "The Key that the Object uses."},
     )
     def _add_object_key(self, **kwargs):
         """
@@ -383,7 +393,11 @@ class ExternalResources(Container):
         return ObjectKey(obj, key, table=self.object_keys)
 
     @docval(
-        {"name": "file", "type": ExternalResourcesManager, "doc": "The file associated with the container."},
+        {
+            "name": "file",
+            "type": ExternalResourcesManager,
+            "doc": "The file associated with the container.",
+        },
         {
             "name": "container",
             "type": AbstractContainer,
@@ -407,7 +421,11 @@ class ExternalResources(Container):
             "default": "",
             "doc": "The field of the compound data type using an external resource.",
         },
-        {"name": "create", "type": bool, "default": True},
+        {
+            "name": "create",
+            "type": bool,
+            "default": True,
+        },
     )
     def _check_object_field(self, **kwargs):
         """
@@ -484,7 +502,11 @@ class ExternalResources(Container):
                 raise ValueError(msg)
 
     @docval(
-        {"name": "key_name", "type": str, "doc": "The name of the Key to get."},
+        {
+            "name": "key_name",
+            "type": str,
+            "doc": "The name of the Key to get.",
+        },
         {
             "name": "file",
             "type": ExternalResourcesManager,
@@ -580,8 +602,16 @@ class ExternalResources(Container):
             "default": None,
             "doc": "The name of the key or the Key object from the KeyTable for the key to add a resource for.",
         },
-        {"name": "entity_id", "type": str, "doc": "The identifier for the entity at the resource."},
-        {"name": "entity_uri", "type": str, "doc": "The URI for the identifier at the resource."},
+        {
+            "name": "entity_id",
+            "type": str,
+            "doc": "The identifier for the entity at the resource.",
+        },
+        {
+            "name": "entity_uri",
+            "type": str,
+            "doc": "The URI for the identifier at the resource.",
+        },
         {
             "name": "file",
             "type": ExternalResourcesManager,
@@ -718,7 +748,12 @@ class ExternalResources(Container):
         return df
 
     @docval(
-        {"name": "file", "type": ExternalResourcesManager, "doc": "The file.", "default": None},
+        {
+            "name": "file",
+            "type": ExternalResourcesManager,
+            "doc": "The file.",
+            "default": None,
+        },
         {
             "name": "container",
             "type": (str, AbstractContainer),
