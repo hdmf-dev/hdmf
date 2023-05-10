@@ -9,6 +9,7 @@ authors = [
   { name="Andrew Tritt", email="ajtritt@lbl.gov" },
   { name="Oliver Ruebel", email="oruebel@lbl.gov" },
   { name="Ben Dichter", email="ben.dichter@gmail.com" },
+  { name="Matthew Avaylon", email="mavaylon@lbl.gov" },
 ]
 description = "A hierarchical data modeling framework for modern science data standards"
 readme = "README.rst"
