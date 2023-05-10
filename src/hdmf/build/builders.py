@@ -207,16 +207,8 @@ class GroupBuilder(BaseBuilder):
     )
     def __init__(self, **kwargs):
         """Create a builder object for a group."""
-        name, groups, datasets, links, attributes, parent, source = getargs(
-            "name",
-            "groups",
-            "datasets",
-            "links",
-            "attributes",
-            "parent",
-            "source",
-            kwargs,
-        )
+        name, groups, datasets, links = getargs("name", "groups", "datasets", "links", kwargs)
+        attributes, parent, source = getargs("attributes", "parent", "source", kwargs)
         # NOTE: if groups, datasets, or links are dicts, their keys are unused
         groups = self.__to_list(groups)
         datasets = self.__to_list(datasets)
@@ -458,17 +450,8 @@ class DatasetBuilder(BaseBuilder):
     )
     def __init__(self, **kwargs):
         """Create a Builder object for a dataset"""
-        name, data, dtype, attributes, maxshape, chunks, parent, source = getargs(
-            "name",
-            "data",
-            "dtype",
-            "attributes",
-            "maxshape",
-            "chunks",
-            "parent",
-            "source",
-            kwargs,
-        )
+        name, data, dtype, attributes = getargs("name", "data", "dtype", "attributes", kwargs)
+        maxshape, chunks, parent, source = getargs("maxshape", "chunks", "parent", "source", kwargs)
         super().__init__(name, attributes, parent, source)
         self["data"] = data
         self["attributes"] = _copy.copy(attributes)

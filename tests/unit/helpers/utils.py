@@ -132,9 +132,8 @@ class FooFile(Container):
         {"name": "foo_ref_attr", "type": Foo, "doc": "a reference Foo", "default": None},
     )
     def __init__(self, **kwargs):
-        buckets, foo_link, foofile_data, foo_ref_attr = getargs(
-            "buckets", "foo_link", "foofile_data", "foo_ref_attr", kwargs
-        )
+        buckets, foo_link = getargs("buckets", "foo_link", kwargs)
+        foofile_data, foo_ref_attr = getargs("foofile_data", "foo_ref_attr", kwargs)
         super().__init__(name=self.ROOT_NAME)  # name is not used - FooFile should be the root container
         self.__buckets = {b.name: b for b in buckets}  # note: collections of groups are unordered in HDF5
         for f in buckets:

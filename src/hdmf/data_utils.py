@@ -194,9 +194,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         for more details.
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape = getargs(
-            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", kwargs
-        )
+        buffer_gb, buffer_shape = getargs("buffer_gb", "buffer_shape", kwargs)
+        chunk_mb, chunk_shape = getargs("chunk_mb", "chunk_shape", kwargs)
         self.display_progress, self.progress_bar_options = getargs("display_progress", "progress_bar_options", kwargs)
 
         if buffer_gb is None and buffer_shape is None:
@@ -1028,28 +1027,9 @@ class ShapeValidatorResult:
         },
     )
     def __init__(self, **kwargs):
-        (
-            self.result,
-            self.message,
-            self.ignored,
-            self.unmatched,
-            self.error,
-            self.shape1,
-            self.shape2,
-            self.axes1,
-            self.axes2,
-        ) = getargs(
-            "result",
-            "message",
-            "ignored",
-            "unmatched",
-            "error",
-            "shape1",
-            "shape2",
-            "axes1",
-            "axes2",
-            kwargs,
-        )
+        self.result, self.message, self.ignored = getargs("result", "message", "ignored", kwargs)
+        self.unmatched, self.error = getargs("unmatched", "error", kwargs)
+        self.shape1, self.shape2, self.axes1, self.axes2 = getargs("shape1", "shape2", "axes1", "axes2", kwargs)
 
     def __setattr__(self, key, value):
         """

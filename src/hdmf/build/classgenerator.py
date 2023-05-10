@@ -44,9 +44,8 @@ class ClassGenerator:
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
-        data_type, spec, parent_cls, attr_names, type_map = getargs(
-            "data_type", "spec", "parent_cls", "attr_names", "type_map", kwargs
-        )
+        data_type, spec, parent_cls = getargs("data_type", "spec", "parent_cls", kwargs)
+        attr_names, type_map = getargs("attr_names", "type_map", kwargs)
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():

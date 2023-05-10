@@ -95,12 +95,9 @@ class BasicBucket(Container):
         },
     )
     def __init__(self, **kwargs):
-        name, untyped_dataset, untyped_array_dataset = getargs(
-            "name", "untyped_dataset", "untyped_array_dataset", kwargs
-        )
-        super().__init__(name=name)
-        self.untyped_dataset = untyped_dataset
-        self.untyped_array_dataset = untyped_array_dataset
+        super().__init__(name=kwargs["name"])
+        self.untyped_dataset = kwargs["untyped_dataset"]
+        self.untyped_array_dataset = kwargs["untyped_array_dataset"]
 
 
 class BuildQuantityMixin:

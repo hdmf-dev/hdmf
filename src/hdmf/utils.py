@@ -1069,13 +1069,10 @@ class LabelledDict(dict):
         },
     )
     def __init__(self, **kwargs):
-        label, key_attr, add_callable, remove_callable = getargs(
-            "label", "key_attr", "add_callable", "remove_callable", kwargs
-        )
-        self.__label = label
-        self.__key_attr = key_attr
-        self.__add_callable = add_callable
-        self.__remove_callable = remove_callable
+        self.__label = kwargs["label"]
+        self.__key_attr = kwargs["key_attr"]
+        self.__add_callable = kwargs["add_callable"]
+        self.__remove_callable = kwargs["remove_callable"]
 
     @property
     def label(self):

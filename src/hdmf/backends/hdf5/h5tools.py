@@ -421,37 +421,22 @@ class HDF5IO(HDMFIO):
 
         warnings.warn(
             (
-                "The copy_file class method is no longer supported and may be removed"
-                " in a future version of HDMF. Please use the export method or"
-                " h5py.File.copy method instead."
+                "The copy_file class method is no longer supported and may be removed "
+                "in a future version of HDMF. Please use the export method or h5py.File.copy method instead."
             ),
             DeprecationWarning,
         )
 
-        (
-            source_filename,
-            dest_filename,
-            expand_external,
-            expand_refs,
-            expand_soft,
-        ) = getargs(
-            "source_filename",
-            "dest_filename",
-            "expand_external",
-            "expand_refs",
-            "expand_soft",
-            kwargs,
-        )
-        source_file = File(source_filename, "r")
-        dest_file = File(dest_filename, "w")
+        source_file = File(kwargs["source_filename"], "r")
+        dest_file = File(kwargs["dest_filename"], "w")
         for objname in source_file["/"].keys():
             source_file.copy(
                 source=objname,
                 dest=dest_file,
                 name=objname,
-                expand_external=expand_external,
-                expand_refs=expand_refs,
-                expand_soft=expand_soft,
+                expand_external=kwargs["expand_external"],
+                expand_refs=kwargs["expand_refs"],
+                expand_soft=kwargs["expand_soft"],
                 shallow=False,
                 without_attrs=False,
             )
@@ -470,9 +455,9 @@ class HDF5IO(HDMFIO):
             "name": "cache_spec",
             "type": bool,
             "doc": (
-                "If True (default), cache specification to file (highly recommended)."
-                " If False, do not cache specification to file. The appropriate"
-                " specification will then need to be loaded prior to reading the file."
+                "If True (default), cache specification to file (highly recommended). "
+                "If False, do not cache specification to file. The appropriate "
+                "specification will then need to be loaded prior to reading the file."
             ),
             "default": True,
         },
