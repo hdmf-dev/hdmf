@@ -49,10 +49,11 @@ from hdmf.container import Container, MultiContainerInterface
 
 
 class ContainerHolder(MultiContainerInterface):
+
     __clsconf__ = {
-        "attr": "containers",
-        "type": Container,
-        "add": "add_container",
+        'attr': 'containers',
+        'type': Container,
+        'add': 'add_container',
     }
 
 
@@ -68,8 +69,8 @@ class ContainerHolder(MultiContainerInterface):
 # Here is an example of instantiating the new ``ContainerHolder`` class and
 # using the generated add method.
 
-obj1 = Container("obj1")
-obj2 = Container("obj2")
+obj1 = Container('obj1')
+obj2 = Container('obj2')
 holder1 = ContainerHolder()
 holder1.add_container(obj1)
 holder1.add_container(obj2)
@@ -86,14 +87,14 @@ holder1.containers  # this is a LabelledDict where the keys are the name of the 
 
 holder2 = ContainerHolder(obj1)
 holder3 = ContainerHolder([obj1, obj2])
-holder4 = ContainerHolder({"unused_key1": obj1, "unused_key2": obj2})
+holder4 = ContainerHolder({'unused_key1': obj1, 'unused_key2': obj2})
 holder5 = ContainerHolder(containers=obj1)
 
 ###############################################################################
 # By default, the new class has the 'name' attribute set to the name of the class,
 # but a user-specified name can be provided in the constructor.
 
-named_holder = ContainerHolder(name="My Holder")
+named_holder = ContainerHolder(name='My Holder')
 
 ###############################################################################
 # Adding containers to the collection
@@ -109,7 +110,7 @@ holder7 = ContainerHolder()
 holder7.add_container([obj1, obj2])
 
 holder8 = ContainerHolder()
-holder8.add_container({"unused_key1": obj1, "unused_key2": obj2})
+holder8.add_container({'unused_key1': obj1, 'unused_key2': obj2})
 
 holder9 = ContainerHolder()
 holder9.add_container(containers=obj1)
@@ -122,7 +123,7 @@ holder9.add_container(containers=obj1)
 # only one item in the collection, you can use None within square brackets.
 
 holder10 = ContainerHolder(obj1)
-holder10["obj1"]
+holder10['obj1']
 holder10[None]
 
 ###############################################################################
@@ -138,16 +139,17 @@ holder10[None]
 
 
 class ContainerHolderWithGet(MultiContainerInterface):
+
     __clsconf__ = {
-        "attr": "containers",
-        "type": Container,
-        "add": "add_container",
-        "get": "get_container",
+        'attr': 'containers',
+        'type': Container,
+        'add': 'add_container',
+        'get': 'get_container',
     }
 
 
 holder11 = ContainerHolderWithGet(obj1)
-holder11.get_container("obj1")
+holder11.get_container('obj1')
 holder11.get_container()
 
 ###############################################################################
@@ -166,16 +168,17 @@ holder11.get_container()
 
 
 class ContainerHolderWithCreate(MultiContainerInterface):
+
     __clsconf__ = {
-        "attr": "containers",
-        "type": Container,
-        "add": "add_container",
-        "create": "create_container",
+        'attr': 'containers',
+        'type': Container,
+        'add': 'add_container',
+        'create': 'create_container',
     }
 
 
 holder12 = ContainerHolderWithCreate()
-holder12.create_container("obj1")
+holder12.create_container('obj1')
 
 ###############################################################################
 # Specifying multiple types allowed in the collection
@@ -191,10 +194,11 @@ from hdmf.container import Data
 
 
 class ContainerHolderWithMultipleTypes(MultiContainerInterface):
+
     __clsconf__ = {
-        "attr": "things",
-        "type": (Container, Data),
-        "add": "add_thing",
+        'attr': 'things',
+        'type': (Container, Data),
+        'add': 'add_thing',
     }
 
 
@@ -214,16 +218,17 @@ from hdmf.container import Data
 
 
 class MultiCollectionHolder(MultiContainerInterface):
+
     __clsconf__ = [
         {
-            "attr": "containers",
-            "type": Container,
-            "add": "add_container",
+            'attr': 'containers',
+            'type': Container,
+            'add': 'add_container',
         },
         {
-            "attr": "data",
-            "type": Data,
-            "add": "add_data",
+            'attr': 'data',
+            'type': Data,
+            'add': 'add_data',
         },
     ]
 
@@ -234,7 +239,7 @@ class MultiCollectionHolder(MultiContainerInterface):
 # If the parent of the container being added is not already set, then the parent
 # will be set to the containing object.
 
-obj3 = Container("obj3")
+obj3 = Container('obj3')
 holder13 = ContainerHolder(obj3)
 obj3.parent  # this is holder13
 
@@ -244,7 +249,7 @@ obj3.parent  # this is holder13
 # method. If the parent of the container being removed is the containing object,
 # then its parent will be reset to None.
 
-del holder13.containers["obj3"]
+del holder13.containers['obj3']
 obj3.parent  # this is back to None
 
 ###############################################################################
@@ -255,17 +260,18 @@ obj3.parent  # this is back to None
 
 
 class ContainerHolderWithCustomInit(MultiContainerInterface):
+
     __clsconf__ = {
-        "attr": "containers",
-        "type": Container,
-        "add": "add_container",
+        'attr': 'containers',
+        'type': Container,
+        'add': 'add_container',
     }
 
     def __init__(self, name, my_containers):
         super().__init__(name=name)
         self.containers = my_containers
-        self.add_container(Container("extra_container"))
+        self.add_container(Container('extra_container'))
 
 
-holder14 = ContainerHolderWithCustomInit("my_name", [obj1, obj2])
+holder14 = ContainerHolderWithCustomInit('my_name', [obj1, obj2])
 holder14.containers  # contains the 'extra_container' container

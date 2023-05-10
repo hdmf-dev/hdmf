@@ -68,8 +68,8 @@ This is a user guide to interacting with ``AlignedDynamicTable`` objects.
 from hdmf.common import AlignedDynamicTable
 
 customer_table = AlignedDynamicTable(
-    name="customers",
-    description="an example aligned table",
+    name='customers',
+    description='an example aligned table',
 )
 
 ###############################################################################
@@ -84,17 +84,21 @@ customer_table = AlignedDynamicTable(
 
 from hdmf.common import VectorData
 
-col1 = VectorData(name="firstname", description="Customer first name", data=["Peter", "Emma"])
+col1 = VectorData(
+    name='firstname',
+    description='Customer first name',
+    data=['Peter', 'Emma']
+)
 col2 = VectorData(
-    name="lastname",
-    description="Customer last name",
-    data=["Williams", "Brown"],
+    name='lastname',
+    description='Customer last name',
+    data=['Williams', 'Brown']
 )
 
 customer_table = AlignedDynamicTable(
-    name="customer",
-    description="an example aligned table",
-    columns=[col1, col2],
+    name='customer',
+    description='an example aligned table',
+    columns=[col1, col2]
 )
 
 ###############################################################################
@@ -108,26 +112,28 @@ customer_table = AlignedDynamicTable(
 from hdmf.common import DynamicTable
 
 # create the home_address category table
-subcol1 = VectorData(name="city", description="city", data=["Rivercity", "Mountaincity"])
+subcol1 = VectorData(
+    name='city',
+    description='city',
+    data=['Rivercity', 'Mountaincity']
+)
 subcol2 = VectorData(
-    name="street",
-    description="street data",
-    data=["Amazonstreet", "Alpinestreet"],
+    name='street',
+    description='street data',
+    data=['Amazonstreet', 'Alpinestreet']
 )
 homeaddress_table = DynamicTable(
-    name="home_address",
-    description="home address of the customer",
-    columns=[subcol1, subcol2],
+    name='home_address',
+    description='home address of the customer',
+    columns=[subcol1, subcol2]
 )
 
 # create the table
 customer_table = AlignedDynamicTable(
-    name="customer",
-    description="an example aligned table",
+    name='customer',
+    description='an example aligned table',
     columns=[col1, col2],
-    category_tables=[
-        homeaddress_table,
-    ],
+    category_tables=[homeaddress_table, ]
 )
 
 # render the table in the online docs
@@ -149,9 +155,10 @@ customer_table.to_dataframe()
 #
 
 customer_table.add_row(
-    firstname="Paul",
-    lastname="Smith",
-    home_address={"city": "Bugcity", "street": "Beestree"},
+    firstname='Paul',
+    lastname='Smith',
+    home_address={'city': 'Bugcity',
+                  'street': 'Beestree'}
 )
 
 # render the table in the online docs
@@ -165,10 +172,10 @@ customer_table.to_dataframe()
 #
 
 customer_table.add_column(
-    name="zipcode",
-    description="zip code of the city",
+    name='zipcode',
+    description='zip code of the city',
     data=[11111, 22222, 33333],  # specify data for the 3 rows in the table
-    category="home_address",  # use None (or omit) to add columns to the primary table
+    category='home_address'  # use None (or omit) to add columns to the primary table
 )
 
 # render the table in the online docs
@@ -188,21 +195,24 @@ customer_table.to_dataframe()
 #
 
 # create a new category DynamicTable for the work address
-subcol1 = VectorData(name="city", description="city", data=["Busycity", "Worktown", "Labortown"])
+subcol1 = VectorData(
+    name='city',
+    description='city',
+    data=['Busycity', 'Worktown', 'Labortown']
+)
 subcol2 = VectorData(
-    name="street",
-    description="street data",
-    data=["Cannery Row", "Woodwork Avenue", "Steel Street"],
+    name='street',
+    description='street data',
+    data=['Cannery Row', 'Woodwork Avenue', 'Steel Street']
 )
 subcol3 = VectorData(
-    name="zipcode",
-    description="zip code of the city",
-    data=[33333, 44444, 55555],
-)
+    name='zipcode',
+    description='zip code of the city',
+    data=[33333, 44444, 55555])
 workaddress_table = DynamicTable(
-    name="work_address",
-    description="home address of the customer",
-    columns=[subcol1, subcol2, subcol3],
+    name='work_address',
+    description='home address of the customer',
+    columns=[subcol1, subcol2, subcol3]
 )
 
 # add the category to our AlignedDynamicTable
@@ -243,11 +253,11 @@ customer_table.to_dataframe(ignore_category_ids=True)
 _ = customer_table.categories
 
 # Get the DynamicTable object of a particular category
-_ = customer_table.get_category(name="home_address")
+_ = customer_table.get_category(name='home_address')
 
 # Alternatively, we can use normal array slicing to get the category as a pandas DataFrame.
 # NOTE: In contrast to the previous call, the table is here converted to a DataFrame.
-_ = customer_table["home_address"]
+_ = customer_table['home_address']
 
 ###############################################################################
 # Accessing columns
@@ -256,20 +266,20 @@ _ = customer_table["home_address"]
 
 # To check if a column exists in the primary table we only need to specify the column name
 # or alternatively specify the category as None
-_ = "firstname" in customer_table
-_ = (None, "firstname") in customer_table
+_ = 'firstname' in customer_table
+_ = (None, 'firstname') in customer_table
 # To check if a column exists in a category table we need to specify the category
 # and column name as a tuple
-_ = ("home_address", "zipcode") in customer_table
+_ = ('home_address', 'zipcode') in customer_table
 
 
 ###############################################################################
 # We can use standard array slicing to get the :py:class:`~hdmf.common.table.VectorData` object of a column.
 
 # To get a column from the primary table we just provide the name.
-_ = customer_table["firstname"]
+_ = customer_table['firstname']
 # To get a column from a category table we provide both the category name and column name
-_ = customer_table["home_address", "city"]
+_ = customer_table['home_address', 'city']
 
 
 ###############################################################################
@@ -305,22 +315,22 @@ customer_table[[0, 2]]
 # the selection.
 
 # Select rows 0:2 from the 'firstname' column in the primary table
-customer_table[None, "firstname", 0:2]
+customer_table[None, 'firstname', 0:2]
 
 ###############################################################################
 #
 
 # Select rows 1 from the 'firstname' column in the primary table
-customer_table[None, "firstname", 1]
+customer_table[None, 'firstname', 1]
 
 ###############################################################################
 #
 
 # Select rows 0 and 2 from the 'firstname' column in the primary table
-customer_table[None, "firstname", [0, 2]]
+customer_table[None, 'firstname', [0, 2]]
 
 ###############################################################################
 #
 
 # Select rows 0:2 from the 'city' column of the 'home_address' category table
-customer_table["home_address", "city", 0:2]
+customer_table['home_address', 'city', 0:2]

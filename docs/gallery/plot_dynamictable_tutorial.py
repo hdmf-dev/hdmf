@@ -33,8 +33,8 @@ and accessing data in a ``DynamicTable``.
 from hdmf.common import DynamicTable
 
 users_table = DynamicTable(
-    name="users",
-    description="a table containing data/metadata about users, one user per row",
+    name='users',
+    description='a table containing data/metadata about users, one user per row',
 )
 
 ###############################################################################
@@ -44,13 +44,13 @@ users_table = DynamicTable(
 # :py:meth:`DynamicTable.add_column <hdmf.common.table.DynamicTable.add_column>`.
 
 users_table.add_column(
-    name="first_name",
-    description="the first name of the user",
+    name='first_name',
+    description='the first name of the user',
 )
 
 users_table.add_column(
-    name="last_name",
-    description="the last name of the user",
+    name='last_name',
+    description='the last name of the user',
 )
 
 ###############################################################################
@@ -61,8 +61,8 @@ users_table.add_column(
 # :py:meth:`DynamicTable.add_column <hdmf.common.table.DynamicTable.add_column>`.
 
 users_table.add_column(
-    name="phone_number",
-    description="the phone number of the user",
+    name='phone_number',
+    description='the phone number of the user',
     index=True,
 )
 
@@ -78,16 +78,16 @@ users_table.add_column(
 
 # id will be set to 0 automatically
 users_table.add_row(
-    first_name="Grace",
-    last_name="Hopper",
-    phone_number=["123-456-7890"],
+    first_name='Grace',
+    last_name='Hopper',
+    phone_number=['123-456-7890'],
 )
 
 # id will be set to 1 automatically
 users_table.add_row(
-    first_name="Alan",
-    last_name="Turing",
-    phone_number=["555-666-7777", "888-111-2222"],
+    first_name='Alan',
+    last_name='Turing',
+    phone_number=['555-666-7777', '888-111-2222'],
 )
 
 ###############################################################################
@@ -109,7 +109,7 @@ users_df
 
 ###############################################################################
 # Get the "last_name" column as a pandas :py:class:`~pandas.Series`:
-users_df["last_name"]
+users_df['last_name']
 
 ###############################################################################
 # The index of the :py:class:`~pandas.DataFrame` is automatically set to the
@@ -118,11 +118,7 @@ users_df.loc[0]
 
 ###############################################################################
 # Get single cells of the table by indexing with both ID and column name:
-print(
-    "My first user:",
-    users_df.loc[0, "first_name"],
-    users_df.loc[0, "last_name"],
-)
+print('My first user:', users_df.loc[0, 'first_name'], users_df.loc[0, 'last_name'])
 
 ###############################################################################
 # Adding columns that reference rows of other ``DynamicTable`` objects
@@ -136,52 +132,62 @@ print(
 
 # create a new table of users
 users_table = DynamicTable(
-    name="users",
-    description="a table containing data/metadata about users, one user per row",
+    name='users',
+    description='a table containing data/metadata about users, one user per row',
 )
 
 # add simple columns to this table
 users_table.add_column(
-    name="first_name",
-    description="the first name of the user",
+    name='first_name',
+    description='the first name of the user',
 )
 users_table.add_column(
-    name="last_name",
-    description="the last name of the user",
+    name='last_name',
+    description='the last name of the user',
 )
 
 # create a new table of addresses to reference
 addresses_table = DynamicTable(
-    name="addresses",
-    description="a table containing data/metadata about addresses, one address per row",
+    name='addresses',
+    description='a table containing data/metadata about addresses, one address per row',
 )
 addresses_table.add_column(
-    name="street_address",
-    description="the street number and address",
+    name='street_address',
+    description='the street number and address',
 )
 addresses_table.add_column(
-    name="city",
-    description="the city of the address",
+    name='city',
+    description='the city of the address',
 )
 
 # add rows to the addresses table
-addresses_table.add_row(street_address="123 Main St", city="Springfield")
-addresses_table.add_row(street_address="45 British Way", city="London")
+addresses_table.add_row(
+    street_address='123 Main St',
+    city='Springfield'
+)
+addresses_table.add_row(
+    street_address='45 British Way',
+    city='London'
+)
 
 # add a column to the users table that references rows of the addresses table
-users_table.add_column(name="address", description="the address of the user", table=addresses_table)
+users_table.add_column(
+    name='address',
+    description='the address of the user',
+    table=addresses_table
+)
 
 # add rows to the users table
 users_table.add_row(
-    first_name="Grace",
-    last_name="Hopper",
-    address=0,  # <-- row index of the address table
+    first_name='Grace',
+    last_name='Hopper',
+    address=0  # <-- row index of the address table
 )
 
 users_table.add_row(
-    first_name="Alan",
-    last_name="Turing",
-    address=1,  # <-- row index of the address table
+    first_name='Alan',
+    last_name='Turing',
+    address=1  # <-- row index of the address table
 )
 
 ###############################################################################
@@ -210,13 +216,13 @@ users_df
 # :py:class:`~hdmf.common.table.DynamicTableRegion` object representing the column.
 # Then access its ``table`` attribute to get the addresses table and convert the table
 # to a :py:class:`~pandas.DataFrame`.
-address_column = users_table["address"]
+address_column = users_table['address']
 read_addresses_table = address_column.table
 addresses_df = read_addresses_table.to_dataframe()
 
 ###############################################################################
 # Get the addresses corresponding to the rows of the users table:
-address_indices = users_df["address"]  # pandas Series of row indices into the addresses table
+address_indices = users_df['address']  # pandas Series of row indices into the addresses table
 addresses_df.iloc[address_indices]  # use .iloc because these are row indices not ID values
 
 ###############################################################################

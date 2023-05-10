@@ -86,30 +86,27 @@ are rules to how users store information in the interlinked tables.
 # Creating an instance of the ExternalResources class
 # ----------------------------------------------------
 
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
+from hdmf.common import ExternalResources
+from hdmf.common import DynamicTable, VectorData
+from hdmf import Container, ExternalResourcesManager
+from hdmf import Data
+from hdmf.testing import remove_test_file
+import numpy as np
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
-
-import numpy as np
-
-from hdmf import Container, Data, ExternalResourcesManager
-
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
-from hdmf.common import DynamicTable, ExternalResources, VectorData
-from hdmf.testing import remove_test_file
-
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
 
 
 # Class to represent a file
 class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
     def __init__(self, **kwargs):
-        kwargs["name"] = "ExternalResourcesManagerContainer"
+        kwargs['name'] = 'ExternalResourcesManagerContainer'
         super().__init__(**kwargs)
 
 
 er = ExternalResources()
-file = ExternalResourcesManagerContainer(name="file")
+file = ExternalResourcesManagerContainer(name='file')
 
 
 ###############################################################################
@@ -123,21 +120,21 @@ file = ExternalResourcesManagerContainer(name="file")
 # :py:func:`~hdmf.common.resources.ExternalResources.add_ref` taking care of populating
 # the underlying data structures accordingly.
 
-data = Data(name="species", data=["Homo sapiens", "Mus musculus"])
+data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 er.add_ref(
     file=file,
     container=data,
-    key="Homo sapiens",
-    entity_id="NCBI_TAXON:9606",
-    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606",
+    key='Homo sapiens',
+    entity_id='NCBI_TAXON:9606',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
 er.add_ref(
     file=file,
     container=data,
-    key="Mus musculus",
-    entity_id="NCBI_TAXON:10090",
-    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
+    key='Mus musculus',
+    entity_id='NCBI_TAXON:10090',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
 ###############################################################################
@@ -154,16 +151,16 @@ er.add_ref(
 # reference on a column from a :py:class:`~hdmf.common.table.DynamicTable`, then we would use the
 # column as the object and not the :py:class:`~hdmf.common.table.DynamicTable` (Refer to rule 9).
 
-genotypes = DynamicTable(name="genotypes", description="My genotypes")
-genotypes.add_column(name="genotype_name", description="Name of genotypes")
-genotypes.add_row(id=0, genotype_name="Rorb")
+genotypes = DynamicTable(name='genotypes', description='My genotypes')
+genotypes.add_column(name='genotype_name', description="Name of genotypes")
+genotypes.add_row(id=0, genotype_name='Rorb')
 er.add_ref(
     file=file,
     container=genotypes,
-    attribute="genotype_name",
-    key="Rorb",
-    entity_id="MGI:1346434",
-    entity_uri="http://www.informatics.jax.org/marker/MGI:1343464",
+    attribute='genotype_name',
+    key='Rorb',
+    entity_id='MGI:1346434',
+    entity_uri='http://www.informatics.jax.org/marker/MGI:1343464'
 )
 
 # Note: :py:func:`~hdmf.common.resources.ExternalResources.add_ref` internally resolves the object
@@ -180,21 +177,21 @@ er.add_ref(
 # in its parent hierarchy.
 
 col1 = VectorData(
-    name="Species_Data",
-    description="species from NCBI and Ensemble",
-    data=["Homo sapiens", "Ursus arctos horribilis"],
+    name='Species_Data',
+    description='species from NCBI and Ensemble',
+    data=['Homo sapiens', 'Ursus arctos horribilis'],
 )
 
 # Create a DynamicTable with this column and set the table parent to the file object created earlier
-species = DynamicTable(name="species", description="My species", columns=[col1])
+species = DynamicTable(name='species', description='My species', columns=[col1])
 species.parent = file
 
 er.add_ref(
     container=species,
-    attribute="Species_Data",
-    key="Ursus arctos horribilis",
-    entity_id="NCBI_TAXON:116960",
-    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id",
+    attribute='Species_Data',
+    key='Ursus arctos horribilis',
+    entity_id='NCBI_TAXON:116960',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id'
 )
 
 ###############################################################################
@@ -224,11 +221,13 @@ er.object_keys.to_dataframe()
 
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key` method will be able to return the
 # :py:class:`~hdmf.common.resources.Key` object if the :py:class:`~hdmf.common.resources.Key` object is unique.
-genotype_key_object = er.get_key(key_name="Rorb")
+genotype_key_object = er.get_key(key_name='Rorb')
 
 # If the :py:class:`~hdmf.common.resources.Key` object has a duplicate name, then the user will need
 # to provide the unique (file, container, relative_path, field, key) combination.
-species_key_object = er.get_key(file=file, container=species["Species_Data"], key_name="Ursus arctos horribilis")
+species_key_object = er.get_key(file=file,
+                                container=species['Species_Data'],
+                                key_name='Ursus arctos horribilis')
 
 # The :py:func:`~hdmf.common.resources.ExternalResources.get_key` also will check the
 # :py:class:`~hdmf.common.resources.Object` for a :py:class:`~hdmf.common.resources.File` along the parent hierarchy
@@ -247,10 +246,10 @@ species_key_object = er.get_key(file=file, container=species["Species_Data"], ke
 er.add_ref(
     file=file,
     container=genotypes,
-    attribute="genotype_name",
+    attribute='genotype_name',
     key=genotype_key_object,
-    entity_id="ENSEMBL:ENSG00000198963",
-    entity_uri="https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963",
+    entity_id='ENSEMBL:ENSG00000198963',
+    entity_uri='https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g=ENSG00000198963'
 )
 
 ###############################################################################
@@ -260,7 +259,9 @@ er.add_ref(
 # allows the user to retrieve all entities and key information associated with an `Object` in
 # the form of a pandas DataFrame.
 
-er.get_object_entities(file=file, container=genotypes["genotype_name"], relative_path="")
+er.get_object_entities(file=file,
+                       container=genotypes['genotype_name'],
+                       relative_path='')
 
 ###############################################################################
 # Using the get_object_type
@@ -269,7 +270,7 @@ er.get_object_entities(file=file, container=genotypes["genotype_name"], relative
 # allows the user to retrieve all entities and key information associated with an `Object` in
 # the form of a pandas DataFrame.
 
-er.get_object_type(object_type="Data")
+er.get_object_type(object_type='Data')
 
 ###############################################################################
 # Special Case: Using add_ref with compound data
@@ -283,23 +284,23 @@ er.get_object_type(object_type="Data")
 
 # Let's create a new instance of :py:class:`~hdmf.common.resources.ExternalResources`.
 er = ExternalResources()
-file = ExternalResourcesManagerContainer(name="file")
+file = ExternalResourcesManagerContainer(name='file')
 
 data = Data(
-    name="data_name",
+    name='data_name',
     data=np.array(
-        [("Mus musculus", 9, 81.0), ("Homo sapiens", 3, 27.0)],
-        dtype=[("species", "U14"), ("age", "i4"), ("weight", "f4")],
-    ),
+        [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
+        dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
+    )
 )
 
 er.add_ref(
     file=file,
     container=data,
-    field="species",
-    key="Mus musculus",
-    entity_id="NCBI_TAXON:txid10090",
-    entity_uri="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090",
+    field='species',
+    key='Mus musculus',
+    entity_id='NCBI_TAXON:txid10090',
+    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
 ###############################################################################
@@ -309,7 +310,7 @@ er.add_ref(
 # The user provides the path, which contains the name of the file, to where the tsv
 # file will be written.
 
-er.to_flat_tsv(path="./er_example.tsv")
+er.to_flat_tsv(path='./er_example.tsv')
 
 ###############################################################################
 # Read ExternalResources
@@ -317,5 +318,5 @@ er.to_flat_tsv(path="./er_example.tsv")
 # Users can read :py:class:`~hdmf.common.resources.ExternalResources` from the tsv format
 # by providing the path to the file.
 
-er_read = ExternalResources.from_flat_tsv(path="./er_example.tsv")
-remove_test_file("./er_example.tsv")
+er_read = ExternalResources.from_flat_tsv(path='./er_example.tsv')
+remove_test_file('./er_example.tsv')
