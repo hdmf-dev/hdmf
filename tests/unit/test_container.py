@@ -2,13 +2,24 @@ from uuid import UUID, uuid4
 
 import numpy as np
 
-from hdmf.container import AbstractContainer, Container, Data
+from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
+from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 
 
 class Subcontainer(Container):
     pass
+
+
+class TestExternalResourcesManager(TestCase):
+    def test_link_and_get_resources(self):
+        em = ExternalResourcesManager()
+        er = ExternalResources()
+
+        em.link_resources(er)
+        er_get = em.get_linked_resources()
+        self.assertEqual(er, er_get)
 
 
 class TestContainer(TestCase):

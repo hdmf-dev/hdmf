@@ -1029,11 +1029,9 @@ class TestHDF5IO(TestCase):
                 pass
 
     def test_set_file_mismatch(self):
-        self.file_obj = File(get_temp_filepath(), "w")
-        err_msg = "You argued %s as this object's path, but supplied a file with filename: %s" % (
-            self.path,
-            self.file_obj.filename,
-        )
+        self.file_obj = File(get_temp_filepath(), 'w')
+        err_msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
+                   % (self.path, self.file_obj.filename))
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode="w", file=self.file_obj)
 
@@ -1043,7 +1041,7 @@ class TestHDF5IO(TestCase):
             self.assertEqual(io.source, self.path)
 
     def test_path_or_file(self):
-        with self.assertRaisesWith(ValueError, "You must supply either a path or a file."):
+        with self.assertRaisesWith(ValueError, "Either the 'path' or 'file' argument must be supplied."):
             HDF5IO()
 
 
@@ -1700,7 +1698,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_a(self):
@@ -1708,7 +1706,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in a mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_w(self):
@@ -2616,6 +2614,27 @@ class TestExport(TestCase):
                 with self.assertRaisesWith(ValueError, msg):
                     export_io.export(src_io=read_io, container=dummy_file)
 
+    def test_cache_spec_true(self):
+        """Test that exporting with cache_spec works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(
+                    src_io=read_io,
+                    container=read_foofile,
+                )
+
+        with File(self.paths[1], 'r') as f:
+            self.assertIn("test_core", f["specifications"])
+
     def test_cache_spec_false(self):
         """Test that exporting with cache_spec works."""
         foo1 = Foo("foo1", [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -2680,6 +2699,65 @@ class TestExport(TestCase):
             # make sure the linked dataset is within the same file
             self.assertEqual(read_foofile2.foofile_data.file.filename, self.paths[1])
 
+    def test_soft_link_group_modified(self):
+        """Test that exporting a written file with soft linked groups keeps links within the file."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            read_foofile2.foo_link.set_modified()  # trigger a rebuild of foo_link and its parents
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is within the same file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
+
+        # make sure the linked group is a soft link
+        with File(self.paths[1], 'r') as f:
+            self.assertEqual(f['links/foo_link'].file.filename, self.paths[1])
+            self.assertIsInstance(f.get('links/foo_link', getlink=True), h5py.SoftLink)
+
+    def test_soft_link_group_modified_rel_path(self):
+        """Test that exporting a written file with soft linked groups keeps links within the file."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
+        # make temp files in relative path location
+        self.paths[0] = os.path.basename(self.paths[0])
+        self.paths[1] = os.path.basename(self.paths[1])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            read_foofile2.foo_link.set_modified()  # trigger a rebuild of foo_link and its parents
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is within the same file
+            self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[1]))
+
+        # make sure the linked group is a soft link
+        with File(self.paths[1], 'r') as f:
+            self.assertEqual(f['links/foo_link'].file.filename, self.paths[1])
+            self.assertIsInstance(f.get('links/foo_link', getlink=True), h5py.SoftLink)
+
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
         foo1 = Foo("foo1", [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -2700,7 +2778,6 @@ class TestExport(TestCase):
 
         with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode="r") as read_io:
             self.ios.append(read_io)  # track IO objects for tearDown
-            read_foofile2 = read_io.read()
 
             with HDF5IO(self.paths[2], mode="w") as export_io:
                 export_io.export(src_io=read_io)
@@ -2711,6 +2788,41 @@ class TestExport(TestCase):
 
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[0])
+
+    def test_external_link_group_rel_path(self):
+        """Test that exporting a written file from a relative filepath works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+        # make temp files in relative path location
+        self.paths[0] = os.path.basename(self.paths[0])
+        self.paths[1] = os.path.basename(self.paths[1])
+        self.paths[2] = os.path.basename(self.paths[2])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as read_io:
+            read_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
+
+            with HDF5IO(self.paths[1], manager=manager, mode='w') as write_io:
+                write_io.write(foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io)
+
+        with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the first file
+            self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[0]))
 
     def test_external_link_dataset(self):
         """Test that exporting a written file with external linked datasets maintains the links."""
@@ -3091,6 +3203,149 @@ class TestExport(TestCase):
                 self.paths[2],
             )
             self.assertEqual(f["foofile_data"].file.filename, self.paths[2])
+
+    def test_export_simple_link_data(self):
+        """Test simple exporting of data with a link with link_data=True links the data."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        # create new foofile with link from foo2.data to read foo1.data
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile1 = read_io.read()
+            foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile([foobucket2])
+
+            # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
+            # this should make an external link within the exported file
+            foofile2.foofile_data = foo2.my_data
+
+            with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+                write_io.write(foofile2)
+
+        # read the data with the linked dataset, do not modify it, and export it
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io)
+
+        # read the exported file and confirm that the dataset is linked to the correct foofile1
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+            self.ios.append(read_io1)  # track IO objects for tearDown
+            read_foofile3 = read_io1.read()
+
+            with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                self.ios.append(read_io2)  # track IO objects for tearDown
+                read_foofile4 = read_io2.read()
+
+                self.assertEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                 read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+
+        with File(self.paths[2], 'r') as f:
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[0])
+            self.assertEqual(f['foofile_data'].file.filename, self.paths[0])
+            self.assertIsInstance(f.get('buckets/bucket2/foo_holder/foo2/my_data', getlink=True),
+                                  h5py.ExternalLink)
+            self.assertIsInstance(f.get('foofile_data', getlink=True), h5py.ExternalLink)
+
+    def test_export_simple_link_data_false(self):
+        """Test simple exporting of data with a link with link_data=False copies the data."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        # create new foofile with link from foo2.data to read foo1.data
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile1 = read_io.read()
+            foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile([foobucket2])
+
+            # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
+            # this should make an external link within the exported file
+            foofile2.foofile_data = foo2.my_data
+
+            with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+                write_io.write(foofile2)
+
+        # read the data with the linked dataset, do not modify it, and export it
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io, write_args={'link_data': False})
+
+        # read the exported file and confirm that the dataset is copied
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+            self.ios.append(read_io1)  # track IO objects for tearDown
+            read_foofile3 = read_io1.read()
+
+            with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                self.ios.append(read_io2)  # track IO objects for tearDown
+                read_foofile4 = read_io2.read()
+
+                # check that file can be read
+                self.assertNotEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                    read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile4.buckets['bucket2'].foos['foo2'].my_data)
+
+        with File(self.paths[2], 'r') as f:
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
+            self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
+
+    def test_export_simple_with_container_link_data_false(self):
+        """Test simple exporting of data with a link with link_data=False copies the data."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        # create new foofile with link from foo2.data to read foo1.data
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile1 = read_io.read()
+            foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile([foobucket2])
+
+            # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
+            # this should make an external link within the exported file
+            foofile2.foofile_data = foo2.my_data
+
+            with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+                write_io.write(foofile2)
+
+        # read the data with the linked dataset, do not modify it, and export it
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2, write_args={'link_data': False})
+
+        # read the exported file and confirm that the dataset is copied
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+            self.ios.append(read_io1)  # track IO objects for tearDown
+            read_foofile3 = read_io1.read()
+
+            with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                self.ios.append(read_io2)  # track IO objects for tearDown
+                read_foofile4 = read_io2.read()
+
+                # check that file can be read
+                self.assertNotEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                    read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile4.buckets['bucket2'].foos['foo2'].my_data)
+
+        with File(self.paths[2], 'r') as f:
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
+            self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
 
     def test_export_io(self):
         """Test that exporting a written container using HDF5IO.export_io works."""

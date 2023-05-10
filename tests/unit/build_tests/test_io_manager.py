@@ -134,6 +134,25 @@ class TestBuildManager(TestBase):
         container2 = self.manager.construct(builder)
         self.assertIs(container1, container2)
 
+    def test_clear_cache(self):
+        container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
+        builder1 = self.manager.build(container_inst)
+        self.manager.clear_cache()
+        builder2 = self.manager.build(container_inst)
+        self.assertIsNot(builder1, builder2)
+
+        builder = GroupBuilder(
+            'my_foo', datasets={'my_data': DatasetBuilder(
+                'my_data',
+                list(range(10)),
+                attributes={'attr2': 10})},
+            attributes={'attr1': 'value1', 'namespace': CORE_NAMESPACE, 'data_type': 'Foo',
+                        'object_id': -1})
+        container1 = self.manager.construct(builder)
+        self.manager.clear_cache()
+        container2 = self.manager.construct(builder)
+        self.assertIsNot(container1, container2)
+
 
 class NestedBaseMixin(metaclass=ABCMeta):
     def setUp(self):

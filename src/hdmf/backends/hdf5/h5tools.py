@@ -115,16 +115,7 @@ class HDF5IO(HDMFIO):
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
 
-        if path is None and file_obj is None:
-            raise ValueError("You must supply either a path or a file.")
-
-        if isinstance(path, Path):
-            path = str(path)
-
-        if file_obj is not None and path is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            msg = "You argued %s as this object's path, " % path
-            msg += "but supplied a file with filename: %s" % file_obj.filename
-            raise ValueError(msg)
+        path = self.__check_path_file_obj(path, file_obj)
 
         if file_obj is None and not os.path.exists(path) and (mode == "r" or mode == "r+") and driver != "ros3":
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (
@@ -148,9 +139,9 @@ class HDF5IO(HDMFIO):
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
-        super().__init__(manager, source=path)
-        self.__built = dict()  # keep track of each builder for each dataset/group/link for each file
-        self.__read = dict()  # keep track of which files have been read. Key is the filename value is the builder
+        super().__init__(manager, source=path)  # NOTE: source is not set if path is None and file_obj is passed
+        self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
+        self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
@@ -169,8 +160,8 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
-    @staticmethod
-    def __resolve_file_obj(path, file_obj, driver):
+    @classmethod
+    def __check_path_file_obj(cls, path, file_obj):
         if isinstance(path, Path):
             path = str(path)
 
@@ -184,6 +175,12 @@ class HDF5IO(HDMFIO):
                     file_obj.filename,
                 )
                 raise ValueError(msg)
+
+        return path
+
+    @classmethod
+    def __resolve_file_obj(cls, path, file_obj, driver):
+        path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
             file_kwargs = dict()
@@ -549,32 +546,17 @@ class HDF5IO(HDMFIO):
             ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
-        {
-            "name": "src_io",
-            "type": "HDMFIO",
-            "doc": "the HDMFIO object for reading the data to export",
-        },
-        {
-            "name": "container",
-            "type": Container,
-            "doc": (
-                "the Container object to export. If None, then the entire contents of"
-                " the HDMFIO object will be exported"
-            ),
-            "default": None,
-        },
-        {
-            "name": "write_args",
-            "type": dict,
-            "doc": "arguments to pass to :py:meth:`write_builder`",
-            "default": None,
-        },
-        {
-            "name": "cache_spec",
-            "type": bool,
-            "doc": "whether to cache the specification to file",
-            "default": True,
-        },
+        {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+        {'name': 'container', 'type': Container,
+         'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
+                 'exported'),
+         'default': None},
+        {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
+         'default': None},
+        {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
+         'default': True}
+        # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
+        # so it is not available on HDF5IO
     )
 
     @docval(*_export_args)
@@ -599,11 +581,20 @@ class HDF5IO(HDMFIO):
                 % src_io.__class__.__name__
             )
 
-        write_args["export_source"] = src_io.source  # pass export_source=src_io.source to write_builder
+        write_args['export_source'] = os.path.abspath(src_io.source) if src_io.source is not None else None
         ckwargs = kwargs.copy()
-        ckwargs["write_args"] = write_args
+        ckwargs['write_args'] = write_args
+        if not write_args.get('link_data', True):
+            ckwargs['clear_cache'] = True
         super().export(**ckwargs)
         if cache_spec:
+            # add any namespaces from the src_io that have not yet been loaded
+            for namespace in src_io.manager.namespace_catalog.namespaces:
+                if namespace not in self.manager.namespace_catalog.namespaces:
+                    self.manager.namespace_catalog.add_namespace(
+                        name=namespace,
+                        namespace=src_io.manager.namespace_catalog.get_namespace(namespace)
+                    )
             self.__cache_spec()
 
     @classmethod
@@ -788,7 +779,7 @@ class HDF5IO(HDMFIO):
                 if sub_h5obj.name in ignore:
                     continue
                 link_type = h5obj.get(k, getlink=True)
-                if isinstance(link_type, SoftLink) or isinstance(link_type, ExternalLink):
+                if isinstance(link_type, (SoftLink, ExternalLink)):
                     # Reading links might be better suited in its own function
                     # get path of link (the key used for tracking what's been built)
                     target_path = link_type.path
@@ -802,8 +793,8 @@ class HDF5IO(HDMFIO):
                             builder = self.__read_dataset(target_obj, builder_name)
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename, target_obj.id, builder)
-                    link_builder = LinkBuilder(builder=builder, name=k, source=h5obj.file.filename)
+                        self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
+                    link_builder = LinkBuilder(builder=builder, name=k, source=os.path.abspath(h5obj.file.filename))
                     link_builder.location = h5obj.name
                     self.__set_written(link_builder)
                     kwargs["links"][builder_name] = link_builder
@@ -830,7 +821,7 @@ class HDF5IO(HDMFIO):
                 )
                 kwargs["datasets"][k] = None
                 continue
-        kwargs["source"] = h5obj.file.filename
+        kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ret = GroupBuilder(name, **kwargs)
         ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
@@ -848,7 +839,7 @@ class HDF5IO(HDMFIO):
 
         if name is None:
             name = str(os.path.basename(h5obj.name))
-        kwargs["source"] = h5obj.file.filename
+        kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ndims = len(h5obj.shape)
         if ndims == 0:  # read scalar
             scalar = h5obj[()]
@@ -1320,12 +1311,12 @@ class HDF5IO(HDMFIO):
         else:
             write_source = export_source
 
-        if write_source == target_builder.source:
+        parent_filename = os.path.abspath(parent.file.filename)
+        if target_builder.source in (write_source, parent_filename):
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'" % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
-            parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
             if target_builder.location is not None:
                 path = target_builder.location + "/" + target_builder.name

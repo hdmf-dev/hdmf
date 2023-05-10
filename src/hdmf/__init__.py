@@ -1,6 +1,6 @@
 from . import query  # noqa: F401
 from .backends.hdf5.h5_utils import H5Dataset, H5RegionSlicer
-from .container import Container, Data, DataRegion
+from .container import Container, Data, DataRegion, ExternalResourcesManager
 from .region import ListSlicer
 from .utils import docval, getargs
 

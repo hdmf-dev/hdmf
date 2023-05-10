@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import os
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
@@ -25,7 +26,12 @@ class HDMFIO(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         manager, source = getargs("manager", "source", kwargs)
         if isinstance(source, Path):
-            source = str(source)
+            source = source.resolve()
+        elif (isinstance(source, str) and
+              not (source.lower().startswith("http://") or
+                   source.lower().startswith("https://") or
+                   source.lower().startswith("s3://"))):
+            source = os.path.abspath(source)
 
         self.__manager = manager
         self.__built = dict()
@@ -87,6 +93,8 @@ class HDMFIO(metaclass=ABCMeta):
             "doc": "arguments to pass to :py:meth:`write_builder`",
             "default": dict(),
         },
+        {'name': 'clear_cache', 'type': bool, 'doc': 'whether to clear the build manager cache',
+             'default': False}
     )
     def export(self, **kwargs):
         """Export from one backend to the backend represented by this class.
@@ -115,7 +123,12 @@ class HDMFIO(metaclass=ABCMeta):
               and LinkBuilder.builder.source are the same, and if so the link should be internal to the
               current file (even if the Builder.source points to a different location).
         """
-        src_io, container, write_args = getargs("src_io", "container", "write_args", kwargs)
+        src_io, container, write_args, clear_cache = getargs('src_io', 'container', 'write_args', 'clear_cache', kwargs)
+        if container is None and clear_cache:
+            # clear all containers and builders from cache so that they can all get rebuilt with export=True.
+            # constructing the container is not efficient but there is no elegant way to trigger a
+            # rebuild of src_io with new source.
+            container = src_io.read()
         if container is not None:
             # check that manager exists, container was built from manager, and container is root of hierarchy
             if src_io.manager is None:
@@ -130,8 +143,13 @@ class HDMFIO(metaclass=ABCMeta):
                     "The provided container must be the root of the hierarchy of the source used to read the container."
                 )
 
-            # build any modified containers
-            src_io.manager.purge_outdated()
+            # NOTE in HDF5IO, clear_cache is set to True when link_data is False
+            if clear_cache:
+                # clear all containers and builders from cache so that they can all get rebuilt with export=True
+                src_io.manager.clear_cache()
+            else:
+                # clear only cached containers and builders where the container was modified
+                src_io.manager.purge_outdated()
             bldr = src_io.manager.build(container, source=self.__source, root=True, export=True)
         else:
             bldr = src_io.read_builder()
