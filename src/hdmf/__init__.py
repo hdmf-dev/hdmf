@@ -7,11 +7,7 @@ from .utils import docval, getargs
 
 @docval(
     {"name": "dataset", "type": None, "doc": "the HDF5 dataset to slice"},
-    {
-        "name": "region",
-        "type": None,
-        "doc": "the region reference to use to slice",
-    },
+    {"name": "region", "type": None, "doc": "the region reference to use to slice"},
     is_method=False,
 )
 def get_region_slicer(**kwargs):
