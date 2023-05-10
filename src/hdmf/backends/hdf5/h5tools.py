@@ -73,10 +73,8 @@ class HDF5IO(HDMFIO):
             "name": "mode",
             "type": str,
             "doc": (
-                'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a",'
-                ' "w-", "x"). See `h5py.File'
-                " <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>`_"
-                " for more details."
+                'the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). See `h5py.File'
+                " <http://docs.h5py.org/en/latest/high/file.html#opening-creating-files>`_ for more details."
             ),
             "default": "r",
         },

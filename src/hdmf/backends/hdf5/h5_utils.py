@@ -451,8 +451,8 @@ class H5DataIO(DataIO):
             "name": "data",
             "type": (np.ndarray, list, tuple, Dataset, Iterable),
             "doc": (
-                "the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data"
-                + " will be ignored as the dataset will either be linked to or copied as is in H5DataIO."
+                "the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data "
+                "will be ignored as the dataset will either be linked to or copied as is in H5DataIO."
             ),
             "default": None,
         },
@@ -460,8 +460,8 @@ class H5DataIO(DataIO):
             "name": "maxshape",
             "type": tuple,
             "doc": (
-                "Dataset will be resizable up to this shape (Tuple). Automatically enables chunking."
-                + "Use None for the axes you want to be unlimited."
+                "Dataset will be resizable up to this shape (Tuple). Automatically enables chunking. "
+                "Use None for the axes you want to be unlimited."
             ),
             "default": None,
         },
@@ -475,8 +475,8 @@ class H5DataIO(DataIO):
             "name": "compression",
             "type": (str, bool, int),
             "doc": (
-                "Compression strategy. If a bool is given, then gzip compression will be used by default."
-                + "http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression"
+                "Compression strategy. If a bool is given, then gzip compression will be used by default. "
+                "http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression"
             ),
             "default": None,
         },
@@ -509,7 +509,7 @@ class H5DataIO(DataIO):
             "type": bool,
             "doc": (
                 "If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is only "
-                + "allowed if data is an h5py.Dataset"
+                "allowed if data is an h5py.Dataset"
             ),
             "default": False,
         },
@@ -581,7 +581,7 @@ class H5DataIO(DataIO):
                 if "compression_opts" in self.__iosettings:
                     warnings.warn(
                         "Compression disabled by compression=False setting. "
-                        + "compression_opts parameter will, therefore, be ignored."
+                        "compression_opts parameter will, therefore, be ignored."
                     )
                     self.__iosettings.pop("compression_opts", None)
         # Validate the compression options used
