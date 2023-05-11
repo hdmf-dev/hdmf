@@ -5,7 +5,7 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNa
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 
-from tests.unit.utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.helpers.utils import Foo, FooBucket, CORE_NAMESPACE
 
 
 class FooMapper(ObjectMapper):

@@ -79,27 +79,43 @@ From your local copy directory, use the following commands.
     * Include the relevant issue number if applicable.
     * Before submitting, please ensure that:
       * The proposed changes include an addition to ``CHANGELOG.md`` describing your changes. To label the change with the PR number, you will have to first create the PR, then edit the ``CHANGELOG.md`` with the PR number, and push that change.
-      * The code follows our coding style. This can be checked running ``flake8`` from the source directory.
+      * The code follows our coding style. This can be checked running ``ruff`` from the source directory.
     * **NOTE:** Contributed branches will be removed by the development team after the merge is complete and should, hence, not be used after the pull request is complete.
 
 .. _sec-styleguides:
 
-Styleguides
------------
+Style Guides
+------------
 
-Python Code Styleguide
-^^^^^^^^^^^^^^^^^^^^^^
+Python Code Style Guide
+^^^^^^^^^^^^^^^^^^^^^^^
 
-Before you create a Pull Request, make sure you are following the HDMF style guide (PEP8_).
-To check whether your code conforms to the HDMF style guide, simply run the flake8_ tool in the project's root
-directory.
+Before you create a Pull Request, make sure you are following the PEP8_ style guide. .
+To check whether your code conforms to the HDMF style guide, simply run the ruff_ tool in the project's root
+directory. ``ruff`` will also sort imports automatically and check against additional code style rules.
 
-.. _flake8: https://flake8.pycqa.org/en/latest/
-.. _PEP8: https://peps.python.org/pep-0008/
+We also use ``ruff`` to sort python imports automatically and double-check that the codebase
+conforms to PEP8 standards, while using the codespell_ tool to check spelling.
+
+``ruff`` and ``codespell`` are installed when you follow the developer installation instructions. See
+:ref:`install_developers`.
+
+.. _ruff: https://beta.ruff.rs/docs/
+.. _codespell: https://github.com/codespell-project/codespell
 
 .. code::
 
-   $ flake8
+   $ ruff check .
+   $ codespell
+
+Pre-Commit
+^^^^^^^^^^
+
+We encourage developers to use pre-commit_ tool to automatically process the codebase to follow the style guide,
+as well as identify issues before making a commit. See installation and operation instructions in the pre-commit_
+documentation.
+
+.. _pre-commit: https://pre-commit.com/
 
 Git Commit Message Styleguide
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -5,7 +5,7 @@ from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 import numpy as np
 from tests.unit.build_tests.test_io_map import Bar
-from tests.unit.utils import create_test_type_map, CORE_NAMESPACE
+from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
 

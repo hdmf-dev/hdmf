@@ -5,7 +5,7 @@ from hdmf.common import Container, get_manager, get_hdf5io
 from hdmf.spec import NamespaceCatalog
 from hdmf.testing import TestCase, remove_test_file
 
-from tests.unit.utils import get_temp_filepath
+from tests.unit.helpers.utils import get_temp_filepath
 
 
 class TestCacheSpec(TestCase):

@@ -226,7 +226,6 @@ jobs:
 
       - name: Install run dependencies
         run: |
-          pip install matplotlib
           pip install -e .
           pip list
 

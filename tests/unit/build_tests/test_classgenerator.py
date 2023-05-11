@@ -11,7 +11,7 @@ from hdmf.testing import TestCase
 from hdmf.utils import get_docval, docval
 
 from .test_io_map import Bar
-from tests.unit.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
+from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
 
 
 class TestClassGenerator(TestCase):

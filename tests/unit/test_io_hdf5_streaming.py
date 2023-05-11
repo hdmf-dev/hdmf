@@ -86,8 +86,7 @@ class TestRos3(TestCase):
         s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
 
         with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3") as io:
-            file = io.read()
-            print(file)
+            io.read()
 
 # Util functions and classes to enable loading of the NWB namespace -- see pynwb/src/pynwb/spec.py
 

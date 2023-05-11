@@ -13,7 +13,7 @@ from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifie
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 
-from tests.unit.utils import get_temp_filepath
+from tests.unit.helpers.utils import get_temp_filepath
 
 
 class TestDynamicTable(TestCase):

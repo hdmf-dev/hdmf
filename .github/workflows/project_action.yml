@@ -16,7 +16,7 @@ jobs:
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PEM }}
-          
+
       - name: Add to Developer Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
@@ -24,7 +24,7 @@ jobs:
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/7
           github-token: ${{ env.TOKEN }}
-      
+
       - name: Add to Community Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}

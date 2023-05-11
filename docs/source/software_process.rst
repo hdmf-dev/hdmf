@@ -92,18 +92,16 @@ Both this file and `requirements.txt` are used by ReadTheDocs_ to initialize the
 Versioning and Releasing
 -------------------------
 
-HDMF uses versioneer_ for versioning source and wheel distributions. Versioneer creates a semi-unique release
-name for the wheels that are created. It requires a version control system (git in HDMF's case) to generate a release
-name. After all the tests pass, the "Deploy release" GitHub Actions workflow
+HDMF uses setuptools_scm_ for versioning source and wheel distributions. `setuptools_scm` creates a semi-unique release
+name for the wheels that are created based on git tags.
+After all the tests pass, the "Deploy release" GitHub Actions workflow
 creates both a wheel (``\*.whl``) and source distribution (``\*.tar.gz``) for Python 3
-and uploads them back to GitHub as a release_. Versioneer makes it possible to get the source distribution from GitHub
-and create wheels directly without having to use a version control system because it hardcodes versions in the source
-distribution.
+and uploads them back to GitHub as a release_.
 
 It is important to note that GitHub automatically generates source code archives in ``.zip`` and ``.tar.gz`` formats and
 attaches those files to all releases as an asset. These files currently do not contain the submodules within HDMF and
 thus do not serve as a complete installation. For a complete source code archive, use the source distribution generated
 by GitHub Actions, typically named ``hdmf-{version}.tar.gz``.
 
-.. _versioneer: https://github.com/python-versioneer/python-versioneer
+.. _setuptools_scm: https://github.com/pypa/setuptools_scm
 .. _release: https://github.com/hdmf-dev/hdmf/releases

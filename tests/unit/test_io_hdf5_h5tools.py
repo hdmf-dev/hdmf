@@ -24,7 +24,7 @@ from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase
 
-from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
+from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
