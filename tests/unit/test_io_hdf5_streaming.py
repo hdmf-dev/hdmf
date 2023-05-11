@@ -1,11 +1,18 @@
-from copy import copy, deepcopy
 import os
 import urllib.request
+from copy import copy, deepcopy
+
 import h5py
 
-from hdmf.build import TypeMap, BuildManager
+from hdmf.build import BuildManager, TypeMap
 from hdmf.common import get_hdf5io, get_type_map
-from hdmf.spec import GroupSpec, DatasetSpec, SpecNamespace, NamespaceBuilder, NamespaceCatalog
+from hdmf.spec import (
+    DatasetSpec,
+    GroupSpec,
+    NamespaceBuilder,
+    NamespaceCatalog,
+    SpecNamespace,
+)
 from hdmf.testing import TestCase
 from hdmf.utils import docval, get_docval
 
@@ -34,8 +41,10 @@ class TestRos3(TestCase):
         nwb_container_spec = NWBGroupSpec(
             neurodata_type_def="NWBContainer",
             neurodata_type_inc="Container",
-            doc=("An abstract data type for a generic container storing collections of data and metadata. "
-                 "Base type for all data and metadata containers."),
+            doc=(
+                "An abstract data type for a generic container storing collections of data and metadata. "
+                "Base type for all data and metadata containers."
+            ),
         )
         subject_spec = NWBGroupSpec(
             neurodata_type_def="Subject",
@@ -88,6 +97,7 @@ class TestRos3(TestCase):
         with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3") as io:
             io.read()
 
+
 # Util functions and classes to enable loading of the NWB namespace -- see pynwb/src/pynwb/spec.py
 
 
@@ -98,20 +108,32 @@ def __swap_inc_def(cls):
     # do not set default neurodata_type_inc for base hdmf-common types that should not have data_type_inc
     for arg in args:
         if arg["name"] == "data_type_def":
-            ret.append({"name": "neurodata_type_def", "type": str,
-                        "doc": "the NWB data type this spec defines", "default": None})
+            ret.append(
+                {
+                    "name": "neurodata_type_def",
+                    "type": str,
+                    "doc": "the NWB data type this spec defines",
+                    "default": None,
+                }
+            )
         elif arg["name"] == "data_type_inc":
-            ret.append({"name": "neurodata_type_inc", "type": (clsname, str),
-                        "doc": "the NWB data type this spec includes", "default": None})
+            ret.append(
+                {
+                    "name": "neurodata_type_inc",
+                    "type": (clsname, str),
+                    "doc": "the NWB data type this spec includes",
+                    "default": None,
+                }
+            )
         else:
             ret.append(copy(arg))
     return ret
 
 
 class BaseStorageOverride:
-    """ This class is used for the purpose of overriding
-        BaseStorageSpec classmethods, without creating diamond
-        inheritance hierarchies.
+    """This class is used for the purpose of overriding
+    BaseStorageSpec classmethods, without creating diamond
+    inheritance hierarchies.
     """
 
     __type_key = "neurodata_type"
@@ -120,17 +142,17 @@ class BaseStorageOverride:
 
     @classmethod
     def type_key(cls):
-        """ Get the key used to store data type on an instance"""
+        """Get the key used to store data type on an instance"""
         return cls.__type_key
 
     @classmethod
     def inc_key(cls):
-        """ Get the key used to define a data_type include."""
+        """Get the key used to define a data_type include."""
         return cls.__inc_key
 
     @classmethod
     def def_key(cls):
-        """ Get the key used to define a data_type definition."""
+        """Get the key used to define a data_type definition."""
         return cls.__def_key
 
     @property
@@ -166,7 +188,7 @@ _dataset_docval = __swap_inc_def(DatasetSpec)
 
 
 class NWBDatasetSpec(BaseStorageOverride, DatasetSpec):
-    """ The Spec class to use for NWB dataset specifications.
+    """The Spec class to use for NWB dataset specifications.
 
     Classes will automatically include NWBData if None is specified.
     """
@@ -184,7 +206,7 @@ _group_docval = __swap_inc_def(GroupSpec)
 
 
 class NWBGroupSpec(BaseStorageOverride, GroupSpec):
-    """ The Spec class to use for NWB group specifications.
+    """The Spec class to use for NWB group specifications.
 
     Classes will automatically include NWBContainer if None is specified.
     """
@@ -205,7 +227,7 @@ class NWBGroupSpec(BaseStorageOverride, GroupSpec):
 
     @docval({"name": "neurodata_type", "type": str, "doc": "the neurodata_type to retrieve"})
     def get_neurodata_type(self, **kwargs):
-        """ Get a specification by "neurodata_type" """
+        """Get a specification by "neurodata_type" """
         return super().get_data_type(kwargs["neurodata_type"])
 
 

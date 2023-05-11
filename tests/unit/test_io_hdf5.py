@@ -3,12 +3,14 @@ import os
 from numbers import Number
 
 import numpy as np
-from h5py import File, Dataset, Reference
+from h5py import Dataset, File, Reference
+
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
+from hdmf.build import DatasetBuilder, GroupBuilder, LinkBuilder
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape
-from tests.unit.helpers.utils import Foo, get_foo_buildmanager
+
+from .helpers.utils import Foo, get_foo_buildmanager
 
 
 class HDF5Encoder(json.JSONEncoder):
@@ -33,12 +35,12 @@ class HDF5Encoder(json.JSONEncoder):
 
 
 class GroupBuilderTestCase(TestCase):
-    '''
+    """
     A TestCase class for comparing GroupBuilders.
-    '''
+    """
 
     def __is_scalar(self, obj):
-        if hasattr(obj, 'shape'):
+        if hasattr(obj, "shape"):
             return len(obj.shape) == 0
         else:
             if any(isinstance(obj, t) for t in (int, str, float, bytes, str)):
@@ -101,10 +103,10 @@ class GroupBuilderTestCase(TestCase):
                 b_sub = b[k]
                 b_keys.remove(k)
                 if isinstance(a_sub, LinkBuilder) and isinstance(a_sub, LinkBuilder):
-                    a_sub = a_sub['builder']
-                    b_sub = b_sub['builder']
+                    a_sub = a_sub["builder"]
+                    b_sub = b_sub["builder"]
                 elif isinstance(a_sub, LinkBuilder) != isinstance(a_sub, LinkBuilder):
-                    reasons.append('%s != %s' % (a_sub, b_sub))
+                    reasons.append("%s != %s" % (a_sub, b_sub))
                 if isinstance(a_sub, DatasetBuilder) and isinstance(a_sub, DatasetBuilder):
                     # if not self.__compare_dataset(a_sub, b_sub):
                     #    reasons.append('%s != %s' % (a_sub, b_sub))
@@ -120,16 +122,16 @@ class GroupBuilderTestCase(TestCase):
                     elif a_array or b_array:
                         # if strings, convert before comparing
                         if b_array:
-                            if b_sub.dtype.char in ('S', 'U'):
+                            if b_sub.dtype.char in ("S", "U"):
                                 a_sub = [np.string_(s) for s in a_sub]
                         else:
-                            if a_sub.dtype.char in ('S', 'U'):
+                            if a_sub.dtype.char in ("S", "U"):
                                 b_sub = [np.string_(s) for s in b_sub]
                         equal = np.array_equal(a_sub, b_sub)
                     else:
                         equal = a_sub == b_sub
                     if not equal:
-                        reasons.append('%s != %s' % (self.__fmt(a_sub), self.__fmt(b_sub)))
+                        reasons.append("%s != %s" % (self.__fmt(a_sub), self.__fmt(b_sub)))
             else:
                 reasons.append("'%s' not in both" % k)
         for k in b_keys:
@@ -137,83 +139,93 @@ class GroupBuilderTestCase(TestCase):
         return reasons
 
     def assertBuilderEqual(self, a, b):
-        ''' Tests that two GroupBuilders are equal '''
+        """Tests that two GroupBuilders are equal"""
         reasons = self.__assert_helper(a, b)
         if len(reasons):
-            raise AssertionError(', '.join(reasons))
+            raise AssertionError(", ".join(reasons))
         return True
 
 
 class TestHDF5Writer(GroupBuilderTestCase):
-
     def setUp(self):
         self.manager = get_foo_buildmanager()
         self.path = "test_io_hdf5.h5"
 
-        self.foo_builder = GroupBuilder('foo1',
-                                        attributes={'data_type': 'Foo',
-                                                    'namespace': 'test_core',
-                                                    'attr1': "bar",
-                                                    'object_id': -1},
-                                        datasets={'my_data': DatasetBuilder('my_data', list(range(100, 200, 10)),
-                                                                            attributes={'attr2': 17})})
-        self.foo = Foo('foo1', list(range(100, 200, 10)), attr1="bar", attr2=17, attr3=3.14)
+        self.foo_builder = GroupBuilder(
+            "foo1",
+            attributes={
+                "data_type": "Foo",
+                "namespace": "test_core",
+                "attr1": "bar",
+                "object_id": -1,
+            },
+            datasets={
+                "my_data": DatasetBuilder(
+                    "my_data",
+                    list(range(100, 200, 10)),
+                    attributes={"attr2": 17},
+                )
+            },
+        )
+        self.foo = Foo("foo1", list(range(100, 200, 10)), attr1="bar", attr2=17, attr3=3.14)
         self.manager.prebuilt(self.foo, self.foo_builder)
         self.builder = GroupBuilder(
-            'root',
+            "root",
             source=self.path,
-            groups={'test_bucket':
-                    GroupBuilder('test_bucket',
-                                 groups={'foo_holder':
-                                         GroupBuilder('foo_holder',
-                                                      groups={'foo1': self.foo_builder})})},
-            attributes={'data_type': 'FooFile'})
+            groups={
+                "test_bucket": GroupBuilder(
+                    "test_bucket",
+                    groups={"foo_holder": GroupBuilder("foo_holder", groups={"foo1": self.foo_builder})},
+                )
+            },
+            attributes={"data_type": "FooFile"},
+        )
 
     def tearDown(self):
         if os.path.exists(self.path):
             os.remove(self.path)
 
     def check_fields(self):
-        f = File(self.path, 'r')
-        self.assertIn('test_bucket', f)
-        bucket = f.get('test_bucket')
-        self.assertIn('foo_holder', bucket)
-        holder = bucket.get('foo_holder')
-        self.assertIn('foo1', holder)
+        f = File(self.path, "r")
+        self.assertIn("test_bucket", f)
+        bucket = f.get("test_bucket")
+        self.assertIn("foo_holder", bucket)
+        holder = bucket.get("foo_holder")
+        self.assertIn("foo1", holder)
         return f
 
     def test_write_builder(self):
-        writer = HDF5IO(self.path, manager=self.manager, mode='a')
+        writer = HDF5IO(self.path, manager=self.manager, mode="a")
         writer.write_builder(self.builder)
         writer.close()
         self.check_fields()
 
     def test_write_attribute_reference_container(self):
-        writer = HDF5IO(self.path, manager=self.manager, mode='a')
-        self.builder.set_attribute('ref_attribute', self.foo)
+        writer = HDF5IO(self.path, manager=self.manager, mode="a")
+        self.builder.set_attribute("ref_attribute", self.foo)
         writer.write_builder(self.builder)
         writer.close()
         f = self.check_fields()
-        self.assertIsInstance(f.attrs['ref_attribute'], Reference)
-        self.assertEqual(f['test_bucket/foo_holder/foo1'], f[f.attrs['ref_attribute']])
+        self.assertIsInstance(f.attrs["ref_attribute"], Reference)
+        self.assertEqual(f["test_bucket/foo_holder/foo1"], f[f.attrs["ref_attribute"]])
 
     def test_write_attribute_reference_builder(self):
-        writer = HDF5IO(self.path, manager=self.manager, mode='a')
-        self.builder.set_attribute('ref_attribute', self.foo_builder)
+        writer = HDF5IO(self.path, manager=self.manager, mode="a")
+        self.builder.set_attribute("ref_attribute", self.foo_builder)
         writer.write_builder(self.builder)
         writer.close()
         f = self.check_fields()
-        self.assertIsInstance(f.attrs['ref_attribute'], Reference)
-        self.assertEqual(f['test_bucket/foo_holder/foo1'], f[f.attrs['ref_attribute']])
+        self.assertIsInstance(f.attrs["ref_attribute"], Reference)
+        self.assertEqual(f["test_bucket/foo_holder/foo1"], f[f.attrs["ref_attribute"]])
 
     def test_write_context_manager(self):
-        with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
+        with HDF5IO(self.path, manager=self.manager, mode="a") as writer:
             writer.write_builder(self.builder)
         self.check_fields()
 
     def test_read_builder(self):
         self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
+        io = HDF5IO(self.path, manager=self.manager, mode="a")
         io.write_builder(self.builder)
         builder = io.read_builder()
         self.assertBuilderEqual(builder, self.builder)
@@ -221,9 +233,9 @@ class TestHDF5Writer(GroupBuilderTestCase):
 
     def test_dataset_shape(self):
         self.maxDiff = None
-        io = HDF5IO(self.path, manager=self.manager, mode='a')
+        io = HDF5IO(self.path, manager=self.manager, mode="a")
         io.write_builder(self.builder)
         builder = io.read_builder()
-        dset = builder['test_bucket']['foo_holder']['foo1']['my_data'].data
+        dset = builder["test_bucket"]["foo_holder"]["foo1"]["my_data"].data
         self.assertEqual(get_data_shape(dset), (10,))
         io.close()
