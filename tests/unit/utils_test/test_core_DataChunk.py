@@ -1,12 +1,12 @@
 from copy import copy, deepcopy
 
 import numpy as np
-
 from hdmf.data_utils import DataChunk
 from hdmf.testing import TestCase
 
 
 class DataChunkTests(TestCase):
+
     def setUp(self):
         pass
 
@@ -29,7 +29,7 @@ class DataChunkTests(TestCase):
 
     def test_datachunk_astype(self):
         obj = DataChunk(data=np.arange(3), selection=np.s_[0:3])
-        newtype = np.dtype("int16")
+        newtype = np.dtype('int16')
         obj_astype = obj.astype(newtype)
         self.assertNotEqual(id(obj), id(obj_astype))
         self.assertEqual(obj_astype.dtype, np.dtype(newtype))

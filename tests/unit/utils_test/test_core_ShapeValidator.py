@@ -1,11 +1,11 @@
 import numpy as np
-
 from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorData
-from hdmf.data_utils import DataChunkIterator, ShapeValidatorResult, assertEqualShape
+from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.testing import TestCase
 
 
 class ShapeValidatorTests(TestCase):
+
     def setUp(self):
         pass
 
@@ -32,7 +32,7 @@ class ShapeValidatorTests(TestCase):
         d2 = np.arange(10).reshape(5, 2)
         res = assertEqualShape(d1, d2)
         self.assertFalse(res.result)
-        self.assertEqual(res.error, "AXIS_LEN_ERROR")
+        self.assertEqual(res.error, 'AXIS_LEN_ERROR')
         self.assertTupleEqual(res.ignored, ())
         self.assertTupleEqual(res.unmatched, ((0, 0), (1, 1)))
         self.assertTupleEqual(res.shape1, (2, 5))
@@ -46,7 +46,7 @@ class ShapeValidatorTests(TestCase):
         d2 = np.arange(20).reshape(5, 2, 2)
         res = assertEqualShape(d1, d2)
         self.assertFalse(res.result)
-        self.assertEqual(res.error, "NUM_AXES_ERROR")
+        self.assertEqual(res.error, 'NUM_AXES_ERROR')
         self.assertTupleEqual(res.ignored, ())
         self.assertTupleEqual(res.unmatched, ())
         self.assertTupleEqual(res.shape1, (2, 5))
@@ -102,7 +102,7 @@ class ShapeValidatorTests(TestCase):
         d2 = np.arange(20).reshape(5, 2, 2)
         res = assertEqualShape(d1, d2, 4, 1)
         self.assertFalse(res.result)
-        self.assertEqual(res.error, "AXIS_OUT_OF_BOUNDS")
+        self.assertEqual(res.error, 'AXIS_OUT_OF_BOUNDS')
         self.assertTupleEqual(res.ignored, ())
         self.assertTupleEqual(res.unmatched, ())
         self.assertTupleEqual(res.shape1, (2, 5))
@@ -116,7 +116,7 @@ class ShapeValidatorTests(TestCase):
         d2 = np.arange(20).reshape(5, 2, 2)
         res = assertEqualShape(d1, d2, [0, 1], [5, 0])
         self.assertFalse(res.result)
-        self.assertEqual(res.error, "AXIS_OUT_OF_BOUNDS")
+        self.assertEqual(res.error, 'AXIS_OUT_OF_BOUNDS')
         self.assertTupleEqual(res.ignored, ())
         self.assertTupleEqual(res.unmatched, ())
         self.assertTupleEqual(res.shape1, (2, 5))
@@ -158,7 +158,7 @@ class ShapeValidatorTests(TestCase):
         d2 = DataChunkIterator(data=np.arange(10).reshape(2, 5))
         res = assertEqualShape(d1, d2, ignore_undetermined=False)
         self.assertFalse(res.result)
-        self.assertEqual(res.error, "AXIS_LEN_ERROR")
+        self.assertEqual(res.error, 'AXIS_LEN_ERROR')
         self.assertTupleEqual(res.ignored, ())
         self.assertTupleEqual(res.unmatched, ((0, 0),))
         self.assertTupleEqual(res.shape1, (None, 5))
@@ -169,29 +169,29 @@ class ShapeValidatorTests(TestCase):
     def test_DynamicTableRegion_shape_validation(self):
         # Create a test DynamicTable
         dt_spec = [
-            {"name": "foo", "description": "foo column"},
-            {"name": "bar", "description": "bar column"},
-            {"name": "baz", "description": "baz column"},
+            {'name': 'foo', 'description': 'foo column'},
+            {'name': 'bar', 'description': 'bar column'},
+            {'name': 'baz', 'description': 'baz column'},
         ]
         dt_data = [
             [1, 2, 3, 4, 5],
             [10.0, 20.0, 30.0, 40.0, 50.0],
-            ["cat", "dog", "bird", "fish", "lizard"],
+            ['cat', 'dog', 'bird', 'fish', 'lizard']
         ]
-        columns = [VectorData(name=s["name"], description=s["description"], data=d) for s, d in zip(dt_spec, dt_data)]
-        dt = DynamicTable(
-            name="with_columns_and_data",
-            description="a test table",
-            columns=columns,
-        )
+        columns = [
+            VectorData(name=s['name'], description=s['description'], data=d)
+            for s, d in zip(dt_spec, dt_data)
+        ]
+        dt = DynamicTable(name="with_columns_and_data", description="a test table", columns=columns)
         # Create test DynamicTableRegion
-        dtr = DynamicTableRegion(name="dtr", data=[1, 2, 2], description="desc", table=dt)
+        dtr = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=dt)
         # Confirm that the shapes match
         res = assertEqualShape(dtr, np.arange(9).reshape(3, 3))
         self.assertTrue(res.result)
 
 
 class ShapeValidatorResultTests(TestCase):
+
     def setUp(self):
         pass
 
@@ -200,25 +200,18 @@ class ShapeValidatorResultTests(TestCase):
 
     def test_default_message(self):
         temp = ShapeValidatorResult()
-        temp.error = "AXIS_LEN_ERROR"
+        temp.error = 'AXIS_LEN_ERROR'
         self.assertEqual(temp.default_message, ShapeValidatorResult.SHAPE_ERROR[temp.error])
 
     def test_set_error_to_illegal_type(self):
         temp = ShapeValidatorResult()
         with self.assertRaises(ValueError):
-            temp.error = "MY_ILLEGAL_ERROR_TYPE"
+            temp.error = 'MY_ILLEGAL_ERROR_TYPE'
 
     def test_ensure_use_of_tuples_during_asignment(self):
         temp = ShapeValidatorResult()
         temp_d = [1, 2]
-        temp_cases = [
-            "shape1",
-            "shape2",
-            "axes1",
-            "axes2",
-            "ignored",
-            "unmatched",
-        ]
+        temp_cases = ['shape1', 'shape2', 'axes1', 'axes2', 'ignored', 'unmatched']
         for var in temp_cases:
             setattr(temp, var, temp_d)
-            self.assertIsInstance(getattr(temp, var), tuple, var)
+            self.assertIsInstance(getattr(temp, var), tuple,  var)

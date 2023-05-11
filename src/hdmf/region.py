@@ -6,19 +6,17 @@ from .utils import docval, getargs
 
 
 class RegionSlicer(DataRegion, metaclass=ABCMeta):
-    """
+    '''
     A abstract base class to control getting using a region
 
     Subclasses must implement `__getitem__` and `__len__`
-    """
+    '''
 
-    @docval(
-        {"name": "target", "type": None, "doc": "the target to slice"},
-        {"name": "slice", "type": None, "doc": "the region to slice"},
-    )
+    @docval({'name': 'target', 'type': None, 'doc': 'the target to slice'},
+            {'name': 'slice', 'type': None, 'doc': 'the region to slice'})
     def __init__(self, **kwargs):
-        self.__target = getargs("target", kwargs)
-        self.__slice = getargs("slice", kwargs)
+        self.__target = getargs('target', kwargs)
+        self.__slice = getargs('slice', kwargs)
 
     @property
     def data(self):
@@ -56,12 +54,10 @@ class RegionSlicer(DataRegion, metaclass=ABCMeta):
 class ListSlicer(RegionSlicer):
     """Implementation of RegionSlicer for slicing Lists and Data"""
 
-    @docval(
-        {"name": "dataset", "type": (list, tuple, Data), "doc": "the dataset to slice"},
-        {"name": "region", "type": (list, tuple, slice), "doc": "the region reference to use to slice"},
-    )
+    @docval({'name': 'dataset', 'type': (list, tuple, Data), 'doc': 'the dataset to slice'},
+            {'name': 'region', 'type': (list, tuple, slice), 'doc': 'the region reference to use to slice'})
     def __init__(self, **kwargs):
-        self.__dataset, self.__region = getargs("dataset", "region", kwargs)
+        self.__dataset, self.__region = getargs('dataset', 'region', kwargs)
         super().__init__(self.__dataset, self.__region)
         if isinstance(self.__region, slice):
             self.__getter = itemgetter(self.__region)
@@ -74,7 +70,7 @@ class ListSlicer(RegionSlicer):
         """
         Internal helper function used to define self._read
         """
-        if not hasattr(self, "_read"):
+        if not hasattr(self, '_read'):
             self._read = self.__getter(self.__dataset)
             del self.__getter
 

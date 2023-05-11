@@ -2,27 +2,27 @@ import os
 
 import h5py
 import numpy as np
-
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape, to_uint_array
 
 
 class TestGetDataShape(TestCase):
+
     def test_h5dataset(self):
         """Test get_data_shape on h5py.Datasets of various shapes and maxshape."""
-        path = "test_get_data_shape.h5"
-        with h5py.File(path, "w") as f:
-            dset = f.create_dataset("data", data=((1, 2), (3, 4), (5, 6)))
+        path = 'test_get_data_shape.h5'
+        with h5py.File(path, 'w') as f:
+            dset = f.create_dataset('data', data=((1, 2), (3, 4), (5, 6)))
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
-            dset = f.create_dataset("shape", shape=(3, 2))
+            dset = f.create_dataset('shape', shape=(3, 2))
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
             # test that maxshape takes priority
-            dset = f.create_dataset("shape_maxshape", shape=(3, 2), maxshape=(None, 100))
+            dset = f.create_dataset('shape_maxshape', shape=(3, 2), maxshape=(None, 100))
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (None, 100))
 
@@ -36,7 +36,7 @@ class TestGetDataShape(TestCase):
 
         dci = DataChunkIterator(data=[1, 2])
         res = get_data_shape(dci)
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
         dci = DataChunkIterator(data=[[1, 2], [3, 4], [5, 6]])
         res = get_data_shape(dci)
@@ -51,7 +51,7 @@ class TestGetDataShape(TestCase):
         """Test get_data_shape on DataIO of various shapes and maxshape."""
         dio = DataIO(data=[1, 2])
         res = get_data_shape(dio)
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
         dio = DataIO(data=[[1, 2], [3, 4], [5, 6]])
         res = get_data_shape(dio)
@@ -64,10 +64,10 @@ class TestGetDataShape(TestCase):
     def test_list(self):
         """Test get_data_shape on lists of various shapes."""
         res = get_data_shape(list())
-        self.assertTupleEqual(res, (0,))
+        self.assertTupleEqual(res, (0, ))
 
         res = get_data_shape([1, 2])
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
         res = get_data_shape([[1, 2], [3, 4], [5, 6]])
         self.assertTupleEqual(res, (3, 2))
@@ -75,10 +75,10 @@ class TestGetDataShape(TestCase):
     def test_tuple(self):
         """Test get_data_shape on tuples of various shapes."""
         res = get_data_shape(tuple())
-        self.assertTupleEqual(res, (0,))
+        self.assertTupleEqual(res, (0, ))
 
         res = get_data_shape((1, 2))
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
         res = get_data_shape(((1, 2), (3, 4), (5, 6)))
         self.assertTupleEqual(res, (3, 2))
@@ -89,10 +89,10 @@ class TestGetDataShape(TestCase):
         self.assertTupleEqual(res, tuple())
 
         res = get_data_shape(np.array([]))
-        self.assertTupleEqual(res, (0,))
+        self.assertTupleEqual(res, (0, ))
 
         res = get_data_shape(np.array([1, 2]))
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
         res = get_data_shape(np.array([[1, 2], [3, 4], [5, 6]]))
         self.assertTupleEqual(res, (3, 2))
@@ -106,32 +106,32 @@ class TestGetDataShape(TestCase):
         self.assertIsNone(res)
 
         res = get_data_shape([None, None])
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
         res = get_data_shape(object())
         self.assertIsNone(res)
 
         res = get_data_shape([object(), object()])
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
     def test_string(self):
         """Test get_data_shape on strings and collections of strings."""
-        res = get_data_shape("abc")
+        res = get_data_shape('abc')
         self.assertIsNone(res)
 
-        res = get_data_shape(("a", "b"))
-        self.assertTupleEqual(res, (2,))
+        res = get_data_shape(('a', 'b'))
+        self.assertTupleEqual(res, (2, ))
 
-        res = get_data_shape((("a", "b"), ("c", "d"), ("e", "f")))
+        res = get_data_shape((('a', 'b'), ('c', 'd'), ('e', 'f')))
         self.assertTupleEqual(res, (3, 2))
 
     def test_set(self):
         """Test get_data_shape on sets, which have __len__ but are not subscriptable."""
         res = get_data_shape(set())
-        self.assertTupleEqual(res, (0,))
+        self.assertTupleEqual(res, (0, ))
 
         res = get_data_shape({1, 2})
-        self.assertTupleEqual(res, (2,))
+        self.assertTupleEqual(res, (2, ))
 
     def test_arbitrary_iterable_with_len(self):
         """Test get_data_shape with strict_no_data_load=True on an arbitrary iterable object with __len__."""
@@ -168,6 +168,7 @@ class TestGetDataShape(TestCase):
 
 
 class TestToUintArray(TestCase):
+
     def test_ndarray_uint(self):
         arr = np.array([0, 1, 2], dtype=np.uint32)
         res = to_uint_array(arr)
@@ -180,12 +181,12 @@ class TestToUintArray(TestCase):
 
     def test_ndarray_int_neg(self):
         arr = np.array([0, -1, 2], dtype=np.int32)
-        with self.assertRaisesWith(ValueError, "Cannot convert negative integer values to uint."):
+        with self.assertRaisesWith(ValueError, 'Cannot convert negative integer values to uint.'):
             to_uint_array(arr)
 
     def test_ndarray_float(self):
         arr = np.array([0, 1, 2], dtype=np.float64)
-        with self.assertRaisesWith(ValueError, "Cannot convert array of dtype float64 to uint."):
+        with self.assertRaisesWith(ValueError, 'Cannot convert array of dtype float64 to uint.'):
             to_uint_array(arr)
 
     def test_list_int(self):
@@ -196,10 +197,10 @@ class TestToUintArray(TestCase):
 
     def test_list_int_neg(self):
         arr = [0, -1, 2]
-        with self.assertRaisesWith(ValueError, "Cannot convert negative integer values to uint."):
+        with self.assertRaisesWith(ValueError, 'Cannot convert negative integer values to uint.'):
             to_uint_array(arr)
 
     def test_list_float(self):
-        arr = [0.0, 1.0, 2.0]
-        with self.assertRaisesWith(ValueError, "Cannot convert array of dtype float64 to uint."):
+        arr = [0., 1., 2.]
+        with self.assertRaisesWith(ValueError, 'Cannot convert array of dtype float64 to uint.'):
             to_uint_array(arr)

@@ -1,18 +1,17 @@
 import unittest
+import numpy as np
 from pathlib import Path
-from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Iterable, Tuple
+from shutil import rmtree
+from typing import Tuple, Iterable
 
 import h5py
-import numpy as np
 
 from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.testing import TestCase
 
 try:
     import tqdm  # noqa: F401
-
     TQDM_INSTALLED = True
 except ImportError:
     TQDM_INSTALLED = False
@@ -41,9 +40,7 @@ class GenericDataChunkIteratorTests(TestCase):
         def _get_data(self, selection) -> np.ndarray:
             return self.array[selection]
 
-        def _get_maxshape(
-            self,
-        ) -> Tuple[np.uint64, ...]:  # Undesirable return type, but can be handled
+        def _get_maxshape(self) -> Tuple[np.uint64, ...]:  # Undesirable return type, but can be handled
             return tuple(np.uint64(x) for x in self.array.shape)
 
         def _get_dtype(self) -> np.dtype:
@@ -65,13 +62,12 @@ class GenericDataChunkIteratorTests(TestCase):
         np.testing.assert_array_equal(first_data_chunk, self.test_array[expected_selection])
 
     def check_direct_hdf5_write(self, iterator_options):
-        iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array, **iterator_options)
+        iterator = self.TestNumpyArrayDataChunkIterator(
+            array=self.test_array, **iterator_options
+        )
         with h5py.File(name=self.test_dir / "test_generic_iterator_array.hdf5", mode="w") as f:
             dset = f.create_dataset(
-                name="test",
-                shape=self.test_array.shape,
-                dtype="int16",
-                chunks=iterator.chunk_shape,
+                name="test", shape=self.test_array.shape, dtype="int16", chunks=iterator.chunk_shape
             )
             for chunk in iterator:
                 dset[chunk.selection] = chunk.data
@@ -92,8 +88,8 @@ class GenericDataChunkIteratorTests(TestCase):
         with self.assertRaisesWith(
             exc_type=TypeError,
             exc_msg=(
-                "Can't instantiate abstract class TestGenericDataChunkIterator with"
-                " abstract methods _get_data, _get_dtype, _get_maxshape"
+                "Can't instantiate abstract class TestGenericDataChunkIterator with abstract methods "
+                "_get_data, _get_dtype, _get_maxshape"
             ),
         ):
             TestGenericDataChunkIterator()
@@ -114,20 +110,26 @@ class GenericDataChunkIteratorTests(TestCase):
         chunk_shape = (2001, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) exceed the data dimensions ((2000, 384))!",
+            exc_msg=(
+                f"Some dimensions of chunk_shape ({chunk_shape}) exceed the "
+                f"data dimensions ((2000, 384))!"
+            ),
         ):
-            self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
+            self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array, chunk_shape=chunk_shape
+            )
 
         buffer_shape = (1000, 192)
         chunk_shape = (100, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) exceed the buffer shape ({buffer_shape})!",
+            exc_msg=(
+                f"Some dimensions of chunk_shape ({chunk_shape}) exceed the "
+                f"buffer shape ({buffer_shape})!"
+            ),
         ):
             self.TestNumpyArrayDataChunkIterator(
-                array=self.test_array,
-                buffer_shape=buffer_shape,
-                chunk_shape=chunk_shape,
+                array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
             )
 
         buffer_shape = (1000, 192)
@@ -135,21 +137,19 @@ class GenericDataChunkIteratorTests(TestCase):
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=(
-                f"Some dimensions of chunk_shape ({chunk_shape}) do not evenly divide"
-                f" the buffer shape ({buffer_shape})!"
+                f"Some dimensions of chunk_shape ({chunk_shape}) do not evenly divide the "
+                f"buffer shape ({buffer_shape})!"
             ),
         ):
             self.TestNumpyArrayDataChunkIterator(
-                array=self.test_array,
-                buffer_shape=buffer_shape,
-                chunk_shape=chunk_shape,
+                array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
             )
 
     def test_buffer_option_assertion_negative_buffer_gb(self):
         buffer_gb = -1
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=f"buffer_gb ({buffer_gb}) must be greater than zero!",
+            exc_msg=f"buffer_gb ({buffer_gb}) must be greater than zero!"
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_gb=buffer_gb)
 
@@ -160,7 +160,7 @@ class GenericDataChunkIteratorTests(TestCase):
             exc_msg=(
                 f"Some dimensions of buffer_shape ({buffer_shape}) exceed the data "
                 f"dimensions ({self.test_array.shape})!"
-            ),
+            )
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
 
@@ -168,7 +168,7 @@ class GenericDataChunkIteratorTests(TestCase):
         buffer_shape = (-1, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!",
+            exc_msg=f"Some dimensions of buffer_shape ({buffer_shape}) are less than zero!"
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, buffer_shape=buffer_shape)
 
@@ -176,7 +176,7 @@ class GenericDataChunkIteratorTests(TestCase):
         chunk_mb = -1
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=f"chunk_mb ({chunk_mb}) must be greater than zero!",
+            exc_msg=f"chunk_mb ({chunk_mb}) must be greater than zero!"
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_mb=chunk_mb)
 
@@ -184,7 +184,7 @@ class GenericDataChunkIteratorTests(TestCase):
         chunk_shape = (-1, 384)
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!",
+            exc_msg=f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
         ):
             self.TestNumpyArrayDataChunkIterator(array=self.test_array, chunk_shape=chunk_shape)
 
@@ -192,7 +192,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_progress_bar_assertion(self):
         with self.assertWarnsWith(
             warn_type=UserWarning,
-            exc_msg="Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.",
+            exc_msg="Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring."
         ):
             _ = self.TestNumpyArrayDataChunkIterator(
                 array=self.test_array,
@@ -239,7 +239,7 @@ class GenericDataChunkIteratorTests(TestCase):
         self.check_all_of_iterable_is_python_int(
             iterable=self.TestNumpyArrayDataChunkIterator(
                 array=self.test_array,
-                chunk_shape=(np.uint64(100), np.uint64(2)),
+                chunk_shape=(np.uint64(100), np.uint64(2))
             ).chunk_shape
         )
 
@@ -260,17 +260,14 @@ class GenericDataChunkIteratorTests(TestCase):
         expected_num_buffers = 9
 
         test = self.TestNumpyArrayDataChunkIterator(
-            array=self.test_array,
-            buffer_shape=buffer_shape,
-            chunk_shape=chunk_shape,
+            array=self.test_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape
         )
         self.assertEqual(first=test.num_buffers, second=expected_num_buffers)
 
     def test_numpy_array_chunk_iterator(self):
         iterator_options = dict()
         self.check_first_data_chunk_call(
-            expected_selection=(slice(0, 2000), slice(0, 384)),
-            iterator_options=iterator_options,
+            expected_selection=(slice(0, 2000), slice(0, 384)), iterator_options=iterator_options
         )
         self.check_direct_hdf5_write(iterator_options=iterator_options)
 
@@ -288,7 +285,12 @@ class GenericDataChunkIteratorTests(TestCase):
         resulting_buffer_shape = (1580, 316)
         iterator_options = dict(buffer_gb=0.0005)
         self.check_first_data_chunk_call(
-            expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in resulting_buffer_shape]),
+            expected_selection=tuple(
+                [
+                    slice(0, buffer_shape_axis)
+                    for buffer_shape_axis in resulting_buffer_shape
+                ]
+            ),
             iterator_options=iterator_options,
         )
         self.check_direct_hdf5_write(iterator_options=iterator_options)
@@ -298,7 +300,12 @@ class GenericDataChunkIteratorTests(TestCase):
         for buffer_gb_input_dtype_pass in [2, 2.0]:
             iterator_options = dict(buffer_gb=2)
             self.check_first_data_chunk_call(
-                expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in resulting_buffer_shape]),
+                expected_selection=tuple(
+                    [
+                        slice(0, buffer_shape_axis)
+                        for buffer_shape_axis in resulting_buffer_shape
+                    ]
+                ),
                 iterator_options=iterator_options,
             )
             self.check_direct_hdf5_write(iterator_options=iterator_options)
@@ -322,24 +329,14 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_chunk_mb_option_while_condition(self):
         """Test to evoke while condition of default shaping method."""
         expected_chunk_shape = (2, 79, 79)
-        special_array = np.random.randint(
-            low=-(2**15),
-            high=2**15 - 1,
-            size=(2, 2000, 2000),
-            dtype="int16",
-        )
+        special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(2, 2000, 2000), dtype="int16")
         iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
     def test_chunk_mb_option_while_condition_unit_maxshape_axis(self):
         """Test to evoke while condition of default shaping method."""
         expected_chunk_shape = (1, 79, 79)
-        special_array = np.random.randint(
-            low=-(2**15),
-            high=2**15 - 1,
-            size=(1, 2000, 2000),
-            dtype="int16",
-        )
+        special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(1, 2000, 2000), dtype="int16")
         iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
@@ -349,9 +346,7 @@ class GenericDataChunkIteratorTests(TestCase):
         desc = "Testing progress bar..."
         with open(file=out_text_file, mode="w") as file:
             iterator = self.TestNumpyArrayDataChunkIterator(
-                array=self.test_array,
-                display_progress=True,
-                progress_bar_options=dict(file=file, desc=desc),
+                array=self.test_array, display_progress=True, progress_bar_options=dict(file=file, desc=desc)
             )
             j = 0
             for buffer in iterator:
@@ -370,9 +365,8 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_tqdm_not_installed(self):
         with self.assertWarnsWith(
             warn_type=UserWarning,
-            exc_msg=(
-                "You must install tqdm to use the progress bar feature (pip install tqdm)! Progress bar is disabled."
-            ),
+            exc_msg=("You must install tqdm to use the progress bar feature (pip install tqdm)! "
+                     "Progress bar is disabled.")
         ):
             dci = self.TestNumpyArrayDataChunkIterator(
                 array=self.test_array,

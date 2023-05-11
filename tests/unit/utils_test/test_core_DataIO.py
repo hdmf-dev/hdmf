@@ -1,13 +1,13 @@
 from copy import copy, deepcopy
 
 import numpy as np
-
 from hdmf.container import Data
 from hdmf.data_utils import DataIO
 from hdmf.testing import TestCase
 
 
 class DataIOTests(TestCase):
+
     def setUp(self):
         pass
 
@@ -15,13 +15,13 @@ class DataIOTests(TestCase):
         pass
 
     def test_copy(self):
-        obj = DataIO(data=[1.0, 2.0, 3.0])
+        obj = DataIO(data=[1., 2., 3.])
         obj_copy = copy(obj)
         self.assertNotEqual(id(obj), id(obj_copy))
         self.assertEqual(id(obj.data), id(obj_copy.data))
 
     def test_deepcopy(self):
-        obj = DataIO(data=[1.0, 2.0, 3.0])
+        obj = DataIO(data=[1., 2., 3.])
         obj_copy = deepcopy(obj)
         self.assertNotEqual(id(obj), id(obj_copy))
         self.assertNotEqual(id(obj.data), id(obj_copy.data))
@@ -41,7 +41,7 @@ class DataIOTests(TestCase):
         """
         dataio = DataIO()
         data = np.arange(30).reshape(5, 2, 3)
-        container = Data("wrapped_data", data)
+        container = Data('wrapped_data', data)
         container.set_dataio(dataio)
         self.assertIs(dataio.data, data)
         self.assertIs(dataio, container.data)
@@ -52,7 +52,7 @@ class DataIOTests(TestCase):
         """
         dataio = DataIO(data=np.arange(30).reshape(5, 2, 3))
         data = np.arange(30).reshape(5, 2, 3)
-        container = Data("wrapped_data", data)
+        container = Data('wrapped_data', data)
         with self.assertRaisesWith(ValueError, "cannot overwrite 'data' on DataIO"):
             container.set_dataio(dataio)
 
@@ -66,8 +66,5 @@ class DataIOTests(TestCase):
             DataIO(data=np.arange(5), shape=(3,))
 
         dataio = DataIO(shape=(3,), dtype=int)
-        with self.assertRaisesRegex(
-            ValueError,
-            "Setting data when dtype and shape are not None is not supported",
-        ):
+        with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
             dataio.data = np.arange(5)

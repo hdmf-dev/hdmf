@@ -10,6 +10,7 @@ from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPos
 
 
 class ClassGenerator:
+
     def __init__(self):
         self.__custom_generators = []
 
@@ -17,39 +18,36 @@ class ClassGenerator:
     def custom_generators(self):
         return self.__custom_generators
 
-    @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
+    @docval({'name': 'generator', 'type': type, 'doc': 'the CustomClassGenerator class to register'})
     def register_generator(self, **kwargs):
         """Add a custom class generator to this ClassGenerator.
 
         Generators added later are run first. Duplicates are moved to the top of the list.
         """
-        generator = getargs("generator", kwargs)
+        generator = getargs('generator', kwargs)
         if not issubclass(generator, CustomClassGenerator):
-            raise ValueError("Generator %s must be a subclass of CustomClassGenerator." % generator)
+            raise ValueError('Generator %s must be a subclass of CustomClassGenerator.' % generator)
         if generator in self.__custom_generators:
             self.__custom_generators.remove(generator)
         self.__custom_generators.insert(0, generator)
 
-    @docval(
-        {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
-        {"name": "spec", "type": BaseStorageSpec, "doc": ""},
-        {"name": "parent_cls", "type": type, "doc": ""},
-        {"name": "attr_names", "type": dict, "doc": ""},
-        {"name": "type_map", "type": "TypeMap", "doc": ""},
-        returns="the class for the given namespace and data_type",
-        rtype=type,
-    )
+    @docval({'name': 'data_type', 'type': str, 'doc': 'the data type to create a AbstractContainer class for'},
+            {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
+            {'name': 'parent_cls', 'type': type, 'doc': ''},
+            {'name': 'attr_names', 'type': dict, 'doc': ''},
+            {'name': 'type_map', 'type': 'TypeMap', 'doc': ''},
+            returns='the class for the given namespace and data_type', rtype=type)
     def generate_class(self, **kwargs):
         """Get the container class from data type specification.
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
-        data_type, spec, parent_cls = getargs("data_type", "spec", "parent_cls", kwargs)
-        attr_names, type_map = getargs("attr_names", "type_map", kwargs)
+        data_type, spec, parent_cls, attr_names, type_map = getargs('data_type', 'spec', 'parent_cls', 'attr_names',
+                                                                    'type_map', kwargs)
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
-            if k == "help":  # pragma: no cover
+            if k == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
             if isinstance(field_spec, GroupSpec) and field_spec.data_type is None:  # skip named, untyped groups
@@ -64,15 +62,8 @@ class ClassGenerator:
                 for class_generator in self.__custom_generators:  # pragma: no branch
                     # each generator can update classdict and docval_args
                     if class_generator.apply_generator_to_field(field_spec, bases, type_map):
-                        class_generator.process_field_spec(
-                            classdict,
-                            docval_args,
-                            parent_cls,
-                            attr_name,
-                            not_inherited_fields,
-                            type_map,
-                            spec,
-                        )
+                        class_generator.process_field_spec(classdict, docval_args, parent_cls, attr_name,
+                                                           not_inherited_fields, type_map, spec)
                         break  # each field_spec should be processed by only one generator
 
             for class_generator in self.__custom_generators:
@@ -86,12 +77,10 @@ class ClassGenerator:
             # this error should never happen after hdmf#322
             name = spec.data_type_def
             if name is None:
-                name = "Unknown"
-            raise ValueError(
-                "Cannot dynamically generate class for type '%s'. " % name
-                + str(e)
-                + " Please define that type before defining '%s'." % name
-            )
+                name = 'Unknown'
+            raise ValueError("Cannot dynamically generate class for type '%s'. " % name
+                             + str(e)
+                             + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
         return cls
 
@@ -104,7 +93,7 @@ class CustomClassGenerator:
     """Subclass this class and register an instance to alter how classes are auto-generated."""
 
     def __new__(cls, *args, **kwargs):  # pragma: no cover
-        raise TypeError("Cannot instantiate class %s" % cls.__name__)
+        raise TypeError('Cannot instantiate class %s' % cls.__name__)
 
     # mapping from spec types to allowable python types for docval for fields during dynamic class generation
     # e.g., if a dataset/attribute spec has dtype int32, then get_class should generate a docval for the class'
@@ -113,44 +102,32 @@ class CustomClassGenerator:
     # passing an int64 to __init__ would result in the field storing the value as an int64 (and subsequently written
     # as an int64). no upconversion or downconversion happens as a result of this map
     _spec_dtype_map = {
-        "float32": (float, np.float32, np.float64),
-        "float": (float, np.float32, np.float64),
-        "float64": (float, np.float64),
-        "double": (float, np.float64),
-        "int8": (np.int8, np.int16, np.int32, np.int64, int),
-        "int16": (np.int16, np.int32, np.int64, int),
-        "short": (np.int16, np.int32, np.int64, int),
-        "int32": (int, np.int32, np.int64),
-        "int": (int, np.int32, np.int64),
-        "int64": np.int64,
-        "long": np.int64,
-        "uint8": (np.uint8, np.uint16, np.uint32, np.uint64),
-        "uint16": (np.uint16, np.uint32, np.uint64),
-        "uint32": (np.uint32, np.uint64),
-        "uint64": np.uint64,
-        "numeric": (
-            float,
-            np.float32,
-            np.float64,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            int,
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-        ),
-        "text": str,
-        "utf": str,
-        "utf8": str,
-        "utf-8": str,
-        "ascii": bytes,
-        "bytes": bytes,
-        "bool": (bool, np.bool_),
-        "isodatetime": datetime,
-        "datetime": datetime,
+        'float32': (float, np.float32, np.float64),
+        'float': (float, np.float32, np.float64),
+        'float64': (float, np.float64),
+        'double': (float, np.float64),
+        'int8': (np.int8, np.int16, np.int32, np.int64, int),
+        'int16': (np.int16, np.int32, np.int64, int),
+        'short': (np.int16, np.int32, np.int64, int),
+        'int32': (int, np.int32, np.int64),
+        'int': (int, np.int32, np.int64),
+        'int64': np.int64,
+        'long': np.int64,
+        'uint8': (np.uint8, np.uint16, np.uint32, np.uint64),
+        'uint16': (np.uint16, np.uint32, np.uint64),
+        'uint32': (np.uint32, np.uint64),
+        'uint64': np.uint64,
+        'numeric': (float, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64, int, np.uint8, np.uint16,
+                    np.uint32, np.uint64),
+        'text': str,
+        'utf': str,
+        'utf8': str,
+        'utf-8': str,
+        'ascii': bytes,
+        'bytes': bytes,
+        'bool': (bool, np.bool_),
+        'isodatetime': datetime,
+        'datetime': datetime
     }
 
     @classmethod
@@ -195,14 +172,14 @@ class CustomClassGenerator:
             elif spec.shape is None and spec.dims is None:
                 return cls._get_type_from_spec_dtype(spec.dtype)
             else:
-                return "array_data", "data"
+                return 'array_data', 'data'
         if isinstance(spec, LinkSpec):
             return cls._get_container_type(spec.target_type, type_map)
         if spec.data_type is not None:
             return cls._get_container_type(spec.data_type, type_map)
         if spec.shape is None and spec.dims is None:
             return cls._get_type_from_spec_dtype(spec.dtype)
-        return "array_data", "data"
+        return 'array_data', 'data'
 
     @classmethod
     def _ischild(cls, dtype):
@@ -220,8 +197,8 @@ class CustomClassGenerator:
         """Set the default value for the name docval argument."""
         if default_name is not None:
             for x in docval_args:
-                if x["name"] == "name":
-                    x["default"] = default_name
+                if x['name'] == 'name':
+                    x['default'] = default_name
 
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
@@ -229,16 +206,7 @@ class CustomClassGenerator:
         return True
 
     @classmethod
-    def process_field_spec(
-        cls,
-        classdict,
-        docval_args,
-        parent_cls,
-        attr_name,
-        not_inherited_fields,
-        type_map,
-        spec,
-    ):
+    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __fields__ to the classdict and update the docval args for the field spec with the given attribute name.
         :param classdict: The dict to update with __fields__ (or a different parent_cls._fieldsname).
         :param docval_args: The list of docval arguments.
@@ -250,19 +218,24 @@ class CustomClassGenerator:
         """
         field_spec = not_inherited_fields[attr_name]
         dtype = cls._get_type(field_spec, type_map)
-        fields_conf = {"name": attr_name, "doc": field_spec["doc"]}
+        fields_conf = {'name': attr_name,
+                       'doc': field_spec['doc']}
         if cls._ischild(dtype) and issubclass(parent_cls, Container) and not isinstance(field_spec, LinkSpec):
-            fields_conf["child"] = True
+            fields_conf['child'] = True
         # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
         #     fields_conf['settable'] = False
         classdict.setdefault(parent_cls._fieldsname, list()).append(fields_conf)
 
-        docval_arg = dict(name=attr_name, doc=field_spec.doc, type=cls._get_type(field_spec, type_map))
-        shape = getattr(field_spec, "shape", None)
+        docval_arg = dict(
+            name=attr_name,
+            doc=field_spec.doc,
+            type=cls._get_type(field_spec, type_map)
+        )
+        shape = getattr(field_spec, 'shape', None)
         if shape is not None:
-            docval_arg["shape"] = shape
+            docval_arg['shape'] = shape
         if cls._check_spec_optional(field_spec, spec):
-            docval_arg["default"] = getattr(field_spec, "default_value", None)
+            docval_arg['default'] = getattr(field_spec, 'default_value', None)
         cls._add_to_docval_args(docval_args, docval_arg)
 
     @classmethod
@@ -280,7 +253,7 @@ class CustomClassGenerator:
         """Add the docval arg to the list if not present. If present, overwrite it in place or raise an error."""
         inserted = False
         for i, x in enumerate(docval_args):
-            if x["name"] == arg["name"]:
+            if x['name'] == arg['name']:
                 if err_if_present:
                     raise ValueError("Argument %s already exists in docval args." % arg["name"])
                 docval_args[i] = arg
@@ -306,7 +279,7 @@ class CustomClassGenerator:
         # be passed for a name positional or keyword arg
         if spec.name is not None:
             for arg in list(docval_args):
-                if arg["name"] == "name":
+                if arg['name'] == 'name':
                     docval_args.remove(arg)
 
         # set default name in docval args if provided
@@ -316,7 +289,7 @@ class CustomClassGenerator:
     def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
         # get docval arg names from superclass
         base = bases[0]
-        parent_docval_args = set(arg["name"] for arg in get_docval(base.__init__))
+        parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
         new_args = list()
         for attr_name, field_spec in not_inherited_fields.items():
             # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
@@ -346,26 +319,18 @@ class CustomClassGenerator:
             for f, arg_val in new_kwargs.items():
                 setattr(self, f, arg_val)
 
-        classdict["__init__"] = __init__
+        classdict['__init__'] = __init__
 
 
 class MCIClassGenerator(CustomClassGenerator):
+
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
         """Return True if the field spec has quantity * or +, False otherwise."""
-        return getattr(field_spec, "quantity", None) in (ZERO_OR_MANY, ONE_OR_MANY)
+        return getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY)
 
     @classmethod
-    def process_field_spec(
-        cls,
-        classdict,
-        docval_args,
-        parent_cls,
-        attr_name,
-        not_inherited_fields,
-        type_map,
-        spec,
-    ):
+    def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):
         """Add __clsconf__ to the classdict and update the docval args for the field spec with the given attribute name.
         :param classdict: The dict to update with __clsconf__.
         :param docval_args: The list of docval arguments.
@@ -379,20 +344,20 @@ class MCIClassGenerator(CustomClassGenerator):
         field_clsconf = dict(
             attr=attr_name,
             type=cls._get_type(field_spec, type_map),
-            add="add_{}".format(attr_name),
-            get="get_{}".format(attr_name),
-            create="create_{}".format(attr_name),
+            add='add_{}'.format(attr_name),
+            get='get_{}'.format(attr_name),
+            create='create_{}'.format(attr_name)
         )
-        classdict.setdefault("__clsconf__", list()).append(field_clsconf)
+        classdict.setdefault('__clsconf__', list()).append(field_clsconf)
 
         # add a specialized docval arg for __init__
         docval_arg = dict(
             name=attr_name,
             doc=field_spec.doc,
-            type=(list, tuple, dict, cls._get_type(field_spec, type_map)),
+            type=(list, tuple, dict, cls._get_type(field_spec, type_map))
         )
         if cls._check_spec_optional(field_spec, spec):
-            docval_arg["default"] = getattr(field_spec, "default_value", None)
+            docval_arg['default'] = getattr(field_spec, 'default_value', None)
         cls._add_to_docval_args(docval_args, docval_arg)
 
     @classmethod
@@ -403,7 +368,7 @@ class MCIClassGenerator(CustomClassGenerator):
         :param docval_args: The dict of docval arguments.
         :param spec: The spec for the container class to generate.
         """
-        if "__clsconf__" in classdict:
+        if '__clsconf__' in classdict:
             # do not add MCI as a base if a base is already a subclass of MultiContainerInterface
             for b in bases:
                 if issubclass(b, MultiContainerInterface):
@@ -421,24 +386,24 @@ class MCIClassGenerator(CustomClassGenerator):
 
     @classmethod
     def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
-        if "__clsconf__" in classdict:
-            previous_init = classdict["__init__"]
+        if '__clsconf__' in classdict:
+            previous_init = classdict['__init__']
 
             @docval(*docval_args, allow_positional=AllowPositional.WARNING)
             def __init__(self, **kwargs):
                 # store the values passed to init for each MCI attribute so that they can be added
                 # after calling __init__
                 new_kwargs = list()
-                for field_clsconf in classdict["__clsconf__"]:
-                    attr_name = field_clsconf["attr"]
+                for field_clsconf in classdict['__clsconf__']:
+                    attr_name = field_clsconf['attr']
                     # do not store the value if it is None or not present
                     if attr_name not in kwargs or kwargs[attr_name] is None:
                         continue
-                    add_method_name = field_clsconf["add"]
+                    add_method_name = field_clsconf['add']
                     new_kwarg = dict(
                         attr_name=attr_name,
                         value=popargs(attr_name, kwargs),
-                        add_method_name=add_method_name,
+                        add_method_name=add_method_name
                     )
                     new_kwargs.append(new_kwarg)
 
@@ -452,8 +417,8 @@ class MCIClassGenerator(CustomClassGenerator):
 
                 # call the add method for each MCI attribute
                 for new_kwarg in new_kwargs:
-                    add_method = getattr(self, new_kwarg["add_method_name"])
-                    add_method(new_kwarg["value"])
+                    add_method = getattr(self, new_kwarg['add_method_name'])
+                    add_method(new_kwarg['value'])
 
             # override __init__
-            classdict["__init__"] = __init__
+            classdict['__init__'] = __init__

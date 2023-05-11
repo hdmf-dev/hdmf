@@ -1,12 +1,13 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod, ABCMeta
 
 import numpy as np
 
 
 class Array:
+
     def __init__(self, data):
         self.__data = data
-        if hasattr(data, "dtype"):
+        if hasattr(data, 'dtype'):
             self.dtype = data.dtype
         else:
             tmp = data
@@ -40,10 +41,7 @@ class Array:
                     idx.append(i)
             return np.fromiter((self.__getidx__(x) for x in idx), dtype=self.dtype)
         elif isinstance(arg, slice):
-            return np.fromiter(
-                (self.__getidx__(x) for x in self.__sliceiter(arg)),
-                dtype=self.dtype,
-            )
+            return np.fromiter((self.__getidx__(x) for x in self.__sliceiter(arg)), dtype=self.dtype)
         elif isinstance(arg, tuple):
             return (self.__getidx__(arg[0]), self.__getidx__(arg[1]))
         else:
@@ -51,9 +49,9 @@ class Array:
 
 
 class AbstractSortedArray(Array, metaclass=ABCMeta):
-    """
+    '''
     An abstract class for representing sorted array
-    """
+    '''
 
     @abstractmethod
     def find_point(self, val):
@@ -162,11 +160,11 @@ class AbstractSortedArray(Array, metaclass=ABCMeta):
 
 
 class SortedArray(AbstractSortedArray):
-    """
+    '''
     A class for wrapping sorted arrays. This class overrides
     <,>,<=,>=,==, and != to leverage the sorted content for
     efficiency.
-    """
+    '''
 
     def __init__(self, array):
         super().__init__(array)
@@ -176,6 +174,7 @@ class SortedArray(AbstractSortedArray):
 
 
 class LinSpace(SortedArray):
+
     def __init__(self, start, stop, step):
         self.start = start
         self.stop = stop

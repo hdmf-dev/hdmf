@@ -90,24 +90,21 @@ Style Guides
 Python Code Style Guide
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Before you create a Pull Request, make sure you are following the Black_ preview style guide, which follows PEP8,
-with code E203 ignored. We also break from the Black format by configuring it with a max line length of 120.
-To check whether your code conforms to the Black_ preview style guide, simply run the ``black`` tool in the project's root
-directory with the ``--check`` argument. You can also run the ``black`` tool without the ``--check`` argument to have
-black automatically format the codebase to comply with the black preview style guide.
+Before you create a Pull Request, make sure you are following the PEP8_ style guide. .
+To check whether your code conforms to the HDMF style guide, simply run the ruff_ tool in the project's root
+directory. ``ruff`` will also sort imports automatically and check against additional code style rules.
 
-We also use the ruff_ tool to sort python imports automatically and double-check that the codebase
+We also use ``ruff`` to sort python imports automatically and double-check that the codebase
 conforms to PEP8 standards, while using the codespell_ tool to check spelling.
 
-The ``black`` and ``ruff`` tools are installed when you follow the developer installation instructions. See
+``ruff`` and ``codespell`` are installed when you follow the developer installation instructions. See
 :ref:`install_developers`.
 
-.. _Black: https://black.readthedocs.io/en/stable/
 .. _ruff: https://beta.ruff.rs/docs/
+.. _codespell: https://github.com/codespell-project/codespell
 
 .. code::
 
-   $ black .
    $ ruff check .
    $ codespell
 
