@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.6.0 (Upcoming)
+## HDMF 3.6.0 (May 12, 2023)
 
 ### New features and minor improvements
 - Updated `ExternalResources` to have `FileTable` and new methods to query data. the `ResourceTable` has been removed along with methods relating to `Resource`. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
