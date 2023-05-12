@@ -14,6 +14,7 @@ import itertools
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
+from ..term_set import TermSet
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
 
@@ -38,6 +39,8 @@ class VectorData(Data):
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         description = popargs('description', kwargs)
@@ -45,10 +48,26 @@ class VectorData(Data):
         self.description = description
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
+    def _validator(self, **kwargs):
+        val = getargs('val', kwargs)
+        if self.validate_data(term=val, term_set=self.term_set):
+            return True
+        else:
+            return False
+
+    @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
-        self.append(val)
+        if self.term_set is not None:
+            if self._validator(val=val):
+                self.append(val)
+            else:
+                msg = ("%s is not in the term set." % val)
+                raise ValueError(msg)
+
+        else:
+            self.append(val)
 
     def get(self, key, **kwargs):
         """
@@ -575,6 +594,24 @@ class DynamicTable(Container):
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
         missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
 
+        bad_data = []
+        for colname, colnum in self.__colids.items():
+            if colname not in data:
+                raise ValueError("column '%s' missing" % colname)
+            col = self.__df_cols[colnum]
+            if isinstance(col, VectorIndex):
+                continue
+            else:
+                if col.term_set is not None:
+                    if col._validator(data[colname]):
+                        continue
+                    else:
+                        bad_data.append(data[colname])
+
+        if len(bad_data)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+            raise ValueError(msg)
+
         # check to see if any of the extra columns just need to be added
         if extra_columns:
             for col in self.__columns__:
@@ -668,6 +705,18 @@ class DynamicTable(Container):
         """
         name, data = getargs('name', 'data', kwargs)
         index, table, enum, col_cls = popargs('index', 'table', 'enum', 'col_cls', kwargs)
+
+        if term_set is not None:
+            bad_data = []
+            for val in data:
+                if self.validate_data(term=val, term_set=term_set):
+                    continue
+                else:
+                    bad_data.append(val)
+            if len(bad_data)!=0:
+                bad_data_string = str(bad_data)[1:-1]
+                msg = ("%s is not in the term set." % bad_data_string)
+                raise ValueError(msg)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
