@@ -26,21 +26,19 @@ class TermSet():
         """
         self.name = name
         self.term_schema_path = term_schema_path
-        # self.ontology_version = ontology_version
         self.view = SchemaView(self.term_schema_path)
-        self.sources = self.view.schema.prefixes # do we want to remove non-ontology prefixes such as linkml
+        self.sources = self.view.schema.prefixes
 
     def __repr__(self):
         re = "class: %s\n" % str(self.__class__)
         re += "name: %s\n" % self.name
         re += "term_schema_path: %s\n" % self.term_schema_path
         re += "ontology_source_name: %s\n" % self.sources
-        # re += "ontology_version: %s\n" % self.ontology_version
         return re
 
     def _perm_value_key_info(self, perm_values_dict: dict, key: str):
         """
-        Private method to
+        Private method to retrieve the id, description, and the meaning.
         """
         prefix_dict = self.view.schema.prefixes
         info_tuple = namedtuple("Term_Info", ["id", "description", "meaning"])
@@ -64,43 +62,26 @@ class TermSet():
         """
         Property method to return a view of all terms in the the LinkML YAML Schema.
         """
-        enumerations = self.view.all_enums()
+        enumeration = list(self.view.all_enums())[0]
 
-        all_enum_dict = []
-        for key in enumerations.keys():
-            """
-            We are looping through all enumerations to support the possibility that the schema will hold more
-            than one enum, meaning more than one ontology source. Currently, the entire class is setup to allow only one ontology per schema
-            hence the constructor arguments being as they are (one onotlogy_version, etc)
-            """
-            perm_values_dict = self.view.all_enums()[key].permissible_values
-            enum_dict = {}
-            for perm_value_key in perm_values_dict.keys():
-                enum_dict[perm_value_key] = self._perm_value_key_info(perm_values_dict=perm_values_dict, key=perm_value_key)
-            all_enum_dict.append(enum_dict)
+        perm_values_dict = self.view.all_enums()[enumeration].permissible_values
+        enum_dict = {}
+        for perm_value_key in perm_values_dict.keys():
+            enum_dict[perm_value_key] = self._perm_value_key_info(perm_values_dict=perm_values_dict, key=perm_value_key)
 
-        return all_enum_dict
+        return enum_dict
 
     def __getitem__(self, term):
         """
         Method to retrieve a term and term information (LinkML description and LinkML meaning) from the set of terms.
         """
-        enumerations = self.view.all_enums()
-        all_enum_dict = []
-        number_of_keys = len(enumerations.keys())
-        i=0
-        while i<number_of_keys:
-            key = list(enumerations.keys())[i]
-            perm_values_dict = self.view.all_enums()[key].permissible_values
+        enumeration = list(self.view.all_enums())[0]
+        perm_values_dict = self.view.all_enums()[enumeration].permissible_values
 
-            try:
-                term_info = self._perm_value_key_info(perm_values_dict=perm_values_dict, key=term)
-                return term_info
+        try:
+            term_info = self._perm_value_key_info(perm_values_dict=perm_values_dict, key=term)
+            return term_info
 
-            except KeyError:
-                i+=1
-                if i==number_of_keys:
-                    msg = 'Term not in schema'
-                    raise ValueError(msg)
-                else:
-                    continue
+        except KeyError:
+            msg = 'Term not in schema'
+            raise ValueError(msg)
