@@ -4,7 +4,7 @@ from hdmf.testing import TestCase
 class TestTermSet(TestCase):
 
     def test_termset_setup(self):
-        termset = TermSet(name='species', term_schema_path='example_test_term_set.yaml')
+        termset = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
         self.assertEqual(list(termset.sources), ['NCBI_TAXON', 'Ensemble'])
 
     def test_view_set(self):
