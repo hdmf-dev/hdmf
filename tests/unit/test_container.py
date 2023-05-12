@@ -5,6 +5,7 @@ from hdmf.container import AbstractContainer, Container, Data, ExternalResources
 from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval
+from hdmf.term_set import TermSet
 
 
 class Subcontainer(Container):
@@ -296,6 +297,40 @@ class TestData(TestCase):
         """
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
+
+    def test_validate(self):
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        self.assertEqual(data_obj.data, ['Homo sapiens'])
+
+    def test_validate_value_error(self):
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
+        with self.assertRaises(ValueError):
+            data_obj = Data(name='species', data=['Macaca mulatta'], term_set=terms)
+
+    def test_append_validate(self):
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
+
+    def test_append_validate_error(self):
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.append('Macaca mulatta')
+
+    def test_extend_validate(self):
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
+
+    def test_extend_validate_bad_data_error(self):
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])
 
 
 class TestAbstractContainerFieldsConf(TestCase):
