@@ -98,7 +98,7 @@ class TestDynamicTable(TestCase):
             DynamicTable(name="with_columns", description='a test table', id=[0, 1], columns=columns)
 
     def test_add_col_validate(self):
-        terms = TermSet(name='species', term_schema_path='example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -118,7 +118,7 @@ class TestDynamicTable(TestCase):
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
     def test_add_col_validate_bad_data(self):
-        terms = TermSet(name='species', term_schema_path='example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -133,7 +133,7 @@ class TestDynamicTable(TestCase):
                                term_set=terms)
 
     def test_add_row_validate(self):
-        terms = TermSet(name='species', term_schema_path='example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -156,7 +156,7 @@ class TestDynamicTable(TestCase):
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
     def test_add_row_validate_bad_data_one_col(self):
-        terms = TermSet(name='species', term_schema_path='example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -174,7 +174,7 @@ class TestDynamicTable(TestCase):
             species.add_row(Species_1='bad', Species_2='Ursus arctos horribilis')
 
     def test_add_row_validate_bad_data_all_col(self):
-        terms = TermSet(name='species', term_schema_path='example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
