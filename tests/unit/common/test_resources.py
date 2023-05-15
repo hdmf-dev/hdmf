@@ -239,7 +239,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        entity_uri='entity1')
 
     def test_add_ref_termset(self):
-        terms = TermSet(name='species', self.term_schema_path='./example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
         er = ExternalResources()
         em = ExternalResourcesManagerContainer()
         em.link_resources(er)
@@ -290,7 +290,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_ref_termset_missing_terms(self):
         def test_add_ref_termset(self):
-            terms = TermSet(name='species', self.term_schema_path='./example_test_term_set.yaml')
+            terms = TermSet(name='species', term_schema_path='./example_test_term_set.yaml')
             er = ExternalResources()
             em = ExternalResourcesManagerContainer()
             em.link_resources(er)
