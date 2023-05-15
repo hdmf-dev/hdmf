@@ -1,5 +1,6 @@
 import pandas as pd
-from hdmf.common import DynamicTable
+from hdmf.common import DynamicTable, VectorData
+from hdmf import TermSet
 from hdmf.common.resources import ExternalResources, Key
 from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
@@ -57,18 +58,18 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         file = ExternalResourcesManagerContainer(name='file')
 
-        ck1, e1 = er.add_ref(file=file,
-                             container=data1,
-                             field='species',
-                             key='Mus musculus',
-                             entity_id='NCBI:txid10090',
-                             entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        k2, e2 = er.add_ref(file=file,
-                            container=data1,
-                            field='species',
-                            key='Homo sapiens',
-                            entity_id='NCBI:txid9606',
-                            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+        er.add_ref(file=file,
+                   container=data1,
+                   field='species',
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        er.add_ref(file=file,
+                   container=data1,
+                   field='species',
+                   key='Homo sapiens',
+                   entity_id='NCBI:txid9606',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
         # Convert to dataframe and compare against the expected result
         result_df = er.to_dataframe()
@@ -236,6 +237,80 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        key='key1',
                        entity_id='entity_id1',
                        entity_uri='entity1')
+
+    def test_add_ref_termset(self):
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'],
+                          term_set=terms)
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_term_set(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [(0, 'NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    def test_add_ref_termset_missing_termset(self):
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        species = DynamicTable(name='species', description='My species')
+
+        with self.assertRaises(AttributeError):
+            er.add_ref_term_set(file=em,
+                                container=species,
+                               )
+
+    def test_add_ref_termset_missing_attribute_termset_value(self):
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_term_set(file=em,
+                                container=species,
+                                attribute='Species_Data',
+                               )
+
+    def test_add_ref_termset_missing_terms(self):
+        def test_add_ref_termset(self):
+            terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
+            er = ExternalResources()
+            em = ExternalResourcesManagerContainer()
+            em.link_resources(er)
+
+            col1 = VectorData(name='Species_Data',
+                              description='species from NCBI and Ensemble',
+                              data=['Homo sapiens', 'missing_term'],
+                              term_set=terms)
+
+            species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+            missing_terms = er.add_ref_term_set(file=em,
+                                                container=species,
+                                                attribute='Species_Data',
+                                               )
+            self.assertEqual(er.keys.data, [('Homo sapiens',)])
+            self.assertEqual(er.entities.data, [(0, 'NCBI_TAXON:9606',
+            'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+            self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+            self.assertEqual(missing_terms,['missing_term'])
 
     def test_add_ref(self):
         er = ExternalResources()
