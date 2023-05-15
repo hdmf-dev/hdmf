@@ -7,3 +7,4 @@ numpy==1.16  # numpy>=1.16,<1.18 does not provide wheels for python 3.8 and does
 pandas==1.0.5  # when this is changed to >=1.5.0, see TODO items referenced in #762
 ruamel.yaml==0.16
 scipy==1.1  # scipy>=1.1,<1.4 does not provide wheels for python 3.8 and building scipy can fail due to incompatibilities with numpy
+linkml_runtime
