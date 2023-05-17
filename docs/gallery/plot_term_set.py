@@ -53,7 +53,7 @@ For a clear example, please refer to example_term_set.yaml within the tutorial g
 from hdmf.common import ExternalResources, DynamicTable, VectorData
 from hdmf.term_set import TermSet
 
-terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+terms = TermSet(name='Species', term_schema_path='example_term_set.yaml')
 
 ######################################################
 # Viewing TermSet values
@@ -64,7 +64,7 @@ terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.
 from hdmf.common import ExternalResources
 from hdmf.term_set import TermSet
 
-terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+terms = TermSet(name='Species', term_schema_path='example_term_set.yaml')
 terms.view_set
 
 # Retrieve a specific term
