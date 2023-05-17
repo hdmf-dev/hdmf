@@ -330,7 +330,7 @@ remove_test_file('./er_example.tsv')
 # in the :py:class:`~hdmf.TermSet`.
 from hdmf.term_set import TermSet
 
-terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+terms = TermSet(name='Species', term_schema_path='example_term_set.yaml')
 col1 = VectorData(
     name='Species_Data',
     description='...',
