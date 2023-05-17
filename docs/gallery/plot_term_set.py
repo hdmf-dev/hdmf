@@ -64,7 +64,7 @@ terms = TermSet(name='Species', term_schema_path='example_term_set.yaml')
 from hdmf.common import ExternalResources
 from hdmf.term_set import TermSet
 
-terms = TermSet(name='Species', term_schema_path='example_term_set.yaml')
+terms = TermSet(name='Species', term_schema_path='./example_term_set.yaml')
 terms.view_set
 
 # Retrieve a specific term
