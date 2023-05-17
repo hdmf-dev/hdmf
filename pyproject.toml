@@ -37,8 +37,8 @@ dependencies = [
     "ruamel.yaml>=0.16",
     "scipy>=1.1",
     "importlib-metadata<4.3; python_version < '3.8'",  # TODO: remove when minimum python version is 3.8
-    "importlib-resources; python_version < '3.9'",
-    "linkml_runtime",  # TODO: remove when minimum python version is 3.9
+    "importlib-resources; python_version < '3.9'", # TODO: remove when minimum python version is 3.9
+    #"linkml_runtime",
 ]
 dynamic = ["version"]
 
