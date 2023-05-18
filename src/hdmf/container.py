@@ -79,12 +79,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
             return None
 
         def setter(self, val):
-            if val is None:
-                return
-            if name in self.fields:
-                msg = "can't set attribute '%s' -- already set" % name
-                raise AttributeError(msg)
+            if self.__container_source is not None and not self._in_construct_mode:
+                warn(f"Container was read from file '{self.__container_source}'. "
+                     f"Changing the value of attribute '{name}' will not change the value in the file. "
+                     f"Use the export function to write the modified container to a new file.")
             self.fields[name] = val
+            self.set_modified()
 
         return setter
 

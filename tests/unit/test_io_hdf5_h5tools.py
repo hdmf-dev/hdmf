@@ -801,6 +801,23 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    def test_roundtrip_basic_warn_reset_attr(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+
+            msg = (r"Container was read from file '.*'\. Changing the value of attribute 'attr1' will not change "
+                   r"the value in the file\. Use the export function to write the modified container to a new file\.")
+            with self.assertWarnsRegex(UserWarning, msg):
+                read_foofile.buckets['bucket1'].foos['foo1'].attr1 = "I am new foo1"
+
 
 class TestHDF5IO(TestCase):
 

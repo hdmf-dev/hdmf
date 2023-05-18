@@ -45,6 +45,9 @@ def get_temp_filepath():
 #  Foo example data containers and specs
 ###########################################
 class Foo(Container):
+
+    __fields__ = ("my_data", "attr1", "attr2", "attr3")
+
     @docval(
         {"name": "name", "type": str, "doc": "the name of this Foo"},
         {"name": "my_data", "type": ("array_data", "data"), "doc": "some data"},
@@ -55,10 +58,10 @@ class Foo(Container):
     def __init__(self, **kwargs):
         name, my_data, attr1, attr2, attr3 = getargs("name", "my_data", "attr1", "attr2", "attr3", kwargs)
         super().__init__(name=name)
-        self.__data = my_data
-        self.__attr1 = attr1
-        self.__attr2 = attr2
-        self.__attr3 = attr3
+        self.my_data = my_data
+        self.attr1 = attr1
+        self.attr2 = attr2
+        self.attr3 = attr3
 
     def __eq__(self, other):
         attrs = ("name", "my_data", "attr1", "attr2", "attr3")
@@ -67,22 +70,6 @@ class Foo(Container):
     def __str__(self):
         attrs = ("name", "my_data", "attr1", "attr2", "attr3")
         return "<" + ",".join("%s=%s" % (a, getattr(self, a)) for a in attrs) + ">"
-
-    @property
-    def my_data(self):
-        return self.__data
-
-    @property
-    def attr1(self):
-        return self.__attr1
-
-    @property
-    def attr2(self):
-        return self.__attr2
-
-    @property
-    def attr3(self):
-        return self.__attr3
 
     def __hash__(self):
         return hash(self.name)

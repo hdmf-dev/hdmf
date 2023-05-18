@@ -1247,7 +1247,7 @@ class DynamicTableRegion(VectorData):
         """
         if val is None:
             return
-        if 'table' in self.fields:
+        if 'table' in self.fields:  # TODO
             msg = "can't set attribute 'table' -- already set"
             raise AttributeError(msg)
         dat = self.data
