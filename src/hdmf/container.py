@@ -545,6 +545,8 @@ class Data(AbstractContainer):
     def data(self):
         return self.__data
 
+    # TODO create setter for data
+
     @property
     def shape(self):
         """
@@ -559,6 +561,7 @@ class Data(AbstractContainer):
         """
         Apply DataIO object to the data held by this Data object
         """
+        # TODO deprecate this in favor of the user wrapping the data themselves in a non-buggy way
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio
