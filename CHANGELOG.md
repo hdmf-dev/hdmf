@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HMDF 3.6.1 (upcoming)
+## HMDF 3.6.1 (May 18, 2023)
 
 ### Bug fixes
 - Fix compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
