@@ -306,7 +306,7 @@ class TestData(TestCase):
     def test_validate_value_error(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertRaises(ValueError):
-            data_obj = Data(name='species', data=['Macaca mulatta'], term_set=terms)
+            Data(name='species', data=['Macaca mulatta'], term_set=terms)
 
     def test_append_validate(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
