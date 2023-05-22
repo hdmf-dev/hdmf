@@ -9,7 +9,8 @@ class TestTermSet(TestCase):
 
     def test_view_set(self):
         termset = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
-        self.assertEqual(list(termset.view_set), ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla'])
+        expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
+        self.assertEqual(list(termset.view_set), expected)
 
     def test_get_item(self):
         termset = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
