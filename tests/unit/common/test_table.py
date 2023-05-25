@@ -16,6 +16,11 @@ from hdmf.utils import StrDataset
 
 from tests.unit.helpers.utils import get_temp_filepath
 
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 class TestDynamicTable(TestCase):
 
@@ -97,6 +102,7 @@ class TestDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable(name="with_columns", description='a test table', id=[0, 1], columns=columns)
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -117,6 +123,7 @@ class TestDynamicTable(TestCase):
         expected_df.index.name = 'id'
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate_bad_data(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -132,6 +139,7 @@ class TestDynamicTable(TestCase):
                                data=['bad data'],
                                term_set=terms)
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -155,6 +163,7 @@ class TestDynamicTable(TestCase):
         expected_df.index.name = 'id'
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_one_col(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -173,6 +182,7 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad', Species_2='Ursus arctos horribilis')
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_all_col(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(

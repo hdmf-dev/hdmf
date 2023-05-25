@@ -1,4 +1,5 @@
 import pandas as pd
+import unittest
 from hdmf.common import DynamicTable, VectorData
 from hdmf import TermSet
 from hdmf.common.resources import ExternalResources, Key
@@ -9,6 +10,12 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
     def __init__(self, **kwargs):
@@ -238,6 +245,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        entity_id='entity_id1',
                        entity_uri='entity1')
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset(self):
         terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
         er = ExternalResources()
@@ -260,6 +268,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_termset(self):
         er = ExternalResources()
         em = ExternalResourcesManagerContainer()
@@ -272,6 +281,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                 container=species,
                                )
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_attribute_termset_value(self):
         er = ExternalResources()
         em = ExternalResourcesManagerContainer()
@@ -288,6 +298,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                 attribute='Species_Data',
                                )
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_terms(self):
         def test_add_ref_termset(self):
             terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')

@@ -1,4 +1,3 @@
-from linkml_runtime.utils.schemaview import SchemaView
 from collections import namedtuple
 
 
@@ -24,6 +23,11 @@ class TermSet():
         :param ontology_source_name: The name of the ontology
         :param ontology_source_uri: The uri of the ontology
         """
+        try:
+            from linkml_runtime.utils.schemaview import SchemaView
+        except ImportError:
+            msg = "Install linkml_runtime"
+            raise ValueError(msg)
         self.name = name
         self.term_schema_path = term_schema_path
         self.view = SchemaView(self.term_schema_path)
