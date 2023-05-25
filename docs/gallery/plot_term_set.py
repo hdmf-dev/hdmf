@@ -20,8 +20,8 @@ clean data to be used inline with the FAIR principles later on.
 The  :py:class:`~hdmf.TermSet` class allows for a reusable and sharable
 pool of metadata to serve as references to any dataset within the NWB ecosystem.
 The :py:class:`~hdmf.TermSet` class is used closely with
-:py:class:`~hdmf.common.resources.ExternalResources` to organize and these terms
-to the data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.TermSet`
+:py:class:`~hdmf.common.resources.ExternalResources` to more efficiently map terms
+to data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.TermSet`
 is used with :py:class:`~hdmf.common.resources.ExternalResources`.
 
 :py:class:`~hdmf.TermSet` is built upon the resources from LinkmL, a modeling
@@ -51,9 +51,14 @@ For a clear example, please refer to example_term_set.yaml within the tutorial g
 # Creating an instance of the TermSet class
 # ----------------------------------------------------
 from hdmf.common import ExternalResources, DynamicTable, VectorData
-from hdmf.term_set import TermSet
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
-terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+if LINKML_INSTALLED:
+    from hdmf.term_set import TermSet
 
 ######################################################
 # Viewing TermSet values
@@ -61,14 +66,12 @@ terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.
 # :py:class:`~hdmf.TermSet` has methods to retrieve terms. The :py:func:`~hdmf.TermSet:view_set`
 # method will return a dictionary of all the terms and the corresponding information for each term.
 # Users can index specific terms from the :py:class:`~hdmf.TermSet`.
-from hdmf.common import ExternalResources
-from hdmf.term_set import TermSet
+if LINKML_INSTALLED:
+    terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+    terms.view_set
 
-terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
-terms.view_set
-
-# Retrieve a specific term
-terms['Homo sapiens']
+    # Retrieve a specific term
+    terms['Homo sapiens']
 
 ######################################################
 # Validate Data with TermSet
@@ -76,19 +79,21 @@ terms['Homo sapiens']
 # :py:class:`~hdmf.TermSet` has been integrated so that :py:class:`~hdmf.Data` and its
 # subclasses support a term_set attribute. By having this attribute set, the data will be validated
 # and all new data will be validated.
-data = VectorData(
-    name='species',
-    description='...',
-    data=['Homo sapiens'],
-    term_set=terms)
+if LINKML_INSTALLED:
+    data = VectorData(
+        name='species',
+        description='...',
+        data=['Homo sapiens'],
+        term_set=terms)
 
 ######################################################
 # Validate on append with TermSet
 # ----------------------------------------------------
 # As mentioned prior, when the term_set attribute is set all new data is validated. This true for both
 # append and extend methods.
-data.append('Ursus arctos horribilis')
-data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
+if LINKML_INSTALLED:
+    data.append('Ursus arctos horribilis')
+    data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
 
 ######################################################
 # Validate Data in a DynamicTable with TermSet
@@ -96,19 +101,20 @@ data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
 # Validating data with :py:class:`~hdmf.common.table.DynamicTable` is determined by which columns were
 # initialized with the term_set attribute set. The data is validated when the columns are created and not
 # when set as columns to the table.
-col1 = VectorData(
-    name='Species_1',
-    description='...',
-    data=['Homo sapiens'],
-    term_set=terms,
-)
-col2 = VectorData(
-    name='Species_2',
-    description='...',
-    data=['Mus musculus'],
-    term_set=terms,
-)
-species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+if LINKML_INSTALLED:
+    col1 = VectorData(
+        name='Species_1',
+        description='...',
+        data=['Homo sapiens'],
+        term_set=terms,
+    )
+    col2 = VectorData(
+        name='Species_2',
+        description='...',
+        data=['Mus musculus'],
+        term_set=terms,
+    )
+    species = DynamicTable(name='species', description='My species', columns=[col1,col2])
 
 ######################################################
 # Validate new rows in a DynamicTable with TermSet
@@ -118,7 +124,8 @@ species = DynamicTable(name='species', description='My species', columns=[col1,c
 # :py:class:`~hdmf.TermSet` (via the term_set attribute). If the attribute is set, the the data will be
 # validated for that column using that column's :py:class:`~hdmf.TermSet`. If their is invalid data, the
 # row will not be added and the user will be prompted to fix the new data in order to populate the table.
-species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
+if LINKML_INSTALLED:
+    species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 
 ######################################################
 # Validate new columns in a DynamicTable with TermSet
@@ -127,14 +134,15 @@ species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 # by the columns. The :py:func:`~hdmf.common.table.DynamicTable.add_column` method has a term_set attribute
 # as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`. When set, this attribute
 # will be used to validate the data. The column will not be added if there is invalid data.
-col1 = VectorData(
-    name='Species_1',
-    description='...',
-    data=['Homo sapiens'],
-    term_set=terms,
-)
-species = DynamicTable(name='species', description='My species', columns=[col1])
-species.add_column(name='Species_2',
-                   description='Species data',
-                   data=['Mus musculus'],
-                   term_set=terms)
+if LINKML_INSTALLED:
+    col1 = VectorData(
+        name='Species_1',
+        description='...',
+        data=['Homo sapiens'],
+        term_set=terms,
+    )
+    species = DynamicTable(name='species', description='My species', columns=[col1])
+    species.add_column(name='Species_2',
+                       description='Species data',
+                       data=['Mus musculus'],
+                       term_set=terms)

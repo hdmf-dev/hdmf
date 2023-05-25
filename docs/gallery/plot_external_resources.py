@@ -328,18 +328,25 @@ remove_test_file('./er_example.tsv')
 # :py:class:`~hdmf.common.resources.ExternalResources`. These enumerations take place of the
 # entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have to match the name of the term
 # in the :py:class:`~hdmf.TermSet`.
-from hdmf.term_set import TermSet
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
-terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
-col1 = VectorData(
-    name='Species_Data',
-    description='...',
-    data=['Homo sapiens', 'Ursus arctos horribilis'],
-    term_set=terms,
-)
+if LINKML_INSTALLED:
+    from hdmf.term_set import TermSet
 
-species = DynamicTable(name='species', description='My species', columns=[col1],)
-er.add_ref_term_set(file=file,
-                    container=species,
-                    attribute='Species_Data',
-                   )
+    terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+    col1 = VectorData(
+        name='Species_Data',
+        description='...',
+        data=['Homo sapiens', 'Ursus arctos horribilis'],
+        term_set=terms,
+    )
+
+    species = DynamicTable(name='species', description='My species', columns=[col1],)
+    er.add_ref_term_set(file=file,
+                        container=species,
+                        attribute='Species_Data',
+                       )
