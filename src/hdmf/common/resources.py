@@ -123,6 +123,29 @@ class ObjectKeyTable(Table):
     )
 
 
+class EntityKeyTable(Table):
+    """
+    A table for identifying which entities are used by which keys for referring to external resources.
+    """
+
+    __defaultname__ = 'key_entities'
+
+    __columns__ = (
+        {'name': 'entities_idx', 'type': (int, Entity),
+         'doc': 'The index into the EntityTable for the Entity that associated with the Key.'},
+        {'name': 'keys_idx', 'type': (int, Key),
+         'doc': 'The index into the KeyTable that is used to make an external resource reference.'}
+    )
+
+
+class EntityKey(Row):
+    """
+    A Row class for representing rows in the EntityKeyTable.
+    """
+
+    __table__ = EntityKeyTable
+
+
 class ObjectKey(Row):
     """
     A Row class for representing rows in the ObjectKeyTable.
@@ -140,6 +163,7 @@ class ExternalResources(Container):
         {'name': 'files', 'child': True},
         {'name': 'objects', 'child': True},
         {'name': 'object_keys', 'child': True},
+        {'name': 'entity_keys', 'child': True},
         {'name': 'entities', 'child': True},
     )
 
@@ -152,7 +176,9 @@ class ExternalResources(Container):
             {'name': 'objects', 'type': ObjectTable, 'default': None,
              'doc': 'The table storing object information.'},
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
-             'doc': 'The table storing object-resource relationships.'},
+             'doc': 'The table storing object-key relationships.'},
+            {'name': 'entity_keys', 'type': EntityKeyTable, 'default': None,
+             'doc': 'The table storing entity-key relationships.'},
             {'name': 'type_map', 'type': TypeMap, 'default': None,
              'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'},
             allow_positional=AllowPositional.WARNING)
@@ -164,6 +190,7 @@ class ExternalResources(Container):
         self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
+        self.entity_keys = kwargs['entity_keys'] or EntityKeyTable()
         self.type_map = kwargs['type_map'] or get_type_map()
 
     @staticmethod
@@ -298,6 +325,15 @@ class ExternalResources(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
+    @docval({'name': 'entity', 'type': (int, Entity), 'doc': 'The Entity associated with the Key.'},
+            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the connected to the Entity.'})
+    def _add_entity_key(self, **kwargs):
+        """
+        Add entity-key relationship to the EntityKeyTable.
+        """
+        entity, key = popargs('entity', 'key', kwargs)
+        return EntityKey(entity, key, table=self.entity_keys)
+
     @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.'},
             {'name': 'container', 'type': AbstractContainer,
              'doc': ('The Container/Data object that uses the key or '
@@ -424,6 +460,14 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_idx_matches[0]]
 
+    def get_entity(self, **kwargs):
+        entity_id = kwargs['entity_id']
+        entity = self.entities.which(entity_id=entity_id)
+        if len(entity)>0:
+            return self.entities.row[entity[0]]
+        else:
+            return False
+
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key.')},
@@ -512,11 +556,43 @@ class ExternalResources(Container):
                     msg = "Use Key Object when referencing an existing (container, relative_path, key)"
                     raise ValueError(msg)
 
-        if not isinstance(key, Key):
             key = self._add_key(key)
             self._add_object_key(object_field, key)
 
-        entity = self._add_entity(key, entity_id, entity_uri)
+        else:
+            # Check to see that the existing key is being used with the object.
+            # If true, do nothing. If false, create a new obj/key relationship
+            # in the ObjectKeyTable
+            key_idx = key.idx
+            object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
+            if len(object_key_row_idx)!=0:
+                obj_key_check = False
+                for row_idx in object_key_row_idx:
+                    obj_idx = self.object_keys['objects_idx', row_idx]
+                    if obj_idx == object_field.idx:
+                        obj_key_check = True
+                if not obj_key_check:
+                    self._add_object_key(object_field, key)
+            else:
+                self._add_object_key(object_field, key)
+            # check if the key and object have been related in the ObjectKeyTable
+
+        entity = self.get_entity(entity_id=entity_id)
+        if isinstance(entity, bool):
+            entity = self._add_entity(key, entity_id, entity_uri)
+            self._add_entity_key(entity, key)
+        else:
+            # check for entity-key relationship in EntityKeyTable
+            key_idx = key.idx
+            entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
+            if len(entity_key_row_idx)!=0:
+                entity_key_check = False
+                for row_idx in entity_key_row_idx:
+                    entity_idx = self.entity_keys['entities_idx', row_idx]
+                    if entity_idx == entity.idx:
+                        entity_key_check = True
+                if not entity_key_check:
+                    self._add_entity_key(entity, key)
 
         return key, entity
 

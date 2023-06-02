@@ -245,6 +245,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
+        # breakpoint()
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
@@ -660,8 +661,30 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
-
+        # breakpoint()
         self.assertEqual(er.object_keys.data, [(0, 0)])
+
+    def test_object_key_existing_key_new_object(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key=existing_key,
+                   entity_id='entity2',
+                   entity_uri='entity_uri2')
+        breakpoint()
+        # self.assertEqual(er.object_keys.data, [(0, 0)])
 
     def test_check_object_field_add(self):
         er = ExternalResources()
