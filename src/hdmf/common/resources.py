@@ -38,9 +38,6 @@ class EntityTable(Table):
     __defaultname__ = 'entities'
 
     __columns__ = (
-        {'name': 'keys_idx', 'type': (int, Key),
-         'doc': ('The index into the keys table for the user key that '
-                 'maps to the resource term / registry symbol.')},
         {'name': 'entity_id', 'type': str,
          'doc': 'The unique ID for the resource term / registry symbol.'},
         {'name': 'entity_uri', 'type': str,
@@ -128,7 +125,7 @@ class EntityKeyTable(Table):
     A table for identifying which entities are used by which keys for referring to external resources.
     """
 
-    __defaultname__ = 'key_entities'
+    __defaultname__ = 'entity_keys'
 
     __columns__ = (
         {'name': 'entities_idx', 'type': (int, Entity),
@@ -270,19 +267,15 @@ class ExternalResources(Container):
         file_object_id = kwargs['file_object_id']
         return File(file_object_id, table=self.files)
 
-    @docval({'name': 'key', 'type': (str, Key), 'doc': 'The key to associate the entity with.'},
-            {'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
+    @docval({'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
     def _add_entity(self, **kwargs):
         """
         Add an entity that will be referenced to using the given key.
         """
-        key = kwargs['key']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        if not isinstance(key, Key):
-            key = self._add_key(key)
-        entity = Entity(key, entity_id, entity_uri, table=self.entities)
+        entity = Entity( entity_id, entity_uri, table=self.entities)
         return entity
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
@@ -460,6 +453,7 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_idx_matches[0]]
 
+    @docval({'name': 'entity_id', 'type': str, 'doc': 'The ID for the identifier at the resource.'})
     def get_entity(self, **kwargs):
         entity_id = kwargs['entity_id']
         entity = self.entities.which(entity_id=entity_id)
@@ -579,7 +573,7 @@ class ExternalResources(Container):
 
         entity = self.get_entity(entity_id=entity_id)
         if isinstance(entity, bool):
-            entity = self._add_entity(key, entity_id, entity_uri)
+            entity = self._add_entity(entity_id, entity_uri)
             self._add_entity_key(entity, key)
         else:
             # check for entity-key relationship in EntityKeyTable
@@ -697,19 +691,14 @@ class ExternalResources(Container):
 
         """
         use_categories = popargs('use_categories', kwargs)
-        # Step 1: Combine the entities, keys, and files table
+        # Step 1: Combine the entities, keys, and entity_keys table
         entities_df = self.entities.to_dataframe()
-        # Map the keys to the entities by 1) convert to dataframe, 2) select rows based on the keys_idx
-        # from the entities table, expanding the dataframe to have the same number of rows as the
-        # entities, and 3) reset the index to avoid duplicate values in the index, which causes errors when merging
-        keys_mapped_df = self.keys.to_dataframe().iloc[entities_df['keys_idx']].reset_index(drop=True)
-        # Map the resources to entities using the same strategy as for the keys
-        # resources_mapped_df = self.resources.to_dataframe().iloc[entities_df['resources_idx']].reset_index(drop=True)
-        # Merge the mapped keys and resources with the entities tables
-        entities_df = pd.concat(objs=[entities_df, keys_mapped_df],
-                                axis=1, verify_integrity=False)
-        # Add a column for the entity id (for consistency with the other tables and to facilitate query)
-        entities_df['entities_idx'] = entities_df.index
+        entity_keys_df = self.entity_keys.to_dataframe()
+        entities_mapped_df = self.entities.to_dataframe().iloc[entity_keys_df['entities_idx']].reset_index(drop=True)
+        keys_mapped_df = self.keys.to_dataframe().iloc[entity_keys_df['keys_idx']].reset_index(drop=True)
+        entity_keys_df = pd.concat(objs=[entity_keys_df, entities_mapped_df, keys_mapped_df],
+                                   axis=1,
+                                   verify_integrity=False)
 
         # Step 2: Combine the the files, object_keys and objects tables
         object_keys_df = self.object_keys.to_dataframe()
@@ -726,7 +715,7 @@ class ExternalResources(Container):
             # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
             objs=[pd.merge(
                     # Find all entities that correspond to the row i of the object_keys_table
-                    entities_df[entities_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
+                    entity_keys_df[entity_keys_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
                     # Get a DataFrame for row i of the objects_keys_table
                     file_object_object_key_df.iloc[[i, ]],
                     # Merge the entities and object_keys on the keys_idx column so that the values from the single
@@ -803,12 +792,16 @@ class ExternalResources(Container):
                 object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
                 continue
+            if file_name == 'entity_keys.tsv':
+                entity_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                entity_keys = EntityKeyTable().from_dataframe(df=entity_keys_df, name='entity_keys', extra_ok=False)
+                continue
 
         # we need to check the idx columns in entities, objects, and object_keys
-        keys_idx = entities['keys_idx']
-        for idx in keys_idx:
-            if not int(idx) < keys.__len__():
-                msg = "Key Index out of range in EntityTable. Please check for alterations."
+        entity_idx = entity_keys['keys_idx']
+        for idx in entity_idx:
+            if not int(idx) < entities.__len__():
+                msg = "Entity Index out of range in EntityTable. Please check for alterations."
                 raise ValueError(msg)
 
         files_idx = objects['files_idx']
@@ -829,9 +822,17 @@ class ExternalResources(Container):
                 msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
+        keys_idx = entity_keys['keys_idx']
+        for idx in keys_idx:
+            if not int(idx) < keys.__len__():
+                msg = "Key Index out of range in EntityKeyTable. Please check for alterations."
+                raise ValueError(msg)
+
+
         er = ExternalResources(files=files,
                                keys=keys,
                                entities=entities,
+                               entity_keys=entity_keys,
                                objects=objects,
                                object_keys=object_keys)
         return er
@@ -951,8 +952,13 @@ class ExternalResources(Container):
         # Add the entities to the Resources table
         entities_id = df[('entities', 'entity_id')].iloc[entities_rows]
         entities_uri = df[('entities', 'entity_uri')].iloc[entities_rows]
-        entities_keys = np.array(all_added_keys)[df[('keys', 'keys_idx')].iloc[entities_rows]]
-        for e in zip(entities_keys, entities_id, entities_uri):
-            er._add_entity(key=e[0], entity_id=e[1], entity_uri=e[2])
+        for e in zip(entities_id, entities_uri):
+            er._add_entity(entity_id=e[0], entity_uri=e[1])
+
+        # Construct EntityKeyTable
+        ek_keys_idx = np.unique(df[[('entities', 'entities_idx'), ('keys', 'keys_idx')]], axis=0)
+        for ek in ek_keys_idx:
+            er._add_entity_key(entity=ek[0], key=ek[1])
+
         # Return the reconstructed ExternalResources
         return er

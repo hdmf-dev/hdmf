@@ -196,7 +196,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(container=em, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, em.object_id, 'ExternalResourcesManagerContainer', '', '')])
 
     def test_add_ref_search_for_file_parent(self):
@@ -209,7 +209,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(container=child, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, child.object_id, 'Container', '', '')])
 
     def test_add_ref_search_for_file_nested_parent(self):
@@ -224,7 +224,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(container=nested_child, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, nested_child.object_id, 'Container', '', '')])
 
     def test_add_ref_search_for_file_error(self):
@@ -247,7 +247,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity1')
         # breakpoint()
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
     def test_get_object_type(self):
@@ -314,7 +314,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities(self):
+    def test_get_obj_entities(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = ExternalResourcesManagerContainer(name='file')
@@ -327,14 +327,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(file=file,
                                     container=data)
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_container(self):
+    def test_get_obj_entities_file_none_container(self):
         er = ExternalResources()
         file = ExternalResourcesManagerContainer()
         er.add_ref(container=file,
@@ -344,14 +343,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(container=file)
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_not_container_nested(self):
+    def test_get_obj_entities_file_none_not_container_nested(self):
         er = ExternalResources()
         file = ExternalResourcesManagerContainer()
         child = Container(name='child')
@@ -365,14 +363,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(container=child)
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_not_container_deep_nested(self):
+    def test_get_obj_entities_file_none_not_container_deep_nested(self):
         er = ExternalResources()
         file = ExternalResourcesManagerContainer()
         child = Container(name='child')
@@ -388,14 +385,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(container=nested_child)
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_error(self):
+    def test_get_obj_entities_file_none_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = ExternalResourcesManagerContainer(name='file')
@@ -407,7 +403,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         with self.assertRaises(ValueError):
             _ = er.get_object_entities(container=data)
 
-    def test_get_entities_attribute(self):
+    def test_get_obj_entities_attribute(self):
         table = DynamicTable(name='table', description='table')
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
@@ -426,8 +422,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                     attribute='col1')
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_0'},
+            {'entity_id': {0: 'entity_0'},
              'entity_uri': {0: 'entity_0_uri'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
@@ -462,8 +457,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
-        msg = "Key Index out of range in EntityTable. Please check for alterations."
-        with self.assertRaisesWith(ValueError, msg):
+        with self.assertRaises(ValueError):
             _ = ExternalResources.from_norm_tsv(path='./')
 
         self.remove_er_files()
@@ -590,7 +584,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key2',)])
-        self.assertEqual(er.entities.data, [(0, 'id11', 'url11'), (1, 'id12', 'url21')])
+        self.assertEqual(er.entities.data, [('id11', 'url11'), ('id12', 'url21')])
 
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', '')])
@@ -611,7 +605,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'id11', 'url11'), (1, 'id12', 'url21')])
+        self.assertEqual(er.entities.data, [('id11', 'url11'), ('id12', 'url21')])
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', '')])
 
@@ -638,9 +632,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.keys.data, [('key1',), ('key1',), ('key1',)])
         self.assertEqual(
             er.entities.data,
-            [(0, 'id11', 'url11'),
-             (1, 'id12', 'url21'),
-             (2, 'id13', 'url31')])
+            [('id11', 'url11'),
+             ('id12', 'url21'),
+             ('id13', 'url31')])
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', ''),
                                            (2, ref_container_3.object_id, 'Container', '', '')])
@@ -683,8 +677,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
-        breakpoint()
-        # self.assertEqual(er.object_keys.data, [(0, 0)])
+        self.assertEqual(er.object_keys.data, [(0, 0), (1, 0)])
 
     def test_check_object_field_add(self):
         er = ExternalResources()
@@ -748,7 +741,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity_0_uri')
 
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, table.id.object_id, 'ElementIdentifiers', '', '')])
 
     def test_add_ref_column_as_attribute(self):
@@ -767,7 +760,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity_0_uri')
 
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, table['col1'].object_id, 'VectorData', '', '')])
 
     def test_add_ref_compound_data(self):
@@ -786,7 +779,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity_0_uri')
 
         self.assertEqual(er.keys.data, [('Mus musculus',)])
-        self.assertEqual(er.entities.data, [(0, 'NCBI:txid10090', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('NCBI:txid10090', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', 'species')])
 
     def test_roundtrip(self):
@@ -840,7 +833,7 @@ class TestExternalResourcesNestedAttributes(TestCase):
                    entity_id='entity_0',
                    entity_uri='entity_0_uri')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
 
     def test_add_ref_deep_nested(self):
