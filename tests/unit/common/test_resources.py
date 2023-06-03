@@ -38,6 +38,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         remove_test_file('./entities.tsv')
         remove_test_file('./objects.tsv')
         remove_test_file('./object_keys.tsv')
+        remove_test_file('./entity_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
         remove_test_file('./er.tsv')
