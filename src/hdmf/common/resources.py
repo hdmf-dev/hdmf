@@ -7,6 +7,9 @@ from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from glob import glob
 import os
+import zipfile
+from hdmf.testing import remove_test_file
+
 
 
 class KeyTable(Table):
@@ -587,7 +590,8 @@ class ExternalResources(Container):
                         entity_key_check = True
                 if not entity_key_check:
                     self._add_entity_key(entity, key)
-
+            else:
+                self._add_entity_key(entity, key)
         return key, entity
 
     @docval({'name': 'object_type', 'type': str,
@@ -693,7 +697,6 @@ class ExternalResources(Container):
         entity_keys_df = pd.concat(objs=[entity_keys_df, entities_mapped_df, keys_mapped_df],
                                    axis=1,
                                    verify_integrity=False)
-
         # Step 2: Combine the the files, object_keys and objects tables
         object_keys_df = self.object_keys.to_dataframe()
         objects_mapped_df = self.objects.to_dataframe().iloc[object_keys_df['objects_idx']].reset_index(drop=True)
@@ -719,7 +722,6 @@ class ExternalResources(Container):
             # Concatenate the rows of the objs
             axis=0,
             verify_integrity=False)
-
         # Step 4: Clean up the index and sort columns by table type and name
         result_df.reset_index(inplace=True, drop=True)
         # ADD files
@@ -753,15 +755,27 @@ class ExternalResources(Container):
         Write the tables in ExternalResources to individual tsv files.
         """
         folder_path = kwargs['path']
-        for child in self.children:
-            df = child.to_dataframe()
-            df.to_csv(folder_path+'/'+child.name+'.tsv', sep='\t', index=False)
+        files = [folder_path+'/'+child.name+'.tsv' for child in self.children]
+
+        for i in range(len(self.children)):
+            df = self.children[i].to_dataframe()
+            df.to_csv(files[i], sep='\t', index=False)
+
+        with zipfile.ZipFile('er.zip', 'w') as zipF:
+          for file in files:
+              zipF.write(file)
+
+        # remove tsv files
+        for file in files:
+            remove_test_file('./'+file)
 
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
     def from_norm_tsv(cls, **kwargs):
         path = kwargs['path']
+        with zipfile.ZipFile(path+'/er.zip', 'r') as zip:
+            zip.extractall(path)
         tsv_paths = glob(path+'/*')
 
         for file in tsv_paths:
