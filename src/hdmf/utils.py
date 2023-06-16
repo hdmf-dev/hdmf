@@ -599,8 +599,7 @@ def docval(*validator, **options):  # noqa: C901
                            'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
                     raise Exception(msg)
             if a.get('allow_none', False) and 'default' not in a:
-                msg = ('docval for {}: allow_none=True can only be set if a default value is provided.').format(
-                    a['name'])
+                msg = 'docval for {}: allow_none=True can only be set if a default value is provided.'.format(a['name'])
                 raise Exception(msg)
             if 'default' in a:
                 kw.append(a)

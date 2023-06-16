@@ -3,7 +3,7 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 from h5py import RegionReference
@@ -318,7 +318,7 @@ class DatasetBuilder(BaseBuilder):
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the dataset.'},
             {'name': 'data',
-             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime),
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime, date),
              'doc': 'The data in this dataset.', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'The datatype of this dataset.', 'default': None},

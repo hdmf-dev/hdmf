@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from datetime import datetime
+from datetime import datetime, date
 from unittest import mock, skip
 
 import numpy as np
@@ -104,46 +104,58 @@ class TestBasicSpec(ValidatorTestBase):
 class TestDateTimeInSpec(ValidatorTestBase):
 
     def getSpecs(self):
-        ret = GroupSpec('A test group specification with a data type',
-                        data_type_def='Bar',
-                        datasets=[DatasetSpec('an example dataset', 'int', name='data',
-                                              attributes=[AttributeSpec(
-                                                  'attr2', 'an example integer attribute', 'int')]),
-                                  DatasetSpec('an example time dataset', 'isodatetime', name='time'),
-                                  DatasetSpec('an array of times', 'isodatetime', name='time_array',
-                                              dims=('num_times',), shape=(None,))],
-                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
-        return (ret,)
+        ret = GroupSpec(
+            'A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    'an example dataset',
+                    'int',
+                    name='data',
+                    attributes=[AttributeSpec('attr2', 'an example integer attribute', 'int')]
+                ),
+                DatasetSpec('an example time dataset', 'isodatetime', name='datetime'),
+                DatasetSpec('an example time dataset', 'isodatetime', name='date', quantity='?'),
+                DatasetSpec('an array of times', 'isodatetime', name='time_array', dims=('num_times',), shape=(None,))
+            ],
+            attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        return ret,
 
     def test_valid_isodatetime(self):
-        builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
-                               datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
-                                         DatasetBuilder('time',
-                                                        datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
-                                         DatasetBuilder('time_array',
-                                                        [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())])])
+        builder = GroupBuilder(
+            'my_bar',
+            attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+            datasets=[
+                DatasetBuilder('data', 100, attributes={'attr2': 10}),
+                DatasetBuilder('datetime', datetime(2017, 5, 1, 12, 0, 0)),
+                DatasetBuilder('date', date(2017, 5, 1)),
+                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())])
+            ]
+        )
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 0)
 
     def test_invalid_isodatetime(self):
-        builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
-                               datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
-                                         DatasetBuilder('time', 100),
-                                         DatasetBuilder('time_array',
-                                                        [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())])])
+        builder = GroupBuilder(
+            'my_bar',
+            attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+            datasets=[
+                DatasetBuilder('data', 100, attributes={'attr2': 10}),
+                DatasetBuilder('datetime', 100),
+                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())])
+            ]
+        )
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 1)
-        self.assertValidationError(result[0], DtypeError, name='Bar/time')
+        self.assertValidationError(result[0], DtypeError, name='Bar/datetime')
 
     def test_invalid_isodatetime_array(self):
         builder = GroupBuilder('my_bar',
                                attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
-                                         DatasetBuilder('time',
+                                         DatasetBuilder('datetime',
                                                         datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
                                          DatasetBuilder('time_array',
                                                         datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal()))])
