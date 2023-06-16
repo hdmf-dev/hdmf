@@ -322,17 +322,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
         if spec_dtype is None or spec_dtype == "numeric" or type(value) in cls.__no_convert:
             # infer type from value
-            if hasattr(value, 'dtype'):  # covers numpy types, Zarr Array, AbstractDataChunkIterator
-                if spec_dtype == 'numeric':
+            if hasattr(value, "dtype"):  # covers numpy types, Zarr Array, AbstractDataChunkIterator
+                if spec_dtype == "numeric":
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = "utf8"
                 elif np.issubdtype(value.dtype, np.string_):
-                    ret_dtype = 'ascii'
-                elif np.issubdtype(value.dtype, np.dtype('O')):
+                    ret_dtype = "ascii"
+                elif np.issubdtype(value.dtype, np.dtype("O")):
                     # Only variable-length strings should ever appear as generic objects.
                     # Everything else should have a well-defined type
-                    ret_dtype = 'utf8'
+                    ret_dtype = "utf8"
                 else:
                     ret_dtype = value.dtype.type
                 return value, ret_dtype
