@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.7.0 (Upcoming)
+
+## Minor improvements
+- Set code style guide to `black`. @rly [#860](https://github.com/hdmf-dev/hdmf/pull/860)
+
 ## HMDF 3.6.1 (May 18, 2023)
 
 ### Bug fixes

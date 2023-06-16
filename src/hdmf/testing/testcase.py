@@ -1,16 +1,18 @@
-import numpy as np
 import os
 import re
 import unittest
 from abc import ABCMeta, abstractmethod
 
-from .utils import remove_test_file
+import numpy as np
+
 from ..backends.hdf5 import HDF5IO
 from ..build import Builder
-from ..common import validate as common_validate, get_manager
+from ..common import get_manager
+from ..common import validate as common_validate
 from ..container import AbstractContainer, Container, Data
-from ..utils import get_docval_macro
 from ..data_utils import AbstractDataChunkIterator
+from ..utils import get_docval_macro
+from .utils import remove_test_file
 
 
 class TestCase(unittest.TestCase):
@@ -24,7 +26,7 @@ class TestCase(unittest.TestCase):
         assertRaisesRegex, but checks for an exact match.
         """
 
-        return self.assertRaisesRegex(exc_type, '^%s$' % re.escape(exc_msg), *args, **kwargs)
+        return self.assertRaisesRegex(exc_type, "^%s$" % re.escape(exc_msg), *args, **kwargs)
 
     def assertWarnsWith(self, warn_type, exc_msg, *args, **kwargs):
         """
@@ -32,15 +34,17 @@ class TestCase(unittest.TestCase):
         assertWarnsRegex, but checks for an exact match.
         """
 
-        return self.assertWarnsRegex(warn_type, '^%s$' % re.escape(exc_msg), *args, **kwargs)
+        return self.assertWarnsRegex(warn_type, "^%s$" % re.escape(exc_msg), *args, **kwargs)
 
-    def assertContainerEqual(self,
-                             container1,
-                             container2,
-                             ignore_name=False,
-                             ignore_hdmf_attrs=False,
-                             ignore_string_to_byte=False,
-                             message=None):
+    def assertContainerEqual(
+        self,
+        container1,
+        container2,
+        ignore_name=False,
+        ignore_hdmf_attrs=False,
+        ignore_string_to_byte=False,
+        message=None,
+    ):
         """
         Asserts that the two AbstractContainers have equal contents. This applies to both Container and Data types.
 
@@ -62,7 +66,11 @@ class TestCase(unittest.TestCase):
         if not ignore_name:
             self.assertEqual(container1.name, container2.name, message)
         if not ignore_hdmf_attrs:
-            self.assertEqual(container1.container_source, container2.container_source, message)
+            self.assertEqual(
+                container1.container_source,
+                container2.container_source,
+                message,
+            )
             self.assertEqual(container1.object_id, container2.object_id, message)
         # NOTE: parent is not tested because it can lead to infinite loops
         if isinstance(container1, Container):
@@ -74,17 +82,22 @@ class TestCase(unittest.TestCase):
             with self.subTest(field=field, container_type=type1.__name__):
                 f1 = getattr(container1, field)
                 f2 = getattr(container2, field)
-                self._assert_field_equal(f1, f2,
-                                         ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                         ignore_string_to_byte=ignore_string_to_byte,
-                                         message=message)
+                self._assert_field_equal(
+                    f1,
+                    f2,
+                    ignore_hdmf_attrs=ignore_hdmf_attrs,
+                    ignore_string_to_byte=ignore_string_to_byte,
+                    message=message,
+                )
 
-    def _assert_field_equal(self,
-                            f1,
-                            f2,
-                            ignore_hdmf_attrs=False,
-                            ignore_string_to_byte=False,
-                            message=None):
+    def _assert_field_equal(
+        self,
+        f1,
+        f2,
+        ignore_hdmf_attrs=False,
+        ignore_string_to_byte=False,
+        message=None,
+    ):
         """
         Internal helper function used to compare two fields from Container objects
 
@@ -95,12 +108,15 @@ class TestCase(unittest.TestCase):
         :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
         :param message: custom additional message to show when assertions as part of this assert are failing
         """
-        array_data_types = get_docval_macro('array_data')
-        if (isinstance(f1, array_data_types) or isinstance(f2, array_data_types)):
-            self._assert_array_equal(f1, f2,
-                                     ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                     ignore_string_to_byte=ignore_string_to_byte,
-                                     message=message)
+        array_data_types = get_docval_macro("array_data")
+        if isinstance(f1, array_data_types) or isinstance(f2, array_data_types):
+            self._assert_array_equal(
+                f1,
+                f2,
+                ignore_hdmf_attrs=ignore_hdmf_attrs,
+                ignore_string_to_byte=ignore_string_to_byte,
+                message=message,
+            )
         elif isinstance(f1, dict) and len(f1) and isinstance(f1.values()[0], Container):
             self.assertIsInstance(f2, dict, message)
             f1_keys = set(f1.keys())
@@ -108,31 +124,42 @@ class TestCase(unittest.TestCase):
             self.assertSetEqual(f1_keys, f2_keys, message)
             for k in f1_keys:
                 with self.subTest(module_name=k):
-                    self.assertContainerEqual(f1[k], f2[k],
-                                              ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                              ignore_string_to_byte=ignore_string_to_byte,
-                                              message=message)
+                    self.assertContainerEqual(
+                        f1[k],
+                        f2[k],
+                        ignore_hdmf_attrs=ignore_hdmf_attrs,
+                        ignore_string_to_byte=ignore_string_to_byte,
+                        message=message,
+                    )
         elif isinstance(f1, Container):
-            self.assertContainerEqual(f1, f2,
-                                      ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                      ignore_string_to_byte=ignore_string_to_byte,
-                                      message=message)
+            self.assertContainerEqual(
+                f1,
+                f2,
+                ignore_hdmf_attrs=ignore_hdmf_attrs,
+                ignore_string_to_byte=ignore_string_to_byte,
+                message=message,
+            )
         elif isinstance(f1, Data):
-            self._assert_data_equal(f1, f2,
-                                    ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                    ignore_string_to_byte=ignore_string_to_byte,
-                                    message=message)
+            self._assert_data_equal(
+                f1,
+                f2,
+                ignore_hdmf_attrs=ignore_hdmf_attrs,
+                ignore_string_to_byte=ignore_string_to_byte,
+                message=message,
+            )
         elif isinstance(f1, (float, np.floating)):
             np.testing.assert_allclose(f1, f2, err_msg=message)
         else:
             self.assertEqual(f1, f2, message)
 
-    def _assert_data_equal(self,
-                           data1,
-                           data2,
-                           ignore_hdmf_attrs=False,
-                           ignore_string_to_byte=False,
-                           message=None):
+    def _assert_data_equal(
+        self,
+        data1,
+        data2,
+        ignore_hdmf_attrs=False,
+        ignore_string_to_byte=False,
+        message=None,
+    ):
         """
         Internal helper function used to compare two :py:class:`~hdmf.container.Data` objects
 
@@ -148,21 +175,28 @@ class TestCase(unittest.TestCase):
         self.assertTrue(isinstance(data1, Data), message)
         self.assertTrue(isinstance(data2, Data), message)
         self.assertEqual(len(data1), len(data2), message)
-        self._assert_array_equal(data1.data, data2.data,
-                                 ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                 ignore_string_to_byte=ignore_string_to_byte,
-                                 message=message)
-        self.assertContainerEqual(container1=data1,
-                                  container2=data2,
-                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                  message=message)
+        self._assert_array_equal(
+            data1.data,
+            data2.data,
+            ignore_hdmf_attrs=ignore_hdmf_attrs,
+            ignore_string_to_byte=ignore_string_to_byte,
+            message=message,
+        )
+        self.assertContainerEqual(
+            container1=data1,
+            container2=data2,
+            ignore_hdmf_attrs=ignore_hdmf_attrs,
+            message=message,
+        )
 
-    def _assert_array_equal(self,
-                            arr1,
-                            arr2,
-                            ignore_hdmf_attrs=False,
-                            ignore_string_to_byte=False,
-                            message=None):
+    def _assert_array_equal(
+        self,
+        arr1,
+        arr2,
+        ignore_hdmf_attrs=False,
+        ignore_string_to_byte=False,
+        message=None,
+    ):
         """
         Internal helper function used to check whether two arrays are equal
 
@@ -173,8 +207,9 @@ class TestCase(unittest.TestCase):
         :param ignore_string_to_byte: ignore conversion of str to bytes and compare as unicode instead
         :param message: custom additional message to show when assertions as part of this assert are failing
         """
-        array_data_types = tuple([i for i in get_docval_macro('array_data')
-                                  if (i != list and i != tuple and i != AbstractDataChunkIterator)])
+        array_data_types = tuple(
+            [i for i in get_docval_macro("array_data") if (i != list and i != tuple and i != AbstractDataChunkIterator)]
+        )
         # We construct array_data_types this way to avoid explicit dependency on h5py, Zarr and other
         # I/O backends. Only list and tuple do not support [()] slicing, and AbstractDataChunkIterator
         # should never occur here. The effective value of array_data_types is then:
@@ -189,9 +224,9 @@ class TestCase(unittest.TestCase):
             else:
                 if ignore_string_to_byte:
                     if isinstance(arr1, bytes):
-                        arr1 = arr1.decode('utf-8')
+                        arr1 = arr1.decode("utf-8")
                     if isinstance(arr2, bytes):
-                        arr2 = arr2.decode('utf-8')
+                        arr2 = arr2.decode("utf-8")
                 self.assertEqual(arr1, arr2, message)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2), message)
@@ -207,27 +242,38 @@ class TestCase(unittest.TestCase):
             else:
                 for sub1, sub2 in zip(arr1, arr2):
                     if isinstance(sub1, Container):
-                        self.assertContainerEqual(sub1, sub2,
-                                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                                  ignore_string_to_byte=ignore_string_to_byte,
-                                                  message=message)
+                        self.assertContainerEqual(
+                            sub1,
+                            sub2,
+                            ignore_hdmf_attrs=ignore_hdmf_attrs,
+                            ignore_string_to_byte=ignore_string_to_byte,
+                            message=message,
+                        )
                     elif isinstance(sub1, Data):
-                        self._assert_data_equal(sub1, sub2,
-                                                ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                                ignore_string_to_byte=ignore_string_to_byte,
-                                                message=message)
+                        self._assert_data_equal(
+                            sub1,
+                            sub2,
+                            ignore_hdmf_attrs=ignore_hdmf_attrs,
+                            ignore_string_to_byte=ignore_string_to_byte,
+                            message=message,
+                        )
                     else:
-                        self._assert_array_equal(sub1, sub2,
-                                                 ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                                 ignore_string_to_byte=ignore_string_to_byte,
-                                                 message=message)
+                        self._assert_array_equal(
+                            sub1,
+                            sub2,
+                            ignore_hdmf_attrs=ignore_hdmf_attrs,
+                            ignore_string_to_byte=ignore_string_to_byte,
+                            message=message,
+                        )
 
-    def assertBuilderEqual(self,
-                           builder1,
-                           builder2,
-                           check_path=True,
-                           check_source=True,
-                           message=None):
+    def assertBuilderEqual(
+        self,
+        builder1,
+        builder2,
+        check_path=True,
+        check_source=True,
+        message=None,
+    ):
         """
         Test whether two builders are equal. Like assertDictEqual but also checks type, name, path, and source.
 
@@ -274,8 +320,8 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         self.__manager = get_manager()
         self.container = self.setUpContainer()
         self.container_type = self.container.__class__.__name__
-        self.filename = 'test_%s.h5' % self.container_type
-        self.export_filename = 'test_export_%s.h5' % self.container_type
+        self.filename = "test_%s.h5" % self.container_type
+        self.export_filename = "test_export_%s.h5" % self.container_type
         self.writer = None
         self.reader = None
         self.export_reader = None
@@ -294,7 +340,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
     @abstractmethod
     def setUpContainer(self):
         """Return the Container to read/write."""
-        raise NotImplementedError('Cannot run test unless setUpContainer is implemented')
+        raise NotImplementedError("Cannot run test unless setUpContainer is implemented")
 
     def test_roundtrip(self):
         """Test whether the container read from a written file is the same as the original file."""
@@ -316,16 +362,21 @@ class H5RoundTripMixin(metaclass=ABCMeta):
         if not export:
             self.assertContainerEqual(read_container, self.container, ignore_name=True)
         else:
-            self.assertContainerEqual(read_container, self.container, ignore_name=True, ignore_hdmf_attrs=True)
+            self.assertContainerEqual(
+                read_container,
+                self.container,
+                ignore_name=True,
+                ignore_hdmf_attrs=True,
+            )
 
         self.validate(read_container._experimental)
 
     def roundtripContainer(self, cache_spec=False):
         """Write the container to an HDF5 file, read the container from the file, and return it."""
-        with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
+        with HDF5IO(self.filename, manager=get_manager(), mode="w") as write_io:
             write_io.write(self.container, cache_spec=cache_spec)
 
-        self.reader = HDF5IO(self.filename, manager=get_manager(), mode='r')
+        self.reader = HDF5IO(self.filename, manager=get_manager(), mode="r")
         return self.reader.read()
 
     def roundtripExportContainer(self, cache_spec=False):
@@ -338,20 +389,20 @@ class H5RoundTripMixin(metaclass=ABCMeta):
             cache_spec=cache_spec,
         )
 
-        self.export_reader = HDF5IO(self.export_filename, manager=get_manager(), mode='r')
+        self.export_reader = HDF5IO(self.export_filename, manager=get_manager(), mode="r")
         return self.export_reader.read()
 
     def validate(self, experimental=False):
         """Validate the written and exported files, if they exist."""
         if os.path.exists(self.filename):
-            with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
+            with HDF5IO(self.filename, manager=get_manager(), mode="r") as io:
                 errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:
                         raise Exception(err)
 
         if os.path.exists(self.export_filename):
-            with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
+            with HDF5IO(self.filename, manager=get_manager(), mode="r") as io:
                 errors = common_validate(io, experimental=experimental)
                 if errors:
                     for err in errors:

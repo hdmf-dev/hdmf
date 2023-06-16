@@ -85,11 +85,11 @@ exclude_lines = [
 
 [tool.setuptools_scm]
 
-# [tool.black]
-# line-length = 120
-# preview = true
-# exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb"
-# force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
+[tool.black]
+line-length = 120
+preview = true
+exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb"
+force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
 
 [tool.ruff]
 select = ["E", "F", "T100", "T201", "T203"]

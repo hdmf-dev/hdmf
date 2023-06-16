@@ -1,12 +1,11 @@
-from hdmf.common import CSRMatrix
-from hdmf.testing import TestCase, H5RoundTripMixin
-
-import scipy.sparse as sps
 import numpy as np
+import scipy.sparse as sps
+
+from hdmf.common import CSRMatrix
+from hdmf.testing import H5RoundTripMixin, TestCase
 
 
 class TestCSRMatrix(TestCase):
-
     def test_from_sparse_matrix(self):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
@@ -80,36 +79,84 @@ class TestCSRMatrix(TestCase):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
-        with self.assertRaisesWith(ValueError, "'shape' argument must specify two and only two dimensions."):
+        with self.assertRaisesWith(
+            ValueError,
+            "'shape' argument must specify two and only two dimensions.",
+        ):
             _ = CSRMatrix(data=data, indices=indices, indptr=indptr, shape=(3, 3, 1))
-        with self.assertRaisesWith(ValueError, "'shape' argument must specify two and only two dimensions."):
-            _ = CSRMatrix(data=data, indices=indices, indptr=indptr, shape=(9, ))
+        with self.assertRaisesWith(
+            ValueError,
+            "'shape' argument must specify two and only two dimensions.",
+        ):
+            _ = CSRMatrix(data=data, indices=indices, indptr=indptr, shape=(9,))
 
     def test_valueerror_non_1d_indptr_or_indicies(self):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
-        with self.assertRaisesWith(ValueError,  "'indices' must be a 1D array of unsigned integers."):
-            _ = CSRMatrix(data=data, indices=indices.reshape((3, 2)), indptr=indptr, shape=(3, 3))
-        with self.assertRaisesWith(ValueError,  "'indptr' must be a 1D array of unsigned integers."):
-            _ = CSRMatrix(data=data, indices=indices, indptr=indptr.reshape((2, 2)), shape=(3, 3))
+        with self.assertRaisesWith(ValueError, "'indices' must be a 1D array of unsigned integers."):
+            _ = CSRMatrix(
+                data=data,
+                indices=indices.reshape((3, 2)),
+                indptr=indptr,
+                shape=(3, 3),
+            )
+        with self.assertRaisesWith(ValueError, "'indptr' must be a 1D array of unsigned integers."):
+            _ = CSRMatrix(
+                data=data,
+                indices=indices,
+                indptr=indptr.reshape((2, 2)),
+                shape=(3, 3),
+            )
 
     def test_valueerror_non_int_indptr_or_indicies(self):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
         # test indices numpy array of floats
-        with self.assertRaisesWith(ValueError, "Cannot convert 'indices' to an array of unsigned integers."):
-            _ = CSRMatrix(data=data, indices=indices.astype(float), indptr=indptr, shape=(3, 3))
+        with self.assertRaisesWith(
+            ValueError,
+            "Cannot convert 'indices' to an array of unsigned integers.",
+        ):
+            _ = CSRMatrix(
+                data=data,
+                indices=indices.astype(float),
+                indptr=indptr,
+                shape=(3, 3),
+            )
         # test indptr numpy array of floats
-        with self.assertRaisesWith(ValueError, "Cannot convert 'indptr' to an array of unsigned integers."):
-            _ = CSRMatrix(data=data, indices=indices, indptr=indptr.astype(float), shape=(3, 3))
+        with self.assertRaisesWith(
+            ValueError,
+            "Cannot convert 'indptr' to an array of unsigned integers.",
+        ):
+            _ = CSRMatrix(
+                data=data,
+                indices=indices,
+                indptr=indptr.astype(float),
+                shape=(3, 3),
+            )
         # test indices list of floats
-        with self.assertRaisesWith(ValueError, "Cannot convert 'indices' to an array of unsigned integers."):
-            _ = CSRMatrix(data=data, indices=indices.astype(float).tolist(), indptr=indptr, shape=(3, 3))
+        with self.assertRaisesWith(
+            ValueError,
+            "Cannot convert 'indices' to an array of unsigned integers.",
+        ):
+            _ = CSRMatrix(
+                data=data,
+                indices=indices.astype(float).tolist(),
+                indptr=indptr,
+                shape=(3, 3),
+            )
         # test indptr list of floats
-        with self.assertRaisesWith(ValueError, "Cannot convert 'indptr' to an array of unsigned integers."):
-            _ = CSRMatrix(data=data, indices=indices, indptr=indptr.astype(float).tolist(), shape=(3, 3))
+        with self.assertRaisesWith(
+            ValueError,
+            "Cannot convert 'indptr' to an array of unsigned integers.",
+        ):
+            _ = CSRMatrix(
+                data=data,
+                indices=indices,
+                indptr=indptr.astype(float).tolist(),
+                shape=(3, 3),
+            )
 
     def test_constructor_indices_missing(self):
         data = np.array([1, 2, 3, 4, 5, 6])
@@ -139,7 +186,7 @@ class TestCSRMatrix(TestCase):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
         indptr = np.array([0, 2, 3, 6])
-        shape = (3, )
+        shape = (3,)
         msg = "'shape' argument must specify two and only two dimensions."
         with self.assertRaisesWith(ValueError, msg):
             CSRMatrix(data=data, indices=indices, indptr=indptr, shape=shape)
@@ -155,7 +202,6 @@ class TestCSRMatrix(TestCase):
 
 
 class TestCSRMatrixRoundTrip(H5RoundTripMixin, TestCase):
-
     def setUpContainer(self):
         data = np.array([1, 2, 3, 4, 5, 6])
         indices = np.array([0, 2, 2, 0, 1, 2])
