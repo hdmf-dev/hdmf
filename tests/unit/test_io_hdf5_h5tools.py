@@ -3133,6 +3133,10 @@ class TestExport(TestCase):
 
         class OtherIO(HDMFIO):
 
+            @staticmethod
+            def can_read(path):
+                pass
+
             def read_builder(self):
                 pass
 
@@ -3161,6 +3165,10 @@ class TestExport(TestCase):
             write_io.write(foofile)
 
         class OtherIO(HDMFIO):
+
+            @staticmethod
+            def can_read(path):
+                pass
 
             def __init__(self, manager):
                 super().__init__(manager=manager)

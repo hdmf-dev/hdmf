@@ -1,6 +1,7 @@
 import logging
 import os.path
 import warnings
+from abc import abstractmethod
 from collections import deque
 from functools import partial
 from pathlib import Path, PurePosixPath as pp
@@ -36,8 +37,8 @@ class HDF5IO(HDMFIO):
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
 
-    @classmethod
-    def can_read(cls, path):
+    @staticmethod
+    def can_read(path):
         """Determines whether a given path is readable by the HDF5IO class"""
         if not os.path.isfile(path):
             return False

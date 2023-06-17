@@ -10,9 +10,9 @@ from ..utils import docval, getargs, popargs
 
 class HDMFIO(metaclass=ABCMeta):
 
-    @classmethod
+    @staticmethod
     @abstractmethod
-    def can_read(cls, path):
+    def can_read(path):
         """Determines whether a given path is readable by this HDMFIO class"""
         pass
 
