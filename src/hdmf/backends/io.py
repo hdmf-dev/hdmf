@@ -9,6 +9,13 @@ from ..utils import docval, getargs, popargs
 
 
 class HDMFIO(metaclass=ABCMeta):
+
+    @classmethod
+    @abstractmethod
+    def can_read(cls, path):
+        """Determines whether a given path is readable by this HDMFIO class"""
+        pass
+
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),
