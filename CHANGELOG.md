@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.7.0 (Upcoming)
+
+### New features and minor improvements
+- Added abstract staticmethod to `HDMFIO.can_read()` and concrete staticmethod `HDF5IO.can_read()`. @bendichter
+  [#875](https://github.com/hdmf-dev/hdmf-zarr/pull/97](https://github.com/hdmf-dev/hdmf/pull/875)
+
 ## HMDF 3.6.1 (May 18, 2023)
 
 ### Bug fixes
