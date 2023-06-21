@@ -1,12 +1,14 @@
 import pandas as pd
 from hdmf.common import DynamicTable
-from hdmf.common.resources import ExternalResources, Key, ObjectTable
+from hdmf.common.resources import ExternalResources, Key
 from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 import numpy as np
 from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
+from glob import glob
+import zipfile
 
 
 class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
@@ -38,10 +40,21 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         remove_test_file('./entities.tsv')
         remove_test_file('./objects.tsv')
         remove_test_file('./object_keys.tsv')
-        remove_test_file('./entity_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
         remove_test_file('./er.tsv')
+        remove_test_file('./er.zip')
+
+    def child_tsv(self, external_resources):
+        for child in external_resources.children:
+            df = child.to_dataframe()
+            df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
+
+    def zip_child(self):
+        files = glob('*.tsv')
+        with zipfile.ZipFile('er.zip', 'w') as zipF:
+          for file in files:
+              zipF.write(file)
 
     def test_to_dataframe(self):
         # Setup complex external resources with keys reused across objects and
@@ -255,7 +268,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        # breakpoint()
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
@@ -453,89 +465,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         self.remove_er_files()
 
-    # def test_to_and_from_norm_tsv_entity_value_error(self):
-    #     er = ExternalResources()
-    #     data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-    #     er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
-    #                container=data,
-    #                key='key1',
-    #                entity_id='entity_id1',
-    #                entity_uri='entity1')
-    #     er.to_norm_tsv(path='./')
-    #
-    #     df = er.entities.to_dataframe()
-    #     df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
-    #     df.to_csv('./entities.tsv', sep='\t', index=False)
-    #
-    #     with self.assertRaises(ValueError):
-    #         _ = ExternalResources.from_norm_tsv(path='./')
-    #
-    #     self.remove_er_files()
-    #
-    # def test_to_and_from_norm_tsv_object_value_error(self):
-    #     er = ExternalResources()
-    #     data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-    #     er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
-    #                container=data,
-    #                key='key1',
-    #                entity_id='entity_id1',
-    #                entity_uri='entity1')
-    #     er.to_norm_tsv(path='./')
-    #
-    #     df = er.objects.to_dataframe()
-    #     df.at[0, ('files_idx')] = 10  # Change key_ix 0 to 10
-    #     objects = ObjectTable().from_dataframe(df=df, name='objects', extra_ok=False)
-    #     breakpoint()
-    #
-    #
-    #     msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         _ = ExternalResources.from_norm_tsv(path='./')
-    #
-    #     self.remove_er_files()
-    #
-    # def test_to_and_from_norm_tsv_object_keys_object_idx_value_error(self):
-    #     er = ExternalResources()
-    #     data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-    #     er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
-    #                container=data,
-    #                key='key1',
-    #                entity_id='entity_id1',
-    #                entity_uri='entity1')
-    #     er.to_norm_tsv(path='./')
-    #
-    #     df = er.object_keys.to_dataframe()
-    #     df.at[0, ('objects_idx')] = 10  # Change key_ix 0 to 10
-    #     df.to_csv('./object_keys.tsv', sep='\t', index=False)
-    #
-    #     msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         _ = ExternalResources.from_norm_tsv(path='./')
-    #
-    #     self.remove_er_files()
-    #
-    # def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
-    #     er = ExternalResources()
-    #     data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-    #     er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
-    #                container=data,
-    #                key='key1',
-    #                entity_id='entity_id1',
-    #                entity_uri='entity1')
-    #     er.to_norm_tsv(path='./')
-    #
-    #     df = er.object_keys.to_dataframe()
-    #     df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
-    #     df.to_csv('./object_keys.tsv', sep='\t', index=False)
-    #
-    #     msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         _ = ExternalResources.from_norm_tsv(path='./')
-    #
-    #     self.remove_er_files()
-
-    def test_to_flat_tsv_and_from_flat_tsv(self):
-        # write er to file
+    def test_to_and_from_norm_tsv_entity_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
@@ -543,42 +473,92 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_flat_tsv(path='./er.tsv')
-        # read er back from file and compare
-        er_obj = ExternalResources.from_flat_tsv(path='./er.tsv')
-        # Check that the data is correct
-        ExternalResources.assert_external_resources_equal(er_obj, er, check_dtype=False)
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.entities.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entities.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        with self.assertRaises(ValueError):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
         self.remove_er_files()
 
-    def test_to_flat_tsv_and_from_flat_tsv_missing_keyidx(self):
-        # write er to file
-        df = self.container.to_dataframe(use_categories=True)
-        df.at[0, ('keys', 'keys_idx')] = 10  # Change key_ix 0 to 10
-        df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        msg = "Missing keys_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-        with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
+    def test_to_and_from_norm_tsv_object_value_error(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
 
-    def test_to_flat_tsv_and_from_flat_tsv_missing_objectidx(self):
-        # write er to file
-        df = self.container.to_dataframe(use_categories=True)
-        df.at[0, ('objects', 'objects_idx')] = 10  # Change objects_idx 0 to 10
-        df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-        with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
+        self.child_tsv(external_resources=er)
 
-    def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
-        # write er to file
-        er_df = self.container.to_dataframe(use_categories=True)
-        er_df.at[0, ('entities', 'entities_idx')] = 10  # Change entities_idx 0 to 10
-        er_df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        msg = "Missing entities_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
+        df = er.objects.to_dataframe()
+        df.at[0, ('files_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./objects.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_object_keys_object_idx_value_error(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.object_keys.to_dataframe()
+        df.at[0, ('objects_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./object_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
+    #
+    def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.object_keys.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./object_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
 
     def test_add_ref_two_keys(self):
         er = ExternalResources()
