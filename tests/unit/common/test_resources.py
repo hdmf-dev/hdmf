@@ -337,6 +337,18 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(df, expected_df)
 
+    def test_get_entity(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = ExternalResourcesManagerContainer(name='file')
+        er.add_ref(file=file,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.get_entity(entity_id='entity_id1').idx, 0)
+        self.assertEqual(er.get_entity(entity_id='entity_id2'), False)
+
     def test_get_obj_entities(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
