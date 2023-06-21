@@ -306,17 +306,24 @@ er.add_ref(
 ###############################################################################
 # Write ExternalResources
 # ------------------------------------------------------
-# :py:class:`~hdmf.common.resources.ExternalResources` is written as a flattened tsv file.
-# The user provides the path, which contains the name of the file, to where the tsv
-# file will be written.
+# :py:class:`~hdmf.common.resources.ExternalResources` is written as a zip file of
+# the individual tables written to tsv.
+# The user provides the path, which contains the name of the directory.
 
-er.to_flat_tsv(path='./er_example.tsv')
+er.to_norm_tsv(path='./')
 
 ###############################################################################
 # Read ExternalResources
 # ------------------------------------------------------
 # Users can read :py:class:`~hdmf.common.resources.ExternalResources` from the tsv format
-# by providing the path to the file.
+# by providing the path to the directory.
 
-er_read = ExternalResources.from_flat_tsv(path='./er_example.tsv')
-remove_test_file('./er_example.tsv')
+er_read = ExternalResources.from_norm_tsv(path='./')
+remove_test_file('./entities.tsv')
+remove_test_file('./entity_keys.tsv')
+remove_test_file('./objects.tsv')
+remove_test_file('./object_keys.tsv')
+remove_test_file('./keys.tsv')
+remove_test_file('./files.tsv')
+remove_test_file('./er.tsv')
+remove_test_file('./er.zip')
