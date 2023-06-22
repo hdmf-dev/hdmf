@@ -848,7 +848,7 @@ class ExternalResources(Container):
 
         keys_idx = entity_keys['keys_idx']
         for idx in keys_idx:
-            if not int(idx) < keys.__len__():
+            if not int(idx) < len(keys):
                 msg = "Key Index out of range in EntityKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
