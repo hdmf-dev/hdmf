@@ -602,7 +602,7 @@ class ExternalResources(Container):
             else:
                 # this means that specific key is not in the EntityKeyTable, so add it and establish
                 # the relationship with the entity
-                msg = "Keys should always gave an entity relationship. Check for privately added keys and remove them."
+                self._add_entity_key(entity, key)
         return key, entity
 
     @docval({'name': 'object_type', 'type': str,
