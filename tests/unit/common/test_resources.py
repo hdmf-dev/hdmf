@@ -501,6 +501,52 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         self.remove_er_files()
 
+    def test_to_and_from_norm_tsv_entity_key_value_error_key(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.entity_keys.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entity_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        with self.assertRaises(ValueError):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_entity_key_value_error_entity(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.entity_keys.to_dataframe()
+        df.at[0, ('entity_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entity_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        with self.assertRaises(ValueError):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
+
     def test_to_and_from_norm_tsv_object_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
@@ -702,7 +748,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        entity_uri='entity_uri1')
 
     def test_reuse_key_reuse_entity(self):
-        # With the key and entity existing, the EntityKeyTable should have duplicates
+        # With the key and entity existing, the EntityKeyTable should not have duplicates
         er = ExternalResources()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
@@ -743,6 +789,31 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_id='NCBI:txid10090')
         self.assertEqual(er.entity_keys.data, [(0, 0), (0, 1)])
 
+    def test_reuse_key_reuse_entity_new(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mice',
+                   entity_id='entity_2',
+                   entity_uri='entity_2_uri')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key=existing_key,
+                   entity_id='entity_2')
+
+        self.assertEqual(er.entity_keys.data, [(0, 0), (1, 1), (1, 0)])
 
     def test_entity_uri_error(self):
         er = ExternalResources()
