@@ -830,19 +830,19 @@ class ExternalResources(Container):
 
         files_idx = objects['files_idx']
         for idx in files_idx:
-            if not int(idx) < files.__len__():
+            if not int(idx) < len(files):
                 msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
                 raise ValueError(msg)
 
         object_idx = object_keys['objects_idx']
         for idx in object_idx:
-            if not int(idx) < objects.__len__():
+            if not int(idx) < len(objects):
                 msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
         keys_idx = object_keys['keys_idx']
         for idx in keys_idx:
-            if not int(idx) < keys.__len__():
+            if not int(idx) < len(keys):
                 msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
