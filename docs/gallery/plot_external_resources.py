@@ -93,6 +93,7 @@ from hdmf import Container, ExternalResourcesManager
 from hdmf import Data
 from hdmf.testing import remove_test_file
 import numpy as np
+import os
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
@@ -319,11 +320,4 @@ er.to_norm_tsv(path='./')
 # by providing the path to the directory.
 
 er_read = ExternalResources.from_norm_tsv(path='./')
-remove_test_file('./entities.tsv')
-remove_test_file('./entity_keys.tsv')
-remove_test_file('./objects.tsv')
-remove_test_file('./object_keys.tsv')
-remove_test_file('./keys.tsv')
-remove_test_file('./files.tsv')
-remove_test_file('./er.tsv')
-remove_test_file('./er.zip')
+os.remove('./er.zip')

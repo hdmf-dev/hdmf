@@ -753,8 +753,8 @@ class ExternalResources(Container):
         """
         Write the tables in ExternalResources to individual tsv files.
         """
-        folder_path = kwargs['path']
-        files = [folder_path+'/'+child.name+'.tsv' for child in self.children]
+        path = kwargs['path']
+        files = [path+child.name+'.tsv' for child in self.children]
 
         for i in range(len(self.children)):
             df = self.children[i].to_dataframe()
@@ -766,8 +766,7 @@ class ExternalResources(Container):
 
         # remove tsv files
         for file in files:
-            if os.path.exists(path):
-                os.remove('./'+file)
+            os.remove(file)
 
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
@@ -783,26 +782,32 @@ class ExternalResources(Container):
             if file_name == 'files.tsv':
                 files_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 files = FileTable().from_dataframe(df=files_df, name='files', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'keys.tsv':
                 keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 keys = KeyTable().from_dataframe(df=keys_df, name='keys', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'entities.tsv':
                 entities_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 entities = EntityTable().from_dataframe(df=entities_df, name='entities', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'objects.tsv':
                 objects_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 objects = ObjectTable().from_dataframe(df=objects_df, name='objects', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'object_keys.tsv':
                 object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'entity_keys.tsv':
                 ent_key_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 entity_keys = EntityKeyTable().from_dataframe(df=ent_key_df, name='entity_keys', extra_ok=False)
+                os.remove(file)
                 continue
 
         # we need to check the idx columns in entities, objects, and object_keys
