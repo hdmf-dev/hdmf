@@ -824,7 +824,7 @@ class ExternalResources(Container):
         # we need to check the idx columns in entities, objects, and object_keys
         entity_idx = entity_keys['entities_idx']
         for idx in entity_idx:
-            if not int(idx) < entities.__len__():
+            if not int(idx) < len(entities):
                 msg = "Entity Index out of range in EntityTable. Please check for alterations."
                 raise ValueError(msg)
 
