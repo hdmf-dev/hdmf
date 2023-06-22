@@ -347,7 +347,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_id='entity_id1',
                    entity_uri='entity1')
         self.assertEqual(er.get_entity(entity_id='entity_id1').idx, 0)
-        self.assertEqual(er.get_entity(entity_id='entity_id2'), False)
+        self.assertEqual(er.get_entity(entity_id='entity_id2'), None)
 
     def test_get_obj_entities(self):
         er = ExternalResources()
