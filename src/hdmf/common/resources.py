@@ -766,7 +766,8 @@ class ExternalResources(Container):
 
         # remove tsv files
         for file in files:
-            remove_test_file('./'+file)
+            if os.path.exists(path):
+                os.remove('./'+file)
 
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
