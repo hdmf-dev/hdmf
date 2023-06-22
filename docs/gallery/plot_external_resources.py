@@ -91,7 +91,6 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable, VectorData
 from hdmf import Container, ExternalResourcesManager
 from hdmf import Data
-from hdmf.testing import remove_test_file
 import numpy as np
 import os
 # Ignore experimental feature warnings in the tutorial to improve rendering

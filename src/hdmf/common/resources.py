@@ -8,8 +8,6 @@ from ..build import TypeMap
 from glob import glob
 import os
 import zipfile
-from hdmf.testing import remove_test_file
-
 
 
 class KeyTable(Table):
@@ -475,7 +473,7 @@ class ExternalResources(Container):
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
             {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
              'default': None},
             )
@@ -571,27 +569,40 @@ class ExternalResources(Container):
                 if not obj_key_check:
                     self._add_object_key(object_field, key)
             else:
-                self._add_object_key(object_field, key)
+                msg = "Cannot find key object. Create new Key with string."
+                raise ValueError(msg)
             # check if the key and object have been related in the ObjectKeyTable
 
         entity = self.get_entity(entity_id=entity_id)
         if isinstance(entity, bool):
+            if entity_uri is None:
+                msg = 'New entities must have an entity_uri.'
+                raise ValueError(msg)
             entity = self._add_entity(entity_id, entity_uri)
             self._add_entity_key(entity, key)
         else:
+            if entity_uri is not None:
+                msg = 'If you plan on reusing an entity, then entity_uri parameter must be None.'
+                raise ValueError(msg)
             # check for entity-key relationship in EntityKeyTable
             key_idx = key.idx
             entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
             if len(entity_key_row_idx)!=0:
+                # this means there exists rows where the key is in the EntityKeyTable
                 entity_key_check = False
                 for row_idx in entity_key_row_idx:
                     entity_idx = self.entity_keys['entities_idx', row_idx]
                     if entity_idx == entity.idx:
                         entity_key_check = True
+                        # this means there is already a key-entity relationship recorded
                 if not entity_key_check:
+                    # this means that though the key is there, there is not key-entity relationship
+                    # a.k.a add it now
                     self._add_entity_key(entity, key)
             else:
-                self._add_entity_key(entity, key)
+                # this means that specific key is not in the EntityKeyTable, so add it and establish
+                # the relationship with the entity
+                msg = "Keys should always gave an entity relationship. Check for privately added keys and remove them."
         return key, entity
 
     @docval({'name': 'object_type', 'type': str,

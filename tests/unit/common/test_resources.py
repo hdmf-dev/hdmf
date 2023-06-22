@@ -660,7 +660,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
-        # breakpoint()
         self.assertEqual(er.object_keys.data, [(0, 0)])
 
     def test_object_key_existing_key_new_object(self):
@@ -683,6 +682,117 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_id='entity2',
                    entity_uri='entity_uri2')
         self.assertEqual(er.object_keys.data, [(0, 0), (1, 0)])
+
+    def test_object_key_existing_key_new_object_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        key = er._add_key('key')
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_1,
+                       key=key,
+                       entity_id='entity1',
+                       entity_uri='entity_uri1')
+
+    def test_reuse_key_reuse_entity(self):
+        # With the key and entity existing, the EntityKeyTable should have duplicates
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key=existing_key,
+                   entity_id='NCBI:txid10090')
+
+        self.assertEqual(er.entity_keys.data, [(0, 0)])
+
+    def test_resuse_entity_different_key(self):
+        # The EntityKeyTable should have two rows: same entity_idx, but different key_idx
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key='mouse',
+                   entity_id='NCBI:txid10090')
+
+        self.assertEqual(er.entity_keys.data, [(0, 0), (0, 1)])
+
+
+    def test_entity_uri_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_1,
+                       key='Mus musculus',
+                       entity_id='NCBI:txid10090')
+
+    def test_entity_uri_reuse_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_2,
+                       key=existing_key,
+                       entity_id='NCBI:txid10090',
+                       entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+    def test_key_without_entity_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        key = er._add_key('key')
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_1,
+                       key=key,
+                       entity_id='entity1')
 
     def test_check_object_field_add(self):
         er = ExternalResources()
