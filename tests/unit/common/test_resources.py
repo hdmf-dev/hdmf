@@ -741,7 +741,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    container=data_2,
                    key='mouse',
                    entity_id='NCBI:txid10090')
-        breakpoint()
         self.assertEqual(er.entity_keys.data, [(0, 0), (0, 1)])
 
 
