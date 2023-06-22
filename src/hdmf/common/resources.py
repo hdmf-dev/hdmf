@@ -272,7 +272,7 @@ class ExternalResources(Container):
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
     def _add_entity(self, **kwargs):
         """
-        Add an entity that will be referenced to using the given key.
+        Add an entity that will be referenced to using keys specified in ExternalResources.entity_keys.
         """
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
