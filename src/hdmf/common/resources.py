@@ -574,7 +574,7 @@ class ExternalResources(Container):
             # check if the key and object have been related in the ObjectKeyTable
 
         entity = self.get_entity(entity_id=entity_id)
-        if isinstance(entity, bool):
+        if entity is None:
             if entity_uri is None:
                 msg = 'New entities must have an entity_uri.'
                 raise ValueError(msg)
