@@ -537,7 +537,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.child_tsv(external_resources=er)
 
         df = er.entity_keys.to_dataframe()
-        df.at[0, ('entity_idx')] = 10  # Change key_ix 0 to 10
+        df.at[0, ('entities_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entity_keys.tsv', sep='\t', index=False)
 
         self.zip_child()
@@ -594,7 +594,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             _ = ExternalResources.from_norm_tsv(path='./')
 
         self.remove_er_files()
-    #
+
     def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
