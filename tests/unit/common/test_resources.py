@@ -737,7 +737,6 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        existing_key = er.get_key('Mus musculus')
         er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
                    container=data_2,
                    key='mouse',
