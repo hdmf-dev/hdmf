@@ -461,7 +461,7 @@ class ExternalResources(Container):
         if len(entity)>0:
             return self.entities.row[entity[0]]
         else:
-            return False
+            return None
 
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
