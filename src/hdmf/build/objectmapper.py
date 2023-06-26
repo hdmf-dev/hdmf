@@ -275,6 +275,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         Check edge cases in converting data to a dtype
         """
         if value is None:
+            # Data is missing. Determine dtype from spec
             dt = spec_dtype
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
@@ -284,19 +285,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # return the list of DtypeSpecs
             return value, spec_dtype
         if isinstance(value, DataIO):
+            # data is wrapped for I/O via DataIO
             if value.data is None:
+                # Data is missing so DataIO.dtype must be set to determine the dtype
                 return value, value.dtype
             else:
+                # Determine the dtype from the DataIO.data
                 return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
-            if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
+            if hasattr(value, 'dtype'):  # covers numpy types, Zarr Array, AbstractDataChunkIterator
                 if spec_dtype == 'numeric':
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
                 elif np.issubdtype(value.dtype, np.string_):
                     ret_dtype = 'ascii'
+                elif np.issubdtype(value.dtype, np.dtype('O')):
+                    # Only variable-length strings should ever appear as generic objects.
+                    # Everything else should have a well-defined type
+                    ret_dtype = 'utf8'
                 else:
                     ret_dtype = value.dtype.type
                 return value, ret_dtype

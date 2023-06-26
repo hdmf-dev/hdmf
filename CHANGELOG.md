@@ -1,5 +1,15 @@
 # HDMF Changelog
 
+## HMDF 3.6.2 (Upcoming)
+
+### New features and minor improvements
+- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+
+## HMDF 3.6.1 (May 18, 2023)
+
+### Bug fixes
+- Fix compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
+
 ## HDMF 3.6.0 (May 12, 2023)
 
 ### New features and minor improvements

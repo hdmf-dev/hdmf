@@ -91,8 +91,8 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable, VectorData
 from hdmf import Container, ExternalResourcesManager
 from hdmf import Data
-from hdmf.testing import remove_test_file
 import numpy as np
+import os
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
@@ -306,17 +306,17 @@ er.add_ref(
 ###############################################################################
 # Write ExternalResources
 # ------------------------------------------------------
-# :py:class:`~hdmf.common.resources.ExternalResources` is written as a flattened tsv file.
-# The user provides the path, which contains the name of the file, to where the tsv
-# file will be written.
+# :py:class:`~hdmf.common.resources.ExternalResources` is written as a zip file of
+# the individual tables written to tsv.
+# The user provides the path, which contains the name of the directory.
 
-er.to_flat_tsv(path='./er_example.tsv')
+er.to_norm_tsv(path='./')
 
 ###############################################################################
 # Read ExternalResources
 # ------------------------------------------------------
 # Users can read :py:class:`~hdmf.common.resources.ExternalResources` from the tsv format
-# by providing the path to the file.
+# by providing the path to the directory.
 
-er_read = ExternalResources.from_flat_tsv(path='./er_example.tsv')
-remove_test_file('./er_example.tsv')
+er_read = ExternalResources.from_norm_tsv(path='./')
+os.remove('./er.zip')
