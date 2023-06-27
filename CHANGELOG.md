@@ -1,9 +1,20 @@
 # HDMF Changelog
 
-## HMDF 3.6.2 (Upcoming)
+## HMDF 3.7.0 (June 27, 2023)
 
 ### New features and minor improvements
-- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable.
+  @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Allow reassigning and resetting attributes on `AbstractContainer` objects, including the `data` attribute of `Data`
+  objects and `table` attribute of `DynamicTableRegion` objects. If the attributes were read from a file (i.e.,
+  `container_source` is not None), then a warning is raised. Note that type, shape, and is-required validation are NOT
+  performed when attributes are reassigned. This should be done carefully and may result in an error on write.
+  @rly [#868](https://github.com/hdmf-dev/hdmf/pull/868)
+- When calling an attribute setter for an `AbstractContainer`, if the value is None, then the `fields` dictionary will
+  be updated and set the field to None. Previously, the `fields` dictionary was not updated.
+  @rly [#868](https://github.com/hdmf-dev/hdmf/pull/868)
+- Deprecated `Data.set_dataio`, which has been broken for some use cases. Reassign the `data` attribute on the
+  `Data` object to the new `DataIO` object instead. @rly [#868](https://github.com/hdmf-dev/hdmf/pull/868)
 
 ## HMDF 3.6.1 (May 18, 2023)
 
