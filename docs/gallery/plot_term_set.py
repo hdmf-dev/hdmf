@@ -50,7 +50,7 @@ For a clear example, please refer to example_term_set.yaml within the tutorial g
 ######################################################
 # Creating an instance of the TermSet class
 # ----------------------------------------------------
-from hdmf.common import ExternalResources, DynamicTable, VectorData
+from hdmf.common import DynamicTable, VectorData
 try:
     import linkml_runtime  # noqa: F401
     LINKML_INSTALLED = True
