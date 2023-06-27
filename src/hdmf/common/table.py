@@ -1245,15 +1245,15 @@ class DynamicTableRegion(VectorData):
         :raises: AttributeError if table is already in fields
         :raises: IndexError if the current indices are out of bounds for the new table given by val
         """
-        if val is None:
-            return
-        if 'table' in self.fields:  # TODO
-            msg = "can't set attribute 'table' -- already set"
-            raise AttributeError(msg)
+        if self.container_source is not None and not self._in_construct_mode:
+            warn(f"Container was read from file '{self.container_source}'. "
+                    f"Changing the value of attribute 'table' will not change the value in the file. "
+                    f"Use the export function to write the modified container to a new file.")
+        self.fields["table"] = val
+        self.set_modified()
         dat = self.data
         if isinstance(dat, DataIO):
             dat = dat.data
-        self.fields['table'] = val
 
     def __getitem__(self, arg):
         return self.get(arg)

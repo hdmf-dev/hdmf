@@ -970,6 +970,19 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             dynamic_table_region.get(0, df=False, index=False)
 
+    def test_reset_table_attr(self):
+        table = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=table)
+        dynamic_table_region.table = None  # can set to None value as of HDMF 3.7.0
+        self.assertIsNone(dynamic_table_region.table)
+
+    def test_reassign_table_attr(self):
+        table1 = self.with_columns_and_data()
+        table2 = self.with_columns_and_data()
+        dynamic_table_region = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=table1)
+        dynamic_table_region.table = table2  # can reassign table attribute as of HDMF 3.7.0
+        self.assertIs(dynamic_table_region.table, table2)   # check that table was reassigned
+
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -1193,6 +1206,25 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         table = mc.containers['table_with_dtr']
         rec = table['dtr']['qux']
         self.assertIs(rec, mc.containers['target_table']['qux'])
+
+    def test_reset_table_attr(self):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        msg = (r"Container was read from file '.*'\. Changing the value of attribute 'table' will not change the "
+               r"value in the file\. Use the export function to write the modified container to a new file\.")
+        with self.assertWarnsRegex(UserWarning, msg):
+            table['dtr'].table = None
+        self.assertIsNone(table['dtr'].table)
+
+    def test_reassign_table_attr(self):
+        mc = self.roundtripContainer()
+        table = mc.containers['table_with_dtr']
+        table2, _ = self.make_tables()
+        msg = (r"Container was read from file '.*'\. Changing the value of attribute 'table' will not change the "
+               r"value in the file\. Use the export function to write the modified container to a new file\.")
+        with self.assertWarnsRegex(UserWarning, msg):
+            table['dtr'].table = table2
+        self.assertIs(table['dtr'].table, table2)   # check that table was reassigned
 
 
 class TestElementIdentifiers(TestCase):
