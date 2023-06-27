@@ -320,3 +320,33 @@ er.to_norm_tsv(path='./')
 
 er_read = ExternalResources.from_norm_tsv(path='./')
 os.remove('./er.zip')
+
+###############################################################################
+# Using TermSet with ExternalResources
+# ------------------------------------------------
+# :py:class:`~hdmf.TermSet` allows for an easier way to add references to
+# :py:class:`~hdmf.common.resources.ExternalResources`. These enumerations take place of the
+# entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have to match the name of the term
+# in the :py:class:`~hdmf.TermSet`.
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
+
+if LINKML_INSTALLED:
+    from hdmf.term_set import TermSet
+
+    terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
+    col1 = VectorData(
+        name='Species_Data',
+        description='...',
+        data=['Homo sapiens', 'Ursus arctos horribilis'],
+        term_set=terms,
+    )
+
+    species = DynamicTable(name='species', description='My species', columns=[col1],)
+    er.add_ref_term_set(file=file,
+                        container=species,
+                        attribute='Species_Data',
+                       )
