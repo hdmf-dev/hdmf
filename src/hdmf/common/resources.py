@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, ExternalResourcesManager
+from ..container import Table, Row, Container, AbstractContainer, Data, ExternalResourcesManager
+from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from glob import glob

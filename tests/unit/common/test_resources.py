@@ -271,7 +271,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(name='species', term_schema_path='../example_test_term_set.yaml')
         er = ExternalResources()
         em = ExternalResourcesManagerContainer()
         em.link_resources(er)
@@ -288,7 +288,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                     attribute='Species_Data',
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [(0, 'NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
