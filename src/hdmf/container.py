@@ -572,6 +572,8 @@ class Data(AbstractContainer):
         Apply DataIO object to the data held by this Data object
         """
         # TODO deprecate this in favor of the user wrapping the data themselves in a non-buggy way
+        warn("set_dataio is deprecated. Use the DataIO constructor to wrap the data and reassign this object's "
+             "data field to the DataIO object.", DeprecationWarning)
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio
