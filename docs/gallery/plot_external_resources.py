@@ -35,8 +35,10 @@ collection of interlinked tables.
   :py:class:`~hdmf.common.resources.Key`
 * :py:class:`~hdmf.common.resources.FileTable` where each row describes a
   :py:class:`~hdmf.common.resources.File`
-* :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
+* :py:class:`~hdmf.common.resources.EntityTable` where each row describes an
   :py:class:`~hdmf.common.resources.Entity`
+* :py:class:`~hdmf.common.resources.EntityKeyTable` where each row describes an
+  :py:class:`~hdmf.common.resources.EntityKey`
 * :py:class:`~hdmf.common.resources.ObjectTable` where each row describes an
   :py:class:`~hdmf.common.resources.Object`
 * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
@@ -209,6 +211,7 @@ er.objects.to_dataframe()
 er.entities.to_dataframe()
 er.keys.to_dataframe()
 er.object_keys.to_dataframe()
+er.entity_keys.to_dataframe()
 
 ###############################################################################
 # Using the get_key method
