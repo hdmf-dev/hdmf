@@ -455,10 +455,10 @@ class Container(AbstractContainer):
     def _repr_html_(self):
         CSS_STYLE = """
         <style>
-            .nwb-fields { font-family: "Open Sans", Arial, sans-serif; }
-            .nwb-fields .field-value { color: #00788E; }
-            .nwb-fields details > summary { cursor: pointer; }
-            .nwb-fields details > summary:hover { color: #0A6EAA; }
+            .container-fields { font-family: "Open Sans", Arial, sans-serif; }
+            .container-fields .field-value { color: #00788E; }
+            .container-fields details > summary { cursor: pointer; }
+            .container-fields details > summary:hover { color: #0A6EAA; }
         </style>
         """
 
@@ -473,7 +473,7 @@ class Container(AbstractContainer):
             }
 
             document.addEventListener('DOMContentLoaded', function() {
-                let fieldKeys = document.querySelectorAll('.nwb-fields .field-key');
+                let fieldKeys = document.querySelectorAll('.container-fields .field-key');
                 fieldKeys.forEach(function(fieldKey) {
                     fieldKey.addEventListener('click', function() {
                         let accessCode = fieldKey.getAttribute('title').replace('Access code: ', '');
@@ -483,17 +483,15 @@ class Container(AbstractContainer):
             });
         </script>
         """
-        if self.__class__.__name__ == "NWBFile":
-            nwb_header_text = "NWBFile"
-        elif self.name == self.__class__.__name__:
-            nwb_header_text = self.name
+        if self.name == self.__class__.__name__:
+            header_text = self.name
         else:
-            nwb_header_text = f"{self.name} ({self.__class__.__name__})"
+            header_text = f"{self.name} ({self.__class__.__name__})"
         html_repr = CSS_STYLE
         html_repr += JS_SCRIPT
-        html_repr += "<div class='nwb-wrap'>"
+        html_repr += "<div class='container-wrap'>"
         html_repr += (
-            f"<div class='nwb-header'><div class='xr-obj-type'>{nwb_header_text}</div></div>"
+            f"<div class='container-header'><div class='xr-obj-type'>{header_text}</div></div>"
         )
         html_repr += self._generate_html_repr(self.fields)
         html_repr += "</div>"
@@ -511,7 +509,7 @@ class Container(AbstractContainer):
                     or hasattr(value, "fields")
                 ):
                     html_repr += (
-                        f'<details><summary style="margin-left: {level * 20}px;" class="nwb-fields '
+                        f'<details><summary style="margin-left: {level * 20}px;" class="container-fields '
                         f'field-key" title="{current_access_code}"><b>{key}</b></summary>'
                     )
                     if hasattr(value, "fields"):
@@ -523,14 +521,14 @@ class Container(AbstractContainer):
                     html_repr += "</details>"
                 else:
                     html_repr += (
-                        f'<div style="margin-left: {level * 20}px;" class="nwb-fields"><span class="field-key"'
+                        f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"'
                         f' title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
                     )
         elif isinstance(fields, list):
             for index, item in enumerate(fields):
                 current_access_code = f"{access_code}[{index}]"
                 html_repr += (
-                    f'<div style="margin-left: {level * 20}px;" class="nwb-fields"><span class="field-value"'
+                    f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-value"'
                     f' title="{current_access_code}">{str(item)}</span></div>'
                 )
         else:
