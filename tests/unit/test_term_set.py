@@ -14,7 +14,7 @@ class TestTermSet(TestCase):
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_termset_setup(self):
         termset = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
-        self.assertEqual(list(termset.sources), ['NCBI_TAXON', 'Ensemble'])
+        self.assertEqual(list(termset.sources), ['NCBI_TAXON'])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_view_set(self):
