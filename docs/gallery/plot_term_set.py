@@ -40,8 +40,7 @@ to learn more about how LinkML structures their schemas.
 2. The prefixes will be the standardized prefix of your source, followed by the URI to the terms.
    For example, the NCBI Taxonomy is abbreviated as NCBI_TAXON, and Ensemble is simply Ensemble.
    As mentioned prior, the URI needs to be to the terms; this is to allow the URI to later be coupled
-   with the source id for the term to create a valid link to the term source page. In the case of
-   Ensemble, it would be "https://rest.ensembl.org/taxonomy/id/".
+   with the source id for the term to create a valid link to the term source page.
 3. The schema uses LinkML enumerations to list all the possible terms. Currently, users will need to
    manually outline the terms within the enumeration's permissible values.
 

@@ -386,7 +386,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er = ExternalResources()
 
         with self.assertRaises(ValueError):
-            retrieved = er._get_file_from_container(container)
+            er._get_file_from_container(container)
 
     def test_add_ref(self):
         er = ExternalResources()
