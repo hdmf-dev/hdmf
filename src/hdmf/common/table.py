@@ -48,19 +48,11 @@ class VectorData(Data):
         self.description = description
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
-    def _validator(self, **kwargs):
-        val = getargs('val', kwargs)
-        if self.validate_data(term=val, term_set=self.term_set):
-            return True
-        else:
-            return False
-
-    @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
         if self.term_set is not None:
-            if self._validator(val=val):
+            if self.validate_data(term=val, term_set=self.term_set):
                 self.append(val)
             else:
                 msg = ("%s is not in the term set." % val)
@@ -603,7 +595,7 @@ class DynamicTable(Container):
                 continue
             else:
                 if col.term_set is not None:
-                    if col._validator(data[colname]):
+                    if col.validate_data(term=data[colname], term_set=col.term_set):
                         continue
                     else:
                         bad_data.append(data[colname])

@@ -275,8 +275,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 c.generate_new_id(**kwargs)
 
     @docval({'name': 'term', 'type': str, 'doc': "term to be validated"},
-            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
-             'default': None})
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add'})
     def validate_data(self, **kwargs):
             """
             Validate term in dataset towards a termset.
