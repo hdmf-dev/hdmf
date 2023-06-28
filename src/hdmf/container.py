@@ -456,7 +456,6 @@ class Container(AbstractContainer):
         CSS_STYLE = """
         <style>
             .nwb-fields { font-family: "Segoe UI", Roboto, sans-serif; }
-            .nwb-fields .field-key { font-weight: bold; }
             .nwb-fields .field-value { color: #00788E; }
             .nwb-fields details > summary { cursor: pointer; }
             .nwb-fields details > summary:hover { color: #0A6EAA; }
@@ -490,7 +489,7 @@ class Container(AbstractContainer):
         html_repr += (
             "<div class='nwb-header'><div class='xr-obj-type'>NWB File</div></div>"
         )
-        html_repr += self.generate_html_repr(self.fields)
+        html_repr += self._generate_html_repr(self.fields)
         html_repr += "</div>"
         return html_repr
 
@@ -505,11 +504,12 @@ class Container(AbstractContainer):
                     or isinstance(value, list)
                     or hasattr(value, "fields")
                 ):
-                    html_repr += f'<details><summary style="margin-left: {level * 20}px;" class="nwb-fields field-key" title="{current_access_code}">{key}</summary>'
+                    html_repr += f'<details><summary style="margin-left: {level * 20}px;" class="nwb-fields ' \
+                                 f'field-key" title="{current_access_code}"><b>{key}</b></summary>'
                     if hasattr(value, "fields"):
                         value = value.fields
                         current_access_code = current_access_code + ".fields"
-                    html_repr += self.generate_html_repr(
+                    html_repr += self._generate_html_repr(
                         value, level + 1, current_access_code
                     )
                     html_repr += "</details>"
