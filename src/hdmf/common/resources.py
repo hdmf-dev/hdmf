@@ -6,6 +6,7 @@ from ..container import Table, Row, Container, AbstractContainer, Data, External
 from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+from ..term_set import TermSet
 from glob import glob
 import os
 import zipfile
@@ -417,6 +418,8 @@ class ExternalResources(Container):
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'term_set', 'type': TermSet, 'default': None,
+             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
             )
     def add_ref_term_set(self, **kwargs):
         file = kwargs['file']
@@ -424,18 +427,20 @@ class ExternalResources(Container):
         attribute = kwargs['attribute']
         key = kwargs['key']
         field = kwargs['field']
+        term_set = kwargs['term_set']
 
-        if attribute is None:
-            try:
-                term_set = container.term_set
-            except AttributeError:
-                msg = "Cannot Find TermSet"
-                raise AttributeError(msg)
-        else:
-            term_set = container[attribute].term_set
-            if term_set is None:
-                msg = "Cannot Find TermSet"
-                raise ValueError(msg)
+        if term_set is None:
+            if attribute is None:
+                try:
+                    term_set = container.term_set
+                except AttributeError:
+                    msg = "Cannot Find TermSet"
+                    raise AttributeError(msg)
+            else:
+                term_set = container[attribute].term_set
+                if term_set is None:
+                    msg = "Cannot Find TermSet"
+                    raise ValueError(msg)
 
         if file is None:
             file = self._get_file_from_container(container=container)
