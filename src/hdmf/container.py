@@ -504,8 +504,10 @@ class Container(AbstractContainer):
                     or isinstance(value, list)
                     or hasattr(value, "fields")
                 ):
-                    html_repr += f'<details><summary style="margin-left: {level * 20}px;" class="nwb-fields ' \
-                                 f'field-key" title="{current_access_code}"><b>{key}</b></summary>'
+                    html_repr += (
+                        f'<details><summary style="margin-left: {level * 20}px;" class="nwb-fields '
+                        f'field-key" title="{current_access_code}"><b>{key}</b></summary>'
+                    )
                     if hasattr(value, "fields"):
                         value = value.fields
                         current_access_code = current_access_code + ".fields"
@@ -514,11 +516,17 @@ class Container(AbstractContainer):
                     )
                     html_repr += "</details>"
                 else:
-                    html_repr += f'<div style="margin-left: {level * 20}px;" class="nwb-fields"><span class="field-key" title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
+                    html_repr += (
+                        f'<div style="margin-left: {level * 20}px;" class="nwb-fields"><span class="field-key"'
+                        f' title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
+                    )
         elif isinstance(fields, list):
             for index, item in enumerate(fields):
                 current_access_code = f"{access_code}[{index}]"
-                html_repr += f'<div style="margin-left: {level * 20}px;" class="nwb-fields"><span class="field-value" title="{current_access_code}">{str(item)}</span></div>'
+                html_repr += (
+                    f'<div style="margin-left: {level * 20}px;" class="nwb-fields"><span class="field-value"'
+                    f' title="{current_access_code}">{str(item)}</span></div>'
+                )
         else:
             pass
 
