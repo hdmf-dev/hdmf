@@ -455,7 +455,7 @@ class Container(AbstractContainer):
     def _repr_html_(self):
         CSS_STYLE = """
         <style>
-            .nwb-fields { font-family: "Segoe UI", Roboto, sans-serif; }
+            .nwb-fields { font-family: "Open Sans", Arial, sans-serif; }
             .nwb-fields .field-value { color: #00788E; }
             .nwb-fields details > summary { cursor: pointer; }
             .nwb-fields details > summary:hover { color: #0A6EAA; }
