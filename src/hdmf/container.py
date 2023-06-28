@@ -483,11 +483,17 @@ class Container(AbstractContainer):
             });
         </script>
         """
+        if self.__class__.__name__ == "NWBFile":
+            nwb_header_text = "NWBFile"
+        elif self.name == self.__class__.__name__:
+            nwb_header_text = self.name
+        else:
+            nwb_header_text = f"{self.name} ({self.__class__.__name__})"
         html_repr = CSS_STYLE
         html_repr += JS_SCRIPT
         html_repr += "<div class='nwb-wrap'>"
         html_repr += (
-            "<div class='nwb-header'><div class='xr-obj-type'>NWB File</div></div>"
+            f"<div class='nwb-header'><div class='xr-obj-type'>{nwb_header_text}</div></div>"
         )
         html_repr += self._generate_html_repr(self.fields)
         html_repr += "</div>"
