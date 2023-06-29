@@ -509,8 +509,8 @@ class Container(AbstractContainer):
                     or hasattr(value, "fields")
                 ):
                     html_repr += (
-                        f'<details><summary style="margin-left: {level * 20}px;" class="container-fields '
-                        f'field-key" title="{current_access_code}"><b>{key}</b></summary>'
+                        f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+                        f'class="container-fields field-key" title="{current_access_code}"><b>{key}</b></summary>'
                     )
                     if hasattr(value, "fields"):
                         value = value.fields
