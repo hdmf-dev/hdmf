@@ -455,10 +455,19 @@ class Container(AbstractContainer):
     def _repr_html_(self):
         CSS_STYLE = """
         <style>
-            .container-fields { font-family: "Open Sans", Arial, sans-serif; }
-            .container-fields .field-value { color: #00788E; }
-            .container-fields details > summary { cursor: pointer; }
-            .container-fields details > summary:hover { color: #0A6EAA; }
+            .container-fields {
+                font-family: "Open Sans", Arial, sans-serif;
+            }
+            .container-fields .field-value {
+                color: #00788E;
+            }
+            .container-fields details > summary {
+                cursor: pointer;
+                display: list-item;
+            }
+            .container-fields details > summary:hover {
+                color: #0A6EAA;
+            }
         </style>
         """
 
