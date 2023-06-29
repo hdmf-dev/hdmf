@@ -262,6 +262,9 @@ class TestContainer(TestCase):
         obj.reset_parent()
         self.assertIsNone(obj.parent)
 
+    def test_repr_html_(self):
+        assert isinstance(Container('obj1')._repr_html_(), str)
+
 
 class TestData(TestCase):
 
