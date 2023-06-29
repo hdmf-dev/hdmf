@@ -500,7 +500,7 @@ class Container(AbstractContainer):
         html_repr += JS_SCRIPT
         html_repr += "<div class='container-wrap'>"
         html_repr += (
-            f"<div class='container-header'><div class='xr-obj-type'>{header_text}</div></div>"
+            f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
         )
         html_repr += self._generate_html_repr(self.fields)
         html_repr += "</div>"
@@ -513,8 +513,7 @@ class Container(AbstractContainer):
             for key, value in fields.items():
                 current_access_code = f"{access_code}['{key}']"
                 if (
-                    isinstance(value, dict)
-                    or isinstance(value, list)
+                    isinstance(value, (list, dict, np.ndarray))
                     or hasattr(value, "fields")
                 ):
                     html_repr += (
@@ -540,6 +539,11 @@ class Container(AbstractContainer):
                     f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-value"'
                     f' title="{current_access_code}">{str(item)}</span></div>'
                 )
+        elif isinstance(fields, np.ndarray):
+            str_ = str(fields).replace("\n", "</br>")
+            html_repr += (
+                f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
+            )
         else:
             pass
 
