@@ -84,7 +84,7 @@ jobs:
 
       - name: Test installation from a source distribution
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.tar.gz
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
   run-all-gallery-tests:
     name: ${{ matrix.name }}
@@ -196,7 +196,7 @@ jobs:
 
       - name: Test installation from a source distribution
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.tar.gz
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
   run-gallery-ros3-tests:
     name: ${{ matrix.name }}

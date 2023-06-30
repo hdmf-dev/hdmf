@@ -41,7 +41,7 @@ jobs:
 
       - name: Test installation from a source distribution
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.tar.gz
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
       - name: Upload wheel and source distributions to PyPI
         run: |

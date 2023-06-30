@@ -65,7 +65,7 @@ jobs:
 
       - name: Test installation from a source distribution
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.tar.gz
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
       - name: Upload distribution as a workspace artifact
         if: ${{ matrix.upload-wheels }}
@@ -172,7 +172,7 @@ jobs:
 
       - name: Test installation from a source distribution
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.tar.gz
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
   deploy-dev:
     name: Deploy pre-release from dev
