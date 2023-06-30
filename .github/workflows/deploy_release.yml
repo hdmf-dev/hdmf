@@ -39,6 +39,10 @@ jobs:
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
 
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --recreate --installpkg dist/*-none-any.tar.gz
+
       - name: Upload wheel and source distributions to PyPI
         run: |
           python -m pip install twine

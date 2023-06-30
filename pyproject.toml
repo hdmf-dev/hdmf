@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "hdmf"
@@ -51,8 +51,19 @@ zarr = ["zarr>=2.12.0"]
 [project.scripts]
 validate_hdmf_spec = "hdmf.testing.validate_spec:main"
 
-[tool.setuptools.package-data]
-hdmf = ["common/hdmf-common-schema/common/*.yaml", "common/hdmf-common-schema/common/*.json"]
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+# this file is created/updated when the package is installed and used in
+# src/hdmf/__init__.py to set `hdmf.__version__`
+version-file = "src/hdmf/_version.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [".git_archival.txt"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hdmf"]
 
 # [tool.mypy]
 # no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664
@@ -82,8 +93,6 @@ exclude_lines = [
     "pragma: no cover",
     "@abstract"
 ]
-
-[tool.setuptools_scm]
 
 # [tool.black]
 # line-length = 120

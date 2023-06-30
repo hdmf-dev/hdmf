@@ -1,9 +1,13 @@
 # HDMF Changelog
 
-## HMDF 3.6.2 (Upcoming)
+## HMDF 3.7.0 (Upcoming)
 
 ### New features and minor improvements
 - Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Added HTML repr to `Container` objects which displays an interactive tree of a container's values and children in a Jupyter notebook and other HTML representations. @edeno [#883](https://github.com/hdmf-dev/hdmf/pull/883)
+
+### Bug fixes
+- Fixed reporting of version when installed using conda. @rly
 
 ## HMDF 3.6.1 (May 18, 2023)
 
