@@ -3,7 +3,7 @@ TermSet
 =======
 
 This is a user guide for interacting with the
-:py:class:`~hdmf.TermSet` class. The TermSet type
+:py:class:`~hdmf.TermSet` class. The :py:class:`~hdmf.TermSet` type
 is experimental and is subject to change in future releases. If you use this type,
 please provide feedback to the HDMF team so that we can improve the structure and
 overall capabilities.
