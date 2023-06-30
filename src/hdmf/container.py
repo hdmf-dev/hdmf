@@ -558,7 +558,7 @@ class Data(AbstractContainer):
         self.term_set = popargs('term_set', kwargs)
         super().__init__(**kwargs)
         if self.term_set is not None:
-            bad_data = []
+            bad_data = [term for term in data if not  self.validate_data(term=term, term_set=self.term_set)]
             for term in data:
                 if self.validate_data(term=term, term_set=self.term_set):
                     continue
