@@ -517,7 +517,7 @@ class Container(AbstractContainer):
                     or hasattr(value, "fields")
                 ):
                     label = key
-                    if isinstance(value, (list, dict)):
+                    if isinstance(value, dict):
                         label += f" ({len(value)})"
 
                     html_repr += (
