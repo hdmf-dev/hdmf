@@ -345,11 +345,11 @@ class TestBasic(TestCase):
                 ' code: \', \'\');\n                        copyToClipboard(accessCode);\n                    });\n    '
                 '            });\n            });\n        </script>\n        <div class=\'container-wrap\'><div class'
                 '=\'container-header\'><div class=\'xr-obj-type\'><h3>FooSingle</h3></div></div><details><summary style'
-                '="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fields[\'containers'
-                '\']"><b>containers (2)</b></summary><details><summary style="display: list-item; margin-left: 20px;" c'
-                'lass="container-fields field-key" title=".fields[\'containers\'][\'obj1\']"><b>obj1</b></summary></det'
-                'ails><details><summary style="display: list-item; margin-left: 20px;" class="container-fields field-ke'
-                'y" title=".fields[\'containers\'][\'obj2\']"><b>obj2</b></summary></details></details></div>'
+                '="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fields[\'container'
+                's\']"><b>containers (2)</b></summary><details><summary style="display: list-item; margin-left: 20px;" '
+                'class="container-fields field-key" title=".fields[\'containers\'][\'obj1\']"><b>obj1</b></summary></de'
+                'tails><details><summary style="display: list-item; margin-left: 20px;" class="container-fields field-k'
+                'ey" title=".fields[\'containers\'][\'obj2\']"><b>obj2</b></summary></details></details></div>'
             )
         )
 
