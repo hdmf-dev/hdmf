@@ -516,9 +516,13 @@ class Container(AbstractContainer):
                     isinstance(value, (list, dict, np.ndarray))
                     or hasattr(value, "fields")
                 ):
+                    label = key
+                    if isinstance(value, (list, dict)):
+                        label += f" ({len(value)})"
+
                     html_repr += (
                         f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-                        f'class="container-fields field-key" title="{current_access_code}"><b>{key}</b></summary>'
+                        f'class="container-fields field-key" title="{current_access_code}"><b>{label}</b></summary>'
                     )
                     if hasattr(value, "fields"):
                         value = value.fields
