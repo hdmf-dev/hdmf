@@ -88,7 +88,7 @@ if LINKML_INSTALLED:
 ######################################################
 # Validate on append with TermSet
 # ----------------------------------------------------
-# As mentioned prior, when the term_set attribute is set all new data is validated. This true for both
+# As mentioned prior, when the term_set attribute is set all new data is validated. This is true for both
 # append and extend methods.
 if LINKML_INSTALLED:
     data.append('Ursus arctos horribilis')
