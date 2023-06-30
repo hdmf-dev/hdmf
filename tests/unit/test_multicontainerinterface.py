@@ -321,6 +321,38 @@ class TestBasic(TestCase):
         with self.assertRaisesWith(KeyError, msg):
             foo['obj2']
 
+    def test_repr_html_(self):
+        obj1 = Container('obj1')
+        obj2 = Container('obj2')
+        foo = FooSingle()
+        foo.add_container([obj1, obj2])
+
+        self.assertEqual(
+            foo._repr_html_(),
+            (
+                '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, s'
+                'ans-serif;\n            }\n            .container-fields .field-value {\n                color: #00788'
+                'E;\n            }\n            .container-fields details > summary {\n                cursor: pointer;'
+                '\n                display: list-item;\n            }\n            .container-fields details > summary:'
+                'hover {\n                color: #0A6EAA;\n            }\n        </style>\n        \n        <script>'
+                '\n            function copyToClipboard(text) {\n                navigator.clipboard.writeText(text).th'
+                'en(function() {\n                    console.log(\'Copied to clipboard: \' + text);\n                }'
+                ', function(err) {\n                    console.error(\'Could not copy text: \', err);\n               '
+                ' });\n            }\n\n            document.addEventListener(\'DOMContentLoaded\', function() {\n     '
+                '           let fieldKeys = document.querySelectorAll(\'.container-fields .field-key\');\n             '
+                '   fieldKeys.forEach(function(fieldKey) {\n                    fieldKey.addEventListener(\'click\', fu'
+                'nction() {\n                        let accessCode = fieldKey.getAttribute(\'title\').replace(\'Access'
+                ' code: \', \'\');\n                        copyToClipboard(accessCode);\n                    });\n    '
+                '            });\n            });\n        </script>\n        <div class=\'container-wrap\'><div class'
+                '=\'container-header\'><div class=\'xr-obj-type\'><h3>FooSingle</h3></div></div><details><summary style'
+                '="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fields[\'containers'
+                '\']"><b>containers (2)</b></summary><details><summary style="display: list-item; margin-left: 20px;" c'
+                'lass="container-fields field-key" title=".fields[\'containers\'][\'obj1\']"><b>obj1</b></summary></det'
+                'ails><details><summary style="display: list-item; margin-left: 20px;" class="container-fields field-ke'
+                'y" title=".fields[\'containers\'][\'obj2\']"><b>obj2</b></summary></details></details></div>'
+            )
+        )
+
 
 class TestOverrideInit(TestCase):
 
