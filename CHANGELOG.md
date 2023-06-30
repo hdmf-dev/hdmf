@@ -7,7 +7,7 @@
 - Added HTML repr to `Container` objects which displays an interactive tree of a container's values and children in a Jupyter notebook and other HTML representations. @edeno [#883](https://github.com/hdmf-dev/hdmf/pull/883)
 
 ### Bug fixes
-- Fixed reporting of version when installed using conda. @rly
+- Fixed reporting of version when installed using conda. @rly [#890](https://github.com/hdmf-dev/hdmf/pull/890)
 
 ## HMDF 3.6.1 (May 18, 2023)
 
