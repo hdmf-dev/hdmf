@@ -271,7 +271,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = ExternalResources()
         em = ExternalResourcesManagerContainer()
         em.link_resources(er)
@@ -324,7 +324,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_terms(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = ExternalResources()
         em = ExternalResourcesManagerContainer()
         em.link_resources(er)
@@ -348,7 +348,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_file_error(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = ExternalResources()
 
         col1 = VectorData(name='Species_Data',

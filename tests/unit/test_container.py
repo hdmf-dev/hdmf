@@ -307,54 +307,54 @@ class TestData(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_validate_data(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'])
         bool = data_obj.validate_data(term='Homo sapiens', term_set=terms)
         self.assertEqual(bool, True)
     #
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_validate_data_error(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'])
         bool = data_obj.validate_data(term='term', term_set=terms)
         self.assertEqual(bool, False)
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_validate(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
         self.assertEqual(data_obj.data, ['Homo sapiens'])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_validate_value_error(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertRaises(ValueError):
             Data(name='species', data=['Macaca mulatta'], term_set=terms)
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_append_validate(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
         data_obj.append('Mus musculus')
         self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_append_validate_error(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
         with self.assertRaises(ValueError):
             data_obj.append('Macaca mulatta')
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_extend_validate(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
         data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
         self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_extend_validate_bad_data_error(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
         with self.assertRaises(ValueError):
             data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])

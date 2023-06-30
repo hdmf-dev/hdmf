@@ -12,32 +12,24 @@ class TermSet():
     :ivar ontology_source_uri: The uri of the ontology
     """
     def __init__(self,
-                 name: str,
                  term_schema_path: str,
-                 # ontology_version: str,
                  ):
         """
-        :param name: The name of the TermSet
         :param term_schema_path: The path to LinkML YAML enumeration schema
-        :param ontology_version: The version of the ontology
-        :param ontology_source_name: The name of the ontology
-        :param ontology_source_uri: The uri of the ontology
+
         """
         try:
             from linkml_runtime.utils.schemaview import SchemaView
         except ImportError:
             msg = "Install linkml_runtime"
             raise ValueError(msg)
-        self.name = name
         self.term_schema_path = term_schema_path
         self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes
 
     def __repr__(self):
         re = "class: %s\n" % str(self.__class__)
-        re += "name: %s\n" % self.name
         re += "term_schema_path: %s\n" % self.term_schema_path
-        re += "ontology_source_name: %s\n" % self.sources
         return re
 
     def _perm_value_key_info(self, perm_values_dict: dict, key: str):

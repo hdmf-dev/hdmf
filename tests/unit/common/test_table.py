@@ -105,7 +105,7 @@ class TestDynamicTable(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -126,7 +126,7 @@ class TestDynamicTable(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate_bad_data(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -142,7 +142,7 @@ class TestDynamicTable(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -166,7 +166,7 @@ class TestDynamicTable(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_one_col(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',
@@ -185,7 +185,7 @@ class TestDynamicTable(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_all_col(self):
-        terms = TermSet(name='species', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
             name='Species_1',
             description='...',

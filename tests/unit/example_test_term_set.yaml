@@ -1,5 +1,6 @@
 id: pynert/termset/species_example
 name: Species
+version: 0.0.1
 prefixes:
   NCBI_TAXON: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=
 imports:

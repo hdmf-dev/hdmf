@@ -67,7 +67,7 @@ if LINKML_INSTALLED:
 # Users can index specific terms from the :py:class:`~hdmf.TermSet`.
 if LINKML_INSTALLED:
     terms = TermSet(name='Species', term_schema_path='docs/gallery/example_term_set.yaml')
-    terms.view_set
+    print(terms.view_set)
 
     # Retrieve a specific term
     terms['Homo sapiens']
