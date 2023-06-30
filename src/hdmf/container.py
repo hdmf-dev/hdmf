@@ -512,9 +512,10 @@ class Container(AbstractContainer):
         if isinstance(fields, dict):
             for key, value in fields.items():
                 current_access_code = f"{access_code}['{key}']"
+                if isinstance(value, (list, dict)) and not value:
+                    continue
                 if (
-                    isinstance(value, np.ndarray)
-                    or isinstance(value, (list, dict, np.ndarray))
+                    isinstance(value, (list, dict, np.ndarray))
                     or hasattr(value, "fields")
                 ):
                     html_repr += (
