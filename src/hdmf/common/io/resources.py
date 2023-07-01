@@ -1,5 +1,5 @@
 from .. import register_map
-from ..resources import ExternalResources, KeyTable, FileTable, ObjectTable, ObjectKeyTable, EntityTable
+from ..resources import ExternalResources, KeyTable, FileTable, ObjectTable, ObjectKeyTable, EntityTable, EntityKeyTable
 from ...build import ObjectMapper
 
 
@@ -38,3 +38,7 @@ class ExternalResourcesMap(ObjectMapper):
     @ObjectMapper.constructor_arg('object_keys')
     def object_keys(self, builder, manager):
         return self.construct_helper('object_keys', builder, ObjectKeyTable, manager)
+
+    @ObjectMapper.constructor_arg('entity_keys')
+    def entity_keys(self, builder, manager):
+        return self.construct_helper('entity_keys', builder, EntityKeyTable, manager)

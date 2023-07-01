@@ -3,6 +3,7 @@
 ## HDMF 3.7.0 (Upcoming)
 
 ### New features and minor improvements
+- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
 - Added abstract static method `HDMFIO.can_read()` and concrete static method `HDF5IO.can_read()`. @bendichter [#875](https://github.com/hdmf-dev/hdmf/pull/875)
 
 ## HMDF 3.6.1 (May 18, 2023)
