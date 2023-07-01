@@ -1,7 +1,6 @@
 import logging
 import os.path
 import warnings
-from abc import abstractmethod
 from collections import deque
 from functools import partial
 from pathlib import Path, PurePosixPath as pp
