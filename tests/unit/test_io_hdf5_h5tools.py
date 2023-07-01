@@ -3485,7 +3485,6 @@ class H5DataIOTests(TestCase):
             dataio.data = list()
 
 
-# reminder: tmp_path is a special pytest fixture
 def test_hdf5io_can_read():
     assert not HDF5IO.can_read("not_a_file")
     assert HDF5IO.can_read("tests/unit/back_compat_tests/1.0.5.h5")
