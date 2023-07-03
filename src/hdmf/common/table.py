@@ -52,7 +52,7 @@ class VectorData(Data):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
         if self.term_set is not None:
-            if self.validate_data(term=val, term_set=self.term_set):
+            if self.term_set.validate(term=val):
                 self.append(val)
             else:
                 msg = ("%s is not in the term set." % val)
@@ -595,7 +595,7 @@ class DynamicTable(Container):
                 continue
             else:
                 if col.term_set is not None:
-                    if col.validate_data(term=data[colname], term_set=col.term_set):
+                    if col.term_set.validate(term=data[colname]):
                         continue
                     else:
                         bad_data.append(data[colname])
@@ -703,7 +703,7 @@ class DynamicTable(Container):
         if term_set is not None:
             bad_data = []
             for val in data:
-                if self.validate_data(term=val, term_set=term_set):
+                if term_set.validate(term=val):
                     continue
                 else:
                     bad_data.append(val)

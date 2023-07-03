@@ -23,6 +23,16 @@ class TestTermSet(TestCase):
         self.assertEqual(list(termset.view_set), expected)
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_termset_validate(self):
+        termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        self.assertEqual(termset.validate('Homo sapiens'), True)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_termset_validate_false(self):
+        termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        self.assertEqual(termset.validate('missing_term'), False)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_get_item(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         self.assertEqual(termset['Homo sapiens'].id, 'NCBI_TAXON:9606')

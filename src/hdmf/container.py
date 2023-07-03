@@ -274,20 +274,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
             for c in self.children:
                 c.generate_new_id(**kwargs)
 
-    @docval({'name': 'term', 'type': str, 'doc': "term to be validated"},
-            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add'})
-    def validate_data(self, **kwargs):
-            """
-            Validate term in dataset towards a termset.
-            """
-            term = kwargs['term']
-            term_set = kwargs['term_set']
-            try:
-                term_set[term]
-                return True
-            except ValueError:
-                return False
-
     @property
     def modified(self):
         return self.__modified
@@ -558,9 +544,9 @@ class Data(AbstractContainer):
         self.term_set = popargs('term_set', kwargs)
         super().__init__(**kwargs)
         if self.term_set is not None:
-            bad_data = [term for term in data if not  self.validate_data(term=term, term_set=self.term_set)]
+            bad_data = [term for term in data if not  self.term_set.validate(term=term)]
             for term in data:
-                if self.validate_data(term=term, term_set=self.term_set):
+                if self.term_set.validate(term=term):
                     continue
                 else:
                     bad_data.append(term)
@@ -631,7 +617,7 @@ class Data(AbstractContainer):
         if self.term_set is None:
             self.__data = append_data(self.__data, arg)
         else:
-            if self.validate_data(term=arg, term_set=self.term_set):
+            if self.term_set.validate(term=arg):
                 self.__data = append_data(self.__data, arg)
             else:
                 msg = ('"%s" is not in the term set.' % arg)

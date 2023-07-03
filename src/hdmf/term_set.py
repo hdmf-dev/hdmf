@@ -1,4 +1,5 @@
 from collections import namedtuple
+from .utils import docval
 
 
 class TermSet():
@@ -52,6 +53,18 @@ class TermSet():
         meaning = prefix_reference+id
 
         return info_tuple(enum_meaning, description, meaning)
+
+    @docval({'name': 'term', 'type': str, 'doc': "term to be validated"})
+    def validate(self, **kwargs):
+        """
+        Validate term in dataset towards a termset.
+        """
+        term = kwargs['term']
+        try:
+            self[term]
+            return True
+        except ValueError:
+            return False
 
     @property
     def view_set(self):
