@@ -331,7 +331,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
     @parent.setter
     def parent(self, parent_container):
-        # breakpoint()
         if self.parent is parent_container:
             return
 
