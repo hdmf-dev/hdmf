@@ -19,6 +19,15 @@ class Subcontainer(Container):
     pass
 
 
+class ContainerWithChild(Container):
+    __fields__ = ({'name': 'field1', 'child': True}, )
+
+    @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+    def __init__(self, **kwargs):
+        super().__init__('test name')
+        self.field1 = kwargs['field1']
+
+
 class TestExternalResourcesManager(TestCase):
     def test_link_and_get_resources(self):
         em = ExternalResourcesManager()
@@ -269,6 +278,57 @@ class TestContainer(TestCase):
         obj = Container('obj1')
         obj.reset_parent()
         self.assertIsNone(obj.parent)
+
+
+class TestHTMLRepr(TestCase):
+
+    class ContainerWithChildAndData(Container):
+        __fields__ = (
+            {'name': 'child', 'child': True},
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': 'child', 'doc': 'field1 doc', 'type': Container},
+            {'name': "data", "doc": 'data', 'type': list, "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.child = kwargs['child']
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
+    def test_repr_html_(self):
+        child_obj1 = Container('test child 1')
+        obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
+        assert obj1._repr_html_() == (
+            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, sans-'
+            'serif;\n            }\n            .container-fields .field-value {\n                color: #00788E;\n    '
+            '        }\n            .container-fields details > summary {\n                cursor: pointer;\n          '
+            '      display: list-item;\n            }\n            .container-fields details > summary:hover {\n       '
+            '         color: #0A6EAA;\n            }\n        </style>\n        \n        <script>\n            functio'
+            'n copyToClipboard(text) {\n                navigator.clipboard.writeText(text).then(function() {\n        '
+            '            console.log(\'Copied to clipboard: \' + text);\n                }, function(err) {\n          '
+            '          console.error(\'Could not copy text: \', err);\n                });\n            }\n\n          '
+            '  document.addEventListener(\'DOMContentLoaded\', function() {\n                let fieldKeys = document.q'
+            'uerySelectorAll(\'.container-fields .field-key\');\n                fieldKeys.forEach(function(fieldKey) {'
+            '\n                    fieldKey.addEventListener(\'click\', function() {\n                        let acces'
+            'sCode = fieldKey.getAttribute(\'title\').replace(\'Access code: \', \'\');\n                        copyTo'
+            'Clipboard(accessCode);\n                    });\n                });\n            });\n        </script>\n'
+            '        <div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'><h3>test '
+            'name (ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left:'
+            ' 0px;" class="container-fields field-key" title=".fields[\'child\']"><b>child</b></summary></details><deta'
+            'ils><summary style="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fiel'
+            'ds[\'data\']"><b>data</b></summary><div style="margin-left: 20px;" class="container-fields"><span class="f'
+            'ield-value" title=".fields[\'data\'][0]">1</span></div><div style="margin-left: 20px;" class="container-fi'
+            'elds"><span class="field-value" title=".fields[\'data\'][1]">2</span></div><div style="margin-left: 20px;"'
+            ' class="container-fields"><span class="field-value" title=".fields[\'data\'][2]">3</span></div></details><'
+            'div style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".fields[\'str\']">st'
+            'r:</span> <span class="field-value">hello</span></div></div>'
+        )
 
 
 class TestData(TestCase):
@@ -555,14 +615,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj4.field1)
 
     def test_child(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
-
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild(child_obj1)
         self.assertIs(child_obj1.parent, obj1)
@@ -580,13 +632,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj2.field1)
 
     def test_setter_set_modified(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
 
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild()
