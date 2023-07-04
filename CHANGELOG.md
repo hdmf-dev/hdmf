@@ -4,6 +4,7 @@
 
 ### New features and minor improvements
 - Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Added warning for DynamicTableRegion links that are not added to the same parent as the original container object. @mavaylon1 [#891](https://github.com/hdmf-dev/hdmf/pull/891)
 
 ## HMDF 3.6.1 (May 18, 2023)
 
