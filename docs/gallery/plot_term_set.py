@@ -61,7 +61,7 @@ import sys
 # Users can index specific terms from the :py:class:`~hdmf.TermSet`.
 try:
     from hdmf.term_set import TermSet
-    terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
+    terms = TermSet(term_schema_path='docs/source/example_term_set.yaml')
 except ValueError:
     sys.exit("linkml_runtime not installed.")
 print(terms.view_set)

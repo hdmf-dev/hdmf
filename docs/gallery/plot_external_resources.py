@@ -340,7 +340,7 @@ except ImportError:
 if LINKML_INSTALLED:
     from hdmf.term_set import TermSet
 
-    terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
+    terms = TermSet(term_schema_path='docs/source/example_term_set.yaml')
     col1 = VectorData(
         name='Species_Data',
         description='...',
