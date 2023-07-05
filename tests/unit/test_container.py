@@ -6,6 +6,14 @@ from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
+import unittest
+from hdmf.term_set import TermSet
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class Subcontainer(Container):
