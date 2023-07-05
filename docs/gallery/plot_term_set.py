@@ -58,6 +58,7 @@ try:
 except ImportError:
     sys.exit("linkml_runtime not installed.")
 
+
 ######################################################
 # Viewing TermSet values
 # ----------------------------------------------------
