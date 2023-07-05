@@ -54,7 +54,7 @@ import sys
 import os
 
 try:
-    dir_path = os.path.dirname(os.path.abspath('__file__'))
+    dir_path = os.path.dirname(os.path.abspath(__file__))
     yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
 except NameError:
     dir_path = os.path.dirname(os.path.abspath('.'))
