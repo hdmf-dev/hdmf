@@ -355,6 +355,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+            for child in self.children:
+                if type(child).__name__ == "DynamicTableRegion":
+                    if child.table.parent is None:
+                        msg = "The table for this DynamicTableRegion has not been added to the parent."
+                        warn(msg)
+                    else:
+                        continue
 
     def _remove_child(self, child):
         """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
