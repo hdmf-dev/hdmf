@@ -51,7 +51,10 @@ For a clear example, please refer to example_term_set.yaml within the tutorial g
 # ----------------------------------------------------
 from hdmf.common import DynamicTable, VectorData
 import sys
+import os
 
+dir_path = os.path.dirname(os.path.abspath(__file__))
+yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
 
 ######################################################
 # Viewing TermSet values
@@ -61,7 +64,7 @@ import sys
 # Users can index specific terms from the :py:class:`~hdmf.TermSet`.
 try:
     from hdmf.term_set import TermSet
-    terms = TermSet(term_schema_path='docs/source/example_term_set.yaml')
+    terms = TermSet(term_schema_path=yaml_file)
 except ValueError:
     sys.exit("linkml_runtime not installed.")
 print(terms.view_set)

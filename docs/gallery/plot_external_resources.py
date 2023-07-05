@@ -340,16 +340,19 @@ except ImportError:
 if LINKML_INSTALLED:
     from hdmf.term_set import TermSet
 
-    terms = TermSet(term_schema_path='docs/source/example_term_set.yaml')
-    col1 = VectorData(
-        name='Species_Data',
-        description='...',
-        data=['Homo sapiens', 'Ursus arctos horribilis'],
-        term_set=terms,
-    )
+dir_path = os.path.dirname(os.path.abspath(__file__))
+yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
 
-    species = DynamicTable(name='species', description='My species', columns=[col1],)
-    er.add_ref_term_set(file=file,
-                        container=species,
-                        attribute='Species_Data',
-                       )
+terms = TermSet(term_schema_path=yaml_file)
+col1 = VectorData(
+    name='Species_Data',
+    description='...',
+    data=['Homo sapiens', 'Ursus arctos horribilis'],
+    term_set=terms,
+)
+
+species = DynamicTable(name='species', description='My species', columns=[col1],)
+er.add_ref_term_set(file=file,
+                    container=species,
+                    attribute='Species_Data',
+                   )
