@@ -124,6 +124,11 @@ release = hdmf.__version__
 # directories to ignore when looking for source files.
 exclude_patterns = ["_build", "test.py"]
 
+try:
+    import linkml_runtime  # noqa: F401
+except ImportError:
+    exclude_patterns += ["docs/gallery/plot_term_set.py",]
+
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None
 
