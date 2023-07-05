@@ -53,8 +53,12 @@ from hdmf.common import DynamicTable, VectorData
 import sys
 import os
 
-dir_path = os.path.dirname(os.path.abspath(__file__))
-yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+try:
+    dir_path = os.path.dirname(os.path.abspath('__file__'))
+    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+except NameError:
+    dir_path = os.path.dirname(os.path.abspath('.'))
+    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
 
 ######################################################
 # Viewing TermSet values
