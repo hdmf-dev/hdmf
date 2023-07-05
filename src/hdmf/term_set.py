@@ -1,5 +1,10 @@
 from collections import namedtuple
 from .utils import docval
+try:
+    from linkml_runtime.utils.schemaview import SchemaView
+except ImportError:
+    msg = "Install linkml_runtime"
+    raise ValueError(msg)
 
 
 class TermSet():
@@ -19,11 +24,6 @@ class TermSet():
         :param term_schema_path: The path to LinkML YAML enumeration schema
 
         """
-        try:
-            from linkml_runtime.utils.schemaview import SchemaView
-        except ImportError:
-            msg = "Install linkml_runtime"
-            raise ValueError(msg)
         self.term_schema_path = term_schema_path
         self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes

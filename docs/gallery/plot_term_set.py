@@ -50,12 +50,11 @@ For a clear example, please refer to example_term_set.yaml within the tutorial g
 # Creating an instance of the TermSet class
 # ----------------------------------------------------
 from hdmf.common import DynamicTable, VectorData
-from hdmf.term_set import TermSet
 import sys
 
 try:
-    import linkml_runtime
-except ImportError:
+    from hdmf.term_set import TermSet
+except ValueError:
     sys.exit("linkml_runtime not installed.")
 
 
