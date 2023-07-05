@@ -22,6 +22,8 @@ import sphinx_rtd_theme
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 # sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../gallery'))
+
 
 # Get the project root dir, which is the parent parent dir of this
 cwd = os.getcwd()
