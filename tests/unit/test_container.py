@@ -132,8 +132,9 @@ class TestContainer(TestCase):
         child_obj.parent = parent_obj
         self.assertIsNone(child_obj.read_io)
         self.assertIs(child_obj.get_read_io(), temp_io)
-        del parent_obj
         del child_obj
+        del parent_obj
+        del temp_io
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
