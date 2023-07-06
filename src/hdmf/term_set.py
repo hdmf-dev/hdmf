@@ -9,6 +9,7 @@ class TermSet():
 
     :ivar term_schema_path: The LinkML YAML enumeration schema
     :ivar sources: The prefixes for the ontologies used in the TermSet
+    :ivar view: SchemaView of the term set schema
     """
     def __init__(self,
                  term_schema_path: str,
