@@ -24,7 +24,7 @@ The :py:class:`~hdmf.TermSet` class is used closely with
 to data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.TermSet`
 is used with :py:class:`~hdmf.common.resources.ExternalResources`.
 
-:py:class:`~hdmf.TermSet` is built upon the resources from LinkmL, a modeling
+:py:class:`~hdmf.TermSet` is built upon the resources from LinkML, a modeling
 language to create YAML schemas, giving :py:class:`~hdmf.TermSet`
 a standardized structure and a variety of tools to help the user manage their references.
 
