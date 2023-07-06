@@ -43,6 +43,8 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 zarr = ["zarr>=2.12.0"]
+tqdm = ["tqdm>=4.41.0"]
+linkml = ["linkml-runtime>=1.5.0"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
