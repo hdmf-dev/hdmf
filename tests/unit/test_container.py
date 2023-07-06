@@ -111,6 +111,7 @@ class TestContainer(TestCase):
         # Check that setting read_io again fails
         with self.assertRaises(ValueError):
             obj.read_io = temp_io
+        del obj
 
     def test_get_read_io_on_self(self):
         """Test that get_read_io works when the container is set on the container"""
@@ -120,6 +121,7 @@ class TestContainer(TestCase):
         obj.read_io = temp_io
         re_io = obj.get_read_io()
         self.assertIs(re_io, temp_io)
+        del obj
 
     def test_get_read_io_on_parent(self):
         """Test that get_read_io works when the container is set on the parent"""
@@ -130,6 +132,8 @@ class TestContainer(TestCase):
         child_obj.parent = parent_obj
         self.assertIsNone(child_obj.read_io)
         self.assertIs(child_obj.get_read_io(), temp_io)
+        del parent_obj
+        del child_obj
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
