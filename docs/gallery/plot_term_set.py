@@ -88,7 +88,7 @@ data = VectorData(
 ######################################################
 # Validate on append with TermSet
 # ----------------------------------------------------
-# As mentioned prior, when the term_set attribute is set all new data is validated. This is true for both
+# As mentioned prior, when the term_set attribute is set, then all new data is validated. This is true for both
 # append and extend methods.
 data.append('Ursus arctos horribilis')
 data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
