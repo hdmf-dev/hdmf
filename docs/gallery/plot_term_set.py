@@ -33,7 +33,7 @@ How to make a TermSet Schema
 Before the user can take advantage of all the wonders within the
 :py:class:`~hdmf.TermSet` class, the user needs to a LinkML schema (YAML) that provides
 all the permissible term values. Please refer to https://linkml.io/linkml/intro/tutorial06.html
-to learn more about how LinkML structures their schemas.
+to learn more about how LinkML structures their schema.
 
 1. The name of the schema is up to the user, e.g., the name could be "Species" if the term set will
    contain species terms.
