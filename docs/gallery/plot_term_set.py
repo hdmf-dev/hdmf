@@ -18,7 +18,7 @@ gene function ontologies.
 management. Users will be able to validate their data to their own set of terms, ensuring
 clean data to be used inline with the FAIR principles later on.
 The  :py:class:`~hdmf.TermSet` class allows for a reusable and sharable
-pool of metadata to serve as references to any dataset within the NWB ecosystem.
+pool of metadata to serve as references to any dataset.
 The :py:class:`~hdmf.TermSet` class is used closely with
 :py:class:`~hdmf.common.resources.ExternalResources` to more efficiently map terms
 to data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.TermSet`
