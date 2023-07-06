@@ -6,6 +6,7 @@ import pandas as pd
 import unittest
 
 from hdmf import Container
+from hdmf import TermSet
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
@@ -14,6 +15,12 @@ from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 
 from tests.unit.helpers.utils import get_temp_filepath
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class TestDynamicTable(TestCase):
@@ -95,6 +102,105 @@ class TestDynamicTable(TestCase):
         msg = "must provide same number of ids as length of columns"
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable(name="with_columns", description='a test table', id=[0, 1], columns=columns)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_col_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+            term_set=terms,
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        species.add_column(name='Species_2',
+                           description='Species data',
+                           data=['Mus musculus'],
+                           term_set=terms)
+        expected_df_data = \
+            {'Species_1': {0: 'Homo sapiens'},
+             'Species_2': {0: 'Mus musculus'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        expected_df.index.name = 'id'
+        pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_col_validate_bad_data(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+            term_set=terms,
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        with self.assertRaises(ValueError):
+            species.add_column(name='Species_2',
+                               description='Species data',
+                               data=['bad data'],
+                               term_set=terms)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_row_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+            term_set=terms,
+        )
+        col2 = VectorData(
+            name='Species_2',
+            description='...',
+            data=['Mus musculus'],
+            term_set=terms,
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+        species.add_row(Species_1='Myrmecophaga tridactyla', Species_2='Ursus arctos horribilis')
+        expected_df_data = \
+            {'Species_1': {0: 'Homo sapiens', 1: 'Myrmecophaga tridactyla'},
+             'Species_2': {0: 'Mus musculus', 1: 'Ursus arctos horribilis'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        expected_df.index.name = 'id'
+        pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_row_validate_bad_data_one_col(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+            term_set=terms,
+        )
+        col2 = VectorData(
+            name='Species_2',
+            description='...',
+            data=['Mus musculus'],
+            term_set=terms,
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+        with self.assertRaises(ValueError):
+            species.add_row(Species_1='bad', Species_2='Ursus arctos horribilis')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_row_validate_bad_data_all_col(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+            term_set=terms,
+        )
+        col2 = VectorData(
+            name='Species_2',
+            description='...',
+            data=['Mus musculus'],
+            term_set=terms,
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+        with self.assertRaises(ValueError):
+            species.add_row(Species_1='bad data', Species_2='bad data')
 
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
