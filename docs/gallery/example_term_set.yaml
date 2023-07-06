@@ -11,7 +11,7 @@ enums:
   Species:
     permissible_values:
       Homo sapiens:
-        description: description
+        description: the species is human
         meaning: NCBI_TAXON:9606
       Mus musculus:
         description: description
