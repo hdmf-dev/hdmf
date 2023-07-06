@@ -6,6 +6,7 @@ from ..build import BuildManager, GroupBuilder
 from ..container import Container
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
+from .builderupdater import BuilderUpdater
 
 
 class HDMFIO(metaclass=ABCMeta):
@@ -38,13 +39,21 @@ class HDMFIO(metaclass=ABCMeta):
         '''The source of the container being read/written i.e. file path'''
         return self.__source
 
-    @docval(returns='the Container object that was read in', rtype=Container)
+    @docval({'name': 'load_sidecar', 'type': 'bool',
+             'doc': ('Whether to load the sidecar JSON file and use the modifications specified in that file, if '
+                     'the file exists. The file must have the same base name as the original source file but have '
+                     'the suffix .json.'),
+             'default': True},
+            returns='the Container object that was read in', rtype=Container)
     def read(self, **kwargs):
         """Read a container from the IO source."""
+        load_sidecar = popargs('load_sidecar', kwargs)
         f_builder = self.read_builder()
         if all(len(v) == 0 for v in f_builder.values()):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
+        if load_sidecar:
+            BuilderUpdater.update_from_sidecar_json(f_builder, self.__source)
         container = self.__manager.construct(f_builder)
         return container
 

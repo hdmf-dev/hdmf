@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sidecar.schema.json",
+  "title": "Schema for the sidecar JSON file",
+  "description": "A schema for validating HDMF sidecar JSON files",
+  "version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "description",
+    "author",
+    "contact",
+    "operations",
+    "schema_version"
+  ],
+  "properties": {
+    "description": {
+      "description": "A free-form string describing the modifications specified in this file.",
+      "type": "string"
+    },
+    "author": {
+      "description": "A list of free-form strings containing the names of the people who created this file.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "contact": {
+      "description": "A list of email addresses for the people who created this file. Each author listed in the 'author' key *should* have a corresponding email address.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^.*@.*$"
+      }
+    },
+    "operations": {
+      "description": "A list of operations to perform on the data in the file.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "description",
+          "object_id",
+          "relative_path"
+        ],
+        "properties": {
+          "type": {
+            "description": "The type of modification to perform.",
+            "member_region": {
+              "type": ["replace", "delete"]
+            }
+          },
+          "description": {
+            "description": "A description of the specified modification.",
+            "type": "string"
+          },
+          "object_id": {
+            "description": "The object ID (UUID) of the data type that is closest in the file hierarchy to the field being modified. Must be in the UUID-4 format with hyphens.",
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}\\-[0-9a-f]{4}\\-4[0-9a-f]{3}\\-[89ab][0-9a-f]{3}\\-[0-9a-f]{12}$"
+          },
+          "relative_path": {
+            "description": " The relative path from the data type with the given object ID to the field being modified.",
+            "type": "string"
+          },
+          "element_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "group",
+                  "dataset",
+                  "attribute"
+                ]
+              }
+            ]
+          },
+          "value": {
+            "description": "The new value for the dataset/attribute.",
+            "member_region": {
+              "type": ["array", "string", "number", "boolean", "null"]
+            }
+          },
+          "dtype": {"$ref": "#/definitions/dtype"}
+        },
+        "allOf": [
+          {
+            "description": "if type==replace, then value is required.",
+            "if": {
+              "properties": { "type": { "const": "replace" } }
+            },
+            "then": {
+              "required": [ "value" ]
+            }
+          },
+          {
+            "description": "if type==delete, then value and dtype are not allowed.",
+            "if": {
+              "properties": { "type": { "const": "delete" } }
+            },
+            "then": {
+              "properties": {
+                "value": false,
+                "dtype": false
+              }
+            }
+          },
+          {
+            "description": "if type==create, then element_type is required.",
+            "if": {
+              "properties": { "type": { "const": "create" } }
+            },
+            "then": {
+              "required": [ "element_type" ]
+            }
+          }
+        ]
+      }
+    },
+    "schema_version": {
+      "description": "The version of the sidecar JSON schema that the file conforms to. Must confirm to Semantic Versioning v2.0.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    }
+  },
+  "definitions": {
+    "dtype": {
+      "anyOf": [
+        {"$ref": "#/definitions/flat_dtype"},
+        {"$ref": "#/definitions/compound_dtype"}
+      ]
+    },
+    "flat_dtype": {
+      "description": "String describing the data type of the dataset or attribute.",
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "float",
+            "float32",
+            "double",
+            "float64",
+            "long",
+            "int64",
+            "int",
+            "int32",
+            "int16",
+            "int8",
+            "uint",
+            "uint32",
+            "uint16",
+            "uint8",
+            "uint64",
+            "text",
+            "utf",
+            "utf8",
+            "utf-8",
+            "ascii",
+            "bool",
+            "isodatetime"
+          ]
+        },
+        {"$ref": "#/definitions/ref_dtype"}
+      ]
+    },
+    "ref_dtype": {
+      "type": "object",
+      "required": ["target_type", "reftype"],
+      "properties": {
+        "target_type": {
+          "description": "Describes the data_type of the target that the reference points to",
+          "type": "string"
+        },
+        "reftype": {
+          "description": "Describes the kind of reference",
+          "type": "string",
+          "enum": ["ref", "reference", "object", "region"]
+        }
+      }
+    },
+    "compound_dtype": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "doc", "dtype"],
+        "properties": {
+          "name": {"$ref": "#/definitions/protectedString"},
+          "doc": {"type": "string"},
+          "dtype": {"$ref": "#/definitions/flat_dtype"}
+        }
+      }
+    }
+  }
+}

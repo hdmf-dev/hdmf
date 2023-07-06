@@ -68,6 +68,13 @@ class Builder(dict, metaclass=ABCMeta):
         if self.__source is None:
             self.source = p.source
 
+    def reset_parent(self):
+        """Reset the parent of this Container to None.
+
+        Use with caution. This can result in orphaned builders and broken links. Does not reset source.
+        """
+        self.__parent = None
+
     def __repr__(self):
         ret = "%s %s %s" % (self.path, self.__class__.__name__, super().__repr__())
         return ret
@@ -110,6 +117,10 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
         """Set an attribute for this group."""
         name, value = getargs('name', 'value', kwargs)
         self.attributes[name] = value
+
+    def remove_attribute(self, name):
+        """Remove a child attribute from this builder. Use with caution. Intended for internal use."""
+        del self.attributes[name]
 
 
 class GroupBuilder(BaseBuilder):
@@ -244,6 +255,26 @@ class GroupBuilder(BaseBuilder):
         if builder.parent is None:
             builder.parent = self
 
+    def remove_attribute(self, name):
+        """Remove a child attribute from this builder. Use with caution. Intended for internal use."""
+        del self.obj_type[name]
+        super().remove_attribute(name)
+
+    def remove_child(self, child):
+        """Remove a child builder from this builder. Use with caution. Intended for internal use."""
+        if isinstance(child, GroupBuilder):
+            obj_type = GroupBuilder.__group
+        elif isinstance(child, DatasetBuilder):
+            obj_type = GroupBuilder.__dataset
+        elif isinstance(child, LinkBuilder):
+            obj_type = GroupBuilder.__link
+        else:  # pragma: no cover
+            raise ValueError("child is expected to be a GroupBuilder, DatasetBuilder, or LinkBuilder, not a %s"
+                             % type(child))
+        del super().__getitem__(obj_type)[child.name]
+        del self.obj_type[child.name]
+        child.reset_parent()
+
     def is_empty(self):
         """Returns true if there are no datasets, links, attributes, and non-empty subgroups. False otherwise."""
         if len(self.datasets) or len(self.links) or len(self.attributes):
@@ -282,6 +313,47 @@ class GroupBuilder(BaseBuilder):
         else:
             if key_ar[0] in self.groups:
                 return self.groups[key_ar[0]].__get_rec(key_ar[1:])
+            elif key_ar[0] in self.datasets:  # "dset/x" must be an attribute on dset
+                assert len(key_ar) == 2
+                return self.datasets[key_ar[0]].attributes[key_ar[1]]
+        raise KeyError(key_ar[0])
+
+    def get_subbuilder(self, key, default=(None, None)):
+        """Like dict.get, but looks in groups and datasets sub-dictionaries and ignores trailing attributes and links.
+        Returns two values -- the sub-group or sub-dataset and the name of the attribute if present
+        """
+        try:
+            key_ar = _posixpath.normpath(key).split('/')
+            return self.__get_subbuilder_rec(key_ar)
+        except KeyError:
+            return default
+
+    def __get_subbuilder_rec(self, key_ar):
+        # recursive helper for get_subbuilder
+        # returns sub-builder and attribute name if present
+        # possibilities are:
+        # group
+        # group/subgroup or group/subgroup/...
+        # group/dataset or group/dataset/...
+        # group/attribute
+        # dataset
+        # dataset/attribute
+        if len(key_ar) == 1:
+            if key_ar[0] in self.groups:  # group
+                return self.groups[key_ar[0]], None
+            elif key_ar[0] in self.datasets:  # dataset
+                return self.datasets[key_ar[0]], None
+        elif len(key_ar) == 2:
+            if key_ar[0] in self.groups:
+                if key_ar[1] in self.groups[key_ar[0]].attributes:  # group/attribute
+                    return self.groups[key_ar[0]], key_ar[1]
+                else:  # group/subgroup or group/dataset
+                    return self.groups[key_ar[0]].__get_subbuilder_rec(key_ar[1:])
+            elif key_ar[0] in self.datasets:
+                if key_ar[1] in self.datasets[key_ar[0]].attributes:  # dataset/attribute
+                    return self.datasets[key_ar[0]], key_ar[1]
+        elif len(key_ar) > 2 and key_ar[0] in self.groups:
+            return self.groups[key_ar[0]].__get_subbuilder_rec(key_ar[1:])
         raise KeyError(key_ar[0])
 
     def __setitem__(self, args, val):

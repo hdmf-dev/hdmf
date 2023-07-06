@@ -64,7 +64,7 @@ def _object_attr(**kwargs):
     return _dec
 
 
-def _unicode(s):
+def unicode(s):
     """
     A helper function for converting to Unicode
     """
@@ -76,7 +76,7 @@ def _unicode(s):
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
-def _ascii(s):
+def ascii(s):
     """
     A helper function for converting to ASCII
     """
@@ -95,7 +95,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     # mapping from spec dtypes to numpy dtypes or functions for conversion of values to spec dtypes
     # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
-    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
+    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.classgenerator.CustomClassGenerator._spec_dtype_map,
     # hdmf.validate.validator.__allowable, and backend dtype maps
     __dtypes = {
         "float": np.float32,
@@ -115,17 +115,21 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "uint16": np.uint16,
         "uint8": np.uint8,
         "bool": np.bool_,
-        "text": _unicode,
-        "utf": _unicode,
-        "utf8": _unicode,
-        "utf-8": _unicode,
-        "ascii": _ascii,
-        "bytes": _ascii,
-        "isodatetime": _ascii,
-        "datetime": _ascii,
+        "text": unicode,
+        "utf": unicode,
+        "utf8": unicode,
+        "utf-8": unicode,
+        "ascii": ascii,
+        "bytes": ascii,
+        "isodatetime": ascii,
+        "datetime": ascii,
     }
 
     __no_convert = set()
+
+    @classmethod
+    def get_dtype_mapping(cls, dtype_str):
+        return cls.__dtypes[dtype_str]
 
     @classmethod
     def __resolve_numeric_dtype(cls, given, specified):
@@ -201,16 +205,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
-        # spec_dtype is a string, spec_dtype_type is a type or the conversion helper functions _unicode or _ascii
+        # spec_dtype is a string, spec_dtype_type is a type or the conversion helper functions unicode or ascii
         spec_dtype_type = cls.__dtypes[spec_dtype]
         warning_msg = None
         # Numpy Array or Zarr array
         if (isinstance(value, np.ndarray) or
                 (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
-            if spec_dtype_type is _unicode:
+            if spec_dtype_type is unicode:
                 ret = value.astype('U')
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type is ascii:
                 ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
@@ -223,9 +227,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # Tuple or list
         elif isinstance(value, (tuple, list)):
             if len(value) == 0:
-                if spec_dtype_type is _unicode:
+                if spec_dtype_type is unicode:
                     ret_dtype = 'utf8'
-                elif spec_dtype_type is _ascii:
+                elif spec_dtype_type is ascii:
                     ret_dtype = 'ascii'
                 else:
                     ret_dtype = spec_dtype_type
@@ -239,16 +243,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # Any DataChunkIterator
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
-            if spec_dtype_type is _unicode:
+            if spec_dtype_type is unicode:
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type is ascii:
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
-            if spec_dtype_type in (_unicode, _ascii):
+            if spec_dtype_type in (unicode, ascii):
                 ret_dtype = 'ascii'
-                if spec_dtype_type is _unicode:
+                if spec_dtype_type is unicode:
                     ret_dtype = 'utf8'
                 ret = spec_dtype_type(value)
             else:
