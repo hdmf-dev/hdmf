@@ -6,6 +6,7 @@
 - Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
 - Added warning for DynamicTableRegion links that are not added to the same parent as the original container object. @mavaylon1 [#891](https://github.com/hdmf-dev/hdmf/pull/891)
 - Added the `TermSet` class along with integrated validation methods for any child of `AbstractContainer`, e.g., `VectorData`, `Data`, `DynamicTable`. @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
+- Added `AbstractContainer.read_io` property to be able to retrieve the HDMFIO object used for reading from the container and to ensure the I/O object used for reading is not garbage collected before the container is being deleted. @bendichter @oruebel [#882](https://github.com/hdmf-dev/hdmf/pull/882)
 
 ### Documentation and tutorial enhancements:
 
