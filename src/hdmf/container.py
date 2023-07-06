@@ -269,7 +269,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         re_io = self.read_io
         while re_io is None and curr_obj.parent is not None:
             curr_obj = curr_obj.parent
-            re_io = curr_obj.io
+            re_io = curr_obj.read_io
         return re_io
 
     @property
