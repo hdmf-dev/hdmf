@@ -77,7 +77,7 @@ terms['Homo sapiens']
 ######################################################
 # Validate Data with TermSet
 # ----------------------------------------------------
-# :py:class:`~hdmf.TermSet` has been integrated so that :py:class:`~hdmf.Data` and its
+# :py:class:`~hdmf.term_set.TermSet` has been integrated so that :py:class:`~hdmf.container.Data` and its
 # subclasses support a term_set attribute. By having this attribute set, the data will be validated
 # and all new data will be validated.
 data = VectorData(
