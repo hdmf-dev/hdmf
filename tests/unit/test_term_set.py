@@ -36,7 +36,7 @@ class TestTermSet(TestCase):
     def test_get_item(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         self.assertEqual(termset['Homo sapiens'].id, 'NCBI_TAXON:9606')
-        self.assertEqual(termset['Homo sapiens'].description, 'description')
+        self.assertEqual(termset['Homo sapiens'].description, 'the species is human')
         self.assertEqual(termset['Homo sapiens'].meaning, 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
