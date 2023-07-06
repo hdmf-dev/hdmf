@@ -327,7 +327,7 @@ os.remove('./er.zip')
 ###############################################################################
 # Using TermSet with ExternalResources
 # ------------------------------------------------
-# :py:class:`~hdmf.TermSet` allows for an easier way to add references to
+# :py:class:`~hdmf.term_set.TermSet` allows for an easier way to add references to
 # :py:class:`~hdmf.common.resources.ExternalResources`. These enumerations take place of the
 # entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have
 # to match the name of the term in the :py:class:`~hdmf.TermSet`.
