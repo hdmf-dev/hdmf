@@ -46,7 +46,7 @@ class HDMFIO(metaclass=ABCMeta):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
-        container.io = self
+        container.read_io = self
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
