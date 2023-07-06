@@ -74,7 +74,8 @@ class TermSet():
         perm_values_dict = self.view.all_enums()[enumeration].permissible_values
         enum_dict = {}
         for perm_value_key in perm_values_dict.keys():
-            enum_dict[perm_value_key] = self.__perm_value_key_info(perm_values_dict=perm_values_dict, key=perm_value_key)
+            enum_dict[perm_value_key] = self.__perm_value_key_info(perm_values_dict=perm_values_dict,
+                                                                   key=perm_value_key)
 
         return enum_dict
 
