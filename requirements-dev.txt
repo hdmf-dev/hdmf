@@ -13,4 +13,3 @@ python-dateutil==2.8.2
 ruff==0.0.265
 tox==4.5.1; python_version >= "3.8"
 tox==3.28.0; python_version < "3.8"  # tox 4+ has virtualenv requirements that are incompatible with other pkgs
-linkml-runtime==1.5.0
