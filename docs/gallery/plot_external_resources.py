@@ -331,14 +331,8 @@ os.remove('./er.zip')
 # :py:class:`~hdmf.common.resources.ExternalResources`. These enumerations take place of the
 # entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have
 # to match the name of the term in the :py:class:`~hdmf.TermSet`.
-try:
-    import linkml_runtime  # noqa: F401
-    LINKML_INSTALLED = True
-except ImportError:
-    LINKML_INSTALLED = False
-
-if LINKML_INSTALLED:
-    from hdmf.term_set import TermSet
+import linkml_runtime
+from hdmf.term_set import TermSet
 
 try:
     dir_path = os.path.dirname(os.path.abspath(__file__))
