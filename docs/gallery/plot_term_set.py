@@ -97,8 +97,9 @@ data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
 # Validate Data in a DynamicTable with TermSet
 # ----------------------------------------------------
 # Validating data with :py:class:`~hdmf.common.table.DynamicTable` is determined by which columns were
-# initialized with the term_set attribute set. The data is validated when the columns are created and not
-# when set as columns to the table.
+# initialized with the term_set attribute set. The data is validated when the columns are created or
+# modified. Since adding the columns to a DynamicTable does not modify the data, validation is
+# not being performed at that time.
 col1 = VectorData(
     name='Species_1',
     description='...',
