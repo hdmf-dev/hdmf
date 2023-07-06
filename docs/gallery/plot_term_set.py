@@ -3,35 +3,35 @@ TermSet
 =======
 
 This is a user guide for interacting with the
-:py:class:`~hdmf.TermSet` class. The :py:class:`~hdmf.TermSet` type
+:py:class:`~hdmf.term_set.TermSet` class. The :py:class:`~hdmf.term_set.TermSet` type
 is experimental and is subject to change in future releases. If you use this type,
 please provide feedback to the HDMF team so that we can improve the structure and
 overall capabilities.
 
 Introduction
 -------------
-The :py:class:`~hdmf.TermSet` class provides a way for users to create their own
+The :py:class:`~hdmf.term_set.TermSet` class provides a way for users to create their own
 set of terms from brain atlases, species taxonomies, and anatomical, cell, and
 gene function ontologies.
 
-:py:class:`~hdmf.TermSet` serves two purposes: data validation and external reference
+:py:class:`~hdmf.term_set.TermSet` serves two purposes: data validation and external reference
 management. Users will be able to validate their data to their own set of terms, ensuring
 clean data to be used inline with the FAIR principles later on.
-The  :py:class:`~hdmf.TermSet` class allows for a reusable and sharable
+The  :py:class:`~hdmf.term_set.TermSet` class allows for a reusable and sharable
 pool of metadata to serve as references to any dataset.
-The :py:class:`~hdmf.TermSet` class is used closely with
+The :py:class:`~hdmf.term_set.TermSet` class is used closely with
 :py:class:`~hdmf.common.resources.ExternalResources` to more efficiently map terms
-to data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.TermSet`
+to data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.term_set.TermSet`
 is used with :py:class:`~hdmf.common.resources.ExternalResources`.
 
-:py:class:`~hdmf.TermSet` is built upon the resources from LinkML, a modeling
-language that uses YAML-based schema, giving :py:class:`~hdmf.TermSet`
+:py:class:`~hdmf.term_set.TermSet` is built upon the resources from LinkML, a modeling
+language that uses YAML-based schema, giving :py:class:`~hdmf.term_set.TermSet`
 a standardized structure and a variety of tools to help the user manage their references.
 
 How to make a TermSet Schema
 ----------------------------
 Before the user can take advantage of all the wonders within the
-:py:class:`~hdmf.TermSet` class, the user needs to create a LinkML schema (YAML) that provides
+:py:class:`~hdmf.term_set.TermSet` class, the user needs to create a LinkML schema (YAML) that provides
 all the permissible term values. Please refer to https://linkml.io/linkml/intro/tutorial06.html
 to learn more about how LinkML structures their schema.
 
@@ -50,7 +50,6 @@ For a clear example, please refer to example_term_set.yaml within the tutorial g
 # Creating an instance of the TermSet class
 # ----------------------------------------------------
 from hdmf.common import DynamicTable, VectorData
-import sys
 import os
 
 try:
@@ -63,9 +62,9 @@ except NameError:
 ######################################################
 # Viewing TermSet values
 # ----------------------------------------------------
-# :py:class:`~hdmf.TermSet` has methods to retrieve terms. The :py:func:`~hdmf.TermSet:view_set`
+# :py:class:`~hdmf.term_set.TermSet` has methods to retrieve terms. The :py:func:`~hdmf.term_set.TermSet:view_set`
 # method will return a dictionary of all the terms and the corresponding information for each term.
-# Users can index specific terms from the :py:class:`~hdmf.TermSet`. The LinkML runtime will need to be installed.
+# Users can index specific terms from the :py:class:`~hdmf.term_set.TermSet`. The LinkML runtime will need to be installed.
 # You can do so by first running ``pip install linkml-runtime``.
 from hdmf.term_set import TermSet
 terms = TermSet(term_schema_path=yaml_file)
@@ -119,8 +118,8 @@ species = DynamicTable(name='species', description='My species', columns=[col1,c
 # ----------------------------------------------------
 # Validating new rows to :py:class:`~hdmf.common.table.DynamicTable` is simple. The
 # :py:func:`~hdmf.common.table.DynamicTable.add_row` method will automatically check each column for a
-# :py:class:`~hdmf.TermSet` (via the term_set attribute). If the attribute is set, the the data will be
-# validated for that column using that column's :py:class:`~hdmf.TermSet`. If there is invalid data, the
+# :py:class:`~hdmf.term_set.TermSet` (via the term_set attribute). If the attribute is set, the the data will be
+# validated for that column using that column's :py:class:`~hdmf.term_set.TermSet`. If there is invalid data, the
 # row will not be added and the user will be prompted to fix the new data in order to populate the table.
 species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 

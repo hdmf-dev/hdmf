@@ -14,11 +14,11 @@ enums:
         description: the species is human
         meaning: NCBI_TAXON:9606
       Mus musculus:
-        description: description
+        description: the species is a house mouse
         meaning: NCBI_TAXON:10090
       Ursus arctos horribilis:
-        description: description
+        description: the species is a grizzly bear
         meaning: NCBI_TAXON:116960
       Myrmecophaga tridactyla:
-        description: description
+        description: the species is an anteater
         meaning: NCBI_TAXON:71006
