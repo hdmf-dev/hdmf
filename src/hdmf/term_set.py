@@ -4,7 +4,8 @@ from .utils import docval
 
 class TermSet():
     """
-    Class for implementing term sets from ontologies.
+    Class for implementing term sets from ontologies and other resources used to define the
+    meaning and/or identify of terms.
 
     :ivar name: The name of the TermSet
     :ivar term_schema_path: The LinkML YAML enumeration schema
