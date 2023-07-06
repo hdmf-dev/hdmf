@@ -45,8 +45,8 @@ to learn more about how LinkML structures their schema.
    manually outline the terms within the enumeration's permissible values.
 
 For a clear example, please view the
-`example_term_set.yaml <https://github.com/hdmf-dev/hdmf/blob/dev/docs/gallery/example_term_set.yaml>`_ for this tutorial, which provides a concise example of how
-a term set schema looks.
+`example_term_set.yaml <https://github.com/hdmf-dev/hdmf/blob/dev/docs/gallery/example_term_set.yaml>`_
+for this tutorial, which provides a concise example of how a term set schema looks.
 """
 ######################################################
 # Creating an instance of the TermSet class

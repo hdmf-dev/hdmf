@@ -7,11 +7,8 @@ class TermSet():
     Class for implementing term sets from ontologies and other resources used to define the
     meaning and/or identify of terms.
 
-    :ivar name: The name of the TermSet
     :ivar term_schema_path: The LinkML YAML enumeration schema
-    :ivar ontology_version: The version of the ontology
-    :ivar ontology_source_name:  The name of the ontology
-    :ivar ontology_source_uri: The uri of the ontology
+    :ivar sources: The prefixes for the ontologies used in the TermSet
     """
     def __init__(self,
                  term_schema_path: str,
@@ -34,7 +31,7 @@ class TermSet():
         re += "term_schema_path: %s\n" % self.term_schema_path
         return re
 
-    def _perm_value_key_info(self, perm_values_dict: dict, key: str):
+    def __perm_value_key_info(self, perm_values_dict: dict, key: str):
         """
         Private method to retrieve the id, description, and the meaning.
         """
@@ -77,7 +74,7 @@ class TermSet():
         perm_values_dict = self.view.all_enums()[enumeration].permissible_values
         enum_dict = {}
         for perm_value_key in perm_values_dict.keys():
-            enum_dict[perm_value_key] = self._perm_value_key_info(perm_values_dict=perm_values_dict, key=perm_value_key)
+            enum_dict[perm_value_key] = self.__perm_value_key_info(perm_values_dict=perm_values_dict, key=perm_value_key)
 
         return enum_dict
 
@@ -89,7 +86,7 @@ class TermSet():
         perm_values_dict = self.view.all_enums()[enumeration].permissible_values
 
         try:
-            term_info = self._perm_value_key_info(perm_values_dict=perm_values_dict, key=term)
+            term_info = self.__perm_value_key_info(perm_values_dict=perm_values_dict, key=term)
             return term_info
 
         except KeyError:
