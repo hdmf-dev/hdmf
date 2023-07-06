@@ -66,11 +66,8 @@ except NameError:
 # :py:class:`~hdmf.TermSet` has methods to retrieve terms. The :py:func:`~hdmf.TermSet:view_set`
 # method will return a dictionary of all the terms and the corresponding information for each term.
 # Users can index specific terms from the :py:class:`~hdmf.TermSet`.
-try:
-    from hdmf.term_set import TermSet
-    terms = TermSet(term_schema_path=yaml_file)
-except ValueError:
-    sys.exit("linkml_runtime not installed.")
+from hdmf.term_set import TermSet
+terms = TermSet(term_schema_path=yaml_file)
 print(terms.view_set)
 
 # Retrieve a specific term
