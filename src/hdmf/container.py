@@ -249,7 +249,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         if not isinstance(value, HDMFIO):
             raise TypeError("io must be an instance of HDMFIO")
         if self.__read_io is not None:
-            raise ValueError("io has already been set for this container (name=%s, type=%)" %
+            raise ValueError("io has already been set for this container (name=%s, type=%s)" %
                              (self.name, str(type(self))))
         else:
             self.__read_io = value
