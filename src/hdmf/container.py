@@ -195,6 +195,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def __del__(self):
         # Make sure the reference counter for our read IO is being decremented
         del self.__read_io
+        self.__read_io = None
 
     def __new__(cls, *args, **kwargs):
         """
