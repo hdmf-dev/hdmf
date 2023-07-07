@@ -1,5 +1,7 @@
 import pandas as pd
-from hdmf.common import DynamicTable
+import unittest
+from hdmf.common import DynamicTable, VectorData
+from hdmf import TermSet
 from hdmf.common.resources import ExternalResources, Key
 from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
@@ -7,6 +9,14 @@ import numpy as np
 from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
+from glob import glob
+import zipfile
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
@@ -36,11 +46,24 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def remove_er_files(self):
         remove_test_file('./entities.tsv')
+        remove_test_file('./entity_keys.tsv')
         remove_test_file('./objects.tsv')
         remove_test_file('./object_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
         remove_test_file('./er.tsv')
+        remove_test_file('./er.zip')
+
+    def child_tsv(self, external_resources):
+        for child in external_resources.children:
+            df = child.to_dataframe()
+            df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
+
+    def zip_child(self):
+        files = glob('*.tsv')
+        with zipfile.ZipFile('er.zip', 'w') as zipF:
+          for file in files:
+              zipF.write(file)
 
     def test_to_dataframe(self):
         # Setup complex external resources with keys reused across objects and
@@ -55,16 +78,25 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             )
         )
 
-        file = ExternalResourcesManagerContainer(name='file')
+        data2 = Data(
+            name='data_name',
+            data=np.array(
+                [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
+                dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
+            )
+        )
 
-        ck1, e1 = er.add_ref(file=file,
+        file_1 = ExternalResourcesManagerContainer(name='file_1')
+        file_2 = ExternalResourcesManagerContainer(name='file_2')
+
+        k1, e1 = er.add_ref(file=file_1,
                              container=data1,
                              field='species',
                              key='Mus musculus',
                              entity_id='NCBI:txid10090',
                              entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        k2, e2 = er.add_ref(file=file,
-                            container=data1,
+        k2, e2 = er.add_ref(file=file_2,
+                            container=data2,
                             field='species',
                             key='Homo sapiens',
                             entity_id='NCBI:txid9606',
@@ -73,10 +105,10 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         # Convert to dataframe and compare against the expected result
         result_df = er.to_dataframe()
         expected_df_data = \
-            {'file_object_id': {0: file.object_id, 1: file.object_id},
-             'objects_idx': {0: 0, 1: 0},
-             'object_id': {0: data1.object_id, 1: data1.object_id},
-             'files_idx': {0: 0, 1: 0},
+            {'file_object_id': {0: file_1.object_id, 1: file_2.object_id},
+             'objects_idx': {0: 0, 1: 1},
+             'object_id': {0: data1.object_id, 1: data2.object_id},
+             'files_idx': {0: 0, 1: 1},
              'object_type': {0: 'Data', 1: 'Data'},
              'relative_path': {0: '', 1: ''},
              'field': {0: 'species', 1: 'species'},
@@ -196,7 +228,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(container=em, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, em.object_id, 'ExternalResourcesManagerContainer', '', '')])
 
     def test_add_ref_search_for_file_parent(self):
@@ -209,7 +241,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(container=child, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, child.object_id, 'Container', '', '')])
 
     def test_add_ref_search_for_file_nested_parent(self):
@@ -224,7 +256,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         er.add_ref(container=nested_child, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, nested_child.object_id, 'Container', '', '')])
 
     def test_add_ref_search_for_file_error(self):
@@ -237,6 +269,125 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        entity_id='entity_id1',
                        entity_uri='entity1')
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'],
+                          term_set=terms)
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_term_set(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_termset(self):
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        species = DynamicTable(name='species', description='My species')
+
+        with self.assertRaises(AttributeError):
+            er.add_ref_term_set(file=em,
+                                container=species,
+                               )
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_attribute_termset_value(self):
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_term_set(file=em,
+                                container=species,
+                                attribute='Species_Data',
+                               )
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_terms(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'missing_term'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        missing_terms = er.add_ref_term_set(file=em,
+                                            container=species,
+                                            attribute='Species_Data',
+                                            term_set=terms
+                                           )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+        self.assertEqual(missing_terms, {'Missing Values in TermSet': ['missing_term']})
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_file_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = ExternalResources()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'],
+                          term_set=terms)
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_term_set(
+                        container=species,
+                        attribute='Species_Data',
+                       )
+
+    def test_get_file_from_container(self):
+        file = ExternalResourcesManagerContainer(name='file')
+        container = Container(name='name')
+        container.parent = file
+        er = ExternalResources()
+        retrieved = er._get_file_from_container(container)
+
+        self.assertEqual(file.name, retrieved.name)
+
+    def test_get_file_from_container_file_is_container(self):
+        file = ExternalResourcesManagerContainer(name='file')
+        er = ExternalResources()
+        retrieved = er._get_file_from_container(file)
+
+        self.assertEqual(file.name, retrieved.name)
+
+
+    def test_get_file_from_container_error(self):
+        container = Container(name='name')
+        er = ExternalResources()
+
+        with self.assertRaises(ValueError):
+            er._get_file_from_container(container)
+
     def test_add_ref(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
@@ -246,7 +397,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_id='entity_id1',
                    entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_id1', 'entity1')])
+        self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
     def test_get_object_type(self):
@@ -313,7 +464,19 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities(self):
+    def test_get_entity(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = ExternalResourcesManagerContainer(name='file')
+        er.add_ref(file=file,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.get_entity(entity_id='entity_id1').idx, 0)
+        self.assertEqual(er.get_entity(entity_id='entity_id2'), None)
+
+    def test_get_obj_entities(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = ExternalResourcesManagerContainer(name='file')
@@ -326,14 +489,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(file=file,
                                     container=data)
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_container(self):
+    def test_get_obj_entities_file_none_container(self):
         er = ExternalResources()
         file = ExternalResourcesManagerContainer()
         er.add_ref(container=file,
@@ -343,14 +505,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(container=file)
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_not_container_nested(self):
+    def test_get_obj_entities_file_none_not_container_nested(self):
         er = ExternalResources()
         file = ExternalResourcesManagerContainer()
         child = Container(name='child')
@@ -364,14 +525,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(container=child)
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_not_container_deep_nested(self):
+    def test_get_obj_entities_file_none_not_container_deep_nested(self):
         er = ExternalResources()
         file = ExternalResourcesManagerContainer()
         child = Container(name='child')
@@ -387,14 +547,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df = er.get_object_entities(container=nested_child)
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_id1'},
+            {'entity_id': {0: 'entity_id1'},
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_get_entities_file_none_error(self):
+    def test_get_obj_entities_file_none_error(self):
         er = ExternalResources()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = ExternalResourcesManagerContainer(name='file')
@@ -406,7 +565,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         with self.assertRaises(ValueError):
             _ = er.get_object_entities(container=data)
 
-    def test_get_entities_attribute(self):
+    def test_get_obj_entities_attribute(self):
         table = DynamicTable(name='table', description='table')
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
@@ -425,8 +584,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                     attribute='col1')
 
         expected_df_data = \
-            {'key_names': {0: 'key1'},
-             'entity_id': {0: 'entity_0'},
+            {'entity_id': {0: 'entity_0'},
              'entity_uri': {0: 'entity_0_uri'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
@@ -457,12 +615,61 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
+        self.child_tsv(external_resources=er)
+
         df = er.entities.to_dataframe()
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
-        msg = "Key Index out of range in EntityTable. Please check for alterations."
-        with self.assertRaisesWith(ValueError, msg):
+        self.zip_child()
+
+        with self.assertRaises(ValueError):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_entity_key_value_error_key(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.entity_keys.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entity_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        with self.assertRaises(ValueError):
+            _ = ExternalResources.from_norm_tsv(path='./')
+
+        self.remove_er_files()
+
+    def test_to_and_from_norm_tsv_entity_key_value_error_entity(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.entity_keys.to_dataframe()
+        df.at[0, ('entities_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entity_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
+
+        with self.assertRaises(ValueError):
             _ = ExternalResources.from_norm_tsv(path='./')
 
         self.remove_er_files()
@@ -477,9 +684,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
+        self.child_tsv(external_resources=er)
+
         df = er.objects.to_dataframe()
         df.at[0, ('files_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./objects.tsv', sep='\t', index=False)
+
+        self.zip_child()
 
         msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
@@ -497,9 +708,13 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
+        self.child_tsv(external_resources=er)
+
         df = er.object_keys.to_dataframe()
         df.at[0, ('objects_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./object_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
 
         msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
@@ -517,61 +732,19 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
+        self.child_tsv(external_resources=er)
+
         df = er.object_keys.to_dataframe()
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./object_keys.tsv', sep='\t', index=False)
+
+        self.zip_child()
 
         msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
             _ = ExternalResources.from_norm_tsv(path='./')
 
         self.remove_er_files()
-
-    def test_to_flat_tsv_and_from_flat_tsv(self):
-        # write er to file
-        er = ExternalResources()
-        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
-                   container=data,
-                   key='key1',
-                   entity_id='entity_id1',
-                   entity_uri='entity1')
-        er.to_flat_tsv(path='./er.tsv')
-        # read er back from file and compare
-        er_obj = ExternalResources.from_flat_tsv(path='./er.tsv')
-        # Check that the data is correct
-        ExternalResources.assert_external_resources_equal(er_obj, er, check_dtype=False)
-        self.remove_er_files()
-
-    def test_to_flat_tsv_and_from_flat_tsv_missing_keyidx(self):
-        # write er to file
-        df = self.container.to_dataframe(use_categories=True)
-        df.at[0, ('keys', 'keys_idx')] = 10  # Change key_ix 0 to 10
-        df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        msg = "Missing keys_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-        with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
-
-    def test_to_flat_tsv_and_from_flat_tsv_missing_objectidx(self):
-        # write er to file
-        df = self.container.to_dataframe(use_categories=True)
-        df.at[0, ('objects', 'objects_idx')] = 10  # Change objects_idx 0 to 10
-        df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        msg = "Missing objects_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-        with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
-
-    def test_to_flat_tsv_and_from_flat_tsv_missing_entitiesidx(self):
-        # write er to file
-        er_df = self.container.to_dataframe(use_categories=True)
-        er_df.at[0, ('entities', 'entities_idx')] = 10  # Change entities_idx 0 to 10
-        er_df.to_csv(self.export_filename, sep='\t')
-        # read er back from file and compare
-        msg = "Missing entities_idx entries [0, 2, 3, 4, 5, 6, 7, 8, 9]"
-        with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_flat_tsv(path=self.export_filename)
 
     def test_add_ref_two_keys(self):
         er = ExternalResources()
@@ -589,7 +762,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key2',)])
-        self.assertEqual(er.entities.data, [(0, 'id11', 'url11'), (1, 'id12', 'url21')])
+        self.assertEqual(er.entities.data, [('id11', 'url11'), ('id12', 'url21')])
 
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', '')])
@@ -610,7 +783,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='url21')
 
         self.assertEqual(er.keys.data, [('key1',), ('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'id11', 'url11'), (1, 'id12', 'url21')])
+        self.assertEqual(er.entities.data, [('id11', 'url11'), ('id12', 'url21')])
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', '')])
 
@@ -637,9 +810,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.keys.data, [('key1',), ('key1',), ('key1',)])
         self.assertEqual(
             er.entities.data,
-            [(0, 'id11', 'url11'),
-             (1, 'id12', 'url21'),
-             (2, 'id13', 'url31')])
+            [('id11', 'url11'),
+             ('id12', 'url21'),
+             ('id13', 'url31')])
         self.assertEqual(er.objects.data, [(0, ref_container_1.object_id, 'Container', '', ''),
                                            (1, ref_container_2.object_id, 'Container', '', ''),
                                            (2, ref_container_3.object_id, 'Container', '', '')])
@@ -660,8 +833,162 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
-
         self.assertEqual(er.object_keys.data, [(0, 0)])
+
+    def test_object_key_existing_key_new_object(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key=existing_key,
+                   entity_id='entity2',
+                   entity_uri='entity_uri2')
+        self.assertEqual(er.object_keys.data, [(0, 0), (1, 0)])
+
+    def test_object_key_existing_key_new_object_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        key = er._add_key('key')
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_1,
+                       key=key,
+                       entity_id='entity1',
+                       entity_uri='entity_uri1')
+
+    def test_reuse_key_reuse_entity(self):
+        # With the key and entity existing, the EntityKeyTable should not have duplicates
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key=existing_key,
+                   entity_id='NCBI:txid10090')
+
+        self.assertEqual(er.entity_keys.data, [(0, 0)])
+
+    def test_resuse_entity_different_key(self):
+        # The EntityKeyTable should have two rows: same entity_idx, but different key_idx
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key='mouse',
+                   entity_id='NCBI:txid10090')
+        self.assertEqual(er.entity_keys.data, [(0, 0), (0, 1)])
+
+    def test_reuse_key_reuse_entity_new(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mice',
+                   entity_id='entity_2',
+                   entity_uri='entity_2_uri')
+        existing_key = er.get_key('Mus musculus')
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_2,
+                   key=existing_key,
+                   entity_id='entity_2')
+
+        self.assertEqual(er.entity_keys.data, [(0, 0), (1, 1), (1, 0)])
+
+    def test_entity_uri_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_1,
+                       key='Mus musculus',
+                       entity_id='NCBI:txid10090')
+
+    def test_entity_uri_reuse_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        existing_key = er.get_key('Mus musculus')
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_2,
+                       key=existing_key,
+                       entity_id='NCBI:txid10090',
+                       entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+
+    def test_key_without_entity_error(self):
+        er = ExternalResources()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        key = er._add_key('key')
+        with self.assertRaises(ValueError):
+            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                       container=data_1,
+                       key=key,
+                       entity_id='entity1')
 
     def test_check_object_field_add(self):
         er = ExternalResources()
@@ -725,7 +1052,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity_0_uri')
 
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, table.id.object_id, 'ElementIdentifiers', '', '')])
 
     def test_add_ref_column_as_attribute(self):
@@ -744,7 +1071,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity_0_uri')
 
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, table['col1'].object_id, 'VectorData', '', '')])
 
     def test_add_ref_compound_data(self):
@@ -763,7 +1090,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                    entity_uri='entity_0_uri')
 
         self.assertEqual(er.keys.data, [('Mus musculus',)])
-        self.assertEqual(er.entities.data, [(0, 'NCBI:txid10090', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('NCBI:txid10090', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', 'species')])
 
     def test_roundtrip(self):
@@ -817,7 +1144,7 @@ class TestExternalResourcesNestedAttributes(TestCase):
                    entity_id='entity_0',
                    entity_uri='entity_0_uri')
         self.assertEqual(er.keys.data, [('key1',)])
-        self.assertEqual(er.entities.data, [(0, 'entity_0', 'entity_0_uri')])
+        self.assertEqual(er.entities.data, [('entity_0', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
 
     def test_add_ref_deep_nested(self):

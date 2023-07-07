@@ -5,10 +5,28 @@ from hdmf.container import AbstractContainer, Container, Data, ExternalResources
 from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval
+from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
+import unittest
+from hdmf.term_set import TermSet
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class Subcontainer(Container):
     pass
+
+
+class ContainerWithChild(Container):
+    __fields__ = ({'name': 'field1', 'child': True}, )
+
+    @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+    def __init__(self, **kwargs):
+        super().__init__('test name')
+        self.field1 = kwargs['field1']
 
 
 class TestExternalResourcesManager(TestCase):
@@ -126,6 +144,47 @@ class TestContainer(TestCase):
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
         self.assertIs(parent_obj.children[0], child_obj)
+
+    def test_parent_set_link_warning(self):
+        col1 = VectorData(
+            name='col1',
+            description='column #1',
+            data=[1, 2],
+        )
+        col2 = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'b'],
+        )
+
+        # this table will have two rows with ids 0 and 1
+        table = DynamicTable(
+            name='my table',
+            description='an example table',
+            columns=[col1, col2],
+        )
+
+        dtr_col = DynamicTableRegion(
+            name='table1_ref',
+            description='references rows of earlier table',
+            data=[0, 1, 0, 0],  # refers to row indices of the 'table' variable
+            table=table
+        )
+
+        data_col = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'a', 'a', 'b'],
+        )
+
+        table2 = DynamicTable(
+            name='my_table',
+            description='an example table',
+            columns=[dtr_col, data_col],
+        )
+
+        with self.assertWarns(Warning):
+            table2.parent=ContainerWithChild()
 
     def test_set_parent_exists(self):
         """Test that setting a parent a second time does nothing
@@ -263,6 +322,57 @@ class TestContainer(TestCase):
         self.assertIsNone(obj.parent)
 
 
+class TestHTMLRepr(TestCase):
+
+    class ContainerWithChildAndData(Container):
+        __fields__ = (
+            {'name': 'child', 'child': True},
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': 'child', 'doc': 'field1 doc', 'type': Container},
+            {'name': "data", "doc": 'data', 'type': list, "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.child = kwargs['child']
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
+    def test_repr_html_(self):
+        child_obj1 = Container('test child 1')
+        obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
+        assert obj1._repr_html_() == (
+            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, sans-'
+            'serif;\n            }\n            .container-fields .field-value {\n                color: #00788E;\n    '
+            '        }\n            .container-fields details > summary {\n                cursor: pointer;\n          '
+            '      display: list-item;\n            }\n            .container-fields details > summary:hover {\n       '
+            '         color: #0A6EAA;\n            }\n        </style>\n        \n        <script>\n            functio'
+            'n copyToClipboard(text) {\n                navigator.clipboard.writeText(text).then(function() {\n        '
+            '            console.log(\'Copied to clipboard: \' + text);\n                }, function(err) {\n          '
+            '          console.error(\'Could not copy text: \', err);\n                });\n            }\n\n          '
+            '  document.addEventListener(\'DOMContentLoaded\', function() {\n                let fieldKeys = document.q'
+            'uerySelectorAll(\'.container-fields .field-key\');\n                fieldKeys.forEach(function(fieldKey) {'
+            '\n                    fieldKey.addEventListener(\'click\', function() {\n                        let acces'
+            'sCode = fieldKey.getAttribute(\'title\').replace(\'Access code: \', \'\');\n                        copyTo'
+            'Clipboard(accessCode);\n                    });\n                });\n            });\n        </script>\n'
+            '        <div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'><h3>test '
+            'name (ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left:'
+            ' 0px;" class="container-fields field-key" title=".fields[\'child\']"><b>child</b></summary></details><deta'
+            'ils><summary style="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fiel'
+            'ds[\'data\']"><b>data</b></summary><div style="margin-left: 20px;" class="container-fields"><span class="f'
+            'ield-value" title=".fields[\'data\'][0]">1</span></div><div style="margin-left: 20px;" class="container-fi'
+            'elds"><span class="field-value" title=".fields[\'data\'][1]">2</span></div><div style="margin-left: 20px;"'
+            ' class="container-fields"><span class="field-value" title=".fields[\'data\'][2]">3</span></div></details><'
+            'div style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".fields[\'str\']">st'
+            'r:</span> <span class="field-value">hello</span></div></div>'
+        )
+
+
 class TestData(TestCase):
 
     def test_constructor_scalar(self):
@@ -296,6 +406,46 @@ class TestData(TestCase):
         """
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        self.assertEqual(data_obj.data, ['Homo sapiens'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_validate_value_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        with self.assertRaises(ValueError):
+            Data(name='species', data=['Macaca mulatta'], term_set=terms)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_append_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_append_validate_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.append('Macaca mulatta')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_extend_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_extend_validate_bad_data_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])
 
 
 class TestAbstractContainerFieldsConf(TestCase):
@@ -507,14 +657,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj4.field1)
 
     def test_child(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
-
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild(child_obj1)
         self.assertIs(child_obj1.parent, obj1)
@@ -532,13 +674,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj2.field1)
 
     def test_setter_set_modified(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
 
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild()

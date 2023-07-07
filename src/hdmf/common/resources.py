@@ -2,11 +2,14 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, ExternalResourcesManager
+from ..container import Table, Row, Container, AbstractContainer, Data, ExternalResourcesManager
+from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+from ..term_set import TermSet
 from glob import glob
 import os
+import zipfile
 
 
 class KeyTable(Table):
@@ -38,9 +41,6 @@ class EntityTable(Table):
     __defaultname__ = 'entities'
 
     __columns__ = (
-        {'name': 'keys_idx', 'type': (int, Key),
-         'doc': ('The index into the keys table for the user key that '
-                 'maps to the resource term / registry symbol.')},
         {'name': 'entity_id', 'type': str,
          'doc': 'The unique ID for the resource term / registry symbol.'},
         {'name': 'entity_uri', 'type': str,
@@ -123,6 +123,29 @@ class ObjectKeyTable(Table):
     )
 
 
+class EntityKeyTable(Table):
+    """
+    A table for identifying which entities are used by which keys for referring to external resources.
+    """
+
+    __defaultname__ = 'entity_keys'
+
+    __columns__ = (
+        {'name': 'entities_idx', 'type': (int, Entity),
+         'doc': 'The index into the EntityTable for the Entity that associated with the Key.'},
+        {'name': 'keys_idx', 'type': (int, Key),
+         'doc': 'The index into the KeyTable that is used to make an external resource reference.'}
+    )
+
+
+class EntityKey(Row):
+    """
+    A Row class for representing rows in the EntityKeyTable.
+    """
+
+    __table__ = EntityKeyTable
+
+
 class ObjectKey(Row):
     """
     A Row class for representing rows in the ObjectKeyTable.
@@ -140,6 +163,7 @@ class ExternalResources(Container):
         {'name': 'files', 'child': True},
         {'name': 'objects', 'child': True},
         {'name': 'object_keys', 'child': True},
+        {'name': 'entity_keys', 'child': True},
         {'name': 'entities', 'child': True},
     )
 
@@ -152,7 +176,9 @@ class ExternalResources(Container):
             {'name': 'objects', 'type': ObjectTable, 'default': None,
              'doc': 'The table storing object information.'},
             {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
-             'doc': 'The table storing object-resource relationships.'},
+             'doc': 'The table storing object-key relationships.'},
+            {'name': 'entity_keys', 'type': EntityKeyTable, 'default': None,
+             'doc': 'The table storing entity-key relationships.'},
             {'name': 'type_map', 'type': TypeMap, 'default': None,
              'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'},
             allow_positional=AllowPositional.WARNING)
@@ -164,6 +190,7 @@ class ExternalResources(Container):
         self.entities = kwargs['entities'] or EntityTable()
         self.objects = kwargs['objects'] or ObjectTable()
         self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
+        self.entity_keys = kwargs['entity_keys'] or EntityKeyTable()
         self.type_map = kwargs['type_map'] or get_type_map()
 
     @staticmethod
@@ -243,19 +270,15 @@ class ExternalResources(Container):
         file_object_id = kwargs['file_object_id']
         return File(file_object_id, table=self.files)
 
-    @docval({'name': 'key', 'type': (str, Key), 'doc': 'The key to associate the entity with.'},
-            {'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
+    @docval({'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
     def _add_entity(self, **kwargs):
         """
-        Add an entity that will be referenced to using the given key.
+        Add an entity that will be referenced to using keys specified in ExternalResources.entity_keys.
         """
-        key = kwargs['key']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        if not isinstance(key, Key):
-            key = self._add_key(key)
-        entity = Entity(key, entity_id, entity_uri, table=self.entities)
+        entity = Entity( entity_id, entity_uri, table=self.entities)
         return entity
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
@@ -297,6 +320,15 @@ class ExternalResources(Container):
         """
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
+
+    @docval({'name': 'entity', 'type': (int, Entity), 'doc': 'The Entity associated with the Key.'},
+            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the connected to the Entity.'})
+    def _add_entity_key(self, **kwargs):
+        """
+        Add entity-key relationship to the EntityKeyTable.
+        """
+        entity, key = popargs('entity', 'key', kwargs)
+        return EntityKey(entity, key, table=self.entity_keys)
 
     @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.'},
             {'name': 'container', 'type': AbstractContainer,
@@ -375,6 +407,78 @@ class ExternalResources(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
+    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
+             'default': None},
+            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'term_set', 'type': TermSet, 'default': None,
+             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
+            )
+    def add_ref_term_set(self, **kwargs):
+        file = kwargs['file']
+        container = kwargs['container']
+        attribute = kwargs['attribute']
+        key = kwargs['key']
+        field = kwargs['field']
+        term_set = kwargs['term_set']
+
+        if term_set is None:
+            if attribute is None:
+                try:
+                    term_set = container.term_set
+                except AttributeError:
+                    msg = "Cannot Find TermSet"
+                    raise AttributeError(msg)
+            else:
+                term_set = container[attribute].term_set
+                if term_set is None:
+                    msg = "Cannot Find TermSet"
+                    raise ValueError(msg)
+
+        if file is None:
+            file = self._get_file_from_container(container=container)
+
+        # if key is provided then add_ref proceeds as normal
+        # use key provided as the term in the term_set for entity look-up
+        if key is not None:
+            data = [key]
+        else:
+            if attribute is None:
+                data_object = container
+            else:
+                data_object = container[attribute]
+            if isinstance(data_object, (Data, DataIO)):
+                data = data_object.data
+            elif isinstance(data_object, (list, np.ndarray)):
+                data = data_object
+        missing_terms = []
+        for term in data:
+            try:
+                term_info = term_set[term]
+            except ValueError:
+                missing_terms.append(term)
+                continue
+            entity_id = term_info[0]
+            entity_uri = term_info[2]
+            self.add_ref(file=file,
+                         container=container,
+                         attribute=attribute,
+                         key=term,
+                         field=field,
+                         entity_id=entity_id,
+                         entity_uri=entity_uri)
+        if len(missing_terms)>0:
+            return {"Missing Values in TermSet": missing_terms}
+        else:
+            return True
+
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
              'default': None},
@@ -424,6 +528,15 @@ class ExternalResources(Container):
             else:
                 return self.keys.row[key_idx_matches[0]]
 
+    @docval({'name': 'entity_id', 'type': str, 'doc': 'The ID for the identifier at the resource.'})
+    def get_entity(self, **kwargs):
+        entity_id = kwargs['entity_id']
+        entity = self.entities.which(entity_id=entity_id)
+        if len(entity)>0:
+            return self.entities.row[entity[0]]
+        else:
+            return None
+
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key.')},
@@ -434,7 +547,7 @@ class ExternalResources(Container):
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.'},
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
             {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
              'default': None},
             )
@@ -512,12 +625,58 @@ class ExternalResources(Container):
                     msg = "Use Key Object when referencing an existing (container, relative_path, key)"
                     raise ValueError(msg)
 
-        if not isinstance(key, Key):
             key = self._add_key(key)
             self._add_object_key(object_field, key)
 
-        entity = self._add_entity(key, entity_id, entity_uri)
+        else:
+            # Check to see that the existing key is being used with the object.
+            # If true, do nothing. If false, create a new obj/key relationship
+            # in the ObjectKeyTable
+            key_idx = key.idx
+            object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
+            if len(object_key_row_idx)!=0:
+                obj_key_check = False
+                for row_idx in object_key_row_idx:
+                    obj_idx = self.object_keys['objects_idx', row_idx]
+                    if obj_idx == object_field.idx:
+                        obj_key_check = True
+                if not obj_key_check:
+                    self._add_object_key(object_field, key)
+            else:
+                msg = "Cannot find key object. Create new Key with string."
+                raise ValueError(msg)
+            # check if the key and object have been related in the ObjectKeyTable
 
+        entity = self.get_entity(entity_id=entity_id)
+        if entity is None:
+            if entity_uri is None:
+                msg = 'New entities must have an entity_uri.'
+                raise ValueError(msg)
+            entity = self._add_entity(entity_id, entity_uri)
+            self._add_entity_key(entity, key)
+        else:
+            if entity_uri is not None:
+                msg = 'If you plan on reusing an entity, then entity_uri parameter must be None.'
+                raise ValueError(msg)
+            # check for entity-key relationship in EntityKeyTable
+            key_idx = key.idx
+            entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
+            if len(entity_key_row_idx)!=0:
+                # this means there exists rows where the key is in the EntityKeyTable
+                entity_key_check = False
+                for row_idx in entity_key_row_idx:
+                    entity_idx = self.entity_keys['entities_idx', row_idx]
+                    if entity_idx == entity.idx:
+                        entity_key_check = True
+                        # this means there is already a key-entity relationship recorded
+                if not entity_key_check:
+                    # this means that though the key is there, there is not key-entity relationship
+                    # a.k.a add it now
+                    self._add_entity_key(entity, key)
+            else:
+                # this means that specific key is not in the EntityKeyTable, so add it and establish
+                # the relationship with the entity
+                self._add_entity_key(entity, key)
         return key, entity
 
     @docval({'name': 'object_type', 'type': str,
@@ -594,17 +753,11 @@ class ExternalResources(Container):
             keys.append(self.object_keys['keys_idx', row_idx])
         # Find all the entities/resources for each key.
         for key_idx in keys:
-            entity_idx = self.entities.which(keys_idx=key_idx)
-            entities.append(list(self.entities.__getitem__(entity_idx[0])))
-        df = pd.DataFrame(entities, columns=['keys_idx', 'entity_id', 'entity_uri'])
-
-        key_names = []
-        for idx in df['keys_idx']:
-            key_id_val = self.keys.to_dataframe().iloc[int(idx)]['key']
-            key_names.append(key_id_val)
-
-        df['keys_idx'] = key_names
-        df = df.rename(columns={'keys_idx': 'key_names', 'entity_id': 'entity_id', 'entity_uri': 'entity_uri'})
+            entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
+            for row_idx in entity_key_row_idx:
+                entity_idx = self.entity_keys['entities_idx', row_idx]
+                entities.append(self.entities.__getitem__(entity_idx))
+        df = pd.DataFrame(entities, columns=['entity_id', 'entity_uri'])
         return df
 
     @docval({'name': 'use_categories', 'type': bool, 'default': False,
@@ -621,20 +774,13 @@ class ExternalResources(Container):
 
         """
         use_categories = popargs('use_categories', kwargs)
-        # Step 1: Combine the entities, keys, and files table
-        entities_df = self.entities.to_dataframe()
-        # Map the keys to the entities by 1) convert to dataframe, 2) select rows based on the keys_idx
-        # from the entities table, expanding the dataframe to have the same number of rows as the
-        # entities, and 3) reset the index to avoid duplicate values in the index, which causes errors when merging
-        keys_mapped_df = self.keys.to_dataframe().iloc[entities_df['keys_idx']].reset_index(drop=True)
-        # Map the resources to entities using the same strategy as for the keys
-        # resources_mapped_df = self.resources.to_dataframe().iloc[entities_df['resources_idx']].reset_index(drop=True)
-        # Merge the mapped keys and resources with the entities tables
-        entities_df = pd.concat(objs=[entities_df, keys_mapped_df],
-                                axis=1, verify_integrity=False)
-        # Add a column for the entity id (for consistency with the other tables and to facilitate query)
-        entities_df['entities_idx'] = entities_df.index
-
+        # Step 1: Combine the entities, keys, and entity_keys table
+        ent_key_df = self.entity_keys.to_dataframe()
+        entities_mapped_df = self.entities.to_dataframe().iloc[ent_key_df['entities_idx']].reset_index(drop=True)
+        keys_mapped_df = self.keys.to_dataframe().iloc[ent_key_df['keys_idx']].reset_index(drop=True)
+        ent_key_df = pd.concat(objs=[ent_key_df, entities_mapped_df, keys_mapped_df],
+                                   axis=1,
+                                   verify_integrity=False)
         # Step 2: Combine the the files, object_keys and objects tables
         object_keys_df = self.object_keys.to_dataframe()
         objects_mapped_df = self.objects.to_dataframe().iloc[object_keys_df['objects_idx']].reset_index(drop=True)
@@ -650,7 +796,7 @@ class ExternalResources(Container):
             # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
             objs=[pd.merge(
                     # Find all entities that correspond to the row i of the object_keys_table
-                    entities_df[entities_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
+                    ent_key_df[ent_key_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
                     # Get a DataFrame for row i of the objects_keys_table
                     file_object_object_key_df.iloc[[i, ]],
                     # Merge the entities and object_keys on the keys_idx column so that the values from the single
@@ -660,7 +806,6 @@ class ExternalResources(Container):
             # Concatenate the rows of the objs
             axis=0,
             verify_integrity=False)
-
         # Step 4: Clean up the index and sort columns by table type and name
         result_df.reset_index(inplace=True, drop=True)
         # ADD files
@@ -693,16 +838,28 @@ class ExternalResources(Container):
         """
         Write the tables in ExternalResources to individual tsv files.
         """
-        folder_path = kwargs['path']
-        for child in self.children:
-            df = child.to_dataframe()
-            df.to_csv(folder_path+'/'+child.name+'.tsv', sep='\t', index=False)
+        path = kwargs['path']
+        files = [path+child.name+'.tsv' for child in self.children]
+
+        for i in range(len(self.children)):
+            df = self.children[i].to_dataframe()
+            df.to_csv(files[i], sep='\t', index=False)
+
+        with zipfile.ZipFile('er.zip', 'w') as zipF:
+          for file in files:
+              zipF.write(file)
+
+        # remove tsv files
+        for file in files:
+            os.remove(file)
 
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
             returns="ExternalResources loaded from TSV", rtype="ExternalResources")
     def from_norm_tsv(cls, **kwargs):
         path = kwargs['path']
+        with zipfile.ZipFile(path+'/er.zip', 'r') as zip:
+            zip.extractall(path)
         tsv_paths = glob(path+'/*')
 
         for file in tsv_paths:
@@ -710,173 +867,70 @@ class ExternalResources(Container):
             if file_name == 'files.tsv':
                 files_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 files = FileTable().from_dataframe(df=files_df, name='files', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'keys.tsv':
                 keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 keys = KeyTable().from_dataframe(df=keys_df, name='keys', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'entities.tsv':
                 entities_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 entities = EntityTable().from_dataframe(df=entities_df, name='entities', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'objects.tsv':
                 objects_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 objects = ObjectTable().from_dataframe(df=objects_df, name='objects', extra_ok=False)
+                os.remove(file)
                 continue
             if file_name == 'object_keys.tsv':
                 object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
                 object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
+                os.remove(file)
+                continue
+            if file_name == 'entity_keys.tsv':
+                ent_key_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                entity_keys = EntityKeyTable().from_dataframe(df=ent_key_df, name='entity_keys', extra_ok=False)
+                os.remove(file)
                 continue
 
         # we need to check the idx columns in entities, objects, and object_keys
-        keys_idx = entities['keys_idx']
-        for idx in keys_idx:
-            if not int(idx) < keys.__len__():
-                msg = "Key Index out of range in EntityTable. Please check for alterations."
+        entity_idx = entity_keys['entities_idx']
+        for idx in entity_idx:
+            if not int(idx) < len(entities):
+                msg = "Entity Index out of range in EntityTable. Please check for alterations."
                 raise ValueError(msg)
 
         files_idx = objects['files_idx']
         for idx in files_idx:
-            if not int(idx) < files.__len__():
+            if not int(idx) < len(files):
                 msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
                 raise ValueError(msg)
 
         object_idx = object_keys['objects_idx']
         for idx in object_idx:
-            if not int(idx) < objects.__len__():
+            if not int(idx) < len(objects):
                 msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
         keys_idx = object_keys['keys_idx']
         for idx in keys_idx:
-            if not int(idx) < keys.__len__():
+            if not int(idx) < len(keys):
                 msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
                 raise ValueError(msg)
+
+        keys_idx = entity_keys['keys_idx']
+        for idx in keys_idx:
+            if not int(idx) < len(keys):
+                msg = "Key Index out of range in EntityKeyTable. Please check for alterations."
+                raise ValueError(msg)
+
 
         er = ExternalResources(files=files,
                                keys=keys,
                                entities=entities,
+                               entity_keys=entity_keys,
                                objects=objects,
                                object_keys=object_keys)
-        return er
-
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to write'})
-    def to_flat_tsv(self, **kwargs):
-        """
-        Write ExternalResources as a single, flat table to TSV
-        Internally, the function uses :py:meth:`pandas.DataFrame.to_csv`. Pandas can
-        infer compression based on the filename, i.e., by changing the file extension to
-        '.gz', '.bz2', '.zip', '.xz', or '.zst' we can write compressed files.
-        The TSV is formatted as follows: 1) line one indicates for each column the name of the table
-        the column belongs to, 2) line two is the name of the column within the table, 3) subsequent
-        lines are each a row in the flattened ExternalResources table. The first column is the
-        row id in the flattened table and does not have a label, i.e., the first and second
-        row will start with a tab character, and subsequent rows are numbered sequentially 1,2,3,... .
-
-        See also :py:meth:`~hdmf.common.resources.ExternalResources.from_tsv`
-        """  # noqa: E501
-        path = popargs('path', kwargs)
-        df = self.to_dataframe(use_categories=True)
-        df.to_csv(path, sep='\t')
-
-    @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the tsv file to read'},
-            returns="ExternalResources loaded from TSV", rtype="ExternalResources")
-    def from_flat_tsv(cls, **kwargs):
-        """
-        Read ExternalResources from a flat tsv file
-        Formatting of the TSV file is assumed to be consistent with the format
-        generated by :py:meth:`~hdmf.common.resources.ExternalResources.to_tsv`.
-        The function attempts to validate that the data in the TSV is consistent
-        and parses the data from the denormalized table in the TSV to the
-        normalized linked table structure used by ExternalResources.
-        Currently the checks focus on ensuring that row id links between tables are valid.
-        Inconsistencies in other (non-index) fields (e.g., when two rows with the same resource_idx
-        have different resource_uri values) are not checked and will be ignored. In this case, the value
-        from the first row that contains the corresponding entry will be kept.
-
-        .. note::
-           Since TSV files may be edited by hand or other applications, it is possible that data
-           in the TSV may be inconsistent. E.g., object_idx may be missing if rows were removed
-           and ids not updated. Also since the TSV is flattened into a single denormalized table
-           (i.e., data are stored with duplication, rather than normalized across several tables),
-           it is possible that values may be inconsistent if edited outside. E.g., we may have
-           objects with the same index (object_idx) but different object_id, relative_path, or field
-           values. While flat TSVs are sometimes preferred for ease of sharing, editing
-           the TSV without using the :py:meth:`~hdmf.common.resources.ExternalResources` class
-           should be done with great care!
-        """
-        def check_idx(idx_arr, name):
-            """Check that indices are consecutively numbered without missing values"""
-            idx_diff = np.diff(idx_arr)
-            if np.any(idx_diff != 1):
-                missing_idx = [i for i in range(np.max(idx_arr)) if i not in idx_arr]
-                msg = "Missing %s entries %s" % (name, str(missing_idx))
-                raise ValueError(msg)
-
-        path = popargs('path', kwargs)
-        df = pd.read_csv(path, header=[0, 1], sep='\t').replace(np.nan, '')
-        # Construct the ExternalResources
-        er = ExternalResources()
-        # Retrieve all the Files
-        files_idx, files_rows = np.unique(df[('objects', 'files_idx')], return_index=True)
-        file_order = np.argsort(files_idx)
-        files_idx = files_idx[file_order]
-        files_rows = files_rows[file_order]
-        # Check that files are consecutively numbered
-        check_idx(idx_arr=files_idx, name='files_idx')
-        files = df[('files', 'file_object_id')].iloc[files_rows]
-        for file in zip(files):
-            er._add_file(file_object_id=file[0])
-
-        # Retrieve all the objects
-        ob_idx, ob_rows = np.unique(df[('objects', 'objects_idx')], return_index=True)
-        # Sort objects based on their index
-        ob_order = np.argsort(ob_idx)
-        ob_idx = ob_idx[ob_order]
-        ob_rows = ob_rows[ob_order]
-        # Check that objects are consecutively numbered
-        check_idx(idx_arr=ob_idx, name='objects_idx')
-        # Add the objects to the Object table
-        ob_files = df[('objects', 'files_idx')].iloc[ob_rows]
-        ob_ids = df[('objects', 'object_id')].iloc[ob_rows]
-        ob_types = df[('objects', 'object_type')].iloc[ob_rows]
-        ob_relpaths = df[('objects', 'relative_path')].iloc[ob_rows]
-        ob_fields = df[('objects', 'field')].iloc[ob_rows]
-        for ob in zip(ob_files, ob_ids, ob_types, ob_relpaths, ob_fields):
-            er._add_object(files_idx=ob[0], container=ob[1], object_type=ob[2], relative_path=ob[3], field=ob[4])
-        # Retrieve all keys
-        keys_idx, keys_rows = np.unique(df[('keys', 'keys_idx')], return_index=True)
-        # Sort keys based on their index
-        keys_order = np.argsort(keys_idx)
-        keys_idx = keys_idx[keys_order]
-        keys_rows = keys_rows[keys_order]
-        # Check that keys are consecutively numbered
-        check_idx(idx_arr=keys_idx, name='keys_idx')
-        # Add the keys to the Keys table
-        keys_key = df[('keys', 'key')].iloc[keys_rows]
-        all_added_keys = [er._add_key(k) for k in keys_key]
-
-        # Add all the object keys to the ObjectKeys table. A single key may be assigned to multiple
-        # objects. As such it is not sufficient to iterate over the unique ob_rows with the unique
-        # objects, but we need to find all unique (objects_idx, keys_idx) combinations.
-        ob_keys_idx = np.unique(df[[('objects', 'objects_idx'), ('keys', 'keys_idx')]], axis=0)
-        for obk in ob_keys_idx:
-            er._add_object_key(obj=obk[0], key=obk[1])
-
-        # Retrieve all entities
-        entities_idx, entities_rows = np.unique(df[('entities', 'entities_idx')], return_index=True)
-        # Sort entities based on their index
-        entities_order = np.argsort(entities_idx)
-        entities_idx = entities_idx[entities_order]
-        entities_rows = entities_rows[entities_order]
-        # Check that entities are consecutively numbered
-        check_idx(idx_arr=entities_idx, name='entities_idx')
-        # Add the entities to the Resources table
-        entities_id = df[('entities', 'entity_id')].iloc[entities_rows]
-        entities_uri = df[('entities', 'entity_uri')].iloc[entities_rows]
-        entities_keys = np.array(all_added_keys)[df[('keys', 'keys_idx')].iloc[entities_rows]]
-        for e in zip(entities_keys, entities_id, entities_uri):
-            er._add_entity(key=e[0], entity_id=e[1], entity_uri=e[2])
-        # Return the reconstructed ExternalResources
         return er

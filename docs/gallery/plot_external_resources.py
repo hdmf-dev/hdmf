@@ -35,8 +35,10 @@ collection of interlinked tables.
   :py:class:`~hdmf.common.resources.Key`
 * :py:class:`~hdmf.common.resources.FileTable` where each row describes a
   :py:class:`~hdmf.common.resources.File`
-* :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
+* :py:class:`~hdmf.common.resources.EntityTable` where each row describes an
   :py:class:`~hdmf.common.resources.Entity`
+* :py:class:`~hdmf.common.resources.EntityKeyTable` where each row describes an
+  :py:class:`~hdmf.common.resources.EntityKey`
 * :py:class:`~hdmf.common.resources.ObjectTable` where each row describes an
   :py:class:`~hdmf.common.resources.Object`
 * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
@@ -91,8 +93,8 @@ from hdmf.common import ExternalResources
 from hdmf.common import DynamicTable, VectorData
 from hdmf import Container, ExternalResourcesManager
 from hdmf import Data
-from hdmf.testing import remove_test_file
 import numpy as np
+import os
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="ExternalResources is experimental*")
@@ -209,6 +211,7 @@ er.objects.to_dataframe()
 er.entities.to_dataframe()
 er.keys.to_dataframe()
 er.object_keys.to_dataframe()
+er.entity_keys.to_dataframe()
 
 ###############################################################################
 # Using the get_key method
@@ -306,17 +309,47 @@ er.add_ref(
 ###############################################################################
 # Write ExternalResources
 # ------------------------------------------------------
-# :py:class:`~hdmf.common.resources.ExternalResources` is written as a flattened tsv file.
-# The user provides the path, which contains the name of the file, to where the tsv
-# file will be written.
+# :py:class:`~hdmf.common.resources.ExternalResources` is written as a zip file of
+# the individual tables written to tsv.
+# The user provides the path, which contains the name of the directory.
 
-er.to_flat_tsv(path='./er_example.tsv')
+er.to_norm_tsv(path='./')
 
 ###############################################################################
 # Read ExternalResources
 # ------------------------------------------------------
 # Users can read :py:class:`~hdmf.common.resources.ExternalResources` from the tsv format
-# by providing the path to the file.
+# by providing the path to the directory.
 
-er_read = ExternalResources.from_flat_tsv(path='./er_example.tsv')
-remove_test_file('./er_example.tsv')
+er_read = ExternalResources.from_norm_tsv(path='./')
+os.remove('./er.zip')
+
+###############################################################################
+# Using TermSet with ExternalResources
+# ------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSet` allows for an easier way to add references to
+# :py:class:`~hdmf.common.resources.ExternalResources`. These enumerations take place of the
+# entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have
+# to match the name of the term in the :py:class:`~hdmf.term_set.TermSet`.
+from hdmf.term_set import TermSet
+
+try:
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+except NameError:
+    dir_path = os.path.dirname(os.path.abspath('.'))
+    yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
+
+terms = TermSet(term_schema_path=yaml_file)
+col1 = VectorData(
+    name='Species_Data',
+    description='...',
+    data=['Homo sapiens', 'Ursus arctos horribilis'],
+    term_set=terms,
+)
+
+species = DynamicTable(name='species', description='My species', columns=[col1],)
+er.add_ref_term_set(file=file,
+                    container=species,
+                    attribute='Species_Data',
+                   )
