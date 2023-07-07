@@ -105,36 +105,31 @@ class TestContainer(TestCase):
         with self.assertRaises(TypeError):
             obj.read_io = "test"
         # Set read_io
-        temp_io = HDF5IO(self.path, mode='w')
-        obj.read_io = temp_io
-        self.assertIs(obj.read_io, temp_io)
-        # Check that setting read_io again fails
-        with self.assertRaises(ValueError):
+        with  HDF5IO(self.path, mode='w') as temp_io:
             obj.read_io = temp_io
-        del obj
+            self.assertIs(obj.read_io, temp_io)
+            # Check that setting read_io again fails
+            with self.assertRaises(ValueError):
+                obj.read_io = temp_io
 
     def test_get_read_io_on_self(self):
         """Test that get_read_io works when the container is set on the container"""
         obj = Container('obj1')
         self.assertIsNone(obj.get_read_io())
-        temp_io = HDF5IO(self.path, mode='w')
-        obj.read_io = temp_io
-        re_io = obj.get_read_io()
-        self.assertIs(re_io, temp_io)
-        del obj
+        with HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            re_io = obj.get_read_io()
+            self.assertIs(re_io, temp_io)
 
     def test_get_read_io_on_parent(self):
         """Test that get_read_io works when the container is set on the parent"""
         parent_obj = Container('obj1')
-        temp_io = HDF5IO(self.path, mode='w')
-        parent_obj.read_io = temp_io
         child_obj = Container('obj2')
         child_obj.parent = parent_obj
-        self.assertIsNone(child_obj.read_io)
-        self.assertIs(child_obj.get_read_io(), temp_io)
-        del child_obj
-        del parent_obj
-        del temp_io
+        with HDF5IO(self.path, mode='w') as temp_io:
+            parent_obj.read_io = temp_io
+            self.assertIsNone(child_obj.read_io)
+            self.assertIs(child_obj.get_read_io(), temp_io)
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
