@@ -13,10 +13,10 @@ class HDMFIO(metaclass=ABCMeta):
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {'name': 'external_resources', 'type': str,
+            {'name': 'external_resources_path', 'type': str,
              'doc': 'The path to the ExternalResources', 'default': None},)
     def __init__(self, **kwargs):
-        manager, source, external_resources = getargs('manager', 'source', 'external_resources', kwargs)
+        manager, source, external_resources_path = getargs('manager', 'source', 'external_resources_path', kwargs)
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
@@ -28,7 +28,8 @@ class HDMFIO(metaclass=ABCMeta):
         self.__manager = manager
         self.__built = dict()
         self.__source = source
-        self.external_resources = external_resources
+        self.external_resources_path = external_resources_path
+        self.external_resources = None
         self.open()
 
     @property
@@ -49,6 +50,9 @@ class HDMFIO(metaclass=ABCMeta):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
+        if self.external_resources_path is not None:
+            from hdmf.common import ExternalResources
+            self.external_resources = ExternalResources.from_norm_tsv(path=self.external_resources_path)
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},

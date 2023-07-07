@@ -48,15 +48,15 @@ class HDF5IO(HDMFIO):
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            {'name': 'external_resources', 'type': str,
+            {'name': 'external_resources_path', 'type': str,
              'doc': 'The path to the ExternalResources', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver, external_resources = popargs('path', 'manager', 'mode',
-                                                                                  'comm', 'file', 'driver',
-                                                                                  'external_resources', kwargs)
+        path, manager, mode, comm, file_obj, driver, external_resources_path = popargs('path', 'manager', 'mode',
+                                                                                       'comm', 'file', 'driver',
+                                                                                       'external_resources_path', kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
@@ -79,7 +79,7 @@ class HDF5IO(HDMFIO):
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
-        super().__init__(manager, source=path, external_resources=external_resources)
+        super().__init__(manager, source=path, external_resources_path=external_resources_path)
         # NOTE: source is not set if path is None and file_obj is passed
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
         self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
