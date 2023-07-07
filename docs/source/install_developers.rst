@@ -94,12 +94,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 .. note::
 
    When using ``conda``, you may use ``pip install`` to install dependencies as shown above; however, it is generally
-   recommended that dependencies should be installed via ``conda install``, e.g.,
-
-   .. code:: bash
-
-      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt \
-      --file=requirements-opt.txt
+   recommended that dependencies should be installed via ``conda install``.
 
 
 Run tests
