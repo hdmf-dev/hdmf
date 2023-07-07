@@ -192,6 +192,10 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
 
+    def __del__(self):
+        # Make sure the reference counter for our read IO is being decremented
+        del self.__read_io
+
     def __new__(cls, *args, **kwargs):
         """
         Static method of the object class called by Python to create the object first and then
