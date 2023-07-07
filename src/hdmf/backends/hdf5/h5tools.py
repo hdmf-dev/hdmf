@@ -54,9 +54,9 @@ class HDF5IO(HDMFIO):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver, external_resources = popargs('path', 'manager', 'mode', 'comm',
-                                                                                  'file', 'driver', 'external_resources',
-                                                                                  kwargs)
+        path, manager, mode, comm, file_obj, driver, external_resources = popargs('path', 'manager', 'mode',
+                                                                                  'comm', 'file', 'driver',
+                                                                                  'external_resources', kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
@@ -79,7 +79,8 @@ class HDF5IO(HDMFIO):
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
-        super().__init__(manager, source=path, external_resources=external_resources)  # NOTE: source is not set if path is None and file_obj is passed
+        super().__init__(manager, source=path, external_resources=external_resources)
+        # NOTE: source is not set if path is None and file_obj is passed
         self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
         self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
