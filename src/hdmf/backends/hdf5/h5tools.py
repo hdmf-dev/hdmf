@@ -56,7 +56,8 @@ class HDF5IO(HDMFIO):
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         path, manager, mode, comm, file_obj, driver, external_resources_path = popargs('path', 'manager', 'mode',
                                                                                        'comm', 'file', 'driver',
-                                                                                       'external_resources_path', kwargs)
+                                                                                       'external_resources_path',
+                                                                                       kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
