@@ -3,9 +3,10 @@ import os
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
-from ..container import Container
+from ..container import Container, ExternalResourcesManager
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
+from warnings import warn
 
 
 class HDMFIO(metaclass=ABCMeta):
@@ -52,9 +53,17 @@ class HDMFIO(metaclass=ABCMeta):
         container = self.__manager.construct(f_builder)
         if self.external_resources_path is not None:
             from hdmf.common import ExternalResources
-            self.external_resources = ExternalResources.from_norm_tsv(path=self.external_resources_path)
-            if isinstance(container, ExternalResourcesManager):
-                container.link_resources(external_resources=self.external_resources)
+            try:
+                self.external_resources = ExternalResources.from_norm_tsv(path=self.external_resources_path)
+                if isinstance(container, ExternalResourcesManager):
+                    container.link_resources(external_resources=self.external_resources)
+            except FileNotFoundError:
+                msg = "File not found at {}. ExternalResources not added.".format(self.external_resources_path)
+                warn(msg)
+            except ValueError:
+                msg = "Check ExternalResources separately for alterations. ExternalResources not added."
+                warn(msg)
+
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
