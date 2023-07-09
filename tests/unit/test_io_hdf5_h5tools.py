@@ -17,12 +17,15 @@ from hdmf.backends.io import HDMFIO
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
-from hdmf.container import Container
+from hdmf.container import Container, ExternalResourcesManager
+from hdmf import Data
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
-from hdmf.testing import TestCase
+from hdmf.testing import TestCase, remove_test_file
+from hdmf.common.resources import ExternalResources
+
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
@@ -923,6 +926,45 @@ class TestNoCacheSpec(TestCase):
 
         with File(self.path, 'r') as f:
             self.assertNotIn('specifications', f)
+
+
+class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'ExternalResourcesManagerContainer'
+        super().__init__(**kwargs)
+
+
+class TestExternalResourcesIO(TestCase):
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+    def remove_er_files(self):
+        remove_test_file('./er.zip')
+
+    def test_io_read_external_resources(self):
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+            io.read()
+            self.assertIsInstance(io.external_resources, ExternalResources)
+
+        self.remove_er_files()
 
 
 class TestMultiWrite(TestCase):
