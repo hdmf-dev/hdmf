@@ -5,7 +5,7 @@ jsonschema==3.2.0
 numpy==1.18
 pandas==1.0.5  # when this is changed to >=1.5.0, see TODO items referenced in #762
 ruamel.yaml==0.16
-scipy==1.4
+scipy==1.10.0
 linkml-runtime==1.5.0
 tqdm==4.41.0
 zarr==2.12.0
