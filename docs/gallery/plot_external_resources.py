@@ -35,8 +35,10 @@ collection of interlinked tables.
   :py:class:`~hdmf.common.resources.Key`
 * :py:class:`~hdmf.common.resources.FileTable` where each row describes a
   :py:class:`~hdmf.common.resources.File`
-* :py:class:`~hdmf.common.resources.EntityTable`  where each row describes an
+* :py:class:`~hdmf.common.resources.EntityTable` where each row describes an
   :py:class:`~hdmf.common.resources.Entity`
+* :py:class:`~hdmf.common.resources.EntityKeyTable` where each row describes an
+  :py:class:`~hdmf.common.resources.EntityKey`
 * :py:class:`~hdmf.common.resources.ObjectTable` where each row describes an
   :py:class:`~hdmf.common.resources.Object`
 * :py:class:`~hdmf.common.resources.ObjectKeyTable` where each row describes an
@@ -209,6 +211,7 @@ er.objects.to_dataframe()
 er.entities.to_dataframe()
 er.keys.to_dataframe()
 er.object_keys.to_dataframe()
+er.entity_keys.to_dataframe()
 
 ###############################################################################
 # Using the get_key method
@@ -320,3 +323,33 @@ er.to_norm_tsv(path='./')
 
 er_read = ExternalResources.from_norm_tsv(path='./')
 os.remove('./er.zip')
+
+###############################################################################
+# Using TermSet with ExternalResources
+# ------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSet` allows for an easier way to add references to
+# :py:class:`~hdmf.common.resources.ExternalResources`. These enumerations take place of the
+# entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have
+# to match the name of the term in the :py:class:`~hdmf.term_set.TermSet`.
+from hdmf.term_set import TermSet
+
+try:
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+except NameError:
+    dir_path = os.path.dirname(os.path.abspath('.'))
+    yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
+
+terms = TermSet(term_schema_path=yaml_file)
+col1 = VectorData(
+    name='Species_Data',
+    description='...',
+    data=['Homo sapiens', 'Ursus arctos horribilis'],
+    term_set=terms,
+)
+
+species = DynamicTable(name='species', description='My species', columns=[col1],)
+er.add_ref_term_set(file=file,
+                    container=species,
+                    attribute='Species_Data',
+                   )
