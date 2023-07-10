@@ -16,7 +16,6 @@ class Bar(Container):
         super().__init__(name=name)
         self.__data = data
 
-
     @property
     def data_type(self):
         return 'Bar'
