@@ -3228,6 +3228,10 @@ class TestExport(TestCase):
 
         class OtherIO(HDMFIO):
 
+            @staticmethod
+            def can_read(path):
+                pass
+
             def read_builder(self):
                 pass
 
@@ -3256,6 +3260,10 @@ class TestExport(TestCase):
             write_io.write(foofile)
 
         class OtherIO(HDMFIO):
+
+            @staticmethod
+            def can_read(path):
+                pass
 
             def __init__(self, manager):
                 super().__init__(manager=manager)
@@ -3570,3 +3578,9 @@ class H5DataIOTests(TestCase):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
         with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
             dataio.data = list()
+
+
+def test_hdf5io_can_read():
+    assert not HDF5IO.can_read("not_a_file")
+    assert HDF5IO.can_read("tests/unit/back_compat_tests/1.0.5.h5")
+    assert not HDF5IO.can_read(__file__)  # this file is not an HDF5 file

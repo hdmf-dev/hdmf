@@ -1,22 +1,25 @@
 # HDMF Changelog
 
-## HMDF 3.7.0 (Upcoming)
+## HDMF 3.7.0 (Upcoming)
 
 ### New features and minor improvements
 - Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Added abstract static method `HDMFIO.can_read()` and concrete static method `HDF5IO.can_read()`. @bendichter [#875](https://github.com/hdmf-dev/hdmf/pull/875)
 - Added warning for `DynamicTableRegion` links that are not added to the same parent as the original container object. @mavaylon1 [#891](https://github.com/hdmf-dev/hdmf/pull/891)
 - Added the `TermSet` class along with integrated validation methods for any child of `AbstractContainer`, e.g., `VectorData`, `Data`, `DynamicTable`. @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
 - Allow for `datetime.date` to be used instead of `datetime.datetime`. @bendichter [#874](https://github.com/hdmf-dev/hdmf/pull/874)
 - Updated `HDMFIO` and `HDF5IO` to support `ExternalResources`. @mavaylon1 [#895](https://github.com/hdmf-dev/hdmf/pull/895)
 - Dropped Python 3.7 support. @rly [#897](https://github.com/hdmf-dev/hdmf/pull/897)
+- Added HTML repr to `Container` objects which displays an interactive tree of a container's values and children in a Jupyter notebook and other HTML representations. @edeno [#883](https://github.com/hdmf-dev/hdmf/pull/883)
 
 ### Documentation and tutorial enhancements:
-
 - Added tutorial for the new `TermSet` class @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
 
 ## Bug fixes
 - Fixed CI testing of minimum installation requirements, and removed some gallery tests run on each PR. @rly
   [#877](https://github.com/hdmf-dev/hdmf/pull/877)
+- Fixed reporting of version when installed using conda. @rly [#890](https://github.com/hdmf-dev/hdmf/pull/890)
+
 
 ## HMDF 3.6.1 (May 18, 2023)
 
