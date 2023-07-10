@@ -28,13 +28,10 @@ def get_region_slicer(**kwargs):
 
 
 try:
-    from importlib.metadata import version  # noqa: E402
-except ImportError:
-    # TODO: Remove when python 3.8 becomes the new minimum
-    from importlib_metadata import version  # noqa: E402
-
-__version__ = version(__package__)
-del version
+    # see https://effigies.gitlab.io/posts/python-packaging-2023/
+    from ._version import __version__
+except ImportError:  # pragma: no cover
+    pass
 
 
 from ._due import BibTeX, due  # noqa: E402

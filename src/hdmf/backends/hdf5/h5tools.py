@@ -36,6 +36,17 @@ class HDF5IO(HDMFIO):
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
 
+    @staticmethod
+    def can_read(path):
+        """Determines whether a given path is readable by the HDF5IO class"""
+        if not os.path.isfile(path):
+            return False
+        try:
+            with h5py.File(path, "r"):
+                return True
+        except IOError:
+            return False
+
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': ('the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). '
@@ -47,13 +58,17 @@ class HDF5IO(HDMFIO):
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
-            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None})
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'external_resources_path', 'type': str,
+             'doc': 'The path to the ExternalResources', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
-                                                              kwargs)
+        path, manager, mode, comm, file_obj, driver, external_resources_path = popargs('path', 'manager', 'mode',
+                                                                                       'comm', 'file', 'driver',
+                                                                                       'external_resources_path',
+                                                                                       kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
@@ -76,9 +91,10 @@ class HDF5IO(HDMFIO):
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
-        super().__init__(manager, source=path)  # NOTE: source is not set if path is None and file_obj is passed
-        self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
-        self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
+        super().__init__(manager, source=path, external_resources_path=external_resources_path)
+        # NOTE: source is not set if path is None and file_obj is passed
+        self.__built = dict() # keep track of each builder for each dataset/group/link for each file
+        self.__read = dict() # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
@@ -598,7 +614,7 @@ class HDF5IO(HDMFIO):
                             builder = self.__read_dataset(target_obj, builder_name)
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
+                        self.__set_built(sub_h5obj.file.filename, target_obj.id, builder)
                     link_builder = LinkBuilder(builder=builder, name=k, source=os.path.abspath(h5obj.file.filename))
                     link_builder.location = h5obj.name
                     self.__set_written(link_builder)
@@ -643,7 +659,7 @@ class HDF5IO(HDMFIO):
             name = str(os.path.basename(h5obj.name))
         kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ndims = len(h5obj.shape)
-        if ndims == 0:                                       # read scalar
+        if ndims == 0:  # read scalar
             scalar = h5obj[()]
             if isinstance(scalar, bytes):
                 scalar = scalar.decode('UTF-8')
@@ -673,7 +689,7 @@ class HDF5IO(HDMFIO):
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
-            elif h5obj.dtype.kind == 'V':    # table / compound data type
+            elif h5obj.dtype.kind == 'V':  # table / compound data type
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) or check_dtype(vlen=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
@@ -703,7 +719,7 @@ class HDF5IO(HDMFIO):
     def __read_attrs(self, h5obj):
         ret = dict()
         for k, v in h5obj.attrs.items():
-            if k == SPEC_LOC_ATTR:     # ignore cached spec
+            if k == SPEC_LOC_ATTR:  # ignore cached spec
                 continue
             if isinstance(v, RegionReference):
                 raise ValueError("cannot read region reference attributes yet")
@@ -920,14 +936,14 @@ class HDF5IO(HDMFIO):
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                     obj.attrs[key] = value
-                elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
+                elif isinstance(value, (Container, Builder, ReferenceBuilder)):  # a reference
                     self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
                 else:
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                     if isinstance(value, np.ndarray) and value.dtype.kind == 'U':
                         value = np.array(value, dtype=H5_TEXT)
-                    obj.attrs[key] = value                   # a regular scalar
+                    obj.attrs[key] = value  # a regular scalar
             except Exception as e:
                 msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)
                 raise RuntimeError(msg) from e
@@ -1074,7 +1090,7 @@ class HDF5IO(HDMFIO):
         name = builder.name
         data = builder.data
         dataio = None
-        options = dict()   # dict with additional
+        options = dict()  # dict with additional
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
             dataio = data

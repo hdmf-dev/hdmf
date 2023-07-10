@@ -3,7 +3,6 @@ import re
 import warnings
 from collections import OrderedDict
 from copy import copy
-from datetime import datetime
 
 import numpy as np
 
@@ -611,7 +610,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 elif 'ascii' in spec.dtype:
                     string_type = bytes
                 elif 'isodatetime' in spec.dtype:
-                    string_type = datetime.isoformat
+                    def string_type(x):
+                        return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
                         ret = list(map(string_type, value))
