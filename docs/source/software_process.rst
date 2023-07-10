@@ -41,13 +41,13 @@ codecov_, which shows line by line which lines are covered by the tests.
 Installation Requirements
 -------------------------
 
-setup.py_ contains a list of package dependencies and their version ranges allowed for
+pyproject.toml_ contains a list of package dependencies and their version ranges allowed for
 running HDMF. As a library, upper bound version constraints create more harm than good in the long term (see this
 `blog post`_) so we avoid setting upper bounds on requirements.
 
 If some of the packages are outdated, see :ref:`update_requirements_files`.
 
-.. _setup.py: https://github.com/hdmf-dev/hdmf/blob/dev/setup.py
+.. _pyproject.toml: https://github.com/hdmf-dev/hdmf/blob/dev/pyproject.toml
 .. _blog post: https://iscinumpy.dev/post/bound-version-constraints/
 
 --------------------
