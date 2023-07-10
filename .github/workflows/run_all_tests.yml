@@ -79,6 +79,10 @@ jobs:
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
 
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
+
   run-all-gallery-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -184,6 +188,10 @@ jobs:
       - name: Test installation from a wheel
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
   run-gallery-ros3-tests:
     name: ${{ matrix.name }}

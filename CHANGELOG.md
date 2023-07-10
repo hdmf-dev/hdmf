@@ -10,6 +10,7 @@
 - Allow for `datetime.date` to be used instead of `datetime.datetime`. @bendichter [#874](https://github.com/hdmf-dev/hdmf/pull/874)
 - Updated `HDMFIO` and `HDF5IO` to support `ExternalResources`. @mavaylon1 [#895](https://github.com/hdmf-dev/hdmf/pull/895)
 - Dropped Python 3.7 support. @rly [#897](https://github.com/hdmf-dev/hdmf/pull/897)
+- Added HTML repr to `Container` objects which displays an interactive tree of a container's values and children in a Jupyter notebook and other HTML representations. @edeno [#883](https://github.com/hdmf-dev/hdmf/pull/883)
 
 ### Documentation and tutorial enhancements:
 - Added tutorial for the new `TermSet` class @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
@@ -17,6 +18,8 @@
 ## Bug fixes
 - Fixed CI testing of minimum installation requirements, and removed some gallery tests run on each PR. @rly
   [#877](https://github.com/hdmf-dev/hdmf/pull/877)
+- Fixed reporting of version when installed using conda. @rly [#890](https://github.com/hdmf-dev/hdmf/pull/890)
+
 
 ## HMDF 3.6.1 (May 18, 2023)
 
