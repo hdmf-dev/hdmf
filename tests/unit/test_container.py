@@ -5,6 +5,15 @@ from hdmf.container import AbstractContainer, Container, Data, ExternalResources
 from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase
 from hdmf.utils import docval
+from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
+import unittest
+from hdmf.term_set import TermSet
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class Subcontainer(Container):
@@ -135,6 +144,47 @@ class TestContainer(TestCase):
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
         self.assertIs(parent_obj.children[0], child_obj)
+
+    def test_parent_set_link_warning(self):
+        col1 = VectorData(
+            name='col1',
+            description='column #1',
+            data=[1, 2],
+        )
+        col2 = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'b'],
+        )
+
+        # this table will have two rows with ids 0 and 1
+        table = DynamicTable(
+            name='my table',
+            description='an example table',
+            columns=[col1, col2],
+        )
+
+        dtr_col = DynamicTableRegion(
+            name='table1_ref',
+            description='references rows of earlier table',
+            data=[0, 1, 0, 0],  # refers to row indices of the 'table' variable
+            table=table
+        )
+
+        data_col = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'a', 'a', 'b'],
+        )
+
+        table2 = DynamicTable(
+            name='my_table',
+            description='an example table',
+            columns=[dtr_col, data_col],
+        )
+
+        with self.assertWarns(Warning):
+            table2.parent=ContainerWithChild()
 
     def test_set_parent_exists(self):
         """Test that setting a parent a second time does nothing
@@ -356,6 +406,46 @@ class TestData(TestCase):
         """
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        self.assertEqual(data_obj.data, ['Homo sapiens'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_validate_value_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        with self.assertRaises(ValueError):
+            Data(name='species', data=['Macaca mulatta'], term_set=terms)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_append_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_append_validate_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.append('Macaca mulatta')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_extend_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_extend_validate_bad_data_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])
 
 
 class TestAbstractContainerFieldsConf(TestCase):

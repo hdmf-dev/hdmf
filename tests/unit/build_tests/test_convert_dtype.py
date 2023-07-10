@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 from hdmf.backends.hdf5 import H5DataIO
@@ -534,8 +534,20 @@ class TestConvertDtype(TestCase):
 
         # NOTE: datetime.isoformat is called on all values with a datetime spec before conversion
         # see ObjectMapper.get_attr_value
-        value = datetime.isoformat(datetime(2020, 11, 10))
+        value = datetime(2020, 11, 10).isoformat()
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertIs(type(ret), bytes)
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodate_spec(self):
+        spec_type = 'isodatetime'
+        spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+        # NOTE: datetime.isoformat is called on all values with a datetime spec before conversion
+        # see ObjectMapper.get_attr_value
+        value = date(2020, 11, 10).isoformat()
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, b'2020-11-10')
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')

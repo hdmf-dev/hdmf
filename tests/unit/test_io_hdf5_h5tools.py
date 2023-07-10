@@ -6,6 +6,8 @@ from io import BytesIO
 from pathlib import Path
 import shutil
 import tempfile
+from glob import glob
+import zipfile
 
 import h5py
 import numpy as np
@@ -18,11 +20,14 @@ from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
 from hdmf.container import Container
+from hdmf import Data
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
-from hdmf.testing import TestCase
+from hdmf.testing import TestCase, remove_test_file
+from hdmf.common.resources import ExternalResources
+
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
@@ -924,6 +929,96 @@ class TestNoCacheSpec(TestCase):
         with File(self.path, 'r') as f:
             self.assertNotIn('specifications', f)
 
+
+class TestExternalResourcesIO(TestCase):
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        self.foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(self.foofile)
+
+    def remove_er_files(self):
+        remove_test_file('./entities.tsv')
+        remove_test_file('./entity_keys.tsv')
+        remove_test_file('./objects.tsv')
+        remove_test_file('./object_keys.tsv')
+        remove_test_file('./keys.tsv')
+        remove_test_file('./files.tsv')
+        remove_test_file('./er.tsv')
+        remove_test_file('./er.zip')
+
+    def child_tsv(self, external_resources):
+        for child in external_resources.children:
+            df = child.to_dataframe()
+            df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
+
+    def zip_child(self):
+        files = glob('*.tsv')
+        with zipfile.ZipFile('er.zip', 'w') as zipF:
+          for file in files:
+              zipF.write(file)
+
+    def test_io_read_external_resources(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+            container = io.read()
+            self.assertIsInstance(io.external_resources, ExternalResources)
+            self.assertIsInstance(container.get_linked_resources(), ExternalResources)
+
+        self.remove_er_files()
+
+    def test_io_read_external_resources_file_warn(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='wrong_path') as io:
+            with self.assertWarns(Warning):
+                io.read()
+
+        self.remove_er_files()
+
+    def test_io_read_external_resources_value_warn(self):
+        er = ExternalResources()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_norm_tsv(path='./')
+
+        self.child_tsv(external_resources=er)
+
+        df = er.entities.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entities.tsv', sep='\t', index=False)
+
+        self.zip_child()
+        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+            with self.assertWarns(Warning):
+                io.read()
+
+        self.remove_er_files()
 
 class TestMultiWrite(TestCase):
 
@@ -3133,6 +3228,10 @@ class TestExport(TestCase):
 
         class OtherIO(HDMFIO):
 
+            @staticmethod
+            def can_read(path):
+                pass
+
             def read_builder(self):
                 pass
 
@@ -3161,6 +3260,10 @@ class TestExport(TestCase):
             write_io.write(foofile)
 
         class OtherIO(HDMFIO):
+
+            @staticmethod
+            def can_read(path):
+                pass
 
             def __init__(self, manager):
                 super().__init__(manager=manager)
@@ -3475,3 +3578,9 @@ class H5DataIOTests(TestCase):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
         with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
             dataio.data = list()
+
+
+def test_hdf5io_can_read():
+    assert not HDF5IO.can_read("not_a_file")
+    assert HDF5IO.can_read("tests/unit/back_compat_tests/1.0.5.h5")
+    assert not HDF5IO.can_read(__file__)  # this file is not an HDF5 file

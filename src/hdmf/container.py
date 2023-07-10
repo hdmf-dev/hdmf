@@ -11,6 +11,7 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
+from hdmf.term_set import TermSet
 
 
 def _set_exp(cls):
@@ -354,6 +355,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+            for child in self.children:
+                if type(child).__name__ == "DynamicTableRegion":
+                    if child.table.parent is None:
+                        msg = "The table for this DynamicTableRegion has not been added to the parent."
+                        warn(msg)
+                    else:
+                        continue
 
     def _remove_child(self, child):
         """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
@@ -636,11 +644,26 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
+        self.term_set = popargs('term_set', kwargs)
         super().__init__(**kwargs)
-        self.__data = data
+        if self.term_set is not None:
+            bad_data = [term for term in data if not  self.term_set.validate(term=term)]
+            for term in data:
+                if self.term_set.validate(term=term):
+                    continue
+                else:
+                    bad_data.append(term)
+            if len(bad_data)!=0:
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
+            self.__data = data
+        else:
+            self.__data = data
 
     @property
     def data(self):
@@ -699,7 +722,14 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
-        self.__data = append_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = append_data(self.__data, arg)
+        else:
+            if self.term_set.validate(term=arg):
+                self.__data = append_data(self.__data, arg)
+            else:
+                msg = ('"%s" is not in the term set.' % arg)
+                raise ValueError(msg)
 
     def extend(self, arg):
         """
@@ -708,7 +738,18 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
-        self.__data = extend_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = extend_data(self.__data, arg)
+        else:
+            bad_data = []
+            for item in arg:
+                try:
+                    self.append(item)
+                except ValueError:
+                    bad_data.append(item)
+            if len(bad_data)!=0:
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
 
 
 class DataRegion(Data):

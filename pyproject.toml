@@ -13,11 +13,10 @@ authors = [
 ]
 description = "A hierarchical data modeling framework for modern science data standards"
 readme = "README.rst"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {text = "BSD-3-Clause"}
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -32,17 +31,18 @@ classifiers = [
 dependencies = [
     "h5py>=2.10",
     "jsonschema>=2.6.0",
-    "numpy>=1.16",
+    "numpy>=1.18",
     "pandas>=1.0.5",
     "ruamel.yaml>=0.16",
-    "scipy>=1.1",
-    "importlib-metadata<4.3; python_version < '3.8'",  # TODO: remove when minimum python version is 3.8
+    "scipy>=1.4",
     "importlib-resources; python_version < '3.9'",  # TODO: remove when minimum python version is 3.9
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 zarr = ["zarr>=2.12.0"]
+tqdm = ["tqdm>=4.41.0"]
+linkml = ["linkml-runtime>=1.5.0"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
