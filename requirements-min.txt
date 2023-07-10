@@ -1,12 +1,11 @@
 # minimum versions of package dependencies for installing HDMF
 h5py==2.10  # support for selection of datasets with list of indices added in 2.10
-importlib-metadata==4.2.0; python_version < "3.8"  # TODO: remove when minimum python version is 3.8
 importlib-resources==5.12.0; python_version < "3.9"  # TODO: remove when when minimum python version is 3.9
 jsonschema==3.2.0
-numpy==1.16  # numpy>=1.16,<1.18 does not provide wheels for python 3.8 and does not build well on windows
+numpy==1.18
 pandas==1.0.5  # when this is changed to >=1.5.0, see TODO items referenced in #762
 ruamel.yaml==0.16
-scipy==1.1  # scipy>=1.1,<1.4 does not provide wheels for python 3.8 and building scipy can fail due to incompatibilities with numpy
+scipy==1.4
 linkml-runtime==1.5.0
 tqdm==4.41.0
 zarr==2.12.0

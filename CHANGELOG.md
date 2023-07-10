@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HMDF 3.6.2 (Upcoming)
+## HMDF 3.7.0 (Upcoming)
 
 ### New features and minor improvements
 - Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
@@ -8,6 +8,7 @@
 - Added the `TermSet` class along with integrated validation methods for any child of `AbstractContainer`, e.g., `VectorData`, `Data`, `DynamicTable`. @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
 - Allow for `datetime.date` to be used instead of `datetime.datetime`. @bendichter [#874](https://github.com/hdmf-dev/hdmf/pull/874)
 - Updated `HDMFIO` and `HDF5IO` to support `ExternalResources`. @mavaylon1 [#895](https://github.com/hdmf-dev/hdmf/pull/895)
+- Dropped Python 3.7 support. @rly [#897](https://github.com/hdmf-dev/hdmf/pull/897)
 
 ### Documentation and tutorial enhancements:
 
