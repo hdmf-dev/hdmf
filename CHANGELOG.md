@@ -12,10 +12,14 @@
 
 - Added tutorial for the new `TermSet` class @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
 
+## Bug fixes
+- Fixed CI testing of minimum installation requirements, and removed some gallery tests run on each PR. @rly
+  [#877](https://github.com/hdmf-dev/hdmf/pull/877)
+
 ## HMDF 3.6.1 (May 18, 2023)
 
 ### Bug fixes
-- Fix compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
+- Fixed compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
 
 ## HDMF 3.6.0 (May 12, 2023)
 
