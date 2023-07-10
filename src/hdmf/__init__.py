@@ -3,6 +3,7 @@ from .backends.hdf5.h5_utils import H5Dataset, H5RegionSlicer
 from .container import Container, Data, DataRegion, ExternalResourcesManager
 from .region import ListSlicer
 from .utils import docval, getargs
+from .term_set import TermSet
 
 
 @docval(
@@ -26,11 +27,7 @@ def get_region_slicer(**kwargs):
     return None
 
 
-try:
-    from importlib.metadata import version  # noqa: E402
-except ImportError:
-    # TODO: Remove when python 3.8 becomes the new minimum
-    from importlib_metadata import version  # noqa: E402
+from importlib.metadata import version  # noqa: E402
 
 __version__ = version(__package__)
 del version

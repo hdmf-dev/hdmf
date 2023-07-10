@@ -3,18 +3,21 @@ import os
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
-from ..container import Container
+from ..container import Container, ExternalResourcesManager
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
+from warnings import warn
 
 
 class HDMFIO(metaclass=ABCMeta):
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),
-             "doc": "the source of container being built i.e. file path", 'default': None})
+             "doc": "the source of container being built i.e. file path", 'default': None},
+            {'name': 'external_resources_path', 'type': str,
+             'doc': 'The path to the ExternalResources', 'default': None},)
     def __init__(self, **kwargs):
-        manager, source = getargs('manager', 'source', kwargs)
+        manager, source, external_resources_path = getargs('manager', 'source', 'external_resources_path', kwargs)
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
@@ -26,6 +29,8 @@ class HDMFIO(metaclass=ABCMeta):
         self.__manager = manager
         self.__built = dict()
         self.__source = source
+        self.external_resources_path = external_resources_path
+        self.external_resources = None
         self.open()
 
     @property
@@ -46,6 +51,19 @@ class HDMFIO(metaclass=ABCMeta):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
+        if self.external_resources_path is not None:
+            from hdmf.common import ExternalResources
+            try:
+                self.external_resources = ExternalResources.from_norm_tsv(path=self.external_resources_path)
+                if isinstance(container, ExternalResourcesManager):
+                    container.link_resources(external_resources=self.external_resources)
+            except FileNotFoundError:
+                msg = "File not found at {}. ExternalResources not added.".format(self.external_resources_path)
+                warn(msg)
+            except ValueError:
+                msg = "Check ExternalResources separately for alterations. ExternalResources not added."
+                warn(msg)
+
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},

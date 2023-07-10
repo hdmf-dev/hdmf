@@ -1,5 +1,7 @@
 import pandas as pd
-from hdmf.common import DynamicTable
+import unittest
+from hdmf.common import DynamicTable, VectorData
+from hdmf import TermSet
 from hdmf.common.resources import ExternalResources, Key
 from hdmf import Data, Container, ExternalResourcesManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
@@ -9,6 +11,12 @@ from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 from glob import glob
 import zipfile
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
@@ -260,6 +268,125 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        key='key1',
                        entity_id='entity_id1',
                        entity_uri='entity1')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'],
+                          term_set=terms)
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_term_set(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_termset(self):
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        species = DynamicTable(name='species', description='My species')
+
+        with self.assertRaises(AttributeError):
+            er.add_ref_term_set(file=em,
+                                container=species,
+                               )
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_attribute_termset_value(self):
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_term_set(file=em,
+                                container=species,
+                                attribute='Species_Data',
+                               )
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_terms(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = ExternalResources()
+        em = ExternalResourcesManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'missing_term'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        missing_terms = er.add_ref_term_set(file=em,
+                                            container=species,
+                                            attribute='Species_Data',
+                                            term_set=terms
+                                           )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+        self.assertEqual(missing_terms, {'Missing Values in TermSet': ['missing_term']})
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_file_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = ExternalResources()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'],
+                          term_set=terms)
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_term_set(
+                        container=species,
+                        attribute='Species_Data',
+                       )
+
+    def test_get_file_from_container(self):
+        file = ExternalResourcesManagerContainer(name='file')
+        container = Container(name='name')
+        container.parent = file
+        er = ExternalResources()
+        retrieved = er._get_file_from_container(container)
+
+        self.assertEqual(file.name, retrieved.name)
+
+    def test_get_file_from_container_file_is_container(self):
+        file = ExternalResourcesManagerContainer(name='file')
+        er = ExternalResources()
+        retrieved = er._get_file_from_container(file)
+
+        self.assertEqual(file.name, retrieved.name)
+
+
+    def test_get_file_from_container_error(self):
+        container = Container(name='name')
+        er = ExternalResources()
+
+        with self.assertRaises(ValueError):
+            er._get_file_from_container(container)
 
     def test_add_ref(self):
         er = ExternalResources()
