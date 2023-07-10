@@ -217,8 +217,6 @@ jobs:
       matrix:
         include:
           - { name: linux-gallery-python3.11-ros3  , python-ver: "3.11", os: ubuntu-latest }
-          - { name: windows-gallery-python3.11-ros3, python-ver: "3.11", os: windows-latest }
-          - { name: macos-gallery-python3.11-ros3  , python-ver: "3.11", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
         uses: styfle/cancel-workflow-action@0.11.0
