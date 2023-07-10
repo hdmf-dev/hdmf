@@ -5,11 +5,9 @@
 black==23.3.0
 codespell==2.2.4
 coverage==7.2.5
-pre-commit==3.3.1; python_version >= "3.8"
-pre-commit==2.21.0; python_version < "3.8"  # pre-commit 3 dropped python 3.7 support
+pre-commit==3.3.1
 pytest==7.3.1
 pytest-cov==4.0.0
 python-dateutil==2.8.2
 ruff==0.0.265
-tox==4.5.1; python_version >= "3.8"
-tox==3.28.0; python_version < "3.8"  # tox 4+ has virtualenv requirements that are incompatible with other pkgs
+tox==4.5.1
