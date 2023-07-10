@@ -192,6 +192,11 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
 
+    def __del__(self):
+        # Make sure the reference counter for our read IO is being decremented
+        del self.__read_io
+        self.__read_io = None
+
     def __new__(cls, *args, **kwargs):
         """
         Static method of the object class called by Python to create the object first and then
@@ -221,6 +226,56 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
+        self.__read_io = None
+
+    @property
+    def read_io(self):
+        """
+        The  :class:`~hdmf.backends.io.HDMFIO` object used for reading the container.
+
+        This property will typically be  None if this Container is not a root Container
+        (i.e., if `parent` is not None). Use `get_read_io` instead if you want to retrieve the
+        :class:`~hdmf.backends.io.HDMFIO` object used for reading from the parent container.
+        """
+        return self.__read_io
+
+    @read_io.setter
+    def read_io(self, value):
+        """
+        Set the io object used to read this container
+
+        :param value: The :class:`~hdmf.backends.io.HDMFIO` object to use
+        :raises ValueError: If io has already been set. We can't change the IO for a container.
+        :raises TypeError: If value is not an instance of :class:`~hdmf.backends.io.HDMFIO`
+        """
+        # We do not want to import HDMFIO on the module level to avoid circular imports. Since we only need
+        # it for type checking we import it here.
+        from hdmf.backends.io import HDMFIO
+        if not isinstance(value, HDMFIO):
+            raise TypeError("io must be an instance of HDMFIO")
+        if self.__read_io is not None:
+            raise ValueError("io has already been set for this container (name=%s, type=%s)" %
+                             (self.name, str(type(self))))
+        else:
+            self.__read_io = value
+
+    def get_read_io(self):
+        """
+        Get the io object used to read this container.
+
+        If `self.read_io` is None, this function will iterate through the parents and return the
+        first `io` object found on a parent container
+
+        :returns: The :class:`~hdmf.backends.io.HDMFIO`  object used to read this container.
+                  Returns None in case no io object is found, e.g., in case this container has
+                  not been read from file.
+        """
+        curr_obj = self
+        re_io = self.read_io
+        while re_io is None and curr_obj.parent is not None:
+            curr_obj = curr_obj.parent
+            re_io = curr_obj.read_io
+        return re_io
 
     @property
     def name(self):

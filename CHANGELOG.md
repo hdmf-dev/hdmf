@@ -7,6 +7,7 @@
 - Added abstract static method `HDMFIO.can_read()` and concrete static method `HDF5IO.can_read()`. @bendichter [#875](https://github.com/hdmf-dev/hdmf/pull/875)
 - Added warning for `DynamicTableRegion` links that are not added to the same parent as the original container object. @mavaylon1 [#891](https://github.com/hdmf-dev/hdmf/pull/891)
 - Added the `TermSet` class along with integrated validation methods for any child of `AbstractContainer`, e.g., `VectorData`, `Data`, `DynamicTable`. @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
+- Added `AbstractContainer.read_io` property to be able to retrieve the HDMFIO object used for reading from the container and to ensure the I/O object used for reading is not garbage collected before the container is being deleted. @bendichter @oruebel [#882](https://github.com/hdmf-dev/hdmf/pull/882)
 - Allow for `datetime.date` to be used instead of `datetime.datetime`. @bendichter [#874](https://github.com/hdmf-dev/hdmf/pull/874)
 - Updated `HDMFIO` and `HDF5IO` to support `ExternalResources`. @mavaylon1 [#895](https://github.com/hdmf-dev/hdmf/pull/895)
 - Dropped Python 3.7 support. @rly [#897](https://github.com/hdmf-dev/hdmf/pull/897)

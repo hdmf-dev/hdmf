@@ -1,5 +1,6 @@
 import numpy as np
 from uuid import uuid4, UUID
+import os
 
 from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
 from hdmf.common.resources import ExternalResources
@@ -8,6 +9,7 @@ from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
 import unittest
 from hdmf.term_set import TermSet
+from hdmf.backends.hdf5.h5tools import HDF5IO
 
 try:
     import linkml_runtime  # noqa: F401
@@ -40,6 +42,13 @@ class TestExternalResourcesManager(TestCase):
 
 
 class TestContainer(TestCase):
+
+    def setUp(self):
+        self.path = "test_container.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
 
     def test_new(self):
         """Test that __new__ properly sets parent and other fields.
@@ -82,6 +91,45 @@ class TestContainer(TestCase):
         self.assertEqual(obj.children, tuple())
         self.assertIsNone(obj.parent)
         self.assertEqual(obj.name, 'obj1')
+        self.assertIsNone(obj.read_io)
+
+    def test_read_io_none(self):
+        """Test that __init__ properly sets read_io to None"""
+        obj = Container('obj1')
+        self.assertIsNone(obj.read_io)
+
+    def test_read_io_setter(self):
+        """Test setting the read IO property"""
+        obj = Container('obj1')
+        # Bad value for read_io
+        with self.assertRaises(TypeError):
+            obj.read_io = "test"
+        # Set read_io
+        with  HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            self.assertIs(obj.read_io, temp_io)
+            # Check that setting read_io again fails
+            with self.assertRaises(ValueError):
+                obj.read_io = temp_io
+
+    def test_get_read_io_on_self(self):
+        """Test that get_read_io works when the container is set on the container"""
+        obj = Container('obj1')
+        self.assertIsNone(obj.get_read_io())
+        with HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            re_io = obj.get_read_io()
+            self.assertIs(re_io, temp_io)
+
+    def test_get_read_io_on_parent(self):
+        """Test that get_read_io works when the container is set on the parent"""
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        with HDF5IO(self.path, mode='w') as temp_io:
+            parent_obj.read_io = temp_io
+            self.assertIsNone(child_obj.read_io)
+            self.assertIs(child_obj.get_read_io(), temp_io)
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
@@ -481,7 +529,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent']
+        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_named_fields(self):
@@ -502,7 +550,7 @@ class TestAbstractContainerFieldsConf(TestCase):
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
         expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent']
+                    'parent', 'read_io']
         self.assertListEqual(props, expected)
 
         f1_doc = getattr(NamedFields, 'field1').__doc__
@@ -583,7 +631,7 @@ class TestAbstractContainerFieldsConf(TestCase):
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
         expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent']
+                    'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_inheritance_override(self):

@@ -58,6 +58,7 @@ class HDMFIO(metaclass=ABCMeta):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
+        container.read_io = self
         if self.external_resources_path is not None:
             from hdmf.common import ExternalResources
             try:
