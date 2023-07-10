@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.7.0 (Upcoming)
+## HDMF 3.7.0 (July 10, 2023)
 
 ### New features and minor improvements
 - Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
