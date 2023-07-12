@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
 from typing import Tuple, Iterable
+from sys import version_info
 
 import h5py
 
@@ -90,6 +91,9 @@ class GenericDataChunkIteratorTests(TestCase):
             exc_msg=(
                 "Can't instantiate abstract class TestGenericDataChunkIterator with abstract methods "
                 "_get_data, _get_dtype, _get_maxshape"
+            ) if version_info < (3, 12) else (
+                "Can't instantiate abstract class TestGenericDataChunkIterator without an "
+                "implementation for abstract methods '_get_data', '_get_dtype', '_get_maxshape'"
             ),
         ):
             TestGenericDataChunkIterator()
