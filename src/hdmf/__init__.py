@@ -31,7 +31,11 @@ try:
     # see https://effigies.gitlab.io/posts/python-packaging-2023/
     from ._version import __version__
 except ImportError:  # pragma: no cover
-    __version__ = "unknown"
+    # this is a relatively slower method for getting the version string
+    from importlib.metadata import version  # noqa: E402
+    
+    __version__ = version("hdmf")
+    del version
 
 
 from ._due import BibTeX, due  # noqa: E402
