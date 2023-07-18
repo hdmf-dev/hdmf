@@ -565,11 +565,12 @@ class Container(AbstractContainer):
         html_repr += (
             f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
         )
-        html_repr += self._generate_html_repr(self.fields)
+        html_repr += self._generate_html_repr()
         html_repr += "</div>"
         return html_repr
 
-    def _generate_html_repr(self, fields, level=0, access_code=".fields"):
+    def _generate_html_repr(self, level=0, access_code=".fields"):
+        fields = self.fields
         html_repr = ""
 
         if isinstance(fields, dict):
@@ -587,12 +588,10 @@ class Container(AbstractContainer):
                         f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
                         f'class="container-fields field-key" title="{current_access_code}"><b>{label}</b></summary>'
                     )
-                    if hasattr(value, "fields"):
-                        value = value.fields
+                    if hasattr(value, "_generate_html_repr"):
                         current_access_code = current_access_code + ".fields"
-                    html_repr += self._generate_html_repr(
-                        value, level + 1, current_access_code
-                    )
+                    html_repr += value._generate_html_repr(level + 1, current_access_code)
+                    html_repr += "here"
                     html_repr += "</details>"
                 else:
                     html_repr += (
