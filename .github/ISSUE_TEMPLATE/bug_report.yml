@@ -36,8 +36,6 @@ body:
 
         This section will be automatically formatted into code, so no need for backticks.
       render: shell
-    validations:
-      required: true
   - type: dropdown
     id: os
     attributes:
