@@ -31,7 +31,7 @@ try:
     # see https://effigies.gitlab.io/posts/python-packaging-2023/
     from ._version import __version__
 except ImportError:  # pragma: no cover
-    pass
+    __version__ = "unknown"
 
 
 from ._due import BibTeX, due  # noqa: E402
