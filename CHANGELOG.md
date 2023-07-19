@@ -4,7 +4,7 @@
 
 ### New features and minor improvements
 - Added the ability to write ExternalResources if the path is provided and the container has a linked instance of ExternalResources. @mavaylon1 [#910](https://github.com/hdmf-dev/hdmf/pull/910)
-  
+
 ### Bug fixes
 - Fixed bug on `add_ref_term_set` in which attributes that were not subscribtable returned an error. @mavaylon1 [#909](https://github.com/hdmf-dev/hdmf/pull/909)
 
