@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.7.1 (Upcoming)
+
+### Bug fixes
+- Fixed bug on `add_ref_term_set` in which attributes that were not subscribtable returned an error. @mavaylon1 [#909](https://github.com/hdmf-dev/hdmf/pull/909)
+
 ## HDMF 3.7.0 (July 10, 2023)
 
 ### New features and minor improvements
@@ -17,7 +22,7 @@
 ### Documentation and tutorial enhancements:
 - Added tutorial for the new `TermSet` class @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
 
-## Bug fixes
+### Bug fixes
 - Fixed CI testing of minimum installation requirements, and removed some gallery tests run on each PR. @rly
   [#877](https://github.com/hdmf-dev/hdmf/pull/877)
 - Fixed reporting of version when installed using conda. @rly [#890](https://github.com/hdmf-dev/hdmf/pull/890)
