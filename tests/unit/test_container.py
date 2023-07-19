@@ -40,11 +40,6 @@ class TestExternalResourcesManager(TestCase):
         er_get = em.get_linked_resources()
         self.assertEqual(er, er_get)
 
-    def test_link_and_get_resources_error(self):
-        em = ExternalResourcesManager()
-        with self.assertRaises(ValueError):
-            em.get_linked_resources()
-
 
 class TestContainer(TestCase):
 

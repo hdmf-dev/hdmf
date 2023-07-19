@@ -83,10 +83,10 @@ class HDMFIO(metaclass=ABCMeta):
         self.write_builder(f_builder, **kwargs)
 
         if self.external_resources_path is not None:
-            try:
+            if container.get_linked_resources() is not None:
                 external_resources = container.get_linked_resources()
                 external_resources.to_norm_tsv(path=self.external_resources_path)
-            except ValueError:
+            else:
                 msg = "Could not find linked ExternalResources. Container was still written to IO source."
                 warn(msg)
 
