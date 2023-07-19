@@ -1020,6 +1020,41 @@ class TestExternalResourcesIO(TestCase):
 
         self.remove_er_files()
 
+    def test_io_write_er(self):
+        er = ExternalResources()
+        self.foofile.link_resources(er)
+
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+
+        with HDF5IO(self.path, manager=self.manager, mode='w', external_resources_path='./') as io:
+            io.write(self.foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+            container = io.read()
+            self.assertIsInstance(io.external_resources, ExternalResources)
+            self.assertIsInstance(container.get_linked_resources(), ExternalResources)
+
+        self.remove_er_files()
+
+    def test_io_warn(self):
+        er = ExternalResources()
+
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        with HDF5IO(self.path, manager=self.manager, mode='w', external_resources_path='./') as io:
+            with self.assertWarns(Warning):
+                io.write(self.foofile)
+
+
 class TestMultiWrite(TestCase):
 
     def setUp(self):
