@@ -453,7 +453,7 @@ class ExternalResources(Container):
             if attribute is None:
                 data_object = container
             else:
-                data_object = container[attribute]
+                data_object = getattr(container, attribute)
             if isinstance(data_object, (Data, DataIO)):
                 data = data_object.data
             elif isinstance(data_object, (list, np.ndarray)):
