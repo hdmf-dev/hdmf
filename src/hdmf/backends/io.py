@@ -82,6 +82,14 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
 
+        if self.external_resources_path is not None:
+            external_resources = container.get_linked_resources()
+            if external_resources is not None:
+                external_resources.to_norm_tsv(path=self.external_resources_path)
+            else:
+                msg = "Could not find linked ExternalResources. Container was still written to IO source."
+                warn(msg)
+
     @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
             {'name': 'container', 'type': Container,
              'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
