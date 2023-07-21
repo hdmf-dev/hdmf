@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.8.0 (Upcoming)
+## HDMF 3.8.0 (July 21,2023)
 
 ### New features and minor improvements
 - Added the ability to write ExternalResources if the path is provided and the container has a linked instance of ExternalResources. @mavaylon1 [#910](https://github.com/hdmf-dev/hdmf/pull/910)
