@@ -131,6 +131,13 @@ class TestContainer(TestCase):
             self.assertIsNone(child_obj.read_io)
             self.assertIs(child_obj.get_read_io(), temp_io)
 
+    def test_del_read_io(self):
+        class TestContainer(AbstractContainer):
+            def __init__(self):
+                raise ValueError("Error")
+        with self.assertRaises(ValueError):
+            TestContainer()
+
     def test_set_parent(self):
         """Test that parent setter properly sets parent
         """
