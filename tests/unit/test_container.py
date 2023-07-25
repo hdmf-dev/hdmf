@@ -45,10 +45,13 @@ class TestContainer(TestCase):
 
     def setUp(self):
         self.path = "test_container.h5"
+        self.path2 = "test_container2.h5"
 
     def tearDown(self):
         if os.path.exists(self.path):
             os.remove(self.path)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
 
     def test_new(self):
         """Test that __new__ properly sets parent and other fields.
@@ -105,12 +108,15 @@ class TestContainer(TestCase):
         with self.assertRaises(TypeError):
             obj.read_io = "test"
         # Set read_io
-        with  HDF5IO(self.path, mode='w') as temp_io:
+        with HDF5IO(self.path, mode='w') as temp_io:
             obj.read_io = temp_io
             self.assertIs(obj.read_io, temp_io)
-            # Check that setting read_io again fails
-            with self.assertRaises(ValueError):
-                obj.read_io = temp_io
+            # test that setting the read_io object to the same io object is OK
+            obj.read_io = temp_io
+            # Check that setting read_io to another io object fails
+            with HDF5IO(self.path2, mode='w') as temp_io2:
+                with self.assertRaises(ValueError):
+                    obj.read_io = temp_io2
 
     def test_get_read_io_on_self(self):
         """Test that get_read_io works when the container is set on the container"""
