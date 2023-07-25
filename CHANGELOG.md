@@ -1,6 +1,11 @@
 # HDMF Changelog
 
-## HDMF 3.8.0 (July 21,2023)
+## HDMF 3.8.1 (July 25, 2023)
+
+### Bug fixes
+- Fixed error when calling `HDF5IO.read` twice. @rly [#915](https://github.com/hdmf-dev/hdmf/pull/915)
+
+## HDMF 3.8.0 (July 21, 2023)
 
 ### New features and minor improvements
 - Added the ability to write ExternalResources if the path is provided and the container has a linked instance of ExternalResources. @mavaylon1 [#910](https://github.com/hdmf-dev/hdmf/pull/910)
