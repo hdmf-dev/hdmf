@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.8.2 (Upcoming)
+
+### Bug fixes
+- Relaxed error checking in the `DynamicTable.__init__` and `AlginedDynamicTable.__init__` when reading from disk to help users access bad data files. @oruebel [#919](https://github.com/hdmf-dev/hdmf/pull/919)
+
 ## HDMF 3.8.1 (July 25, 2023)
 
 ### Bug fixes
