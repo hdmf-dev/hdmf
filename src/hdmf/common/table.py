@@ -394,7 +394,16 @@ class DynamicTable(Container):
         else:
             # Calculate the order of column names
             if columns is None:
-                raise ValueError("Must supply 'columns' if specifying 'colnames'")
+                # Invalid table. Custom colnames are given but the VectorData for those columns are missing.
+                if self._in_construct_mode:  # Relax error checking when reading from an existing file
+                    # To allow reading of bad files and since we don't have any actual data for the
+                    # custom columns, we can try to just ignore the columns and warn instead of raising a ValueError.
+                    self.colnames = tuple()
+                    self.columns = tuple()
+                    warn("Ignoring custom named columns. Must supply 'columns' if specifying"
+                         " 'colnames'=%s for table name=%s" % (str(colnames), self.name))
+                else: # be strict when constructing a new table
+                    raise ValueError("Must supply 'columns' if specifying 'colnames'")
             else:
                 # order the columns according to the column names, which does not include indices
                 self.colnames = tuple(pystr(c) for c in colnames)
