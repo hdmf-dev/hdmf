@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
+import warnings
 
 from . import register_class
 from .table import DynamicTable
@@ -51,12 +52,27 @@ class AlignedDynamicTable(DynamicTable):
             in_categories = [tab.name for tab in in_category_tables]
         # check that if categories is given that we also have category_tables
         if in_categories is not None and in_category_tables is None:
-            raise ValueError("Categories provided but no category_tables given")
+            if self._in_construct_mode: # Relax error checking when reading from file
+                warnings.warn("Custom categories=%s specified for %s name=%s but no category_tables"
+                              "were give" % (str(in_categories), str(type(self)), self.name),
+                              RuntimeWarning)
+                in_categories = None
+            else:
+                raise ValueError("Categories provided but no category_tables given")
         # at this point both in_categories and in_category_tables should either both be None or both be a list
         if in_categories is not None:
             if len(in_categories) != len(in_category_tables):
-                raise ValueError("%s category_tables given but %s categories specified" %
-                                 (len(in_category_tables), len(in_categories)))
+                if self._in_construct_mode:  # Relax error checking when reading from file
+                    default_categories = [t.name for t in in_category_tables]
+                    warnings.warn("%s category_tables given but %s categories=%s specified. "
+                                  "Using default order %s categories instead." %
+                                  (len(in_category_tables), len(in_categories),
+                                   str(in_categories), str(default_categories)),
+                                  RuntimeWarning)
+                    in_categories = default_categories
+                else:
+                    raise ValueError("%s category_tables given but %s categories specified" %
+                                     (len(in_category_tables), len(in_categories)))
         # Initialize the main dynamic table
         super().__init__(**kwargs)
         # Create and set all sub-categories
@@ -68,33 +84,51 @@ class AlignedDynamicTable(DynamicTable):
                 # We have categories to process
                 if len(self.id) == 0:
                     # The user did not initialize our main table id's nor set columns for our main table
-                    for i in range(len(in_category_tables[0])):
-                        self.id.append(i)
+                    try:
+                        for i in range(len(in_category_tables[0])):
+                            self.id.append(i)
+                    except TypeError as e:
+                        if self._in_construct_mode:  # Relax error checking when reading from file
+                            warnings.warn("Can't resize `id` column for %s  name=%s due to the "
+                                          "following TypeError: %s" % (str(type(self)), self.name, str(e)),
+                                          RuntimeWarning)
+                        else:
+                            raise e
+            # Check that in_categories and in_category_tables are consistent
+            for i, v in enumerate(in_category_tables):
+                # Error check that the name of the table is in our categories list
+                if v.name not in in_categories:
+                    if self._in_construct_mode:  # Relax error checking when reading from file
+                        default_categories = [t.name for t in in_category_tables]
+                        warnings.warn("DynamicTable %s does not appear in categories %s. "
+                                      "Using default order %s categories instead." %
+                                      (v.name, str(in_categories), str(default_categories)),
+                                      RuntimeWarning)
+                        in_categories = default_categories
+                        break
+                    else:
+                        raise ValueError("DynamicTable %s does not appear in "
+                                         "categories %s" % (v.name, str(in_categories)))
+
             # Add the user-provided categories in the correct order as described by the categories
             # This is necessary, because we do not store the categories explicitly but we maintain them
             # as the order of our self.category_tables. In this makes sure look-ups are consistent.
             lookup_index = OrderedDict([(k, -1) for k in in_categories])
             for i, v in enumerate(in_category_tables):
-                # Error check that the name of the table is in our categories list
-                if v.name not in lookup_index:
-                    raise ValueError("DynamicTable %s does not appear in categories %s" % (v.name, str(in_categories)))
                 # Error check to make sure no two tables with the same name are given
                 if lookup_index[v.name] >= 0:
                     raise ValueError("Duplicate table name %s found in input dynamic_tables" % v.name)
                 lookup_index[v.name] = i
             for table_name, tabel_index in lookup_index.items():
-                # This error case should not be able to occur since the length of the in_categories and
-                # in_category_tables must match and we made sure that each DynamicTable we added had its
-                # name in the in_categories list. We, therefore, exclude this check from coverage testing
-                # but we leave it in just as a backup trigger in case something unexpected happens
-                if tabel_index < 0:  # pragma: no cover
-                    raise ValueError("DynamicTable %s listed in categories but does not appear in category_tables" %
-                                     table_name)  # pragma: no cover
                 # Test that all category tables have the correct number of rows
                 category = in_category_tables[tabel_index]
                 if len(category) != len(self):
-                    raise ValueError('Category DynamicTable %s does not align, it has %i rows expected %i' %
-                                     (category.name, len(category), len(self)))
+                    msg = ("Category DynamicTable %s does not align, it has %i rows expected %i"
+                           % (category.name, len(category), len(self)))
+                    if self._in_construct_mode:  # Relax error checking when reading from file
+                        warnings.warn(msg, RuntimeWarning)
+                    else:
+                        raise ValueError(msg)
                 # Add the category table to our category_tables.
                 dts[category.name] = category
         # Set the self.category_tables attribute, which will set the parent/child relationships for the category_tables
