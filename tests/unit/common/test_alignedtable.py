@@ -1,6 +1,7 @@
 import numpy as np
 from pandas.testing import assert_frame_equal
 import warnings
+import os
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable, DynamicTableRegion
@@ -586,3 +587,22 @@ class TestAlignedDynamicTableContainer(TestCase):
                              ('test3', 'c1'), ('test3', 'c2'), ('test3', 'c3')]
         self.assertListEqual(adt.get_colnames(include_category_tables=True, ignore_category_ids=True),
                              expected_colnames)
+
+    def test_bad_nwb_icephys_data(self):
+        """
+        Test reading a file with a bad AlignedDynamicTable which has:
+        1) Bad id column where the main id column is empty but the category tables have 3 rows
+        2) The categories listed in the file have a spelling error so the ordering is bad
+        3) The colnames is bad because it lists a custom column but the VectorData is missing
+        """
+        try:
+            from pynwb import NWBHDF5IO
+        except ImportError:
+            self.skipTest("PyNWB not installed for testing")
+        test_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "bad_nwb_icephys_aligned_dynamic_table_file.nwb")
+
+        with NWBHDF5IO(test_filename, 'r', load_namespaces=True) as nwbio:
+            with warnings.catch_warnings(record=True) as w:
+                _ = nwbio.read()
+                self.assertEqual(len(w), 7)
