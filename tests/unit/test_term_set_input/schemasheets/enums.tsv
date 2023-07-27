@@ -1,0 +1,9 @@
+valueset	value	mapping	description
+> enum	permissible_value	meaning	description
+NeuronOrGlialCellTypeEnum			Enumeration to capture various cell types found in the brain.
+NeuronOrGlialCellTypeEnum	PYRAMIDAL_NEURON	CL:0000598	Neurons with a pyramidal shaped cell body (soma) and two distinct dendritic trees.
+NeuronOrGlialCellTypeEnum	INTERNEURON	CL:0000099	Neurons whose axons (and dendrites) are limited to a single brain area.
+NeuronOrGlialCellTypeEnum	MOTOR_NEURON	CL:0000100	Neurons whose cell body is located in the motor cortex, brainstem or the spinal cord, and whose axon (fiber) projects to the spinal cord or outside of the spinal cord to directly or indirectly control effector organs, mainly muscles and glands.
+NeuronOrGlialCellTypeEnum	ASTROCYTE	CL:0000127	Characteristic star-shaped glial cells in the brain and spinal cord.
+NeuronOrGlialCellTypeEnum	OLIGODENDROCYTE	CL:0000128	Type of neuroglia whose main functions are to provide support and insulation to axons within the central nervous system (CNS) of jawed vertebrates.
+NeuronOrGlialCellTypeEnum	MICROGLIAL_CELL	CL:0000129	Microglia are the resident immune cells of the brain and constantly patrol the cerebral microenvironment to respond to pathogens and damage.
