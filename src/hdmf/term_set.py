@@ -23,8 +23,28 @@ class TermSet():
         except ImportError:
             msg = "Install linkml_runtime"
             raise ValueError(msg)
+        try:
+            from schemasheets import schemamaker
+        except ImportError:
+            msg = "Install schemasheets"
+            raise ValueError(msg)
+        try:
+            from oaklib import "..."
+        except ImportError:
+            msg = "Install oaklib"
+            raise ValueError(msg)
         self.term_schema_path = term_schema_path
-        self.view = SchemaView(self.term_schema_path)
+        self.schemasheets_folder = schemasheets_folder
+        self.sheets_dest = sheets_dest
+        if self.schemasheets_folder is not None and self.sheets_dest is not None:
+            if self.term_schema_path is not None:
+                msg ="..."
+                raise ValueError(msg)
+            else:
+                schema_maker = SchemaMaker
+                self.view = SchemaView(self.sheets_dest)
+        else:
+            self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes
 
     def __repr__(self):
