@@ -1,5 +1,6 @@
 import yaml
 import glob
+import os
 from collections import namedtuple
 from .utils import docval
 from linkml_runtime.utils.schemaview import SchemaView
@@ -31,7 +32,7 @@ class TermSet():
                 msg ="..."
                 raise ValueError(msg)
             else:
-                self.term_schema_path = self.__schemasheets_convert(self.schemasheets_folder)
+                self.term_schema_path = self.__schemasheets_convert()
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
@@ -104,17 +105,15 @@ class TermSet():
         except KeyError:
             msg = 'Term not in schema'
             raise ValueError(msg)
-        
+
     def __schemasheets_convert(self):
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
         schema_dict = schema_as_dict(schema)
-
-        schemasheet_schema_path = glob.glob(self.schemasheets_folder + "/schemasheet_schema.yaml")[0]
+        schemasheet_schema_path = os.path.join(self.schemasheets_folder, "file.yaml")
 
         with open(schemasheet_schema_path, "w") as f:
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
-    

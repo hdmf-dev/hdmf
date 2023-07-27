@@ -47,7 +47,7 @@ class TestTermSet(TestCase):
     def test_get_item_key_error(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertRaises(ValueError):
-            termset['Homo Ssapiens']        
+            termset['Homo Ssapiens']
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_view_set_sheets(self):
