@@ -1,5 +1,11 @@
+import yaml
+import glob
 from collections import namedtuple
 from .utils import docval
+from linkml_runtime.utils.schemaview import SchemaView
+from linkml_runtime.utils.schema_as_dict import schema_as_dict
+from schemasheets.schemamaker import SchemaMaker
+
 
 
 class TermSet():
@@ -13,36 +19,21 @@ class TermSet():
     """
     def __init__(self,
                  term_schema_path: str,
+                 schemasheets_folder: str
                  ):
         """
         :param term_schema_path: The path to LinkML YAML enumeration schema
 
         """
-        try:
-            from linkml_runtime.utils.schemaview import SchemaView
-        except ImportError:
-            msg = "Install linkml_runtime"
-            raise ValueError(msg)
-        try:
-            from schemasheets import schemamaker
-        except ImportError:
-            msg = "Install schemasheets"
-            raise ValueError(msg)
-        try:
-            from oaklib import "..."
-        except ImportError:
-            msg = "Install oaklib"
-            raise ValueError(msg)
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
-        self.sheets_dest = sheets_dest
         if self.schemasheets_folder is not None and self.sheets_dest is not None:
             if self.term_schema_path is not None:
                 msg ="..."
                 raise ValueError(msg)
             else:
-                schema_maker = SchemaMaker
-                self.view = SchemaView(self.sheets_dest)
+                self.term_schema_path = self.__schemasheets_convert(self.schemasheets_folder)
+                self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes
@@ -114,3 +105,17 @@ class TermSet():
         except KeyError:
             msg = 'Term not in schema'
             raise ValueError(msg)
+        
+    def __schemasheets_convert(self):
+        schema_maker = SchemaMaker()
+        tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
+        schema = schema_maker.create_schema(tsv_file_paths)
+        schema_dict = schema_as_dict(schema)
+
+        schemasheet_schema_path = glob.glob(self.schemasheets_folder + "/schemasheet_schema.yaml")[0]
+
+        with open(schemasheet_schema_path, "w") as f:
+            yaml.dump(schema_dict, f)
+
+        return schemasheet_schema_path
+    
