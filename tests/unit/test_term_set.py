@@ -1,6 +1,10 @@
+import os
+import unittest
+
 from hdmf.term_set import TermSet
 from hdmf.testing import TestCase
-import unittest
+
+CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 try:
@@ -43,4 +47,11 @@ class TestTermSet(TestCase):
     def test_get_item_key_error(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertRaises(ValueError):
-            termset['Homo Ssapiens']
+            termset['Homo Ssapiens']        
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_view_set_sheets(self):
+        folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
+        termset = TermSet(schemasheets_folder=folder)
+        expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
+        self.assertEqual(list(termset.view_set), expected)

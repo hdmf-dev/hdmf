@@ -18,16 +18,15 @@ class TermSet():
     :ivar view: SchemaView of the term set schema
     """
     def __init__(self,
-                 term_schema_path: str,
-                 schemasheets_folder: str
+                 term_schema_path: str=None,
+                 schemasheets_folder: str=None
                  ):
         """
         :param term_schema_path: The path to LinkML YAML enumeration schema
-
         """
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
-        if self.schemasheets_folder is not None and self.sheets_dest is not None:
+        if self.schemasheets_folder is not None:
             if self.term_schema_path is not None:
                 msg ="..."
                 raise ValueError(msg)
