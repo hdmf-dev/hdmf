@@ -53,6 +53,7 @@ for this tutorial, which provides a concise example of how a term set schema loo
 # ----------------------------------------------------
 from hdmf.common import DynamicTable, VectorData
 import os
+import sys
 
 try:
     dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -68,7 +69,10 @@ except NameError:
 # method will return a dictionary of all the terms and the corresponding information for each term.
 # Users can index specific terms from the :py:class:`~hdmf.term_set.TermSet`. LinkML runtime will need to be installed.
 # You can do so by first running ``pip install linkml-runtime``.
-from hdmf.term_set import TermSet
+try:
+    from hdmf.term_set import TermSet
+except ValueError:
+    sys.exit(0)
 terms = TermSet(term_schema_path=yaml_file)
 print(terms.view_set)
 
