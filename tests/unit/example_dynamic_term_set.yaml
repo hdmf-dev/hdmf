@@ -33,16 +33,16 @@ slots:
 # ======================== #
 enums:
   NeuronTypeEnum:
-    reachable_from: 
+    reachable_from:
       source_ontology: obo:cl
       source_nodes:
         - CL:0000540  ## neuron
       include_self: false
       relationship_types:
         - rdfs:subClassOf
-  
+
   GlialCellTypeEnum:
-    reachable_from: 
+    reachable_from:
       source_ontology: obo:cl
       source_nodes:
         - CL:0000125  ## glial cell
