@@ -4,4 +4,4 @@ zarr==2.14.2
 linkml-runtime>=1.5.0
 schemasheets>=0.1.23
 oaklib>=0.5.12
-yaml
+pyyaml>=6.0.1
