@@ -121,7 +121,7 @@ class TermSet():
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
-    
+
     def __enum_expander(self):
         expander = ValueSetExpander()
-        
+
