@@ -118,7 +118,7 @@ class TermSet():
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
         schema_dict = schema_as_dict(schema)
-        schemasheet_schema_path = os.path.join(self.schemasheets_folder, "file.yaml")
+        schemasheet_schema_path = os.path.join(self.schemasheets_folder, f"{schema_dict['name']}.yaml")
 
         with open(schemasheet_schema_path, "w") as f:
             yaml.dump(schema_dict, f)

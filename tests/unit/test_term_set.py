@@ -53,7 +53,7 @@ class TestTermSet(TestCase):
     def test_view_set_sheets(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)
-        expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
+        expected = ['ASTROCYTE', 'INTERNEURON', 'MICROGLIAL_CELL', 'MOTOR_NEURON', 'OLIGODENDROCYTE', 'PYRAMIDAL_NEURON']
         self.assertEqual(list(termset.view_set), expected)
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
