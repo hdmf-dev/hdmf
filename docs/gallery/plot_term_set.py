@@ -70,9 +70,13 @@ except NameError:
 # Users can index specific terms from the :py:class:`~hdmf.term_set.TermSet`. LinkML runtime will need to be installed.
 # You can do so by first running ``pip install linkml-runtime``.
 try:
-    from hdmf.term_set import TermSet
+    import linkml_runtime  # noqa: F401
+    import schemasheets  # noqa: F401
+    import oaklib  # noqa: F401
+    import yaml  # noqa: F401
 except ValueError:
     sys.exit(0)
+from hdmf.term_set import TermSet
 terms = TermSet(term_schema_path=yaml_file)
 print(terms.view_set)
 
