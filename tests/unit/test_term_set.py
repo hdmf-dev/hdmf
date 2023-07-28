@@ -57,8 +57,6 @@ class TestTermSet(TestCase):
         self.assertEqual(list(termset.view_set), expected)
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_view_set_sheets(self):
-        folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
-        termset = TermSet(schemasheets_folder=folder)
-        expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
-        self.assertEqual(list(termset.view_set), expected)
+    def test_enum_expander(self):
+        termset = TermSet(term_schema_path='tests/unit/example_dynamic_term_set.yaml', dynamic=True)
+        self.assertEqual(len(termset.view_set), 502)
