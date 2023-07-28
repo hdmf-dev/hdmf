@@ -35,14 +35,14 @@ class TermSet():
                 msg = "..."
                 raise ValueError(msg)
             else:
-                self.term_schema_path = self.__schemasheets_convert()
+                self.term_schema_path = self._schemasheets_convert()
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes
 
         if dynamic:
-            self.expanded_term_set_path = self.__enum_expander()
+            self.expanded_term_set_path = self._enum_expander()
             self.view = SchemaView(self.expanded_term_set_path)
 
     def __repr__(self):
@@ -113,7 +113,7 @@ class TermSet():
             msg = 'Term not in schema'
             raise ValueError(msg)
 
-    def __schemasheets_convert(self):
+    def _schemasheets_convert(self):
         try:
             import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
@@ -132,7 +132,7 @@ class TermSet():
 
         return schemasheet_schema_path
 
-    def __enum_expander(self):
+    def _enum_expander(self):
         try:
             from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:

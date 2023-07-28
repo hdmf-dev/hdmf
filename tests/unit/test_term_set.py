@@ -8,7 +8,7 @@ from hdmf.testing import TestCase, remove_test_file
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 
 try:
-    import linkml_runtime  # noqa: F401
+    from linkml_runtime.utils.schemaview import SchemaView  # noqa: F401
     import schemasheets  # noqa: F401
     import oaklib  # noqa: F401
     import yaml  # noqa: F401
@@ -29,6 +29,7 @@ class TestTermSet(TestCase):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
         self.assertEqual(list(termset.view_set), expected)
+        self.assertIsInstance(termset.view, SchemaView)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_termset_validate(self):
@@ -54,12 +55,19 @@ class TestTermSet(TestCase):
             termset['Homo Ssapiens']
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_schema_sheets_and_path_provided_error(self):
+        folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
+        with self.assertRaises(ValueError):
+            termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml', schemasheets_folder=folder)
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_view_set_sheets(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)
         expected = ['ASTROCYTE', 'INTERNEURON', 'MICROGLIAL_CELL', 'MOTOR_NEURON',
                     'OLIGODENDROCYTE', 'PYRAMIDAL_NEURON']
         self.assertEqual(list(termset.view_set), expected)
+        self.assertIsInstance(termset.view, SchemaView)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_enum_expander(self):
@@ -72,5 +80,22 @@ class TestTermSet(TestCase):
         # check that pyramidal neuron is in materialized schema
         self.assertIn("CL:0000598", termset.view_set)
 
+        self.assertIsInstance(termset.view, SchemaView)
+        self.assertEqual(termset.expanded_term_set_path, 'tests/unit/expanded_example_dynamic_term_set.yaml')
+
         filename = os.path.splitext(os.path.basename(schema_path))[0]
         remove_test_file(f"tests/unit/expanded_{filename}.yaml")
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_enum_expander_output(self):
+        schema_path = 'tests/unit/example_dynamic_term_set.yaml'
+        convert_path = TermSet(term_schema_path=schema_path, dynamic=True)._enum_expander()
+        self.assertEqual(convert_path, "tests/unit/expanded_example_dynamic_term_set.yaml")
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_folder_output(self):
+        folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
+        schema_path = 'tests/unit/example_dynamic_term_set.yaml'
+        termset = TermSet(schemasheets_folder=folder)
+        path = termset._schemasheets_convert()
+        self.assertEqual(path, os.path.dirname(folder)+"/schemasheets/nwb_static_enums.yaml")
