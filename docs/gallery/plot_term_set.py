@@ -74,7 +74,7 @@ try:
     import schemasheets  # noqa: F401
     import oaklib  # noqa: F401
     import yaml  # noqa: F401
-except ValueError:
+except ImportError:
     sys.exit(0)
 from hdmf.term_set import TermSet
 terms = TermSet(term_schema_path=yaml_file)
