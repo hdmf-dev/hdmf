@@ -131,7 +131,7 @@ class TermSet():
         enum = list(self.view.all_enums())
         schema_dir = os.path.dirname(self.term_schema_path)
         file_name = os.path.basename(self.term_schema_path)
-        output_path = os.path.join(schema_dir, "expanded_"+file_name+".yaml")
+        output_path = os.path.join(schema_dir, "expanded_"+file_name)
         expander.expand_in_place(self.term_schema_path, enum, output_path)
 
         return output_path
