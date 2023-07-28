@@ -71,9 +71,6 @@ except NameError:
 # You can do so by first running ``pip install linkml-runtime``.
 try:
     import linkml_runtime  # noqa: F401
-    import schemasheets  # noqa: F401
-    import oaklib  # noqa: F401
-    import yaml  # noqa: F401
 except ImportError:
     sys.exit(0)
 from hdmf.term_set import TermSet
