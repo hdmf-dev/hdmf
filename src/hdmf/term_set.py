@@ -135,7 +135,7 @@ class TermSet():
     def __enum_expander(self):
         try:
             from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
-        except:
+        except ImportError:
             msg = 'Install oaklib.'
             raise ValueError(msg)
         expander = ValueSetExpander()
