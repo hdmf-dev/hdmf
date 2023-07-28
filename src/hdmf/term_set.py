@@ -23,9 +23,8 @@ class TermSet():
         """
         try:
             from linkml_runtime.utils.schemaview import SchemaView
-
         except ImportError:
-            msg = "Install TermSet requirements in pyproject.toml"
+            msg = "Install linkml_runtime"
             raise ValueError(msg)
 
         self.term_schema_path = term_schema_path
@@ -120,7 +119,8 @@ class TermSet():
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:
-            msg="..."
+            msg="Install schemasheets."
+            raise ValueError(msg)
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
@@ -136,7 +136,8 @@ class TermSet():
         try:
             from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except:
-            msg = '...'
+            msg = 'Install oaklib.'
+            raise ValueError(msg)
         expander = ValueSetExpander()
         # TODO: should linkml raise a warning if the schema does not have dynamic enums
         enum = list(self.view.all_enums())
