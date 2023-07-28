@@ -121,7 +121,11 @@ class TermSet():
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
-    
+
     def __enum_expander(self):
         expander = ValueSetExpander()
-        
+        # TODO: should linkml raise a warning if the schema does not have dynamic enums
+        enum = list(self.view.all_enums())[0]
+        schema_dir = os.path.dirname(self.term_schema_path)
+        output_path = os.path.join(schem_dir, "expanded_term_set.yaml")
+        expander.expand_in_place(self.term_schema_path, output_path)
