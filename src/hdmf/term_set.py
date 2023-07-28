@@ -3,11 +3,6 @@ import glob
 import os
 from collections import namedtuple
 from .utils import docval
-from linkml_runtime.utils.schemaview import SchemaView
-from linkml_runtime.utils.schema_as_dict import schema_as_dict
-from schemasheets.schemamaker import SchemaMaker
-from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
-
 
 
 class TermSet():
@@ -27,6 +22,15 @@ class TermSet():
         """
         :param term_schema_path: The path to LinkML YAML enumeration schema
         """
+        try:
+            from linkml_runtime.utils.schemaview import SchemaView
+            from linkml_runtime.utils.schema_as_dict import schema_as_dict
+            from schemasheets.schemamaker import SchemaMaker
+            from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
+        except ImportError:
+            msg = "Install TermSet requirements in pyproject.toml"
+            raise ValueError(msg)
+
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
 

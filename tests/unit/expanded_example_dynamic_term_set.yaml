@@ -40,7 +40,6 @@ enums:
       include_self: false
       relationship_types:
       - rdfs:subClassOf
-
     permissible_values:
       CL:0000705:
         text: CL:0000705
