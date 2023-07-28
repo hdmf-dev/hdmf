@@ -6,6 +6,7 @@ from .utils import docval
 from linkml_runtime.utils.schemaview import SchemaView
 from linkml_runtime.utils.schema_as_dict import schema_as_dict
 from schemasheets.schemamaker import SchemaMaker
+from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
 
 
 
@@ -20,16 +21,19 @@ class TermSet():
     """
     def __init__(self,
                  term_schema_path: str=None,
-                 schemasheets_folder: str=None
+                 schemasheets_folder: str=None,
+                 expand_terms: list=None
                  ):
         """
         :param term_schema_path: The path to LinkML YAML enumeration schema
         """
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
+        self.expand_terms = expand_terms
+
         if self.schemasheets_folder is not None:
             if self.term_schema_path is not None:
-                msg ="..."
+                msg = "..."
                 raise ValueError(msg)
             else:
                 self.term_schema_path = self.__schemasheets_convert()
@@ -117,3 +121,7 @@ class TermSet():
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
+    
+    def __enum_expander(self):
+        expander = ValueSetExpander()
+        
