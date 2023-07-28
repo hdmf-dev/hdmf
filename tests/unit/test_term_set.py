@@ -12,7 +12,7 @@ try:
     import schemasheets
     import oaklib
 
-    REQUIREMENTS_INSTALLED = TRUE
+    REQUIREMENTS_INSTALLED = True
 except ImportError:
     REQUIREMENTS_INSTALLED = False
 
@@ -56,7 +56,8 @@ class TestTermSet(TestCase):
     def test_view_set_sheets(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)
-        expected = ['ASTROCYTE', 'INTERNEURON', 'MICROGLIAL_CELL', 'MOTOR_NEURON', 'OLIGODENDROCYTE', 'PYRAMIDAL_NEURON']
+        expected = ['ASTROCYTE', 'INTERNEURON', 'MICROGLIAL_CELL', 'MOTOR_NEURON',
+                    'OLIGODENDROCYTE', 'PYRAMIDAL_NEURON']
         self.assertEqual(list(termset.view_set), expected)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
