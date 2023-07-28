@@ -45,7 +45,7 @@ tqdm = ["tqdm>=4.41.0"]
 termset_reqs = ["linkml-runtime>=1.5.0",
                 "schemasheets>=0.1.23",
                 "oaklib>=0.5.12",
-                "yaml"]
+                "pyyaml"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
