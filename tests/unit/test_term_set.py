@@ -2,7 +2,8 @@ import os
 import unittest
 
 from hdmf.term_set import TermSet
-from hdmf.testing import TestCase
+from hdmf.testing import TestCase, remove_test_file
+
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -60,3 +61,4 @@ class TestTermSet(TestCase):
     def test_enum_expander(self):
         termset = TermSet(term_schema_path='tests/unit/example_dynamic_term_set.yaml', dynamic=True)
         self.assertEqual(len(termset.view_set), 502)
+        remove_test_file('./expanded_term_set.yaml')
