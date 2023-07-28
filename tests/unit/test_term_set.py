@@ -61,4 +61,4 @@ class TestTermSet(TestCase):
     def test_enum_expander(self):
         termset = TermSet(term_schema_path='tests/unit/example_dynamic_term_set.yaml', dynamic=True)
         self.assertEqual(len(termset.view_set), 502)
-        remove_test_file('./expanded_term_set.yaml')
+        remove_test_file('./expanded_dynamic_term_set.yaml')
