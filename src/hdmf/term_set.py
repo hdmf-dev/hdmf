@@ -1,4 +1,3 @@
-import yaml
 import glob
 import os
 from collections import namedtuple
@@ -117,6 +116,7 @@ class TermSet():
 
     def __schemasheets_convert(self):
         try:
+            import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:
