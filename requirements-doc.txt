@@ -4,4 +4,7 @@ sphinx>=4  # improved support for docutils>=0.17
 sphinx_rtd_theme>=1  # <1 does not work with docutils>=0.17
 sphinx-gallery
 sphinx-copybutton
-linkml-runtime==1.5.0
+linkml-runtime>=1.5.5
+schemasheets>=0.1.23
+oaklib>=0.5.12
+pyyaml>=6.0.1
