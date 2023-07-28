@@ -9,9 +9,9 @@ CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 
 try:
     import linkml_runtime  # noqa: F401
-    import schemasheets
-    import oaklib
-    import yaml
+    import schemasheets  # noqa: F401
+    import oaklib  # noqa: F401
+    import yaml  # noqa: F401
 
     REQUIREMENTS_INSTALLED = True
 except ImportError:
