@@ -73,4 +73,4 @@ class TestTermSet(TestCase):
 
         filename = os.path.splitext(os.path.basename(schema_path))[0]
         remove_test_file(f"tests/unit/expanded_{filename}.yaml")
-        
+
