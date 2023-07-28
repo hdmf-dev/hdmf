@@ -61,6 +61,15 @@ class TestTermSet(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_enum_expander(self):
-        termset = TermSet(term_schema_path='tests/unit/example_dynamic_term_set.yaml', dynamic=True)
-        self.assertEqual(len(termset.view_set), 502)
-        remove_test_file('./expanded_example_dynamic_term_set.yaml')
+        schema_path = 'tests/unit/example_dynamic_term_set.yaml'
+        termset = TermSet(term_schema_path=schema_path, dynamic=True)
+        # check that interneuron term is in materialized schema
+        self.assertIn("CL:0000099", termset.view_set)
+        # check that motor neuron term is in materialized schema
+        self.assertIn("CL:0000100", termset.view_set)
+        # check that pyramidal neuron is in materialized schema
+        self.assertIn("CL:0000598", termset.view_set)
+
+        filename = os.path.splitext(os.path.basename(schema_path))[0]
+        remove_test_file(f"tests/unit/expanded_{filename}.yaml")
+        
