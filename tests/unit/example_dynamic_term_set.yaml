@@ -40,4 +40,3 @@ enums:
       include_self: false
       relationship_types:
         - rdfs:subClassOf
-
