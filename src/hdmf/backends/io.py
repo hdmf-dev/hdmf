@@ -75,6 +75,10 @@ class HDMFIO(metaclass=ABCMeta):
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
+            {'name': 'number_of_jobs', 'type': int, 'doc': 'Number of jobs to use in parallel during write (only operates on GenericDataChunkIterator-wrapped datasets).', 'default': 1},
+            {'name': 'number_of_jobs', 'type': int,
+         'doc': "Number of jobs to use in parallel during write (only operates on GenericDataChunkIterator-wrapped datasets).",
+         'default': 1},
             allow_extra=True)
     def write(self, **kwargs):
         """Write a container to the IO source."""
