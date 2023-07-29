@@ -81,7 +81,11 @@ class TestTermSet(TestCase):
         self.assertIn("CL:0000598", termset.view_set)
 
         self.assertIsInstance(termset.view, SchemaView)
-        self.assertEqual(termset.expanded_term_set_path, 'tests/unit/expanded_example_dynamic_term_set.yaml')
+        expected_path = os.path.join("tests", "unit", "expanded_example_dynamic_term_set.yaml")
+        expected_path = os.path.normpath(expected_path)
+        actual_path = os.path.normpath(termset.expanded_term_set_path)
+
+        self.assertEqual(actual_path, expected_path)
 
         filename = os.path.splitext(os.path.basename(schema_path))[0]
         remove_test_file(f"tests/unit/expanded_{filename}.yaml")
