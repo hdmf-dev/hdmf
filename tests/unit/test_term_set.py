@@ -58,7 +58,7 @@ class TestTermSet(TestCase):
     def test_schema_sheets_and_path_provided_error(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         with self.assertRaises(ValueError):
-            TermSet(term_schema_path='tests/unit/example_test_term_set.yaml', schemasheets_folder=folder)
+            termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml', schemasheets_folder=folder)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_view_set_sheets(self):
@@ -97,4 +97,4 @@ class TestTermSet(TestCase):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)
         path = termset._schemasheets_convert()
-        self.assertEqual(path, os.path.dirname(folder)+"/schemasheets/nwb_static_enums.yaml")
+        self.assertEqual(path, os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
