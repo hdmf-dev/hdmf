@@ -90,11 +90,17 @@ class TestTermSet(TestCase):
     def test_enum_expander_output(self):
         schema_path = 'tests/unit/example_dynamic_term_set.yaml'
         convert_path = TermSet(term_schema_path=schema_path, dynamic=True)._enum_expander()
-        self.assertEqual(convert_path, "tests/unit/expanded_example_dynamic_term_set.yaml")
+        convert_path = os.path.normpath(convert_path)
+
+        expected_path = os.path.join("tests", "unit", "expanded_example_dynamic_term_set.yaml")
+        expected_path = os.path.normpath(expected_path)
+
+        self.assertEqual(convert_path, expected_path)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_folder_output(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)
-        path = termset._schemasheets_convert()
-        self.assertEqual(path, os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
+        actual_path = termset._schemasheets_convert()
+        expected_path = os.path.normpath(os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
+        self.assertEqual(actual_path, expected_path)
