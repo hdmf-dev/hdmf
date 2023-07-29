@@ -58,7 +58,7 @@ class TestTermSet(TestCase):
     def test_schema_sheets_and_path_provided_error(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         with self.assertRaises(ValueError):
-            termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml', schemasheets_folder=folder)
+            TermSet(term_schema_path='tests/unit/example_test_term_set.yaml', schemasheets_folder=folder)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_view_set_sheets(self):
