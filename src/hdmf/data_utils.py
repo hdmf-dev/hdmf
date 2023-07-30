@@ -154,7 +154,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc=(
                 "If chunk_shape is not specified, it will be inferred as the smallest chunk "
                 "below the chunk_mb threshold.",
-                "Defaults to 1MB.",
+                "Defaults to 10MB.",
             ),
             default=None,
         ),
