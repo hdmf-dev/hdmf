@@ -400,14 +400,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         """Retrieve the dtype of the data using minimal I/O."""
         raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
 
-    def _to_dict(self) -> Iterable:
+    def _to_dict(self) -> dict:
         """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
-        pass
+        raise NotImplementedError("The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!")
 
     @staticmethod
     def _from_dict(self) -> Callable:
         """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
-        pass
+        raise NotImplementedError("The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!")
 
     def recommended_chunk_shape(self) -> Tuple[int, ...]:
         return self.chunk_shape
