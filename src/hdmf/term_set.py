@@ -114,7 +114,7 @@ class TermSet():
             msg = 'Term not in schema'
             raise ValueError(msg)
 
-    def __schemasheets_convert(self):
+    def schemasheets_convert(self):
         try:
             import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
@@ -133,7 +133,7 @@ class TermSet():
 
         return schemasheet_schema_path
 
-    def __enum_expander(self):
+    def enum_expander(self):
         try:
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
