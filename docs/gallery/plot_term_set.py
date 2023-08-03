@@ -80,7 +80,7 @@ except NameError:
 # -----------------------------------------
 # The :py:class:`~hdmf.term_set.TermSet` class builds off of LinkML Schemasheets, allowing users to convert between
 # a Google spreadsheet to a complete LinkML schema. Once the user has defined the necessary LinkML metadata within the
-# spreadsheet, the spreadsheet needs to be saved as individal tsv files, i.e., one tsv file per spreadsheet tab. Please
+# spreadsheet, the spreadsheet needs to be saved as individual tsv files, i.e., one tsv file per spreadsheet tab. Please
 # refer to the Schemasheets tutorial link above for more details on the required syntax structure within the sheets.
 # Once the tsv files are in a folder, the user simply provides the path to the folder with ``schemasheets_folder``.
 termset = TermSet(schemasheets_folder=schemasheets_folder)
