@@ -1,0 +1,4 @@
+prefix	URI
+> prefix	prefix_reference
+linkml	https://w3id.org/linkml/
+CL	http://purl.obolibrary.org/obo/CL_

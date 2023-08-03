@@ -43,7 +43,7 @@ imports:
 - linkml:types
 name: nwb_static_enums
 prefixes:
-  CL: http://purl.obolibrary.org/obo/cl.owl
+  CL: http://purl.obolibrary.org/obo/CL_
   TEMP: https://example.org/TEMP/
   linkml: https://w3id.org/linkml/
 slots:

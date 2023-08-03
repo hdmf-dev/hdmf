@@ -2,6 +2,7 @@ import glob
 import os
 from collections import namedtuple
 from .utils import docval
+import warnings
 
 
 class TermSet():
@@ -32,17 +33,17 @@ class TermSet():
 
         if self.schemasheets_folder is not None:
             if self.term_schema_path is not None:
-                msg = "..."
+                msg = "Cannot have both a path to a Schemasheets folder and a TermSet schema."
                 raise ValueError(msg)
             else:
-                self.term_schema_path = self._schemasheets_convert()
+                self.term_schema_path = self.__schemasheets_convert()
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes
 
         if dynamic:
-            self.expanded_term_set_path = self._enum_expander()
+            self.expanded_term_set_path = self.__enum_expander()
             self.view = SchemaView(self.expanded_term_set_path)
 
     def __repr__(self):
@@ -113,7 +114,7 @@ class TermSet():
             msg = 'Term not in schema'
             raise ValueError(msg)
 
-    def _schemasheets_convert(self):
+    def __schemasheets_convert(self):
         try:
             import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
@@ -132,14 +133,15 @@ class TermSet():
 
         return schemasheet_schema_path
 
-    def _enum_expander(self):
+    def __enum_expander(self):
         try:
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
             from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:
             msg = 'Install oaklib.'
             raise ValueError(msg)
         expander = ValueSetExpander()
-        # TODO: should linkml raise a warning if the schema does not have dynamic enums
+        # TODO: linkml should raise a warning if the schema does not have dynamic enums
         enum = list(self.view.all_enums())
         schema_dir = os.path.dirname(self.term_schema_path)
         file_name = os.path.basename(self.term_schema_path)

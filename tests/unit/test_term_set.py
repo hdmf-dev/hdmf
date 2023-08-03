@@ -70,7 +70,7 @@ class TestTermSet(TestCase):
         self.assertIsInstance(termset.view, SchemaView)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
-    def test_enum_expander(self):
+    def test__enum_expander(self):
         schema_path = 'tests/unit/example_dynamic_term_set.yaml'
         termset = TermSet(term_schema_path=schema_path, dynamic=True)
         # check that interneuron term is in materialized schema
@@ -93,7 +93,7 @@ class TestTermSet(TestCase):
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_enum_expander_output(self):
         schema_path = 'tests/unit/example_dynamic_term_set.yaml'
-        convert_path = TermSet(term_schema_path=schema_path, dynamic=True)._enum_expander()
+        convert_path = TermSet(term_schema_path=schema_path, dynamic=True).__enum_expander()
         convert_path = os.path.normpath(convert_path)
 
         expected_path = os.path.join("tests", "unit", "expanded_example_dynamic_term_set.yaml")
@@ -105,6 +105,6 @@ class TestTermSet(TestCase):
     def test_folder_output(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)
-        actual_path = termset._schemasheets_convert()
+        actual_path = termset.__schemasheets_convert()
         expected_path = os.path.normpath(os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
         self.assertEqual(actual_path, expected_path)

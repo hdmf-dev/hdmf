@@ -41,26 +41,59 @@ to learn more about how LinkML structures their schema.
    For example, the NCBI Taxonomy is abbreviated as NCBI_TAXON, and Ensemble is simply Ensemble.
    As mentioned prior, the URI needs to be to the terms; this is to allow the URI to later be coupled
    with the source id for the term to create a valid link to the term source page.
-3. The schema uses LinkML enumerations to list all the possible terms. Currently, users will need to
-   manually outline the terms within the enumeration's permissible values.
+3. The schema uses LinkML enumerations to list all the possible terms. To define the all the permissible
+   values, the user can take define them manually in the schema, transfer them from a Google spreadsheet,
+   or pull them into the schema dynamically from a LinkML supported source.
 
 For a clear example, please view the
 `example_term_set.yaml <https://github.com/hdmf-dev/hdmf/blob/dev/docs/gallery/example_term_set.yaml>`_
 for this tutorial, which provides a concise example of how a term set schema looks.
+
+For more information on how to properly format the Google spreadsheet to be compatible with LinkMl, please
+refer to https://linkml.io/schemasheets/#examples.
+
+For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
+refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
-######################################################
-# Creating an instance of the TermSet class
-# ----------------------------------------------------
 from hdmf.common import DynamicTable, VectorData
 import os
 import sys
 
 try:
+    import linkml_runtime  # noqa: F401
+except ImportError:
+    sys.exit(0)
+from hdmf.term_set import TermSet
+
+try:
     dir_path = os.path.dirname(os.path.abspath(__file__))
     yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+    schemasheets_folder = os.path.join(dir_path, 'schemasheets')
+    dynamic_schema_path = os.path.join(dir_path, 'example_dynamic_term_set.yaml')
 except NameError:
     dir_path = os.path.dirname(os.path.abspath('.'))
     yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
+    schemasheets_folder = os.path.join(dir_path, 'gallery/schemasheets')
+    dynamic_schema_path = os.path.join(dir_path, 'gallery/example_dynamic_term_set.yaml')
+
+# Use Schemasheets to create TermSet schema
+# -----------------------------------------
+# The :py:class:`~hdmf.term_set.TermSet` class builds off of LinkML Schemasheets, allowing users to convert between
+# a Google spreadsheet to a complete LinkML schema. Once the user has defined the necessary LinkML metadata within the
+# spreadsheet, the spreadsheet needs to be saved as individal tsv files, i.e., one tsv file per spreadsheet tab. Please
+# refer to the Schemasheets tutorial link above for more details on the required syntax structure within the sheets.
+# Once the tsv files are in a folder, the user simply provides the path to the folder with ``schemasheets_folder``.
+termset = TermSet(schemasheets_folder=schemasheets_folder)
+
+# Use Dynamic Enumerations to populate TermSet
+# --------------------------------------------
+# The :py:class:`~hdmf.term_set.TermSet` class allows user to skip manually defining permissible values, by pulling from
+# a LinkML support source. These sources contain multiple ontologies. A user can select a node from an ontology,
+# in which the all elements on the branch, starting at the chosen node, will be used as permissible values.
+# Please refer to the LinkMl Dynamic Enumeration tutorial for more information on these sources and how to setup Dynamic
+# Enumerations within the schema. Once the schema is ready, the user provides a path to the schema and set
+# ``dynamic=True``. A new schema, with the populated permissible values, will be created in the same directory.
+termset = TermSet(term_schema_path=dynamic_schema_path, dynamic=True)
 
 ######################################################
 # Viewing TermSet values
@@ -69,11 +102,6 @@ except NameError:
 # method will return a dictionary of all the terms and the corresponding information for each term.
 # Users can index specific terms from the :py:class:`~hdmf.term_set.TermSet`. LinkML runtime will need to be installed.
 # You can do so by first running ``pip install linkml-runtime``.
-try:
-    import linkml_runtime  # noqa: F401
-except ImportError:
-    sys.exit(0)
-from hdmf.term_set import TermSet
 terms = TermSet(term_schema_path=yaml_file)
 print(terms.view_set)
 

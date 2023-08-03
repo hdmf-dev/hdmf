@@ -1,0 +1,3 @@
+schema	uri	title	description
+> schema	id	title	description
+nwb_static_enums	https://w3id.org/linkml/examples/nwb_static_enums	static enums example	this schema demonstrates the use of static enums
