@@ -88,8 +88,8 @@ termset = TermSet(schemasheets_folder=schemasheets_folder)
 # Use Dynamic Enumerations to populate TermSet
 # --------------------------------------------
 # The :py:class:`~hdmf.term_set.TermSet` class allows user to skip manually defining permissible values, by pulling from
-# a LinkML support source. These sources contain multiple ontologies. A user can select a node from an ontology,
-# in which the all elements on the branch, starting at the chosen node, will be used as permissible values.
+# a LinkML supported source. These sources contain multiple ontologies. A user can select a node from an ontology,
+# in which all the elements on the branch, starting from the chosen node, will be used as permissible values.
 # Please refer to the LinkMl Dynamic Enumeration tutorial for more information on these sources and how to setup Dynamic
 # Enumerations within the schema. Once the schema is ready, the user provides a path to the schema and set
 # ``dynamic=True``. A new schema, with the populated permissible values, will be created in the same directory.
