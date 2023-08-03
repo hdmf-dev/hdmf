@@ -42,7 +42,7 @@ to learn more about how LinkML structures their schema.
    As mentioned prior, the URI needs to be to the terms; this is to allow the URI to later be coupled
    with the source id for the term to create a valid link to the term source page.
 3. The schema uses LinkML enumerations to list all the possible terms. To define the all the permissible
-   values, the user can take define them manually in the schema, transfer them from a Google spreadsheet,
+   values, the user can define them manually in the schema, transfer them from a Google spreadsheet,
    or pull them into the schema dynamically from a LinkML supported source.
 
 For a clear example, please view the
