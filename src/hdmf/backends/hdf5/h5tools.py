@@ -60,7 +60,7 @@ class HDF5IO(HDMFIO):
             {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             {'name': 'external_resources_path', 'type': str,
-             'doc': 'The path to the ExternalResources', 'default': None},)
+             'doc': 'The path to the HERD', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """

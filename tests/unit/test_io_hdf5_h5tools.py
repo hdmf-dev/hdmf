@@ -26,7 +26,7 @@ from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common.resources import ExternalResources
+from hdmf.common.resources import HERD
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -930,7 +930,7 @@ class TestNoCacheSpec(TestCase):
             self.assertNotIn('specifications', f)
 
 
-class TestExternalResourcesIO(TestCase):
+class TestHERDIO(TestCase):
 
     def setUp(self):
         self.manager = get_foo_buildmanager()
@@ -965,7 +965,7 @@ class TestExternalResourcesIO(TestCase):
               zipF.write(file)
 
     def test_io_read_external_resources(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,
                    container=data,
@@ -976,13 +976,13 @@ class TestExternalResourcesIO(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
             container = io.read()
-            self.assertIsInstance(io.external_resources, ExternalResources)
-            self.assertIsInstance(container.get_linked_resources(), ExternalResources)
+            self.assertIsInstance(io.external_resources, HERD)
+            self.assertIsInstance(container.get_linked_resources(), HERD)
 
         self.remove_er_files()
 
     def test_io_read_external_resources_file_warn(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,
                    container=data,
@@ -998,7 +998,7 @@ class TestExternalResourcesIO(TestCase):
         self.remove_er_files()
 
     def test_io_read_external_resources_value_warn(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,
                    container=data,
@@ -1021,7 +1021,7 @@ class TestExternalResourcesIO(TestCase):
         self.remove_er_files()
 
     def test_io_write_er(self):
-        er = ExternalResources()
+        er = HERD()
         self.foofile.link_resources(er)
 
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
@@ -1036,13 +1036,13 @@ class TestExternalResourcesIO(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
             container = io.read()
-            self.assertIsInstance(io.external_resources, ExternalResources)
-            self.assertIsInstance(container.get_linked_resources(), ExternalResources)
+            self.assertIsInstance(io.external_resources, HERD)
+            self.assertIsInstance(container.get_linked_resources(), HERD)
 
         self.remove_er_files()
 
     def test_io_warn(self):
-        er = ExternalResources()
+        er = HERD()
 
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,

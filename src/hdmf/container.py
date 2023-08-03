@@ -29,16 +29,16 @@ def _exp_warn_msg(cls):
     return msg
 
 
-class ExternalResourcesManager:
+class HERDManager:
     """
-    This class manages whether to set/attach an instance of ExternalResources to the subclass.
+    This class manages whether to set/attach an instance of HERD to the subclass.
     """
 
-    @docval({'name': 'external_resources', 'type': 'ExternalResources',
+    @docval({'name': 'external_resources', 'type': 'HERD',
              'doc': 'The external resources to be used for the container.'},)
     def link_resources(self, **kwargs):
         """
-        Method to attach an instance of ExternalResources in order to auto-add terms/references to data.
+        Method to attach an instance of HERD in order to auto-add terms/references to data.
         """
         self._external_resources = kwargs['external_resources']
 

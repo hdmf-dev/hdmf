@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
-from ..container import Container, ExternalResourcesManager
+from ..container import Container, HERDManager
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
 from warnings import warn
@@ -22,7 +22,7 @@ class HDMFIO(metaclass=ABCMeta):
             {"name": "source", "type": (str, Path),
              "doc": "the source of container being built i.e. file path", 'default': None},
             {'name': 'external_resources_path', 'type': str,
-             'doc': 'The path to the ExternalResources', 'default': None},)
+             'doc': 'The path to the HERD', 'default': None},)
     def __init__(self, **kwargs):
         manager, source, external_resources_path = getargs('manager', 'source', 'external_resources_path', kwargs)
         if isinstance(source, Path):
@@ -60,16 +60,16 @@ class HDMFIO(metaclass=ABCMeta):
         container = self.__manager.construct(f_builder)
         container.read_io = self
         if self.external_resources_path is not None:
-            from hdmf.common import ExternalResources
+            from hdmf.common import HERD
             try:
-                self.external_resources = ExternalResources.from_norm_tsv(path=self.external_resources_path)
-                if isinstance(container, ExternalResourcesManager):
+                self.external_resources = HERD.from_norm_tsv(path=self.external_resources_path)
+                if isinstance(container, HERDManager):
                     container.link_resources(external_resources=self.external_resources)
             except FileNotFoundError:
-                msg = "File not found at {}. ExternalResources not added.".format(self.external_resources_path)
+                msg = "File not found at {}. HERD not added.".format(self.external_resources_path)
                 warn(msg)
             except ValueError:
-                msg = "Check ExternalResources separately for alterations. ExternalResources not added."
+                msg = "Check HERD separately for alterations. HERD not added."
                 warn(msg)
 
         return container
@@ -87,7 +87,7 @@ class HDMFIO(metaclass=ABCMeta):
             if external_resources is not None:
                 external_resources.to_norm_tsv(path=self.external_resources_path)
             else:
-                msg = "Could not find linked ExternalResources. Container was still written to IO source."
+                msg = "Could not find linked HERD. Container was still written to IO source."
                 warn(msg)
 
     @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
