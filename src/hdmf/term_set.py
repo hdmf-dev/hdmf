@@ -36,14 +36,14 @@ class TermSet():
                 msg = "Cannot have both a path to a Schemasheets folder and a TermSet schema."
                 raise ValueError(msg)
             else:
-                self.term_schema_path = self.__schemasheets_convert()
+                self.term_schema_path = self.schemasheets_convert()
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
         self.sources = self.view.schema.prefixes
 
         if dynamic:
-            self.expanded_term_set_path = self.__enum_expander()
+            self.expanded_term_set_path = self.enum_expander()
             self.view = SchemaView(self.expanded_term_set_path)
 
     def __repr__(self):
