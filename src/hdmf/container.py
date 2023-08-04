@@ -11,6 +11,7 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
+from hdmf.term_set import TermSet
 
 
 def _set_exp(cls):
@@ -191,6 +192,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
 
+    def __del__(self):
+        # Make sure the reference counter for our read IO is being decremented
+        try:
+            del self.__read_io
+            self.__read_io = None
+        except AttributeError:
+            pass
+
     def __new__(cls, *args, **kwargs):
         """
         Static method of the object class called by Python to create the object first and then
@@ -220,6 +229,56 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
+        self.__read_io = None
+
+    @property
+    def read_io(self):
+        """
+        The  :class:`~hdmf.backends.io.HDMFIO` object used for reading the container.
+
+        This property will typically be  None if this Container is not a root Container
+        (i.e., if `parent` is not None). Use `get_read_io` instead if you want to retrieve the
+        :class:`~hdmf.backends.io.HDMFIO` object used for reading from the parent container.
+        """
+        return self.__read_io
+
+    @read_io.setter
+    def read_io(self, value):
+        """
+        Set the io object used to read this container
+
+        :param value: The :class:`~hdmf.backends.io.HDMFIO` object to use
+        :raises ValueError: If io has already been set. We can't change the IO for a container.
+        :raises TypeError: If value is not an instance of :class:`~hdmf.backends.io.HDMFIO`
+        """
+        # We do not want to import HDMFIO on the module level to avoid circular imports. Since we only need
+        # it for type checking we import it here.
+        from hdmf.backends.io import HDMFIO
+        if not isinstance(value, HDMFIO):
+            raise TypeError("io must be an instance of HDMFIO")
+        if self.__read_io is not None and self.__read_io is not value:
+            raise ValueError("io has already been set for this container (name=%s, type=%s)" %
+                             (self.name, str(type(self))))
+        else:
+            self.__read_io = value
+
+    def get_read_io(self):
+        """
+        Get the io object used to read this container.
+
+        If `self.read_io` is None, this function will iterate through the parents and return the
+        first `io` object found on a parent container
+
+        :returns: The :class:`~hdmf.backends.io.HDMFIO`  object used to read this container.
+                  Returns None in case no io object is found, e.g., in case this container has
+                  not been read from file.
+        """
+        curr_obj = self
+        re_io = self.read_io
+        while re_io is None and curr_obj.parent is not None:
+            curr_obj = curr_obj.parent
+            re_io = curr_obj.read_io
+        return re_io
 
     @property
     def name(self):
@@ -354,6 +413,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+            for child in self.children:
+                if type(child).__name__ == "DynamicTableRegion":
+                    if child.table.parent is None:
+                        msg = "The table for this DynamicTableRegion has not been added to the parent."
+                        warn(msg)
+                    else:
+                        continue
 
     def _remove_child(self, child):
         """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
@@ -452,6 +518,107 @@ class Container(AbstractContainer):
                 template += "  {}: {}\n".format(k, v)
         return template
 
+    def _repr_html_(self):
+        CSS_STYLE = """
+        <style>
+            .container-fields {
+                font-family: "Open Sans", Arial, sans-serif;
+            }
+            .container-fields .field-value {
+                color: #00788E;
+            }
+            .container-fields details > summary {
+                cursor: pointer;
+                display: list-item;
+            }
+            .container-fields details > summary:hover {
+                color: #0A6EAA;
+            }
+        </style>
+        """
+
+        JS_SCRIPT = """
+        <script>
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    console.log('Copied to clipboard: ' + text);
+                }, function(err) {
+                    console.error('Could not copy text: ', err);
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                let fieldKeys = document.querySelectorAll('.container-fields .field-key');
+                fieldKeys.forEach(function(fieldKey) {
+                    fieldKey.addEventListener('click', function() {
+                        let accessCode = fieldKey.getAttribute('title').replace('Access code: ', '');
+                        copyToClipboard(accessCode);
+                    });
+                });
+            });
+        </script>
+        """
+        if self.name == self.__class__.__name__:
+            header_text = self.name
+        else:
+            header_text = f"{self.name} ({self.__class__.__name__})"
+        html_repr = CSS_STYLE
+        html_repr += JS_SCRIPT
+        html_repr += "<div class='container-wrap'>"
+        html_repr += (
+            f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        )
+        html_repr += self._generate_html_repr(self.fields)
+        html_repr += "</div>"
+        return html_repr
+
+    def _generate_html_repr(self, fields, level=0, access_code=".fields"):
+        html_repr = ""
+
+        if isinstance(fields, dict):
+            for key, value in fields.items():
+                current_access_code = f"{access_code}['{key}']"
+                if (
+                    isinstance(value, (list, dict, np.ndarray))
+                    or hasattr(value, "fields")
+                ):
+                    label = key
+                    if isinstance(value, dict):
+                        label += f" ({len(value)})"
+
+                    html_repr += (
+                        f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+                        f'class="container-fields field-key" title="{current_access_code}"><b>{label}</b></summary>'
+                    )
+                    if hasattr(value, "fields"):
+                        value = value.fields
+                        current_access_code = current_access_code + ".fields"
+                    html_repr += self._generate_html_repr(
+                        value, level + 1, current_access_code
+                    )
+                    html_repr += "</details>"
+                else:
+                    html_repr += (
+                        f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"'
+                        f' title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
+                    )
+        elif isinstance(fields, list):
+            for index, item in enumerate(fields):
+                current_access_code = f"{access_code}[{index}]"
+                html_repr += (
+                    f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-value"'
+                    f' title="{current_access_code}">{str(item)}</span></div>'
+                )
+        elif isinstance(fields, np.ndarray):
+            str_ = str(fields).replace("\n", "</br>")
+            html_repr += (
+                f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
+            )
+        else:
+            pass
+
+        return html_repr
+
     @staticmethod
     def __smart_str(v, num_indent):
         """
@@ -535,11 +702,26 @@ class Data(AbstractContainer):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
+            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'},
+            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
+             'default': None})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
+        self.term_set = popargs('term_set', kwargs)
         super().__init__(**kwargs)
-        self.__data = data
+        if self.term_set is not None:
+            bad_data = [term for term in data if not  self.term_set.validate(term=term)]
+            for term in data:
+                if self.term_set.validate(term=term):
+                    continue
+                else:
+                    bad_data.append(term)
+            if len(bad_data)!=0:
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
+            self.__data = data
+        else:
+            self.__data = data
 
     @property
     def data(self):
@@ -613,7 +795,14 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
-        self.__data = append_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = append_data(self.__data, arg)
+        else:
+            if self.term_set.validate(term=arg):
+                self.__data = append_data(self.__data, arg)
+            else:
+                msg = ('"%s" is not in the term set.' % arg)
+                raise ValueError(msg)
 
     def extend(self, arg):
         """
@@ -622,7 +811,18 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
-        self.__data = extend_data(self.__data, arg)
+        if self.term_set is None:
+            self.__data = extend_data(self.__data, arg)
+        else:
+            bad_data = []
+            for item in arg:
+                try:
+                    self.append(item)
+                except ValueError:
+                    bad_data.append(item)
+            if len(bad_data)!=0:
+                msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+                raise ValueError(msg)
 
 
 class DataRegion(Data):

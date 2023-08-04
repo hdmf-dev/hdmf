@@ -1,15 +1,34 @@
 import numpy as np
 from uuid import uuid4, UUID
-from hdmf.common import SimpleMultiContainer
+import os
 
 from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
 from hdmf.common.resources import ExternalResources
 from hdmf.testing import H5RoundTripMixin, TestCase
 from hdmf.utils import docval
+from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion, SimpleMultiContainer)
+import unittest
+from hdmf.term_set import TermSet
+from hdmf.backends.hdf5.h5tools import HDF5IO
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class Subcontainer(Container):
     pass
+
+
+class ContainerWithChild(Container):
+    __fields__ = ({'name': 'field1', 'child': True}, )
+
+    @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+    def __init__(self, **kwargs):
+        super().__init__('test name')
+        self.field1 = kwargs['field1']
 
 
 class TestExternalResourcesManager(TestCase):
@@ -23,6 +42,16 @@ class TestExternalResourcesManager(TestCase):
 
 
 class TestContainer(TestCase):
+
+    def setUp(self):
+        self.path = "test_container.h5"
+        self.path2 = "test_container2.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
 
     def test_new(self):
         """Test that __new__ properly sets parent and other fields.
@@ -65,6 +94,55 @@ class TestContainer(TestCase):
         self.assertEqual(obj.children, tuple())
         self.assertIsNone(obj.parent)
         self.assertEqual(obj.name, 'obj1')
+        self.assertIsNone(obj.read_io)
+
+    def test_read_io_none(self):
+        """Test that __init__ properly sets read_io to None"""
+        obj = Container('obj1')
+        self.assertIsNone(obj.read_io)
+
+    def test_read_io_setter(self):
+        """Test setting the read IO property"""
+        obj = Container('obj1')
+        # Bad value for read_io
+        with self.assertRaises(TypeError):
+            obj.read_io = "test"
+        # Set read_io
+        with HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            self.assertIs(obj.read_io, temp_io)
+            # test that setting the read_io object to the same io object is OK
+            obj.read_io = temp_io
+            # Check that setting read_io to another io object fails
+            with HDF5IO(self.path2, mode='w') as temp_io2:
+                with self.assertRaises(ValueError):
+                    obj.read_io = temp_io2
+
+    def test_get_read_io_on_self(self):
+        """Test that get_read_io works when the container is set on the container"""
+        obj = Container('obj1')
+        self.assertIsNone(obj.get_read_io())
+        with HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            re_io = obj.get_read_io()
+            self.assertIs(re_io, temp_io)
+
+    def test_get_read_io_on_parent(self):
+        """Test that get_read_io works when the container is set on the parent"""
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        with HDF5IO(self.path, mode='w') as temp_io:
+            parent_obj.read_io = temp_io
+            self.assertIsNone(child_obj.read_io)
+            self.assertIs(child_obj.get_read_io(), temp_io)
+
+    def test_del_read_io(self):
+        class TestContainer(AbstractContainer):
+            def __init__(self):
+                raise ValueError("Error")
+        with self.assertRaises(ValueError):
+            TestContainer()
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
@@ -127,6 +205,47 @@ class TestContainer(TestCase):
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
         self.assertIs(parent_obj.children[0], child_obj)
+
+    def test_parent_set_link_warning(self):
+        col1 = VectorData(
+            name='col1',
+            description='column #1',
+            data=[1, 2],
+        )
+        col2 = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'b'],
+        )
+
+        # this table will have two rows with ids 0 and 1
+        table = DynamicTable(
+            name='my table',
+            description='an example table',
+            columns=[col1, col2],
+        )
+
+        dtr_col = DynamicTableRegion(
+            name='table1_ref',
+            description='references rows of earlier table',
+            data=[0, 1, 0, 0],  # refers to row indices of the 'table' variable
+            table=table
+        )
+
+        data_col = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'a', 'a', 'b'],
+        )
+
+        table2 = DynamicTable(
+            name='my_table',
+            description='an example table',
+            columns=[dtr_col, data_col],
+        )
+
+        with self.assertWarns(Warning):
+            table2.parent=ContainerWithChild()
 
     def test_set_parent_exists(self):
         """Test that setting a parent a second time does nothing
@@ -264,6 +383,57 @@ class TestContainer(TestCase):
         self.assertIsNone(obj.parent)
 
 
+class TestHTMLRepr(TestCase):
+
+    class ContainerWithChildAndData(Container):
+        __fields__ = (
+            {'name': 'child', 'child': True},
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': 'child', 'doc': 'field1 doc', 'type': Container},
+            {'name': "data", "doc": 'data', 'type': list, "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.child = kwargs['child']
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
+    def test_repr_html_(self):
+        child_obj1 = Container('test child 1')
+        obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
+        assert obj1._repr_html_() == (
+            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, sans-'
+            'serif;\n            }\n            .container-fields .field-value {\n                color: #00788E;\n    '
+            '        }\n            .container-fields details > summary {\n                cursor: pointer;\n          '
+            '      display: list-item;\n            }\n            .container-fields details > summary:hover {\n       '
+            '         color: #0A6EAA;\n            }\n        </style>\n        \n        <script>\n            functio'
+            'n copyToClipboard(text) {\n                navigator.clipboard.writeText(text).then(function() {\n        '
+            '            console.log(\'Copied to clipboard: \' + text);\n                }, function(err) {\n          '
+            '          console.error(\'Could not copy text: \', err);\n                });\n            }\n\n          '
+            '  document.addEventListener(\'DOMContentLoaded\', function() {\n                let fieldKeys = document.q'
+            'uerySelectorAll(\'.container-fields .field-key\');\n                fieldKeys.forEach(function(fieldKey) {'
+            '\n                    fieldKey.addEventListener(\'click\', function() {\n                        let acces'
+            'sCode = fieldKey.getAttribute(\'title\').replace(\'Access code: \', \'\');\n                        copyTo'
+            'Clipboard(accessCode);\n                    });\n                });\n            });\n        </script>\n'
+            '        <div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'><h3>test '
+            'name (ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left:'
+            ' 0px;" class="container-fields field-key" title=".fields[\'child\']"><b>child</b></summary></details><deta'
+            'ils><summary style="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fiel'
+            'ds[\'data\']"><b>data</b></summary><div style="margin-left: 20px;" class="container-fields"><span class="f'
+            'ield-value" title=".fields[\'data\'][0]">1</span></div><div style="margin-left: 20px;" class="container-fi'
+            'elds"><span class="field-value" title=".fields[\'data\'][1]">2</span></div><div style="margin-left: 20px;"'
+            ' class="container-fields"><span class="field-value" title=".fields[\'data\'][2]">3</span></div></details><'
+            'div style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".fields[\'str\']">st'
+            'r:</span> <span class="field-value">hello</span></div></div>'
+        )
+
+
 class TestData(TestCase):
 
     def test_constructor_scalar(self):
@@ -345,6 +515,45 @@ class TestDataRoundTrip(H5RoundTripMixin, TestCase):
             read_data_obj.data = ["barfoo1", "barfoo2"]
         self.assertEqual(read_data_obj.data, ["barfoo1", "barfoo2"])
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        self.assertEqual(data_obj.data, ['Homo sapiens'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_validate_value_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        with self.assertRaises(ValueError):
+            Data(name='species', data=['Macaca mulatta'], term_set=terms)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_append_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_append_validate_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.append('Macaca mulatta')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_extend_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
+        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_extend_validate_bad_data_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
+        with self.assertRaises(ValueError):
+            data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])
 
 
 class TestAbstractContainerFieldsConf(TestCase):
@@ -380,7 +589,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent']
+        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_named_fields(self):
@@ -401,7 +610,7 @@ class TestAbstractContainerFieldsConf(TestCase):
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
         expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent']
+                    'parent', 'read_io']
         self.assertListEqual(props, expected)
 
         f1_doc = getattr(NamedFields, 'field1').__doc__
@@ -513,7 +722,7 @@ class TestAbstractContainerFieldsConf(TestCase):
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
         expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent']
+                    'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_inheritance_override(self):
@@ -587,14 +796,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj4.field1)
 
     def test_child(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
-
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild(child_obj1)
         self.assertIs(child_obj1.parent, obj1)
@@ -612,13 +813,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj2.field1)
 
     def test_setter_set_modified(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
 
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild()

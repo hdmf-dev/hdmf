@@ -71,3 +71,6 @@ coverage.xml
 
 #sqlite
 .sqlite
+
+# Version
+_version.py

@@ -1,10 +1,8 @@
 # HDMF Changelog
 
-## HMDF 3.7.0 (June 27, 2023)
+## HDMF 3.9.0 (Upcoming)
 
 ### New features and minor improvements
-- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable.
-  @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
 - Allow reassigning and resetting attributes on `AbstractContainer` objects, including the `data` attribute of `Data`
   objects and `table` attribute of `DynamicTableRegion` objects. If the attributes were read from a file (i.e.,
   `container_source` is not None), then a warning is raised. Note that type, shape, and is-required validation are NOT
@@ -16,10 +14,46 @@
 - Deprecated `Data.set_dataio`, which has been broken for some use cases. Reassign the `data` attribute on the
   `Data` object to the new `DataIO` object instead. @rly [#868](https://github.com/hdmf-dev/hdmf/pull/868)
 
+## HDMF 3.8.1 (July 25, 2023)
+
+### Bug fixes
+- Fixed error when calling `HDF5IO.read` twice. @rly [#915](https://github.com/hdmf-dev/hdmf/pull/915)
+
+## HDMF 3.8.0 (July 21, 2023)
+
+### New features and minor improvements
+- Added the ability to write ExternalResources if the path is provided and the container has a linked instance of ExternalResources. @mavaylon1 [#910](https://github.com/hdmf-dev/hdmf/pull/910)
+
+### Bug fixes
+- Fixed bug on `add_ref_term_set` in which attributes that were not subscribtable returned an error. @mavaylon1 [#909](https://github.com/hdmf-dev/hdmf/pull/909)
+
+## HDMF 3.7.0 (July 10, 2023)
+
+### New features and minor improvements
+- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Added abstract static method `HDMFIO.can_read()` and concrete static method `HDF5IO.can_read()`. @bendichter [#875](https://github.com/hdmf-dev/hdmf/pull/875)
+- Added warning for `DynamicTableRegion` links that are not added to the same parent as the original container object. @mavaylon1 [#891](https://github.com/hdmf-dev/hdmf/pull/891)
+- Added the `TermSet` class along with integrated validation methods for any child of `AbstractContainer`, e.g., `VectorData`, `Data`, `DynamicTable`. @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
+- Added `AbstractContainer.read_io` property to be able to retrieve the HDMFIO object used for reading from the container and to ensure the I/O object used for reading is not garbage collected before the container is being deleted. @bendichter @oruebel [#882](https://github.com/hdmf-dev/hdmf/pull/882)
+- Allow for `datetime.date` to be used instead of `datetime.datetime`. @bendichter [#874](https://github.com/hdmf-dev/hdmf/pull/874)
+- Updated `HDMFIO` and `HDF5IO` to support `ExternalResources`. @mavaylon1 [#895](https://github.com/hdmf-dev/hdmf/pull/895)
+- Dropped Python 3.7 support. @rly [#897](https://github.com/hdmf-dev/hdmf/pull/897)
+- Added HTML repr to `Container` objects which displays an interactive tree of a container's values and children in a Jupyter notebook and other HTML representations. @edeno [#883](https://github.com/hdmf-dev/hdmf/pull/883)
+- Update software_process.rst with the correct external links. @mavaylon1 [#900](https://github.com/hdmf-dev/hdmf/pull/900)
+
+### Documentation and tutorial enhancements:
+- Added tutorial for the new `TermSet` class @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
+
+### Bug fixes
+- Fixed CI testing of minimum installation requirements, and removed some gallery tests run on each PR. @rly
+  [#877](https://github.com/hdmf-dev/hdmf/pull/877)
+- Fixed reporting of version when installed using conda. @rly [#890](https://github.com/hdmf-dev/hdmf/pull/890)
+
+
 ## HMDF 3.6.1 (May 18, 2023)
 
 ### Bug fixes
-- Fix compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
+- Fixed compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
 
 ## HDMF 3.6.0 (May 12, 2023)
 

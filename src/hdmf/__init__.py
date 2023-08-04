@@ -3,6 +3,7 @@ from .backends.hdf5.h5_utils import H5Dataset, H5RegionSlicer
 from .container import Container, Data, DataRegion, ExternalResourcesManager
 from .region import ListSlicer
 from .utils import docval, getargs
+from .term_set import TermSet
 
 
 @docval(
@@ -27,13 +28,14 @@ def get_region_slicer(**kwargs):
 
 
 try:
+    # see https://effigies.gitlab.io/posts/python-packaging-2023/
+    from ._version import __version__
+except ImportError:  # pragma: no cover
+    # this is a relatively slower method for getting the version string
     from importlib.metadata import version  # noqa: E402
-except ImportError:
-    # TODO: Remove when python 3.8 becomes the new minimum
-    from importlib_metadata import version  # noqa: E402
 
-__version__ = version(__package__)
-del version
+    __version__ = version("hdmf")
+    del version
 
 
 from ._due import BibTeX, due  # noqa: E402

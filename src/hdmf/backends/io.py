@@ -3,18 +3,28 @@ import os
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
-from ..container import Container
+from ..container import Container, ExternalResourcesManager
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
+from warnings import warn
 
 
 class HDMFIO(metaclass=ABCMeta):
+
+    @staticmethod
+    @abstractmethod
+    def can_read(path):
+        """Determines whether a given path is readable by this HDMFIO class"""
+        pass
+
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),
-             "doc": "the source of container being built i.e. file path", 'default': None})
+             "doc": "the source of container being built i.e. file path", 'default': None},
+            {'name': 'external_resources_path', 'type': str,
+             'doc': 'The path to the ExternalResources', 'default': None},)
     def __init__(self, **kwargs):
-        manager, source = getargs('manager', 'source', kwargs)
+        manager, source, external_resources_path = getargs('manager', 'source', 'external_resources_path', kwargs)
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
@@ -26,6 +36,8 @@ class HDMFIO(metaclass=ABCMeta):
         self.__manager = manager
         self.__built = dict()
         self.__source = source
+        self.external_resources_path = external_resources_path
+        self.external_resources = None
         self.open()
 
     @property
@@ -46,6 +58,20 @@ class HDMFIO(metaclass=ABCMeta):
             # TODO also check that the keys are appropriate. print a better error message
             raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
+        container.read_io = self
+        if self.external_resources_path is not None:
+            from hdmf.common import ExternalResources
+            try:
+                self.external_resources = ExternalResources.from_norm_tsv(path=self.external_resources_path)
+                if isinstance(container, ExternalResourcesManager):
+                    container.link_resources(external_resources=self.external_resources)
+            except FileNotFoundError:
+                msg = "File not found at {}. ExternalResources not added.".format(self.external_resources_path)
+                warn(msg)
+            except ValueError:
+                msg = "Check ExternalResources separately for alterations. ExternalResources not added."
+                warn(msg)
+
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
@@ -55,6 +81,14 @@ class HDMFIO(metaclass=ABCMeta):
         container = popargs('container', kwargs)
         f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
+
+        if self.external_resources_path is not None:
+            external_resources = container.get_linked_resources()
+            if external_resources is not None:
+                external_resources.to_norm_tsv(path=self.external_resources_path)
+            else:
+                msg = "Could not find linked ExternalResources. Container was still written to IO source."
+                warn(msg)
 
     @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
             {'name': 'container', 'type': Container,

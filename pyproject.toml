@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "hdmf"
@@ -13,11 +13,10 @@ authors = [
 ]
 description = "A hierarchical data modeling framework for modern science data standards"
 readme = "README.rst"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {text = "BSD-3-Clause"}
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -32,17 +31,18 @@ classifiers = [
 dependencies = [
     "h5py>=2.10",
     "jsonschema>=2.6.0",
-    "numpy>=1.16",
+    "numpy>=1.18",
     "pandas>=1.0.5",
     "ruamel.yaml>=0.16",
-    "scipy>=1.1",
-    "importlib-metadata<4.3; python_version < '3.8'",  # TODO: remove when minimum python version is 3.8
+    "scipy>=1.4",
     "importlib-resources; python_version < '3.9'",  # TODO: remove when minimum python version is 3.9
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 zarr = ["zarr>=2.12.0"]
+tqdm = ["tqdm>=4.41.0"]
+linkml = ["linkml-runtime>=1.5.0"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
@@ -51,8 +51,19 @@ zarr = ["zarr>=2.12.0"]
 [project.scripts]
 validate_hdmf_spec = "hdmf.testing.validate_spec:main"
 
-[tool.setuptools.package-data]
-hdmf = ["common/hdmf-common-schema/common/*.yaml", "common/hdmf-common-schema/common/*.json"]
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+# this file is created/updated when the package is installed and used in
+# src/hdmf/__init__.py to set `hdmf.__version__`
+version-file = "src/hdmf/_version.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [".git_archival.txt"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hdmf"]
 
 # [tool.mypy]
 # no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664
@@ -82,8 +93,6 @@ exclude_lines = [
     "pragma: no cover",
     "@abstract"
 ]
-
-[tool.setuptools_scm]
 
 # [tool.black]
 # line-length = 120
