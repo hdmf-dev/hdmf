@@ -365,7 +365,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
             raise StopIteration
 
-    def __reduce__(self) -> Tuple[Callable, Iterable[dict]]:
+    def __reduce__(self) -> Tuple[Callable, Iterable]:
         instance_constructor = self._from_dict
         initialization_args = (self._to_dict(),)
         return (instance_constructor, initialization_args)
