@@ -194,8 +194,11 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
     def __del__(self):
         # Make sure the reference counter for our read IO is being decremented
-        del self.__read_io
-        self.__read_io = None
+        try:
+            del self.__read_io
+            self.__read_io = None
+        except AttributeError:
+            pass
 
     def __new__(cls, *args, **kwargs):
         """
@@ -253,7 +256,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         from hdmf.backends.io import HDMFIO
         if not isinstance(value, HDMFIO):
             raise TypeError("io must be an instance of HDMFIO")
-        if self.__read_io is not None:
+        if self.__read_io is not None and self.__read_io is not value:
             raise ValueError("io has already been set for this container (name=%s, type=%s)" %
                              (self.name, str(type(self))))
         else:
