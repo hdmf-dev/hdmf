@@ -36,7 +36,6 @@ dependencies = [
     "ruamel.yaml>=0.16",
     "scipy>=1.4",
     "importlib-resources; python_version < '3.9'",  # TODO: remove when minimum python version is 3.9
-    "threadpoolct"
 ]
 dynamic = ["version"]
 
