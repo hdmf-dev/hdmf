@@ -242,7 +242,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
             ],
         )
-        self.buffer_selections = tuple(  # temporary solution to cast as tuple to allow indexing
+        self.buffer_selection_generator = (
             tuple(
                 [
                     slice(lower_bound, upper_bound)
@@ -264,7 +264,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 ),
             )
         )
-        self.buffer_selection_generator = iter(self.buffer_selections)
 
         if self.display_progress:
             try:
@@ -365,7 +364,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
             raise StopIteration
 
-    def __reduce__(self) -> Tuple[Callable, Iterable]:
+    def __reduce__(self) -> Tuple[Callable, Iterable[dict]]:
         instance_constructor = self._from_dict
         initialization_args = (self._to_dict(),)
         return (instance_constructor, initialization_args)
