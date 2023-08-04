@@ -1,4 +1,5 @@
 import unittest
+import pickle
 import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
@@ -204,6 +205,29 @@ class GenericDataChunkIteratorTests(TestCase):
                 progress_bar_options=dict(total=5),
             )
 
+    def test_private_to_dict_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        ):
+            iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
+            _ = iterator._to_dict()
+
+    def test_private_from_dict_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        ):
+            _ = self.TestNumpyArrayDataChunkIterator._from_dict(dict())
+
+    def test_direct_pickle_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        ):
+            iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
+            _ = pickle.dumps(iterator)
+            
     def test_maxshape_attribute_contains_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         self.check_all_of_iterable_is_python_int(

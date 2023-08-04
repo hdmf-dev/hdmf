@@ -272,6 +272,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 if "total" in self.progress_bar_options:
                     warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
                     self.progress_bar_options.pop("total")
+
                 self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
             except ImportError:
                 warn(
@@ -401,12 +402,16 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
     def _to_dict(self) -> dict:
         """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
-        raise NotImplementedError("The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!")
+        raise NotImplementedError(
+            "The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        )
 
     @staticmethod
     def _from_dict(self) -> Callable:
         """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
-        raise NotImplementedError("The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!")
+        raise NotImplementedError(
+            "The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        )
 
     def recommended_chunk_shape(self) -> Tuple[int, ...]:
         return self.chunk_shape
