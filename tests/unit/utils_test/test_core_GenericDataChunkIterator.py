@@ -227,7 +227,7 @@ class GenericDataChunkIteratorTests(TestCase):
         ):
             iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
             _ = pickle.dumps(iterator)
-            
+
     def test_maxshape_attribute_contains_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         self.check_all_of_iterable_is_python_int(
