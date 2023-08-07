@@ -2,6 +2,7 @@ import numpy as np
 from uuid import uuid4, UUID
 import os
 
+from hdmf.backends.hdf5 import H5DataIO
 from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
 from hdmf.common.resources import ExternalResources
 from hdmf.testing import TestCase
@@ -381,6 +382,24 @@ class TestContainer(TestCase):
         obj = Container('obj1')
         obj.reset_parent()
         self.assertIsNone(obj.parent)
+
+    def test_set_data_io(self):
+
+        class ContainerWithData(Container):
+            __fields__ = ('data1',)
+
+            @docval(
+                {"name": "name", "doc": "name", "type": str},
+                {'name': 'data1', 'doc': 'field1 doc', 'type': list}
+            )
+            def __init__(self, **kwargs):
+                super().__init__(name=kwargs["name"])
+                self.data1 = kwargs["data1"]
+
+        obj = ContainerWithData("name", [1, 2, 3, 4, 5])
+        obj.set_data_io("data1", H5DataIO, chunks=True)
+        assert isinstance(obj.data1, H5DataIO)
+
 
 
 class TestHTMLRepr(TestCase):
