@@ -4,10 +4,11 @@ import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Callable
 from sys import version_info
 
 import h5py
+from numpy.testing import assert_array_equal
 
 from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.testing import TestCase
@@ -17,6 +18,30 @@ try:
     TQDM_INSTALLED = True
 except ImportError:
     TQDM_INSTALLED = False
+
+
+class TestPickleableNumpyArrayDataChunkIterator(GenericDataChunkIterator):
+    def __init__(self, array: np.ndarray, **kwargs):
+        self.array = array
+        self._kwargs = kwargs
+        super().__init__(**kwargs)
+
+    def _get_data(self, selection) -> np.ndarray:
+        return self.array[selection]
+
+    def _get_maxshape(self) -> Tuple[int, ...]:
+        return self.array.shape
+
+    def _get_dtype(self) -> np.dtype:
+        return self.array.dtype
+
+    def _to_dict(self) -> dict:
+        return dict(array=pickle.dumps(self.array), kwargs=self._kwargs)
+
+    @staticmethod
+    def _from_dict(dictionary: dict) -> Callable:
+        array = pickle.loads(dictionary["array"])
+        return TestPickleableNumpyArrayDataChunkIterator(array=array, **dictionary["kwargs"])
 
 
 class GenericDataChunkIteratorTests(TestCase):
@@ -401,3 +426,12 @@ class GenericDataChunkIteratorTests(TestCase):
                 display_progress=True,
             )
             self.assertFalse(dci.display_progress)
+
+    def test_pickle(self):
+        pre_dump_iterator = TestPickleableNumpyArrayDataChunkIterator(array=self.test_array)
+        post_dump_iterator = pickle.loads(pickle.dumps(pre_dump_iterator))
+
+        assert isinstance(post_dump_iterator, TestPickleableNumpyArrayDataChunkIterator)
+        assert post_dump_iterator.chunk_shape == pre_dump_iterator.chunk_shape
+        assert post_dump_iterator.buffer_shape == pre_dump_iterator.buffer_shape
+        assert_array_equal(post_dump_iterator.array, pre_dump_iterator.array)
