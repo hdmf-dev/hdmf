@@ -320,8 +320,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
             ret.append(n) # add to ret
             if n.object_id is not None: # look at only containers
                 self.__sub_containers[n.object_id] = n
-            else: # warn that a child does not have an object_id, which is unusual
-                warn('%s "%s" does not have an object_id' % (n.neurodata_type, n.name))
+            else: # pragma: no cover
+                # warn that a child does not have an object_id, which is unusual
+                warn('%s "%s" does not have an object_id' % (n.neurodata_type, n.name)) # type(n).__class__
             if hasattr(n, 'children'):
                 for c in n.children:
                     stack.append(c)
