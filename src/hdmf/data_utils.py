@@ -154,7 +154,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc=(
                 "If chunk_shape is not specified, it will be inferred as the smallest chunk "
                 "below the chunk_mb threshold.",
-                "Defaults to 1MB.",
+                "Defaults to 10MB.",
             ),
             default=None,
         ),
@@ -187,9 +187,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Advanced users are offered full control over the shape parameters for the buffer and the chunks; however,
         the chunk shape must perfectly divide the buffer shape along each axis.
 
-        HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
-        See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
-        for more details.
+        HDF5 recommends chunk size in the range of 2 to 16 MB for optimal cloud performance.
+        https://youtu.be/rcS5vt-mKok?t=621
         """
         buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, progress_bar_options = getargs(
             "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
@@ -199,7 +198,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
-            chunk_mb = 1.0
+            chunk_mb = 10.0
         assert (buffer_gb is not None) != (
             buffer_shape is not None
         ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
