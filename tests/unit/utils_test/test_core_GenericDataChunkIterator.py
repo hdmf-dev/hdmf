@@ -277,7 +277,7 @@ class GenericDataChunkIteratorTests(TestCase):
 
     def test_buffer_shape_option(self):
         expected_buffer_shape = (1580, 316)
-        iterator_options = dict(buffer_shape=expected_buffer_shape)
+        iterator_options = dict(buffer_shape=expected_buffer_shape, chunk_mb=1.0)
         self.check_first_data_chunk_call(
             expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in expected_buffer_shape]),
             iterator_options=iterator_options,
@@ -285,9 +285,9 @@ class GenericDataChunkIteratorTests(TestCase):
         self.check_direct_hdf5_write(iterator_options=iterator_options)
 
     def test_buffer_gb_option(self):
-        # buffer is smaller than default chunk; should collapse to chunk shape
+        # buffer is smaller than chunk; should collapse to chunk shape
         resulting_buffer_shape = (1580, 316)
-        iterator_options = dict(buffer_gb=0.0005)
+        iterator_options = dict(buffer_gb=0.0005, chunk_mb=1.0)
         self.check_first_data_chunk_call(
             expected_selection=tuple(
                 [
@@ -334,14 +334,14 @@ class GenericDataChunkIteratorTests(TestCase):
         """Test to evoke while condition of default shaping method."""
         expected_chunk_shape = (2, 79, 79)
         special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(2, 2000, 2000), dtype="int16")
-        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array, chunk_mb=1.0)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
     def test_chunk_mb_option_while_condition_unit_maxshape_axis(self):
         """Test to evoke while condition of default shaping method."""
         expected_chunk_shape = (1, 79, 79)
         special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(1, 2000, 2000), dtype="int16")
-        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array, chunk_mb=1.0)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
