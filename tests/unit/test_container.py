@@ -542,7 +542,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent', 'read_io']
+        expected = ['children', 'container_source', 'fields', 'modified',
+                    'name', 'object_id', 'parent', 'read_io', 'sub_containers']
         self.assertListEqual(props, expected)
 
     def test_named_fields(self):
@@ -563,7 +564,7 @@ class TestAbstractContainerFieldsConf(TestCase):
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
         expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent', 'read_io']
+                    'parent', 'read_io', 'sub_containers']
         self.assertListEqual(props, expected)
 
         f1_doc = getattr(NamedFields, 'field1').__doc__
@@ -644,7 +645,7 @@ class TestAbstractContainerFieldsConf(TestCase):
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
         expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent', 'read_io']
+                    'parent', 'read_io', 'sub_containers']
         self.assertListEqual(props, expected)
 
     def test_inheritance_override(self):

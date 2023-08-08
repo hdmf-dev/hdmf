@@ -2,11 +2,9 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, Data, ExternalResourcesManager
-from ..data_utils import DataIO
+from ..container import Table, Row, Container, AbstractContainer, ExternalResourcesManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
-from ..term_set import TermSet
 from glob import glob
 import os
 import zipfile
@@ -413,7 +411,7 @@ class ExternalResources(Container):
     def add_ref_term_set(self, **kwargs):
         root_container = kwargs['root_container']
 
-        all_children = root_container.child_objects
+        all_children = root_container.sub_containers
 
         for child in all_children:
             try:
