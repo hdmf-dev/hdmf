@@ -80,12 +80,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
             return None
 
         def setter(self, val):
-            if val is None:
-                return
-            if name in self.fields:
-                msg = "can't set attribute '%s' -- already set" % name
-                raise AttributeError(msg)
+            if self.container_source is not None and not self._in_construct_mode:
+                warn(f"Container was read from file '{self.container_source}'. "
+                     f"Changing the value of attribute '{name}' will not change the value in the file. "
+                     f"Use the export function to write the modified container to a new file.")
             self.fields[name] = val
+            self.set_modified()
 
         return setter
 
@@ -727,6 +727,18 @@ class Data(AbstractContainer):
     def data(self):
         return self.__data
 
+    @data.setter
+    def data(self, val):
+        if val is None:
+            raise ValueError("data cannot be set to None.")
+
+        if self.container_source is not None and not self._in_construct_mode:
+            warn(f"Container was read from file '{self.container_source}'. "
+                    f"Changing the value of attribute 'data' will not change the value in the file. "
+                    f"Use the export function to write the modified container to a new file.")
+        self.__data = val
+        self.set_modified()
+
     @property
     def shape(self):
         """
@@ -741,6 +753,9 @@ class Data(AbstractContainer):
         """
         Apply DataIO object to the data held by this Data object
         """
+        # TODO deprecate this in favor of the user wrapping the data themselves in a non-buggy way
+        warn("set_dataio is deprecated. Use the DataIO constructor to wrap the data and reassign this object's "
+             "data field to the DataIO object.", DeprecationWarning)
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio

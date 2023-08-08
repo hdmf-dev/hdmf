@@ -42,7 +42,8 @@ class DataIOTests(TestCase):
         dataio = DataIO()
         data = np.arange(30).reshape(5, 2, 3)
         container = Data('wrapped_data', data)
-        container.set_dataio(dataio)
+        with self.assertWarns(DeprecationWarning):
+            container.set_dataio(dataio)
         self.assertIs(dataio.data, data)
         self.assertIs(dataio, container.data)
 
@@ -54,7 +55,8 @@ class DataIOTests(TestCase):
         data = np.arange(30).reshape(5, 2, 3)
         container = Data('wrapped_data', data)
         with self.assertRaisesWith(ValueError, "cannot overwrite 'data' on DataIO"):
-            container.set_dataio(dataio)
+            with self.assertWarns(DeprecationWarning):
+                container.set_dataio(dataio)
 
     def test_dataio_options(self):
         """

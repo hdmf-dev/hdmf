@@ -4,9 +4,9 @@ import os
 
 from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
 from hdmf.common.resources import ExternalResources
-from hdmf.testing import TestCase
+from hdmf.testing import H5RoundTripMixin, TestCase
 from hdmf.utils import docval
-from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
+from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion, SimpleMultiContainer)
 import unittest
 from hdmf.term_set import TermSet
 from hdmf.backends.hdf5.h5tools import HDF5IO
@@ -468,6 +468,53 @@ class TestData(TestCase):
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
 
+    def test_reset_data(self):
+        """
+        Test that resetting data to None raises an error.
+        """
+        data_obj = Data(name='my_data', data='foobar')
+        with self.assertRaisesWith(ValueError, "data cannot be set to None."):
+            data_obj.data = None
+        self.assertEqual(data_obj.data, 'foobar')
+
+    def test_reassign_data(self):
+        """
+        Test that reassigning data works correctly.
+        """
+        data_obj = Data(name='my_data', data='foobar')
+        data_obj.data = 'barfoo'
+        self.assertEqual(data_obj.data, 'barfoo')
+
+
+class TestDataRoundTrip(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        data = Data(name='data0', data='foobar')
+        multi_container = SimpleMultiContainer(name='multi', containers=[data])
+        return multi_container
+
+    def test_reset_data(self):
+        """
+        Test that resetting data to None raises an error.
+        """
+        read_mc = self.roundtripContainer()
+        read_data_obj = read_mc.containers["data0"]
+        with self.assertRaisesWith(ValueError, "data cannot be set to None."):
+            read_data_obj.data = None
+        self.assertIsNotNone(read_data_obj.data)
+
+    def test_reassign_data(self):
+        """
+        Test that reassigning data works correctly.
+        """
+        read_mc = self.roundtripContainer()
+        read_data_obj = read_mc.containers["data0"]
+        msg = (r"Container was read from file '.*\'. Changing the value of attribute 'data' will not change the "
+               r"value in the file\. Use the export function to write the modified container to a new file\.")
+        with self.assertWarnsRegex(UserWarning, msg):
+            read_data_obj.data = ["barfoo1", "barfoo2"]
+        self.assertEqual(read_data_obj.data, ["barfoo1", "barfoo2"])
+
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_validate(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
@@ -577,11 +624,42 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertEqual(obj.field2, 'field2 value')
 
         obj.field1 = 'field1 value'
-        msg = "can't set attribute 'field2' -- already set"
-        with self.assertRaisesWith(AttributeError, msg):
-            obj.field2 = 'field2 value'
-        obj.field2 = None  # None value does nothing
-        self.assertEqual(obj.field2, 'field2 value')
+        obj.field1 = 'new field1 value'  # can reassign attributes as of HDMF 3.7.0
+        self.assertEqual(obj.field1, 'new field1 value')
+
+        obj.field1 = None  # can set to None value as of HDMF 3.7.0
+        self.assertIsNone(obj.field1)
+
+    def test_set_attribute_with_container_source(self):
+
+        class NamedFields(AbstractContainer):
+            __fields__ = ('field1', 'field2')
+
+            @docval({'name': 'field2', 'doc': 'field2 doc', 'type': str})
+            def __init__(self, **kwargs):
+                super().__init__('test name')
+                self.field2 = kwargs['field2']
+
+        obj = NamedFields.__new__(
+            NamedFields,
+            container_source="source",
+            parent=None,
+            object_id=str(uuid4()),
+            in_construct_mode=True
+        )
+        obj.__init__('field2 value')
+        obj._in_construct_mode = False
+
+        msg = ("Container was read from file 'source'. Changing the value of attribute 'field1' will not change the "
+               "value in the file. Use the export function to write the modified container to a new file.")
+        with self.assertWarnsWith(UserWarning, msg):
+            obj.field1 = 'field1 value'
+
+        msg = ("Container was read from file 'source'. Changing the value of attribute 'field2' will not change the "
+               "value in the file. Use the export function to write the modified container to a new file.")
+        with self.assertWarnsWith(UserWarning, msg):
+            obj.field2 = 'new field2 value'
+
 
     def test_with_doc(self):
         """Test that __fields__ related attributes are set correctly.
