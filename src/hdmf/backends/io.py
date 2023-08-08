@@ -74,8 +74,7 @@ class HDMFIO(metaclass=ABCMeta):
 
         return container
 
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            allow_extra=True)
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'}, allow_extra=True)
     def write(self, **kwargs):
         """Write a container to the IO source."""
         container = popargs('container', kwargs)
