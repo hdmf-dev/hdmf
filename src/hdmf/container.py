@@ -230,6 +230,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         self.__name = name
         self.__field_values = dict()
         self.__read_io = None
+        self._obj = None
 
     @property
     def read_io(self):
@@ -301,6 +302,36 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 return p
             p = p.parent
         return None
+
+    def get_sub_containers(self):
+        """
+        This method will search through all sub_containers and their children.
+
+        If the object has an object_id, the object will be added to "ret" to be returned.
+        If that object has children, they will be added to the "stack" in order to be:
+        1) Checked to see if has an object_id, if so then add to "ret"
+        2) Have children that will also be checked
+        """
+        stack = [self] # list of containers, including self, to add and later parse for more containers (children)
+        ret = list()
+        self._obj = LabelledDict(label='all_objects', key_attr='object_id')
+        while len(stack): # search until there's nothing in the list
+            n = stack.pop() # look at last container in list. This will remove from stack
+            ret.append(n) # add to ret
+            if n.object_id is not None: # look at only containers
+                self._obj[n.object_id] = n
+            else:
+                warn('%s "%s" does not have an object_id' % (n.neurodata_type, n.name)) # warn that a child does not have an object_id, which is unusual
+            if hasattr(n, 'children'):
+                for c in n.children:
+                    stack.append(c)
+        return ret
+
+    @property
+    def sub_containers(self):
+        if self._obj is None:
+            self.get_sub_containers()
+        return self._obj
 
     @property
     def fields(self):

@@ -407,77 +407,31 @@ class ExternalResources(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
-             'default': None},
-            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key.')},
-            {'name': 'attribute', 'type': str,
-             'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'term_set', 'type': TermSet, 'default': None,
-             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
+    @docval({'name': 'root_container',  'type': ExternalResourcesManager,
+             'doc': 'The root container or file containing objects with a TermSet.'}
             )
     def add_ref_term_set(self, **kwargs):
-        file = kwargs['file']
-        container = kwargs['container']
-        attribute = kwargs['attribute']
-        key = kwargs['key']
-        field = kwargs['field']
-        term_set = kwargs['term_set']
+        root_container = kwargs['root_container']
 
-        if term_set is None:
-            if attribute is None:
-                try:
-                    term_set = container.term_set
-                except AttributeError:
-                    msg = "Cannot Find TermSet"
-                    raise AttributeError(msg)
-            else:
-                term_set = container[attribute].term_set
-                if term_set is None:
-                    msg = "Cannot Find TermSet"
-                    raise ValueError(msg)
+        all_children = root_container.child_objects
 
-        if file is None:
-            file = self._get_file_from_container(container=container)
-
-        # if key is provided then add_ref proceeds as normal
-        # use key provided as the term in the term_set for entity look-up
-        if key is not None:
-            data = [key]
-        else:
-            if attribute is None:
-                data_object = container
-            else:
-                data_object = getattr(container, attribute)
-            if isinstance(data_object, (Data, DataIO)):
-                data = data_object.data
-            elif isinstance(data_object, (list, np.ndarray)):
-                data = data_object
-        missing_terms = []
-        for term in data:
+        for child in all_children:
             try:
-                term_info = term_set[term]
-            except ValueError:
-                missing_terms.append(term)
+                term_set = all_children[child].term_set
+                data = all_children[child].data # TODO: This will be expanded to not just support data
+            except AttributeError:
                 continue
-            entity_id = term_info[0]
-            entity_uri = term_info[2]
-            self.add_ref(file=file,
-                         container=container,
-                         attribute=attribute,
-                         key=term,
-                         field=field,
-                         entity_id=entity_id,
-                         entity_uri=entity_uri)
-        if len(missing_terms)>0:
-            return {"Missing Values in TermSet": missing_terms}
-        else:
-            return True
+
+            if term_set is not None:
+                for term in data:
+                    term_info = term_set[term]
+                    entity_id = term_info[0]
+                    entity_uri = term_info[2]
+                    self.add_ref(file=root_container,
+                                 container=all_children[child],
+                                 key=term,
+                                 entity_id=entity_id,
+                                 entity_uri=entity_uri)
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
