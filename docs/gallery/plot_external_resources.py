@@ -348,8 +348,6 @@ col1 = VectorData(
     term_set=terms,
 )
 
-species = DynamicTable(name='species', description='My species', columns=[col1],)
-er.add_ref_term_set(file=file,
-                    container=species,
-                    attribute='Species_Data',
-                   )
+species = DynamicTable(name='species', description='My species', columns=[col1])
+species.parent = file
+er.add_ref_term_set(root_container=file)
