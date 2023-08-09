@@ -29,6 +29,8 @@ H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
+RDCC_NBYTES = 32*2**20  # set raw data chunk cache size = 32 MiB
+
 H5PY_3 = h5py.__version__.startswith('3')
 
 
@@ -745,7 +747,7 @@ class HDF5IO(HDMFIO):
     def open(self):
         if self.__file is None:
             open_flag = self.__mode
-            kwargs = dict()
+            kwargs = dict(rdcc_nbytes=RDCC_NBYTES)
             if self.comm:
                 kwargs.update(driver='mpio', comm=self.comm)
 
