@@ -88,7 +88,7 @@ are rules to how users store information in the interlinked tables.
 # Creating an instance of the HERD class
 # ----------------------------------------------------
 
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_HERD.png'
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import HERD
 from hdmf.common import DynamicTable, VectorData
 from hdmf import Container, HERDManager
