@@ -34,16 +34,16 @@ class HERDManager:
     This class manages whether to set/attach an instance of HERD to the subclass.
     """
 
-    @docval({'name': 'external_resources', 'type': 'HERD',
+    @docval({'name': 'herd', 'type': 'HERD',
              'doc': 'The external resources to be used for the container.'},)
     def link_resources(self, **kwargs):
         """
         Method to attach an instance of HERD in order to auto-add terms/references to data.
         """
-        self._external_resources = kwargs['external_resources']
+        self._herd = kwargs['herd']
 
     def get_linked_resources(self):
-        return self._external_resources if hasattr(self, "_external_resources") else None
+        return self._herd if hasattr(self, "_herd") else None
 
 
 class AbstractContainer(metaclass=ExtenderMeta):

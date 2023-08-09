@@ -953,8 +953,8 @@ class TestHERDIO(TestCase):
         remove_test_file('./er.tsv')
         remove_test_file('./er.zip')
 
-    def child_tsv(self, external_resources):
-        for child in external_resources.children:
+    def child_tsv(self, herd):
+        for child in herd.children:
             df = child.to_dataframe()
             df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
 
@@ -964,7 +964,7 @@ class TestHERDIO(TestCase):
           for file in files:
               zipF.write(file)
 
-    def test_io_read_external_resources(self):
+    def test_io_read_herd(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,
@@ -974,14 +974,14 @@ class TestHERDIO(TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
-        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./') as io:
             container = io.read()
-            self.assertIsInstance(io.external_resources, HERD)
+            self.assertIsInstance(io.herd, HERD)
             self.assertIsInstance(container.get_linked_resources(), HERD)
 
         self.remove_er_files()
 
-    def test_io_read_external_resources_file_warn(self):
+    def test_io_read_herd_file_warn(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,
@@ -991,13 +991,13 @@ class TestHERDIO(TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
-        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='wrong_path') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='wrong_path') as io:
             with self.assertWarns(Warning):
                 io.read()
 
         self.remove_er_files()
 
-    def test_io_read_external_resources_value_warn(self):
+    def test_io_read_herd_value_warn(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=self.foofile,
@@ -1007,20 +1007,20 @@ class TestHERDIO(TestCase):
                    entity_uri='entity1')
         er.to_norm_tsv(path='./')
 
-        self.child_tsv(external_resources=er)
+        self.child_tsv(herd=er)
 
         df = er.entities.to_dataframe()
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
         self.zip_child()
-        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./') as io:
             with self.assertWarns(Warning):
                 io.read()
 
         self.remove_er_files()
 
-    def test_io_write_er(self):
+    def test_io_write_herd(self):
         er = HERD()
         self.foofile.link_resources(er)
 
@@ -1031,12 +1031,12 @@ class TestHERDIO(TestCase):
                    entity_id='entity_id1',
                    entity_uri='entity1')
 
-        with HDF5IO(self.path, manager=self.manager, mode='w', external_resources_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./') as io:
             io.write(self.foofile)
 
-        with HDF5IO(self.path, manager=self.manager, mode='r', external_resources_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./') as io:
             container = io.read()
-            self.assertIsInstance(io.external_resources, HERD)
+            self.assertIsInstance(io.herd, HERD)
             self.assertIsInstance(container.get_linked_resources(), HERD)
 
         self.remove_er_files()
@@ -1050,7 +1050,7 @@ class TestHERDIO(TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        with HDF5IO(self.path, manager=self.manager, mode='w', external_resources_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./') as io:
             with self.assertWarns(Warning):
                 io.write(self.foofile)
 

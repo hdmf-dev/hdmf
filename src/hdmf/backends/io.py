@@ -21,10 +21,10 @@ class HDMFIO(metaclass=ABCMeta):
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {'name': 'external_resources_path', 'type': str,
+            {'name': 'herd_path', 'type': str,
              'doc': 'The path to the HERD', 'default': None},)
     def __init__(self, **kwargs):
-        manager, source, external_resources_path = getargs('manager', 'source', 'external_resources_path', kwargs)
+        manager, source, herd_path = getargs('manager', 'source', 'herd_path', kwargs)
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
@@ -36,8 +36,8 @@ class HDMFIO(metaclass=ABCMeta):
         self.__manager = manager
         self.__built = dict()
         self.__source = source
-        self.external_resources_path = external_resources_path
-        self.external_resources = None
+        self.herd_path = herd_path
+        self.herd = None
         self.open()
 
     @property
@@ -59,14 +59,14 @@ class HDMFIO(metaclass=ABCMeta):
             raise UnsupportedOperation('Cannot build data. There are no values.')
         container = self.__manager.construct(f_builder)
         container.read_io = self
-        if self.external_resources_path is not None:
+        if self.herd_path is not None:
             from hdmf.common import HERD
             try:
-                self.external_resources = HERD.from_norm_tsv(path=self.external_resources_path)
+                self.herd = HERD.from_norm_tsv(path=self.herd_path)
                 if isinstance(container, HERDManager):
-                    container.link_resources(external_resources=self.external_resources)
+                    container.link_resources(herd=self.herd)
             except FileNotFoundError:
-                msg = "File not found at {}. HERD not added.".format(self.external_resources_path)
+                msg = "File not found at {}. HERD not added.".format(self.herd_path)
                 warn(msg)
             except ValueError:
                 msg = "Check HERD separately for alterations. HERD not added."
@@ -81,10 +81,10 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
 
-        if self.external_resources_path is not None:
-            external_resources = container.get_linked_resources()
-            if external_resources is not None:
-                external_resources.to_norm_tsv(path=self.external_resources_path)
+        if self.herd_path is not None:
+            herd = container.get_linked_resources()
+            if herd is not None:
+                herd.to_norm_tsv(path=self.herd_path)
             else:
                 msg = "Could not find linked HERD. Container was still written to IO source."
                 warn(msg)
