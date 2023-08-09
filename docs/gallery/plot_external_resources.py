@@ -1,6 +1,6 @@
 """
-HERD
-=================
+HERD: HDMF External Resources Data Structure
+==============================================
 
 This is a user guide to interacting with the
 :py:class:`~hdmf.common.resources.HERD` class. The HERD type
