@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, Data, HERDManage
+from ..container import Table, Row, Container, AbstractContainer, Data, HERDManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from glob import glob
@@ -408,8 +408,8 @@ class HERD(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
-    @docval({'name': 'root_container',  'type': ExternalResourcesManager,
-             'doc': 'The root container or file containing objects with a TermSet.'}
+    @docval({'name': 'root_container',  'type': HERDManager,
+             'doc': 'The root container or file containing objects with a TermSet.'})
     def add_ref_term_set(self, **kwargs):
         root_container = kwargs['root_container']
 

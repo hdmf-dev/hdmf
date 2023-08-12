@@ -288,7 +288,6 @@ class TestHERD(H5RoundTripMixin, TestCase):
         species.parent = em
 
         er.add_ref_term_set(root_container=em)
-        # breakpoint()
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])

@@ -323,31 +323,3 @@ er.to_norm_tsv(path='./')
 
 er_read = HERD.from_norm_tsv(path='./')
 os.remove('./er.zip')
-
-###############################################################################
-# Using TermSet with HERD
-# ------------------------------------------------
-# :py:class:`~hdmf.term_set.TermSet` allows for an easier way to add references to
-# :py:class:`~hdmf.common.resources.HERD`. These enumerations take place of the
-# entity_id and entity_uri parameters. :py:class:`~hdmf.common.resources.Key` values will have
-# to match the name of the term in the :py:class:`~hdmf.term_set.TermSet`.
-from hdmf.term_set import TermSet
-
-try:
-    dir_path = os.path.dirname(os.path.abspath(__file__))
-    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
-except NameError:
-    dir_path = os.path.dirname(os.path.abspath('.'))
-    yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
-
-terms = TermSet(term_schema_path=yaml_file)
-col1 = VectorData(
-    name='Species_Data',
-    description='...',
-    data=['Homo sapiens', 'Ursus arctos horribilis'],
-    term_set=terms,
-)
-
-species = DynamicTable(name='species', description='My species', columns=[col1])
-species.parent = file
-er.add_ref_term_set(root_container=file)
