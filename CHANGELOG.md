@@ -9,7 +9,6 @@
 - Added the magic `__reduce__` method as well as two private semi-abstract helper methods to enable pickling of the `GenericDataChunkIterator`. @codycbakerphd [#924](https://github.com/hdmf-dev/hdmf/pull/924)
 - Added Dynamic Enumerations and Schemasheets support to `TermSet`. @mavaylon1 [#923](https://github.com/hdmf-dev/hdmf/pull/923)
 
-
 ## HDMF 3.8.1 (July 25, 2023)
 
 ### Bug fixes
