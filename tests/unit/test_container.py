@@ -573,7 +573,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFields.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
-        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
+                    'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
@@ -654,7 +655,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFieldsChild.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
-        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
+                    'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
