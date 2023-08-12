@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, Data, HERDManager
+from ..container import Table, Row, Container, AbstractContainer, HERDManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from glob import glob
