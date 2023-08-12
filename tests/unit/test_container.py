@@ -194,6 +194,16 @@ class TestContainer(TestCase):
         child_obj.set_modified()
         self.assertTrue(child_obj.parent.modified)
 
+    def test_all_children(self):
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        obj = species.all_objects
+        self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
+
     def test_add_child(self):
         """Test that add child creates deprecation warning and also properly sets child's parent and modified
         """
