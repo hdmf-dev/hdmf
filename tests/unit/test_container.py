@@ -2,8 +2,8 @@ import numpy as np
 from uuid import uuid4, UUID
 import os
 
-from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
-from hdmf.common.resources import ExternalResources
+from hdmf.container import AbstractContainer, Container, Data, HERDManager
+from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
@@ -31,10 +31,10 @@ class ContainerWithChild(Container):
         self.field1 = kwargs['field1']
 
 
-class TestExternalResourcesManager(TestCase):
+class TestHERDManager(TestCase):
     def test_link_and_get_resources(self):
-        em = ExternalResourcesManager()
-        er = ExternalResources()
+        em = HERDManager()
+        er = HERD()
 
         em.link_resources(er)
         er_get = em.get_linked_resources()
