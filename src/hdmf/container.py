@@ -302,6 +302,15 @@ class AbstractContainer(metaclass=ExtenderMeta):
             p = p.parent
         return None
 
+    @docval()
+    def get_ancestors(self, **kwargs):
+        p = self.parent
+        ret = []
+        while p is not None:
+            ret.append(p)
+            p = p.parent
+        return tuple(ret)
+
     @property
     def fields(self):
         '''
@@ -414,12 +423,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
             for child in self.children:
-                if type(child).__name__ == "DynamicTableRegion":
-                    if child.table.parent is None:
-                        msg = "The table for this DynamicTableRegion has not been added to the parent."
-                        warn(msg)
-                    else:
-                        continue
+                # used by hdmf.common.table.DynamicTableRegion to check for orphaned tables
+                child._validate_on_set_parent()
 
     def _remove_child(self, child):
         """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
@@ -444,6 +449,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
             self.parent._remove_child(self)
         else:
             raise ValueError("Cannot reset parent when parent is not an AbstractContainer: %s" % repr(self.parent))
+
+    def _validate_on_set_parent(self):
+        """Validate this Container after setting the parent.
+
+        This method is called by the parent setter. It can be overridden in subclasses to perform additional
+        validation. The default implementation does nothing.
+        """
+        pass
 
 
 class Container(AbstractContainer):

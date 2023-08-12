@@ -382,6 +382,18 @@ class TestContainer(TestCase):
         obj.reset_parent()
         self.assertIsNone(obj.parent)
 
+    def test_get_ancestors(self):
+        """Test that get_ancestors returns the correct ancestors.
+        """
+        grandparent_obj = Container('obj1')
+        parent_obj = Container('obj2')
+        child_obj = Container('obj3')
+        parent_obj.parent = grandparent_obj
+        child_obj.parent = parent_obj
+        self.assertTupleEqual(grandparent_obj.get_ancestors(), tuple())
+        self.assertTupleEqual(parent_obj.get_ancestors(), (grandparent_obj, ))
+        self.assertTupleEqual(child_obj.get_ancestors(), (parent_obj, grandparent_obj))
+
 
 class TestHTMLRepr(TestCase):
 
