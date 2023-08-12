@@ -316,13 +316,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
         ret = list()
         self.__obj = LabelledDict(label='all_objects', key_attr='object_id')
         while len(stack): # search until there's nothing in the list
-            n = stack.pop() # look at last container in list. This will remove from stack
-            ret.append(n) # add to ret
-            if n.object_id is not None: # look at only containers
+            n = stack.pop()
+            ret.append(n)
+            if n.object_id is not None:
                 self.__obj[n.object_id] = n
             else: # pragma: no cover
                 # warn that a child does not have an object_id, which is unusual
-                warn('%s "%s" does not have an object_id' % (n.neurodata_type, n.name)) # type(n).__class__
+                warn('%s "%s" does not have an object_id' % (type(n).__class__, n.name))
             if hasattr(n, 'children'):
                 for c in n.children:
                     stack.append(c)
