@@ -230,7 +230,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         self.__name = name
         self.__field_values = dict()
         self.__read_io = None
-        self.__sub_containers = None
+        self.__obj = None
 
     @property
     def read_io(self):
@@ -303,9 +303,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
             p = p.parent
         return None
 
-    def get_sub_containers(self):
+    def all_children(self):
         """
-        This method will search through all sub_containers and their children.
+        This method will search through all children within the object and their children.
 
         If the object has an object_id, the object will be added to "ret" to be returned.
         If that object has children, they will be added to the "stack" in order to be:
@@ -314,12 +314,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         stack = [self] # list of containers, including self, to add and later parse for children
         ret = list()
-        self.__sub_containers = LabelledDict(label='all_objects', key_attr='object_id')
+        self.__obj = LabelledDict(label='all_objects', key_attr='object_id')
         while len(stack): # search until there's nothing in the list
             n = stack.pop() # look at last container in list. This will remove from stack
             ret.append(n) # add to ret
             if n.object_id is not None: # look at only containers
-                self.__sub_containers[n.object_id] = n
+                self.__obj[n.object_id] = n
             else: # pragma: no cover
                 # warn that a child does not have an object_id, which is unusual
                 warn('%s "%s" does not have an object_id' % (n.neurodata_type, n.name)) # type(n).__class__
@@ -329,10 +329,10 @@ class AbstractContainer(metaclass=ExtenderMeta):
         return ret
 
     @property
-    def sub_containers(self):
-        if self.__sub_containers is None:
-            self.get_sub_containers()
-        return self.__sub_containers
+    def all_objects(self):
+        if self.__obj is None:
+            self.all_children()
+        return self.__obj
 
     @property
     def fields(self):

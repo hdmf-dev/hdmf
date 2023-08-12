@@ -413,7 +413,7 @@ class HERD(Container):
     def add_ref_term_set(self, **kwargs):
         root_container = kwargs['root_container']
 
-        all_children = root_container.sub_containers
+        all_children = root_container.all_objects
 
         for child in all_children:
             try:
