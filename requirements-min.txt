@@ -7,8 +7,8 @@ pandas==1.0.5  # when this is changed to >=1.5.0, see TODO items referenced in #
 ruamel.yaml==0.16
 scipy==1.4
 linkml-runtime==1.5.5; python_version >= "3.9"
-schemasheets>=0.1.23; python_version >= "3.9"
-oaklib>=0.5.12; python_version >= "3.9"
-pyyaml>=6.0.1; python_version >= "3.9"
+schemasheets==0.1.23; python_version >= "3.9"
+oaklib==0.5.12; python_version >= "3.9"
+pyyaml==6.0.1; python_version >= "3.9"
 tqdm==4.41.0
 zarr==2.12.0
