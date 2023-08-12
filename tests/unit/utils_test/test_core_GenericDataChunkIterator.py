@@ -1,12 +1,14 @@
 import unittest
+import pickle
 import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Callable
 from sys import version_info
 
 import h5py
+from numpy.testing import assert_array_equal
 
 from hdmf.data_utils import GenericDataChunkIterator
 from hdmf.testing import TestCase
@@ -16,6 +18,30 @@ try:
     TQDM_INSTALLED = True
 except ImportError:
     TQDM_INSTALLED = False
+
+
+class TestPickleableNumpyArrayDataChunkIterator(GenericDataChunkIterator):
+    def __init__(self, array: np.ndarray, **kwargs):
+        self.array = array
+        self._kwargs = kwargs
+        super().__init__(**kwargs)
+
+    def _get_data(self, selection) -> np.ndarray:
+        return self.array[selection]
+
+    def _get_maxshape(self) -> Tuple[int, ...]:
+        return self.array.shape
+
+    def _get_dtype(self) -> np.dtype:
+        return self.array.dtype
+
+    def _to_dict(self) -> dict:
+        return dict(array=pickle.dumps(self.array), kwargs=self._kwargs)
+
+    @staticmethod
+    def _from_dict(dictionary: dict) -> Callable:
+        array = pickle.loads(dictionary["array"])
+        return TestPickleableNumpyArrayDataChunkIterator(array=array, **dictionary["kwargs"])
 
 
 class GenericDataChunkIteratorTests(TestCase):
@@ -204,6 +230,29 @@ class GenericDataChunkIteratorTests(TestCase):
                 progress_bar_options=dict(total=5),
             )
 
+    def test_private_to_dict_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        ):
+            iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
+            _ = iterator._to_dict()
+
+    def test_private_from_dict_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        ):
+            _ = self.TestNumpyArrayDataChunkIterator._from_dict(dict())
+
+    def test_direct_pickle_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        ):
+            iterator = self.TestNumpyArrayDataChunkIterator(array=self.test_array)
+            _ = pickle.dumps(iterator)
+
     def test_maxshape_attribute_contains_int_type(self):
         """Motivated by issues described in https://github.com/hdmf-dev/hdmf/pull/780 & 781 regarding return types."""
         self.check_all_of_iterable_is_python_int(
@@ -277,7 +326,7 @@ class GenericDataChunkIteratorTests(TestCase):
 
     def test_buffer_shape_option(self):
         expected_buffer_shape = (1580, 316)
-        iterator_options = dict(buffer_shape=expected_buffer_shape)
+        iterator_options = dict(buffer_shape=expected_buffer_shape, chunk_mb=1.0)
         self.check_first_data_chunk_call(
             expected_selection=tuple([slice(0, buffer_shape_axis) for buffer_shape_axis in expected_buffer_shape]),
             iterator_options=iterator_options,
@@ -285,9 +334,9 @@ class GenericDataChunkIteratorTests(TestCase):
         self.check_direct_hdf5_write(iterator_options=iterator_options)
 
     def test_buffer_gb_option(self):
-        # buffer is smaller than default chunk; should collapse to chunk shape
+        # buffer is smaller than chunk; should collapse to chunk shape
         resulting_buffer_shape = (1580, 316)
-        iterator_options = dict(buffer_gb=0.0005)
+        iterator_options = dict(buffer_gb=0.0005, chunk_mb=1.0)
         self.check_first_data_chunk_call(
             expected_selection=tuple(
                 [
@@ -334,14 +383,14 @@ class GenericDataChunkIteratorTests(TestCase):
         """Test to evoke while condition of default shaping method."""
         expected_chunk_shape = (2, 79, 79)
         special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(2, 2000, 2000), dtype="int16")
-        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array, chunk_mb=1.0)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
     def test_chunk_mb_option_while_condition_unit_maxshape_axis(self):
         """Test to evoke while condition of default shaping method."""
         expected_chunk_shape = (1, 79, 79)
         special_array = np.random.randint(low=-(2 ** 15), high=2 ** 15 - 1, size=(1, 2000, 2000), dtype="int16")
-        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array)
+        iterator = self.TestNumpyArrayDataChunkIterator(array=special_array, chunk_mb=1.0)
         self.assertEqual(iterator.chunk_shape, expected_chunk_shape)
 
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
@@ -377,3 +426,12 @@ class GenericDataChunkIteratorTests(TestCase):
                 display_progress=True,
             )
             self.assertFalse(dci.display_progress)
+
+    def test_pickle(self):
+        pre_dump_iterator = TestPickleableNumpyArrayDataChunkIterator(array=self.test_array)
+        post_dump_iterator = pickle.loads(pickle.dumps(pre_dump_iterator))
+
+        assert isinstance(post_dump_iterator, TestPickleableNumpyArrayDataChunkIterator)
+        assert post_dump_iterator.chunk_shape == pre_dump_iterator.chunk_shape
+        assert post_dump_iterator.buffer_shape == pre_dump_iterator.buffer_shape
+        assert_array_equal(post_dump_iterator.array, pre_dump_iterator.array)
