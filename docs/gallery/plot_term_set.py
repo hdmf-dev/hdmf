@@ -65,16 +65,6 @@ except ImportError:
     sys.exit(0)
 from hdmf.term_set import TermSet
 
-# try:
-#     dir_path = os.path.dirname(os.path.abspath(__file__))
-#     yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
-#     schemasheets_folder = os.path.join(dir_path, 'schemasheets')
-#     dynamic_schema_path = os.path.join(dir_path, 'example_dynamic_term_set.yaml')
-# except NameError:
-# dir_path = os.path.dirname(os.path.abspath('.'))
-# yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
-# schemasheets_folder = os.path.join(dir_path, 'gallery/schemasheets')
-# dynamic_schema_path = os.path.join(dir_path, 'gallery/example_dynamic_term_set.yaml')
 
 # Use Schemasheets to create TermSet schema
 # -----------------------------------------
