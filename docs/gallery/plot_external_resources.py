@@ -65,9 +65,9 @@ are rules to how users store information in the interlinked tables.
    objects.
 4. Multiple :py:class:`~hdmf.common.resources.Object` objects can use the same :py:class:`~hdmf.common.resources.Key`.
 5. Do not use the private methods to add into the :py:class:`~hdmf.common.resources.KeyTable`,
-   :py:class:`~hdmf.common.resources.ResourceTable`, :py:class:`~hdmf.common.resources.EntityTable`,
-   :py:class:`~hdmf.common.resources.ObjectTable`, :py:class:`~hdmf.common.resources.ObjectKeyTable`
-   individually.
+   :py:class:`~hdmf.common.resources.FileTable`, :py:class:`~hdmf.common.resources.EntityTable`,
+   :py:class:`~hdmf.common.resources.ObjectTable`, :py:class:`~hdmf.common.resources.ObjectKeyTable`,
+   :py:class:`~hdmf.common.resources.EntityKeyTable` individually.
 6. URIs are optional, but highly recommended. If not known, an empty string may be used.
 7. An entity ID should be the unique string identifying the entity in the given resource.
    This may or may not include a string representing the resource and a colon.
