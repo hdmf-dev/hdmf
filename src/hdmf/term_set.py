@@ -40,11 +40,13 @@ class TermSet():
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
-        self.sources = self.view.schema.prefixes
 
         if dynamic:
+            # reset view to now include the dynamically populated term_set
             self.expanded_term_set_path = self.enum_expander()
             self.view = SchemaView(self.expanded_term_set_path)
+
+        self.sources = self.view.schema.prefixes
 
     def __repr__(self):
         re = "class: %s\n" % str(self.__class__)
