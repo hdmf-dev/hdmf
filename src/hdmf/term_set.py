@@ -14,7 +14,7 @@ class TermSet():
     :ivar sources: The prefixes for the ontologies used in the TermSet
     :ivar view: SchemaView of the term set schema
     :ivar schemasheets_folder: The path to the folder containing the LinkML TSV files
-    :ivar self.expanded_term_set_path: The path to the schema with the expanded enumerations
+    :ivar expanded_term_set_path: The path to the schema with the expanded enumerations
     """
     def __init__(self,
                  term_schema_path: str=None,
