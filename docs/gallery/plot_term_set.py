@@ -65,16 +65,16 @@ except ImportError:
     sys.exit(0)
 from hdmf.term_set import TermSet
 
-try:
-    dir_path = os.path.dirname(os.path.abspath(__file__))
-    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
-    schemasheets_folder = os.path.join(dir_path, 'schemasheets')
-    dynamic_schema_path = os.path.join(dir_path, 'example_dynamic_term_set.yaml')
-except NameError:
-    dir_path = os.path.dirname(os.path.abspath('.'))
-    yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
-    schemasheets_folder = os.path.join(dir_path, 'gallery/schemasheets')
-    dynamic_schema_path = os.path.join(dir_path, 'gallery/example_dynamic_term_set.yaml')
+# try:
+#     dir_path = os.path.dirname(os.path.abspath(__file__))
+#     yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+#     schemasheets_folder = os.path.join(dir_path, 'schemasheets')
+#     dynamic_schema_path = os.path.join(dir_path, 'example_dynamic_term_set.yaml')
+# except NameError:
+# dir_path = os.path.dirname(os.path.abspath('.'))
+# yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
+# schemasheets_folder = os.path.join(dir_path, 'gallery/schemasheets')
+# dynamic_schema_path = os.path.join(dir_path, 'gallery/example_dynamic_term_set.yaml')
 
 # Use Schemasheets to create TermSet schema
 # -----------------------------------------
@@ -83,7 +83,7 @@ except NameError:
 # spreadsheet, the spreadsheet needs to be saved as individual tsv files, i.e., one tsv file per spreadsheet tab. Please
 # refer to the Schemasheets tutorial link above for more details on the required syntax structure within the sheets.
 # Once the tsv files are in a folder, the user simply provides the path to the folder with ``schemasheets_folder``.
-termset = TermSet(schemasheets_folder=schemasheets_folder)
+termset = TermSet(schemasheets_folder='docs/gallery/schemasheets')
 
 # Use Dynamic Enumerations to populate TermSet
 # --------------------------------------------
@@ -93,7 +93,7 @@ termset = TermSet(schemasheets_folder=schemasheets_folder)
 # Please refer to the LinkMl Dynamic Enumeration tutorial for more information on these sources and how to setup Dynamic
 # Enumerations within the schema. Once the schema is ready, the user provides a path to the schema and set
 # ``dynamic=True``. A new schema, with the populated permissible values, will be created in the same directory.
-termset = TermSet(term_schema_path=dynamic_schema_path, dynamic=True)
+termset = TermSet(term_schema_path='docs/gallery/example_dynamic_term_set.yaml', dynamic=True)
 
 ######################################################
 # Viewing TermSet values
@@ -102,7 +102,7 @@ termset = TermSet(term_schema_path=dynamic_schema_path, dynamic=True)
 # method will return a dictionary of all the terms and the corresponding information for each term.
 # Users can index specific terms from the :py:class:`~hdmf.term_set.TermSet`. LinkML runtime will need to be installed.
 # You can do so by first running ``pip install linkml-runtime``.
-terms = TermSet(term_schema_path=yaml_file)
+terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
 print(terms.view_set)
 
 # Retrieve a specific term
