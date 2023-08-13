@@ -56,6 +56,7 @@ For more information how to properly format the schema to support LinkML Dynamic
 refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
 from hdmf.common import DynamicTable, VectorData
+import os
 import sys
 
 try:
@@ -64,7 +65,12 @@ except ImportError:
     sys.exit(0)
 from hdmf.term_set import TermSet
 
-
+try:
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    sheets_yaml_file = os.path.join(dir_path, 'schemasheets')
+except NameError:
+    dir_path = os.path.dirname(os.path.abspath('.'))
+    sheets_yaml_file = os.path.join(dir_path, 'schemasheets')
 # Use Schemasheets to create TermSet schema
 # -----------------------------------------
 # The :py:class:`~hdmf.term_set.TermSet` class builds off of LinkML Schemasheets, allowing users to convert between
@@ -72,7 +78,7 @@ from hdmf.term_set import TermSet
 # spreadsheet, the spreadsheet needs to be saved as individual tsv files, i.e., one tsv file per spreadsheet tab. Please
 # refer to the Schemasheets tutorial link above for more details on the required syntax structure within the sheets.
 # Once the tsv files are in a folder, the user simply provides the path to the folder with ``schemasheets_folder``.
-termset = TermSet(schemasheets_folder='docs/gallery/schemasheets')
+termset = TermSet(schemasheets_folder=sheets_yaml_file)
 
 # Use Dynamic Enumerations to populate TermSet
 # --------------------------------------------
