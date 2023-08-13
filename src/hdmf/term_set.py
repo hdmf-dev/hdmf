@@ -121,9 +121,9 @@ class TermSet():
             import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
-        except ImportError:
-            msg="Install schemasheets."
-            raise ValueError(msg)
+        except ImportError:   # pragma: no cover
+            msg="Install schemasheets."   # pragma: no cover
+            raise ValueError(msg)   # pragma: no cover
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
