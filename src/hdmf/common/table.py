@@ -1421,6 +1421,26 @@ class DynamicTableRegion(VectorData):
                                                               id(self.table))
         return template
 
+    def _validate_on_set_parent(self):
+        # when this DynamicTableRegion is added to a parent, check:
+        # 1) if the table was read from a written file, no need to validate further
+        p = self.table
+        while p is not None:
+            if p.container_source is not None:
+                return super()._validate_on_set_parent()
+            p = p.parent
+
+        # 2) if none of the ancestors are ancestors of the linked-to table, then when this is written, the table
+        # field will point to a table that is not in the file
+        table_ancestor_ids = [id(x) for x in self.table.get_ancestors()]
+        self_ancestor_ids = [id(x) for x in self.get_ancestors()]
+
+        if set(table_ancestor_ids).isdisjoint(self_ancestor_ids):
+            msg = (f"The linked table for DynamicTableRegion '{self.name}' does not share an ancestor with the "
+                   "DynamicTableRegion.")
+            warn(msg)
+        return super()._validate_on_set_parent()
+
 
 def _uint_precision(elements):
     """ Calculate the uint precision needed to encode a set of elements """
