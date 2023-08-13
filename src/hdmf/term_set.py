@@ -1,5 +1,8 @@
+import glob
+import os
 from collections import namedtuple
 from .utils import docval
+import warnings
 
 
 class TermSet():
@@ -7,15 +10,21 @@ class TermSet():
     Class for implementing term sets from ontologies and other resources used to define the
     meaning and/or identify of terms.
 
-    :ivar term_schema_path: The LinkML YAML enumeration schema
+    :ivar term_schema_path: The path to LinkML YAML enumeration schema
     :ivar sources: The prefixes for the ontologies used in the TermSet
     :ivar view: SchemaView of the term set schema
+    :ivar schemasheets_folder: The path to the folder containing the LinkML TSV files
+    :ivar expanded_term_set_path: The path to the schema with the expanded enumerations
     """
     def __init__(self,
-                 term_schema_path: str,
+                 term_schema_path: str=None,
+                 schemasheets_folder: str=None,
+                 dynamic: bool=False
                  ):
         """
         :param term_schema_path: The path to LinkML YAML enumeration schema
+        :param schemasheets_folder: The path to the folder containing the LinkML TSV files
+        :param dynamic: Boolean parameter denoting whether the schema uses Dynamic Enumerations
 
         """
         try:
@@ -23,8 +32,25 @@ class TermSet():
         except ImportError:
             msg = "Install linkml_runtime"
             raise ValueError(msg)
+
         self.term_schema_path = term_schema_path
-        self.view = SchemaView(self.term_schema_path)
+        self.schemasheets_folder = schemasheets_folder
+
+        if self.schemasheets_folder is not None:
+            if self.term_schema_path is not None:
+                msg = "Cannot have both a path to a Schemasheets folder and a TermSet schema."
+                raise ValueError(msg)
+            else:
+                self.term_schema_path = self.__schemasheets_convert()
+                self.view = SchemaView(self.term_schema_path)
+        else:
+            self.view = SchemaView(self.term_schema_path)
+        self.expanded_term_set_path = None
+        if dynamic:
+            # reset view to now include the dynamically populated term_set
+            self.expanded_term_set_path = self.__enum_expander()
+            self.view = SchemaView(self.expanded_term_set_path)
+
         self.sources = self.view.schema.prefixes
 
     def __repr__(self):
@@ -94,3 +120,51 @@ class TermSet():
         except KeyError:
             msg = 'Term not in schema'
             raise ValueError(msg)
+
+    def __schemasheets_convert(self):
+        """
+        Method that will generate a schema from a directory of TSV files using SchemaMaker.
+
+        This method returns a path to the new schema to be viewed via SchemaView.
+        """
+        try:
+            import yaml
+            from linkml_runtime.utils.schema_as_dict import schema_as_dict
+            from schemasheets.schemamaker import SchemaMaker
+        except ImportError:   # pragma: no cover
+            msg="Install schemasheets."   # pragma: no cover
+            raise ValueError(msg)   # pragma: no cover
+        schema_maker = SchemaMaker()
+        tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
+        schema = schema_maker.create_schema(tsv_file_paths)
+        schema_dict = schema_as_dict(schema)
+        schemasheet_schema_path = os.path.join(self.schemasheets_folder, f"{schema_dict['name']}.yaml")
+
+        with open(schemasheet_schema_path, "w") as f:
+            yaml.dump(schema_dict, f)
+
+        return schemasheet_schema_path
+
+    def __enum_expander(self):
+        """
+        Method that will generate a new schema with the enumerations from the LinkML source.
+        This new schema will be stored in the same directory as the original schema with
+        the Dynamic Enumerations.
+
+        This method returns a path to the new schema to be viewed via SchemaView.
+        """
+        try:
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
+        except ImportError:   # pragma: no cover
+            msg = 'Install oaklib.'  # pragma: no cover
+            raise ValueError(msg)  # pragma: no cover
+        expander = ValueSetExpander()
+        # TODO: linkml should raise a warning if the schema does not have dynamic enums
+        enum = list(self.view.all_enums())
+        schema_dir = os.path.dirname(self.term_schema_path)
+        file_name = os.path.basename(self.term_schema_path)
+        output_path = os.path.join(schema_dir, f"expanded_{file_name}")
+        expander.expand_in_place(self.term_schema_path, enum, output_path)
+
+        return output_path
