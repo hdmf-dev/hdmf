@@ -49,11 +49,13 @@ For a clear example, please view the
 `example_term_set.yaml <https://github.com/hdmf-dev/hdmf/blob/dev/docs/gallery/example_term_set.yaml>`_
 for this tutorial, which provides a concise example of how a term set schema looks.
 
-For more information on how to properly format the Google spreadsheet to be compatible with LinkMl, please
-refer to https://linkml.io/schemasheets/#examples.
+.. note::
+    For more information on how to properly format the Google spreadsheet to be compatible with LinkMl, please
+    refer to https://linkml.io/schemasheets/#examples.
 
-For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
-refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
+.. note::
+    For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
+    refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
 from hdmf.common import DynamicTable, VectorData
 import os
