@@ -40,7 +40,7 @@ class TermSet():
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
-
+        self.expanded_term_set_path = None
         if dynamic:
             # reset view to now include the dynamically populated term_set
             self.expanded_term_set_path = self.enum_expander()
