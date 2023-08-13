@@ -50,6 +50,10 @@ For a clear example, please view the
 for this tutorial, which provides a concise example of how a term set schema looks.
 
 .. note::
+    For more information regarding LinkML Enumerations, please refer to
+    https://linkml.io/linkml/intro/tutorial06.html.
+
+.. note::
     For more information on how to properly format the Google spreadsheet to be compatible with LinkMl, please
     refer to https://linkml.io/schemasheets/#examples.
 
