@@ -70,7 +70,7 @@ try:
     sheets_yaml_file = os.path.join(dir_path, 'schemasheets')
 except NameError:
     dir_path = os.path.dirname(os.path.abspath('.'))
-    sheets_yaml_file = os.path.join(dir_path, 'schemasheets')
+    sheets_yaml_file = os.path.join(dir_path, 'gallery/schemasheets')
 # Use Schemasheets to create TermSet schema
 # -----------------------------------------
 # The :py:class:`~hdmf.term_set.TermSet` class builds off of LinkML Schemasheets, allowing users to convert between
