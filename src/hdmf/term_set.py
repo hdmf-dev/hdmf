@@ -139,9 +139,9 @@ class TermSet():
         try:
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
-        except ImportError:
-            msg = 'Install oaklib.'
-            raise ValueError(msg)
+        except ImportError:   # pragma: no cover
+            msg = 'Install oaklib.'  # pragma: no cover
+            raise ValueError(msg)  # pragma: no cover
         expander = ValueSetExpander()
         # TODO: linkml should raise a warning if the schema does not have dynamic enums
         enum = list(self.view.all_enums())
