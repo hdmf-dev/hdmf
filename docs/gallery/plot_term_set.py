@@ -56,7 +56,6 @@ For more information how to properly format the schema to support LinkML Dynamic
 refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
 from hdmf.common import DynamicTable, VectorData
-import os
 import sys
 
 try:
