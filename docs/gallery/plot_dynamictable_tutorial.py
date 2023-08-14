@@ -5,31 +5,29 @@
 DynamicTable Tutorial
 =====================
 
-This is a tutorial for interacting with ``DynamicTable`` objects. This tutorial
+This is a tutorial for interacting with :py:class:`~hdmf.common.table.DynamicTable` objects. This tutorial
 is written for beginners and does not describe the full capabilities and nuances
-of ``DynamicTable`` functionality. Please see the :ref:`dynamictable-howtoguide`
+of :py:class:`~hdmf.common.table.DynamicTable` functionality. Please see the :ref:`dynamictable-howtoguide`
 for more complete documentation. This tutorial is designed to give
-you basic familiarity with how ``DynamicTable`` works and help you get started
-with creating a ``DynamicTable``, adding columns and rows to a ``DynamicTable``,
-and accessing data in a ``DynamicTable``.
+you basic familiarity with how :py:class:`~hdmf.common.table.DynamicTable` works and help you get started
+with creating a :py:class:`~hdmf.common.table.DynamicTable`, adding columns and rows to a :py:class:`~hdmf.common.table.DynamicTable`,
+and accessing data in a :py:class:`~hdmf.common.table.DynamicTable`.
+
+Introduction
+------------
+The :py:class:`~hdmf.common.table.DynamicTable` class represents a column-based table
+to which you can add custom columns. It consists of a name, a description, a list of
+row IDs, and a list of columns.
+
+Constructing a table
+--------------------
+To create a :py:class:`~hdmf.common.table.DynamicTable`, call the constructor for
+:py:class:`~hdmf.common.table.DynamicTable` with a string ``name`` and string
+``description``.
+
+sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_dynamictable.png'
 
 """
-
-###############################################################################
-# Introduction
-# ------------
-# The :py:class:`~hdmf.common.table.DynamicTable` class represents a column-based table
-# to which you can add custom columns. It consists of a name, a description, a list of
-# row IDs, and a list of columns.
-
-###############################################################################
-# Constructing a table
-# --------------------
-# To create a :py:class:`~hdmf.common.table.DynamicTable`, call the constructor for
-# :py:class:`~hdmf.common.table.DynamicTable` with a string ``name`` and string
-# ``description``.
-
-# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_dynamictable.png'
 from hdmf.common import DynamicTable
 
 users_table = DynamicTable(
@@ -245,4 +243,4 @@ addresses_df.iloc[address_indices]  # use .iloc because these are row indices no
 # * accessing data and properties from the column objects directly
 # * writing and reading tables to a file
 # * writing expandable tables
-# * defining subclasses of ``DynamicTable``
+# * defining subclasses of :py:class:`~hdmf.common.table.DynamicTable`
