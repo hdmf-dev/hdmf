@@ -611,7 +611,7 @@ class H5DataIO(DataIO):
             if filter in h5py_filters.encode:
                 return True
             elif allow_plugin_filters is True:
-                if type(filter) == int:
+                if isinstance(filter, int):
                     if h5py_filters.h5z.filter_avail(filter):
                         filter_info = h5py_filters.h5z.get_filter_info(filter)
                         if filter_info == (h5py_filters.h5z.FILTER_CONFIG_DECODE_ENABLED +

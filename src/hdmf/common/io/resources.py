@@ -1,10 +1,10 @@
 from .. import register_map
-from ..resources import ExternalResources, KeyTable, FileTable, ObjectTable, ObjectKeyTable, EntityTable, EntityKeyTable
+from ..resources import HERD, KeyTable, FileTable, ObjectTable, ObjectKeyTable, EntityTable, EntityKeyTable
 from ...build import ObjectMapper
 
 
-@register_map(ExternalResources)
-class ExternalResourcesMap(ObjectMapper):
+@register_map(HERD)
+class HERDMap(ObjectMapper):
 
     def construct_helper(self, name, parent_builder, table_cls, manager):
         """Create a new instance of table_cls with data from parent_builder[name].

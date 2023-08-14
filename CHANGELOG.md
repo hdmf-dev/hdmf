@@ -1,5 +1,14 @@
 # HDMF Changelog
 
+
+## HDMF 3.9.0 (Upcoming)
+
+### New features and minor improvements
+- Increase raw data chunk cache size for reading HDF5 files from 1 MiB to 32 MiB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
+- Increase default chunk size for `GenericDataChunkIterator` from 1 MB to 10 MB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
+- Added the magic `__reduce__` method as well as two private semi-abstract helper methods to enable pickling of the `GenericDataChunkIterator`. @codycbakerphd [#924](https://github.com/hdmf-dev/hdmf/pull/924)
+- Added Dynamic Enumerations and Schemasheets support to `TermSet`. @mavaylon1 [#923](https://github.com/hdmf-dev/hdmf/pull/923)
+
 ## HDMF 3.8.1 (July 25, 2023)
 
 ### Bug fixes

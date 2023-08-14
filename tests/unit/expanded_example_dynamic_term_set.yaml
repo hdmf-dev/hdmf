@@ -1,0 +1,2073 @@
+id: https://w3id.org/linkml/examples/nwb_dynamic_enums
+title: dynamic enums example
+name: nwb_dynamic_enums
+description: this schema demonstrates the use of dynamic enums
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  CL: http://purl.obolibrary.org/obo/CL_
+
+imports:
+- linkml:types
+
+default_range: string
+
+# ======================== #
+#         CLASSES          #
+# ======================== #
+classes:
+  BrainSample:
+    slots:
+    - cell_type
+
+# ======================== #
+#          SLOTS           #
+# ======================== #
+slots:
+  cell_type:
+    required: true
+    range: NeuronTypeEnum
+
+# ======================== #
+#          ENUMS           #
+# ======================== #
+enums:
+  NeuronTypeEnum:
+    reachable_from:
+      source_ontology: obo:cl
+      source_nodes:
+      - CL:0000540    ## neuron
+      include_self: false
+      relationship_types:
+      - rdfs:subClassOf
+    permissible_values:
+      CL:0000705:
+        text: CL:0000705
+        description: R6 photoreceptor cell
+        meaning: CL:0000705
+      CL:4023108:
+        text: CL:4023108
+        description: oxytocin-secreting magnocellular cell
+        meaning: CL:4023108
+      CL:0004240:
+        text: CL:0004240
+        description: WF1 amacrine cell
+        meaning: CL:0004240
+      CL:0004242:
+        text: CL:0004242
+        description: WF3-1 amacrine cell
+        meaning: CL:0004242
+      CL:1000380:
+        text: CL:1000380
+        description: type 1 vestibular sensory cell of epithelium of macula of saccule
+          of membranous labyrinth
+        meaning: CL:1000380
+      CL:4023128:
+        text: CL:4023128
+        description: rostral periventricular region of the third ventricle KNDy neuron
+        meaning: CL:4023128
+      CL:0003020:
+        text: CL:0003020
+        description: retinal ganglion cell C outer
+        meaning: CL:0003020
+      CL:4023094:
+        text: CL:4023094
+        description: tufted pyramidal neuron
+        meaning: CL:4023094
+      CL:4023057:
+        text: CL:4023057
+        description: cerebellar inhibitory GABAergic interneuron
+        meaning: CL:4023057
+      CL:2000049:
+        text: CL:2000049
+        description: primary motor cortex pyramidal cell
+        meaning: CL:2000049
+      CL:0000119:
+        text: CL:0000119
+        description: cerebellar Golgi cell
+        meaning: CL:0000119
+      CL:0004227:
+        text: CL:0004227
+        description: flat bistratified amacrine cell
+        meaning: CL:0004227
+      CL:1000606:
+        text: CL:1000606
+        description: kidney nerve cell
+        meaning: CL:1000606
+      CL:1001582:
+        text: CL:1001582
+        description: lateral ventricle neuron
+        meaning: CL:1001582
+      CL:0000165:
+        text: CL:0000165
+        description: neuroendocrine cell
+        meaning: CL:0000165
+      CL:0000555:
+        text: CL:0000555
+        description: neuronal brush cell
+        meaning: CL:0000555
+      CL:0004231:
+        text: CL:0004231
+        description: recurving diffuse amacrine cell
+        meaning: CL:0004231
+      CL:0000687:
+        text: CL:0000687
+        description: R1 photoreceptor cell
+        meaning: CL:0000687
+      CL:0001031:
+        text: CL:0001031
+        description: cerebellar granule cell
+        meaning: CL:0001031
+      CL:0003026:
+        text: CL:0003026
+        description: retinal ganglion cell D1
+        meaning: CL:0003026
+      CL:4033035:
+        text: CL:4033035
+        description: giant bipolar cell
+        meaning: CL:4033035
+      CL:4023009:
+        text: CL:4023009
+        description: extratelencephalic-projecting glutamatergic cortical neuron
+        meaning: CL:4023009
+      CL:0010022:
+        text: CL:0010022
+        description: cardiac neuron
+        meaning: CL:0010022
+      CL:0000287:
+        text: CL:0000287
+        description: eye photoreceptor cell
+        meaning: CL:0000287
+      CL:0000488:
+        text: CL:0000488
+        description: visible light photoreceptor cell
+        meaning: CL:0000488
+      CL:0003046:
+        text: CL:0003046
+        description: M13 retinal ganglion cell
+        meaning: CL:0003046
+      CL:4023169:
+        text: CL:4023169
+        description: trigeminal neuron
+        meaning: CL:4023169
+      CL:0005007:
+        text: CL:0005007
+        description: Kolmer-Agduhr neuron
+        meaning: CL:0005007
+      CL:0005008:
+        text: CL:0005008
+        description: macular hair cell
+        meaning: CL:0005008
+      CL:4023027:
+        text: CL:4023027
+        description: L5 T-Martinotti sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023027
+      CL:4033032:
+        text: CL:4033032
+        description: diffuse bipolar 6 cell
+        meaning: CL:4033032
+      CL:0008021:
+        text: CL:0008021
+        description: anterior lateral line ganglion neuron
+        meaning: CL:0008021
+      CL:4023028:
+        text: CL:4023028
+        description: L5 non-Martinotti sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023028
+      CL:4023063:
+        text: CL:4023063
+        description: medial ganglionic eminence derived interneuron
+        meaning: CL:4023063
+      CL:4023032:
+        text: CL:4023032
+        description: ON retinal ganglion cell
+        meaning: CL:4023032
+      CL:0003039:
+        text: CL:0003039
+        description: M8 retinal ganglion cell
+        meaning: CL:0003039
+      CL:0000757:
+        text: CL:0000757
+        description: type 5 cone bipolar cell (sensu Mus)
+        meaning: CL:0000757
+      CL:0000609:
+        text: CL:0000609
+        description: vestibular hair cell
+        meaning: CL:0000609
+      CL:0004219:
+        text: CL:0004219
+        description: A2 amacrine cell
+        meaning: CL:0004219
+      CL:4030028:
+        text: CL:4030028
+        description: glycinergic amacrine cell
+        meaning: CL:4030028
+      CL:0002450:
+        text: CL:0002450
+        description: tether cell
+        meaning: CL:0002450
+      CL:0002374:
+        text: CL:0002374
+        description: ear hair cell
+        meaning: CL:0002374
+      CL:0004124:
+        text: CL:0004124
+        description: retinal ganglion cell C1
+        meaning: CL:0004124
+      CL:0004115:
+        text: CL:0004115
+        description: retinal ganglion cell B
+        meaning: CL:0004115
+      CL:1000384:
+        text: CL:1000384
+        description: type 2 vestibular sensory cell of epithelium of macula of saccule
+          of membranous labyrinth
+        meaning: CL:1000384
+      CL:2000037:
+        text: CL:2000037
+        description: posterior lateral line neuromast hair cell
+        meaning: CL:2000037
+      CL:0000673:
+        text: CL:0000673
+        description: Kenyon cell
+        meaning: CL:0000673
+      CL:4023052:
+        text: CL:4023052
+        description: Betz upper motor neuron
+        meaning: CL:4023052
+      CL:0004243:
+        text: CL:0004243
+        description: WF3-2 amacrine cell
+        meaning: CL:0004243
+      CL:1000222:
+        text: CL:1000222
+        description: stomach neuroendocrine cell
+        meaning: CL:1000222
+      CL:0002310:
+        text: CL:0002310
+        description: mammosomatotroph
+        meaning: CL:0002310
+      CL:4023066:
+        text: CL:4023066
+        description: horizontal pyramidal neuron
+        meaning: CL:4023066
+      CL:0000379:
+        text: CL:0000379
+        description: sensory processing neuron
+        meaning: CL:0000379
+      CL:0011006:
+        text: CL:0011006
+        description: Lugaro cell
+        meaning: CL:0011006
+      CL:0004216:
+        text: CL:0004216
+        description: type 5b cone bipolar cell
+        meaning: CL:0004216
+      CL:0004126:
+        text: CL:0004126
+        description: retinal ganglion cell C2 outer
+        meaning: CL:0004126
+      CL:0000108:
+        text: CL:0000108
+        description: cholinergic neuron
+        meaning: CL:0000108
+      CL:0011103:
+        text: CL:0011103
+        description: sympathetic neuron
+        meaning: CL:0011103
+      CL:4023107:
+        text: CL:4023107
+        description: reticulospinal neuron
+        meaning: CL:4023107
+      CL:4023002:
+        text: CL:4023002
+        description: dynamic beta motor neuron
+        meaning: CL:4023002
+      CL:4030048:
+        text: CL:4030048
+        description: striosomal D1 medium spiny neuron
+        meaning: CL:4030048
+      CL:4023163:
+        text: CL:4023163
+        description: spherical bushy cell
+        meaning: CL:4023163
+      CL:4023061:
+        text: CL:4023061
+        description: hippocampal CA4 neuron
+        meaning: CL:4023061
+      CL:0000532:
+        text: CL:0000532
+        description: CAP motoneuron
+        meaning: CL:0000532
+      CL:0000526:
+        text: CL:0000526
+        description: afferent neuron
+        meaning: CL:0000526
+      CL:0003003:
+        text: CL:0003003
+        description: G2 retinal ganglion cell
+        meaning: CL:0003003
+      CL:0000530:
+        text: CL:0000530
+        description: primary neuron (sensu Teleostei)
+        meaning: CL:0000530
+      CL:4023045:
+        text: CL:4023045
+        description: medulla-projecting glutamatergic neuron of the primary motor
+          cortex
+        meaning: CL:4023045
+      CL:3000004:
+        text: CL:3000004
+        description: peripheral sensory neuron
+        meaning: CL:3000004
+      CL:0000544:
+        text: CL:0000544
+        description: slowly adapting mechanoreceptor cell
+        meaning: CL:0000544
+      CL:4030047:
+        text: CL:4030047
+        description: matrix D2 medium spiny neuron
+        meaning: CL:4030047
+      CL:0004220:
+        text: CL:0004220
+        description: flag amacrine cell
+        meaning: CL:0004220
+      CL:4023125:
+        text: CL:4023125
+        description: KNDy neuron
+        meaning: CL:4023125
+      CL:0004228:
+        text: CL:0004228
+        description: broad diffuse amacrine cell
+        meaning: CL:0004228
+      CL:4023122:
+        text: CL:4023122
+        description: oxytocin receptor sst GABAergic cortical interneuron
+        meaning: CL:4023122
+      CL:1000379:
+        text: CL:1000379
+        description: type 1 vestibular sensory cell of epithelium of macula of utricle
+          of membranous labyrinth
+        meaning: CL:1000379
+      CL:0011111:
+        text: CL:0011111
+        description: gonadotropin-releasing hormone neuron
+        meaning: CL:0011111
+      CL:0003042:
+        text: CL:0003042
+        description: M9-OFF retinal ganglion cell
+        meaning: CL:0003042
+      CL:0003030:
+        text: CL:0003030
+        description: M3 retinal ganglion cell
+        meaning: CL:0003030
+      CL:0003011:
+        text: CL:0003011
+        description: G8 retinal ganglion cell
+        meaning: CL:0003011
+      CL:0000202:
+        text: CL:0000202
+        description: auditory hair cell
+        meaning: CL:0000202
+      CL:0002271:
+        text: CL:0002271
+        description: type EC1 enteroendocrine cell
+        meaning: CL:0002271
+      CL:4023013:
+        text: CL:4023013
+        description: corticothalamic-projecting glutamatergic cortical neuron
+        meaning: CL:4023013
+      CL:4023114:
+        text: CL:4023114
+        description: calyx vestibular afferent neuron
+        meaning: CL:4023114
+      CL:0003045:
+        text: CL:0003045
+        description: M12 retinal ganglion cell
+        meaning: CL:0003045
+      CL:0002487:
+        text: CL:0002487
+        description: cutaneous/subcutaneous mechanoreceptor cell
+        meaning: CL:0002487
+      CL:4030053:
+        text: CL:4030053
+        description: Island of Calleja granule cell
+        meaning: CL:4030053
+      CL:0000490:
+        text: CL:0000490
+        description: photopic photoreceptor cell
+        meaning: CL:0000490
+      CL:2000023:
+        text: CL:2000023
+        description: spinal cord ventral column interneuron
+        meaning: CL:2000023
+      CL:1000381:
+        text: CL:1000381
+        description: type 1 vestibular sensory cell of epithelium of crista of ampulla
+          of semicircular duct of membranous labyrinth
+        meaning: CL:1000381
+      CL:0003013:
+        text: CL:0003013
+        description: G10 retinal ganglion cell
+        meaning: CL:0003013
+      CL:0000602:
+        text: CL:0000602
+        description: pressoreceptor cell
+        meaning: CL:0000602
+      CL:4023039:
+        text: CL:4023039
+        description: amygdala excitatory neuron
+        meaning: CL:4023039
+      CL:4030043:
+        text: CL:4030043
+        description: matrix D1 medium spiny neuron
+        meaning: CL:4030043
+      CL:0000105:
+        text: CL:0000105
+        description: pseudounipolar neuron
+        meaning: CL:0000105
+      CL:0004137:
+        text: CL:0004137
+        description: retinal ganglion cell A2 inner
+        meaning: CL:0004137
+      CL:1001436:
+        text: CL:1001436
+        description: hair-tylotrich neuron
+        meaning: CL:1001436
+      CL:1001503:
+        text: CL:1001503
+        description: olfactory bulb tufted cell
+        meaning: CL:1001503
+      CL:0000406:
+        text: CL:0000406
+        description: CNS short range interneuron
+        meaning: CL:0000406
+      CL:2000087:
+        text: CL:2000087
+        description: dentate gyrus of hippocampal formation basket cell
+        meaning: CL:2000087
+      CL:0000534:
+        text: CL:0000534
+        description: primary interneuron (sensu Teleostei)
+        meaning: CL:0000534
+      CL:0000246:
+        text: CL:0000246
+        description: Mauthner neuron
+        meaning: CL:0000246
+      CL:0003027:
+        text: CL:0003027
+        description: retinal ganglion cell D2
+        meaning: CL:0003027
+      CL:0000752:
+        text: CL:0000752
+        description: cone retinal bipolar cell
+        meaning: CL:0000752
+      CL:0000410:
+        text: CL:0000410
+        description: CNS long range interneuron
+        meaning: CL:0000410
+      CL:0009000:
+        text: CL:0009000
+        description: sensory neuron of spinal nerve
+        meaning: CL:0009000
+      CL:0000754:
+        text: CL:0000754
+        description: type 2 cone bipolar cell (sensu Mus)
+        meaning: CL:0000754
+      CL:0002309:
+        text: CL:0002309
+        description: corticotroph
+        meaning: CL:0002309
+      CL:0010009:
+        text: CL:0010009
+        description: camera-type eye photoreceptor cell
+        meaning: CL:0010009
+      CL:4023069:
+        text: CL:4023069
+        description: medial ganglionic eminence derived GABAergic cortical interneuron
+        meaning: CL:4023069
+      CL:0000102:
+        text: CL:0000102
+        description: polymodal neuron
+        meaning: CL:0000102
+      CL:0000694:
+        text: CL:0000694
+        description: R3 photoreceptor cell
+        meaning: CL:0000694
+      CL:0004183:
+        text: CL:0004183
+        description: retinal ganglion cell B3
+        meaning: CL:0004183
+      CL:0000693:
+        text: CL:0000693
+        description: neurogliaform cell
+        meaning: CL:0000693
+      CL:0000760:
+        text: CL:0000760
+        description: type 8 cone bipolar cell (sensu Mus)
+        meaning: CL:0000760
+      CL:4023001:
+        text: CL:4023001
+        description: static beta motor neuron
+        meaning: CL:4023001
+      CL:1000424:
+        text: CL:1000424
+        description: chromaffin cell of paraaortic body
+        meaning: CL:1000424
+      CL:0000120:
+        text: CL:0000120
+        description: granule cell
+        meaning: CL:0000120
+      CL:0002312:
+        text: CL:0002312
+        description: somatotroph
+        meaning: CL:0002312
+      CL:0000107:
+        text: CL:0000107
+        description: autonomic neuron
+        meaning: CL:0000107
+      CL:2000047:
+        text: CL:2000047
+        description: brainstem motor neuron
+        meaning: CL:2000047
+      CL:4023080:
+        text: CL:4023080
+        description: stellate L6 intratelencephalic projecting glutamatergic neuron
+          of the primary motor cortex (Mmus)
+        meaning: CL:4023080
+      CL:0000848:
+        text: CL:0000848
+        description: microvillous olfactory receptor neuron
+        meaning: CL:0000848
+      CL:0004213:
+        text: CL:0004213
+        description: type 3a cone bipolar cell
+        meaning: CL:0004213
+      CL:0000116:
+        text: CL:0000116
+        description: pioneer neuron
+        meaning: CL:0000116
+      CL:4023187:
+        text: CL:4023187
+        description: koniocellular cell
+        meaning: CL:4023187
+      CL:4023116:
+        text: CL:4023116
+        description: type 2 spiral ganglion neuron
+        meaning: CL:4023116
+      CL:0008015:
+        text: CL:0008015
+        description: inhibitory motor neuron
+        meaning: CL:0008015
+      CL:0003048:
+        text: CL:0003048
+        description: L cone cell
+        meaning: CL:0003048
+      CL:1000082:
+        text: CL:1000082
+        description: stretch receptor cell
+        meaning: CL:1000082
+      CL:0003031:
+        text: CL:0003031
+        description: M3-ON retinal ganglion cell
+        meaning: CL:0003031
+      CL:1001474:
+        text: CL:1001474
+        description: medium spiny neuron
+        meaning: CL:1001474
+      CL:0000745:
+        text: CL:0000745
+        description: retina horizontal cell
+        meaning: CL:0000745
+      CL:0002515:
+        text: CL:0002515
+        description: interrenal norepinephrine type cell
+        meaning: CL:0002515
+      CL:2000027:
+        text: CL:2000027
+        description: cerebellum basket cell
+        meaning: CL:2000027
+      CL:0004225:
+        text: CL:0004225
+        description: spider amacrine cell
+        meaning: CL:0004225
+      CL:4023031:
+        text: CL:4023031
+        description: L4 sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023031
+      CL:0008038:
+        text: CL:0008038
+        description: alpha motor neuron
+        meaning: CL:0008038
+      CL:4033030:
+        text: CL:4033030
+        description: diffuse bipolar 3b cell
+        meaning: CL:4033030
+      CL:0000336:
+        text: CL:0000336
+        description: adrenal medulla chromaffin cell
+        meaning: CL:0000336
+      CL:0000751:
+        text: CL:0000751
+        description: rod bipolar cell
+        meaning: CL:0000751
+      CL:0008037:
+        text: CL:0008037
+        description: gamma motor neuron
+        meaning: CL:0008037
+      CL:0003028:
+        text: CL:0003028
+        description: M1 retinal ganglion cell
+        meaning: CL:0003028
+      CL:0003016:
+        text: CL:0003016
+        description: G11-OFF retinal ganglion cell
+        meaning: CL:0003016
+      CL:0004239:
+        text: CL:0004239
+        description: wavy bistratified amacrine cell
+        meaning: CL:0004239
+      CL:4023168:
+        text: CL:4023168
+        description: somatosensory neuron
+        meaning: CL:4023168
+      CL:4023018:
+        text: CL:4023018
+        description: pvalb GABAergic cortical interneuron
+        meaning: CL:4023018
+      CL:0004138:
+        text: CL:0004138
+        description: retinal ganglion cell A2
+        meaning: CL:0004138
+      CL:0000750:
+        text: CL:0000750
+        description: OFF-bipolar cell
+        meaning: CL:0000750
+      CL:0000709:
+        text: CL:0000709
+        description: R8 photoreceptor cell
+        meaning: CL:0000709
+      CL:0004214:
+        text: CL:0004214
+        description: type 3b cone bipolar cell
+        meaning: CL:0004214
+      CL:0003047:
+        text: CL:0003047
+        description: M14 retinal ganglion cell
+        meaning: CL:0003047
+      CL:0015000:
+        text: CL:0015000
+        description: cranial motor neuron
+        meaning: CL:0015000
+      CL:0003036:
+        text: CL:0003036
+        description: M7 retinal ganglion cell
+        meaning: CL:0003036
+      CL:0000397:
+        text: CL:0000397
+        description: ganglion interneuron
+        meaning: CL:0000397
+      CL:1001509:
+        text: CL:1001509
+        description: glycinergic neuron
+        meaning: CL:1001509
+      CL:4023038:
+        text: CL:4023038
+        description: L6b glutamatergic cortical neuron
+        meaning: CL:4023038
+      CL:0000112:
+        text: CL:0000112
+        description: columnar neuron
+        meaning: CL:0000112
+      CL:0002517:
+        text: CL:0002517
+        description: interrenal epinephrin secreting cell
+        meaning: CL:0002517
+      CL:1000383:
+        text: CL:1000383
+        description: type 2 vestibular sensory cell of epithelium of macula of utricle
+          of membranous labyrinth
+        meaning: CL:1000383
+      CL:0004116:
+        text: CL:0004116
+        description: retinal ganglion cell C
+        meaning: CL:0004116
+      CL:4023113:
+        text: CL:4023113
+        description: bouton vestibular afferent neuron
+        meaning: CL:4023113
+      CL:0003034:
+        text: CL:0003034
+        description: M5 retinal ganglion cell
+        meaning: CL:0003034
+      CL:0011005:
+        text: CL:0011005
+        description: GABAergic interneuron
+        meaning: CL:0011005
+      CL:0011105:
+        text: CL:0011105
+        description: dopamanergic interplexiform cell
+        meaning: CL:0011105
+      CL:0000749:
+        text: CL:0000749
+        description: ON-bipolar cell
+        meaning: CL:0000749
+      CL:0000498:
+        text: CL:0000498
+        description: inhibitory interneuron
+        meaning: CL:0000498
+      CL:4023071:
+        text: CL:4023071
+        description: L5/6 cck cortical GABAergic interneuron (Mmus)
+        meaning: CL:4023071
+      CL:1000245:
+        text: CL:1000245
+        description: posterior lateral line ganglion neuron
+        meaning: CL:1000245
+      CL:0004139:
+        text: CL:0004139
+        description: retinal ganglion cell A2 outer
+        meaning: CL:0004139
+      CL:0000531:
+        text: CL:0000531
+        description: primary sensory neuron (sensu Teleostei)
+        meaning: CL:0000531
+      CL:0004125:
+        text: CL:0004125
+        description: retinal ganglion cell C2 inner
+        meaning: CL:0004125
+      CL:4023064:
+        text: CL:4023064
+        description: caudal ganglionic eminence derived interneuron
+        meaning: CL:4023064
+      CL:4030049:
+        text: CL:4030049
+        description: striosomal D2 medium spiny neuron
+        meaning: CL:4030049
+      CL:0017002:
+        text: CL:0017002
+        description: prostate neuroendocrine cell
+        meaning: CL:0017002
+      CL:0000756:
+        text: CL:0000756
+        description: type 4 cone bipolar cell (sensu Mus)
+        meaning: CL:0000756
+      CL:0000707:
+        text: CL:0000707
+        description: R7 photoreceptor cell
+        meaning: CL:0000707
+      CL:0000700:
+        text: CL:0000700
+        description: dopaminergic neuron
+        meaning: CL:0000700
+      CL:0003002:
+        text: CL:0003002
+        description: G1 retinal ganglion cell
+        meaning: CL:0003002
+      CL:1000001:
+        text: CL:1000001
+        description: retrotrapezoid nucleus neuron
+        meaning: CL:1000001
+      CL:4023007:
+        text: CL:4023007
+        description: L2/3 bipolar vip GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023007
+      CL:0000528:
+        text: CL:0000528
+        description: nitrergic neuron
+        meaning: CL:0000528
+      CL:0000639:
+        text: CL:0000639
+        description: basophil cell of pars distalis of adenohypophysis
+        meaning: CL:0000639
+      CL:0000849:
+        text: CL:0000849
+        description: crypt olfactory receptor neuron
+        meaning: CL:0000849
+      CL:0011110:
+        text: CL:0011110
+        description: histaminergic neuron
+        meaning: CL:0011110
+      CL:0005025:
+        text: CL:0005025
+        description: visceromotor neuron
+        meaning: CL:0005025
+      CL:0003001:
+        text: CL:0003001
+        description: bistratified retinal ganglion cell
+        meaning: CL:0003001
+      CL:0004241:
+        text: CL:0004241
+        description: WF2 amacrine cell
+        meaning: CL:0004241
+      CL:4023019:
+        text: CL:4023019
+        description: L5/6 cck, vip cortical GABAergic interneuron (Mmus)
+        meaning: CL:4023019
+      CL:4023040:
+        text: CL:4023040
+        description: L2/3-6 intratelencephalic projecting glutamatergic cortical neuron
+        meaning: CL:4023040
+      CL:1001435:
+        text: CL:1001435
+        description: periglomerular cell
+        meaning: CL:1001435
+      CL:4023127:
+        text: CL:4023127
+        description: arcuate nucleus of hypothalamus KNDy neuron
+        meaning: CL:4023127
+      CL:0003007:
+        text: CL:0003007
+        description: G4-OFF retinal ganglion cell
+        meaning: CL:0003007
+      CL:0000101:
+        text: CL:0000101
+        description: sensory neuron
+        meaning: CL:0000101
+      CL:2000097:
+        text: CL:2000097
+        description: midbrain dopaminergic neuron
+        meaning: CL:2000097
+      CL:4023095:
+        text: CL:4023095
+        description: untufted pyramidal neuron
+        meaning: CL:4023095
+      CL:0003004:
+        text: CL:0003004
+        description: G3 retinal ganglion cell
+        meaning: CL:0003004
+      CL:0000527:
+        text: CL:0000527
+        description: efferent neuron
+        meaning: CL:0000527
+      CL:1000382:
+        text: CL:1000382
+        description: type 2 vestibular sensory cell of stato-acoustic epithelium
+        meaning: CL:1000382
+      CL:4033019:
+        text: CL:4033019
+        description: ON-blue cone bipolar cell
+        meaning: CL:4033019
+      CL:0000589:
+        text: CL:0000589
+        description: cochlear inner hair cell
+        meaning: CL:0000589
+      CL:4023160:
+        text: CL:4023160
+        description: cartwheel cell
+        meaning: CL:4023160
+      CL:1001437:
+        text: CL:1001437
+        description: hair-down neuron
+        meaning: CL:1001437
+      CL:0011102:
+        text: CL:0011102
+        description: parasympathetic neuron
+        meaning: CL:0011102
+      CL:2000029:
+        text: CL:2000029
+        description: central nervous system neuron
+        meaning: CL:2000029
+      CL:4023115:
+        text: CL:4023115
+        description: type 1 spiral ganglion neuron
+        meaning: CL:4023115
+      CL:0002311:
+        text: CL:0002311
+        description: mammotroph
+        meaning: CL:0002311
+      CL:0003025:
+        text: CL:0003025
+        description: retinal ganglion cell C3
+        meaning: CL:0003025
+      CL:4030050:
+        text: CL:4030050
+        description: D1/D2-hybrid medium spiny neuron
+        meaning: CL:4030050
+      CL:4023118:
+        text: CL:4023118
+        description: L5/6 non-Martinotti sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023118
+      CL:4023110:
+        text: CL:4023110
+        description: amygdala pyramidal neuron
+        meaning: CL:4023110
+      CL:0002273:
+        text: CL:0002273
+        description: type ECL enteroendocrine cell
+        meaning: CL:0002273
+      CL:0003050:
+        text: CL:0003050
+        description: S cone cell
+        meaning: CL:0003050
+      CL:4023121:
+        text: CL:4023121
+        description: sst chodl GABAergic cortical interneuron
+        meaning: CL:4023121
+      CL:4023020:
+        text: CL:4023020
+        description: dynamic gamma motor neuron
+        meaning: CL:4023020
+      CL:0004246:
+        text: CL:0004246
+        description: monostratified cell
+        meaning: CL:0004246
+      CL:0000495:
+        text: CL:0000495
+        description: blue sensitive photoreceptor cell
+        meaning: CL:0000495
+      CL:0000029:
+        text: CL:0000029
+        description: neural crest derived neuron
+        meaning: CL:0000029
+      CL:0004001:
+        text: CL:0004001
+        description: local interneuron
+        meaning: CL:0004001
+      CL:0000551:
+        text: CL:0000551
+        description: unimodal nocireceptor
+        meaning: CL:0000551
+      CL:0003006:
+        text: CL:0003006
+        description: G4-ON retinal ganglion cell
+        meaning: CL:0003006
+      CL:4023011:
+        text: CL:4023011
+        description: lamp5 GABAergic cortical interneuron
+        meaning: CL:4023011
+      CL:4023109:
+        text: CL:4023109
+        description: vasopressin-secreting magnocellular cell
+        meaning: CL:4023109
+      CL:0000121:
+        text: CL:0000121
+        description: Purkinje cell
+        meaning: CL:0000121
+      CL:0000678:
+        text: CL:0000678
+        description: commissural neuron
+        meaning: CL:0000678
+      CL:0004252:
+        text: CL:0004252
+        description: medium field retinal amacrine cell
+        meaning: CL:0004252
+      CL:0000103:
+        text: CL:0000103
+        description: bipolar neuron
+        meaning: CL:0000103
+      CL:4033036:
+        text: CL:4033036
+        description: OFFx cell
+        meaning: CL:4033036
+      CL:4023014:
+        text: CL:4023014
+        description: L5 vip cortical GABAergic interneuron (Mmus)
+        meaning: CL:4023014
+      CL:0008031:
+        text: CL:0008031
+        description: cortical interneuron
+        meaning: CL:0008031
+      CL:0008010:
+        text: CL:0008010
+        description: cranial somatomotor neuron
+        meaning: CL:0008010
+      CL:0000637:
+        text: CL:0000637
+        description: chromophil cell of anterior pituitary gland
+        meaning: CL:0000637
+      CL:0003014:
+        text: CL:0003014
+        description: G11 retinal ganglion cell
+        meaning: CL:0003014
+      CL:4033029:
+        text: CL:4033029
+        description: diffuse bipolar 3a cell
+        meaning: CL:4033029
+      CL:0002611:
+        text: CL:0002611
+        description: neuron of the dorsal spinal cord
+        meaning: CL:0002611
+      CL:0010010:
+        text: CL:0010010
+        description: cerebellar stellate cell
+        meaning: CL:0010010
+      CL:1000465:
+        text: CL:1000465
+        description: chromaffin cell of ovary
+        meaning: CL:1000465
+      CL:0000761:
+        text: CL:0000761
+        description: type 9 cone bipolar cell (sensu Mus)
+        meaning: CL:0000761
+      CL:0004226:
+        text: CL:0004226
+        description: monostratified amacrine cell
+        meaning: CL:0004226
+      CL:0004253:
+        text: CL:0004253
+        description: wide field retinal amacrine cell
+        meaning: CL:0004253
+      CL:4023075:
+        text: CL:4023075
+        description: L6 tyrosine hydroxylase sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023075
+      CL:4023068:
+        text: CL:4023068
+        description: thalamic excitatory neuron
+        meaning: CL:4023068
+      CL:1000377:
+        text: CL:1000377
+        description: dense-core granulated cell of epithelium of trachea
+        meaning: CL:1000377
+      CL:4023089:
+        text: CL:4023089
+        description: nest basket cell
+        meaning: CL:4023089
+      CL:4023189:
+        text: CL:4023189
+        description: parasol ganglion cell of retina
+        meaning: CL:4023189
+      CL:0000856:
+        text: CL:0000856
+        description: neuromast hair cell
+        meaning: CL:0000856
+      CL:4023025:
+        text: CL:4023025
+        description: long-range projecting sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023025
+      CL:0003043:
+        text: CL:0003043
+        description: M10 retinal ganglion cell
+        meaning: CL:0003043
+      CL:4023000:
+        text: CL:4023000
+        description: beta motor neuron
+        meaning: CL:4023000
+      CL:4023048:
+        text: CL:4023048
+        description: L4/5 intratelencephalic projecting glutamatergic neuron of the
+          primary motor cortex
+        meaning: CL:4023048
+      CL:0000855:
+        text: CL:0000855
+        description: sensory hair cell
+        meaning: CL:0000855
+      CL:4023070:
+        text: CL:4023070
+        description: caudal ganglionic eminence derived GABAergic cortical interneuron
+        meaning: CL:4023070
+      CL:0002070:
+        text: CL:0002070
+        description: type I vestibular sensory cell
+        meaning: CL:0002070
+      CL:2000028:
+        text: CL:2000028
+        description: cerebellum glutamatergic neuron
+        meaning: CL:2000028
+      CL:0000533:
+        text: CL:0000533
+        description: primary motor neuron (sensu Teleostei)
+        meaning: CL:0000533
+      CL:4023083:
+        text: CL:4023083
+        description: chandelier cell
+        meaning: CL:4023083
+      CL:2000034:
+        text: CL:2000034
+        description: anterior lateral line neuromast hair cell
+        meaning: CL:2000034
+      CL:0003015:
+        text: CL:0003015
+        description: G11-ON retinal ganglion cell
+        meaning: CL:0003015
+      CL:0000204:
+        text: CL:0000204
+        description: acceleration receptive cell
+        meaning: CL:0000204
+      CL:4033031:
+        text: CL:4033031
+        description: diffuse bipolar 4 cell
+        meaning: CL:4033031
+      CL:0003024:
+        text: CL:0003024
+        description: retinal ganglion cell C inner
+        meaning: CL:0003024
+      CL:4023074:
+        text: CL:4023074
+        description: mammillary body neuron
+        meaning: CL:4023074
+      CL:2000089:
+        text: CL:2000089
+        description: dentate gyrus granule cell
+        meaning: CL:2000089
+      CL:4033028:
+        text: CL:4033028
+        description: diffuse bipolar 2 cell
+        meaning: CL:4033028
+      CL:0000110:
+        text: CL:0000110
+        description: peptidergic neuron
+        meaning: CL:0000110
+      CL:4033002:
+        text: CL:4033002
+        description: neuroendocrine cell of epithelium of crypt of Lieberkuhn
+        meaning: CL:4033002
+      CL:4033027:
+        text: CL:4033027
+        description: diffuse bipolar 1 cell
+        meaning: CL:4033027
+      CL:3000003:
+        text: CL:3000003
+        description: sympathetic cholinergic neuron
+        meaning: CL:3000003
+      CL:4023158:
+        text: CL:4023158
+        description: octopus cell of the mammalian cochlear nucleus
+        meaning: CL:4023158
+      CL:0000118:
+        text: CL:0000118
+        description: basket cell
+        meaning: CL:0000118
+      CL:0004223:
+        text: CL:0004223
+        description: AB diffuse-1 amacrine cell
+        meaning: CL:0004223
+      CL:4030054:
+        text: CL:4030054
+        description: RXFP1-positive interface island D1-medium spiny neuron
+        meaning: CL:4030054
+      CL:0002610:
+        text: CL:0002610
+        description: raphe nuclei neuron
+        meaning: CL:0002610
+      CL:4023026:
+        text: CL:4023026
+        description: direct pathway medium spiny neuron
+        meaning: CL:4023026
+      CL:4023016:
+        text: CL:4023016
+        description: vip GABAergic cortical interneuron
+        meaning: CL:4023016
+      CL:0004237:
+        text: CL:0004237
+        description: fountain amacrine cell
+        meaning: CL:0004237
+      CL:0003035:
+        text: CL:0003035
+        description: M6 retinal ganglion cell
+        meaning: CL:0003035
+      CL:1001611:
+        text: CL:1001611
+        description: cerebellar neuron
+        meaning: CL:1001611
+      CL:0000591:
+        text: CL:0000591
+        description: warmth sensing thermoreceptor cell
+        meaning: CL:0000591
+      CL:0002613:
+        text: CL:0002613
+        description: striatum neuron
+        meaning: CL:0002613
+      CL:0000496:
+        text: CL:0000496
+        description: green sensitive photoreceptor cell
+        meaning: CL:0000496
+      CL:0007011:
+        text: CL:0007011
+        description: enteric neuron
+        meaning: CL:0007011
+      CL:2000056:
+        text: CL:2000056
+        description: Meynert cell
+        meaning: CL:2000056
+      CL:0003040:
+        text: CL:0003040
+        description: M9 retinal ganglion cell
+        meaning: CL:0003040
+      CL:0004250:
+        text: CL:0004250
+        description: bistratified retinal amacrine cell
+        meaning: CL:0004250
+      CL:0003029:
+        text: CL:0003029
+        description: M2 retinal ganglion cell
+        meaning: CL:0003029
+      CL:4023017:
+        text: CL:4023017
+        description: sst GABAergic cortical interneuron
+        meaning: CL:4023017
+      CL:0008028:
+        text: CL:0008028
+        description: visual system neuron
+        meaning: CL:0008028
+      CL:0008039:
+        text: CL:0008039
+        description: lower motor neuron
+        meaning: CL:0008039
+      CL:2000086:
+        text: CL:2000086
+        description: neocortex basket cell
+        meaning: CL:2000086
+      CL:4023023:
+        text: CL:4023023
+        description: L5,6 neurogliaform lamp5 GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023023
+      CL:0000697:
+        text: CL:0000697
+        description: R4 photoreceptor cell
+        meaning: CL:0000697
+      CL:2000088:
+        text: CL:2000088
+        description: Ammon's horn basket cell
+        meaning: CL:2000088
+      CL:0004232:
+        text: CL:0004232
+        description: starburst amacrine cell
+        meaning: CL:0004232
+      CL:4023041:
+        text: CL:4023041
+        description: L5 extratelencephalic projecting glutamatergic cortical neuron
+        meaning: CL:4023041
+      CL:0004121:
+        text: CL:0004121
+        description: retinal ganglion cell B2
+        meaning: CL:0004121
+      CL:0000748:
+        text: CL:0000748
+        description: retinal bipolar neuron
+        meaning: CL:0000748
+      CL:4023164:
+        text: CL:4023164
+        description: globular bushy cell
+        meaning: CL:4023164
+      CL:0000536:
+        text: CL:0000536
+        description: secondary motor neuron (sensu Teleostei)
+        meaning: CL:0000536
+      CL:1000466:
+        text: CL:1000466
+        description: chromaffin cell of right ovary
+        meaning: CL:1000466
+      CL:0011001:
+        text: CL:0011001
+        description: spinal cord motor neuron
+        meaning: CL:0011001
+      CL:0000755:
+        text: CL:0000755
+        description: type 3 cone bipolar cell (sensu Mus)
+        meaning: CL:0000755
+      CL:0004238:
+        text: CL:0004238
+        description: asymmetric bistratified amacrine cell
+        meaning: CL:0004238
+      CL:0004161:
+        text: CL:0004161
+        description: 510 nm-cone
+        meaning: CL:0004161
+      CL:0000198:
+        text: CL:0000198
+        description: pain receptor cell
+        meaning: CL:0000198
+      CL:0003038:
+        text: CL:0003038
+        description: M7-OFF retinal ganglion cell
+        meaning: CL:0003038
+      CL:0003033:
+        text: CL:0003033
+        description: M4 retinal ganglion cell
+        meaning: CL:0003033
+      CL:0012001:
+        text: CL:0012001
+        description: neuron of the forebrain
+        meaning: CL:0012001
+      CL:0011104:
+        text: CL:0011104
+        description: interplexiform cell
+        meaning: CL:0011104
+      CL:0003049:
+        text: CL:0003049
+        description: M cone cell
+        meaning: CL:0003049
+      CL:2000032:
+        text: CL:2000032
+        description: peripheral nervous system neuron
+        meaning: CL:2000032
+      CL:0011100:
+        text: CL:0011100
+        description: galanergic neuron
+        meaning: CL:0011100
+      CL:0008025:
+        text: CL:0008025
+        description: noradrenergic neuron
+        meaning: CL:0008025
+      CL:0000122:
+        text: CL:0000122
+        description: stellate neuron
+        meaning: CL:0000122
+      CL:0003005:
+        text: CL:0003005
+        description: G4 retinal ganglion cell
+        meaning: CL:0003005
+      CL:0000699:
+        text: CL:0000699
+        description: paraganglial type 1 cell
+        meaning: CL:0000699
+      CL:4033050:
+        text: CL:4033050
+        description: catecholaminergic neuron
+        meaning: CL:4033050
+      CL:1001502:
+        text: CL:1001502
+        description: mitral cell
+        meaning: CL:1001502
+      CL:0002069:
+        text: CL:0002069
+        description: type II vestibular sensory cell
+        meaning: CL:0002069
+      CL:4023065:
+        text: CL:4023065
+        description: meis2 expressing cortical GABAergic cell
+        meaning: CL:4023065
+      CL:4023077:
+        text: CL:4023077
+        description: bitufted neuron
+        meaning: CL:4023077
+      CL:0000847:
+        text: CL:0000847
+        description: ciliated olfactory receptor neuron
+        meaning: CL:0000847
+      CL:4023188:
+        text: CL:4023188
+        description: midget ganglion cell of retina
+        meaning: CL:4023188
+      CL:2000090:
+        text: CL:2000090
+        description: dentate gyrus of hippocampal formation stellate cell
+        meaning: CL:2000090
+      CL:0000568:
+        text: CL:0000568
+        description: amine precursor uptake and decarboxylation cell
+        meaning: CL:0000568
+      CL:1000426:
+        text: CL:1000426
+        description: chromaffin cell of adrenal gland
+        meaning: CL:1000426
+      CL:0000100:
+        text: CL:0000100
+        description: motor neuron
+        meaning: CL:0000100
+      CL:0011109:
+        text: CL:0011109
+        description: hypocretin-secreting neuron
+        meaning: CL:0011109
+      CL:4023171:
+        text: CL:4023171
+        description: trigeminal motor neuron
+        meaning: CL:4023171
+      CL:1001434:
+        text: CL:1001434
+        description: olfactory bulb interneuron
+        meaning: CL:1001434
+      CL:0000494:
+        text: CL:0000494
+        description: UV sensitive photoreceptor cell
+        meaning: CL:0000494
+      CL:0004117:
+        text: CL:0004117
+        description: retinal ganglion cell A
+        meaning: CL:0004117
+      CL:0000205:
+        text: CL:0000205
+        description: thermoreceptor cell
+        meaning: CL:0000205
+      CL:0004217:
+        text: CL:0004217
+        description: H1 horizontal cell
+        meaning: CL:0004217
+      CL:0000200:
+        text: CL:0000200
+        description: touch receptor cell
+        meaning: CL:0000200
+      CL:4023111:
+        text: CL:4023111
+        description: cerebral cortex pyramidal neuron
+        meaning: CL:4023111
+      CL:4032001:
+        text: CL:4032001
+        description: reelin GABAergic cortical interneuron
+        meaning: CL:4032001
+      CL:4023076:
+        text: CL:4023076
+        description: Martinotti neuron
+        meaning: CL:4023076
+      CL:0000753:
+        text: CL:0000753
+        description: type 1 cone bipolar cell (sensu Mus)
+        meaning: CL:0000753
+      CL:1001451:
+        text: CL:1001451
+        description: sensory neuron of dorsal root ganglion
+        meaning: CL:1001451
+      CL:4023021:
+        text: CL:4023021
+        description: static gamma motor neuron
+        meaning: CL:4023021
+      CL:0002066:
+        text: CL:0002066
+        description: Feyrter cell
+        meaning: CL:0002066
+      CL:0000598:
+        text: CL:0000598
+        description: pyramidal neuron
+        meaning: CL:0000598
+      CL:0000702:
+        text: CL:0000702
+        description: R5 photoreceptor cell
+        meaning: CL:0000702
+      CL:0008049:
+        text: CL:0008049
+        description: Betz cell
+        meaning: CL:0008049
+      CL:0001033:
+        text: CL:0001033
+        description: hippocampal granule cell
+        meaning: CL:0001033
+      CL:0000587:
+        text: CL:0000587
+        description: cold sensing thermoreceptor cell
+        meaning: CL:0000587
+      CL:4023161:
+        text: CL:4023161
+        description: unipolar brush cell
+        meaning: CL:4023161
+      CL:2000031:
+        text: CL:2000031
+        description: lateral line ganglion neuron
+        meaning: CL:2000031
+      CL:4023119:
+        text: CL:4023119
+        description: displaced amacrine cell
+        meaning: CL:4023119
+      CL:1001569:
+        text: CL:1001569
+        description: hippocampal interneuron
+        meaning: CL:1001569
+      CL:4023130:
+        text: CL:4023130
+        description: kisspeptin neuron
+        meaning: CL:4023130
+      CL:4023090:
+        text: CL:4023090
+        description: small basket cell
+        meaning: CL:4023090
+      CL:4023033:
+        text: CL:4023033
+        description: OFF retinal ganglion cell
+        meaning: CL:4023033
+      CL:4023112:
+        text: CL:4023112
+        description: vestibular afferent neuron
+        meaning: CL:4023112
+      CL:0004234:
+        text: CL:0004234
+        description: diffuse multistratified amacrine cell
+        meaning: CL:0004234
+      CL:0002082:
+        text: CL:0002082
+        description: type II cell of adrenal medulla
+        meaning: CL:0002082
+      CL:0010011:
+        text: CL:0010011
+        description: cerebral cortex GABAergic interneuron
+        meaning: CL:0010011
+      CL:4030052:
+        text: CL:4030052
+        description: nucleus accumbens shell and olfactory tubercle D2 medium spiny
+          neuron
+        meaning: CL:4030052
+      CL:0000604:
+        text: CL:0000604
+        description: retinal rod cell
+        meaning: CL:0000604
+      CL:4030027:
+        text: CL:4030027
+        description: GABAergic amacrine cell
+        meaning: CL:4030027
+      CL:1001561:
+        text: CL:1001561
+        description: vomeronasal sensory neuron
+        meaning: CL:1001561
+      CL:0000210:
+        text: CL:0000210
+        description: photoreceptor cell
+        meaning: CL:0000210
+      CL:4023012:
+        text: CL:4023012
+        description: near-projecting glutamatergic cortical neuron
+        meaning: CL:4023012
+      CL:4023087:
+        text: CL:4023087
+        description: fan Martinotti neuron
+        meaning: CL:4023087
+      CL:0000028:
+        text: CL:0000028
+        description: CNS neuron (sensu Nematoda and Protostomia)
+        meaning: CL:0000028
+      CL:0000006:
+        text: CL:0000006
+        description: neuronal receptor cell
+        meaning: CL:0000006
+      CL:0004247:
+        text: CL:0004247
+        description: bistratified cell
+        meaning: CL:0004247
+      CL:0010012:
+        text: CL:0010012
+        description: cerebral cortex neuron
+        meaning: CL:0010012
+      CL:0004245:
+        text: CL:0004245
+        description: indoleamine-accumulating amacrine cell
+        meaning: CL:0004245
+      CL:0004224:
+        text: CL:0004224
+        description: AB diffuse-2 amacrine cell
+        meaning: CL:0004224
+      CL:0003009:
+        text: CL:0003009
+        description: G6 retinal ganglion cell
+        meaning: CL:0003009
+      CL:0000679:
+        text: CL:0000679
+        description: glutamatergic neuron
+        meaning: CL:0000679
+      CL:0000166:
+        text: CL:0000166
+        description: chromaffin cell
+        meaning: CL:0000166
+      CL:4023088:
+        text: CL:4023088
+        description: large basket cell
+        meaning: CL:4023088
+      CL:4030057:
+        text: CL:4030057
+        description: eccentric medium spiny neuron
+        meaning: CL:4030057
+      CL:4023024:
+        text: CL:4023024
+        description: neurogliaform lamp5 GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023024
+      CL:0005024:
+        text: CL:0005024
+        description: somatomotor neuron
+        meaning: CL:0005024
+      CL:4023049:
+        text: CL:4023049
+        description: L5 intratelencephalic projecting glutamatergic neuron of the
+          primary motor cortex
+        meaning: CL:4023049
+      CL:0000573:
+        text: CL:0000573
+        description: retinal cone cell
+        meaning: CL:0000573
+      CL:4023123:
+        text: CL:4023123
+        description: hypothalamus kisspeptin neuron
+        meaning: CL:4023123
+      CL:0000376:
+        text: CL:0000376
+        description: humidity receptor cell
+        meaning: CL:0000376
+      CL:0004235:
+        text: CL:0004235
+        description: AB broad diffuse-1 amacrine cell
+        meaning: CL:0004235
+      CL:0000106:
+        text: CL:0000106
+        description: unipolar neuron
+        meaning: CL:0000106
+      CL:0001032:
+        text: CL:0001032
+        description: cortical granule cell
+        meaning: CL:0001032
+      CL:0000561:
+        text: CL:0000561
+        description: amacrine cell
+        meaning: CL:0000561
+      CL:4023093:
+        text: CL:4023093
+        description: stellate pyramidal neuron
+        meaning: CL:4023093
+      CL:0000247:
+        text: CL:0000247
+        description: Rohon-Beard neuron
+        meaning: CL:0000247
+      CL:0003008:
+        text: CL:0003008
+        description: G5 retinal ganglion cell
+        meaning: CL:0003008
+      CL:0000203:
+        text: CL:0000203
+        description: gravity sensitive cell
+        meaning: CL:0000203
+      CL:0003037:
+        text: CL:0003037
+        description: M7-ON retinal ganglion cell
+        meaning: CL:0003037
+      CL:0004221:
+        text: CL:0004221
+        description: flag A amacrine cell
+        meaning: CL:0004221
+      CL:0000638:
+        text: CL:0000638
+        description: acidophil cell of pars distalis of adenohypophysis
+        meaning: CL:0000638
+      CL:0004229:
+        text: CL:0004229
+        description: A2-like amacrine cell
+        meaning: CL:0004229
+      CL:4023120:
+        text: CL:4023120
+        description: cochlea auditory hair cell
+        meaning: CL:4023120
+      CL:0008032:
+        text: CL:0008032
+        description: rosehip neuron
+        meaning: CL:0008032
+      CL:0008027:
+        text: CL:0008027
+        description: rod bipolar cell (sensu Mus)
+        meaning: CL:0008027
+      CL:0000497:
+        text: CL:0000497
+        description: red sensitive photoreceptor cell
+        meaning: CL:0000497
+      CL:4023062:
+        text: CL:4023062
+        description: dentate gyrus neuron
+        meaning: CL:4023062
+      CL:0002516:
+        text: CL:0002516
+        description: interrenal chromaffin cell
+        meaning: CL:0002516
+      CL:0004119:
+        text: CL:0004119
+        description: retinal ganglion cell B1
+        meaning: CL:0004119
+      CL:4030039:
+        text: CL:4030039
+        description: von Economo neuron
+        meaning: CL:4030039
+      CL:4023036:
+        text: CL:4023036
+        description: chandelier pvalb GABAergic cortical interneuron
+        meaning: CL:4023036
+      CL:0000117:
+        text: CL:0000117
+        description: CNS neuron (sensu Vertebrata)
+        meaning: CL:0000117
+      CL:4023015:
+        text: CL:4023015
+        description: sncg GABAergic cortical interneuron
+        meaning: CL:4023015
+      CL:4033033:
+        text: CL:4033033
+        description: flat midget bipolar cell
+        meaning: CL:4033033
+      CL:0000626:
+        text: CL:0000626
+        description: olfactory granule cell
+        meaning: CL:0000626
+      CL:0004218:
+        text: CL:0004218
+        description: H2 horizontal cell
+        meaning: CL:0004218
+      CL:0004233:
+        text: CL:0004233
+        description: DAPI-3 amacrine cell
+        meaning: CL:0004233
+      CL:0003021:
+        text: CL:0003021
+        description: retinal ganglion cell C4
+        meaning: CL:0003021
+      CL:0000489:
+        text: CL:0000489
+        description: scotopic photoreceptor cell
+        meaning: CL:0000489
+      CL:4023159:
+        text: CL:4023159
+        description: double bouquet cell
+        meaning: CL:4023159
+      CL:0002612:
+        text: CL:0002612
+        description: neuron of the ventral spinal cord
+        meaning: CL:0002612
+      CL:0000476:
+        text: CL:0000476
+        description: thyrotroph
+        meaning: CL:0000476
+      CL:4033034:
+        text: CL:4033034
+        description: invaginating midget bipolar cell
+        meaning: CL:4033034
+      CL:4023029:
+        text: CL:4023029
+        description: indirect pathway medium spiny neuron
+        meaning: CL:4023029
+      CL:0004236:
+        text: CL:0004236
+        description: AB broad diffuse-2 amacrine cell
+        meaning: CL:0004236
+      CL:0003017:
+        text: CL:0003017
+        description: retinal ganglion cell B3 outer
+        meaning: CL:0003017
+      CL:0000759:
+        text: CL:0000759
+        description: type 7 cone bipolar cell (sensu Mus)
+        meaning: CL:0000759
+      CL:0000740:
+        text: CL:0000740
+        description: retinal ganglion cell
+        meaning: CL:0000740
+      CL:0004120:
+        text: CL:0004120
+        description: retinal ganglion cell A1
+        meaning: CL:0004120
+      CL:3000002:
+        text: CL:3000002
+        description: sympathetic noradrenergic neuron
+        meaning: CL:3000002
+      CL:0003023:
+        text: CL:0003023
+        description: retinal ganglion cell C6
+        meaning: CL:0003023
+      CL:0000690:
+        text: CL:0000690
+        description: R2 photoreceptor cell
+        meaning: CL:0000690
+      CL:4023047:
+        text: CL:4023047
+        description: L2/3 intratelencephalic projecting glutamatergic neuron of the
+          primary motor cortex
+        meaning: CL:4023047
+      CL:4023022:
+        text: CL:4023022
+        description: canopy lamp5 GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023022
+      CL:4023060:
+        text: CL:4023060
+        description: hippocampal CA1-3 neuron
+        meaning: CL:4023060
+      CL:0000758:
+        text: CL:0000758
+        description: type 6 cone bipolar cell (sensu Mus)
+        meaning: CL:0000758
+      CL:0000535:
+        text: CL:0000535
+        description: secondary neuron (sensu Teleostei)
+        meaning: CL:0000535
+      CL:4023055:
+        text: CL:4023055
+        description: corticothalamic VAL/VM projecting glutamatergic neuron of the
+          primary motor cortex
+        meaning: CL:4023055
+      CL:1000467:
+        text: CL:1000467
+        description: chromaffin cell of left ovary
+        meaning: CL:1000467
+      CL:0011002:
+        text: CL:0011002
+        description: lateral motor column neuron
+        meaning: CL:0011002
+      CL:0004244:
+        text: CL:0004244
+        description: WF4 amacrine cell
+        meaning: CL:0004244
+      CL:1000223:
+        text: CL:1000223
+        description: lung neuroendocrine cell
+        meaning: CL:1000223
+      CL:1000385:
+        text: CL:1000385
+        description: type 2 vestibular sensory cell of epithelium of crista of ampulla
+          of semicircular duct of membranous labyrinth
+        meaning: CL:1000385
+      CL:0000691:
+        text: CL:0000691
+        description: stellate interneuron
+        meaning: CL:0000691
+      CL:4023008:
+        text: CL:4023008
+        description: intratelencephalic-projecting glutamatergic cortical neuron
+        meaning: CL:4023008
+      CL:4023044:
+        text: CL:4023044
+        description: non-medulla, extratelencephalic-projecting glutamatergic neuron
+          of the primary motor cortex
+        meaning: CL:4023044
+      CL:0000850:
+        text: CL:0000850
+        description: serotonergic neuron
+        meaning: CL:0000850
+      CL:0000695:
+        text: CL:0000695
+        description: Cajal-Retzius cell
+        meaning: CL:0000695
+      CL:0003051:
+        text: CL:0003051
+        description: UV cone cell
+        meaning: CL:0003051
+      CL:0000402:
+        text: CL:0000402
+        description: CNS interneuron
+        meaning: CL:0000402
+      CL:0005023:
+        text: CL:0005023
+        description: branchiomotor neuron
+        meaning: CL:0005023
+      CL:4023043:
+        text: CL:4023043
+        description: L5/6 near-projecting glutamatergic neuron of the primary motor
+          cortex
+        meaning: CL:4023043
+      CL:0004162:
+        text: CL:0004162
+        description: 360 nm-cone
+        meaning: CL:0004162
+      CL:0011003:
+        text: CL:0011003
+        description: magnocellular neurosecretory cell
+        meaning: CL:0011003
+      CL:0004230:
+        text: CL:0004230
+        description: diffuse bistratified amacrine cell
+        meaning: CL:0004230
+      CL:1001505:
+        text: CL:1001505
+        description: parvocellular neurosecretory cell
+        meaning: CL:1001505
+      CL:0011106:
+        text: CL:0011106
+        description: GABAnergic interplexiform cell
+        meaning: CL:0011106
+      CL:0000437:
+        text: CL:0000437
+        description: gonadtroph
+        meaning: CL:0000437
+      CL:4023010:
+        text: CL:4023010
+        description: alpha7 GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023010
+      CL:4023046:
+        text: CL:4023046
+        description: L6b subplate glutamatergic neuron of the primary motor cortex
+        meaning: CL:4023046
+      CL:0000109:
+        text: CL:0000109
+        description: adrenergic neuron
+        meaning: CL:0000109
+      CL:0011000:
+        text: CL:0011000
+        description: dorsal horn interneuron
+        meaning: CL:0011000
+      CL:0000251:
+        text: CL:0000251
+        description: extramedullary cell
+        meaning: CL:0000251
+      CL:0003044:
+        text: CL:0003044
+        description: M11 retinal ganglion cell
+        meaning: CL:0003044
+      CL:4023053:
+        text: CL:4023053
+        description: spinal interneuron synapsing Betz cell
+        meaning: CL:4023053
+      CL:1000378:
+        text: CL:1000378
+        description: type 1 vestibular sensory cell of stato-acoustic epithelium
+        meaning: CL:1000378
+      CL:4023124:
+        text: CL:4023124
+        description: dentate gyrus kisspeptin neuron
+        meaning: CL:4023124
+      CL:1000427:
+        text: CL:1000427
+        description: adrenal cortex chromaffin cell
+        meaning: CL:1000427
+      CL:0000207:
+        text: CL:0000207
+        description: olfactory receptor cell
+        meaning: CL:0000207
+      CL:4023162:
+        text: CL:4023162
+        description: bushy cell
+        meaning: CL:4023162
+      CL:2000019:
+        text: CL:2000019
+        description: compound eye photoreceptor cell
+        meaning: CL:2000019
+      CL:4023086:
+        text: CL:4023086
+        description: T Martinotti neuron
+        meaning: CL:4023086
+      CL:0003012:
+        text: CL:0003012
+        description: G9 retinal ganglion cell
+        meaning: CL:0003012
+      CL:0002270:
+        text: CL:0002270
+        description: type EC2 enteroendocrine cell
+        meaning: CL:0002270
+      CL:2000024:
+        text: CL:2000024
+        description: spinal cord medial motor column neuron
+        meaning: CL:2000024
+      CL:0003022:
+        text: CL:0003022
+        description: retinal ganglion cell C5
+        meaning: CL:0003022
+      CL:0000104:
+        text: CL:0000104
+        description: multipolar neuron
+        meaning: CL:0000104
+      CL:4023050:
+        text: CL:4023050
+        description: L6 intratelencephalic projecting glutamatergic neuron of the
+          primary motor cortex
+        meaning: CL:4023050
+      CL:4023030:
+        text: CL:4023030
+        description: L2/3/5 fan Martinotti sst GABAergic cortical interneuron (Mmus)
+        meaning: CL:4023030
+      CL:0000741:
+        text: CL:0000741
+        description: spinal accessory motor neuron
+        meaning: CL:0000741
+      CL:4033010:
+        text: CL:4033010
+        description: neuroendocrine cell of epithelium of lobar bronchus
+        meaning: CL:4033010
+      CL:1000425:
+        text: CL:1000425
+        description: chromaffin cell of paraganglion
+        meaning: CL:1000425
+      CL:4030051:
+        text: CL:4030051
+        description: nucleus accumbens shell and olfactory tubercle D1 medium spiny
+          neuron
+        meaning: CL:4030051
+      CL:0000567:
+        text: CL:0000567
+        description: polymodal nocireceptor
+        meaning: CL:0000567
+      CL:0004215:
+        text: CL:0004215
+        description: type 5a cone bipolar cell
+        meaning: CL:0004215
+      CL:0003032:
+        text: CL:0003032
+        description: M3-OFF retinal ganglion cell
+        meaning: CL:0003032
+      CL:4023079:
+        text: CL:4023079
+        description: midbrain-derived inhibitory neuron
+        meaning: CL:4023079
+      CL:0000099:
+        text: CL:0000099
+        description: interneuron
+        meaning: CL:0000099
+      CL:0000253:
+        text: CL:0000253
+        description: eurydendroid cell
+        meaning: CL:0000253
+      CL:0008013:
+        text: CL:0008013
+        description: cranial visceromotor neuron
+        meaning: CL:0008013
+      CL:0005000:
+        text: CL:0005000
+        description: spinal cord interneuron
+        meaning: CL:0005000
+      CL:0004222:
+        text: CL:0004222
+        description: flag B amacrine cell
+        meaning: CL:0004222
+      CL:0000617:
+        text: CL:0000617
+        description: GABAergic neuron
+        meaning: CL:0000617
+      CL:0003010:
+        text: CL:0003010
+        description: G7 retinal ganglion cell
+        meaning: CL:0003010
+      CL:0000577:
+        text: CL:0000577
+        description: type EC enteroendocrine cell
+        meaning: CL:0000577
+      CL:0003018:
+        text: CL:0003018
+        description: retinal ganglion cell B3 inner
+        meaning: CL:0003018
+      CL:0002083:
+        text: CL:0002083
+        description: type I cell of adrenal medulla
+        meaning: CL:0002083
+      CL:4023081:
+        text: CL:4023081
+        description: inverted L6 intratelencephalic projecting glutamatergic neuron
+          of the primary motor cortex (Mmus)
+        meaning: CL:4023081
+      CL:0004251:
+        text: CL:0004251
+        description: narrow field retinal amacrine cell
+        meaning: CL:0004251
+      CL:4023092:
+        text: CL:4023092
+        description: inverted pyramidal neuron
+        meaning: CL:4023092
+      CL:0002608:
+        text: CL:0002608
+        description: hippocampal neuron
+        meaning: CL:0002608
+      CL:0008048:
+        text: CL:0008048
+        description: upper motor neuron
+        meaning: CL:0008048
+      CL:0011113:
+        text: CL:0011113
+        description: spiral ganglion neuron
+        meaning: CL:0011113
+      CL:0000601:
+        text: CL:0000601
+        description: cochlear outer hair cell
+        meaning: CL:0000601
+      CL:0003041:
+        text: CL:0003041
+        description: M9-ON retinal ganglion cell
+        meaning: CL:0003041
+      CL:4023042:
+        text: CL:4023042
+        description: L6 corticothalamic-projecting glutamatergic cortical neuron
+        meaning: CL:4023042
+      CL:0000199:
+        text: CL:0000199
+        description: mechanoreceptor cell
+        meaning: CL:0000199
+      CL:1001571:
+        text: CL:1001571
+        description: hippocampal pyramidal neuron
+        meaning: CL:1001571
+      CL:2000048:
+        text: CL:2000048
+        description: anterior horn motor neuron
+        meaning: CL:2000048
+      CL:4023170:
+        text: CL:4023170
+        description: trigeminal sensory neuron
+        meaning: CL:4023170
+      CL:0002614:
+        text: CL:0002614
+        description: neuron of the substantia nigra
+        meaning: CL:0002614
