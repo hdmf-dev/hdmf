@@ -313,7 +313,7 @@ er.add_ref(
 # the individual tables written to tsv.
 # The user provides the path, which contains the name of the directory.
 
-er.to_norm_tsv(path='./')
+er.to_norm_tsv(path='./', file_name='HERD.zip')
 
 ###############################################################################
 # Read HERD
@@ -321,8 +321,8 @@ er.to_norm_tsv(path='./')
 # Users can read :py:class:`~hdmf.common.resources.HERD` from the tsv format
 # by providing the path to the directory.
 
-er_read = HERD.from_norm_tsv(path='./')
-os.remove('./er.zip')
+er_read = HERD.from_norm_tsv(path='./', file_name='HERD.zip')
+os.remove('./HERD.zip')
 
 ###############################################################################
 # Using TermSet with HERD
