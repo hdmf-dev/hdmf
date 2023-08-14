@@ -3,8 +3,8 @@ from uuid import uuid4, UUID
 import os
 
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.container import AbstractContainer, Container, Data, ExternalResourcesManager
-from hdmf.common.resources import ExternalResources
+from hdmf.container import AbstractContainer, Container, Data, HERDManager
+from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
@@ -32,10 +32,10 @@ class ContainerWithChild(Container):
         self.field1 = kwargs['field1']
 
 
-class TestExternalResourcesManager(TestCase):
+class TestHERDManager(TestCase):
     def test_link_and_get_resources(self):
-        em = ExternalResourcesManager()
-        er = ExternalResources()
+        em = HERDManager()
+        er = HERD()
 
         em.link_resources(er)
         er_get = em.get_linked_resources()
@@ -382,6 +382,18 @@ class TestContainer(TestCase):
         obj = Container('obj1')
         obj.reset_parent()
         self.assertIsNone(obj.parent)
+
+    def test_get_ancestors(self):
+        """Test that get_ancestors returns the correct ancestors.
+        """
+        grandparent_obj = Container('obj1')
+        parent_obj = Container('obj2')
+        child_obj = Container('obj3')
+        parent_obj.parent = grandparent_obj
+        child_obj.parent = parent_obj
+        self.assertTupleEqual(grandparent_obj.get_ancestors(), tuple())
+        self.assertTupleEqual(parent_obj.get_ancestors(), (grandparent_obj, ))
+        self.assertTupleEqual(child_obj.get_ancestors(), (parent_obj, grandparent_obj))
 
     def test_set_data_io(self):
 

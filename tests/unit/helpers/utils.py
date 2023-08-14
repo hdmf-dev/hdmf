@@ -3,7 +3,7 @@ import tempfile
 from copy import copy, deepcopy
 
 from hdmf.build import BuildManager, ObjectMapper, TypeMap
-from hdmf.container import Container, ExternalResourcesManager, Data
+from hdmf.container import Container, HERDManager, Data
 from hdmf.spec import (
     AttributeSpec,
     DatasetSpec,
@@ -117,7 +117,7 @@ class FooBucket(Container):
         return foo
 
 
-class FooFile(Container, ExternalResourcesManager):
+class FooFile(Container, HERDManager):
     """
     NOTE: if the ROOT_NAME for the backend is not 'root' then we must set FooFile.ROOT_NAME before use
           and should be reset to 'root' when use is finished to avoid potential cross-talk between tests.
