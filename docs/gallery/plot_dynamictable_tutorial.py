@@ -20,13 +20,14 @@ The :py:class:`~hdmf.common.table.DynamicTable` class represents a column-based 
 to which you can add custom columns. It consists of a name, a description, a list of
 row IDs, and a list of columns.
 
-Constructing a table
---------------------
-To create a :py:class:`~hdmf.common.table.DynamicTable`, call the constructor for
-:py:class:`~hdmf.common.table.DynamicTable` with a string ``name`` and string
-``description``.
-
 """
+
+###############################################################################
+# Constructing a table
+# --------------
+# To create a :py:class:`~hdmf.common.table.DynamicTable`, call the constructor for
+# :py:class:`~hdmf.common.table.DynamicTable` with a string ``name`` and string
+# ``description``.
 
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_dynamictable.png'
 from hdmf.common import DynamicTable
