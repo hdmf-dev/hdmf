@@ -62,7 +62,7 @@ class HDMFIO(metaclass=ABCMeta):
         if self.herd_path is not None:
             from hdmf.common import HERD
             try:
-                self.herd = HERD.from_norm_tsv(path=self.herd_path)
+                self.herd = HERD.from_zip(path=self.herd_path)
                 if isinstance(container, HERDManager):
                     container.link_resources(herd=self.herd)
             except FileNotFoundError:
@@ -84,7 +84,7 @@ class HDMFIO(metaclass=ABCMeta):
         if self.herd_path is not None:
             herd = container.get_linked_resources()
             if herd is not None:
-                herd.to_norm_tsv(path=self.herd_path)
+                herd.to_zip(path=self.herd_path)
             else:
                 msg = "Could not find linked HERD. Container was still written to IO source."
                 warn(msg)
