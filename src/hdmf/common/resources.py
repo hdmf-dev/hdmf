@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, Data, ExternalResourcesManager
+from ..container import Table, Row, Container, AbstractContainer, Data, HERDManager
 from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
@@ -154,9 +154,12 @@ class ObjectKey(Row):
     __table__ = ObjectKeyTable
 
 
-@register_class('ExternalResources', EXP_NAMESPACE)
-class ExternalResources(Container):
-    """A table for mapping user terms (i.e. keys) to resource entities."""
+@register_class('HERD', EXP_NAMESPACE)
+class HERD(Container):
+    """
+    HDMF External Resources Data Structure.
+    A table for mapping user terms (i.e. keys) to resource entities.
+    """
 
     __fields__ = (
         {'name': 'keys', 'child': True},
@@ -198,8 +201,8 @@ class ExternalResources(Container):
         """
         Compare that the keys, resources, entities, objects, and object_keys tables match
 
-        :param left: ExternalResources object to compare with right
-        :param right: ExternalResources object to compare with left
+        :param left: HERD object to compare with right
+        :param right: HERD object to compare with left
         :param check_dtype: Enforce strict checking of dtypes. Dtypes may be different
             for example for ids, where depending on how the data was saved
             ids may change from int64 to int32. (Default: True)
@@ -274,7 +277,7 @@ class ExternalResources(Container):
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
     def _add_entity(self, **kwargs):
         """
-        Add an entity that will be referenced to using keys specified in ExternalResources.entity_keys.
+        Add an entity that will be referenced to using keys specified in HERD.entity_keys.
         """
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
@@ -330,7 +333,7 @@ class ExternalResources(Container):
         entity, key = popargs('entity', 'key', kwargs)
         return EntityKey(entity, key, table=self.entity_keys)
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.'},
+    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.'},
             {'name': 'container', 'type': AbstractContainer,
              'doc': ('The Container/Data object that uses the key or '
                      'the object id for the Container/Data object that uses the key.')},
@@ -391,14 +394,14 @@ class ExternalResources(Container):
         """
         container = kwargs['container']
 
-        if isinstance(container, ExternalResourcesManager):
+        if isinstance(container, HERDManager):
             file = container
             return file
         else:
             parent = container.parent
             if parent is not None:
                 while parent is not None:
-                    if isinstance(parent, ExternalResourcesManager):
+                    if isinstance(parent, HERDManager):
                         file = parent
                         return file
                     else:
@@ -407,7 +410,7 @@ class ExternalResources(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
+    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
@@ -480,7 +483,7 @@ class ExternalResources(Container):
             return True
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
-            {'name': 'file', 'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
+            {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
             {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
@@ -548,7 +551,7 @@ class ExternalResources(Container):
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
-            {'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file associated with the container.',
+            {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
             )
     def add_ref(self, **kwargs):
@@ -709,7 +712,7 @@ class ExternalResources(Container):
                         & (df['field'] == field)]
         return df
 
-    @docval({'name': 'file',  'type': ExternalResourcesManager, 'doc': 'The file.',
+    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file.',
              'default': None},
             {'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/data object that is linked to resources/entities.'},
@@ -833,19 +836,20 @@ class ExternalResources(Container):
         # return the result
         return result_df
 
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the folder tsv file to write'})
-    def to_norm_tsv(self, **kwargs):
+    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
+    def to_zip(self, **kwargs):
         """
-        Write the tables in ExternalResources to individual tsv files.
+        Write the tables in HERD to zipped tsv files.
         """
-        path = kwargs['path']
-        files = [path+child.name+'.tsv' for child in self.children]
+        zip_file = kwargs['path']
+        directory = os.path.dirname(zip_file)
 
+        files = [os.path.join(directory, child.name)+'.tsv' for child in self.children]
         for i in range(len(self.children)):
             df = self.children[i].to_dataframe()
             df.to_csv(files[i], sep='\t', index=False)
 
-        with zipfile.ZipFile('er.zip', 'w') as zipF:
+        with zipfile.ZipFile(zip_file, 'w') as zipF:
           for file in files:
               zipF.write(file)
 
@@ -854,13 +858,17 @@ class ExternalResources(Container):
             os.remove(file)
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'path of the folder containing the tsv files to read'},
-            returns="ExternalResources loaded from TSV", rtype="ExternalResources")
-    def from_norm_tsv(cls, **kwargs):
-        path = kwargs['path']
-        with zipfile.ZipFile(path+'/er.zip', 'r') as zip:
-            zip.extractall(path)
-        tsv_paths = glob(path+'/*')
+    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
+    def from_zip(cls, **kwargs):
+        """
+        Method to read in zipped tsv files to populate HERD.
+        """
+        zip_file = kwargs['path']
+        directory = os.path.dirname(zip_file)
+
+        with zipfile.ZipFile(zip_file, 'r') as zip:
+            zip.extractall(directory)
+        tsv_paths = glob(directory+'/*')
 
         for file in tsv_paths:
             file_name = os.path.basename(file)
@@ -927,7 +935,7 @@ class ExternalResources(Container):
                 raise ValueError(msg)
 
 
-        er = ExternalResources(files=files,
+        er = HERD(files=files,
                                keys=keys,
                                entities=entities,
                                entity_keys=entity_keys,

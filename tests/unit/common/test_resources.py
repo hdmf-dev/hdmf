@@ -2,8 +2,8 @@ import pandas as pd
 import unittest
 from hdmf.common import DynamicTable, VectorData
 from hdmf import TermSet
-from hdmf.common.resources import ExternalResources, Key
-from hdmf import Data, Container, ExternalResourcesManager
+from hdmf.common.resources import HERD, Key
+from hdmf import Data, Container, HERDManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 import numpy as np
 from tests.unit.build_tests.test_io_map import Bar
@@ -19,18 +19,18 @@ except ImportError:
     LINKML_INSTALLED = False
 
 
-class ExternalResourcesManagerContainer(Container, ExternalResourcesManager):
+class HERDManagerContainer(Container, HERDManager):
     def __init__(self, **kwargs):
-        kwargs['name'] = 'ExternalResourcesManagerContainer'
+        kwargs['name'] = 'HERDManagerContainer'
         super().__init__(**kwargs)
 
 
-class TestExternalResources(H5RoundTripMixin, TestCase):
+class TestHERD(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
-        er = ExternalResources()
-        file = ExternalResourcesManagerContainer(name='file')
-        file2 = ExternalResourcesManagerContainer(name='file2')
+        er = HERD()
+        file = HERDManagerContainer(name='file')
+        file2 = HERDManagerContainer(name='file2')
         er.add_ref(file=file,
                    container=file,
                    key='special',
@@ -51,24 +51,23 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         remove_test_file('./object_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
-        remove_test_file('./er.tsv')
-        remove_test_file('./er.zip')
+        remove_test_file('./HERD.zip')
 
     def child_tsv(self, external_resources):
         for child in external_resources.children:
             df = child.to_dataframe()
             df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
 
-    def zip_child(self):
+    def zip_child(self, zip_file):
         files = glob('*.tsv')
-        with zipfile.ZipFile('er.zip', 'w') as zipF:
+        with zipfile.ZipFile(zip_file, 'w') as zipF:
           for file in files:
               zipF.write(file)
 
     def test_to_dataframe(self):
         # Setup complex external resources with keys reused across objects and
         # multiple resources per key
-        er = ExternalResources()
+        er = HERD()
         # Add a species dataset with 2 keys
         data1 = Data(
             name='data_name',
@@ -86,8 +85,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             )
         )
 
-        file_1 = ExternalResourcesManagerContainer(name='file_1')
-        file_2 = ExternalResourcesManagerContainer(name='file_2')
+        file_1 = HERDManagerContainer(name='file_1')
+        file_2 = HERDManagerContainer(name='file_2')
 
         k1, e1 = er.add_ref(file=file_1,
                              container=data1,
@@ -126,118 +125,118 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(result_df, expected_df)
 
     def test_assert_external_resources_equal(self):
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
-        er_left = ExternalResources()
+        er_left = HERD()
         er_left.add_ref(file=file,
                         container=ref_container_1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
-        er_right = ExternalResources()
+        er_right = HERD()
         er_right.add_ref(file=file,
                          container=ref_container_1,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
 
-        self.assertTrue(ExternalResources.assert_external_resources_equal(er_left,
+        self.assertTrue(HERD.assert_external_resources_equal(er_left,
                                                                           er_right))
 
     def test_invalid_keys_assert_external_resources_equal(self):
-        er_left = ExternalResources()
-        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_left = HERD()
+        er_left.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
-        er_right = ExternalResources()
-        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_right = HERD()
+        er_right.add_ref(file=HERDManagerContainer(name='file'),
                          container=Container(name='Container'),
                          key='invalid',
                          entity_id="id11",
                          entity_uri='url11')
 
         with self.assertRaises(AssertionError):
-            ExternalResources.assert_external_resources_equal(er_left,
+            HERD.assert_external_resources_equal(er_left,
                                                               er_right)
 
     def test_invalid_objects_assert_external_resources_equal(self):
-        er_left = ExternalResources()
-        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_left = HERD()
+        er_left.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
-        er_right = ExternalResources()
-        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_right = HERD()
+        er_right.add_ref(file=HERDManagerContainer(name='file'),
                          container=Container(name='Container'),
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
 
         with self.assertRaises(AssertionError):
-            ExternalResources.assert_external_resources_equal(er_left,
+            HERD.assert_external_resources_equal(er_left,
                                                               er_right)
 
     def test_invalid_entity_assert_external_resources_equal(self):
-        er_left = ExternalResources()
-        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_left = HERD()
+        er_left.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="invalid",
                         entity_uri='invalid')
 
-        er_right = ExternalResources()
-        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_right = HERD()
+        er_right.add_ref(file=HERDManagerContainer(name='file'),
                          container=Container(name='Container'),
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
 
         with self.assertRaises(AssertionError):
-            ExternalResources.assert_external_resources_equal(er_left,
+            HERD.assert_external_resources_equal(er_left,
                                                               er_right)
 
     def test_invalid_object_keys_assert_external_resources_equal(self):
-        er_left = ExternalResources()
-        er_left.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_left = HERD()
+        er_left.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='invalid',
                         entity_id="id11",
                         entity_uri='url11')
 
-        er_right = ExternalResources()
+        er_right = HERD()
         er_right._add_key('key')
-        er_right.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er_right.add_ref(file=HERDManagerContainer(name='file'),
                          container=Container(name='Container'),
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
 
         with self.assertRaises(AssertionError):
-            ExternalResources.assert_external_resources_equal(er_left,
+            HERD.assert_external_resources_equal(er_left,
                                                               er_right)
 
     def test_add_ref_search_for_file(self):
-        em = ExternalResourcesManagerContainer()
-        er = ExternalResources()
+        em = HERDManagerContainer()
+        er = HERD()
         er.add_ref(container=em, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
-        self.assertEqual(er.objects.data, [(0, em.object_id, 'ExternalResourcesManagerContainer', '', '')])
+        self.assertEqual(er.objects.data, [(0, em.object_id, 'HERDManagerContainer', '', '')])
 
     def test_add_ref_search_for_file_parent(self):
-        em = ExternalResourcesManagerContainer()
+        em = HERDManagerContainer()
 
         child = Container(name='child')
         child.parent = em
 
-        er = ExternalResources()
+        er = HERD()
         er.add_ref(container=child, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
@@ -245,14 +244,14 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(0, child.object_id, 'Container', '', '')])
 
     def test_add_ref_search_for_file_nested_parent(self):
-        em = ExternalResourcesManagerContainer()
+        em = HERDManagerContainer()
 
         nested_child = Container(name='nested_child')
         child = Container(name='child')
         nested_child.parent = child
         child.parent = em
 
-        er = ExternalResources()
+        er = HERD()
         er.add_ref(container=nested_child, key='key1',
                    entity_id='entity_id1', entity_uri='entity1')
         self.assertEqual(er.keys.data, [('key1',)])
@@ -261,7 +260,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_add_ref_search_for_file_error(self):
         container = Container(name='container')
-        er = ExternalResources()
+        er = HERD()
 
         with self.assertRaises(ValueError):
             er.add_ref(container=container,
@@ -272,8 +271,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        er = ExternalResources()
-        em = ExternalResourcesManagerContainer()
+        er = HERD()
+        em = HERDManagerContainer()
         em.link_resources(er)
 
         col1 = VectorData(name='Species_Data',
@@ -294,8 +293,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_termset(self):
-        er = ExternalResources()
-        em = ExternalResourcesManagerContainer()
+        er = HERD()
+        em = HERDManagerContainer()
         em.link_resources(er)
 
         species = DynamicTable(name='species', description='My species')
@@ -307,8 +306,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_attribute_termset_value(self):
-        er = ExternalResources()
-        em = ExternalResourcesManagerContainer()
+        er = HERD()
+        em = HERDManagerContainer()
         em.link_resources(er)
 
         col1 = VectorData(name='Species_Data',
@@ -325,8 +324,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_terms(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        er = ExternalResources()
-        em = ExternalResourcesManagerContainer()
+        er = HERD()
+        em = HERDManagerContainer()
         em.link_resources(er)
 
         col1 = VectorData(name='Species_Data',
@@ -349,7 +348,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_file_error(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        er = ExternalResources()
+        er = HERD()
 
         col1 = VectorData(name='Species_Data',
                           description='species from NCBI and Ensemble',
@@ -365,17 +364,17 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                        )
 
     def test_get_file_from_container(self):
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
         container = Container(name='name')
         container.parent = file
-        er = ExternalResources()
+        er = HERD()
         retrieved = er._get_file_from_container(container)
 
         self.assertEqual(file.name, retrieved.name)
 
     def test_get_file_from_container_file_is_container(self):
-        file = ExternalResourcesManagerContainer(name='file')
-        er = ExternalResources()
+        file = HERDManagerContainer(name='file')
+        er = HERD()
         retrieved = er._get_file_from_container(file)
 
         self.assertEqual(file.name, retrieved.name)
@@ -383,15 +382,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_get_file_from_container_error(self):
         container = Container(name='name')
-        er = ExternalResources()
+        er = HERD()
 
         with self.assertRaises(ValueError):
             er._get_file_from_container(container)
 
     def test_add_ref(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
@@ -401,8 +400,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
     def test_get_object_type(self):
-        er = ExternalResources()
-        file = ExternalResourcesManagerContainer(name='file')
+        er = HERD()
+        file = HERDManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=file,
                    container=data,
@@ -433,8 +432,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_object_type_all_instances(self):
-        er = ExternalResources()
-        file = ExternalResourcesManagerContainer(name='file')
+        er = HERD()
+        file = HERDManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=file,
                    container=data,
@@ -465,9 +464,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_entity(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
         er.add_ref(file=file,
                    container=data,
                    key='key1',
@@ -477,9 +476,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.get_entity(entity_id='entity_id2'), None)
 
     def test_get_obj_entities(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
         er.add_ref(file=file,
                    container=data,
                    key='key1',
@@ -496,8 +495,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_container(self):
-        er = ExternalResources()
-        file = ExternalResourcesManagerContainer()
+        er = HERD()
+        file = HERDManagerContainer()
         er.add_ref(container=file,
                    key='key1',
                    entity_id='entity_id1',
@@ -512,8 +511,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_not_container_nested(self):
-        er = ExternalResources()
-        file = ExternalResourcesManagerContainer()
+        er = HERD()
+        file = HERDManagerContainer()
         child = Container(name='child')
 
         child.parent = file
@@ -532,8 +531,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_not_container_deep_nested(self):
-        er = ExternalResources()
-        file = ExternalResourcesManagerContainer()
+        er = HERD()
+        file = HERDManagerContainer()
         child = Container(name='child')
         nested_child = Container(name='nested_child')
 
@@ -554,9 +553,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_error(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
         er.add_ref(file=file,
                    container=data,
                    key='key1',
@@ -570,9 +569,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
 
-        er = ExternalResources()
+        er = HERD()
         er.add_ref(file=file,
                    container=table,
                    attribute='col1',
@@ -590,30 +589,30 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_to_and_from_norm_tsv(self):
-        er = ExternalResources()
+    def test_to_and_from_zip(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
-        er_read = ExternalResources.from_norm_tsv(path='./')
-        ExternalResources.assert_external_resources_equal(er_read, er, check_dtype=False)
+        er_read = HERD.from_zip(path='./HERD.zip')
+        HERD.assert_external_resources_equal(er_read, er, check_dtype=False)
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_entity_value_error(self):
-        er = ExternalResources()
+    def test_to_and_from_zip_entity_value_error(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -621,22 +620,22 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         with self.assertRaises(ValueError):
-            _ = ExternalResources.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_entity_key_value_error_key(self):
-        er = ExternalResources()
+    def test_to_and_from_zip_entity_key_value_error_key(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -644,22 +643,22 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entity_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         with self.assertRaises(ValueError):
-            _ = ExternalResources.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_entity_key_value_error_entity(self):
-        er = ExternalResources()
+    def test_to_and_from_zip_entity_key_value_error_entity(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -667,22 +666,22 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('entities_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entity_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         with self.assertRaises(ValueError):
-            _ = ExternalResources.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_object_value_error(self):
-        er = ExternalResources()
+    def test_to_and_from_zip_object_value_error(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -690,23 +689,23 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('files_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./objects.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_object_keys_object_idx_value_error(self):
-        er = ExternalResources()
+    def test_to_and_from_zip_object_keys_object_idx_value_error(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -714,23 +713,23 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('objects_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./object_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
-        er = ExternalResources()
+    def test_to_and_from_zip_object_keys_key_idx_value_error(self):
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -738,24 +737,24 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./object_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = ExternalResources.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
     def test_add_ref_two_keys(self):
-        er = ExternalResources()
+        er = HERD()
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_1,
                    key='key1',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_2,
                    key='key2',
                    entity_id="id12",
@@ -768,15 +767,15 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            (1, ref_container_2.object_id, 'Container', '', '')])
 
     def test_add_ref_same_key_diff_objfield(self):
-        er = ExternalResources()
+        er = HERD()
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_1,
                    key='key1',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_2,
                    key='key1',
                    entity_id="id12",
@@ -788,21 +787,21 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            (1, ref_container_2.object_id, 'Container', '', '')])
 
     def test_add_ref_same_keyname(self):
-        er = ExternalResources()
+        er = HERD()
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
         ref_container_3 = Container(name='Container_2')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_1,
                    key='key1',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_2,
                    key='key1',
                    entity_id="id12",
                    entity_uri='url21')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=ref_container_3,
                    key='key1',
                    entity_id="id13",
@@ -818,17 +817,17 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
                                            (2, ref_container_3.object_id, 'Container', '', '')])
 
     def test_object_key_unqiueness(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    key=existing_key,
                    entity_id='entity2',
@@ -836,20 +835,20 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.object_keys.data, [(0, 0)])
 
     def test_object_key_existing_key_new_object(self):
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_2,
                    key=existing_key,
                    entity_id='entity2',
@@ -857,18 +856,18 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.object_keys.data, [(0, 0), (1, 0)])
 
     def test_object_key_existing_key_new_object_error(self):
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         key = er._add_key('key')
         with self.assertRaises(ValueError):
-            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+            er.add_ref(file=HERDManagerContainer(name='file'),
                        container=data_1,
                        key=key,
                        entity_id='entity1',
@@ -876,20 +875,20 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_reuse_key_reuse_entity(self):
         # With the key and entity existing, the EntityKeyTable should not have duplicates
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_2,
                    key=existing_key,
                    entity_id='NCBI:txid10090')
@@ -898,44 +897,44 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
 
     def test_resuse_entity_different_key(self):
         # The EntityKeyTable should have two rows: same entity_idx, but different key_idx
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_2,
                    key='mouse',
                    entity_id='NCBI:txid10090')
         self.assertEqual(er.entity_keys.data, [(0, 0), (0, 1)])
 
     def test_reuse_key_reuse_entity_new(self):
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mice',
                    entity_id='entity_2',
                    entity_uri='entity_2_uri')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_2,
                    key=existing_key,
                    entity_id='entity_2')
@@ -943,57 +942,57 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entity_keys.data, [(0, 0), (1, 1), (1, 0)])
 
     def test_entity_uri_error(self):
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
         with self.assertRaises(ValueError):
-            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+            er.add_ref(file=HERDManagerContainer(name='file'),
                        container=data_1,
                        key='Mus musculus',
                        entity_id='NCBI:txid10090')
 
     def test_entity_uri_reuse_error(self):
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
         with self.assertRaises(ValueError):
-            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+            er.add_ref(file=HERDManagerContainer(name='file'),
                        container=data_2,
                        key=existing_key,
                        entity_id='NCBI:txid10090',
                        entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
 
     def test_key_without_entity_error(self):
-        er = ExternalResources()
+        er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         key = er._add_key('key')
         with self.assertRaises(ValueError):
-            er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+            er.add_ref(file=HERDManagerContainer(name='file'),
                        container=data_1,
                        key=key,
                        entity_id='entity1')
 
     def test_check_object_field_add(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er._check_object_field(file=ExternalResourcesManagerContainer(name='file'),
+        er._check_object_field(file=HERDManagerContainer(name='file'),
                                container=data,
                                relative_path='',
                                field='')
@@ -1001,9 +1000,9 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
     def test_check_object_field_multi_files(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        file = ExternalResourcesManagerContainer(name='file')
+        file = HERDManagerContainer(name='file')
 
         er._check_object_field(file=file, container=data, relative_path='', field='')
         er._add_file(file.object_id)
@@ -1013,24 +1012,24 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
             er._check_object_field(file=file, container=data2, relative_path='', field='')
 
     def test_check_object_field_multi_error(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er._check_object_field(file=ExternalResourcesManagerContainer(name='file'),
+        er._check_object_field(file=HERDManagerContainer(name='file'),
                                container=data,
                                relative_path='',
                                field='')
         er._add_object(files_idx=0, container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
-            er._check_object_field(file=ExternalResourcesManagerContainer(name='file'),
+            er._check_object_field(file=HERDManagerContainer(name='file'),
                                    container=data,
                                    relative_path='',
                                    field='')
 
     def test_check_object_field_not_in_obj_table(self):
-        er = ExternalResources()
+        er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         with self.assertRaises(ValueError):
-            er._check_object_field(file=ExternalResourcesManagerContainer(name='file'),
+            er._check_object_field(file=HERDManagerContainer(name='file'),
                                    container=data,
                                    relative_path='',
                                    field='',
@@ -1043,8 +1042,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
-        er = ExternalResources()
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er = HERD()
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=table,
                    attribute='id',
                    key='key1',
@@ -1062,8 +1061,8 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
-        er = ExternalResources()
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er = HERD()
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=table,
                    attribute='col1',
                    key='key1',
@@ -1075,14 +1074,14 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         self.assertEqual(er.objects.data, [(0, table['col1'].object_id, 'VectorData', '', '')])
 
     def test_add_ref_compound_data(self):
-        er = ExternalResources()
+        er = HERD()
 
         data = Data(
             name='data_name',
             data=np.array(
                 [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
                 dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data,
                    field='species',
                    key='Mus musculus',
@@ -1102,7 +1101,7 @@ class TestExternalResources(H5RoundTripMixin, TestCase):
         pd.testing.assert_frame_equal(read_container.to_dataframe(), self.container.to_dataframe())
 
 
-class TestExternalResourcesNestedAttributes(TestCase):
+class TestHERDNestedAttributes(TestCase):
 
     def setUp(self):
         self.attr1 = AttributeSpec(name='attr1', doc='a string attribute', dtype='text')
@@ -1136,8 +1135,8 @@ class TestExternalResourcesNestedAttributes(TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
-        er = ExternalResources()
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er = HERD()
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=table,
                    attribute='description',
                    key='key1',
@@ -1148,8 +1147,8 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
 
     def test_add_ref_deep_nested(self):
-        er = ExternalResources(type_map=self.type_map)
-        er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        er = HERD(type_map=self.type_map)
+        er.add_ref(file=HERDManagerContainer(name='file'),
                    container=self.bar,
                    attribute='attr2',
                    key='key1',
@@ -1158,18 +1157,18 @@ class TestExternalResourcesNestedAttributes(TestCase):
         self.assertEqual(er.objects.data[0][3], 'data/attr2', '')
 
 
-class TestExternalResourcesGetKey(TestCase):
+class TestHERDGetKey(TestCase):
 
     def setUp(self):
-        self.er = ExternalResources()
+        self.er = HERD()
 
     def test_get_key_error_more_info(self):
-        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        self.er.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
-        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        self.er.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="id12",
@@ -1180,7 +1179,7 @@ class TestExternalResourcesGetKey(TestCase):
             _ = self.er.get_key(key_name='key1')
 
     def test_get_key(self):
-        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        self.er.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="id11",
@@ -1191,7 +1190,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_bad_arg(self):
-        self.er.add_ref(file=ExternalResourcesManagerContainer(name='file'),
+        self.er.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
                         entity_id="id11",
@@ -1201,7 +1200,7 @@ class TestExternalResourcesGetKey(TestCase):
             self.er.get_key(key_name='key2')
 
     def test_get_key_file_container_provided(self):
-        file = ExternalResourcesManagerContainer()
+        file = HERDManagerContainer()
         container1 = Container(name='Container')
         self.er.add_ref(file=file,
                         container=container1,
@@ -1219,7 +1218,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_no_file_container_provided(self):
-        file = ExternalResourcesManagerContainer()
+        file = HERDManagerContainer()
         self.er.add_ref(container=file, key='key1', entity_id="id11", entity_uri='url11')
 
         key = self.er.get_key(key_name='key1', container=file)
@@ -1227,7 +1226,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_no_file_nested_container_provided(self):
-        file = ExternalResourcesManagerContainer()
+        file = HERDManagerContainer()
         container1 = Container(name='Container')
 
         container1.parent = file
@@ -1242,7 +1241,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_no_file_deep_nested_container_provided(self):
-        file = ExternalResourcesManagerContainer()
+        file = HERDManagerContainer()
         container1 = Container(name='Container1')
         container2 = Container(name='Container2')
 
@@ -1260,7 +1259,7 @@ class TestExternalResourcesGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_no_file_error(self):
-        file = ExternalResourcesManagerContainer()
+        file = HERDManagerContainer()
         container1 = Container(name='Container')
         self.er.add_ref(file=file,
                         container=container1,
@@ -1272,7 +1271,7 @@ class TestExternalResourcesGetKey(TestCase):
             _ = self.er.get_key(key_name='key1', container=container1)
 
     def test_get_key_no_key_found(self):
-        file = ExternalResourcesManagerContainer()
+        file = HERDManagerContainer()
         container1 = Container(name='Container')
         self.er.add_ref(file=file,
                         container=container1,

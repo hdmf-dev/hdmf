@@ -1124,7 +1124,7 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         super().setUp()
 
     def setUpContainer(self):
-        multi_container = SimpleMultiContainer(name='multi', containers=[self.table, self.target_table])
+        multi_container = SimpleMultiContainer(name='multi', containers=[self.target_table, self.table])
         return multi_container
 
     def _get(self, arg):

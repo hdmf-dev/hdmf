@@ -3,7 +3,7 @@ import math
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
-from typing import Tuple
+from typing import Tuple, Callable
 from itertools import product, chain
 
 import h5py
@@ -154,7 +154,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc=(
                 "If chunk_shape is not specified, it will be inferred as the smallest chunk "
                 "below the chunk_mb threshold.",
-                "Defaults to 1MB.",
+                "Defaults to 10MB.",
             ),
             default=None,
         ),
@@ -187,18 +187,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Advanced users are offered full control over the shape parameters for the buffer and the chunks; however,
         the chunk shape must perfectly divide the buffer shape along each axis.
 
-        HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
-        See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
-        for more details.
+        HDF5 recommends chunk size in the range of 2 to 16 MB for optimal cloud performance.
+        https://youtu.be/rcS5vt-mKok?t=621
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, self.progress_bar_options = getargs(
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, progress_bar_options = getargs(
             "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
         )
+        self.progress_bar_options = progress_bar_options or dict()
 
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
-            chunk_mb = 1.0
+            chunk_mb = 10.0
         assert (buffer_gb is not None) != (
             buffer_shape is not None
         ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
@@ -265,15 +265,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
         if self.display_progress:
-            if self.progress_bar_options is None:
-                self.progress_bar_options = dict()
-
             try:
                 from tqdm import tqdm
 
                 if "total" in self.progress_bar_options:
                     warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
                     self.progress_bar_options.pop("total")
+
                 self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
             except ImportError:
                 warn(
@@ -346,12 +344,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             ]
         )
 
-    def recommended_chunk_shape(self) -> Tuple[int, ...]:
-        return self.chunk_shape
-
-    def recommended_data_shape(self) -> Tuple[int, ...]:
-        return self.maxshape
-
     def __iter__(self):
         return self
 
@@ -371,6 +363,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             if self.display_progress:
                 self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
             raise StopIteration
+
+    def __reduce__(self) -> Tuple[Callable, Iterable]:
+        instance_constructor = self._from_dict
+        initialization_args = (self._to_dict(),)
+        return (instance_constructor, initialization_args)
 
     @abstractmethod
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
@@ -392,23 +389,41 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
-    @property
-    def maxshape(self) -> Tuple[int, ...]:
-        return self._maxshape
-
     @abstractmethod
     def _get_maxshape(self) -> Tuple[int, ...]:
         """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
 
-    @property
-    def dtype(self) -> np.dtype:
-        return self._dtype
-
     @abstractmethod
     def _get_dtype(self) -> np.dtype:
         """Retrieve the dtype of the data using minimal I/O."""
         raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
+
+    def _to_dict(self) -> dict:
+        """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
+        raise NotImplementedError(
+            "The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        )
+
+    @staticmethod
+    def _from_dict(self) -> Callable:
+        """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
+        raise NotImplementedError(
+            "The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        )
+
+    def recommended_chunk_shape(self) -> Tuple[int, ...]:
+        return self.chunk_shape
+
+    def recommended_data_shape(self) -> Tuple[int, ...]:
+        return self.maxshape
+
+    @property
+    def maxshape(self) -> Tuple[int, ...]:
+        return self._maxshape
+    @property
+    def dtype(self) -> np.dtype:
+        return self._dtype
 
 
 class DataChunkIterator(AbstractDataChunkIterator):
