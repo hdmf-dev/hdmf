@@ -24,7 +24,7 @@ row IDs, and a list of columns.
 
 ###############################################################################
 # Constructing a table
-# --------------
+# --------------------
 # To create a :py:class:`~hdmf.common.table.DynamicTable`, call the constructor for
 # :py:class:`~hdmf.common.table.DynamicTable` with a string ``name`` and string
 # ``description``.
