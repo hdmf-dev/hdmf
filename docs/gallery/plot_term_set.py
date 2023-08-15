@@ -63,12 +63,11 @@ for this tutorial, which provides a concise example of how a term set schema loo
 """
 from hdmf.common import DynamicTable, VectorData
 import os
-import sys
 
 try:
     import linkml_runtime  # noqa: F401
-except ImportError:
-    sys.exit(0)
+except ImportError as e:
+    raise ImportError("Please install linkml-runtime to run this example: pip install linkml-runtime") from e
 from hdmf.term_set import TermSet
 
 try:

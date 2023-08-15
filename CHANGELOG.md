@@ -9,6 +9,7 @@
 - Added the magic `__reduce__` method as well as two private semi-abstract helper methods to enable pickling of the `GenericDataChunkIterator`. @codycbakerphd [#924](https://github.com/hdmf-dev/hdmf/pull/924)
 - Added Dynamic Enumerations and Schemasheets support to `TermSet`. @mavaylon1 [#923](https://github.com/hdmf-dev/hdmf/pull/923)
 - Updated `HERD` to support user defined file name for the `HERD` zip file. @mavaylon1 [#941](https://github.com/hdmf-dev/hdmf/pull/941)
+- Added method `Containter.set_data_io`, which wraps an existing data field in a `DataIO`. @bendichter [#938](https://github.com/hdmf-dev/hdmf/pull/938)
 
 ## HDMF 3.8.1 (July 25, 2023)
 
