@@ -311,18 +311,18 @@ er.add_ref(
 # ------------------------------------------------------
 # :py:class:`~hdmf.common.resources.HERD` is written as a zip file of
 # the individual tables written to tsv.
-# The user provides the path, which contains the name of the directory.
+# The user provides the path, which contains the name of the file.
 
-er.to_norm_tsv(path='./')
+er.to_zip(path='./HERD.zip')
 
 ###############################################################################
 # Read HERD
 # ------------------------------------------------------
-# Users can read :py:class:`~hdmf.common.resources.HERD` from the tsv format
-# by providing the path to the directory.
+# Users can read :py:class:`~hdmf.common.resources.HERD` from the zip file
+# by providing the path to the file itself.
 
-er_read = HERD.from_norm_tsv(path='./')
-os.remove('./er.zip')
+er_read = HERD.from_zip(path='./HERD.zip')
+os.remove('./HERD.zip')
 
 ###############################################################################
 # Using TermSet with HERD

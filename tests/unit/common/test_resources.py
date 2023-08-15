@@ -51,17 +51,16 @@ class TestHERD(H5RoundTripMixin, TestCase):
         remove_test_file('./object_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
-        remove_test_file('./er.tsv')
-        remove_test_file('./er.zip')
+        remove_test_file('./HERD.zip')
 
     def child_tsv(self, external_resources):
         for child in external_resources.children:
             df = child.to_dataframe()
             df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
 
-    def zip_child(self):
+    def zip_child(self, zip_file):
         files = glob('*.tsv')
-        with zipfile.ZipFile('er.zip', 'w') as zipF:
+        with zipfile.ZipFile(zip_file, 'w') as zipF:
           for file in files:
               zipF.write(file)
 
@@ -590,7 +589,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
         pd.testing.assert_frame_equal(df, expected_df)
 
-    def test_to_and_from_norm_tsv(self):
+    def test_to_and_from_zip(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -598,14 +597,14 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
-        er_read = HERD.from_norm_tsv(path='./')
+        er_read = HERD.from_zip(path='./HERD.zip')
         HERD.assert_external_resources_equal(er_read, er, check_dtype=False)
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_entity_value_error(self):
+    def test_to_and_from_zip_entity_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -613,7 +612,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -621,14 +620,14 @@ class TestHERD(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         with self.assertRaises(ValueError):
-            _ = HERD.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_entity_key_value_error_key(self):
+    def test_to_and_from_zip_entity_key_value_error_key(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -636,7 +635,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -644,14 +643,14 @@ class TestHERD(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entity_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         with self.assertRaises(ValueError):
-            _ = HERD.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_entity_key_value_error_entity(self):
+    def test_to_and_from_zip_entity_key_value_error_entity(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -659,7 +658,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -667,14 +666,14 @@ class TestHERD(H5RoundTripMixin, TestCase):
         df.at[0, ('entities_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entity_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         with self.assertRaises(ValueError):
-            _ = HERD.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_object_value_error(self):
+    def test_to_and_from_zip_object_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -682,7 +681,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -690,15 +689,15 @@ class TestHERD(H5RoundTripMixin, TestCase):
         df.at[0, ('files_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./objects.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = HERD.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_object_keys_object_idx_value_error(self):
+    def test_to_and_from_zip_object_keys_object_idx_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -706,7 +705,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -714,15 +713,15 @@ class TestHERD(H5RoundTripMixin, TestCase):
         df.at[0, ('objects_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./object_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = HERD.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
-    def test_to_and_from_norm_tsv_object_keys_key_idx_value_error(self):
+    def test_to_and_from_zip_object_keys_key_idx_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         er.add_ref(file=HERDManagerContainer(name='file'),
@@ -730,7 +729,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(external_resources=er)
 
@@ -738,11 +737,11 @@ class TestHERD(H5RoundTripMixin, TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./object_keys.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
 
         msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
         with self.assertRaisesWith(ValueError, msg):
-            _ = HERD.from_norm_tsv(path='./')
+            _ = HERD.from_zip(path='./HERD.zip')
 
         self.remove_er_files()
 
