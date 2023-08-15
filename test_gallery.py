@@ -71,6 +71,11 @@ def run_gallery_tests():
                     category=RuntimeWarning,
                 )
                 _import_from_file(script)
+        except ImportError as e:
+            if str(e).startswith("Please install linkml-runtime") and sys.version_info == (3, 8):
+                pass  # this is OK because plot_term_set.py cannot be run on Python 3.8
+            else:
+                raise e
         except Exception:
             print(traceback.format_exc())
             FAILURES += 1
