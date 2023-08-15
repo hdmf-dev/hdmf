@@ -51,7 +51,6 @@ class TestHERD(H5RoundTripMixin, TestCase):
         remove_test_file('./object_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
-        remove_test_file('./er.tsv')
         remove_test_file('./HERD.zip')
 
     def child_tsv(self, external_resources):
