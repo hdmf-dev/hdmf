@@ -10,7 +10,8 @@ is written for beginners and does not describe the full capabilities and nuances
 of :py:class:`~hdmf.common.table.DynamicTable` functionality. Please see the :ref:`dynamictable-howtoguide`
 for more complete documentation. This tutorial is designed to give
 you basic familiarity with how :py:class:`~hdmf.common.table.DynamicTable` works and help you get started
-with creating a :py:class:`~hdmf.common.table.DynamicTable`, adding columns and rows to a :py:class:`~hdmf.common.table.DynamicTable`,
+with creating a :py:class:`~hdmf.common.table.DynamicTable`, adding columns and rows to a 
+:py:class:`~hdmf.common.table.DynamicTable`,
 and accessing data in a :py:class:`~hdmf.common.table.DynamicTable`.
 
 Introduction
