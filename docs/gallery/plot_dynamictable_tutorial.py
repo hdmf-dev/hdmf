@@ -27,6 +27,7 @@ To create a :py:class:`~hdmf.common.table.DynamicTable`, call the constructor fo
 ``description``.
 
 """
+
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_dynamictable.png'
 from hdmf.common import DynamicTable
 
