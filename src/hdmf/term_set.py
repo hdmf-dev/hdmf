@@ -5,12 +5,12 @@ from .utils import docval
 import warnings
 
 
-class TermSet():
+class TermSet:
     """
     Class for implementing term sets from ontologies and other resources used to define the
     meaning and/or identify of terms.
 
-    :ivar term_schema_path: The path to LinkML YAML enumeration schema
+    :ivar term_schema_path: The path to the LinkML YAML enumeration schema
     :ivar sources: The prefixes for the ontologies used in the TermSet
     :ivar view: SchemaView of the term set schema
     :ivar schemasheets_folder: The path to the folder containing the LinkML TSV files
@@ -22,7 +22,7 @@ class TermSet():
                  dynamic: bool=False
                  ):
         """
-        :param term_schema_path: The path to LinkML YAML enumeration schema
+        :param term_schema_path: The path to the LinkML YAML enumeration schema
         :param schemasheets_folder: The path to the folder containing the LinkML TSV files
         :param dynamic: Boolean parameter denoting whether the schema uses Dynamic Enumerations
 
@@ -132,8 +132,8 @@ class TermSet():
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:   # pragma: no cover
-            msg="Install schemasheets."   # pragma: no cover
-            raise ValueError(msg)   # pragma: no cover
+            msg = "Install schemasheets."
+            raise ValueError(msg)
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
@@ -154,11 +154,12 @@ class TermSet():
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-            from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=DeprecationWarning)
+                from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:   # pragma: no cover
-            msg = 'Install oaklib.'  # pragma: no cover
-            raise ValueError(msg)  # pragma: no cover
+            msg = 'Install oaklib.'
+            raise ValueError(msg)
         expander = ValueSetExpander()
         # TODO: linkml should raise a warning if the schema does not have dynamic enums
         enum = list(self.view.all_enums())
