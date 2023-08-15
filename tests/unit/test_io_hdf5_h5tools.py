@@ -950,8 +950,7 @@ class TestHERDIO(TestCase):
         remove_test_file('./object_keys.tsv')
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
-        remove_test_file('./er.tsv')
-        remove_test_file('./er.zip')
+        remove_test_file('./HERD.zip')
 
     def child_tsv(self, herd):
         for child in herd.children:
@@ -972,13 +971,11 @@ class TestHERDIO(TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
-
-        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./') as io:
+        er.to_zip(path='./HERD.zip')
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
             container = io.read()
             self.assertIsInstance(io.herd, HERD)
             self.assertIsInstance(container.get_linked_resources(), HERD)
-
         self.remove_er_files()
 
     def test_io_read_herd_file_warn(self):
@@ -989,7 +986,7 @@ class TestHERDIO(TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='wrong_path') as io:
             with self.assertWarns(Warning):
@@ -1005,7 +1002,7 @@ class TestHERDIO(TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        er.to_norm_tsv(path='./')
+        er.to_zip(path='./HERD.zip')
 
         self.child_tsv(herd=er)
 
@@ -1014,7 +1011,7 @@ class TestHERDIO(TestCase):
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
         self.zip_child()
-        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
             with self.assertWarns(Warning):
                 io.read()
 
@@ -1031,10 +1028,10 @@ class TestHERDIO(TestCase):
                    entity_id='entity_id1',
                    entity_uri='entity1')
 
-        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
             io.write(self.foofile)
 
-        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
             container = io.read()
             self.assertIsInstance(io.herd, HERD)
             self.assertIsInstance(container.get_linked_resources(), HERD)
@@ -1050,7 +1047,7 @@ class TestHERDIO(TestCase):
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
-        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./') as io:
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
             with self.assertWarns(Warning):
                 io.write(self.foofile)
 

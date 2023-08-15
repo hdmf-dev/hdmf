@@ -836,22 +836,20 @@ class HERD(Container):
         # return the result
         return result_df
 
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the directory for the zip file.'},
-            {'name': 'file_name', 'type': str, 'doc': 'The name of the zip file.'})
-    def to_norm_tsv(self, **kwargs):
+    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
+    def to_zip(self, **kwargs):
         """
-        Write the tables in HERD to individual tsv files.
+        Write the tables in HERD to zipped tsv files.
         """
-        path = kwargs['path']
-        file_name = kwargs['file_name']
-        files = [path+child.name+'.tsv' for child in self.children]
+        zip_file = kwargs['path']
+        directory = os.path.dirname(zip_file)
 
+        files = [os.path.join(directory, child.name)+'.tsv' for child in self.children]
         for i in range(len(self.children)):
             df = self.children[i].to_dataframe()
             df.to_csv(files[i], sep='\t', index=False)
 
-        zip_path = os.path.join(path, file_name)
-        with zipfile.ZipFile(zip_path, 'w') as zipF:
+        with zipfile.ZipFile(zip_file, 'w') as zipF:
           for file in files:
               zipF.write(file)
 
@@ -860,18 +858,17 @@ class HERD(Container):
             os.remove(file)
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the directory containing the zip file.'},
-            {'name': 'file_name', 'type': str, 'doc': 'The name of the zip file.'})
-    def from_norm_tsv(cls, **kwargs):
+    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
+    def from_zip(cls, **kwargs):
         """
         Method to read in zipped tsv files to populate HERD.
         """
-        path = kwargs['path']
-        file_name = kwargs['file_name']
-        zip_file = os.path.join(path, file_name)
+        zip_file = kwargs['path']
+        directory = os.path.dirname(zip_file)
+
         with zipfile.ZipFile(zip_file, 'r') as zip:
-            zip.extractall(path)
-        tsv_paths = glob(path+'/*')
+            zip.extractall(directory)
+        tsv_paths = glob(directory+'/*')
 
         for file in tsv_paths:
             file_name = os.path.basename(file)
