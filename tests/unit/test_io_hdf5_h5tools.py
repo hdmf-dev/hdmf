@@ -957,9 +957,9 @@ class TestHERDIO(TestCase):
             df = child.to_dataframe()
             df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
 
-    def zip_child(self):
+    def zip_child(self, zip_file):
         files = glob('*.tsv')
-        with zipfile.ZipFile('HERD.zip', 'w') as zipF:
+        with zipfile.ZipFile(zip_file, 'w') as zipF:
           for file in files:
               zipF.write(file)
 
@@ -1010,7 +1010,7 @@ class TestHERDIO(TestCase):
         df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
         df.to_csv('./entities.tsv', sep='\t', index=False)
 
-        self.zip_child()
+        self.zip_child(zip_file='HERD.zip')
         with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
             with self.assertWarns(Warning):
                 io.read()
