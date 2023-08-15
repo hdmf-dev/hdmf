@@ -959,7 +959,7 @@ class TestHERDIO(TestCase):
 
     def zip_child(self):
         files = glob('*.tsv')
-        with zipfile.ZipFile('er.zip', 'w') as zipF:
+        with zipfile.ZipFile('HERD.zip', 'w') as zipF:
           for file in files:
               zipF.write(file)
 
