@@ -304,8 +304,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         return None
 
     def all_children(self):
-        """
-        This method will search through all children within the object and their children.
+        """Get a list of all child objects and their child objects recursively.
 
         If the object has an object_id, the object will be added to "ret" to be returned.
         If that object has children, they will be added to the "stack" in order to be:
