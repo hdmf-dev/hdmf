@@ -330,6 +330,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
     @property
     def all_objects(self):
+        """Get a LabelledDict that indexed all child objects and their children by object ID."""
         if self.__obj is None:
             self.all_children()
         return self.__obj
