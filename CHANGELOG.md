@@ -7,6 +7,7 @@
 - Increase raw data chunk cache size for reading HDF5 files from 1 MiB to 32 MiB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
 - Increase default chunk size for `GenericDataChunkIterator` from 1 MB to 10 MB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
 - Added the magic `__reduce__` method as well as two private semi-abstract helper methods to enable pickling of the `GenericDataChunkIterator`. @codycbakerphd [#924](https://github.com/hdmf-dev/hdmf/pull/924)
+- Updated `add_ref_termset` to add all instances of `TermSet` within a given root container. @mavaylon1 [#935](https://github.com/hdmf-dev/hdmf/pull/935)
 - Added Dynamic Enumerations and Schemasheets support to `TermSet`. @mavaylon1 [#923](https://github.com/hdmf-dev/hdmf/pull/923)
 - Updated `HERD` to support user defined file name for the `HERD` zip file. @mavaylon1 [#941](https://github.com/hdmf-dev/hdmf/pull/941)
 - Added method `Containter.set_data_io`, which wraps an existing data field in a `DataIO`. @bendichter [#938](https://github.com/hdmf-dev/hdmf/pull/938)
