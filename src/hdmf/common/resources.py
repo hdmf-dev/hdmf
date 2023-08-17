@@ -418,7 +418,7 @@ class HERD(Container):
         """
         root_container = kwargs['root_container']
 
-        all_children = root_container.all_objects
+        all_children = root_container.all_objects # dictionary of objects with the IDs as keys
 
         for child in all_children:
             try:
