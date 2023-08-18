@@ -1,7 +1,7 @@
 # HDMF Changelog
 
 
-## HDMF 3.9.0 (Upcoming)
+## HDMF 3.9.0 (August 25, 2023)
 
 ### New features and minor improvements
 - Increase raw data chunk cache size for reading HDF5 files from 1 MiB to 32 MiB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
