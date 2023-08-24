@@ -60,7 +60,7 @@ class HDF5IO(HDMFIO):
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
             {'name': 'file', 'type': [File, "S3File", "RemFile"],
-             'doc': 'a pre-existing h5py.File object', 'default': None},
+             'doc': 'a pre-existing h5py.File, S3File, or RemFile object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             {'name': 'herd_path', 'type': str,
              'doc': 'The path to the HERD', 'default': None},)
