@@ -59,7 +59,8 @@ class HDF5IO(HDMFIO):
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'file', 'type': [File, "S3File", "RemFile"], 'doc': 'a pre-existing h5py.File object', 'default': None},
+            {'name': 'file', 'type': [File, "S3File", "RemFile"],
+             'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             {'name': 'herd_path', 'type': str,
              'doc': 'The path to the HERD', 'default': None},)
