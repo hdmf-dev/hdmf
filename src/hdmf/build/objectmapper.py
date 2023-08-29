@@ -11,7 +11,7 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
                      ConstructError)
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
-from ..container import AbstractContainer, Data, DataRegion
+from ..container import AbstractContainer, Data, DataRegion, TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
@@ -554,6 +554,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         ''' Get the value of the attribute corresponding to this spec from the given container '''
         spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
         attr_name = self.get_attribute(spec)
+        # breakpoint()
         if attr_name is None:
             return None
         attr_val = self.__get_override_attr(attr_name, container, manager)
@@ -564,6 +565,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
+            if isinstance(attr_val, TermSetWrapper):
+                    attr_val = attr_val.item
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
@@ -705,6 +708,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
         builder, spec_ext, export = getargs('builder', 'spec_ext', 'export', kwargs)
         name = manager.get_builder_name(container)
+
+        # check container attributes
+
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
                               % (container.__class__.__name__, container.name, repr(source)))
@@ -906,7 +912,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if spec.value is not None:
                 attr_value = spec.value
             else:
-                attr_value = self.get_attr_value(spec, container, build_manager)
+                attr_value = self.get_attr_value(spec, container, build_manager) # here
                 if attr_value is None:
                     attr_value = spec.default_value
 
@@ -937,7 +943,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if attr_value is None:
                     self.logger.debug("        Skipping empty attribute")
                     continue
-
             builder.set_attribute(spec.name, attr_value)
 
     def __set_attr_to_ref(self, builder, attr_value, build_manager, spec):

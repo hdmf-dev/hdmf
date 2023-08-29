@@ -16,7 +16,7 @@ from ..errors import UnsupportedOperation
 from ..warnings import BrokenLinkWarning
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
-from ...container import Container
+from ...container import Container, TermSetWrapper
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
@@ -1099,6 +1099,8 @@ class HDF5IO(HDMFIO):
             dataio = data
             link_data = data.link_data
             data = data.data
+        if isinstance(data, TermSetWrapper):
+            data = data.item
         else:
             options['io_settings'] = {}
         attributes = builder.attributes
