@@ -3,7 +3,7 @@
 ## HDMF 3.9.1 (Upcoming)
 
 ### Bug fixes
-- Fixed bug allowing `DynamicTable` to be constructed with empty `id` column when initalizing all columns via `AbstractDataChunkIterator` objects. @oruebel [#953](https://github.com/hdmf-dev/hdmf/pull/953)
+- Fixed bug allowing `DynamicTable` to be constructed with empty `id` column when initializing all columns via `AbstractDataChunkIterator` objects. @oruebel [#953](https://github.com/hdmf-dev/hdmf/pull/953)
 
 
 ## HDMF 3.9.0 (August 25, 2023)
