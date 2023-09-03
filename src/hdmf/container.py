@@ -230,6 +230,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         self.__name = name
         self.__field_values = dict()
         self.__read_io = None
+        self.__obj = None
 
     @property
     def read_io(self):
@@ -301,6 +302,37 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 return p
             p = p.parent
         return None
+
+    def all_children(self):
+        """Get a list of all child objects and their child objects recursively.
+
+        If the object has an object_id, the object will be added to "ret" to be returned.
+        If that object has children, they will be added to the "stack" in order to be:
+        1) Checked to see if has an object_id, if so then add to "ret"
+        2) Have children that will also be checked
+        """
+        stack = [self] # list of containers, including self, to add and later parse for children
+        ret = list()
+        self.__obj = LabelledDict(label='all_objects', key_attr='object_id')
+        while len(stack): # search until there's nothing in the list
+            n = stack.pop()
+            ret.append(n)
+            if n.object_id is not None:
+                self.__obj[n.object_id] = n
+            else: # pragma: no cover
+                # warn that a child does not have an object_id, which is unusual
+                warn('%s "%s" does not have an object_id' % (type(n).__class__, n.name))
+            if hasattr(n, 'children'):
+                for c in n.children:
+                    stack.append(c)
+        return ret
+
+    @property
+    def all_objects(self):
+        """Get a LabelledDict that indexed all child objects and their children by object ID."""
+        if self.__obj is None:
+            self.all_children()
+        return self.__obj
 
     @docval()
     def get_ancestors(self, **kwargs):

@@ -195,6 +195,16 @@ class TestContainer(TestCase):
         child_obj.set_modified()
         self.assertTrue(child_obj.parent.modified)
 
+    def test_all_children(self):
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        obj = species.all_objects
+        self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
+
     def test_add_child(self):
         """Test that add child creates deprecation warning and also properly sets child's parent and modified
         """
@@ -578,7 +588,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent', 'read_io']
+        expected = ['all_objects', 'children', 'container_source', 'fields', 'modified',
+                    'name', 'object_id', 'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_named_fields(self):
@@ -598,7 +609,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFields.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
-        expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
+                    'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
@@ -679,7 +691,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFieldsChild.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
-        expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
+                    'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
