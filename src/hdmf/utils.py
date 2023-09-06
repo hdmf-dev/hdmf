@@ -279,7 +279,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     if isinstance(argval, TermSetWrapper):
                         # kwargs is the dict that stores the object names and the values
                         # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
-                        argval = kwargs[argname].item
+                        argval = argval.item
                     if not __type_okay(argval, arg['type']):
                         if argval is None:
                             fmt_val = (argname, __format_type(arg['type']))
