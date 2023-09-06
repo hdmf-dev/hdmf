@@ -24,7 +24,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 test_ts = TimeSeries(
     name="test_compressed_timeseries",
     data=H5DataIO(data=data, compression=True),
-    unit=tw(item="SIunit", termset=terms),
+    unit=tw(item="Homo sapiens", termset=terms),
     timestamps=timestamps,
 )
 

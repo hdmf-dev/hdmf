@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
-from .utils import docval, docval_macro, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
+from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 from hdmf.term_set import TermSet
 
 
@@ -1485,78 +1485,3 @@ class Table(Data):
         if name is None:
             return cls(data=data)
         return cls(name=name, data=data)
-
-
-class TermSetWrapper:
-    """
-    This class allows any HDF5 group, dataset, or attribute to have a TermSet.
-
-    In HDMF, a group is a Container object, a dataset is a Data object,
-    an attribute can be a reference type to an HDMF object or a base type, e.g., text.
-    """
-    # @docval({'name': 'termset',
-    #          'type': TermSet,
-    #          'doc': 'The TermSet to be used.'},
-    #         {'name': primitive})
-    def __init__(self, **kwargs):
-        item, termset = popargs('item', 'termset', kwargs)
-
-        self.__item = item
-        self.__termset = termset
-        self.__validate()
-
-    def __validate(self):
-        # check if list, tuple, array, Data
-        if isinstance(self.__item, (list, np.ndarray, tuple, Data)): # TODO: Future ticket on DataIO support
-            values = self.__item
-        # create list if none of those
-        else:
-            values = [self.__item]
-        # iteratively validate
-        bad_values = []
-        for term in values:
-            validation = self.__termset.validate(term=term)
-            if not validation:
-                bad_values.append(term)
-        if len(bad_values)!=0:
-            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_values]))
-            raise ValueError(msg)
-
-    @property
-    def item(self):
-        return self.__item
-
-    @property
-    def termset(self):
-        return self.__termset
-
-    @property
-    def dtype(self):
-        return self.__getattr__('dtype')
-
-    def __getattr__(self, val):
-        """
-        This method is to get attributes that are not defined in init.
-        This is when dealing with data and numpy arrays.
-        """
-        if val in ('data', 'shape', 'dtype'):
-            return getattr(self.__item, val)
-
-    def __getitem__(self, val):
-        """
-        This is used when we want to index items.
-        """
-        return self.__item[val]
-
-    def __next__(self):
-        """
-        We want to make sure all iterators are still valid.
-        """
-        return self.__item.__next__()
-
-
-    def __iter__(self):
-        """
-        We want to make sure our wrapped items are still iterable.
-        """
-        return self.__item.__iter__()

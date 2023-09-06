@@ -16,7 +16,8 @@ from ..errors import UnsupportedOperation
 from ..warnings import BrokenLinkWarning
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
-from ...container import Container, TermSetWrapper
+from ...container import Container
+from ...term_set import TermSetWrapper
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset

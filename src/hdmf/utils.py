@@ -273,8 +273,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             if not argval_set:
                 type_errors.append("missing argument '%s'" % argname)
             else:
-                from .container import TermSetWrapper # circular import fix
-                termset = False
+                from .term_set import TermSetWrapper # circular import fix
                 if isinstance(argval, TermSetWrapper):
                     # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
                     argval = argval.item

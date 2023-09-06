@@ -101,3 +101,42 @@ class TestTermSet(TestCase):
         actual_path = termset._TermSet__schemasheets_convert()
         expected_path = os.path.normpath(os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
         self.assertEqual(actual_path, expected_path)
+
+
+class TestTermSetWrapper(TestCase):
+
+    def setUp(self):
+        self.termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+
+    def test_item(self):
+        pass
+
+    def test_termset(self):
+        pass
+
+    def test_dtype(self):
+        pass
+
+    def test_get_item(self):
+        pass
+
+    def test_next(self):
+        pass
+
+    def test_iter(self):
+        pass
+
+    def test_wrapper_validate_data_list(self):
+        pass
+
+    def test_wrapper_validate_data_array(self):
+        pass
+
+    def test_wrapper_validate_data_tuple(self):
+        pass
+
+    def test_wrapper_validate_data_Data_obj(self):
+        pass
+
+    def test_wrapper_validate_data_list(self):
+        pass

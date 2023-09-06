@@ -11,7 +11,8 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
                      ConstructError)
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
-from ..container import AbstractContainer, Data, DataRegion, TermSetWrapper
+from ..container import AbstractContainer, Data, DataRegion
+from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
