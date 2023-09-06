@@ -97,6 +97,8 @@ def __type_okay(value, argtype, allow_none=False):
         elif argtype == 'bool':
             return __is_bool(value)
         return argtype in [cls.__name__ for cls in value.__class__.__mro__]
+    # elif isinstance(value, TermSetWrapper):
+        # pass
     elif isinstance(argtype, type):
         if argtype is int:
             return __is_int(value)
@@ -214,7 +216,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     future_warnings = list()
     argsi = 0
     extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
-
     try:
         # check for duplicates in docval
         names = [x['name'] for x in validator]
@@ -273,6 +274,14 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 type_errors.append("missing argument '%s'" % argname)
             else:
                 if enforce_type:
+                    from .container import TermSetWrapper # circular import fix
+                    termset = False
+                    if isinstance(argval, TermSetWrapper):
+                        termset = True
+                        wrapper_value = argval
+                        # kwargs is the dict that stores the object names and the values
+                        # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
+                        argval = kwargs[argname].item
                     if not __type_okay(argval, arg['type']):
                         if argval is None:
                             fmt_val = (argname, __format_type(arg['type']))

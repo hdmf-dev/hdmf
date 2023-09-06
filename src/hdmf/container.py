@@ -1486,7 +1486,7 @@ class Table(Data):
             return cls(data=data)
         return cls(name=name, data=data)
 
-@docval_macro('data')
+
 class TermSetWrapper:
     """
     This class allows any HDF5 group, dataset, or attribute to have a TermSet.
@@ -1503,6 +1503,24 @@ class TermSetWrapper:
 
         self.__item = item
         self.__termset = termset
+        self.__validate()
+
+    def __validate(self):
+        # check if list, tuple, array, or DataIO
+        if isinstance(self.__item, (list, np.ndarray, tuple, Data, DataIO, dict)):
+            values = self.__item
+        # create list if none of those
+        else:
+            values = [self.__item]
+        # iteratively validate
+        bad_values = []
+        for term in values:
+            validation = self.__termset.validate(term=term)
+            if not validation:
+                bad_values.append(term)
+        if len(bad_values)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_values]))
+            raise ValueError(msg)
 
     @property
     def item(self):
