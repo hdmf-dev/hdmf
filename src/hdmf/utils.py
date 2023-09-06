@@ -263,7 +263,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 # an error
                 if argsi < len(args):
                     type_errors.append("got multiple values for argument '%s'" % argname)
-                argval = kwargs.get(argname)
+                argval = kwargs.get(argname) # kwargs is the dict that stores the object names and the values
                 extras.pop(argname, None)
                 argval_set = True
             elif argsi < len(args):
@@ -273,13 +273,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             if not argval_set:
                 type_errors.append("missing argument '%s'" % argname)
             else:
+                from .container import TermSetWrapper # circular import fix
+                termset = False
+                if isinstance(argval, TermSetWrapper):
+                    # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
+                    argval = argval.item
                 if enforce_type:
-                    from .container import TermSetWrapper # circular import fix
-                    termset = False
-                    if isinstance(argval, TermSetWrapper):
-                        # kwargs is the dict that stores the object names and the values
-                        # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
-                        argval = argval.item
                     if not __type_okay(argval, arg['type']):
                         if argval is None:
                             fmt_val = (argname, __format_type(arg['type']))

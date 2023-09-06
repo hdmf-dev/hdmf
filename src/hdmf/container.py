@@ -1506,8 +1506,8 @@ class TermSetWrapper:
         self.__validate()
 
     def __validate(self):
-        # check if list, tuple, array, or DataIO
-        if isinstance(self.__item, (list, np.ndarray, tuple, Data, DataIO, dict)):
+        # check if list, tuple, array, Data
+        if isinstance(self.__item, (list, np.ndarray, tuple, Data)): # TODO: Future ticket on DataIO support
             values = self.__item
         # create list if none of those
         else:
