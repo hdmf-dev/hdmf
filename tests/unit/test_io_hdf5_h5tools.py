@@ -140,6 +140,12 @@ class H5IOTest(TestCase):
     ##########################################
     #  write_dataset tests: lists
     ##########################################
+    def test_write_dataset_TermSetWrapper(self):
+        pass
+
+    ##########################################
+    #  write_dataset tests: lists
+    ##########################################
     def test_write_dataset_list(self):
         a = np.arange(30).reshape(5, 2, 3)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a.tolist(), attributes={}))
@@ -805,6 +811,12 @@ class TestRoundTrip(TestCase):
             read_foofile = io.read()
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
+    def test_roundtrip_TermSetWrapper_dataset(self):
+        pass
+
+    def test_roundtrip_TermSetWrapper_attribute(self):
+        pass
 
 
 class TestHDF5IO(TestCase):

@@ -138,5 +138,5 @@ class TestTermSetWrapper(TestCase):
     def test_wrapper_validate_data_Data_obj(self):
         pass
 
-    def test_wrapper_validate_data_list(self):
+    def test_wrapper_validate_attribute(self):
         pass

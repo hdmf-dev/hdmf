@@ -97,8 +97,6 @@ def __type_okay(value, argtype, allow_none=False):
         elif argtype == 'bool':
             return __is_bool(value)
         return argtype in [cls.__name__ for cls in value.__class__.__mro__]
-    # elif isinstance(value, TermSetWrapper):
-        # pass
     elif isinstance(argtype, type):
         if argtype is int:
             return __is_int(value)
