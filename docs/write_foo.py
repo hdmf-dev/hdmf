@@ -23,10 +23,11 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 test_ts = TimeSeries(
     name="test_compressed_timeseries",
-    data=H5DataIO(data=data, compression=True),
+    data=tw(item=data, termset=terms),
     unit=tw(item="Homo sapiens", termset=terms),
     timestamps=timestamps,
 )
+breakpoint()
 
 nwbfile = NWBFile(
     session_description="my first synthetic recording",

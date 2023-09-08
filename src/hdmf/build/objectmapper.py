@@ -565,8 +565,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
-            if isinstance(attr_val, TermSetWrapper):
-                    attr_val = attr_val.item
+            # if isinstance(attr_val, TermSetWrapper):
+            #         attr_val = attr_val.item
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)

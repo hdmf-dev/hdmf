@@ -185,7 +185,7 @@ class TermSetWrapper:
     def __init__(self, **kwargs):
         self.__item = kwargs['item']
         self.__termset = kwargs['termset']
-        self.__validate()
+        # self.__validate()
 
     def __validate(self):
         # check if list, tuple, array, Data

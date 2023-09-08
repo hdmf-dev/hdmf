@@ -1,7 +1,9 @@
 import os
 
-from hdmf.term_set import TermSet
+from hdmf.term_set import TermSet, TermSetWrapper
 from hdmf.testing import TestCase, remove_test_file
+from hdmf.common import VectorData
+import numpy as np
 
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -107,12 +109,17 @@ class TestTermSetWrapper(TestCase):
 
     def setUp(self):
         self.termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        self.data = VectorData(
+            name='Species_1',
+            description='...',
+            data=np.array('Homo sapiens'),
+        )
 
-    def test_item(self):
-        pass
-
-    def test_termset(self):
-        pass
+    def test_properties(self):
+        wrapped_item = TermSetWrapper(item=self.data, termset=self.termset)
+        self.assertEqual(wrapped_item.item.object_id, self.data.object_id)
+        self.assertEqual(wrapped_item.termset.view_set, self.termset.view_set)
+        self.assertEqual(wrapped_item.dtype, 'i')
 
     def test_dtype(self):
         pass

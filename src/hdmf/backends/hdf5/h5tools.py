@@ -1100,8 +1100,8 @@ class HDF5IO(HDMFIO):
             dataio = data
             link_data = data.link_data
             data = data.data
-        if isinstance(data, TermSetWrapper):
-            data = data.item
+        # if isinstance(data, TermSetWrapper):
+        #     data = data.item
         else:
             options['io_settings'] = {}
         attributes = builder.attributes
