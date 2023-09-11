@@ -911,7 +911,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if spec.value is not None:
                 attr_value = spec.value
             else:
-                attr_value = self.get_attr_value(spec, container, build_manager) # here
+                attr_value = self.get_attr_value(spec, container, build_manager) #
                 if attr_value is None:
                     attr_value = spec.default_value
 

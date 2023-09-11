@@ -409,6 +409,8 @@ class HERD(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
+    @docval({'name': 'objects', 'type': list,
+             'doc': 'List of objects to check for TermSetWrapper within the fields.'})
     def __check_termset_wrapper(self, **kwargs):
         """
         Takes a list of objects and checks the fields for TermSetWrapper.
@@ -430,7 +432,6 @@ class HERD(Container):
                 elif isinstance(obj_fields[attribute], TermSetWrapper):
                     # Search objects that are wrapped
                     ret.append([obj, obj_fields[attribute]])
-        # breakpoint()
         return ret
 
     @docval({'name': 'root_container', 'type': HERDManager,
@@ -446,14 +447,13 @@ class HERD(Container):
         all_objects = root_container.all_children() # list of child objects and the container itslef
 
         add_ref_items = self.__check_termset_wrapper(objects=all_objects)
-        # breakpoint()
+
         for ref_pairs in add_ref_items:
             container, wrapper = ref_pairs
-            breakpoint()
             if isinstance(wrapper.value, (list, np.ndarray, tuple)):
                 values = wrapper.value
-            # create list if none of those
             else:
+                # create list for single values (edge-case) for a simple iteration downstream
                 values = [wrapper.value]
             for term in values:
                 term_info = wrapper.termset[term]

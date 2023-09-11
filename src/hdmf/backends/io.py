@@ -4,7 +4,6 @@ from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
 from ..container import Container, HERDManager
-# from ..common.resources import HERD
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
 from warnings import warn
@@ -80,10 +79,10 @@ class HDMFIO(metaclass=ABCMeta):
              'doc': 'A HERD object to populate with references.',
              'default': None}, allow_extra=True)
     def write(self, **kwargs):
-
         container = popargs('container', kwargs)
         herd = popargs('herd', kwargs)
 
+        """Optional: Write HERD."""
         if herd is not None:
             # populate HERD instance with all instances of TermSetWrapper
             herd.add_ref_term_set(container) # container would be the NWBFile
