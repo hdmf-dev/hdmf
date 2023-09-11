@@ -760,7 +760,10 @@ class Data(AbstractContainer):
 
     @property
     def data(self):
-        return self.__data
+        if isinstance(self.__data, TermSetWrapper):
+            return self.__data.value
+        else:
+            return self.__data
 
     @property
     def shape(self):

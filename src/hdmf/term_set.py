@@ -243,6 +243,8 @@ class TermSetWrapper:
         """
         return self.__value.__next__()
 
+    def __len__(self):
+        return len(self.__value)
 
     def __iter__(self):
         """

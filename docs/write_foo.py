@@ -8,7 +8,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.ecephys import LFP, ElectricalSeries
 
 from hdmf import TermSetWrapper as tw
-from hdmf.common import DynamicTable
+from hdmf.common import DynamicTable, VectorData
 from hdmf import TermSet
 from pynwb.resources import HERD
 
@@ -23,10 +23,17 @@ timestamps = np.arange(10)
 
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-table = DynamicTable(name='table', description='table')
-table.add_column(name='col1', description="column")
-table.add_row(id=0, col1='data')
-
+terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+col1 = VectorData(
+    name='Species_1',
+    description='...',
+    data=tw(value=['Homo sapiens'], field_name='data', termset=terms)
+)
+species = DynamicTable(name='species', description='My species', columns=[col1])
+species.add_column(name='Species_2',
+                   description='Species data',
+                   data=tw(value=['Mus musculus'], field_name='data', termset=terms))
+breakpoint()
 test_ts = TimeSeries(
     name="test_compressed_timeseries",
     data=data,
