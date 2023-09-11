@@ -34,9 +34,6 @@ RDCC_NBYTES = 32*2**20  # set raw data chunk cache size = 32 MiB
 
 H5PY_3 = h5py.__version__.startswith('3')
 
-def create_herd():
-    from ...common.resources import HERD # Circular import fix
-    return HERD()
 
 class HDF5IO(HDMFIO):
 
@@ -357,8 +354,6 @@ class HDF5IO(HDMFIO):
         source_file.close()
         dest_file.close()
 
-
-
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool,
              'doc': ('If True (default), cache specification to file (highly recommended). If False, do not cache '
@@ -384,19 +379,21 @@ class HDF5IO(HDMFIO):
                                         "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
                                        % (self.source, self.__mode))
 
-        # import HERD
-        herd = create_herd()
+        try:
+            herd = HERD()
+        except NameError:
+            from ...common.resources import HERD # Circular import fix
 
         cache_spec = popargs('cache_spec', kwargs)
         write_herd = popargs('write_herd', kwargs)
         herd_path = popargs('herd_path', kwargs)
         if write_herd:
             if herd_path is not None:
-                # herd = HERD().from_zip(path=herd_path)
+                herd = HERD().from_zip(path=herd_path)
                 # populate HERD instance with all instances of TermSetWrapper
                 herd.add_ref_term_set(container) # container would be the NWBFile
             else:
-                # herd = HERD()
+                herd = HERD()
                 # populate HERD instance with all instances of TermSetWrapper
                 herd.add_ref_term_set(kwargs['container']) # container would be the NWBFile
         if herd_path is not None:
