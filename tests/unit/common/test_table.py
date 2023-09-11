@@ -13,6 +13,7 @@ from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifie
                          DynamicTableRegion, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
+from hdmf.data_utils import DataChunkIterator
 
 from tests.unit.helpers.utils import get_temp_filepath
 
@@ -99,9 +100,23 @@ class TestDynamicTable(TestCase):
     def test_constructor_ids_bad_ids(self):
         columns = [VectorData(name=s['name'], description=s['description'], data=d)
                    for s, d in zip(self.spec, self.data)]
-        msg = "must provide same number of ids as length of columns"
+        msg = "Must provide same number of ids as length of columns"
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable(name="with_columns", description='a test table', id=[0, 1], columns=columns)
+
+    def test_constructor_all_columns_are_iterators(self):
+        """
+        All columns are specified via AbstractDataChunkIterator but no id's are given.
+        Test that an error is being raised because we can't determine the id's.
+        """
+        data = np.array([1., 2., 3.])
+        column = VectorData(name="TestColumn", description="", data=DataChunkIterator(data))
+        msg = ("Cannot determine row id's for table. Must provide ids with same length "
+               "as the columns when all columns are specified via DataChunkIterator objects.")
+        with self.assertRaisesWith(ValueError, msg):
+            _ = DynamicTable(name="TestTable", description="", columns=[column])
+        # now test that when we supply id's that the error goes away
+        _ = DynamicTable(name="TestTable", description="", columns=[column], id=list(range(3)))
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate(self):
@@ -204,7 +219,7 @@ class TestDynamicTable(TestCase):
     def test_constructor_unequal_length_columns(self):
         columns = [VectorData(name='col1', description='desc', data=[1, 2, 3]),
                    VectorData(name='col2', description='desc', data=[1, 2])]
-        msg = "columns must be the same length"
+        msg = "Columns must be the same length"
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable(name="with_columns", description='a test table', columns=columns)
 

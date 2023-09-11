@@ -2171,9 +2171,7 @@ class TestLoadNamespaces(TestCase):
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
-        msg = "No cached namespaces found in %s" % self.path
-        with self.assertWarnsWith(UserWarning, msg):
-            ret = HDF5IO.load_namespaces(ns_catalog, self.path)
+        ret = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertDictEqual(ret, {})
 
     def test_load_namespaces_resolve_custom_deps(self):
@@ -2387,9 +2385,7 @@ class TestGetNamespaces(TestCase):
             del f.attrs[SPEC_LOC_ATTR]
 
         # load the namespace from file
-        msg = "No cached namespaces found in %s" % self.path
-        with self.assertWarnsWith(UserWarning, msg):
-            ret = HDF5IO.get_namespaces(path=self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertDictEqual(ret, {})
 
 

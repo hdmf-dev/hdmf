@@ -209,12 +209,7 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __check_specloc(cls, file_obj):
-        if SPEC_LOC_ATTR not in file_obj.attrs:
-            # this occurs in legacy files
-            msg = "No cached namespaces found in %s" % file_obj.filename
-            warnings.warn(msg)
-            return False
-        return True
+        return SPEC_LOC_ATTR in file_obj.attrs
 
     @classmethod
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},

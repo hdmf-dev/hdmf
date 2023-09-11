@@ -311,7 +311,8 @@ class DynamicTable(Container):
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
-        if id is not None:
+        user_provided_ids = (id is not None)
+        if user_provided_ids:
             if not isinstance(id, ElementIdentifiers):
                 id = ElementIdentifiers(name='id', data=id)
         else:
@@ -354,13 +355,22 @@ class DynamicTable(Container):
                 if isinstance(_data, AbstractDataChunkIterator):
                     colset.pop(c.name, None)
             lens = [len(c) for c in colset.values()]
+            all_columns_are_iterators = (len(lens) == 0)
+
             if not all(i == lens[0] for i in lens):
-                raise ValueError("columns must be the same length")
-            if len(lens) > 0 and lens[0] != len(id):
-                # the first part of this conditional is needed in the
-                # event that all columns are AbstractDataChunkIterators
-                if len(id) > 0:
-                    raise ValueError("must provide same number of ids as length of columns")
+                raise ValueError("Columns must be the same length")
+            # If we have columns given, but all columns are AbstractDataChunkIterator's, then we
+            # cannot determine how many elements the id column will need. I.e., in this case the
+            # user needs to provide the id's as otherwise we may create an invalid table with an
+            # empty Id column but data in the rows. See: https://github.com/hdmf-dev/hdmf/issues/952
+            if all_columns_are_iterators and not user_provided_ids:
+                raise ValueError("Cannot determine row id's for table. Must provide ids with same length "
+                                 "as the columns when all columns are specified via DataChunkIterator objects.")
+            # If we have columns with a known length but the length (i.e., number of rows)
+            # does not match the number of id's then initialize the id's
+            if not all_columns_are_iterators and lens[0] != len(id):
+                if user_provided_ids and len(id) > 0:
+                    raise ValueError("Must provide same number of ids as length of columns")
                 else:  # set ids to: 0 to length of columns - 1
                     id.data.extend(range(lens[0]))
 
