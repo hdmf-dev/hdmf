@@ -5,6 +5,7 @@ from . import get_type_map
 from ..container import Table, Row, Container, AbstractContainer, HERDManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+from ..term_set import TermSetWrapper
 from glob import glob
 import os
 import zipfile
@@ -408,6 +409,30 @@ class HERD(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
+    def __check_termset_wrapper(self, **kwargs):
+        """
+        Takes a list of objects and checks the fields for TermSetWrapper.
+        return --> [[object, wrapper1], [object, wrapper2], ...]
+        """
+        objects = kwargs['objects']
+
+        ret = [] # list to be returned with the objects, attributes and corresponding termsets
+
+        for obj in objects:
+            obj_fields = obj.fields
+            for attribute in obj_fields: # attribute name is the key of field dict
+                if isinstance(obj_fields[attribute], (list, np.ndarray, tuple)):
+                    # Fields can be lists, tuples, arrays that contain objects e.g., DynamicTable columns
+                    # Search through for objects that are wrapped
+                    for nested_attr in obj_fields[attribute]:
+                        if isinstance(nested_attr, TermSetWrapper):
+                            ret.append([obj, nested_attr])
+                elif isinstance(obj_fields[attribute], TermSetWrapper):
+                    # Search objects that are wrapped
+                    ret.append([obj, obj_fields[attribute]])
+        # breakpoint()
+        return ret
+
     @docval({'name': 'root_container',  'type': HERDManager,
              'doc': 'The root container or file containing objects with a TermSet.'})
     def add_ref_term_set(self, **kwargs):
@@ -418,25 +443,28 @@ class HERD(Container):
         """
         root_container = kwargs['root_container']
 
-        all_children = root_container.all_objects # dictionary of objects with the IDs as keys
+        all_objects = root_container.all_children() # list of child objects and the container itslef
 
-        for child in all_children:
-            try:
-                term_set = all_children[child].term_set
-                data = all_children[child].data # TODO: This will be expanded to not just support data
-            except AttributeError:
-                continue
-
-            if term_set is not None:
-                for term in data:
-                    term_info = term_set[term]
-                    entity_id = term_info[0]
-                    entity_uri = term_info[2]
-                    self.add_ref(file=root_container,
-                                 container=all_children[child],
-                                 key=term,
-                                 entity_id=entity_id,
-                                 entity_uri=entity_uri)
+        add_ref_items = self.__check_termset_wrapper(objects=all_objects)
+        # breakpoint()
+        for ref_pairs in add_ref_items:
+            container, wrapper = ref_pairs
+            breakpoint()
+            if isinstance(wrapper.value, (list, np.ndarray, tuple)):
+                values = wrapper.value
+            # create list if none of those
+            else:
+                values = wrapper.value
+            for term in values:
+                term_info = wrapper.termset[term]
+                entity_id = term_info[0]
+                entity_uri = term_info[2]
+                self.add_ref(file=root_container,
+                             container=container,
+                             attribute=wrapper.field_name,
+                             key=term,
+                             entity_id=entity_id,
+                             entity_uri=entity_uri)
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
@@ -546,8 +574,10 @@ class HERD(Container):
                                                         field=field)
             else:  # Non-DataType Attribute Case:
                 obj_mapper = self.type_map.get_map(container)
+                breakpoint()
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
                 parent_spec = spec.parent  # return the parent spec of the attribute
+                breakpoint()
                 if parent_spec.data_type is None:
                     while parent_spec.data_type is None:
                         parent_spec = parent_spec.parent  # find the closest parent with a data_type

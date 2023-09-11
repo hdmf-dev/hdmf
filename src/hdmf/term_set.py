@@ -183,18 +183,19 @@ class TermSetWrapper:
     #          'doc': 'The TermSet to be used.'},
     #         {'name': primitive})
     def __init__(self, **kwargs):
-        self.__item = kwargs['item']
+        self.__value = kwargs['value']
         self.__termset = kwargs['termset']
-        # self.__validate()
+        self.__field_name = kwargs['field_name']
+        self.__validate()
 
     def __validate(self):
         # check if list, tuple, array, Data
         from .container import Data # circular import fix
-        if isinstance(self.__item, (list, np.ndarray, tuple, Data)): # TODO: Future ticket on DataIO support
-            values = self.__item
+        if isinstance(self.__value, (list, np.ndarray, tuple, Data)): # TODO: Future ticket on DataIO support
+            values = self.__value
         # create list if none of those
         else:
-            values = [self.__item]
+            values = [self.__value]
         # iteratively validate
         bad_values = []
         for term in values:
@@ -202,16 +203,20 @@ class TermSetWrapper:
             if not validation:
                 bad_values.append(term)
         if len(bad_values)!=0:
-            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_values]))
+            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
             raise ValueError(msg)
 
     @property
-    def item(self):
-        return self.__item
+    def value(self):
+        return self.__value
 
     @property
     def termset(self):
         return self.__termset
+
+    @property
+    def field_name(self):
+        return self.__field_name
 
     @property
     def dtype(self):
@@ -223,23 +228,23 @@ class TermSetWrapper:
         This is when dealing with data and numpy arrays.
         """
         if val in ('data', 'shape', 'dtype'):
-            return getattr(self.__item, val)
+            return getattr(self.__value, val)
 
     def __getitem__(self, val):
         """
         This is used when we want to index items.
         """
-        return self.__item[val]
+        return self.__value[val]
 
     def __next__(self):
         """
         We want to make sure all iterators are still valid.
         """
-        return self.__item.__next__()
+        return self.__value.__next__()
 
 
     def __iter__(self):
         """
         We want to make sure our wrapped items are still iterable.
         """
-        return self.__item.__iter__()
+        return self.__value.__iter__()
