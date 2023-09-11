@@ -433,7 +433,7 @@ class HERD(Container):
         # breakpoint()
         return ret
 
-    @docval({'name': 'root_container',  'type': HERDManager,
+    @docval({'name': 'root_container', 'type': HERDManager,
              'doc': 'The root container or file containing objects with a TermSet.'})
     def add_ref_term_set(self, **kwargs):
         """
@@ -454,7 +454,7 @@ class HERD(Container):
                 values = wrapper.value
             # create list if none of those
             else:
-                values = wrapper.value
+                values = [wrapper.value]
             for term in values:
                 term_info = wrapper.termset[term]
                 entity_id = term_info[0]
@@ -574,10 +574,8 @@ class HERD(Container):
                                                         field=field)
             else:  # Non-DataType Attribute Case:
                 obj_mapper = self.type_map.get_map(container)
-                breakpoint()
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
                 parent_spec = spec.parent  # return the parent spec of the attribute
-                breakpoint()
                 if parent_spec.data_type is None:
                     while parent_spec.data_type is None:
                         parent_spec = parent_spec.parent  # find the closest parent with a data_type

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder
 from ..container import Container, HERDManager
+# from ..common.resources import HERD
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs
 from warnings import warn
@@ -22,7 +23,7 @@ class HDMFIO(metaclass=ABCMeta):
             {"name": "source", "type": (str, Path),
              "doc": "the source of container being built i.e. file path", 'default': None},
             {'name': 'herd_path', 'type': str,
-             'doc': 'The path to the HERD', 'default': None},)
+             'doc': 'The path to read/write the HERD file', 'default': None},)
     def __init__(self, **kwargs):
         manager, source, herd_path = getargs('manager', 'source', 'herd_path', kwargs)
         if isinstance(source, Path):
@@ -74,20 +75,28 @@ class HDMFIO(metaclass=ABCMeta):
 
         return container
 
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'}, allow_extra=True)
+    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
+            {'name': 'herd', 'type': 'HERD',
+             'doc': 'A HERD object to populate with references.',
+             'default': None}, allow_extra=True)
     def write(self, **kwargs):
-        """Write a container to the IO source."""
-        container = popargs('container', kwargs)
-        f_builder = self.__manager.build(container, source=self.__source, root=True)
-        self.write_builder(f_builder, **kwargs)
 
-        if self.herd_path is not None:
-            herd = container.get_linked_resources()
-            if herd is not None:
+        container = popargs('container', kwargs)
+        herd = popargs('herd', kwargs)
+
+        if herd is not None:
+            # populate HERD instance with all instances of TermSetWrapper
+            herd.add_ref_term_set(container) # container would be the NWBFile
+            # write HERD
+            if self.herd_path is not None:
                 herd.to_zip(path=self.herd_path)
             else:
-                msg = "Could not find linked HERD. Container was still written to IO source."
-                warn(msg)
+                msg = "Provide path for HERD to be written."
+                raise ValueError(msg)
+
+        """Write a container to the IO source."""
+        f_builder = self.__manager.build(container, source=self.__source, root=True)
+        self.write_builder(f_builder, **kwargs)
 
     @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
             {'name': 'container', 'type': Container,

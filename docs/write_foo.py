@@ -10,6 +10,8 @@ from pynwb.ecephys import LFP, ElectricalSeries
 from hdmf import TermSetWrapper as tw
 from hdmf.common import DynamicTable
 from hdmf import TermSet
+from pynwb.resources import HERD
+
 terms = TermSet(term_schema_path='/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_term_set.yaml')
 
 import numpy as np
@@ -47,8 +49,9 @@ nwbfile.add_acquisition(table)
 
 
 filename = "nwbfile_test.nwb"
+er = HERD()
 with NWBHDF5IO(filename, "w") as io:
-    io.write(nwbfile, write_herd=True)
+    io.write(nwbfile, herd=er)
 
 # open the NWB file in r+ mode
 with NWBHDF5IO(filename, "r+") as io:

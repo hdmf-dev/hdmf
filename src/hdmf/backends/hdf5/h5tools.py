@@ -22,7 +22,6 @@ from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
-from ...common.resources import HERD # Circular import fix
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -367,11 +366,8 @@ class HDF5IO(HDMFIO):
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
              'default': True},
-            {'name': 'write_herd', 'type': bool,
-             'doc': 'If true, a HERD file will also be written in the same directory.',
-             'default': False},
-            {'name': 'herd_path', 'type': str,
-             'doc': 'Optional path to HERD file to further populate references.',
+            {'name': 'herd', 'type': 'HERD',
+             'doc': 'A HERD object to populate with references.',
              'default': None})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
@@ -380,29 +376,7 @@ class HDF5IO(HDMFIO):
                                         "Please use mode 'r+', 'w', 'w-', 'x', or 'a'")
                                        % (self.source, self.__mode))
 
-        try:
-            herd = HERD()
-        except NameError:
-            from ...common.resources import HERD # Circular import fix
-
         cache_spec = popargs('cache_spec', kwargs)
-        write_herd = popargs('write_herd', kwargs)
-        herd_path = popargs('herd_path', kwargs)
-        if write_herd:
-            if herd_path is not None:
-                herd = HERD().from_zip(path=herd_path)
-                # populate HERD instance with all instances of TermSetWrapper
-                herd.add_ref_term_set(container) # container would be the NWBFile
-            else:
-                herd = HERD()
-                # populate HERD instance with all instances of TermSetWrapper
-                herd.add_ref_term_set(kwargs['container']) # container would be the NWBFile
-        if herd_path is not None:
-            if not write_herd:
-                msg = 'HERD path provided, but write_herd is False.'
-                raise ValueError(msg)
-        breakpoint()
-        # TODO: when writing herd that exists, replace or make note that it won't replace
         super().write(**kwargs)
         if cache_spec:
             self.__cache_spec()
