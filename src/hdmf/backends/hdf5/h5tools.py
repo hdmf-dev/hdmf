@@ -22,6 +22,7 @@ from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
+from ...common.resources import HERD # Circular import fix
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'

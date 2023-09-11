@@ -412,7 +412,7 @@ class HERD(Container):
     def __check_termset_wrapper(self, **kwargs):
         """
         Takes a list of objects and checks the fields for TermSetWrapper.
-        return --> [[object, wrapper1], [object, wrapper2], ...]
+        :return: [[object, wrapper1], [object, wrapper2], ...]
         """
         objects = kwargs['objects']
 
