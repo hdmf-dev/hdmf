@@ -4,6 +4,7 @@ from collections import namedtuple
 from .utils import docval
 import warnings
 import numpy as np
+from .data_utils import append_data, extend_data
 
 
 class TermSet:
@@ -15,7 +16,7 @@ class TermSet:
     :ivar sources: The prefixes for the ontologies used in the TermSet
     :ivar view: SchemaView of the term set schema
     :ivar schemasheets_folder: The path to the folder containing the LinkML TSV files
-    :ivar expanded_term_set_path: The path to the schema with the expanded enumerations
+    :ivar expanded_termset_path: The path to the schema with the expanded enumerations
     """
     def __init__(self,
                  term_schema_path: str=None,
@@ -46,11 +47,11 @@ class TermSet:
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
-        self.expanded_term_set_path = None
+        self.expanded_termset_path = None
         if dynamic:
-            # reset view to now include the dynamically populated term_set
-            self.expanded_term_set_path = self.__enum_expander()
-            self.view = SchemaView(self.expanded_term_set_path)
+            # reset view to now include the dynamically populated termset
+            self.expanded_termset_path = self.__enum_expander()
+            self.view = SchemaView(self.expanded_termset_path)
 
         self.sources = self.view.schema.prefixes
 
@@ -248,3 +249,28 @@ class TermSetWrapper:
         We want to make sure our wrapped items are still iterable.
         """
         return self.__value.__iter__()
+
+    def append(self, arg):
+        """
+
+        """
+        if self.termset.validate(term=arg):
+            self.__value = append_data(self.__value, arg)
+        else:
+            msg = ('"%s" is not in the term set.' % arg)
+            raise ValueError(msg)
+
+    def extend(self, arg):
+        """
+        The extend_data method adds all the elements of the iterable arg to the
+        end of self.__values, which would be a Data Container.
+        """
+        bad_data = []
+        for item in arg:
+            try:
+                self.append(item)
+            except ValueError:
+                bad_data.append(item)
+        if len(bad_data)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+            raise ValueError(msg)
