@@ -27,6 +27,7 @@ from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
+from hdmf.term_set import TermSet, TermSetWrapper
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -141,7 +142,11 @@ class H5IOTest(TestCase):
     #  write_dataset tests: lists
     ##########################################
     def test_write_dataset_TermSetWrapper(self):
-        pass
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        a = TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertEqual(dset[0].decode('utf-8'), a.value[0])
 
     ##########################################
     #  write_dataset tests: lists
@@ -813,7 +818,24 @@ class TestRoundTrip(TestCase):
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_roundtrip_TermSetWrapper_dataset(self):
-        pass
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                                                         field_name='data',
+                                                         termset=terms))
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        # with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+        #     io.write(foofile)
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile, herd=er)
+        #
+        # with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+        #     read_foofile = io.read()
+        #     self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data.value,
+        #                          read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+
 
     def test_roundtrip_TermSetWrapper_attribute(self):
         pass
@@ -1029,39 +1051,55 @@ class TestHERDIO(TestCase):
 
         self.remove_er_files()
 
-    def test_io_write_herd(self):
-        er = HERD()
-        self.foofile.link_resources(er)
+    def test_io_write_extend_herd(self):
+        """
+        Test the optional write of HERD with extending an existing HERD instance.
+        """
+        # create a container that uses TermSetWrapper
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="foo", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                                                         field_name='my_data',
+                                                         termset=terms))
+        # breakpoint()
+        foobucket = FooBucket('bucket1', [foo])
+        file = FooFile(buckets=[foobucket])
 
-        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
-                   key='key1',
-                   entity_id='entity_id1',
-                   entity_uri='entity1')
+        er = HERD()
+        er.add_ref(file=file,
+                   container=file,
+                   key='special',
+                   entity_id="id11",
+                   entity_uri='url11')
 
         with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
-            io.write(self.foofile)
-
+            io.write(file, herd=er)
         with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
             container = io.read()
             self.assertIsInstance(io.herd, HERD)
-            self.assertIsInstance(container.get_linked_resources(), HERD)
 
         self.remove_er_files()
 
-    def test_io_warn(self):
-        er = HERD()
+    def test_io_write_create_herd(self):
+        """
+        Test the optional write of HERD with an new instance.
+        """
+        # create a container that uses TermSetWrapper
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="my_data", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                                                         field_name='data',
+                                                         termset=terms))
+        foobucket = FooBucket('bucket1', [foo])
+        file = FooFile(buckets=[foobucket])
 
-        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
-                   key='key1',
-                   entity_id='entity_id1',
-                   entity_uri='entity1')
         with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
-            with self.assertWarns(Warning):
-                io.write(self.foofile)
+            io.write(file)
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
+            container = io.read()
+            self.assertIsInstance(io.herd, HERD)
+
+        self.remove_er_files()
 
 
 class TestMultiWrite(TestCase):

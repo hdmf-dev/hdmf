@@ -421,17 +421,13 @@ class HERD(Container):
         ret = [] # list to be returned with the objects, attributes and corresponding termsets
 
         for obj in objects:
-            obj_fields = obj.fields
-            for attribute in obj_fields: # attribute name is the key of field dict
-                if isinstance(obj_fields[attribute], (list, np.ndarray, tuple)):
-                    # Fields can be lists, tuples, arrays that contain objects e.g., DynamicTable columns
-                    # Search through for objects that are wrapped
-                    for nested_attr in obj_fields[attribute]:
-                        if isinstance(nested_attr, TermSetWrapper):
-                            ret.append([obj, nested_attr])
-                elif isinstance(obj_fields[attribute], TermSetWrapper):
+            # Get all the fields, parse out the methods and internal variables
+            obj_fields = [a for a in dir(obj) if not a.startswith('_') and not callable(getattr(obj, a))]
+            for attribute in obj_fields:
+                attr = getattr(obj, attribute)
+                if isinstance(attr, TermSetWrapper):
                     # Search objects that are wrapped
-                    ret.append([obj, obj_fields[attribute]])
+                    ret.append([obj, attr])
         return ret
 
     @docval({'name': 'root_container', 'type': HERDManager,
@@ -447,7 +443,6 @@ class HERD(Container):
         all_objects = root_container.all_children() # list of child objects and the container itslef
 
         add_ref_items = self.__check_termset_wrapper(objects=all_objects)
-
         for ref_pairs in add_ref_items:
             container, wrapper = ref_pairs
             if isinstance(wrapper.value, (list, np.ndarray, tuple)):
@@ -549,6 +544,8 @@ class HERD(Container):
         ###############################################################
         container = kwargs['container']
         attribute = kwargs['attribute']
+        if attribute == 'data':
+            attribute = None
         key = kwargs['key']
         field = kwargs['field']
         entity_id = kwargs['entity_id']

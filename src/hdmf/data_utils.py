@@ -16,6 +16,9 @@ def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
         data.append(arg)
         return data
+    elif type(data).__name__ == 'TermSetWrapper':
+        data.append(arg)
+        return data
     elif isinstance(data, np.ndarray):
         return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
@@ -36,6 +39,9 @@ def extend_data(data, arg):
     :type data: list, DataIO, np.ndarray, h5py.Dataset
     """
     if isinstance(data, (list, DataIO)):
+        data.extend(arg)
+        return data
+    elif type(data).__name__ == 'TermSetWrapper':
         data.extend(arg)
         return data
     elif isinstance(data, np.ndarray):

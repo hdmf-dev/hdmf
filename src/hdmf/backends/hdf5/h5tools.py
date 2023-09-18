@@ -1098,12 +1098,12 @@ class HDF5IO(HDMFIO):
             dataio = data
             link_data = data.link_data
             data = data.data
+        else:
+            options['io_settings'] = {}
         if isinstance(data, TermSetWrapper):
             # This is for when the wrapped item is a dataset
             # (refer to objectmapper.py for wrapped attributes)
             data = data.value
-        else:
-            options['io_settings'] = {}
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None

@@ -83,15 +83,19 @@ class HDMFIO(metaclass=ABCMeta):
         herd = popargs('herd', kwargs)
 
         """Optional: Write HERD."""
-        if herd is not None:
-            # populate HERD instance with all instances of TermSetWrapper
+        if self.herd_path is not None:
+            # If HERD is provided, extend it
+            if herd is not None:
+                pass
+            # If HERD is not provided, create a new one"""
+            else:
+                from hdmf.common import HERD
+                herd = HERD()
+
+            """add_ref_term_set to search for and resolve the TermSetWrapper"""
             herd.add_ref_term_set(container) # container would be the NWBFile
             # write HERD
-            if self.herd_path is not None:
-                herd.to_zip(path=self.herd_path)
-            else:
-                msg = "Provide path for HERD to be written."
-                raise ValueError(msg)
+            herd.to_zip(path=self.herd_path)
 
         """Write a container to the IO source."""
         f_builder = self.__manager.build(container, source=self.__source, root=True)
