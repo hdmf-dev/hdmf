@@ -179,10 +179,15 @@ class TermSetWrapper:
     In HDMF, a group is a Container object, a dataset is a Data object,
     an attribute can be a reference type to an HDMF object or a base type, e.g., text.
     """
-    # @docval({'name': 'termset',
-    #          'type': TermSet,
-    #          'doc': 'The TermSet to be used.'},
-    #         {'name': primitive})
+    @docval({'name': 'termset',
+             'type': TermSet,
+             'doc': 'The TermSet to be used.'},
+            {'name': 'value',
+             'type': (list, np.ndarray, dict, str, tuple),
+             'doc': 'The target item that is wrapped, either data or attribute.'},
+            {'name': 'field_name',
+             'type': str,
+             'doc': 'The name of the field being wrapped.'})
     def __init__(self, **kwargs):
         self.__value = kwargs['value']
         self.__termset = kwargs['termset']
@@ -254,7 +259,8 @@ class TermSetWrapper:
 
     def append(self, arg):
         """
-
+        This append resolves the wrapper to use the append of the container using
+        the wrapper.
         """
         if self.termset.validate(term=arg):
             self.__value = append_data(self.__value, arg)
@@ -264,8 +270,8 @@ class TermSetWrapper:
 
     def extend(self, arg):
         """
-        The extend_data method adds all the elements of the iterable arg to the
-        end of self.__values, which would be a Data Container.
+        This append resolves the wrapper to use the extend of the container using
+        the wrapper.
         """
         bad_data = []
         for item in arg:
