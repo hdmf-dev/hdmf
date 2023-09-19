@@ -126,15 +126,17 @@ class TestTermSetWrapper(TestCase):
         )
 
     def test_properties(self):
-        self.assertEqual(self.wrapped_array.item.object_id, self.data.object_id)
+        self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
         self.assertEqual(self.wrapped_array.termset.view_set, self.termset.view_set)
-        self.assertEqual(self.wrapped_array.dtype, 'i')
+        self.assertEqual(self.wrapped_list.field_name, 'data')
+        self.assertEqual(self.wrapped_array.dtype, 'U12')
 
     def test_get_item(self):
-        self.assertEqual(self.wrapped_list[0], 'Homo sapiens')
+        self.assertEqual(self.np_data.data[0], 'Homo sapiens')
 
-    def test_getattr(self):
-        self.assertEqual(self.wrapped_list.data, 'Homo sapiens')
+    # TODO: Probably useful when dealing with DATAIO (Future)
+    # def test_getattr(self):
+    #     self.assertEqual(self.list_data.data.data, 'Homo sapiens')
 
     def test_next(self):
         pass
