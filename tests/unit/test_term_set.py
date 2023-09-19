@@ -152,10 +152,24 @@ class TestTermSetWrapper(TestCase):
                                                   field_name='data'))
 
     def test_wrapper_validate_attribute(self):
-        pass
+        col1 = VectorData(
+            name='Species_1',
+            description=TermSetWrapper(value='Homo sapiens',
+                                       field_name='description',
+                                       termset=self.termset),
+            data=['Human']
+        )
+        self.assertTrue(isinstance(col1.description, TermSetWrapper))
 
     def test_wrapper_validate_dataset(self):
-        pass
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'],
+                                field_name='data',
+                                termset=self.termset)
+        )
+        self.assertTrue(isinstance(col1.data, TermSetWrapper))
 
     def test_wrapper_append(self):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
