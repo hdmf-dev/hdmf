@@ -197,7 +197,7 @@ class TermSetWrapper:
     def __validate(self):
         # check if list, tuple, array, Data
         from .container import Data # circular import fix
-        if isinstance(self.__value, (list, np.ndarray, tuple, Data)): # TODO: Future ticket on DataIO support
+        if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
             values = self.__value
         # create list if none of those
         else:
@@ -228,13 +228,14 @@ class TermSetWrapper:
     def dtype(self):
         return self.__getattr__('dtype')
 
-    def __getattr__(self, val):
-        """
-        This method is to get attributes that are not defined in init.
-        This is when dealing with data and numpy arrays.
-        """
-        if val in ('data', 'shape', 'dtype'):
-            return getattr(self.__value, val)
+    # TODO: Probably useful when dealing with DATAIO (Future)
+    # def __getattr__(self, val):
+    #     """
+    #     This method is to get attributes that are not defined in init.
+    #     This is when dealing with data and numpy arrays.
+    #     """
+    #     if val in ('data', 'shape', 'dtype'):
+    #         return getattr(self.__value, val)
 
     def __getitem__(self, val):
         """
