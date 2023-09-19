@@ -229,13 +229,12 @@ class TermSetWrapper:
         return self.__getattr__('dtype')
 
     # TODO: Probably useful when dealing with DATAIO (Future)
-    # def __getattr__(self, val):
-    #     """
-    #     This method is to get attributes that are not defined in init.
-    #     This is when dealing with data and numpy arrays.
-    #     """
-    #     if val in ('data', 'shape', 'dtype'):
-    #         return getattr(self.__value, val)
+    def __getattr__(self, val):
+        """
+        This method is to get attributes that are not defined in init.
+        This is when dealing with data and numpy arrays.
+        """
+        return getattr(self.__value, val)
 
     def __getitem__(self, val):
         """

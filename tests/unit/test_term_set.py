@@ -129,14 +129,10 @@ class TestTermSetWrapper(TestCase):
         self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
         self.assertEqual(self.wrapped_array.termset.view_set, self.termset.view_set)
         self.assertEqual(self.wrapped_list.field_name, 'data')
-        self.assertEqual(self.wrapped_array.dtype, 'U12')
+        self.assertEqual(self.wrapped_array.dtype, 'U12') # this covers __getattr__
 
     def test_get_item(self):
         self.assertEqual(self.np_data.data[0], 'Homo sapiens')
-
-    # TODO: Probably useful when dealing with DATAIO (Future)
-    # def test_getattr(self):
-    #     self.assertEqual(self.list_data.data.data, 'Homo sapiens')
 
     def test_next(self):
         pass
@@ -162,16 +158,25 @@ class TestTermSetWrapper(TestCase):
         pass
 
     def test_wrapper_append(self):
-        pass
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data.value, ['Homo sapiens', 'Mus musculus'])
 
     def test_wrapper_append_error(self):
-        pass
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        with self.assertRaises(ValueError):
+            data_obj.append('bad_data')
 
     def test_wrapper_extend(self):
-        pass
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        data_obj.extend(['Mus musculus'])
+        self.assertEqual(data_obj.data.value, ['Homo sapiens', 'Mus musculus'])
 
     def test_wrapper_extend_error(self):
-        pass
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        with self.assertRaises(ValueError):
+            data_obj.extend(['bad_data'])
+
 
     # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     # def test_validate(self):
