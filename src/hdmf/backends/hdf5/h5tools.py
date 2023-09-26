@@ -64,7 +64,7 @@ class HDF5IO(HDMFIO):
              'doc': 'a pre-existing h5py.File, S3File, or RemFile object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             {'name': 'herd_path', 'type': str,
-             'doc': 'The path to the HERD', 'default': None},)
+             'doc': 'The path to read/write the HERD file', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """

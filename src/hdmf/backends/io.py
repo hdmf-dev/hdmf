@@ -87,12 +87,12 @@ class HDMFIO(metaclass=ABCMeta):
             # If HERD is provided, extend it
             if herd is not None:
                 pass
-            # If HERD is not provided, create a new one"""
+            # If HERD is not provided, create a new one
             else:
                 from hdmf.common import HERD
                 herd = HERD()
 
-            """add_ref_term_set to search for and resolve the TermSetWrapper"""
+            # add_ref_term_set to search for and resolve the TermSetWrapper
             herd.add_ref_term_set(container) # container would be the NWBFile
             # write HERD
             herd.to_zip(path=self.herd_path)

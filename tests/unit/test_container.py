@@ -9,7 +9,6 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
 import unittest
-from hdmf.term_set import TermSetWrapper
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
 try:
@@ -514,12 +513,6 @@ class TestData(TestCase):
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
 
-    def test_data_property_wrapper(self):
-        """
-        Test that the data property works when using a TermSetWrapper
-        """
-        data_obj = Data('my_data', [0, 1, 2, 3, 4])
-        self.assertEqual(data_obj.data, [0, 1, 2, 3, 4])
 
 class TestAbstractContainerFieldsConf(TestCase):
 

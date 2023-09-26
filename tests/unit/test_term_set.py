@@ -133,15 +133,6 @@ class TestTermSetWrapper(TestCase):
     def test_get_item(self):
         self.assertEqual(self.np_data.data[0], 'Homo sapiens')
 
-    def test_next(self):
-        pass
-
-    def test_iter(self):
-        pass
-
-    def test_len(self):
-        pass
-
     def test_validate_error(self):
         with self.assertRaises(ValueError):
             data = VectorData(name='Species_1',
