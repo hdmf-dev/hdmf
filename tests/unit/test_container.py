@@ -8,14 +8,7 @@ from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
-import unittest
 from hdmf.backends.hdf5.h5tools import HDF5IO
-
-try:
-    import linkml_runtime  # noqa: F401
-    LINKML_INSTALLED = True
-except ImportError:
-    LINKML_INSTALLED = False
 
 
 class Subcontainer(Container):

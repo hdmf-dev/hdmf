@@ -4,7 +4,6 @@ from hdmf.term_set import TermSet, TermSetWrapper
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common import VectorData
 import numpy as np
-import unittest
 
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -20,7 +19,7 @@ except ImportError:
     REQUIREMENTS_INSTALLED = False
 
 class TestTermSet(TestCase):
-
+    """Tests for TermSet"""
     def setUp(self):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
@@ -107,8 +106,11 @@ class TestTermSet(TestCase):
 
 
 class TestTermSetWrapper(TestCase):
-
+    """Tests for the TermSetWrapper"""
     def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
         self.termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
 
         self.wrapped_array = TermSetWrapper(value=np.array(['Homo sapiens']), termset=self.termset)
@@ -135,10 +137,10 @@ class TestTermSetWrapper(TestCase):
 
     def test_validate_error(self):
         with self.assertRaises(ValueError):
-            data = VectorData(name='Species_1',
-                              description='...',
-                              data=TermSetWrapper(value=['Missing Term'],
-                                                  termset=self.termset))
+            VectorData(name='Species_1',
+                       description='...',
+                       data=TermSetWrapper(value=['Missing Term'],
+                       termset=self.termset))
 
     def test_wrapper_validate_attribute(self):
         col1 = VectorData(
@@ -177,44 +179,3 @@ class TestTermSetWrapper(TestCase):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
-
-
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_validate(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-    #     self.assertEqual(data_obj.data, ['Homo sapiens'])
-    #
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_validate_value_error(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     with self.assertRaises(ValueError):
-    #         Data(name='species', data=['Macaca mulatta'], term_set=terms)
-    #
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_append_validate(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-    #     data_obj.append('Mus musculus')
-    #     self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
-    #
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_append_validate_error(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-    #     with self.assertRaises(ValueError):
-    #         data_obj.append('Macaca mulatta')
-    #
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_extend_validate(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-    #     data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
-    #     self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
-    #
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_extend_validate_bad_data_error(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-    #     with self.assertRaises(ValueError):
-    #         data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])

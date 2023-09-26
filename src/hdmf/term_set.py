@@ -4,7 +4,7 @@ from collections import namedtuple
 from .utils import docval
 import warnings
 import numpy as np
-from .data_utils import append_data, extend_data
+from .data_utils import append_data
 
 
 class TermSet:
@@ -193,7 +193,6 @@ class TermSetWrapper:
 
     def __validate(self):
         # check if list, tuple, array, Data
-        from .container import Data # circular import fix
         if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
             values = self.__value
         # create list if none of those

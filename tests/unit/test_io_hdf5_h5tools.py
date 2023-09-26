@@ -28,6 +28,7 @@ from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
+import unittest
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -40,6 +41,12 @@ try:
     SKIP_ZARR_TESTS = False
 except ImportError:
     SKIP_ZARR_TESTS = True
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
@@ -139,8 +146,9 @@ class H5IOTest(TestCase):
         self.assertEqual(read_a, a)
 
     ##########################################
-    #  write_dataset tests: lists
+    #  write_dataset tests: TermSetWrapper
     ##########################################
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_write_dataset_TermSetWrapper(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         a = TermSetWrapper(value=['Homo sapiens'], termset=terms)
@@ -817,6 +825,7 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     # def test_roundtrip_TermSetWrapper_dataset(self):
     #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
     #     foo = Foo(name="species", attr1='attr1', attr2=0,
@@ -833,9 +842,9 @@ class TestRoundTrip(TestCase):
         #     self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data.value,
         #                          read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
-
-    def test_roundtrip_TermSetWrapper_attribute(self):
-        pass
+    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    # def test_roundtrip_TermSetWrapper_attribute(self):
+    #     pass
 
 
 class TestHDF5IO(TestCase):
