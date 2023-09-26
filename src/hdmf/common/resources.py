@@ -414,7 +414,7 @@ class HERD(Container):
     def __check_termset_wrapper(self, **kwargs):
         """
         Takes a list of objects and checks the fields for TermSetWrapper.
-        :return: [[object, wrapper1], [object, wrapper2], ...]
+        :return: [[object, attribute_name, wrapper1], [object, attribute_name, wrapper2], ...]
         """
         objects = kwargs['objects']
 
@@ -423,11 +423,14 @@ class HERD(Container):
         for obj in objects:
             # Get all the fields, parse out the methods and internal variables
             obj_fields = [a for a in dir(obj) if not a.startswith('_') and not callable(getattr(obj, a))]
+
             for attribute in obj_fields:
                 attr = getattr(obj, attribute)
                 if isinstance(attr, TermSetWrapper):
+                    # breakpoint()
                     # Search objects that are wrapped
-                    ret.append([obj, attr])
+                    ret.append([obj, attribute, attr])
+        # breakpoint()
         return ret
 
     @docval({'name': 'root_container', 'type': HERDManager,
@@ -443,8 +446,8 @@ class HERD(Container):
         all_objects = root_container.all_children() # list of child objects and the container itslef
 
         add_ref_items = self.__check_termset_wrapper(objects=all_objects)
-        for ref_pairs in add_ref_items:
-            container, wrapper = ref_pairs
+        for ref in add_ref_items:
+            container, attr_name, wrapper = ref
             if isinstance(wrapper.value, (list, np.ndarray, tuple)):
                 values = wrapper.value
             else:
@@ -456,7 +459,7 @@ class HERD(Container):
                 entity_uri = term_info[2]
                 self.add_ref(file=root_container,
                              container=container,
-                             attribute=wrapper.field_name,
+                             attribute=attr_name,
                              key=term,
                              entity_id=entity_id,
                              entity_uri=entity_uri)
@@ -544,8 +547,12 @@ class HERD(Container):
         ###############################################################
         container = kwargs['container']
         attribute = kwargs['attribute']
-        if attribute == 'data':
+        if container.__class__.__name__ == 'VectorData':
             attribute = None
+        # if attribute == 'my_data':
+        #     attribute = None
+        # if attribute == 'data':
+        #     attribute = None
         key = kwargs['key']
         field = kwargs['field']
         entity_id = kwargs['entity_id']
@@ -599,6 +606,12 @@ class HERD(Container):
                                                             relative_path=relative_path,
                                                             field=field)
 
+        # try:
+        #     # key_name, container, relative_path, field
+        #     key = self.get_key(key_name=key, container=container)
+        # except ValueError:
+        #     pass
+
         if not isinstance(key, Key):
             key_idx_matches = self.keys.which(key=key)
         # if same key is used multiple times, determine
@@ -606,6 +619,7 @@ class HERD(Container):
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
+                    breakpoint()
                     msg = "Use Key Object when referencing an existing (container, relative_path, key)"
                     raise ValueError(msg)
 

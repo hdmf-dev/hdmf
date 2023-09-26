@@ -124,12 +124,12 @@ class TestDynamicTable(TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1])
         species.add_column(name='Species_2',
                            description='Species data',
-                           data=TermSetWrapper(value=['Mus musculus'], field_name='data', termset=terms))
+                           data=TermSetWrapper(value=['Mus musculus'], termset=terms))
         expected_df_data = \
             {'Species_1': {0: 'Homo sapiens'},
              'Species_2': {0: 'Mus musculus'}}
@@ -143,14 +143,13 @@ class TestDynamicTable(TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1])
         with self.assertRaises(ValueError):
             species.add_column(name='Species_2',
                                description='Species data',
                                data=TermSetWrapper(value=['bad data'],
-                                                   field_name='data',
                                                    termset=terms))
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
@@ -159,12 +158,12 @@ class TestDynamicTable(TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         col2 = VectorData(
             name='Species_2',
             description='...',
-            data=TermSetWrapper(value=['Mus musculus'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Mus musculus'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1,col2])
         species.add_row(Species_1='Myrmecophaga tridactyla', Species_2='Ursus arctos horribilis')
@@ -181,12 +180,12 @@ class TestDynamicTable(TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         col2 = VectorData(
             name='Species_2',
             description='...',
-            data=TermSetWrapper(value=['Mus musculus'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Mus musculus'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1,col2])
         with self.assertRaises(ValueError):
@@ -198,12 +197,12 @@ class TestDynamicTable(TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         col2 = VectorData(
             name='Species_2',
             description='...',
-            data=TermSetWrapper(value=['Mus musculus'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Mus musculus'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1,col2])
         with self.assertRaises(ValueError):

@@ -185,13 +185,10 @@ class TermSetWrapper:
             {'name': 'value',
              'type': (list, np.ndarray, dict, str, tuple),
              'doc': 'The target item that is wrapped, either data or attribute.'},
-            {'name': 'field_name',
-             'type': str,
-             'doc': 'The name of the field being wrapped.'})
+            )
     def __init__(self, **kwargs):
         self.__value = kwargs['value']
         self.__termset = kwargs['termset']
-        self.__field_name = kwargs['field_name']
         self.__validate()
 
     def __validate(self):
@@ -219,10 +216,6 @@ class TermSetWrapper:
     @property
     def termset(self):
         return self.__termset
-
-    @property
-    def field_name(self):
-        return self.__field_name
 
     @property
     def dtype(self):

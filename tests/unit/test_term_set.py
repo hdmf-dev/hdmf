@@ -111,8 +111,8 @@ class TestTermSetWrapper(TestCase):
     def setUp(self):
         self.termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
 
-        self.wrapped_array = TermSetWrapper(value=np.array(['Homo sapiens']), termset=self.termset, field_name='data')
-        self.wrapped_list = TermSetWrapper(value=['Homo sapiens'], termset=self.termset, field_name='data')
+        self.wrapped_array = TermSetWrapper(value=np.array(['Homo sapiens']), termset=self.termset)
+        self.wrapped_list = TermSetWrapper(value=['Homo sapiens'], termset=self.termset)
 
         self.np_data = VectorData(
             name='Species_1',
@@ -128,7 +128,6 @@ class TestTermSetWrapper(TestCase):
     def test_properties(self):
         self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
         self.assertEqual(self.wrapped_array.termset.view_set, self.termset.view_set)
-        self.assertEqual(self.wrapped_list.field_name, 'data')
         self.assertEqual(self.wrapped_array.dtype, 'U12') # this covers __getattr__
 
     def test_get_item(self):
@@ -148,14 +147,12 @@ class TestTermSetWrapper(TestCase):
             data = VectorData(name='Species_1',
                               description='...',
                               data=TermSetWrapper(value=['Missing Term'],
-                                                  termset=self.termset,
-                                                  field_name='data'))
+                                                  termset=self.termset))
 
     def test_wrapper_validate_attribute(self):
         col1 = VectorData(
             name='Species_1',
             description=TermSetWrapper(value='Homo sapiens',
-                                       field_name='description',
                                        termset=self.termset),
             data=['Human']
         )
@@ -166,7 +163,6 @@ class TestTermSetWrapper(TestCase):
             name='Species_1',
             description='...',
             data=TermSetWrapper(value=['Homo sapiens'],
-                                field_name='data',
                                 termset=self.termset)
         )
         self.assertTrue(isinstance(col1.data, TermSetWrapper))

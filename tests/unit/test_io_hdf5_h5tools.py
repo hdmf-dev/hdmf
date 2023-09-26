@@ -143,7 +143,7 @@ class H5IOTest(TestCase):
     ##########################################
     def test_write_dataset_TermSetWrapper(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        a = TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+        a = TermSetWrapper(value=['Homo sapiens'], termset=terms)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
         self.assertEqual(dset[0].decode('utf-8'), a.value[0])
@@ -821,15 +821,12 @@ class TestRoundTrip(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="species", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
-                                                         field_name='data',
                                                          termset=terms))
         foobucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[foobucket])
 
-        # with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-        #     io.write(foofile)
         with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
-            io.write(foofile, herd=er)
+            io.write(foofile)
         #
         # with HDF5IO(self.path, manager=self.manager, mode='r') as io:
         #     read_foofile = io.read()
@@ -1059,9 +1056,7 @@ class TestHERDIO(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="foo", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
-                                                         field_name='my_data',
                                                          termset=terms))
-        # breakpoint()
         foobucket = FooBucket('bucket1', [foo])
         file = FooFile(buckets=[foobucket])
 
@@ -1088,7 +1083,6 @@ class TestHERDIO(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="my_data", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
-                                                         field_name='data',
                                                          termset=terms))
         foobucket = FooBucket('bucket1', [foo])
         file = FooFile(buckets=[foobucket])

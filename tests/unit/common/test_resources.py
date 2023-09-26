@@ -276,7 +276,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1])
         objs = species.all_children()
@@ -284,7 +284,8 @@ class TestHERD(H5RoundTripMixin, TestCase):
         er = HERD()
         ret = er._HERD__check_termset_wrapper(objs)
         self.assertEqual(ret[0][0].__class__.__name__, 'VectorData')
-        self.assertEqual(ret[0][1].__class__.__name__, 'TermSetWrapper')
+        self.assertEqual(ret[0][1], 'data')
+        self.assertEqual(ret[0][2].__class__.__name__, 'TermSetWrapper')
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_data(self):
@@ -297,7 +298,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], field_name='data', termset=terms)
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1])
 
@@ -319,7 +320,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
         # create children and add parent
         col1 = VectorData(
             name='Species_1',
-            description=TermSetWrapper(value='Homo sapiens', field_name='description', termset=terms),
+            description=TermSetWrapper(value='Homo sapiens', termset=terms),
             data=['Human']
         )
         species = DynamicTable(name='species', description='My species', columns=[col1])
