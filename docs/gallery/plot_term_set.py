@@ -3,8 +3,9 @@ TermSet
 =======
 
 This is a user guide for interacting with the
-:py:class:`~hdmf.term_set.TermSet` class. The :py:class:`~hdmf.term_set.TermSet` type
-is experimental and is subject to change in future releases. If you use this type,
+:py:class:`~hdmf.term_set.TermSet` and :py:class:`~hdmf.term_set.TermSetWrapper` classes.
+The :py:class:`~hdmf.term_set.TermSet` and :py:class:`~hdmf.term_set.TermSetWrapper` types
+are experimental and are subject to change in future releases. If you use these types,
 please provide feedback to the HDMF team so that we can improve the structure and
 overall capabilities.
 
@@ -14,15 +15,21 @@ The :py:class:`~hdmf.term_set.TermSet` class provides a way for users to create 
 set of terms from brain atlases, species taxonomies, and anatomical, cell, and
 gene function ontologies.
 
-:py:class:`~hdmf.term_set.TermSet` serves two purposes: data validation and external reference
-management. Users will be able to validate their data to their own set of terms, ensuring
+# :py:class:`~hdmf.term_set.TermSet` serves two purposes: data validation and external reference
+# management.
+Users will be able to validate their data and attributes to their own set of terms, ensuring
 clean data to be used inline with the FAIR principles later on.
-The  :py:class:`~hdmf.term_set.TermSet` class allows for a reusable and sharable
-pool of metadata to serve as references to any dataset.
+The :py:class:`~hdmf.term_set.TermSet` class allows for a reusable and sharable
+pool of metadata to serve as references for any dataset or attribute.
 The :py:class:`~hdmf.term_set.TermSet` class is used closely with
-:py:class:`~hdmf.common.resources.ExternalResources` to more efficiently map terms
-to data. Please refer to the tutorial on ExternalResources to see how :py:class:`~hdmf.term_set.TermSet`
-is used with :py:class:`~hdmf.common.resources.ExternalResources`.
+:py:class:`~hdmf.common.resources.HERD` to more efficiently map terms
+to data. Please refer to the tutorial on HERD to see how :py:class:`~hdmf.term_set.TermSet`
+is used with :py:class:`~hdmf.common.resources.HERD`.
+
+In order to actually use a :py:class:`~hdmf.term_set.TermSet`, users will use the
+:py:class:`~hdmf.term_set.TermSetWrapper` to wrap data and attributes. The
+:py:class:`~hdmf.term_set.TermSetWrapper` uses a user provided :py:class:`~hdmf.term_set.TermSet`
+to perform validation, while also be used for easy to use I/O operations.
 
 :py:class:`~hdmf.term_set.TermSet` is built upon the resources from LinkML, a modeling
 language that uses YAML-based schema, giving :py:class:`~hdmf.term_set.TermSet`
@@ -68,7 +75,7 @@ try:
     import linkml_runtime  # noqa: F401
 except ImportError as e:
     raise ImportError("Please install linkml-runtime to run this example: pip install linkml-runtime") from e
-from hdmf.term_set import TermSet
+from hdmf.term_set import TermSet, TermSetWrapper
 
 try:
     dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -114,71 +121,85 @@ print(terms.view_set)
 terms['Homo sapiens']
 
 ######################################################
-# Validate Data with TermSet
+# Validate Data with TermSetWrapper
 # ----------------------------------------------------
-# :py:class:`~hdmf.term_set.TermSet` has been integrated so that :py:class:`~hdmf.container.Data` and its
-# subclasses support a term_set attribute. By having this attribute set, the data will be validated
-# and all new data will be validated.
+# :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around data.
+# To validate data, the user will set the data to the wrapped data, in which validation must pass
+# for the data object to be created.
 data = VectorData(
     name='species',
     description='...',
-    data=['Homo sapiens'],
-    term_set=terms)
+    data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+    )
 
 ######################################################
-# Validate on append with TermSet
+# Validate Attributes with TermSetWrapper
 # ----------------------------------------------------
-# As mentioned prior, when the term_set attribute is set, then all new data is validated. This is true for both
-# append and extend methods.
+# Similar to wrapping datasets, :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around any attribute.
+# To validate attributes, the user will set the attribute to the wrapped value, in which validation must pass
+# for the object to be created.
+data = VectorData(
+    name='species',
+    description=TermSetWrapper(value='Homo sapiens', termset=terms),
+    data=['Human']
+    )
+
+######################################################
+# Validate on append with TermSetWrapper
+# ----------------------------------------------------
+# As mentioned prior, when using a :py:class:`~hdmf.term_set.TermSetWrapper`, all new data is validated.
+# This is true for adding new data with append and extend.
+data = VectorData(
+    name='species',
+    description='...',
+    data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+    )
+
 data.append('Ursus arctos horribilis')
 data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
 
 ######################################################
-# Validate Data in a DynamicTable with TermSet
+# Validate Data in a DynamicTable
 # ----------------------------------------------------
-# Validating data with :py:class:`~hdmf.common.table.DynamicTable` is determined by which columns were
-# initialized with the term_set attribute set. The data is validated when the columns are created or
-# modified. Since adding the columns to a DynamicTable does not modify the data, validation is
-# not being performed at that time.
+# Validating data for :py:class:`~hdmf.common.table.DynamicTable` is determined by which columns were
+# initialized with a :py:class:`~hdmf.term_set.TermSetWrapper`. The data is validated when the columns
+# created.
 col1 = VectorData(
     name='Species_1',
     description='...',
-    data=['Homo sapiens'],
-    term_set=terms,
+    data=TermSetWrapper(value=['Homo sapiens'], termset=terms),
 )
 col2 = VectorData(
     name='Species_2',
     description='...',
-    data=['Mus musculus'],
-    term_set=terms,
+    data=TermSetWrapper(value=['Mus musculus'], termset=terms),
 )
 species = DynamicTable(name='species', description='My species', columns=[col1,col2])
 
-######################################################
-# Validate new rows in a DynamicTable with TermSet
-# ----------------------------------------------------
+##########################################################
+# Validate new rows in a DynamicTable with TermSetWrapper
+# --------------------------------------------------------
 # Validating new rows to :py:class:`~hdmf.common.table.DynamicTable` is simple. The
 # :py:func:`~hdmf.common.table.DynamicTable.add_row` method will automatically check each column for a
-# :py:class:`~hdmf.term_set.TermSet` (via the term_set attribute). If the attribute is set, the the data will be
-# validated for that column using that column's :py:class:`~hdmf.term_set.TermSet`. If there is invalid data, the
+# :py:class:`~hdmf.term_set.TermSetWrapper`. If a wrapper is being used, the the data will be
+# validated for that column using that column's :py:class:`~hdmf.term_set.TermSet` from the
+# :py:class:`~hdmf.term_set.TermSetWrapper`. If there is invalid data, the
 # row will not be added and the user will be prompted to fix the new data in order to populate the table.
 species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 
-######################################################
-# Validate new columns in a DynamicTable with TermSet
-# ----------------------------------------------------
-# As mentioned prior, validating in a :py:class:`~hdmf.common.table.DynamicTable` is determined
-# by the columns. The :py:func:`~hdmf.common.table.DynamicTable.add_column` method has a term_set attribute
-# as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`. When set, this attribute
-# will be used to validate the data. The column will not be added if there is invalid data.
+#############################################################
+# Validate new columns in a DynamicTable with TermSetWrapper
+# -----------------------------------------------------------
+# To add a column that has been validated using :py:class:`~hdmf.term_set.TermSetWrapper`,
+# users would wrap the data in the :py:func:`~hdmf.common.table.DynamicTable.add_column`
+# method as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`.
 col1 = VectorData(
     name='Species_1',
     description='...',
-    data=['Homo sapiens'],
-    term_set=terms,
+    data=['Homo sapiens']
 )
 species = DynamicTable(name='species', description='My species', columns=[col1])
 species.add_column(name='Species_2',
                    description='Species data',
-                   data=['Mus musculus'],
-                   term_set=terms)
+                   data=TermSetWrapper(value=['Mus musculus'], termset=terms)
+                  )

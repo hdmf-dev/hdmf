@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, HERDManager
+from ..container import Table, Row, Container, Data, AbstractContainer, HERDManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from ..term_set import TermSetWrapper
@@ -547,7 +547,7 @@ class HERD(Container):
         ###############################################################
         container = kwargs['container']
         attribute = kwargs['attribute']
-        if container.__class__.__name__ == 'VectorData':
+        if isinstance(container, Data):
             if attribute == 'data':
                 attribute = None
         # if attribute == 'my_data':
