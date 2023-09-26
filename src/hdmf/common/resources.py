@@ -548,7 +548,8 @@ class HERD(Container):
         container = kwargs['container']
         attribute = kwargs['attribute']
         if container.__class__.__name__ == 'VectorData':
-            attribute = None
+            if attribute == 'data':
+                attribute = None
         # if attribute == 'my_data':
         #     attribute = None
         # if attribute == 'data':
