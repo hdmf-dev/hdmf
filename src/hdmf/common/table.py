@@ -16,7 +16,6 @@ from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
-from ..term_set import TermSetWrapper
 
 
 @register_class('VectorData')
