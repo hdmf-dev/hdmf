@@ -283,9 +283,10 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
         er = HERD()
         ret = er._HERD__check_termset_wrapper(objs)
-        self.assertEqual(ret[0][0].__class__.__name__, 'VectorData')
+
+        self.assertTrue(isinstance(ret[0][0], VectorData))
         self.assertEqual(ret[0][1], 'data')
-        self.assertEqual(ret[0][2].__class__.__name__, 'TermSetWrapper')
+        self.assertTrue(isinstance(ret[0][2], TermSetWrapper))
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_data(self):

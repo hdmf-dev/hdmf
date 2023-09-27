@@ -586,23 +586,9 @@ class DynamicTable(Container):
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
         missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
 
-        bad_data = []
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
-            col = self.__df_cols[colnum]
-            if isinstance(col, VectorIndex):
-                continue
-            else:
-                if isinstance(col.data, TermSetWrapper):
-                    if col.data.termset.validate(term=data[colname]):
-                        continue
-                    else:
-                        bad_data.append(data[colname])
-
-        if len(bad_data)!=0:
-            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
-            raise ValueError(msg)
 
         # check to see if any of the extra columns just need to be added
         if extra_columns:

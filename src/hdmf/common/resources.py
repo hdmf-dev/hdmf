@@ -548,10 +548,6 @@ class HERD(Container):
         if isinstance(container, Data):
             if attribute == 'data':
                 attribute = None
-        # if attribute == 'my_data':
-        #     attribute = None
-        # if attribute == 'data':
-        #     attribute = None
         key = kwargs['key']
         field = kwargs['field']
         entity_id = kwargs['entity_id']
