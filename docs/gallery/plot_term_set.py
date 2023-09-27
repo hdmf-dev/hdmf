@@ -15,16 +15,13 @@ The :py:class:`~hdmf.term_set.TermSet` class provides a way for users to create 
 set of terms from brain atlases, species taxonomies, and anatomical, cell, and
 gene function ontologies.
 
-# :py:class:`~hdmf.term_set.TermSet` serves two purposes: data validation and external reference
-# management.
 Users will be able to validate their data and attributes to their own set of terms, ensuring
 clean data to be used inline with the FAIR principles later on.
 The :py:class:`~hdmf.term_set.TermSet` class allows for a reusable and sharable
 pool of metadata to serve as references for any dataset or attribute.
 The :py:class:`~hdmf.term_set.TermSet` class is used closely with
 :py:class:`~hdmf.common.resources.HERD` to more efficiently map terms
-to data. Please refer to the tutorial on HERD to see how :py:class:`~hdmf.term_set.TermSet`
-is used with :py:class:`~hdmf.common.resources.HERD`.
+to data.
 
 In order to actually use a :py:class:`~hdmf.term_set.TermSet`, users will use the
 :py:class:`~hdmf.term_set.TermSetWrapper` to wrap data and attributes. The
