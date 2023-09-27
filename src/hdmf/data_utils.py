@@ -16,7 +16,7 @@ def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
         data.append(arg)
         return data
-    elif type(data).__name__ == 'TermSetWrapper':
+    elif type(data).__name__ == 'TermSetWrapper': # circular import 
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):

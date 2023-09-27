@@ -825,26 +825,47 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_roundtrip_TermSetWrapper_dataset(self):
-    #     terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-    #     foo = Foo(name="species", attr1='attr1', attr2=0,
-    #               my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
-    #                                                      termset=terms))
-    #     foobucket = FooBucket('bucket1', [foo])
-    #     foofile = FooFile(buckets=[foobucket])
-    #
-    #     with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
-    #         io.write(foofile)
-        #
-        # with HDF5IO(self.path, manager=self.manager, mode='r') as io:
-        #     read_foofile = io.read()
-        #     self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data.value,
-        #                          read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_roundtrip_TermSetWrapper_dataset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                                                         termset=terms))
+        from hdmf.common import DynamicTable, VectorData
 
-    # @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    # def test_roundtrip_TermSetWrapper_attribute(self):
-    #     pass
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+        #
+        with HDF5IO(self.path, manager=get_foo_buildmanager(), mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
+                                 read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
+        remove_test_file('./HERD.zip')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_roundtrip_TermSetWrapper_attribute(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1=TermSetWrapper(value='Homo sapiens', termset=terms),
+                  attr2=0, my_data=[1,2,3])
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(foofile.buckets['bucket1'].foos['species'].attr1.value,
+                             read_foofile.buckets['bucket1'].foos['species'].attr1)
+            remove_test_file('./HERD.zip')
 
 
 class TestHDF5IO(TestCase):

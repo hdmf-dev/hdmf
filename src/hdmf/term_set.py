@@ -174,10 +174,7 @@ class TermSet:
 
 class TermSetWrapper:
     """
-    This class allows any HDF5 group, dataset, or attribute to have a TermSet.
-
-    In HDMF, a group is a Container object, a dataset is a Data object,
-    an attribute can be a reference type to an HDMF object or a base type, e.g., text.
+    This class allows any HDF5 dataset or attribute to have a TermSet.
     """
     @docval({'name': 'termset',
              'type': TermSet,
@@ -192,10 +189,10 @@ class TermSetWrapper:
         self.__validate()
 
     def __validate(self):
-        # check if list, tuple, array, Data
+        # check if list, tuple, array
         if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
             values = self.__value
-        # create list if none of those
+        # create list if none of those -> mostly for attributes
         else:
             values = [self.__value]
         # iteratively validate
@@ -220,7 +217,6 @@ class TermSetWrapper:
     def dtype(self):
         return self.__getattr__('dtype')
 
-    # TODO: Probably useful when dealing with DATAIO (Future)
     def __getattr__(self, val):
         """
         This method is to get attributes that are not defined in init.

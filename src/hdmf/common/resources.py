@@ -414,7 +414,7 @@ class HERD(Container):
     def __check_termset_wrapper(self, **kwargs):
         """
         Takes a list of objects and checks the fields for TermSetWrapper.
-        :return: [[object, attribute_name, wrapper1], [object, attribute_name, wrapper2], ...]
+        :return: [[object1, attribute_name1, wrapper1], [object2, attribute_name2, wrapper2], ...]
         """
         objects = kwargs['objects']
 
@@ -427,10 +427,8 @@ class HERD(Container):
             for attribute in obj_fields:
                 attr = getattr(obj, attribute)
                 if isinstance(attr, TermSetWrapper):
-                    # breakpoint()
                     # Search objects that are wrapped
                     ret.append([obj, attribute, attr])
-        # breakpoint()
         return ret
 
     @docval({'name': 'root_container', 'type': HERDManager,

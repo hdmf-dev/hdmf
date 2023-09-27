@@ -49,14 +49,7 @@ class VectorData(Data):
     def add_row(self, **kwargs):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
-        if isinstance(self.data, TermSetWrapper):
-            if self.data.termset.validate(term=val):
-                self.data.append(val)
-            else:
-                msg = ("%s is not in the term set." % val)
-                raise ValueError(msg)
-        else:
-            self.append(val)
+        self.append(val)
 
     def get(self, key, **kwargs):
         """
