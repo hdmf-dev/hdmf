@@ -1071,6 +1071,7 @@ class TestHERDIO(TestCase):
 
         self.remove_er_files()
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_io_write_extend_herd(self):
         """
         Test the optional write of HERD with extending an existing HERD instance.
