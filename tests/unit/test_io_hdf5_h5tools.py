@@ -840,7 +840,7 @@ class TestRoundTrip(TestCase):
         )
         foobucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[foobucket])
-        #
+        
         with HDF5IO(self.path, manager=get_foo_buildmanager(), mode='w', herd_path='./HERD.zip') as io:
             io.write(foofile)
 
