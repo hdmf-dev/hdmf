@@ -28,7 +28,6 @@ from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
-import unittest
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -831,16 +830,10 @@ class TestRoundTrip(TestCase):
         foo = Foo(name="species", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
                                                          termset=terms))
-        from hdmf.common import DynamicTable, VectorData
 
-        col1 = VectorData(
-            name='Species_1',
-            description='...',
-            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
-        )
         foobucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[foobucket])
-        
+
         with HDF5IO(self.path, manager=get_foo_buildmanager(), mode='w', herd_path='./HERD.zip') as io:
             io.write(foofile)
 
