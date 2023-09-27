@@ -26,7 +26,7 @@ to data.
 In order to actually use a :py:class:`~hdmf.term_set.TermSet`, users will use the
 :py:class:`~hdmf.term_set.TermSetWrapper` to wrap data and attributes. The
 :py:class:`~hdmf.term_set.TermSetWrapper` uses a user provided :py:class:`~hdmf.term_set.TermSet`
-to perform validation, while also be used for easy to use I/O operations.
+to perform validation.
 
 :py:class:`~hdmf.term_set.TermSet` is built upon the resources from LinkML, a modeling
 language that uses YAML-based schema, giving :py:class:`~hdmf.term_set.TermSet`
