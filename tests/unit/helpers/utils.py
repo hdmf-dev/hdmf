@@ -207,7 +207,7 @@ class FooFile(Container, HERDManager):
             raise ValueError("can't reset foo_ref_attr attribute")
 
 
-def get_foo_buildmanager():
+def get_foo_buildmanager(dtype="int"):
     """
     Get a BuildManager (and create all ObjectMappers) for a foofile
     :return:
@@ -219,7 +219,7 @@ def get_foo_buildmanager():
         datasets=[
             DatasetSpec(
                 "an example dataset",
-                "text",
+                dtype,
                 name="my_data",
                 attributes=[AttributeSpec("attr2", "an example integer attribute", "int")],
             )
