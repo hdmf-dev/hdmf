@@ -33,8 +33,6 @@ class MyTestClass(object):
     def basic_add2_kw_allow_extra(self, **kwargs):
         return kwargs
 
-    # TODO: Add docval test
-
 
 class MyTestSubclass(MyTestClass):
 
