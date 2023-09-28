@@ -217,6 +217,7 @@ def get_foo_buildmanager(my_data_dtype="int"):
                 "an example dataset",
                 my_data_dtype,
                 name="my_data",
+                shape=[None],
                 attributes=[AttributeSpec("attr2", "an example integer attribute", "int")],
             )
         ],

@@ -4,7 +4,7 @@ from collections import namedtuple
 from .utils import docval
 import warnings
 import numpy as np
-from .data_utils import append_data
+from .data_utils import append_data, extend_data
 
 
 class TermSet:
@@ -263,10 +263,11 @@ class TermSetWrapper:
         """
         bad_data = []
         for item in arg:
-            try:
-                self.append(item)
-            except ValueError:
+            if not self.termset.validate(term=item):
                 bad_data.append(item)
-        if len(bad_data)!=0:
+
+        if len(bad_data)==0:
+            self.__value = extend_data(self.__value, arg)
+        else:
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)

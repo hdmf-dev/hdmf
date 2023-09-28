@@ -569,7 +569,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # This is when the wrapped item is an attribute
                 # Refer to h5tools.py for wrapped datasets
                 attr_val = attr_val.value
-            elif attr_val is not None:
+            if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:
