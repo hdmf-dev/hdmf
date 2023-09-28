@@ -3,7 +3,7 @@
 ## HDMF 3.9.1 (Upcoming)
 
 ### Enhancements
-- Updated `TermSet` to be used with `TermSetWrapper`, allowng for general use of validation for datasets and attributes. This also brings updates to `HERD` integration and updates on `write` to easily add references for wrapped datasets/attributes. @mavaylon1 [#950](https://github.com/hdmf-dev/hdmf/pull/950)
+- Updated `TermSet` to be used with `TermSetWrapper`, allowing for general use of validation for datasets and attributes. This also brings updates to `HERD` integration and updates on `write` to easily add references for wrapped datasets/attributes. @mavaylon1 [#950](https://github.com/hdmf-dev/hdmf/pull/950)
 
 ### Minor improvements
 - Removed warning when namespaces are loaded and the attribute marking where the specs are cached is missing. @bendichter [#926](https://github.com/hdmf-dev/hdmf/pull/926)
