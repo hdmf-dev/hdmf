@@ -184,5 +184,5 @@ class TestTermSetWrapper(TestCase):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
         data_obj.extend(['Mus musculus'])
         it = iter(data_obj.data)
-        self.assertEqual(next(it), "Homo sapiens"))
-        self.assertEqual(next(it), "Mus musculus"))
+        self.assertEqual(next(it), "Homo sapiens")
+        self.assertEqual(next(it), "Mus musculus")
