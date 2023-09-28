@@ -179,4 +179,3 @@ class TestTermSetWrapper(TestCase):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
-
