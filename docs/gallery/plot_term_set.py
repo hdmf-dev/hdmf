@@ -178,7 +178,7 @@ species = DynamicTable(name='species', description='My species', columns=[col1,c
 # --------------------------------------------------------
 # Validating new rows to :py:class:`~hdmf.common.table.DynamicTable` is simple. The
 # :py:func:`~hdmf.common.table.DynamicTable.add_row` method will automatically check each column for a
-# :py:class:`~hdmf.term_set.TermSetWrapper`. If a wrapper is being used, the the data will be
+# :py:class:`~hdmf.term_set.TermSetWrapper`. If a wrapper is being used, then the data will be
 # validated for that column using that column's :py:class:`~hdmf.term_set.TermSet` from the
 # :py:class:`~hdmf.term_set.TermSetWrapper`. If there is invalid data, the
 # row will not be added and the user will be prompted to fix the new data in order to populate the table.
