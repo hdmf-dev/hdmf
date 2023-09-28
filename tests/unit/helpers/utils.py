@@ -219,7 +219,7 @@ def get_foo_buildmanager(my_data_dtype="int"):
         datasets=[
             DatasetSpec(
                 "an example dataset",
-                dtype,
+                my_data_dtype,
                 name="my_data",
                 attributes=[AttributeSpec("attr2", "an example integer attribute", "int")],
             )
