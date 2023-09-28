@@ -8,15 +8,7 @@ from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
-import unittest
-from hdmf.term_set import TermSet
 from hdmf.backends.hdf5.h5tools import HDF5IO
-
-try:
-    import linkml_runtime  # noqa: F401
-    LINKML_INSTALLED = True
-except ImportError:
-    LINKML_INSTALLED = False
 
 
 class Subcontainer(Container):
@@ -513,46 +505,6 @@ class TestData(TestCase):
         """
         data_obj = Data('my_data', [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
         self.assertTupleEqual(data_obj.shape, (2, 5))
-
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_validate(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-        self.assertEqual(data_obj.data, ['Homo sapiens'])
-
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_validate_value_error(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        with self.assertRaises(ValueError):
-            Data(name='species', data=['Macaca mulatta'], term_set=terms)
-
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_append_validate(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-        data_obj.append('Mus musculus')
-        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus'])
-
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_append_validate_error(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-        with self.assertRaises(ValueError):
-            data_obj.append('Macaca mulatta')
-
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_extend_validate(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-        data_obj.extend(['Mus musculus', 'Ursus arctos horribilis'])
-        self.assertEqual(data_obj.data, ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
-
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_extend_validate_bad_data_error(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        data_obj = Data(name='species', data=['Homo sapiens'], term_set=terms)
-        with self.assertRaises(ValueError):
-            data_obj.extend(['Mus musculus', 'Oryctolagus cuniculus'])
 
 
 class TestAbstractContainerFieldsConf(TestCase):

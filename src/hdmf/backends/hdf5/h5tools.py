@@ -17,6 +17,7 @@ from ..warnings import BrokenLinkWarning
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
 from ...container import Container
+from ...term_set import TermSetWrapper
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
@@ -63,7 +64,7 @@ class HDF5IO(HDMFIO):
              'doc': 'a pre-existing h5py.File, S3File, or RemFile object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             {'name': 'herd_path', 'type': str,
-             'doc': 'The path to the HERD', 'default': None},)
+             'doc': 'The path to read/write the HERD file', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
@@ -359,7 +360,10 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
-             'default': True})
+             'default': True},
+            {'name': 'herd', 'type': 'HERD',
+             'doc': 'A HERD object to populate with references.',
+             'default': None})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -1096,6 +1100,10 @@ class HDF5IO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
+        if isinstance(data, TermSetWrapper):
+            # This is for when the wrapped item is a dataset
+            # (refer to objectmapper.py for wrapped attributes)
+            data = data.value
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None

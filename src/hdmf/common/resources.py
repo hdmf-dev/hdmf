@@ -2,12 +2,14 @@ import pandas as pd
 import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
-from ..container import Table, Row, Container, AbstractContainer, HERDManager
+from ..container import Table, Row, Container, Data, AbstractContainer, HERDManager
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
+from ..term_set import TermSetWrapper
 from glob import glob
 import os
 import zipfile
+from collections import namedtuple
 
 
 class KeyTable(Table):
@@ -408,7 +410,32 @@ class HERD(Container):
                 msg = 'Could not find file. Add container to the file.'
                 raise ValueError(msg)
 
-    @docval({'name': 'root_container',  'type': HERDManager,
+    @docval({'name': 'objects', 'type': list,
+             'doc': 'List of objects to check for TermSetWrapper within the fields.'})
+    def __check_termset_wrapper(self, **kwargs):
+        """
+        Takes a list of objects and checks the fields for TermSetWrapper.
+
+        wrapped_obj = namedtuple('wrapped_obj', ['object', 'attribute', 'wrapper'])
+        :return: [wrapped_obj(object1, attribute_name1, wrapper1), ...]
+        """
+        objects = kwargs['objects']
+
+        ret = [] # list to be returned with the objects, attributes and corresponding termsets
+
+        for obj in objects:
+            # Get all the fields, parse out the methods and internal variables
+            obj_fields = [a for a in dir(obj) if not a.startswith('_') and not callable(getattr(obj, a))]
+            for attribute in obj_fields:
+                attr = getattr(obj, attribute)
+                if isinstance(attr, TermSetWrapper):
+                    # Search objects that are wrapped
+                    wrapped_obj = namedtuple('wrapped_obj', ['object', 'attribute', 'wrapper'])
+                    ret.append(wrapped_obj(obj, attribute, attr))
+
+        return ret
+
+    @docval({'name': 'root_container', 'type': HERDManager,
              'doc': 'The root container or file containing objects with a TermSet.'})
     def add_ref_term_set(self, **kwargs):
         """
@@ -418,25 +445,26 @@ class HERD(Container):
         """
         root_container = kwargs['root_container']
 
-        all_children = root_container.all_objects # dictionary of objects with the IDs as keys
+        all_objects = root_container.all_children() # list of child objects and the container itself
 
-        for child in all_children:
-            try:
-                term_set = all_children[child].term_set
-                data = all_children[child].data # TODO: This will be expanded to not just support data
-            except AttributeError:
-                continue
-
-            if term_set is not None:
-                for term in data:
-                    term_info = term_set[term]
-                    entity_id = term_info[0]
-                    entity_uri = term_info[2]
-                    self.add_ref(file=root_container,
-                                 container=all_children[child],
-                                 key=term,
-                                 entity_id=entity_id,
-                                 entity_uri=entity_uri)
+        add_ref_items = self.__check_termset_wrapper(objects=all_objects)
+        for ref in add_ref_items:
+            container, attr_name, wrapper = ref
+            if isinstance(wrapper.value, (list, np.ndarray, tuple)):
+                values = wrapper.value
+            else:
+                # create list for single values (edge-case) for a simple iteration downstream
+                values = [wrapper.value]
+            for term in values:
+                term_info = wrapper.termset[term]
+                entity_id = term_info[0]
+                entity_uri = term_info[2]
+                self.add_ref(file=root_container,
+                             container=container,
+                             attribute=attr_name,
+                             key=term,
+                             entity_id=entity_id,
+                             entity_uri=entity_uri)
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
@@ -521,6 +549,9 @@ class HERD(Container):
         ###############################################################
         container = kwargs['container']
         attribute = kwargs['attribute']
+        if isinstance(container, Data):
+            if attribute == 'data':
+                attribute = None
         key = kwargs['key']
         field = kwargs['field']
         entity_id = kwargs['entity_id']

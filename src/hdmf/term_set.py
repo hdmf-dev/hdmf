@@ -3,6 +3,8 @@ import os
 from collections import namedtuple
 from .utils import docval
 import warnings
+import numpy as np
+from .data_utils import append_data, extend_data
 
 
 class TermSet:
@@ -14,7 +16,7 @@ class TermSet:
     :ivar sources: The prefixes for the ontologies used in the TermSet
     :ivar view: SchemaView of the term set schema
     :ivar schemasheets_folder: The path to the folder containing the LinkML TSV files
-    :ivar expanded_term_set_path: The path to the schema with the expanded enumerations
+    :ivar expanded_termset_path: The path to the schema with the expanded enumerations
     """
     def __init__(self,
                  term_schema_path: str=None,
@@ -45,11 +47,11 @@ class TermSet:
                 self.view = SchemaView(self.term_schema_path)
         else:
             self.view = SchemaView(self.term_schema_path)
-        self.expanded_term_set_path = None
+        self.expanded_termset_path = None
         if dynamic:
-            # reset view to now include the dynamically populated term_set
-            self.expanded_term_set_path = self.__enum_expander()
-            self.view = SchemaView(self.expanded_term_set_path)
+            # reset view to now include the dynamically populated termset
+            self.expanded_termset_path = self.__enum_expander()
+            self.view = SchemaView(self.expanded_termset_path)
 
         self.sources = self.view.schema.prefixes
 
@@ -169,3 +171,104 @@ class TermSet:
         expander.expand_in_place(self.term_schema_path, enum, output_path)
 
         return output_path
+
+class TermSetWrapper:
+    """
+    This class allows any HDF5 dataset or attribute to have a TermSet.
+    """
+    @docval({'name': 'termset',
+             'type': TermSet,
+             'doc': 'The TermSet to be used.'},
+            {'name': 'value',
+             'type': (list, np.ndarray, dict, str, tuple),
+             'doc': 'The target item that is wrapped, either data or attribute.'},
+            )
+    def __init__(self, **kwargs):
+        self.__value = kwargs['value']
+        self.__termset = kwargs['termset']
+        self.__validate()
+
+    def __validate(self):
+        # check if list, tuple, array
+        if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
+            values = self.__value
+        # create list if none of those -> mostly for attributes
+        else:
+            values = [self.__value]
+        # iteratively validate
+        bad_values = []
+        for term in values:
+            validation = self.__termset.validate(term=term)
+            if not validation:
+                bad_values.append(term)
+        if len(bad_values)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
+            raise ValueError(msg)
+
+    @property
+    def value(self):
+        return self.__value
+
+    @property
+    def termset(self):
+        return self.__termset
+
+    @property
+    def dtype(self):
+        return self.__getattr__('dtype')
+
+    def __getattr__(self, val):
+        """
+        This method is to get attributes that are not defined in init.
+        This is when dealing with data and numpy arrays.
+        """
+        return getattr(self.__value, val)
+
+    def __getitem__(self, val):
+        """
+        This is used when we want to index items.
+        """
+        return self.__value[val]
+
+    # uncomment when DataChunkIterator objects can be wrapped by TermSet
+    # def __next__(self):
+    #     """
+    #     Return the next item of a wrapped iterator.
+    #     """
+    #     return self.__value.__next__()
+    #
+    def __len__(self):
+        return len(self.__value)
+
+    def __iter__(self):
+        """
+        We want to make sure our wrapped items are still iterable.
+        """
+        return self.__value.__iter__()
+
+    def append(self, arg):
+        """
+        This append resolves the wrapper to use the append of the container using
+        the wrapper.
+        """
+        if self.termset.validate(term=arg):
+            self.__value = append_data(self.__value, arg)
+        else:
+            msg = ('"%s" is not in the term set.' % arg)
+            raise ValueError(msg)
+
+    def extend(self, arg):
+        """
+        This append resolves the wrapper to use the extend of the container using
+        the wrapper.
+        """
+        bad_data = []
+        for item in arg:
+            if not self.termset.validate(term=item):
+                bad_data.append(item)
+
+        if len(bad_data)==0:
+            self.__value = extend_data(self.__value, arg)
+        else:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+            raise ValueError(msg)

@@ -12,6 +12,7 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
 from ..container import AbstractContainer, Data, DataRegion
+from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
@@ -564,6 +565,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
+            if isinstance(attr_val, TermSetWrapper):
+                attr_val = attr_val.value
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
@@ -937,7 +940,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if attr_value is None:
                     self.logger.debug("        Skipping empty attribute")
                     continue
-
             builder.set_attribute(spec.name, attr_value)
 
     def __set_attr_to_ref(self, builder, attr_value, build_manager, spec):
