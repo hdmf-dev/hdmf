@@ -72,10 +72,6 @@ class Foo(Container):
     def my_data(self):
         return self.__data
 
-    # @property
-    # def data(self):
-    #     return self.__data
-
     @property
     def attr1(self):
         return self.__attr1
