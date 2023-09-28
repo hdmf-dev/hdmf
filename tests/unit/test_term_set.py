@@ -1,7 +1,9 @@
 import os
 
-from hdmf.term_set import TermSet
+from hdmf.term_set import TermSet, TermSetWrapper
 from hdmf.testing import TestCase, remove_test_file
+from hdmf.common import VectorData
+import numpy as np
 
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -17,7 +19,7 @@ except ImportError:
     REQUIREMENTS_INSTALLED = False
 
 class TestTermSet(TestCase):
-
+    """Tests for TermSet"""
     def setUp(self):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
@@ -77,7 +79,7 @@ class TestTermSet(TestCase):
         self.assertIsInstance(termset.view, SchemaView)
         expected_path = os.path.join("tests", "unit", "expanded_example_dynamic_term_set.yaml")
         expected_path = os.path.normpath(expected_path)
-        actual_path = os.path.normpath(termset.expanded_term_set_path)
+        actual_path = os.path.normpath(termset.expanded_termset_path)
 
         self.assertEqual(actual_path, expected_path)
 
@@ -101,3 +103,79 @@ class TestTermSet(TestCase):
         actual_path = termset._TermSet__schemasheets_convert()
         expected_path = os.path.normpath(os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
         self.assertEqual(actual_path, expected_path)
+
+
+class TestTermSetWrapper(TestCase):
+    """Tests for the TermSetWrapper"""
+    def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
+        self.termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+
+        self.wrapped_array = TermSetWrapper(value=np.array(['Homo sapiens']), termset=self.termset)
+        self.wrapped_list = TermSetWrapper(value=['Homo sapiens'], termset=self.termset)
+
+        self.np_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=self.wrapped_array
+        )
+        self.list_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=self.wrapped_list
+        )
+
+    def test_properties(self):
+        self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
+        self.assertEqual(self.wrapped_array.termset.view_set, self.termset.view_set)
+        self.assertEqual(self.wrapped_array.dtype, 'U12') # this covers __getattr__
+
+    def test_get_item(self):
+        self.assertEqual(self.np_data.data[0], 'Homo sapiens')
+
+    def test_validate_error(self):
+        with self.assertRaises(ValueError):
+            VectorData(name='Species_1',
+                       description='...',
+                       data=TermSetWrapper(value=['Missing Term'],
+                       termset=self.termset))
+
+    def test_wrapper_validate_attribute(self):
+        col1 = VectorData(
+            name='Species_1',
+            description=TermSetWrapper(value='Homo sapiens',
+                                       termset=self.termset),
+            data=['Human']
+        )
+        self.assertTrue(isinstance(col1.description, TermSetWrapper))
+
+    def test_wrapper_validate_dataset(self):
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'],
+                                termset=self.termset)
+        )
+        self.assertTrue(isinstance(col1.data, TermSetWrapper))
+
+    def test_wrapper_append(self):
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        data_obj.append('Mus musculus')
+        self.assertEqual(data_obj.data.value, ['Homo sapiens', 'Mus musculus'])
+
+    def test_wrapper_append_error(self):
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        with self.assertRaises(ValueError):
+            data_obj.append('bad_data')
+
+    def test_wrapper_extend(self):
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        data_obj.extend(['Mus musculus'])
+        self.assertEqual(data_obj.data.value, ['Homo sapiens', 'Mus musculus'])
+
+    def test_wrapper_extend_error(self):
+        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
+        with self.assertRaises(ValueError):
+            data_obj.extend(['bad_data'])

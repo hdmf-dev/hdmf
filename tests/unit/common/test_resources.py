@@ -1,7 +1,7 @@
 import pandas as pd
 import unittest
 from hdmf.common import DynamicTable, VectorData
-from hdmf import TermSet
+from hdmf import TermSet, TermSetWrapper
 from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
@@ -269,7 +269,27 @@ class TestHERD(H5RoundTripMixin, TestCase):
                        entity_uri='entity1')
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_add_ref_termset(self):
+    def test_check_termset_wrapper(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+
+        # create children and add parent
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        objs = species.all_children()
+
+        er = HERD()
+        ret = er._HERD__check_termset_wrapper(objs)
+
+        self.assertTrue(isinstance(ret[0][0], VectorData))
+        self.assertEqual(ret[0][1], 'data')
+        self.assertTrue(isinstance(ret[0][2], TermSetWrapper))
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_data(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
@@ -279,8 +299,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
         col1 = VectorData(
             name='Species_1',
             description='...',
-            data=['Homo sapiens'],
-            term_set=terms,
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
         )
         species = DynamicTable(name='species', description='My species', columns=[col1])
 
@@ -291,6 +310,29 @@ class TestHERD(H5RoundTripMixin, TestCase):
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_attr(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+        em.link_resources(er)
+
+        # create children and add parent
+        col1 = VectorData(
+            name='Species_1',
+            description=TermSetWrapper(value='Homo sapiens', termset=terms),
+            data=['Human']
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+
+        species.parent = em
+
+        er.add_ref_term_set(root_container=em)
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', 'description', '')])
 
     def test_get_file_from_container(self):
         file = HERDManagerContainer(name='file')

@@ -16,7 +16,7 @@ from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
-from ..term_set import TermSet
+from ..term_set import TermSetWrapper
 
 
 @register_class('VectorData')
@@ -39,8 +39,6 @@ class VectorData(Data):
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
-            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
-             'default': None},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         description = popargs('description', kwargs)
@@ -51,15 +49,7 @@ class VectorData(Data):
     def add_row(self, **kwargs):
         """Append a data value to this VectorData column"""
         val = getargs('val', kwargs)
-        if self.term_set is not None:
-            if self.term_set.validate(term=val):
-                self.append(val)
-            else:
-                msg = ("%s is not in the term set." % val)
-                raise ValueError(msg)
-
-        else:
-            self.append(val)
+        self.append(val)
 
     def get(self, key, **kwargs):
         """
@@ -593,10 +583,10 @@ class DynamicTable(Container):
         data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
+        bad_data = []
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
         missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
 
-        bad_data = []
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
@@ -604,8 +594,8 @@ class DynamicTable(Container):
             if isinstance(col, VectorIndex):
                 continue
             else:
-                if col.term_set is not None:
-                    if col.term_set.validate(term=data[colname]):
+                if isinstance(col.data, TermSetWrapper):
+                    if col.data.termset.validate(term=data[colname]):
                         continue
                     else:
                         bad_data.append(data[colname])
@@ -690,8 +680,6 @@ class DynamicTable(Container):
              'default': False},
             {'name': 'enum', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a fixed set of elements')},
-            {'name': 'term_set', 'type': TermSet, 'doc': 'the set of terms used to validate data on add',
-             'default': None},
             {'name': 'col_cls', 'type': type, 'default': VectorData,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
@@ -708,19 +696,7 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, enum, col_cls, term_set= popargs('index', 'table', 'enum', 'col_cls', 'term_set', kwargs)
-
-        if term_set is not None:
-            bad_data = []
-            for val in data:
-                if term_set.validate(term=val):
-                    continue
-                else:
-                    bad_data.append(val)
-            if len(bad_data)!=0:
-                bad_data_string = str(bad_data)[1:-1]
-                msg = ("%s is not in the term set." % bad_data_string)
-                raise ValueError(msg)
+        index, table, enum, col_cls= popargs('index', 'table', 'enum', 'col_cls', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "

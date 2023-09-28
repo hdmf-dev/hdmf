@@ -27,6 +27,7 @@ from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
+from hdmf.term_set import TermSet, TermSetWrapper
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -39,6 +40,12 @@ try:
     SKIP_ZARR_TESTS = False
 except ImportError:
     SKIP_ZARR_TESTS = True
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
@@ -136,6 +143,17 @@ class H5IOTest(TestCase):
         if isinstance(read_a, bytes):
             read_a = read_a.decode('utf-8')
         self.assertEqual(read_a, a)
+
+    ##########################################
+    #  write_dataset tests: TermSetWrapper
+    ##########################################
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_write_dataset_TermSetWrapper(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        a = TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertEqual(dset[0].decode('utf-8'), a.value[0])
 
     ##########################################
     #  write_dataset tests: lists
@@ -806,6 +824,42 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_roundtrip_TermSetWrapper_dataset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                                                         termset=terms))
+
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
+                                 read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
+        remove_test_file('./HERD.zip')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_roundtrip_TermSetWrapper_attribute(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1=TermSetWrapper(value='Homo sapiens', termset=terms),
+                  attr2=0, my_data=[1,2,3])
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(foofile.buckets['bucket1'].foos['species'].attr1.value,
+                             read_foofile.buckets['bucket1'].foos['species'].attr1)
+            remove_test_file('./HERD.zip')
+
 
 class TestHDF5IO(TestCase):
 
@@ -1017,39 +1071,44 @@ class TestHERDIO(TestCase):
 
         self.remove_er_files()
 
-    def test_io_write_herd(self):
-        er = HERD()
-        self.foofile.link_resources(er)
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_io_write_extend_herd(self):
+        """
+        Test the optional write of HERD with extending an existing HERD instance.
+        """
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens'],
+                                                         termset=terms))
 
-        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
-                   key='key1',
-                   entity_id='entity_id1',
-                   entity_uri='entity1')
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
 
-        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
-            io.write(self.foofile)
+        er = HERD(type_map=self.manager.type_map)
+        er.add_ref(file=foofile,
+                   container=foofile,
+                   key='special',
+                   entity_id="id11",
+                   entity_uri='url11')
 
-        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
-            container = io.read()
-            self.assertIsInstance(io.herd, HERD)
-            self.assertIsInstance(container.get_linked_resources(), HERD)
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile, herd=er)
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r', herd_path='./HERD.zip') as io:
+            read_foofile = io.read()
+            read_herd = io.herd
+
+            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
+                                 read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
+
+            self.assertEqual(read_herd.keys.data, [('special',), ('Homo sapiens',)])
+            self.assertEqual(read_herd.entities.data[0], ('id11', 'url11'))
+            self.assertEqual(read_herd.entities.data[1], ('NCBI_TAXON:9606',
+            'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
+            self.assertEqual(read_herd.objects.data[0],
+            (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
-
-    def test_io_warn(self):
-        er = HERD()
-
-        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
-                   key='key1',
-                   entity_id='entity_id1',
-                   entity_uri='entity1')
-        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
-            with self.assertWarns(Warning):
-                io.write(self.foofile)
 
 
 class TestMultiWrite(TestCase):
