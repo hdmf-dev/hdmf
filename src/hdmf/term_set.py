@@ -230,12 +230,13 @@ class TermSetWrapper:
         """
         return self.__value[val]
 
-    def __next__(self):
-        """
-        We want to make sure all iterators are still valid.
-        """
-        return self.__value.__next__()
-
+    # uncomment when DataChunkIterator objects can be wrapped by TermSet
+    # def __next__(self):
+    #     """
+    #     Return the next item of a wrapped iterator.
+    #     """
+    #     return self.__value.__next__()
+    #
     def __len__(self):
         return len(self.__value)
 
