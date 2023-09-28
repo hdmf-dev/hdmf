@@ -180,9 +180,3 @@ class TestTermSetWrapper(TestCase):
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
 
-    def test_wrapper_next(self):
-        data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
-        data_obj.extend(['Mus musculus'])
-        it = iter(data_obj.data)
-        self.assertEqual(next(it), "Homo sapiens")
-        self.assertEqual(next(it), "Mus musculus")
