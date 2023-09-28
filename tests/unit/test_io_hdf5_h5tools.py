@@ -1078,13 +1078,13 @@ class TestHERDIO(TestCase):
         """
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="species", attr1='attr1', attr2=0,
-                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                  my_data=TermSetWrapper(value=['Homo sapiens'],
                                                          termset=terms))
 
         foobucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[foobucket])
 
-        er = HERD()
+        er = HERD(type_map=self.manager.type_map)
         er.add_ref(file=foofile,
                    container=foofile,
                    key='special',
@@ -1092,12 +1092,21 @@ class TestHERDIO(TestCase):
                    entity_uri='url11')
 
         with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='w', herd_path='./HERD.zip') as io:
-            io.write(foofile)
+            io.write(foofile, herd=er)
 
-        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r') as io:
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r', herd_path='./HERD.zip') as io:
             read_foofile = io.read()
+            read_herd = io.herd
+
             self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
                                  read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
+
+            self.assertEqual(read_herd.keys.data, [('special',), ('Homo sapiens',)])
+            self.assertEqual(read_herd.entities.data[0], ('id11', 'url11'))
+            self.assertEqual(read_herd.entities.data[1], ('NCBI_TAXON:9606',
+            'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
+            self.assertEqual(read_herd.objects.data[0],
+            (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
 
