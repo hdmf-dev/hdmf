@@ -84,11 +84,8 @@ class HDMFIO(metaclass=ABCMeta):
 
         """Optional: Write HERD."""
         if self.herd_path is not None:
-            # If HERD is provided, extend it
-            if herd is not None:
-                pass
-            # If HERD is not provided, create a new one
-            else:
+            # If HERD is not provided, create a new one, else extend existing one
+            if herd is None:
                 from hdmf.common import HERD
                 herd = HERD(type_map=self.manager.type_map)
 
