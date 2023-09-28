@@ -16,6 +16,7 @@ from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
+from ..term_set import TermSetWrapper
 
 
 @register_class('VectorData')
@@ -593,8 +594,8 @@ class DynamicTable(Container):
             if isinstance(col, VectorIndex):
                 continue
             else:
-                if col.term_set is not None:
-                    if col.term_set.validate(term=data[colname]):
+                if isinstance(col.data, TermSetWrapper):
+                    if col.data.termset.validate(term=data[colname]):
                         continue
                     else:
                         bad_data.append(data[colname])
