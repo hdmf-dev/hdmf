@@ -190,13 +190,3 @@ species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 # To add a column that is validated using :py:class:`~hdmf.term_set.TermSetWrapper`,
 # wrap the data in the :py:func:`~hdmf.common.table.DynamicTable.add_column`
 # method as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`.
-col1 = VectorData(
-    name='Species_1',
-    description='...',
-    data=['Homo sapiens']
-)
-species = DynamicTable(name='species', description='My species', columns=[col1])
-species.add_column(name='Species_2',
-                   description='Species data',
-                   data=TermSetWrapper(value=['Mus musculus'], termset=terms)
-                  )
