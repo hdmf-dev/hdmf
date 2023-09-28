@@ -187,8 +187,8 @@ species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 #############################################################
 # Validate new columns in a DynamicTable with TermSetWrapper
 # -----------------------------------------------------------
-# To add a column that has been validated using :py:class:`~hdmf.term_set.TermSetWrapper`,
-# users would wrap the data in the :py:func:`~hdmf.common.table.DynamicTable.add_column`
+# To add a column that is validated using :py:class:`~hdmf.term_set.TermSetWrapper`,
+# wrap the data in the :py:func:`~hdmf.common.table.DynamicTable.add_column`
 # method as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`.
 col1 = VectorData(
     name='Species_1',
