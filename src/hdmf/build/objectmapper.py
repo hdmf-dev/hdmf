@@ -566,8 +566,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
             if isinstance(attr_val, TermSetWrapper):
-                # This is when the wrapped item is an attribute
-                # Refer to h5tools.py for wrapped datasets
                 attr_val = attr_val.value
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
