@@ -183,4 +183,3 @@ class TestTermSetWrapper(TestCase):
     def test_wrapper_next(self):
         with self.assertRaises(AttributeError):
             next(self.wrapped_list)
-    
