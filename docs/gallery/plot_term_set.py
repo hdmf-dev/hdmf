@@ -160,7 +160,7 @@ data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
 # ----------------------------------------------------
 # Validating data for :py:class:`~hdmf.common.table.DynamicTable` is determined by which columns were
 # initialized with a :py:class:`~hdmf.term_set.TermSetWrapper`. The data is validated when the columns
-# created.
+# are created and modified using ``DynamicTable.add_row``.
 col1 = VectorData(
     name='Species_1',
     description='...',
