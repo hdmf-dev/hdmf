@@ -207,7 +207,7 @@ class FooFile(Container, HERDManager):
             raise ValueError("can't reset foo_ref_attr attribute")
 
 
-def get_foo_buildmanager(dtype="int"):
+def get_foo_buildmanager(my_data_dtype="int"):
     """
     Get a BuildManager (and create all ObjectMappers) for a foofile
     :return:
