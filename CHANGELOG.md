@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.9.1 (Upcoming)
+## HDMF 3.9.1 (September 28, 2023)
 
 ### Enhancements
 - Updated `TermSet` to be used with `TermSetWrapper`, allowing for general use of validation for datasets and attributes. This also brings updates to `HERD` integration and updates on `write` to easily add references for wrapped datasets/attributes. @mavaylon1 [#950](https://github.com/hdmf-dev/hdmf/pull/950)
