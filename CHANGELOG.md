@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.9.2 (October 3, 2023)
+
+### Bug fixes
+- Fixed issue with testing and deployment of releases. @rly [#957](https://github.com/hdmf-dev/hdmf/pull/957)
+
 ## HDMF 3.9.1 (September 29, 2023)
 
 ### Enhancements
