@@ -1,12 +1,13 @@
 name: Run tests
 on:
-  push:
-    branches:
-      - dev
-    tags-ignore:  # exclude tags created by "ci_addons publish_github_release"
-      - 'latest'
-      - 'latest-tmp'
-  pull_request:
+  fork  # TODO
+  # push:
+  #   branches:
+  #     - dev
+  #   tags-ignore:  # exclude tags created by "ci_addons publish_github_release"
+  #     - 'latest'
+  #     - 'latest-tmp'
+  # pull_request:
 
 jobs:
   run-tests:
