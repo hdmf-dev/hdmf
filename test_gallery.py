@@ -33,6 +33,8 @@ _experimental_warning_re = (
     "and is not guaranteed to maintain backward compatibility"
 )
 
+pydantic_warning_re = ("Support for class-based `config` is deprecated, use ConfigDict instead.")
+
 
 def run_gallery_tests():
     global TOTAL, FAILURES, ERRORS
@@ -69,6 +71,13 @@ def run_gallery_tests():
                     "ignore",
                     message=_numpy_warning_re,
                     category=RuntimeWarning,
+                )
+                warnings.filterwarnings(
+                    # this warning is triggered when some linkml dependency like curies uses pydantic in a way that
+                    # will be deprecated in the future
+                    "ignore",
+                    message=pydantic_warning_re,
+                    category=DeprecationWarning,
                 )
                 _import_from_file(script)
         except (ImportError, ValueError) as e:
