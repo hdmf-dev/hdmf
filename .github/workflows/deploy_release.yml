@@ -14,7 +14,7 @@ on:
 jobs:
   deploy-release:
     name: Deploy release from tag
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v3
