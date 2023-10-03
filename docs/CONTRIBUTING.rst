@@ -90,7 +90,7 @@ Style Guides
 Python Code Style Guide
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Before you create a Pull Request, make sure you are following the PEP8_ style guide. .
+Before you create a Pull Request, make sure you are following the HDMF style guide.
 To check whether your code conforms to the HDMF style guide, simply run the ruff_ tool in the project's root
 directory. ``ruff`` will also sort imports automatically and check against additional code style rules.
 

@@ -20,7 +20,7 @@ except ImportError:
     TQDM_INSTALLED = False
 
 
-class TestPickleableNumpyArrayDataChunkIterator(GenericDataChunkIterator):
+class PickleableNumpyArrayDataChunkIterator(GenericDataChunkIterator):
     def __init__(self, array: np.ndarray, **kwargs):
         self.array = array
         self._kwargs = kwargs
@@ -41,7 +41,7 @@ class TestPickleableNumpyArrayDataChunkIterator(GenericDataChunkIterator):
     @staticmethod
     def _from_dict(dictionary: dict) -> Callable:
         array = pickle.loads(dictionary["array"])
-        return TestPickleableNumpyArrayDataChunkIterator(array=array, **dictionary["kwargs"])
+        return PickleableNumpyArrayDataChunkIterator(array=array, **dictionary["kwargs"])
 
 
 class GenericDataChunkIteratorTests(TestCase):
@@ -428,10 +428,10 @@ class GenericDataChunkIteratorTests(TestCase):
             self.assertFalse(dci.display_progress)
 
     def test_pickle(self):
-        pre_dump_iterator = TestPickleableNumpyArrayDataChunkIterator(array=self.test_array)
+        pre_dump_iterator = PickleableNumpyArrayDataChunkIterator(array=self.test_array)
         post_dump_iterator = pickle.loads(pickle.dumps(pre_dump_iterator))
 
-        assert isinstance(post_dump_iterator, TestPickleableNumpyArrayDataChunkIterator)
+        assert isinstance(post_dump_iterator, PickleableNumpyArrayDataChunkIterator)
         assert post_dump_iterator.chunk_shape == pre_dump_iterator.chunk_shape
         assert post_dump_iterator.buffer_shape == pre_dump_iterator.buffer_shape
         assert_array_equal(post_dump_iterator.array, pre_dump_iterator.array)

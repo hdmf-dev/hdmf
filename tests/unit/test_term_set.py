@@ -97,6 +97,9 @@ class TestTermSet(TestCase):
 
         self.assertEqual(convert_path, expected_path)
 
+        filename = os.path.splitext(os.path.basename(schema_path))[0]
+        remove_test_file(f"tests/unit/expanded_{filename}.yaml")
+
     def test_folder_output(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
         termset = TermSet(schemasheets_folder=folder)

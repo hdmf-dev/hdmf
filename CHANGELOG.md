@@ -1,5 +1,13 @@
 # HDMF Changelog
 
+## HDMF 3.10.0 (October 3, 2023)
+
+Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release
+will increase the minor version number to 3.10.0. See the 3.9.1 release notes below for new features.
+
+### Bug fixes
+- Fixed issue with testing and deployment of releases. @rly [#957](https://github.com/hdmf-dev/hdmf/pull/957)
+
 ## HDMF 3.9.1 (September 29, 2023)
 
 ### Enhancements
@@ -20,7 +28,7 @@
 - Updated `add_ref_termset` to add all instances of `TermSet` within a given root container. @mavaylon1 [#935](https://github.com/hdmf-dev/hdmf/pull/935)
 - Added Dynamic Enumerations and Schemasheets support to `TermSet`. @mavaylon1 [#923](https://github.com/hdmf-dev/hdmf/pull/923)
 - Updated `HERD` to support user defined file name for the `HERD` zip file. @mavaylon1 [#941](https://github.com/hdmf-dev/hdmf/pull/941)
-- Added method `Containter.set_data_io`, which wraps an existing data field in a `DataIO`. @bendichter [#938](https://github.com/hdmf-dev/hdmf/pull/938)
+- Added method `Container.set_data_io`, which wraps an existing data field in a `DataIO`. @bendichter [#938](https://github.com/hdmf-dev/hdmf/pull/938)
 
 ## HDMF 3.8.1 (July 25, 2023)
 
