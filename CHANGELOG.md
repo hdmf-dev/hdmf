@@ -1,6 +1,9 @@
 # HDMF Changelog
 
-## HDMF 3.9.2 (October 3, 2023)
+## HDMF 3.10.0 (October 3, 2023)
+
+Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release
+will increase the minor version number to 3.10.0. See the 3.9.1 release notes below for new features.
 
 ### Bug fixes
 - Fixed issue with testing and deployment of releases. @rly [#957](https://github.com/hdmf-dev/hdmf/pull/957)
