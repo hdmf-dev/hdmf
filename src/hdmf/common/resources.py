@@ -480,10 +480,12 @@ class HERD(Container):
              'doc': ('The field of the compound data type using an external resource.')})
     def get_key(self, **kwargs):
         """
-        Return a Key.
+        Get a Key by name
 
         If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
         for the given container, relative_path, and field is returned.
+
+        :returns: Single Key object, or a list of Key objects, or None, depending on how many Keys match the query
         """
         key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
@@ -503,15 +505,13 @@ class HERD(Container):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
                     return self.keys.row[key_idx]
-            msg = "No key found with that container."
-            raise ValueError(msg)
+            return None
         else:
             if len(key_idx_matches) == 0:
                 # the key has never been used before
-                raise ValueError("key '%s' does not exist" % key_name)
+                return None
             elif len(key_idx_matches) > 1:
-                msg = "There are more than one key with that name. Please search with additional information."
-                raise ValueError(msg)
+                return [self.keys.row[ki] for ki in key_idx_matches]
             else:
                 return self.keys.row[key_idx_matches[0]]
 
