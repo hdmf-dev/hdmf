@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.10.1 (Upcoming)
+
+### Enhancements
+- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [967](https://github.com/hdmf-dev/hdmf/pull/967)
+
 ## HDMF 3.10.0 (October 3, 2023)
 
 Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release
