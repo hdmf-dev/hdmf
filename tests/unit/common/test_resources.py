@@ -270,7 +270,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_check_termset_wrapper(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
 
         # create children and add parent
         col1 = VectorData(
@@ -290,7 +290,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_data(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
         em.link_resources(er)
@@ -313,7 +313,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_attr(self):
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
         em.link_resources(er)

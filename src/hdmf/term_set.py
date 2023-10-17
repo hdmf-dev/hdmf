@@ -63,7 +63,7 @@ class TermSet:
         re += "Schema Path: %s\n" % self.term_schema_path
         return re
 
-    def _repr_html_(self):
+    def _repr_html_(self): # pragma: no cover
         re = "<p><b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>" + "</p>"
         re += "<p><b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "</p>"
         return re

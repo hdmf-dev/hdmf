@@ -26,6 +26,7 @@ class TestTermSet(TestCase):
 
     def test_termset_setup(self):
         termset = TermSet(name='test', term_schema_path='tests/unit/example_test_term_set.yaml')
+        self.assertEqual(termset.name, 'test')
         self.assertEqual(list(termset.sources), ['NCBI_TAXON'])
 
     def test_view_set(self):
@@ -60,7 +61,7 @@ class TestTermSet(TestCase):
 
     def test_view_set_sheets(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
-        termset = TermSet(schemasheets_folder=folder)
+        termset = TermSet(name='name', schemasheets_folder=folder)
         expected = ['ASTROCYTE', 'INTERNEURON', 'MICROGLIAL_CELL', 'MOTOR_NEURON',
                     'OLIGODENDROCYTE', 'PYRAMIDAL_NEURON']
         self.assertEqual(list(termset.view_set), expected)
@@ -99,7 +100,7 @@ class TestTermSet(TestCase):
 
     def test_folder_output(self):
         folder = os.path.join(CUR_DIR, "test_term_set_input", "schemasheets")
-        termset = TermSet(schemasheets_folder=folder)
+        termset = TermSet(name='test', schemasheets_folder=folder)
         actual_path = termset._TermSet__schemasheets_convert()
         expected_path = os.path.normpath(os.path.join(os.path.dirname(folder), "schemasheets/nwb_static_enums.yaml"))
         self.assertEqual(actual_path, expected_path)
