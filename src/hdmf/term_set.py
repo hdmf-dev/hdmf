@@ -19,11 +19,13 @@ class TermSet:
     :ivar expanded_termset_path: The path to the schema with the expanded enumerations
     """
     def __init__(self,
+                 name: str,
                  term_schema_path: str=None,
                  schemasheets_folder: str=None,
                  dynamic: bool=False
                  ):
         """
+        :param name: The name of the TermSet
         :param term_schema_path: The path to the LinkML YAML enumeration schema
         :param schemasheets_folder: The path to the folder containing the LinkML TSV files
         :param dynamic: Boolean parameter denoting whether the schema uses Dynamic Enumerations
@@ -35,6 +37,7 @@ class TermSet:
             msg = "Install linkml_runtime"
             raise ValueError(msg)
 
+        self.name = name
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
 
@@ -56,8 +59,13 @@ class TermSet:
         self.sources = self.view.schema.prefixes
 
     def __repr__(self):
-        re = "class: %s\n" % str(self.__class__)
-        re += "term_schema_path: %s\n" % self.term_schema_path
+        re = "Class: %s\n" % str(self.__class__.__name__)
+        re += "Schema Path: %s\n" % self.term_schema_path
+        return re
+
+    def _repr_html_(self):
+        re = "<p><b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>" + "</p>"
+        re += "<p><b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "</p>"
         return re
 
     def __perm_value_key_info(self, perm_values_dict: dict, key: str):
